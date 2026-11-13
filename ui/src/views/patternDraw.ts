@@ -216,6 +216,8 @@ export function drawRoll(g: CanvasRenderingContext2D, W: number, H: number, G: R
   pt: Pattern; ch: Channel; chans: Map<Id, Channel>; sel: Set<number>; root: number; mask: number; hoverKey: number | null; lit?: number[]; marquee: { x0: number; y0: number; x1: number; y1: number } | null;
   /** Ctrl+right-drag: the box the view will zoom to (dashed, no fill: it selects nothing). */
   zoomBox?: { x0: number; y0: number; x1: number; y1: number } | null;
+  /** Chord-stamp tool: what a click at this cell would write (ghosted, dashed outline). */
+  stampGhost?: { s: number; len: number; pitches: number[] } | null;
 }) {
   g.clearRect(0, 0, W, H);
   const bg = layer.get(W, H, ['roll', G.pps, G.sx, G.sy, G.rowH, G.kw, G.steps, o.root, o.mask].join('|'), (gg, w, h) => rollBg(gg, w, h, G, o.root, o.mask));
@@ -244,6 +246,17 @@ export function drawRoll(g: CanvasRenderingContext2D, W: number, H: number, G: R
     if (n.trig || w > 10) { g.fillStyle = rgba(T.onFill, 0.35); g.fillRect(x + w - 3, y + 3, 1, G.rowH - 6); }
     if (w > 26 && G.rowH >= 11) { g.fillStyle = rgba(T.onFill, 0.85); g.fillText(noteName(k), x + 4, y + G.rowH / 2 + 0.5); }
   });
+  if (o.stampGhost) {
+    const gh = o.stampGhost, w = Math.max(3, gh.len * G.pps - 1), x = rollX(G, gh.s);
+    for (const k of gh.pitches) {
+      const y = rollY(G, k);
+      g.fillStyle = rgba(o.ch.color, 0.32);
+      g.beginPath(); rr(g, x, y + 0.5, w, G.rowH - 1, 2.5); g.fill();
+      g.strokeStyle = rgba(o.ch.color, 0.95); g.lineWidth = 1; g.setLineDash([3, 2]);
+      g.beginPath(); rr(g, x + 0.5, y + 1, w - 1, G.rowH - 2, 2.5); g.stroke();
+      g.setLineDash([]);
+    }
+  }
   if (o.marquee) {
     const m = o.marquee, x = Math.min(m.x0, m.x1), y = Math.min(m.y0, m.y1);
     g.fillStyle = rgba(T.blue, 0.12); g.fillRect(x, y, Math.abs(m.x1 - m.x0), Math.abs(m.y1 - m.y0));

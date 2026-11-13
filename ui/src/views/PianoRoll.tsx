@@ -155,6 +155,8 @@ function Roll(props: { z: number; docked?: boolean }) {
   const [marq, setMarq] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   /** The chord name under the pointer (status bar): every note of the channel at the hovered note's step. */
   const [hoverChord, setHoverChord] = createSignal('');
+  /** The stamp tool's ghost: what a click at the hovered cell would write, drawn in the grid. */
+  const [stampGhost, setStampGhost] = createSignal<{ s: number; len: number; pitches: number[] } | null>(null);
   const [zbox, setZbox] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   /** The note properties popover (double-click a note): the notes it edits, the clicked one last. */
   const [propsFor, setPropsFor] = createSignal<number[] | null>(null);
@@ -207,6 +209,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (s < 0 || s + lastLen() > MAX_STEPS) return;
     const kept = notesRaw().filter(n => !(n.ch === ch().id && n.step === s));
     const stamped = pitches.map(k => ({ ch: ch().id, step: s, len: lastLen(), p: k, ...velProp() }));
+    setStampGhost(null); // the ghost did its job; the next mousemove re-previews the next cell
     commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
     stamped.forEach(n => audition(ch().id, n.p ?? p.key, n.v ?? 1));
     say(t('b.pr.stamped', { label: chordName(pitches) }));
@@ -294,7 +297,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = cv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const lit = typingHeld();
-    drawRoll(g, w, h, geo(), layer, { pt: unwrap(pt()), ch: unwrap(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox() });
+    drawRoll(g, w, h, geo(), layer, { pt: unwrap(pt()), ch: unwrap(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost() });
   };
   const drawVel = () => {
     const { w, h } = laneSize(); if (!w || !h) return;
@@ -306,9 +309,11 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafMain = 0, rafVel = 0;
   createEffect(() => {
-    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len;
+    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
+  // the ghost belongs to the stamp tool: gone the moment another tool is picked
+  createEffect(() => { if (rollTool() !== 'stamp') setStampGhost(null); });
   createEffect(() => {
     data(); sel(); laneSize(); view(); size(); ch(); pt().len;
     if (!rafVel) rafVel = requestAnimationFrame(() => { rafVel = 0; untrack(drawVel); });
@@ -741,7 +746,20 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (p.x < KW) { cv.style.cursor = 'pointer'; setHoverChord(''); return; }
     const i = hitNote(p.step, p.key), t = rollTool();
     cv.style.cursor = e.ctrlKey || e.metaKey ? 'crosshair' : t === 'erase' ? 'not-allowed' : t === 'stamp' ? 'copy' : i >= 0 ? (t !== 'select' && edgeHit(i, p.x) ? 'ew-resize' : 'grab') : t === 'select' ? 'crosshair' : 'copy';
-    if (t === 'stamp') return setHoverChord(stampPreview(p.key));
+    if (t === 'stamp') {
+      const pitches = chordPitches(p.key, stampType(), stampInv());
+      const s = pitches ? snapStep(p.step, unit(e.altKey), true) : -1;
+      const ok = !!pitches && s >= 0 && s + lastLen() <= MAX_STEPS;
+      const cur = stampGhost();
+      if (!ok) {
+        if (cur) setStampGhost(null);
+        return setHoverChord(pitches ? stampPreview(p.key) : '');
+      }
+      if (!cur || cur.s !== s || cur.len !== lastLen() || cur.pitches.some((q, i) => q !== pitches![i])) {
+        setStampGhost({ s, len: lastLen(), pitches });
+      }
+      return setHoverChord(stampPreview(p.key));
+    }
     // the chord sounding under the pointer: every note of the channel at that step
     if (i >= 0) {
       const s0 = notesRaw()[i].step;
@@ -1073,7 +1091,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         </div>
         <div ref={wrap} class="parea">
           <canvas ref={cv} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', 'touch-action': 'none' }}
-            onPointerDown={down} onPointerMove={move} onPointerLeave={() => { ptr = null; }} onWheel={wheel} onContextMenu={e => e.preventDefault()} />
+            onPointerDown={down} onPointerMove={move} onPointerLeave={() => { ptr = null; setStampGhost(null); setHoverChord(''); }} onWheel={wheel} onContextMenu={e => e.preventDefault()} />
           <div ref={phead} class="pphead" />
           <Show when={propsFor()} keyed>{idx => <PropsPop idx={idx} />}</Show>
         </div>
