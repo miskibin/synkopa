@@ -660,7 +660,8 @@ function Roll(props: { z: number; docked?: boolean }) {
     const i = hitNote(p.step, p.key);
     // double-click a note: its properties (the selection's when it is selected). The first
     // click's move-drag has not moved anything (it starts after 3 px), so nothing is nudged.
-    if (e.button === 0 && i >= 0 && !m && !e.shiftKey && tool !== 'erase' && dblCheck('rn' + i)) {
+    // Stamp mode never opens it: there a double-click is just two stamps (re-stamp replaces).
+    if (e.button === 0 && i >= 0 && !m && !e.shiftKey && tool !== 'erase' && tool !== 'stamp' && dblCheck('rn' + i)) {
       const idx = sel().has(i) ? [...sel()].filter(k => k !== i && notesRaw()[k]?.ch === ch().id).concat(i) : [i];
       if (!sel().has(i)) setSel(new Set([i]));
       setPropsFor(idx);
