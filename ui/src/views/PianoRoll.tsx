@@ -451,6 +451,24 @@ function Roll(props: { z: number; docked?: boolean }) {
   const edgeHit = (i: number, x: number) => { const n = notesRaw()[i], G = geo(); const width = noteWidth(n, G.pps); return x >= rollX(G, n.step) + width - Math.min(6, width * 0.4); };
   const commitNotes = (notes: Note[], label: string) => commit([putNotes(pt(), notes)], label);
 
+  /** The stamp tool's eraser: right-click removes all of the channel's notes at the
+   * clicked step (the chord is the unit), sweeping with the drag like the eraser does. */
+  function stampEraseDrag(e: PointerEvent) {
+    const g = new Gesture(t('b.pe.gestDelNotes'));
+    let notes = notesRaw(), n0 = notes.length;
+    let lastStep: number | null = null;
+    const del = (ev: PointerEvent) => {
+      const s = snapStep(pos(ev).step, unit(ev.altKey), true);
+      if (s === lastStep) return;
+      lastStep = s;
+      const before = notes.length;
+      notes = notes.filter(n => !(n.ch === ch().id && n.step === s));
+      if (notes.length !== before) g.update([putNotes(pt(), notes)]);
+    };
+    setSel(new Set<number>());
+    del(e);
+    track(ev => del(ev), () => { g.end(); if (notes.length < n0) say(t('b.pe.deleted', { x: notesText(n0 - notes.length) })); }, 'not-allowed');
+  }
   function eraseDrag(e: PointerEvent) {
     const g = new Gesture(t('b.pe.gestDelNotes'));
     let notes = notesRaw(), n0 = notes.length;
@@ -672,6 +690,9 @@ function Roll(props: { z: number; docked?: boolean }) {
       setLastLen(notesRaw()[i].len); setLastVel(notesRaw()[i].v ?? 1);
       return moveDrag(e, idx, 'move', undefined, toggle);
     }
+    // the stamp tool's right button: the chord is the unit, so the whole chord at the
+    // clicked step goes (the plain eraser keeps its per-note sweep on every other tool)
+    if (tool === 'stamp' && e.button === 2) return stampEraseDrag(e);
     if (e.button === 2 || tool === 'erase') return eraseDrag(e);
     if (tool === 'select') {
       if (i < 0) return marqueeDrag(e, false);
