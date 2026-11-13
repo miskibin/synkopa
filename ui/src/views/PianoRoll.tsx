@@ -723,6 +723,17 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (tool === 'paint') return paintDrag(e, g, notes);
     moveDrag(e, [notes.length - 1], 'move', g);
   };
+  /** What a stamp click at `key` would write (status-bar preview): the root, the resulting
+   * bass-first name, and whether that root sits in the key the roll header shows — stamping
+   * itself stays key-free (any root is allowed; written notes are concrete). */
+  const stampPreview = (key: number) => {
+    const pitches = chordPitches(key, stampType(), stampInv());
+    if (!pitches) return '';
+    const pc = ((key - root()) % 12 + 12) % 12;
+    const inScale = scaleIdx() !== 0 && (mask() & (1 << pc)) !== 0;
+    const sc = SCALES.find(s => s[1] === scaleIdx());
+    return `${noteName(key)} → ${chordName(pitches)}${inScale ? ' · ' + t('b.pr.stamp.inScale', { key: NOTE_NAMES[root()], scale: sc ? t(sc[0]) : '' }) : ''}`;
+  };
   const move = (e: PointerEvent) => {
     const p = pos(e);
     ptr = { x: p.x, y: p.y };
@@ -730,6 +741,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (p.x < KW) { cv.style.cursor = 'pointer'; setHoverChord(''); return; }
     const i = hitNote(p.step, p.key), t = rollTool();
     cv.style.cursor = e.ctrlKey || e.metaKey ? 'crosshair' : t === 'erase' ? 'not-allowed' : t === 'stamp' ? 'copy' : i >= 0 ? (t !== 'select' && edgeHit(i, p.x) ? 'ew-resize' : 'grab') : t === 'select' ? 'crosshair' : 'copy';
+    if (t === 'stamp') return setHoverChord(stampPreview(p.key));
     // the chord sounding under the pointer: every note of the channel at that step
     if (i >= 0) {
       const s0 = notesRaw()[i].step;
