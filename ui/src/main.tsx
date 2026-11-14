@@ -28,7 +28,8 @@ async function boot() {
   replaceState(state);
   await be.on('state', onStateEvent);
   await startTelemetry();
-  void be.audioGetConfig().then(a => watchAudio(a, cb => be.on('audio-status', cb), say));
+  void watchAudio(() => be.audioGetConfig(), cb => be.on('audio-status', cb), say)
+    .catch(e => console.error('[wave] audio status', e));
   // the standard library's file list, so the first "add channel" menu already offers it
   void loadStdLib();
   // initial selection like the prototype: the Vocal insert with its compressor

@@ -429,16 +429,16 @@ async fn audio_get_config(app: St<'_>) -> R<AudioStatus> {
 }
 
 #[tauri::command]
-async fn audio_set_config(app: St<'_>, handle: AppHandle, mut config: AudioConfig) -> R<AudioStatus> {
+async fn audio_set_config(app: St<'_>, mut config: AudioConfig) -> R<AudioStatus> {
     let a = app.inner().clone();
     let st = tauri::async_runtime::spawn_blocking(move || {
+        let mut s = a.settings.lock();
         // a config sent without `recOffsetMs` keeps the calibration (a device change does
         // not lose it); changing only the offset does not restart the streams
         if config.rec_offset_ms.is_none() {
-            config.rec_offset_ms = a.settings.lock().audio.rec_offset_ms;
+            config.rec_offset_ms = s.audio.rec_offset_ms;
         }
         let st = a.audio.start(config.clone());
-        let mut s = a.settings.lock();
         s.audio = config;
         s.save();
         *a.status.lock() = st.clone();
@@ -446,7 +446,6 @@ async fn audio_set_config(app: St<'_>, handle: AppHandle, mut config: AudioConfi
     })
     .await
     .map_err(es)?;
-    let _ = handle.emit("audio-status", &st);
     Ok(st)
 }
 
@@ -901,10 +900,13 @@ async fn update_install(app: St<'_>, handle: AppHandle) -> R<()> {
         Err(e) => {
             // the old version keeps running: audio comes back
             let a = app.inner().clone();
-            let cfg = a.settings.lock().audio.clone();
-            let st = tauri::async_runtime::spawn_blocking(move || a.audio.start(cfg)).await.map_err(es)?;
-            *app.status.lock() = st.clone();
-            let _ = handle.emit("audio-status", &st);
+            let st = tauri::async_runtime::spawn_blocking(move || {
+                let settings = a.settings.lock();
+                a.audio.start(settings.audio.clone())
+            })
+            .await
+            .map_err(es)?;
+            *app.status.lock() = st;
             Err(e)
         }
     }
@@ -1080,7 +1082,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     let startup_revision = engine.revision();
     let loading = boot.loading();
     let events: Arc<std::sync::OnceLock<AppHandle>> = Arc::new(std::sync::OnceLock::new());
-    // an output the device or driver stopped is reopened by the audio thread: tell the UI
+    // Audio status changes are published in the order processed by the audio thread.
     let audio = {
         let ev = events.clone();
         AudioIo::spawn_watched(engine.clone(), move |st| {
@@ -1144,14 +1146,14 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
         let _ = mh.run_on_main_thread(job);
     });
     tapp.manage(wave_plugin_windows::Service::new());
+    let _ = events.set(tapp.handle().clone());
     // open the audio device off the UI thread
     let a = app.clone();
     std::thread::spawn(move || {
-        let cfg = a.settings.lock().audio.clone();
-        let st = a.audio.start(cfg);
+        let settings = a.settings.lock();
+        let st = a.audio.start(settings.audio.clone());
         *a.status.lock() = st;
     });
-    let _ = events.set(tapp.handle().clone());
     let _ = app.handle.set(tapp.handle().clone());
     keys::ensure(&app, app.engine.uses_keys());
     // reopen the saved keyboard (it may be unplugged: the status says so, and it opens when it returns)

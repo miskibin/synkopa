@@ -165,6 +165,10 @@ change, and a benchmark that counts allocations in the audio callback.
 
 Download the installer from the [latest release](https://github.com/miskibin/wave-DAW/releases/latest).
 The Windows build includes ASIO support (Settings → Audio → ASIO) and the WAVE Keys piano.
+If a Focusrite USB interface is disconnected, use **Switch to WASAPI** in the audio notification
+or in Settings → Audio to resume playback through the default Windows output. Connect the
+interface and choose ASIO again to go back. With Focusrite USB ASIO installed, WAVE waits for
+Windows to detect the interface before opening any ASIO driver, since ASIO discovery can probe it.
 On Windows, double-click a `.wave` project in File Explorer to open it in WAVE.
 If WAVE is already running, its window comes to the front and prompts you about any unsaved changes before switching projects.
 Linux packages are attached to the same release.

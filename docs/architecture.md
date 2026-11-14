@@ -301,7 +301,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `pattern_loop` | `{range}` | – ; changes the playing pattern loop's range without restarting it (`null` = the whole pattern) |
 | `preview_clip` / `preview_file` / `preview_stop` | `{clipId, from?}` / `{path}` / – | – — `from` (seconds of the source): the take alone with its pitch edits at the source's speed from there to the clip's end (the pitch editor's Solo); rejects when nothing is left |
 | `audio_hosts` | – | `[{id, name}]` (ids like `"wasapi"`, `"asio"`, `"alsa"`) |
-| `audio_devices` | `{host}` | `{outputs: string[], inputs: string[]}` |
+| `audio_devices` | `{host}` | `{outputs: string[], inputs: string[]}`. ASIO lists registered drivers as outputs, with a shared input. |
 | `audio_get_config` / `audio_set_config` | `– / AudioConfig` | `AudioStatus` (a config without `recOffsetMs` keeps the saved one; changing only `recOffsetMs` does not restart the device) |
 | `audio_measure_latency` | – | `{roundTripMs, reportedMs, suggestedOffsetMs, confidence}` — plays 8 clicks (~5 s) instead of the mix, records them back (mic at the speaker or a loopback cable), finds them by cross-correlation off the audio thread. Transport must be stopped; opens the input for the measurement. Saves nothing |
 | `asio_control_panel` | – | – (opens the driver's own panel, Windows only) |
@@ -344,6 +344,7 @@ type AudioConfig = { host: string; output: string | null; input: string | null; 
                      inputChannel?: number | null; recOffsetMs?: number | null };
 type AudioStatus = AudioConfig & { running: boolean; actualRate: number; actualBuffer: number; latencyMs: number;
                                    inputChannels: number; error: string | null; note: string | null; asioCompiled: boolean;
+                                   unavailableOutput: string | null;
                                    inputUnderruns: number; inputOverruns: number; inputDriftPpm: number };
 ```
 
@@ -491,6 +492,9 @@ Projects without `comps` open unchanged (`#[serde(default)]`).
   `note`, and each change is pushed as an `audio-status` event that the UI
   shows in its status line. A callback that *blocks* is not reopened, because
   dropping a stream whose callback is stuck can hang the thread that drops it.
+  On Windows, the audio thread also checks the Focusrite USB Plug and Play device
+  before ASIO opens and while that interface is active. If it disappears, WAVE
+  finishes the take, stops monitoring and offers the default WASAPI output.
 * **Input jitter buffer** (`crates/audio-io/src/jitter.rs`). The input stream
   opens and closes on its own (`AudioIo::set_input` hands the output callback
   a new ring through a lock-free swap ring; the old one is freed off the audio

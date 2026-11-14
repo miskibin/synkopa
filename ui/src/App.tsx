@@ -20,6 +20,7 @@ import { ChannelWindow } from './views/ChannelWindow';
 import { PitchEditor } from './views/PitchEditor';
 import { Export } from './views/Export';
 import { Settings, VstPicker } from './views/Settings';
+import { AudioToast } from './views/AudioToast';
 import { Updates } from './views/Updates';
 import { midiStatus, startMidi } from './state/midi';
 import { releaseAll, setTypingOn, typingDown, typingOn, typingUp } from './state/typingKeys';
@@ -244,6 +245,7 @@ export function App() {
       <VstPicker />
       <FxPickerHost />
       <MusicDialog />
+      <AudioToast />
     </div>
     <Show when={U.openingProject}>
       <div class="overlay" style={{ 'z-index': 400 }}>

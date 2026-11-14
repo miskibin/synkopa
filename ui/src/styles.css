@@ -298,6 +298,9 @@ html.dragcur, html.dragcur * { cursor: var(--drag-cursor) !important; }
 .gainrow { display: flex; align-items: center; gap: 6px; padding: 3px 8px; }
 .gainrow button { width: 22px; height: 20px; border: 0; border-radius: 3px; background: var(--line2); color: var(--fg-hi); cursor: pointer; }
 .overlay { position: fixed; inset: 0; z-index: 70; background: var(--shadow2); display: flex; align-items: center; justify-content: center; }
+.audio-toast { position: fixed; z-index: 71; bottom: 16px; right: 16px; max-width: min(420px, calc(100% - 32px)); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; color: var(--fg-hi); background: var(--dialog-bg); border: 1px solid var(--line3); border-left: 3px solid var(--amber); border-radius: 6px; box-shadow: 0 4px 20px var(--shadow); }
+.audio-toast-message { flex: 1 1 140px; overflow-wrap: anywhere; }
+.audio-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--fg-hi); }
 .dialog { padding: 18px 22px; background: var(--dialog-bg); border: 1px solid var(--line3); border-radius: 8px; box-shadow: 0 20px 48px var(--shadow); max-height: 80vh; overflow: auto; }
 .dialog .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font: 600 13px var(--sans); color: var(--fg-hi); }
 .dialog .hd button { border: 0; background: transparent; color: var(--fg3); cursor: pointer; font-size: 16px; }

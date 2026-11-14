@@ -5596,12 +5596,14 @@ dependencies = [
 name = "wave-audio-io"
 version = "0.4.0"
 dependencies = [
+ "asio-sys",
  "cpal",
  "log",
  "rtrb",
  "serde",
  "serde_json",
  "wave-engine",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -9,10 +9,10 @@
 //! `recOffsetMs` and [`AudioIo::measure_latency`] cover what the driver does not report.
 //!
 //! **ASIO**: compiled with the `asio` feature on Windows. Input and output are
-//! opened on the *same* driver, which is the only way ASIO works. If ASIO was
-//! asked for and cannot be opened we fall back to the system host and say why
-//! in [`AudioStatus::note`], so there is always sound.
+//! opened on the same driver. An unavailable output is reported separately
+//! from stream errors so the UI can offer a different device.
 
+mod asio;
 mod jitter;
 mod probe;
 
@@ -66,6 +66,8 @@ pub struct AudioStatus {
     pub error: Option<String>,
     pub note: Option<String>,
     pub asio_compiled: bool,
+    /// Output that could not be opened or a driver that blocks the configured output.
+    pub unavailable_output: Option<String>,
     /// Times the input stopped delivering mid-stream since it opened (each one a short
     /// faded gap in a recording); the UI shows them as "przerwy w wejściu".
     pub input_underruns: u32,
@@ -147,6 +149,15 @@ fn pick_host(want: &str) -> (cpal::Host, Option<String>) {
 }
 
 pub fn devices(host: &str) -> DeviceList {
+    if host == "asio" && asio_compiled() {
+        let names = asio::driver_names();
+        // An ASIO selection is duplex. The channel counts are only known once
+        // the selected driver has started.
+        return DeviceList { inputs: Vec::new(), outputs: names };
+    }
+    if host == "asio" {
+        return DeviceList::default();
+    }
     let (h, _) = pick_host(host);
     let name = |d: cpal::Device| dev_name(&d);
     DeviceList {
@@ -183,13 +194,80 @@ fn retry_delay(n: u32) -> Duration {
     Duration::from_secs(1u64 << n.min(5)).min(Duration::from_secs(30))
 }
 
+fn is_focusrite_usb(name: &str) -> bool {
+    name.eq_ignore_ascii_case(asio::FOCUSRITE_USB)
+}
+
+fn focusrite_unavailable(cfg: &AudioConfig) -> AudioStatus {
+    AudioStatus {
+        config: cfg.clone(),
+        asio_compiled: asio_compiled(),
+        unavailable_output: Some(asio::FOCUSRITE_USB.into()),
+        ..Default::default()
+    }
+}
+
+fn finish_interrupted_audio(engine: &Engine) {
+    // Save the part of the take already captured and prevent a subsequent
+    // switch from silently routing recording or monitoring to another mic.
+    engine.stop();
+    engine.set_transport(None, None, Some(false), Some(false));
+}
+
+fn check_asio_output(cfg: &AudioConfig, drivers: &[String], present: impl FnOnce() -> Option<bool>) -> Option<AudioStatus> {
+    let wanted = cfg.output.as_deref().filter(|name| !name.is_empty());
+    // CPAL's iterator initializes drivers before exposing their names. It may
+    // probe Focusrite on the way to another ASIO driver. Block that path too
+    // whenever we cannot confirm the USB interface is connected.
+    if (wanted.is_some_and(is_focusrite_usb) || drivers.iter().any(|name| is_focusrite_usb(name))) && present() != Some(true) {
+        return Some(focusrite_unavailable(cfg));
+    }
+    if wanted.map_or(drivers.is_empty(), |name| !drivers.iter().any(|d| d.eq_ignore_ascii_case(name))) {
+        return Some(AudioStatus {
+            config: cfg.clone(),
+            asio_compiled: asio_compiled(),
+            unavailable_output: Some(wanted.unwrap_or("ASIO").into()),
+            ..Default::default()
+        });
+    }
+    None
+}
+
+fn open_checked(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool, restarts: u32) -> (Option<Running>, AudioStatus) {
+    if cfg.host == "asio" && asio_compiled() {
+        if let Some(st) = check_asio_output(cfg, &asio::driver_names(), asio::focusrite_usb_present) {
+            return (None, AudioStatus { restarts, ..st });
+        }
+    }
+    match open(engine, cfg, want_input) {
+        Ok((run, st)) => (Some(run), AudioStatus { restarts, ..st }),
+        Err(error) => {
+            let (error, unavailable_output) = match error {
+                OpenError::Failed(error) => (error, None),
+                OpenError::OutputUnavailable(name, error) => (error, Some(name)),
+            };
+            (
+                None,
+                AudioStatus {
+                    config: cfg.clone(),
+                    error: Some(error),
+                    asio_compiled: asio_compiled(),
+                    unavailable_output,
+                    restarts,
+                    ..Default::default()
+                },
+            )
+        }
+    }
+}
+
 impl AudioIo {
     pub fn spawn(engine: Arc<Engine>) -> Self {
         Self::spawn_watched(engine, |_| {})
     }
 
     /// [`AudioIo::spawn`], calling `changed` (on the audio-io thread) whenever the status
-    /// changes by itself: the output died and was reopened, or could not be reopened.
+    /// changes after a device request or by itself, for example after a disconnect.
     ///
     /// A device that disappears or a driver error (PipeWire/ALSA restarts, a USB interface
     /// unplugged) ends a cpal stream for good, and so does a panic in the output callback;
@@ -209,39 +287,64 @@ impl AudioIo {
                 // the output was lost and could not be reopened yet: the next attempt and its number
                 let mut lost: Option<(Instant, u32)> = None;
                 let mut restarts = 0u32;
+                let mut next_presence_check = Instant::now();
                 loop {
                     let req = match rx.recv_timeout(WATCH) {
                         Ok(r) => Some(r),
                         Err(mpsc::RecvTimeoutError::Timeout) => None,
                         Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     };
-                    // ---- watchdog: reopen an output that died by itself
+                    let now = Instant::now();
+                    let changing = matches!(req, Some(Req::Start(..) | Req::Stop(..)));
                     let why = cur.as_ref().and_then(Running::failure);
-                    let retry = lost.filter(|(at, _)| Instant::now() >= *at);
-                    if why.is_some() || retry.is_some() {
-                        let tries = retry.map_or(0, |(_, n)| n);
+                    let check_presence = now >= next_presence_check || changing || why.is_some();
+                    if check_presence {
+                        next_presence_check = now + WATCH;
+                    }
+                    let focusrite = cur.as_ref().is_some_and(|r| r.asio) && is_focusrite_usb(&status.actual_output);
+                    if focusrite && check_presence && asio::focusrite_usb_present() == Some(false) {
+                        finish_interrupted_audio(&engine);
+                        want_input = false;
                         drop(cur.take());
-                        match open(&engine, &cfg_now, want_input) {
-                            Ok((run, st)) => {
+                        lost = None;
+                        status = AudioStatus { restarts, ..focusrite_unavailable(&cfg_now) };
+                        changed(&status);
+                    } else if focusrite && !changing && why.is_some() && lost.is_none() {
+                        // Driver invalidation can arrive before Windows updates its
+                        // PnP tree. Let it settle before trying ASIO again.
+                        lost = Some((now + retry_delay(0), 1));
+                    } else if !changing {
+                        let retry = lost.filter(|(at, _)| now >= *at);
+                        if (why.is_some() && lost.is_none()) || retry.is_some() {
+                            let tries = retry.map_or(0, |(_, n)| n);
+                            drop(cur.take());
+                            let (run, st) = open_checked(&engine, &cfg_now, want_input, restarts);
+                            if let Some(run) = run {
                                 cur = Some(run);
                                 restarts += 1;
                                 lost = None;
-                                let why = why.unwrap_or_else(|| "the device was unavailable".into());
-                                status = AudioStatus { note: Some(format!("Audio restarted by itself: {why}.")), restarts, ..st };
-                            }
-                            Err(e) => {
+                                let reason = why.as_deref().unwrap_or("the device was unavailable");
+                                status = AudioStatus { note: Some(format!("Audio restarted by itself: {reason}.")), restarts, ..st };
+                            } else if st.unavailable_output.is_some() {
+                                lost = None;
+                                if cfg_now.host == "asio" {
+                                    finish_interrupted_audio(&engine);
+                                    want_input = false;
+                                }
+                                status = st;
+                            } else {
                                 lost = Some((Instant::now() + retry_delay(tries), tries + 1));
-                                let why = why.map(|w| format!("{w}; ")).unwrap_or_default();
+                                let reason = why.as_ref().map(|w| format!("{w}; ")).unwrap_or_default();
                                 status = AudioStatus {
-                                    config: cfg_now.clone(),
-                                    error: Some(format!("Audio stopped ({why}reopening failed: {e}). Retrying…")),
-                                    asio_compiled: asio_compiled(),
-                                    restarts,
-                                    ..Default::default()
+                                    error: Some(format!(
+                                        "Audio stopped ({reason}reopening failed: {}). Retrying…",
+                                        st.error.as_deref().unwrap_or("unknown error")
+                                    )),
+                                    ..st
                                 };
                             }
+                            changed(&status);
                         }
-                        changed(&status);
                     }
                     let Some(req) = req else { continue };
                     if let Some(r) = cur.as_mut() {
@@ -250,16 +353,21 @@ impl AudioIo {
                     let (cfg, reply) = match req {
                         Req::Start(cfg, reply) => {
                             // only the calibration offset changed: no reason to restart the streams
-                            if let Some(r) = cur.as_ref().filter(|_| status.running && same_streams(&cfg, &cfg_now)) {
+                            if let Some(r) = cur.as_ref().filter(|_| why.is_none() && status.running && same_streams(&cfg, &cfg_now)) {
                                 r.offset_ms.store(cfg.rec_offset_ms.unwrap_or(0.0).to_bits(), Relaxed);
                                 cfg_now = cfg.clone();
                                 status.config = cfg;
+                                changed(&status);
                                 let _ = reply.send(status.clone());
                                 continue;
                             }
                             (cfg, reply)
                         }
                         Req::Input(on, reply) => {
+                            if cur.is_none() && cfg_now.host == "asio" && status.unavailable_output.is_some() {
+                                let _ = reply.send(status.clone());
+                                continue;
+                            }
                             want_input = on;
                             if let Some(r) = cur.as_mut() {
                                 r.set_input(on, &cfg_now, &mut status);
@@ -315,16 +423,8 @@ impl AudioIo {
                     cfg_now = cfg.clone();
                     lost = None; // the user chose (or re-chose) the devices: no automatic retries
                     drop(cur.take()); // stop the old streams before opening new ones (ASIO is exclusive)
-                    match open(&engine, &cfg, want_input) {
-                        Ok((run, st)) => {
-                            cur = Some(run);
-                            status = AudioStatus { restarts, ..st };
-                        }
-                        Err(e) => {
-                            status =
-                                AudioStatus { config: cfg, error: Some(e), asio_compiled: asio_compiled(), restarts, ..Default::default() };
-                        }
-                    }
+                    (cur, status) = open_checked(&engine, &cfg, want_input, restarts);
+                    changed(&status);
                     let _ = reply.send(status.clone());
                 }
             })
@@ -478,6 +578,17 @@ struct OpenedInput {
     channels: u16,
 }
 
+enum OpenError {
+    Failed(String),
+    OutputUnavailable(String, String),
+}
+
+impl From<String> for OpenError {
+    fn from(error: String) -> Self {
+        Self::Failed(error)
+    }
+}
+
 /// Builds (does not start) the input stream. `name`: `None` = the system default,
 /// `Some("")` = no input.
 fn open_input(
@@ -494,35 +605,59 @@ fn open_input(
         None => host.default_input_device(),
     };
     let Some(d) = dev else { return Ok(None) };
+    build_device_input(&d, cfg, rate, buffer, err, 2).map(Some)
+}
+
+fn build_device_input(
+    d: &cpal::Device,
+    cfg: &AudioConfig,
+    rate: u32,
+    buffer: cpal::BufferSize,
+    err: Arc<std::sync::Mutex<Option<String>>>,
+    periods: usize,
+) -> Result<OpenedInput, String> {
     let ic = d.default_input_config().map_err(|e| e.to_string())?;
     let ich = ic.channels().max(1);
     let isc = cpal::StreamConfig { channels: ich, sample_rate: rate, buffer_size: buffer };
     let pick = cfg.input_channel.unwrap_or(0).min(ich - 1) as usize;
     let (tx, rx) = rtrb::RingBuffer::<f32>::new(rate as usize * 2);
     let clock = Arc::new(InClock::default());
-    let stream = build_input(&d, &isc, ic.sample_format(), tx, err, pick, clock.clone())?;
-    // ASIO delivers each input buffer just before the output callback that uses it; other
-    // hosts run the two streams on their own schedules and need two periods in reserve
-    let periods = if host.id().name().eq_ignore_ascii_case("asio") { 1 } else { 2 };
-    Ok(Some(OpenedInput {
-        stream,
-        side: InputSide { ring: rx, clock, jb: JitterBuf::new(rate, periods) },
-        name: dev_name(&d),
-        channels: ich,
-    }))
+    let stream = build_input(d, &isc, ic.sample_format(), tx, err, pick, clock.clone())?;
+    Ok(OpenedInput { stream, side: InputSide { ring: rx, clock, jb: JitterBuf::new(rate, periods) }, name: dev_name(d), channels: ich })
 }
 
-fn open(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool) -> Result<(Running, AudioStatus), String> {
+fn open(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool) -> Result<(Running, AudioStatus), OpenError> {
     let (host, mut note) = pick_host(&cfg.host);
-    let out_dev = match cfg.output.as_deref().filter(|s| !s.is_empty()) {
-        Some(n) => match find(host.output_devices(), n) {
-            Some(d) => d,
-            None => {
-                note = Some(format!("Output \"{n}\" is gone; using the default device."));
-                host.default_output_device().ok_or_else(|| no_output(&host))?
-            }
-        },
-        None => host.default_output_device().ok_or_else(|| no_output(&host))?,
+    let is_asio = host.id().name().eq_ignore_ascii_case("asio");
+    let mut unavailable_output = None;
+    let wanted = cfg.output.as_deref().filter(|s| !s.is_empty());
+    // The ASIO iterator keeps the last driver alive. Keep it until both
+    // streams have acquired that driver, so opening duplex only initializes once.
+    let (out_dev, _asio_driver) = if is_asio {
+        let mut drivers = host.output_devices().map_err(|e| e.to_string())?;
+        let device = match wanted {
+            Some(name) => drivers.find(|d| dev_name(d).is_some_and(|n| n.eq_ignore_ascii_case(name))),
+            None => drivers.next(),
+        };
+        let device = device.ok_or_else(|| {
+            OpenError::OutputUnavailable(wanted.unwrap_or("ASIO").into(), format!("ASIO could not open {}.", wanted.unwrap_or("an output")))
+        })?;
+        (device, Some(drivers))
+    } else {
+        (
+            match wanted {
+                Some(n) => match find(host.output_devices(), n) {
+                    Some(d) => d,
+                    None => {
+                        unavailable_output = Some(n.into());
+                        note = Some(format!("Output \"{n}\" is gone; using the default device."));
+                        host.default_output_device().ok_or_else(|| OpenError::OutputUnavailable(n.into(), no_output(&host)))?
+                    }
+                },
+                None => host.default_output_device().ok_or_else(|| no_output(&host))?,
+            },
+            None,
+        )
     };
     let out_name = dev_name(&out_dev).unwrap_or_default();
     let def = out_dev.default_output_config().map_err(|e| format!("{out_name}: {e}"))?;
@@ -547,7 +682,6 @@ fn open(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool) -> Result<(Ru
         _ => 512,
     };
     let host_name = host.id().name().to_string();
-    let is_asio = host_name.eq_ignore_ascii_case("asio");
     // input and output timestamps share the system clock here (QPC, mach time), so the
     // round trip is measured from them; elsewhere per-stream clocks are not comparable
     let shared_clock = ["wasapi", "coreaudio"].iter().any(|h| host_name.eq_ignore_ascii_case(h));
@@ -562,27 +696,30 @@ fn open(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool) -> Result<(Ru
 
     // ---- input (same host). ASIO inputs live on the same driver and cost nothing; elsewhere
     // the mic is opened on demand (and can be opened later without touching the output)
-    let in_want = if is_asio {
-        Some(Some(out_name.as_str()))
+    let input = if is_asio {
+        if out_dev.supports_input() {
+            // ASIO delivers the input immediately before the matching output callback.
+            build_device_input(&out_dev, cfg, rate, buffer, error.clone(), 1).map(Some)
+        } else {
+            Ok(None)
+        }
     } else if want_input {
-        Some(cfg.input.as_deref())
+        open_input(&host, cfg.input.as_deref(), cfg, rate, buffer, error.clone())
     } else {
-        None
+        Ok(None)
     };
     let mut in_name = None;
     let mut in_ch = 0u16;
     let mut inp = None;
-    if let Some(want) = in_want {
-        match open_input(&host, want, cfg, rate, buffer, error.clone()) {
-            Ok(Some(o)) => {
-                in_name = o.name;
-                in_ch = o.channels;
-                let _ = swap_tx.push(Some(o.side));
-                inp = Some(o.stream);
-            }
-            Ok(None) => {}
-            Err(e) => note = Some(format!("Recording input could not open ({e}). Playback works.")),
+    match input {
+        Ok(Some(o)) => {
+            in_name = o.name;
+            in_ch = o.channels;
+            let _ = swap_tx.push(Some(o.side));
+            inp = Some(o.stream);
         }
+        Ok(None) => {}
+        Err(e) => note = Some(format!("Recording input could not open ({e}). Playback works.")),
     }
 
     let mut rt = engine.create_rt(rate as f32, (nominal as usize).clamp(64, 2048));
@@ -622,6 +759,7 @@ fn open(engine: &Arc<Engine>, cfg: &AudioConfig, want_input: bool) -> Result<(Ru
         error: None,
         note,
         asio_compiled: asio_compiled(),
+        unavailable_output,
         ..Default::default()
     };
     let run = Running {
@@ -1274,6 +1412,54 @@ mod tests {
         let c: AudioConfig = serde_json::from_str(r#"{"host":"","output":null,"input":null,"sampleRate":null,"bufferSize":null}"#).unwrap();
         assert_eq!(c.input_channel, None);
         assert_eq!(c.rec_offset_ms, None);
+    }
+
+    #[test]
+    fn absent_focusrite_blocks_any_asio_open_that_could_probe_it() {
+        let drivers = vec!["Other ASIO".into(), asio::FOCUSRITE_USB.into()];
+        let cfg = AudioConfig { host: "asio".into(), output: Some(asio::FOCUSRITE_USB.into()), ..Default::default() };
+        for present in [Some(false), None] {
+            let status = check_asio_output(&cfg, &drivers, || present).unwrap();
+            assert_eq!(status.config, cfg);
+            assert_eq!(status.unavailable_output.as_deref(), Some(asio::FOCUSRITE_USB));
+            assert!(!status.running);
+        }
+        assert!(check_asio_output(&cfg, &drivers, || Some(true)).is_none());
+        let default = AudioConfig { output: None, ..cfg.clone() };
+        assert!(check_asio_output(&default, &drivers, || Some(false)).is_some());
+        let other = AudioConfig { output: Some("Other ASIO".into()), ..cfg };
+        assert!(check_asio_output(&other, &drivers, || Some(false)).is_some());
+        assert!(check_asio_output(&other, &["Other ASIO".into()], || unreachable!()).is_none());
+    }
+
+    #[test]
+    fn missing_registered_driver_is_reported_with_its_name() {
+        let cfg = AudioConfig { host: "asio".into(), output: Some("Removed ASIO".into()), ..Default::default() };
+        let status = check_asio_output(&cfg, &["Other ASIO".into()], || unreachable!()).unwrap();
+        assert_eq!(serde_json::to_value(status).unwrap()["unavailableOutput"], "Removed ASIO");
+    }
+
+    #[cfg(all(windows, feature = "asio"))]
+    #[test]
+    fn disconnected_focusrite_stays_selected_without_opening_an_asio_stream() {
+        // The CI runner has no Focusrite. On a machine with one attached this
+        // test must never start or stop that real driver.
+        if asio::focusrite_usb_present() == Some(true) {
+            return;
+        }
+        let engine = Engine::new(wave_engine::Project::empty(), Arc::new(wave_engine::NoPlugins));
+        let (tx, rx) = mpsc::channel();
+        let audio = AudioIo::spawn_watched(engine, move |status| tx.send(status.clone()).unwrap());
+        let cfg = AudioConfig { host: "asio".into(), output: Some(asio::FOCUSRITE_USB.into()), ..Default::default() };
+        let status = audio.start(cfg.clone());
+        assert_eq!(status.config, cfg);
+        assert!(!status.running);
+        assert_eq!(status.unavailable_output.as_deref(), Some(asio::FOCUSRITE_USB));
+        assert!(rx.try_recv().is_ok());
+        assert_eq!(devices("asio").outputs, asio::driver_names());
+        assert_eq!(audio.set_input(true).unavailable_output, status.unavailable_output);
+        assert!(rx.recv_timeout(WATCH + WATCH).is_err());
+        assert_eq!(audio.status().restarts, 0);
     }
 
     #[test]

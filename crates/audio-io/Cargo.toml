@@ -10,7 +10,7 @@ publish.workspace = true
 default = []
 # Steinberg ASIO host (Windows). Needs LLVM/Clang for bindgen at build time; cpal's
 # asio-sys fetches the SDK itself (or set CPAL_ASIO_DIR). Release builds turn it on.
-asio = ["cpal/asio"]
+asio = ["cpal/asio", "dep:asio-sys", "dep:windows-sys"]
 
 [dependencies]
 wave-engine.workspace = true
@@ -18,6 +18,10 @@ cpal.workspace = true
 rtrb.workspace = true
 serde.workspace = true
 log.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+asio-sys = { version = "0.4", optional = true }
+windows-sys = { version = "0.61", optional = true, features = ["Win32_Devices_DeviceAndDriverInstallation"] }
 
 # Linux: the JACK host (libjack is loaded at run time, so a system without JACK or
 # PipeWire's JACK library still starts on ALSA) and real-time priority for the ALSA

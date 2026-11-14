@@ -130,9 +130,12 @@ export class MockBackend implements Backend {
   private vstParams = new Map<Id, Vst3Param[]>();
   private audio: AudioStatus = {
     host: 'wasapi', output: 'Głośniki (Realtek High Definition Audio)', input: 'Mikrofon (USB Audio)', sampleRate: null, bufferSize: null, inputChannel: null,
-    running: true, actualRate: 48000, actualBuffer: 480, latencyMs: 20, inputChannels: 2, error: null, note: t('d.mock.noaudio'), asioCompiled: false,
+    running: true, actualRate: 48000, actualBuffer: 480, latencyMs: 20, inputChannels: 2, error: null, note: t('d.mock.noaudio'), asioCompiled: true,
+    unavailableOutput: null,
     recOffsetMs: 0, inputUnderruns: 0, inputOverruns: 0, inputDriftPpm: 0, restarts: 0,
   };
+  private focusritePresent = true;
+  private wasapiOutputPresent = true;
 
   private midiPorts: MidiDevice[] = [{ id: 'mock-keys', name: 'Mock Keystation 61' }, { id: 'mock-pads', name: 'Mock Pad Controller' }];
   private midi: MidiStatus = { connected: null, selected: null, error: null, lastNote: null, noteCount: 0, target: null };
@@ -900,20 +903,37 @@ export class MockBackend implements Backend {
   async audioHosts() { return [{ id: 'wasapi', name: 'WASAPI' }, { id: 'asio', name: 'ASIO' }]; }
   async audioDevices(host: string) {
     return host === 'asio'
-      ? { outputs: ['Focusrite USB ASIO'], inputs: ['Focusrite USB ASIO'] }
-      : { outputs: ['Głośniki (Realtek High Definition Audio)', 'Słuchawki (USB Audio)'], inputs: ['Mikrofon (USB Audio)', 'Line In (Realtek)'] };
+      ? { outputs: ['Focusrite USB ASIO'], inputs: [] }
+      : { outputs: this.wasapiOutputPresent ? ['Głośniki (Realtek High Definition Audio)', 'Słuchawki (USB Audio)'] : [], inputs: ['Mikrofon (USB Audio)', 'Line In (Realtek)'] };
   }
   async audioGetConfig() { return { ...this.audio }; }
   async audioSetConfig(cfg: AudioConfig) {
     await delay(80);
     // like the app: a config without recOffsetMs keeps the saved calibration
     cfg = { ...cfg, recOffsetMs: cfg.recOffsetMs ?? this.audio.recOffsetMs ?? 0 };
-    const asioErr = cfg.host === 'asio' && !this.audio.asioCompiled;
-    this.audio = { ...this.audio, ...cfg, running: !asioErr, error: asioErr ? t('d.mock.noasio') : null,
-      actualRate: cfg.sampleRate ?? 48000, actualBuffer: cfg.bufferSize ?? 480, latencyMs: Math.round(((cfg.bufferSize ?? 480) * 2 / (cfg.sampleRate ?? 48000)) * 10000) / 10 };
+    const unavailableOutput = cfg.host === 'asio' && (!this.focusritePresent || cfg.output && cfg.output !== 'Focusrite USB ASIO')
+      ? cfg.output || 'Focusrite USB ASIO' : null;
+    const error = cfg.host === 'wasapi' && !this.wasapiOutputPresent ? 'no output device' : null;
+    const running = !unavailableOutput && !error;
+    this.audio = { ...this.audio, ...cfg, running, error, unavailableOutput,
+      actualRate: running ? cfg.sampleRate ?? 48000 : 0, actualBuffer: running ? cfg.bufferSize ?? 480 : 0,
+      latencyMs: running ? Math.round(((cfg.bufferSize ?? 480) * 2 / (cfg.sampleRate ?? 48000)) * 10000) / 10 : 0,
+      inputChannels: running ? 2 : 0 };
     this.emit('audio-status', { ...this.audio });
     return { ...this.audio };
   }
+
+  /** Simulates the attached hardware independently of the registered ASIO driver. */
+  async setFocusritePresent(present: boolean) {
+    this.focusritePresent = present;
+    if (!present && this.audio.host === 'asio' && this.audio.running) {
+      await this.transportStop();
+      await this.transportSet({ rec: false, monitor: false });
+      await this.audioSetConfig(this.audio);
+    }
+  }
+
+  setWasapiOutputPresent(present: boolean) { this.wasapiOutputPresent = present; }
 
   /** Dev tools / tests: the device stops by itself and the audio thread reopens it, as in the app. */
   audioDeviceLost(why = 'The requested device is no longer available') {

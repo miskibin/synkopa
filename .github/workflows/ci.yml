@@ -59,6 +59,8 @@ jobs:
       - run: pnpm --dir ui build
       - name: Tests
         run: cargo test --workspace
+      - name: ASIO device recovery tests
+        run: cargo test --locked -p wave-audio-io --features asio
       - name: Build app with ASIO and the session CLI
         run: |
           cargo build --locked -p wave-app -p wave-cli --features asio,custom-protocol

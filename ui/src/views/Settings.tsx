@@ -1,7 +1,8 @@
-import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { be } from '../api/backend';
 import type { AudioConfig, AudioDevices, AudioHost, AudioStatus, CliStatus, MidiDevice, Vst3Info } from '../api/types';
 import * as A from '../state/actions';
+import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, switchToWasapi } from '../state/audioWatch';
 import { keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget } from '../state/midi';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
@@ -22,34 +23,35 @@ export function Settings() {
 function SettingsDialog() {
   const [hosts, setHosts] = createSignal<AudioHost[]>([]);
   const [devs, setDevs] = createSignal<AudioDevices>({ outputs: [], inputs: [] });
-  const [st, setSt] = createSignal<AudioStatus | null>(null);
   const [cli, setCli] = createSignal<CliStatus | null>(null);
-  const [busy, setBusy] = createSignal(false);
   const [err, setErr] = createSignal<string | null>(null);
-  const loadDevs = (host: string) => be().audioDevices(host).then(setDevs).catch(e => setErr(String(e)));
-  let off: (() => void) | null = null;
-  onCleanup(() => off?.());
-  onMount(async () => {
-    try {
-      const [h, s] = await Promise.all([be().audioHosts(), be().audioGetConfig()]);
-      setHosts(h); setSt(s); await loadDevs(s.host);
-    } catch (e) { setErr(String(e)); }
+  const [tab, setTab] = createSignal<Tab>(lastTab);
+  const pickTab = (t: Tab) => { lastTab = t; setTab(t); };
+  const st = audioStatus;
+  const busy = audioBusy;
+  onMount(() => {
+    be().audioHosts().then(setHosts).catch(e => setErr(String(e)));
     be().cliStatus().then(setCli).catch(() => {});
-    off = await be().on('audio-status', s => setSt(s));
+  });
+  const settingsHost = createMemo(() => tab() === 'audio' ? st()?.host : undefined);
+  createEffect(() => {
+    const host = settingsHost();
+    if (host === undefined) return;
+    let current = true;
+    onCleanup(() => { current = false; });
+    setDevs({ outputs: [], inputs: [] });
+    setErr(null);
+    be().audioDevices(host).then(devices => { if (current) setDevs(devices); })
+      .catch(e => { if (current) setErr(String(e)); });
   });
   const apply = async (patch: Partial<AudioConfig>) => {
     const s = st(); if (!s) return;
+    if (patch.host === 'wasapi' && s.host === 'asio' && s.unavailableOutput) return switchToWasapi();
     const cfg: AudioConfig = { host: s.host, output: s.output, input: s.input, sampleRate: s.sampleRate, bufferSize: s.bufferSize, inputChannel: s.inputChannel ?? null, ...patch };
-    setBusy(true); setErr(null);
-    try {
-      if (patch.host && patch.host !== s.host) { await loadDevs(patch.host); cfg.output = null; cfg.input = null; }
-      setSt(await be().audioSetConfig(cfg));
-    } catch (e) { setErr(String(e)); }
-    setBusy(false);
+    if (cfg.host !== s.host) { cfg.output = null; cfg.input = null; }
+    return applyAudioConfig(cfg);
   };
   const opt = (v: string | number | null) => v == null ? '' : String(v);
-  const [tab, setTab] = createSignal<Tab>(lastTab);
-  const pickTab = (t: Tab) => { lastTab = t; setTab(t); };
   return (
     <div class="overlay" onPointerDown={() => setU('settings', false)}>
       <div class="dialog setdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }}>
@@ -68,6 +70,7 @@ function SettingsDialog() {
               <label>{t('d.set.driver')}</label>
               <div class="row" style={{ gap: '8px' }}>
                 <select class="sel" value={s().host} disabled={busy()} onChange={e => apply({ host: e.currentTarget.value })}>
+                  <Show when={!hosts().some(h => h.id === s().host)}><option value={s().host}>{s().host || t('d.set.default')}</option></Show>
                   <For each={hosts()}>{h => <option value={h.id}>{h.name}</option>}</For>
                 </select>
               </div>
@@ -75,13 +78,18 @@ function SettingsDialog() {
               <label>{t('d.set.output')}</label>
               <select class="sel" value={opt(s().output)} disabled={busy()} onChange={e => apply({ output: e.currentTarget.value || null })}>
                 <option value="">{t('d.set.default')}</option>
+                <Show when={s().output}>{output => <Show when={!devs().outputs.includes(output())}>
+                  <option value={output()}>{output()}</option>
+                </Show>}</Show>
                 <For each={devs().outputs}>{d => <option value={d}>{d}</option>}</For>
               </select>
               <label>{t('d.set.input')}</label>
-              <select class="sel" value={opt(s().input)} disabled={busy()} onChange={e => apply({ input: e.currentTarget.value || null })}>
-                <option value="">{t('d.set.defaultnone')}</option>
-                <For each={devs().inputs}>{d => <option value={d}>{d}</option>}</For>
-              </select>
+              <Show when={s().host !== 'asio'} fallback={<span class="note">{t('d.set.asio.sharedinput')}</span>}>
+                <select class="sel" value={opt(s().input)} disabled={busy()} onChange={e => apply({ input: e.currentTarget.value || null })}>
+                  <option value="">{t('d.set.defaultnone')}</option>
+                  <For each={devs().inputs}>{d => <option value={d}>{d}</option>}</For>
+                </select>
+              </Show>
               <label>{t('d.set.inchan')}</label>
               <select class="sel" value={String(s().inputChannel ?? 0)} disabled={busy() || s().inputChannels < 2}
                 title={s().inputChannels ? t('d.set.inchan.tip') : t('d.set.inchan.tip0')}
@@ -102,9 +110,17 @@ function SettingsDialog() {
               <span class="note mono" style={{ color: s().running ? 'var(--green)' : 'var(--danger)' }}>
                 {t('d.set.statline', { state: s().running ? t('d.set.running') : t('d.set.stopped'), rate: s().actualRate, buf: s().actualBuffer, ms: s().latencyMs.toFixed(1), ch: s().inputChannels })}
               </span>
-              <Show when={s().error}><span /><span class="note err">{s().error}</span></Show>
+              <Show when={s().unavailableOutput}>{device => <><span /><div class="audio-warning" role="status">
+                <span>{t('d.audio.unavailable', { device: device() })}</span>
+                <Show when={s().host === 'asio'}>
+                  <button class="smallbtn primary" disabled={busy()} onClick={() => apply({ host: 'wasapi' })}>{t('d.audio.wasapi')}</button>
+                  <button class="smallbtn" disabled={busy()} onClick={() => apply({})}>{t('d.audio.retry')}</button>
+                </Show>
+              </div></>}</Show>
+              <Show when={s().error}><span /><span class="note err">{s().host === 'wasapi' && s().error === 'no output device'
+                ? t('d.audio.wasapi.nooutput') : s().error}</span></Show>
               <Show when={s().note}><span /><span class="note">{s().note}</span></Show>
-              <Show when={err()}><span /><span class="note err">{err()}</span></Show>
+              <Show when={audioApplyError() ?? err()}>{error => <><span /><span class="note err">{error()}</span></>}</Show>
               <label>{t('d.set.recoffset')}</label>
               <RecCalib st={s()} apply={apply} busy={busy()} />
               <Show when={s().inputUnderruns || s().inputOverruns}>

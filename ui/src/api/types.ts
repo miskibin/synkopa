@@ -427,6 +427,8 @@ export interface AudioConfig {
 export interface AudioStatus extends AudioConfig {
   running: boolean; actualRate: number; actualBuffer: number; latencyMs: number;
   inputChannels: number; error: string | null; note: string | null; asioCompiled: boolean;
+  /** Unavailable output or driver that prevents the configured output from opening. */
+  unavailableOutput: string | null;
   /** Input dropouts since the input opened (each a short faded gap in a take): "przerwy w wejściu: N". */
   inputUnderruns: number;
   /** Times input piled up (the output stalled) and was skipped, faded. */
