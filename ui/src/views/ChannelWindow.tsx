@@ -1,7 +1,7 @@
 // Channel settings window (FL "Channel settings"): click a Channel Rack name to see what makes
-// the sound — the sampler with its waveform and settings, the synth, or WAVE Keys — plus level,
+// the sound — the synth or WAVE Keys — plus level,
 // pan, root key, mixer routing and a keyboard to play it.
-import { createSignal, Show } from 'solid-js';
+import { createEffect, createSignal, Show } from 'solid-js';
 import { VOL_UNITY, type AutoTarget, type Channel, type Id } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { t, type TranslationKey } from '../lib/i18n';
@@ -16,14 +16,13 @@ import { PianoKeys } from '../ui/PianoKeys';
 import { InsertPicker } from '../ui/InsertPicker';
 import { moveWindow } from './FxWindow';
 import { KeysPanel } from './KeysPanel';
-import { SamplerPanel } from './SamplerPanel';
 import { SynthPanel } from './SynthPanel';
-import { PitchCorrectButton } from './PitchCorrectButton';
 import { S } from '../state/store';
+import { closeEditor, openSampleEditor } from '../state/actions';
 
 /** The insert a channel is heard on: its own, else the track of the first playlist clip of a pattern with its
  *  notes (rt.rs `ChanRt::heard`); null when it plays nowhere yet. */
-function chanHeardInsert(c: Channel): Id | null {
+export function chanHeardInsert(c: Channel): Id | null {
   if (c.insert != null) return c.insert;
   const pats = new Set(S.project.patterns.filter(p => p.notes.some(n => n.ch === c.id)).map(p => p.id));
   const first = S.project.clips.filter(x => x.kind === 'pat' && pats.has(x.ref)).sort((a, b) => a.start - b.start)[0];
@@ -32,26 +31,47 @@ function chanHeardInsert(c: Channel): Id | null {
 
 type Win = { id: Id; x: number; y: number; w: number };
 const [win, setWin] = createSignal<Win | null>(null);
-export { win as chanWin };
+export function chanWin() {
+  const ed = U.editor;
+  return ed?.kind === 'channel' ? { id: ed.id, x: ed.x, y: ed.y, w: ed.w } : win();
+}
 
 /** Open the channel's window, or close it when it is already showing that channel. */
 export function toggleChannelWindow(id: Id) {
   const w = win();
-  if (w && w.id === id) { setWin(null); return; }
-  const kind = chanById(id)?.kind, synth = kind === 'synth', wd = synth ? 900 : kind === 'keys' ? 700 : 560;
-  if (w) { setWin({ ...w, id, w: wd }); return; }
-  // beside the Channel Rack when there is room (it used to open centred, over the rack just clicked)
+  const kind = chanById(id)?.kind;
+  if (!kind) return;
+  if (chanWin()?.id === id) { closeChannelWindow(); return; }
+  const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : Math.min(620, window.innerWidth - 20);
   const r = U.rackWin, W = window.innerWidth;
-  const x = r && r.x + r.w + 8 + wd <= W - 10 ? r.x + r.w + 8 : r && r.x - 8 - wd >= 10 ? r.x - 8 - wd : Math.max(20, W / 2 - wd / 2);
-  setWin({ id, x, y: r && x !== Math.max(20, W / 2 - wd / 2) ? r.y : synth ? 70 : 110, w: wd });
+  const center = Math.max(20, (W - width) / 2);
+  const x = r && r.x + r.w + 8 + width <= W - 10 ? r.x + r.w + 8 : r && r.x - 8 - width >= 10 ? r.x - 8 - width : center;
+  const y = r && x !== center ? r.y : kind === 'synth' ? 70 : 110;
+  if (kind === 'sample') {
+    setWin(null);
+    openSampleEditor({ kind: 'channel', id }, w ?? { x, y });
+    return;
+  }
+  if (U.editor?.kind === 'channel') closeEditor();
+  setWin({ id, x: w?.x ?? x, y: w?.y ?? y, w: width });
 }
-export const closeChannelWindow = () => setWin(null);
+export function closeChannelWindow() {
+  if (U.editor?.kind === 'channel') closeEditor();
+  setWin(null);
+}
 
 export function ChannelWindow() {
+  createEffect(() => {
+    const w = win();
+    if (!w) return;
+    const c = chanById(w.id);
+    if (c?.kind === 'sample') openSampleEditor({ kind: 'channel', id: c.id }, w);
+    if (!c || c.kind === 'sample') setWin(null);
+  });
   return (
     <Show when={win()}>
       {w => (
-        <Show when={chanById(w().id)} fallback={<>{void closeChannelWindow()}</>}>
+        <Show when={chanById(w().id)}>
           {c => <Body w={w()} c={c()} />}
         </Show>
       )}
@@ -63,48 +83,58 @@ function Body(props: { w: Win; c: Channel }) {
   const c = () => chanById(props.c.id) ?? props.c;
   const live = () => chanById(props.c.id)!;
   const setPos = (x: number, y: number) => setWin(v => v && { ...v, x, y });
-  const knob = (lab: TranslationKey, undoLab: TranslationKey, tv: () => number, text: () => string, toPatch: (v: number) => Partial<Channel>, def: number, zero?: number, target?: () => AutoTarget) => {
-    let g: Gesture | null = null;
-    const reset = () => commit([chanOp(live(), toPatch(def))], t(undoLab));
-    return (
-      <Knob key={'cw' + lab + props.c.id} label={t(lab)} title={t('b.cw.knobTitle')} t={tv} text={text}
-        automated={() => !!target && isAutomated(target())}
-        onMenu={(x, y) => target ? paramMenu(x, y, target(), reset, c().color) : controlMenu(x, y, c().name + ' · ' + t(lab), reset, t('a.au.noRoot'))}
-        zero={zero != null ? () => zero : undefined}
-        onStart={() => { g = new Gesture(t(undoLab)); }}
-        onChange={v => { g?.update([chanOp(live(), toPatch(v))]); say(c().name + ' · ' + t(lab).toLowerCase() + ' ' + text()); }}
-        onEnd={() => { g?.end(); g = null; }}
-        onReset={reset}
-        onWheel={v => wheelEdit('cw' + lab, t(undoLab), [chanOp(live(), toPatch(v))])} />
-    );
-  };
-  const ROOT_LO = 24, ROOT_HI = 96;
-  // volume and pan follow their automation while it plays
-  const volT = () => ({ kind: 'chanVol' as const, id: c().id }), panT = () => ({ kind: 'chanPan' as const, id: c().id });
-  const vol = () => autoDisplay(volT()) ?? c().vol, pan = () => autoDisplay(panT()) ?? c().pan;
   return (
-    <div class="win chanwin" style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': 47 }}>
+    <div class="win chanwin" data-channel-window={c().id} style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': 47 }}>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => props.w, setPos)}>
         <span class="chicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={14} /></span>
         <span class="title">{c().name}</span>
-        <span class="sub">{t(c().kind === 'sample' ? 'b.cw.kSampler' : c().kind === 'synth' ? 'b.cw.kSynth' : 'b.cw.kKeys')}</span>
+        <span class="sub">{t(c().kind === 'synth' ? 'b.cw.kSynth' : 'b.cw.kKeys')}</span>
         <div style={{ flex: 1 }} />
         <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={id => [chanOp(live(), { insert: id })]} label={t('b.pe.mixCh')}
           wheelKey={'cwroute' + props.c.id} title={t('b.cw.mixerTip')} />
-        <Show when={c().kind === 'sample'}><PitchCorrectButton insert={() => chanHeardInsert(c())} /></Show>
         <button class="iconbtn" title={t('b.cw.previewTitle')} onClick={() => audition(c().id, undefined, 0.9, true)}>▶</button>
         <button class="closebtn" title={t('b.cw.close')} onClick={closeChannelWindow}>×</button>
       </div>
       <Show when={c().kind === 'synth'}><SynthPanel c={c()} /></Show>
       <Show when={c().kind === 'keys' && c()}>{k => <KeysPanel c={k() as Extract<Channel, { kind: 'keys' }>} />}</Show>
-      <Show when={c().kind === 'sample' && c()}>{k => <SamplerPanel c={k() as Extract<Channel, { kind: 'sample' }>} />}</Show>
-      <div class="chknobs">
-        {knob('b.cw.vol', 'b.cw.volCh', () => vol(), () => volText(vol()), t => ({ vol: Math.round(clamp(t, 0, 1) * 10000) / 10000 }), VOL_UNITY, undefined, volT)}
-        {knob('b.cw.pan', 'b.cw.panCh', () => (pan() + 1) / 2, () => panText(pan()), t => ({ pan: Math.round(clamp(t * 2 - 1, -1, 1) * 100) / 100 }), 0.5, 0.5, panT)}
-        {knob('b.cw.root', 'b.cw.rootCh', () => (c().root - ROOT_LO) / (ROOT_HI - ROOT_LO), () => noteName(c().root), t => ({ root: Math.round(ROOT_LO + clamp(t, 0, 1) * (ROOT_HI - ROOT_LO)) }), (60 - ROOT_LO) / (ROOT_HI - ROOT_LO))}
-      </div>
+      <div class="chknobs"><ChannelLevelKnobs channel={c()} /><ChannelRootKnob channel={c()} /></div>
       <Show when={c().kind === 'keys'}><PianoKeys ch={c().id} lo={21} hi={108} /></Show>
-      <Show when={c().kind === 'sample'}><PianoKeys ch={c().id} lo={36} hi={96} mark={c().root} /></Show>
     </div>
   );
+}
+
+function ChannelKnob(props: { channel: Channel; lab: TranslationKey; undoLab: TranslationKey; position: () => number; text: () => string; patch: (v: number) => Partial<Channel>; def: number; zero?: number; target?: () => AutoTarget }) {
+  const { lab, undoLab, position, text, patch, def, zero, target } = props;
+  let g: Gesture | null = null;
+  const reset = () => commit([chanOp(props.channel, patch(def))], t(undoLab));
+  return (
+    <Knob key={'cw' + lab + props.channel.id} label={t(lab)} title={t('b.cw.knobTitle')} t={position} text={text}
+      automated={() => !!target && isAutomated(target())}
+      onMenu={(x, y) => target ? paramMenu(x, y, target(), reset, props.channel.color) : controlMenu(x, y, props.channel.name + ' · ' + t(lab), reset, t('a.au.noRoot'))}
+      zero={zero != null ? () => zero : undefined}
+      onStart={() => { g = new Gesture(t(undoLab)); }}
+      onChange={v => { g?.update([chanOp(props.channel, patch(v))]); say(props.channel.name + ' · ' + t(lab).toLowerCase() + ' ' + text()); }}
+      onEnd={() => { g?.end(); g = null; }}
+      onReset={reset}
+      onWheel={v => wheelEdit('cw' + lab, t(undoLab), [chanOp(props.channel, patch(v))])} />
+  );
+}
+
+export function ChannelLevelKnobs(props: { channel: Channel; sample?: boolean }) {
+  const volT = () => ({ kind: 'chanVol' as const, id: props.channel.id });
+  const panT = () => ({ kind: 'chanPan' as const, id: props.channel.id });
+  const vol = () => autoDisplay(volT()) ?? props.channel.vol;
+  const pan = () => autoDisplay(panT()) ?? props.channel.pan;
+  return <>
+    <ChannelKnob channel={props.channel} lab={props.sample ? 'd.smp.k.vol' : 'b.cw.vol'} undoLab="b.cw.volCh" position={vol} text={() => volText(vol())}
+      patch={t => ({ vol: Math.round(clamp(t, 0, 1) * 10000) / 10000 })} def={VOL_UNITY} target={volT} />
+    <ChannelKnob channel={props.channel} lab={props.sample ? 'd.smp.k.pan' : 'b.cw.pan'} undoLab="b.cw.panCh" position={() => (pan() + 1) / 2} text={() => panText(pan())}
+      patch={t => ({ pan: Math.round(clamp(t * 2 - 1, -1, 1) * 100) / 100 })} def={0.5} zero={0.5} target={panT} />
+  </>;
+}
+
+export function ChannelRootKnob(props: { channel: Channel }) {
+  const lo = 24, hi = 96;
+  return <ChannelKnob channel={props.channel} lab="b.cw.root" undoLab="b.cw.rootCh" position={() => (props.channel.root - lo) / (hi - lo)}
+    text={() => noteName(props.channel.root)} patch={t => ({ root: Math.round(lo + clamp(t, 0, 1) * (hi - lo)) })} def={(60 - lo) / (hi - lo)} />;
 }

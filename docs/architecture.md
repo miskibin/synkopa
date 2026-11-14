@@ -107,12 +107,12 @@ the kit and its mixer routing in every pattern.
 * `channel.sampler` (kind `sample`; every field has a default, so older files load):
   `start`/`end` = the part of the file that plays, fractions 0..1; `reverse`; `norm` (peak to
   −0.3 dBFS, from the source's `peakDb`); `semi` −24..24 and `fine` −100..100 cents on top of
-  the note; `gate` false = **one-shot** (the note's length is ignored: drums), true = the
-  sample plays while the note is held and then fades over `release` ms (1..5000); `attack`
+  the note; `gate` selects **one-shot** or a `release` (1..5000 ms) after note-off for
+  live keys, auditions and legacy events; `attack`
   0..2000 ms and `decay` 0..5000 ms to the `sustain` level 0..1 (0 = the decay is the whole
   sound); `cut` 0 = none, 1..8 = a **cut group**: a new note silences every sounding sampler
   note of the group's channels, its own included, when it starts (a closed hat cutting the
-  open one). The waveform's Fade In and Fade Out handles and millisecond fields set
+  open one). The shared sample editor's Fade In and Fade Out handles and knobs set
   `fadeInMs` and `fadeOutMs` (0–5000 source ms). They apply at the audible edges of the
   selected part, swap sides with Reverse, and are independent of Attack and Release.
   Each fade is bounded by the region, overlapping fades multiply, and pitch changes the
@@ -122,12 +122,12 @@ the kit and its mixer routing in every pattern.
 * `note`: `step`/`len` in 16ths, `p` MIDI key (absent = the channel's `root`), `v` velocity
   0..1 = linear gain (absent = 1). A Channel Rack step has `trig: true`. It occupies one grid
   cell and plays a sampler without a note-off, even in Gate mode. Synth and WAVE Keys
-  continue to use the grid duration. Held notes use `trig: false`, and in Gate mode their
-  end starts Release. The Piano Roll shows triggers as short marks. Drag their resize grip
-  or use **Convert to held note** in note properties to give them a duration.
-  Files without `trig` retain their previous Rack layout and playback. Their one-cell notes
-  cannot be distinguished reliably from older Piano Roll notes, so loading keeps them
-  length-bearing. Replacing a legacy step in the Rack creates an explicit trigger.
+  continue to use the grid duration. A sampler note with `trig: false` ends as soon as its
+  set duration or the sample runs out. A short fade just before the note boundary prevents
+  clicks. The Piano Roll shows triggers as short marks. Drag their resize grip or use
+  **Convert to held note** in note properties to give them a duration.
+  Notes without `trig` keep their original playback and Rack layout. Resizing a legacy note
+  in Piano Roll makes it a held note. Replacing a legacy step in the Rack makes it a trigger.
 * `pattern.len` in beats is **derived**, like FL Studio's automatic pattern length: the end
   of the last note rounded up to a whole bar, at least `minLen` (whole bars, ≥ 1; the bars
   the user keeps on purpose with "+ bar", e.g. a crash every second bar). The engine sets it

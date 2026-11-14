@@ -332,8 +332,8 @@ pub struct SamplerState {
     pub semi: i8,
     #[serde(default)]
     pub fine: f32,
-    /// `false` = one-shot: a note plays the sample to its end, whatever its length (drums).
-    /// `true` = gate: the sample plays while the note is held, then fades over `release`.
+    /// For live keys, auditions and legacy notes: one-shot plays the whole sample,
+    /// Gate fades it over `release` after note-off. Explicit held notes end at their length.
     #[serde(default)]
     pub gate: bool,
     /// Volume envelope: `attack` and `decay` in ms, `sustain` 0..1 (the level after the
@@ -543,9 +543,9 @@ pub struct Note {
     pub v: f32,
     /// A step-sequencer trigger (FL Studio's zero-length step): a note-on without a note-off.
     /// A sampler plays its part to the end (or until a cut group or its own decay stops it),
-    /// whatever its One-shot / Gate mode. Synth and WAVE Keys channels, which have no end of
-    /// their own, hold it for `len`. `false` = an ordinary held note (the Piano roll's).
-    /// An absent value identifies legacy notes. They play as held notes.
+    /// whatever its One-shot / Gate mode. Synth and WAVE Keys channels hold it for `len`.
+    /// `false` = a held Piano Roll note: a sampler stops at its end, or when the sample runs out.
+    /// Legacy notes without this flag follow the channel's One-shot / Gate mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trig: Option<bool>,
 }

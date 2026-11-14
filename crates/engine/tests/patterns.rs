@@ -237,7 +237,7 @@ fn sampler_channel_plays_its_sample_at_the_note_pitch() {
             color: "#fff".into(),
             len: 4.0,
             min_len: 4.0,
-            notes: vec![Note::new(id, 0.0, 1.0, key)],
+            notes: vec![Note::trigger(id, 0.0, key)],
             swing: 0.0,
         };
         let c = clip(60 + k as Id, 0, 0.0, 4.0, pat.id);

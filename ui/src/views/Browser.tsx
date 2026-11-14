@@ -18,7 +18,6 @@ import { FACTORY_FILES } from '../lib/factory';
 import { groupFiles, groupOpen, matches, searchTerms, stepIndex } from '../lib/libraryView';
 import { noteName } from '../lib/pitch';
 import { libFileGlyph, libGroupGlyph, type MenuGlyph } from '../ui/menuIcons';
-import { chanWin } from './ChannelWindow';
 import { patternItemMenu } from './patternShared';
 import { guessIcon, InstIcon, patternIcon } from '../ui/instIcons';
 
@@ -226,7 +225,7 @@ function onListKey(e: KeyboardEvent) {
  */
 function fileTarget(x: number, y: number): { replace?: Channel; row?: HTMLElement; rack?: boolean } {
   const el = document.elementFromPoint(x, y) as HTMLElement | null;
-  const w = el?.closest('.chanwin') ? chanWin() : null, win = w ? chanById(w.id) : undefined;
+  const w = el?.closest<HTMLElement>('[data-channel-window]'), win = w ? chanById(Number(w.dataset.channelWindow)) : undefined;
   if (win?.kind === 'sample') return { replace: win };
   const row = el?.closest<HTMLElement>('.rackwin [data-ch]') ?? undefined, c = row ? chanById(Number(row.dataset.ch)) : undefined;
   if (c && row) return { replace: c, row };

@@ -13,7 +13,7 @@ use crate::model::{Id, SamplerState};
 use crate::poly::{Patch, SynthBank, SynthInst};
 use crate::processor::{ParamBlock, ProcessCtx, Processor, METERS};
 use crate::sources::Audio;
-use crate::synth::{Dest, VoiceKind, VoicePool};
+use crate::synth::{Dest, NoteEnd, VoiceKind, VoicePool};
 
 pub const MAX_INSERTS: usize = 128;
 pub const WATCH_SLOTS: usize = 8;
@@ -468,19 +468,20 @@ pub struct ClipRt {
 pub struct NoteRt {
     pub beat: f64,
     pub len: f64,
-    /// A sampler note without a scheduled release.
-    pub trigger: bool,
+    /// A sampler's explicit trigger/held flag. Legacy notes and other instruments use release.
+    pub sampler_trigger: Option<bool>,
     pub chan: usize,
     pub key: u8,
     pub vel: f32,
 }
 
 impl NoteRt {
-    fn duration(&self, seconds_per_beat: f64, remaining_beats: f64) -> Option<f32> {
-        if self.trigger {
-            None
-        } else {
-            Some((self.len.min(remaining_beats) * seconds_per_beat) as f32)
+    fn end(&self, seconds_per_beat: f64, remaining_beats: f64) -> NoteEnd {
+        let duration = (self.len.min(remaining_beats) * seconds_per_beat) as f32;
+        match self.sampler_trigger {
+            Some(true) => NoteEnd::Natural,
+            Some(false) => NoteEnd::Timed(duration),
+            None => NoteEnd::Release(duration),
         }
     }
 }
@@ -1095,7 +1096,19 @@ impl Rt {
                         let ch = &tl.chans[i];
                         let home = pattern.and_then(|id| tl.pats.iter().find(|p| p.id == id)).and_then(|p| p.home);
                         let ins = ch.insert.or(home).unwrap_or(ch.home);
-                        play(&mut self.voices, &mut self.synths, ch, i, Dest::Insert(ins), 0, Some(len), key, vel, 1.0, self.sr);
+                        play(
+                            &mut self.voices,
+                            &mut self.synths,
+                            ch,
+                            i,
+                            Dest::Insert(ins),
+                            0,
+                            NoteEnd::Release(len),
+                            key,
+                            vel,
+                            1.0,
+                            self.sr,
+                        );
                     }
                 }
                 Cmd::MidiNote { chan, key, vel, on, ins } => {
@@ -1221,7 +1234,7 @@ impl Rt {
                     nt.chan,
                     Dest::Insert(ins),
                     delay,
-                    nt.duration(spb, f64::INFINITY),
+                    nt.end(spb, f64::INFINITY),
                     nt.key,
                     nt.vel,
                     1.0,
@@ -1668,7 +1681,7 @@ impl Rt {
                                     continue;
                                 }
                                 let delay = ((nb - b0) / bps) as u32 + at as u32;
-                                let len_s = nt.duration(spb, c.end - nb);
+                                let end = nt.end(spb, c.end - nb);
                                 let (dest, gain) = match ch.insert {
                                     None => (Dest::Track(c.track), 1.0),
                                     // routed past the track: the track still mutes and scales it
@@ -1677,7 +1690,7 @@ impl Rt {
                                         _ => continue,
                                     },
                                 };
-                                play(&mut self.voices, &mut self.synths, ch, nt.chan, dest, delay, len_s, nt.key, nt.vel, gain, self.sr);
+                                play(&mut self.voices, &mut self.synths, ch, nt.chan, dest, delay, end, nt.key, nt.vel, gain, self.sr);
                             }
                         }
                     }
@@ -1731,9 +1744,8 @@ impl Rt {
 }
 
 /// Starts a note on a channel: the voice pool for built-ins and samplers, the channel's
-/// synth instance for synth channels. `len_s` is seconds until release or `None` for a sampler
-/// trigger. `gain` is level on top of the
-/// velocity (a track fader the channel's routing skips).
+/// synth instance for synth channels. `gain` is level on top of the velocity (a track
+/// fader the channel's routing skips).
 #[allow(clippy::too_many_arguments)]
 fn play(
     voices: &mut VoicePool,
@@ -1742,7 +1754,7 @@ fn play(
     idx: usize,
     dest: Dest,
     delay: u32,
-    len_s: Option<f32>,
+    end: NoteEnd,
     key: u8,
     vel: f32,
     gain: f32,
@@ -1750,10 +1762,10 @@ fn play(
 ) {
     if ch.kind == VoiceKind::Synth {
         if let Some(s) = synths.get(ch.id) {
-            s.note(delay, (len_s.unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest);
+            s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest);
         }
     } else {
-        voices.note(ch, idx, dest, delay, len_s, key, vel, gain);
+        voices.note(ch, idx, dest, delay, end, key, vel, gain);
     }
 }
 

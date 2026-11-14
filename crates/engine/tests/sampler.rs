@@ -97,35 +97,67 @@ fn one(set: impl Fn(&mut SamplerState), len_steps: f32) -> Vec<f32> {
 }
 
 #[test]
-fn a_one_shot_plays_the_whole_file_whatever_the_note_length() {
-    let out = one(|_| {}, 1.0);
-    assert!((peak_in(&out, 0.0, 0.45) - 0.8).abs() < 0.01);
-    // the note was a sixteenth (0.125 s) but the file's quiet second half still plays
-    assert!((peak_in(&out, 0.55, 0.95) - 0.1).abs() < 0.01);
-    assert_eq!(peak_in(&out, 1.01, 2.0), 0.0);
-    // and it starts as recorded: no fade softens the first cycle
-    assert!(peak_in(&out, 0.0, 0.002) > 0.5);
+fn a_sized_note_ends_on_time_in_both_modes_and_during_pattern_preview() {
+    for gate in [false, true] {
+        for steps in [1.0, 3.0] {
+            let (e, _) = engine(
+                "timed",
+                |s| {
+                    s.gate = gate;
+                    s.release = 200.0;
+                },
+                &[(0.0, steps, None)],
+            );
+            let out = render(&e, 4.0);
+            let end = (steps * SR as f32 / 8.0) as usize; // 120 BPM: one step = 125 ms
+            assert!((peak(&out[end - 1000..end - 100]) - 0.8).abs() < 0.01);
+            assert!(peak(&out[end - 24..end]) < 0.3, "declick before the note ends");
+            assert_eq!(peak(&out[end..]), 0.0, "the sampler must be silent at the note end");
+
+            let mut rt = e.create_rt(SR as f32, 256);
+            e.pattern_play(Some(1), 0.0, None).unwrap();
+            let (mut left, mut right) = ([0.0; 256], [0.0; 256]);
+            let live: Vec<_> = (0..(SR as usize / 256))
+                .flat_map(|_| {
+                    rt.process(&mut left, &mut right, None);
+                    left
+                })
+                .collect();
+            let diff = live.iter().zip(&out).map(|(a, b)| (a - b).abs()).fold(0.0, f32::max);
+            assert!(diff < 1e-5, "pattern preview differs from export by {diff}");
+        }
+    }
+
+    // A long note plays an untrimmed sample as recorded, ending when the source runs out.
+    let whole = one(|_| {}, 16.0);
+    assert!(peak_in(&whole, 0.0, 0.002) > 0.5);
+    assert!((peak_in(&whole, 0.55, 0.95) - 0.1).abs() < 0.01);
+    assert_eq!(peak_in(&whole, 1.0, 2.0), 0.0);
 }
 
 #[test]
-fn gate_stops_with_the_note_and_fades_over_the_release() {
-    let gate = |release: f32| {
-        move |s: &mut SamplerState| {
-            s.gate = true;
-            s.release = release;
+fn legacy_sized_notes_keep_the_saved_sampler_mode() {
+    for gate in [false, true] {
+        let (e, _) = engine(
+            "legacy",
+            |s| {
+                s.gate = gate;
+                s.release = 200.0;
+            },
+            &[(0.0, 1.0, None)],
+        );
+        let mut pattern = e.project().patterns[0].clone();
+        pattern.notes[0].trig = None;
+        e.apply(&[Op::PutPattern { pattern }], false, None).unwrap();
+        let out = render(&e, 4.0);
+        if gate {
+            let after = peak_in(&out, 0.175, 0.195);
+            assert!(after > 0.05 && after < 0.5, "a 200 ms release is still fading 50 ms in: {after}");
+            assert_eq!(peak_in(&out, 0.425, 2.0), 0.0);
+        } else {
+            assert!((peak_in(&out, 0.55, 0.95) - 0.1).abs() < 0.01);
         }
-    };
-    // at the test tempo (120 BPM) a sixteenth is 0.125 s
-    let short = one(gate(10.0), 1.0);
-    assert!((peak_in(&short, 0.0, 0.12) - 0.8).abs() < 0.01);
-    assert_eq!(peak_in(&short, 0.125 + 0.02, 2.0), 0.0, "10 ms after the note the sample is gone");
-    let long = one(gate(200.0), 1.0);
-    let after = peak_in(&long, 0.125 + 0.05, 0.125 + 0.07);
-    assert!(after > 0.05 && after < 0.5, "a 200 ms release is still fading 50 ms in: {after}");
-    assert_eq!(peak_in(&long, 0.125 + 0.3, 2.0), 0.0);
-    // a note longer than the file just ends with the file
-    let whole = one(gate(10.0), 16.0);
-    assert!((peak_in(&whole, 0.55, 0.95) - 0.1).abs() < 0.01);
+    }
 }
 
 #[test]
@@ -203,11 +235,11 @@ fn sample_fades_follow_the_audible_edges_and_match_the_live_engine() {
 #[test]
 fn start_and_end_pick_the_part_that_plays() {
     // the second half only: quiet from the first sample
-    let tail = one(|s| s.start = 0.5, 1.0);
+    let tail = one(|s| s.start = 0.5, 16.0);
     assert!((peak_in(&tail, 0.01, 0.45) - 0.1).abs() < 0.01);
     assert_eq!(peak_in(&tail, 0.51, 2.0), 0.0);
     // the first quarter only
-    let head = one(|s| s.end = 0.25, 1.0);
+    let head = one(|s| s.end = 0.25, 16.0);
     assert!((peak_in(&head, 0.0, 0.24) - 0.8).abs() < 0.01);
     assert_eq!(peak_in(&head, 0.2501, 2.0), 0.0);
     // a cut inside the waveform is faded, not clicked: the last half millisecond is quiet
@@ -216,7 +248,7 @@ fn start_and_end_pick_the_part_that_plays() {
 
 #[test]
 fn reverse_plays_the_part_backwards() {
-    let out = one(|s| s.reverse = true, 1.0);
+    let out = one(|s| s.reverse = true, 16.0);
     assert!((peak_in(&out, 0.05, 0.45) - 0.1).abs() < 0.01, "the quiet end comes first");
     assert!((peak_in(&out, 0.55, 0.95) - 0.8).abs() < 0.01);
     assert_eq!(peak_in(&out, 1.01, 2.0), 0.0);
@@ -226,7 +258,7 @@ fn reverse_plays_the_part_backwards() {
             s.reverse = true;
             s.end = 0.5;
         },
-        1.0,
+        16.0,
     );
     assert!((peak_in(&half, 0.05, 0.45) - 0.8).abs() < 0.01);
     assert_eq!(peak_in(&half, 0.51, 2.0), 0.0);
@@ -235,7 +267,7 @@ fn reverse_plays_the_part_backwards() {
 #[test]
 fn the_envelope_shapes_the_level() {
     // attack: silent at first, full after it
-    let slow = one(|s| s.attack = 200.0, 1.0);
+    let slow = one(|s| s.attack = 200.0, 16.0);
     assert!(peak_in(&slow, 0.0, 0.01) < 0.05);
     let mid = peak_in(&slow, 0.099, 0.102);
     assert!((mid - 0.4).abs() < 0.03, "half way up the attack: {mid}");
@@ -246,7 +278,7 @@ fn the_envelope_shapes_the_level() {
             s.decay = 100.0;
             s.sustain = 0.5;
         },
-        1.0,
+        16.0,
     );
     assert!((peak_in(&held, 0.11, 0.45) - 0.4).abs() < 0.01);
     // sustain 0: the decay is the whole sound, however long the file
@@ -255,7 +287,7 @@ fn the_envelope_shapes_the_level() {
             s.decay = 100.0;
             s.sustain = 0.0;
         },
-        1.0,
+        16.0,
     );
     assert!(peak_in(&pluck, 0.0, 0.01) > 0.7);
     assert_eq!(peak_in(&pluck, 0.101, 2.0), 0.0);
@@ -265,7 +297,7 @@ fn the_envelope_shapes_the_level() {
 fn transpose_and_fine_tune_repitch_on_top_of_the_note() {
     let zero_crossings = |x: &[f32]| x.windows(2).filter(|w| w[0] <= 0.0 && w[1] > 0.0).count() as f64;
     let hz = |set: fn(&mut SamplerState), key: Option<u8>| {
-        let (e, _) = engine("tune", set, &[(0.0, 1.0, key)]);
+        let (e, _) = engine("tune", set, &[(0.0, 16.0, key)]);
         let out = render(&e, 1.0);
         zero_crossings(&out[SR as usize / 100..SR as usize / 5]) / (0.2 - 0.01)
     };
@@ -275,13 +307,13 @@ fn transpose_and_fine_tune_repitch_on_top_of_the_note() {
     // +100 cents is a semitone; on top of a note a semitone down it cancels
     assert!((hz(|s| s.fine = 100.0, Some(59)) - 440.0).abs() < 6.0);
     // an octave up is also twice as fast: the file is over in half the time
-    let (e, _) = engine("tune", |s| s.semi = 12, &[(0.0, 1.0, None)]);
+    let (e, _) = engine("tune", |s| s.semi = 12, &[(0.0, 16.0, None)]);
     assert_eq!(peak_in(&render(&e, 4.0), 0.51, 2.0), 0.0);
 }
 
 #[test]
 fn normalise_brings_the_peak_up() {
-    assert!((peak(&one(|_| {}, 1.0)) - 0.8).abs() < 0.01);
+    assert!((peak(&one(|_| {}, 16.0)) - 0.8).abs() < 0.01);
     let want = 10f32.powf(-0.3 / 20.0);
     let got = peak(&one(|s| s.norm = true, 1.0));
     assert!((got - want).abs() < 0.01, "normalised peak {got}, expected {want}");
@@ -290,7 +322,7 @@ fn normalise_brings_the_peak_up() {
 #[test]
 fn a_cut_group_silences_its_sounding_notes() {
     // two notes of the same channel a beat apart; the file lasts two beats
-    let notes = [(0.0, 1.0, None), (4.0, 1.0, None)];
+    let notes = [(0.0, 16.0, None), (4.0, 16.0, None)];
     let free = render(&engine("cut", |_| {}, &notes).0, 4.0);
     // without a group they overlap: the first note's quiet half under the second's loud half
     assert!(peak_in(&free, 0.52, 0.95) > 0.8);
@@ -315,14 +347,14 @@ fn a_cut_group_silences_its_sounding_notes() {
 
     // across channels: a second channel in the group cuts the first; another group does not
     let across = |group: u8| {
-        let (e, ch) = engine("cut2", |s| s.cut = 1, &[(0.0, 1.0, None)]);
+        let (e, ch) = engine("cut2", |s| s.cut = 1, &[(0.0, 16.0, None)]);
         let mut p = e.project();
         let src = p.channel(ch).unwrap().sample_source().unwrap();
         let other = p.alloc_id();
         // the other channel plays only the quiet second half, so the two can be told apart
         let sampler = SamplerState { cut: group, start: 0.5, ..Default::default() };
         let mut pat = p.patterns[0].clone();
-        pat.notes.push(Note::new(other, 4.0, 1.0, None));
+        pat.notes.push(Note::new(other, 4.0, 16.0, None));
         e.apply(
             &[
                 Op::PutChannel { channel: Channel::new(other, "Other", "#fff", ChannelSrc::Sample { source: src, sampler }), index: None },

@@ -94,10 +94,10 @@ function onKey(e: KeyboardEvent) {
     if (U.help) return setU('help', false);
     if (NB.open && !U.rackWin && !U.rollWin && !U.plugs.length) return closeNotebook();
     if (chanWin()) return closeChannelWindow();
+    if (U.editor) return A.closeEditor();
     if (closeTopPatWin()) return;
     if (U.plugs.length) return A.closePlug(A.topPlug()!.fxId);
     if (U.pitchEd) return A.closePitchEditor();
-    if (U.editor) return A.closeEditor();
     if (U.compSel) return setU('compSel', null);
     return setU('sel', []);
   }
@@ -210,7 +210,10 @@ export function App() {
   createEffect(() => {
     const gone = U.plugs.filter(p => !findFx(p.fxId));
     if (gone.length) setU('plugs', U.plugs.filter(p => findFx(p.fxId)));
-    if (U.editor && !S.project.clips.some(c => c.id === U.editor!.clipId)) setU('editor', null);
+    const ed = U.editor;
+    if (ed && !(ed.kind === 'clip'
+      ? S.project.clips.some(c => c.id === ed.id && c.kind === 'audio')
+      : S.project.channels?.some(c => c.id === ed.id && c.kind === 'sample'))) A.closeEditor();
     if (U.pitchEd && !S.project.clips.some(c => c.id === U.pitchEd!.clipId)) setU('pitchEd', null);
     if (U.musicWin?.clipId != null && !S.project.clips.some(c => c.id === U.musicWin!.clipId)) setU('musicWin', null);
     if (U.musicWin?.fxId != null && !findFx(U.musicWin!.fxId)) setU('musicWin', null);

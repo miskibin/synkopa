@@ -88,8 +88,9 @@ export interface KeysStatus { state: 'idle' | 'missing' | 'loading' | 'ready' | 
 /**
  * How a sampler channel plays its sample (crates/engine/src/model.rs `SamplerState`).
  * `start`/`end`: the part of the file that plays, fractions 0..1. `semi` (−24..24) and `fine`
- * (cents) transpose on top of the note. `gate` false = one-shot (the note's length is ignored),
- * true = the sample plays while the note is held, then fades over `release` ms. `attack`/`decay`
+ * (cents) transpose on top of the note. For keys, auditions and legacy notes, `gate` switches
+ * between one-shot and fading over `release` ms after note-off. Explicit Piano Roll notes always
+ * stop at their set length. `attack`/`decay`
  * in ms, `sustain` 0..1 (0 = the decay is the whole sound). `cut` 0 = none, 1..8 = a cut group:
  * a new note silences every sounding note of the group's channels.
  */

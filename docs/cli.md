@@ -167,8 +167,8 @@ length changes (notes added past its end or removed, `--bars`), clips that show 
 whole pass of it follow; clips sized on purpose keep their length.
 
 `--steps` creates explicit triggers. A sampler trigger rings out even in Gate mode.
-`--notes` creates held notes by default. Include `"trig":true` on any trigger in a mixed
-row. When a row contains held notes or cannot be represented as a step string, the reply's
+`--notes` creates held notes by default. For a sampler, a held note stops at its set length
+or the end of the sample, whichever comes first. Include `"trig":true` on any trigger in a mixed row. When a row contains held notes or cannot be represented as a step string, the reply's
 `notes` array carries `trig` for each event.
 
 ## Takes and comping

@@ -14,7 +14,7 @@ import { flushNotebook } from './notebook';
 import { clearPeaks } from './peaks';
 import { modePattern, openRack, patMode, setPatMode, stopPreview, togglePreview } from './pattern';
 import { allocId, findFx, insName, plain, S, setTransport } from './store';
-import { say, setU, U } from './ui';
+import { say, setU, U, type SampleTarget } from './ui';
 import { confirmRecover, confirmUnsaved } from '../ui/Confirm';
 
 // ---------- transport ----------
@@ -531,9 +531,15 @@ export const topPlug = () => U.plugs.reduce<typeof U.plugs[number] | null>((a, p
 export function movePlug(fxId: Id, x: number, y: number) { setU('plugs', p => p.fxId === fxId, { x, y }); }
 export function openEditor(id: Id) {
   const c = S.project.clips.find(x => x.id === id); if (!c || c.kind !== 'audio') return;
+  openSampleEditor({ kind: 'clip', id });
+  setU('sel', [id]);
+}
+export function openSampleEditor(target: SampleTarget, position?: { x: number; y: number }) {
   if (U.previewing) void be().previewStop();
-  const w = Math.min(780, window.innerWidth - 40), h = Math.min(420, window.innerHeight - 100);
-  setU({ editor: { clipId: id, x: Math.max(20, (window.innerWidth - w) / 2), y: 64, w, h }, sel: [id] });
+  const w = Math.min(U.editor?.w ?? 620, window.innerWidth - 20);
+  const x = U.editor?.x ?? position?.x ?? (window.innerWidth - w) / 2;
+  const y = U.editor?.y ?? position?.y ?? 64;
+  setU('editor', { ...target, x: clamp(x, 0, window.innerWidth - w), y, w });
 }
 /** Writes a new file with only the part the clip plays; the clip plays it (one undo step). */
 export async function trimClip(id: Id) {
