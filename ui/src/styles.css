@@ -984,3 +984,14 @@ select option { background: var(--bg4); color: var(--fg); }
 .misscands li { gap: 8px; min-width: 0; }
 .misscands .misspath { flex: 1; color: var(--fg2); }
 .misschip { background: var(--amber); }
+/* Import MIDI (views/MidiImport.tsx) */
+.dialog.mididlg { width: min(560px, 94vw); display: flex; flex-direction: column; gap: 4px; }
+.midilist { list-style: none; margin: 8px 0 4px; padding: 0; max-height: 46vh; overflow: auto; border-top: 1px solid var(--line); }
+.midilist > li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.midilist > li.off .midiname, .midilist > li.off .midito { opacity: .5; }
+.midilist > li.empty { opacity: .45; }
+.midilist label { gap: 8px; min-width: 0; cursor: pointer; }
+.midiname { font: 600 12px var(--sans); color: var(--fg-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.midigm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.midito { padding-left: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.midiopt { gap: 8px; margin-top: 8px; font: 12px var(--sans); color: var(--fg2); cursor: pointer; }

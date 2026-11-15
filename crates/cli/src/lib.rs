@@ -95,6 +95,16 @@ FILES
   save [--path FILE] | open <FILE>          (app; with -p the file is saved for you, --save-as copies)
   export-project --out FILE.zip            package the project and its audio sources for sharing
 
+MIDI FILES  (standard .mid, format 0 and 1)
+  midi inspect FILE                        parts (track, channel, instrument, notes) and what each becomes
+  midi import FILE [--parts 0,2] [--tempo] [--beat B] [--track N]
+                                           a new pattern, one Channel Rack channel per part (GM drums:
+                                           library samplers, one per drum), placed on the Playlist;
+                                           --tempo takes the file's BPM
+  midi import FILE --parts I --pattern P --ch C [--replace]
+                                           one part's notes into channel C of pattern P
+  midi export --out FILE.mid [--pattern P] the song (pattern clips as placed) or one pattern, with tempo
+
 PITCH  (Tune to Reference: pull a vocal take onto another performance of the same melody)
   tune-ref --clip ID --reference SOURCE | --melody CHANNEL [--correction 0..100 --vibrato 0..100
            --influence 0..100 --speed 0..1000 --octave auto|-24..24 --key 0..11 --scale 0..4]
@@ -180,9 +190,11 @@ const SWITCHES: &[&str] = &[
     "play",
     "pretty",
     "remove-unused",
+    "replace",
     "rescan",
     "stems",
     "stop",
+    "tempo",
     "wrap-tail",
     "yin",
 ];
@@ -1023,10 +1035,49 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
         }
         "f0-model" => send(cx, a, "f0_model", json!({})),
         "pitch" => pitch(cx, a),
+        "midi" => midi(cx, a),
         "tune-file" => tune_file(a),
         "script" => script(cx, a),
         "new" => Err(u("`new` creates a file; run it on its own, without --project".into())),
         other => Err(u(format!("unknown command `{other}`"))),
+    }
+}
+
+/// `wave midi inspect|import|export`: standard MIDI files.
+fn midi(cx: &Cx, a: &Args) -> Result<Value, Fail> {
+    let u = Fail::Usage;
+    let abs = |p: &str| std::fs::canonicalize(p).map(|x| x.display().to_string()).unwrap_or_else(|_| p.to_string());
+    let file = || a.pos.get(2).map(|p| abs(p)).ok_or_else(|| u("midi inspect|import FILE".into()));
+    match a.pos.get(1).map(String::as_str) {
+        Some("inspect") => send(cx, a, "midi_inspect", json!({ "path": file()? })),
+        Some("import") => {
+            let mut args = json!({ "path": file()?, "setTempo": a.has("tempo") });
+            if let Some(list) = a.get("parts") {
+                let ix: Result<Vec<u64>, _> = list.split(',').map(|s| s.trim().parse::<u64>()).collect();
+                args["parts"] = json!(ix.map_err(|_| u("--parts takes part indices, e.g. 0,2 (see `midi inspect`)".into()))?);
+            }
+            if let Some(b) = a.num("beat").map_err(u)? {
+                args["beat"] = json!(b);
+            }
+            if let Some(t) = a.num("track").map_err(u)? {
+                args["track"] = json!(t);
+            }
+            if let Some(pat) = a.num("pattern").map_err(u)? {
+                let ch = a.num("ch").map_err(u)?.ok_or_else(|| u("--pattern needs --ch".into()))?;
+                args["into"] = json!({ "pattern": pat as u64, "ch": ch as u64, "replace": a.has("replace") });
+            }
+            send(cx, a, "midi_import", args)
+        }
+        Some("export") => {
+            let out = a.get("out").ok_or_else(|| u("midi export --out FILE.mid [--pattern P]".into()))?;
+            let out = std::path::absolute(out).map(|p| p.display().to_string()).unwrap_or_else(|_| out.to_string());
+            let mut args = json!({ "out": out });
+            if let Some(p) = a.num("pattern").map_err(u)? {
+                args["pattern"] = json!(p as u64);
+            }
+            send(cx, a, "midi_export", args)
+        }
+        _ => Err(u("midi inspect|import|export (see `wave help`)".into())),
     }
 }
 

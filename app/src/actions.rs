@@ -40,6 +40,10 @@ pub trait Host {
     fn ensure_pitch_model(&self) {}
     /// Before VST3 parameter access: the project's plugins run as live instances.
     fn ensure_live_plugins(&self) {}
+    /// The WAVE Keys piano recordings are on this computer (an import gives piano parts to it).
+    fn keys_installed(&self) -> bool {
+        false
+    }
 }
 
 /// Commands that need the audio device, the musician's undo history or the app's window.
@@ -1127,6 +1131,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
     if let Some(r) = crate::pitch_actions::control(app, cmd, a, if_revision) {
         return r;
     }
+    if let Some(r) = crate::midi_actions::control(app, cmd, a, if_revision) {
+        return r;
+    }
     match cmd {
         "status" => {
             let st = e.state();
@@ -1136,7 +1143,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {

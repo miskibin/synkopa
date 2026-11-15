@@ -111,6 +111,10 @@ wave import kick.wav loop.wav --track 3 --beat 16
 wave missing                                          # sources whose audio file is missing (they play silence)
 wave relink --folder D:/Backup/Samples                # find them there by name; relinks unambiguous matches of the same length
 wave relink --source 1010 --path D:/new/pad.wav       # point one source at another file (one undo step)
+wave midi inspect song.mid                             # parts, channels, instruments, what each becomes
+wave midi import song.mid --parts 0,2 --tempo --beat 16   # a new pattern on the Playlist (one undo step)
+wave midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one part into a channel
+wave midi export --out song.mid [--pattern 3]         # the song or one pattern, with tempo
 wave make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
 wave apply --file edit.json --label "Busier hats"
 wave undo

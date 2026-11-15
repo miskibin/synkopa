@@ -20,6 +20,7 @@ import { track } from '../ui/drag';
 import { libGlyph, PICK_GLYPH, synthCategoryGlyph } from '../ui/menuIcons';
 import { theme } from '../ui/theme';
 import { moveWindow } from './FxWindow';
+import { midiExport, midiImport } from '../state/actions';
 
 /** Size of an element, tracked. */
 export function useSize(el: () => HTMLElement | undefined) {
@@ -118,6 +119,7 @@ export function chanMenu(c: Channel, x: number, y: number, clipboardItems: MenuI
     { t: 'item', label: 'Piano roll', kbd: 'F7', act: () => openRoll(c.id) },
     { t: 'sub', label: t('b.pe.replace'), items: instrumentItems(p => replaceChannel(c, p), f => void replaceWithFile(c, f)) },
     ...clipboardItems,
+    { t: 'item', label: t('d.midi.mnImportCh'), title: t('d.midi.mnImportChTip'), act: () => void midiImport({ into: { pattern: pt.id, ch: c.id } }) },
     { t: 'sep' },
     { t: 'item', label: t('b.pe.fill2'), act: () => edit(fillEvery(pt.notes, c.id, steps, 2), t('b.pe.fill')) },
     { t: 'item', label: t('b.pe.fill4'), act: () => edit(fillEvery(pt.notes, c.id, steps, 4), t('b.pe.fill')) },
@@ -191,6 +193,7 @@ function patItems(p: Pattern, x: number, y: number): MenuItem[] {
     { t: 'item', label: t('b.pm.rename'), kbd: p.id === curPat()?.id ? 'F2' : undefined, act: () => openRename(x, y, p.name, v => renamePattern(p, v)) },
     { t: 'item', label: t('b.pm.clone'), kbd: p.id === curPat()?.id ? 'Shift+Ctrl+C' : undefined, act: () => clonePattern(p) },
     { t: 'item', label: t('b.pm.split'), disabled: new Set(p.notes.map(n => n.ch)).size < 2, title: t('b.pm.splitTitle'), act: () => splitByChannel(p) },
+    { t: 'item', label: t('d.midi.mnExportPat'), disabled: !p.notes.length, act: () => void midiExport(p.id) },
     { t: 'item', label: t('b.pm.addBar'), kbd: barsText(p.len / 4), act: () => addBar(p) },
     { t: 'item', label: t('b.pm.removeBar'), disabled: p.len <= 4, title: t('b.pm.removeBarTitle'), act: () => removeBar(p) },
     { t: 'swatches', current: p.color, pick: col => recolorPattern(p, col) },

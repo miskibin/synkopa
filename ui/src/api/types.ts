@@ -531,6 +531,31 @@ export interface RelinkSearch {
   /** The search stopped at its limit before seeing the whole folder. */
   truncated: boolean;
 }
+/** What an imported MIDI part becomes: GM drums (one library sampler per drum), WAVE Keys or a synth preset. */
+export type MidiBecomes =
+  | { kind: 'drums'; drums: { key: number; name: string; notes: number }[] }
+  | { kind: 'keys' }
+  | { kind: 'synth'; preset: string };
+/** One MIDI channel of one track of a file. `channel` is 1..16 (10 = drums). */
+export interface MidiPart {
+  index: number; track: number; channel: number; name: string; program: number | null; gmName: string;
+  drums: boolean; notes: number; lowest: number; highest: number; end: number; becomes: MidiBecomes;
+}
+/** `midiInspect`: a file's parts, its first tempo (null = none set) and what the import cannot keep. */
+export interface MidiInfo {
+  path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; end: number;
+  warnings: string[]; parts: MidiPart[]; projectBpm: number;
+}
+export interface MidiImportArgs {
+  path: string; parts: number[]; setTempo?: boolean; beat?: number; track?: number;
+  /** One part's notes into a channel of a pattern instead of a new pattern. */
+  into?: { pattern: Id; ch: Id; replace: boolean };
+}
+export interface MidiImportResult {
+  patternId: Id; channelIds: Id[]; clipId?: Id | null; track?: number; beat?: number; len?: number; notes?: number;
+  revision: number; warnings?: string[]; tempoSet?: boolean;
+}
+export interface MidiExportResult { out: string; what: string; tracks: number; notes: number; bpm: number }
 
 export interface Vst3Info { path: string; cid: string; name: string; vendor: string; category: string }
 export interface Vst3Param { id: number; name: string; value: number; display: string; def: number }

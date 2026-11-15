@@ -21,10 +21,12 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, RelinkCandidate, SaveResult, Source, StateDto, TransportDto, Vst3Info, Vst3Param,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, Vst3Info, Vst3Param, RelinkCandidate,
 } from './types';
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
+import { KEYS_DYNAMICS, KEYS_RELEASE, samplerDefault } from './types';
+import { newSynthChannel } from '../lib/synth';
 import { candidate, rank, unambiguous } from '../lib/relink';
 
 const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#e0a44a', '#9a8cf0', '#d9678f', '#8b93a1'];
@@ -882,6 +884,100 @@ export class MockBackend implements Backend {
   nextPick: string | null = 'C:\\Users\\michal\\Music';
   async pickFolder() { return this.dialog() ? this.nextPick : null; }
   async pickAudioFile() { return this.dialog() ? this.nextPick : null; }
+  // ---------- MIDI files (app/src/midi_actions.rs) ----------
+  /** The fake disk's MIDI file: 2 bars at 97 BPM, a fingered bass, a piano chord and GM drums
+   *  (the same file app/src/midi_actions_tests.rs writes). Notes: [key, start beats, len beats, velocity]. */
+  private midiFile(path: string) {
+    const bass = [[36, 0, 1, 100], [36, 1.5, 0.5, 80], [43, 4, 3.75, 127]], piano = [[60, 0, 2, 70], [64, 0, 2, 70], [67, 0, 2, 70], [72, 6.25, 0.25, 1]];
+    const drums = [[36, 0, 0.25, 110], [42, 0.5, 0.25, 60], [38, 1, 0.25, 100], [42, 1.5, 0.25, 60], [36, 4, 0.25, 110]];
+    const part = (index: number, name: string, channel: number, program: number | null, gmName: string, raw: number[][], becomes: MidiBecomes) => ({
+      index, track: index + 1, channel, name, program, gmName, drums: channel === 10, notes: raw.length,
+      lowest: Math.min(...raw.map(n => n[0])), highest: Math.max(...raw.map(n => n[0])), end: Math.max(...raw.map(n => n[1] + n[2])), becomes, raw,
+    });
+    const parts = [
+      part(0, 'Bass', 2, 33, 'Fingered Bass', bass, { kind: 'synth', preset: 'Bas Analog' }),
+      part(1, 'Piano', 1, 0, 'Acoustic Grand Piano', piano, { kind: 'keys' }),
+      part(2, 'Drums', 10, null, 'Drums', drums, { kind: 'drums', drums: [{ key: 36, name: 'Bass Drum', notes: 2 }, { key: 38, name: 'Snare', notes: 1 }, { key: 42, name: 'Closed Hi-hat', notes: 2 }] }),
+    ];
+    return { path, format: 1, ppq: 960, bpm: 97, tempoChanges: 0, end: 8, warnings: [] as string[], parts, projectBpm: this.p.bpm };
+  }
+  async midiInspect(path: string): Promise<MidiInfo> {
+    await delay(20);
+    if (!/\.midi?$/i.test(path)) throw new Error(`${path}: not a MIDI file`);
+    const f = this.midiFile(path);
+    return { ...f, parts: f.parts.map(({ raw: _r, ...rest }) => { void _r; return rest; }) };
+  }
+  async midiImport(a: MidiImportArgs): Promise<MidiImportResult> {
+    await delay(30);
+    const f = this.midiFile(a.path);
+    const parts = a.parts.map(i => { const p = f.parts[i]; if (!p) throw new Error(`the file has no part ${i} (it has ${f.parts.length})`); return p; });
+    if (!parts.length) throw new Error('no notes to import (choose at least one part with notes)');
+    const prev = structuredClone(this.p);
+    const note = (ch: Id, n: number[], key: boolean): Note => ({ ch, step: n[1] * 4, len: n[2] * 4, ...(key ? { p: n[0] } : {}), ...(n[3] !== 127 ? { v: n[3] / 127 } : {}), trig: false });
+    if (a.into) {
+      if (parts.length !== 1) throw new Error('import into a channel takes exactly one part');
+      const into = a.into, pat = this.p.patterns.find(x => x.id === into.pattern);
+      if (!pat) throw new Error(`no pattern ${into.pattern}`);
+      const notes = [...(into.replace ? pat.notes.filter(n => n.ch !== into.ch) : pat.notes), ...parts[0].raw.map(n => note(into.ch, n, true))];
+      this.p = applyAll(this.p, [{ op: 'putPattern', pattern: { ...structuredClone(pat), notes } }]);
+      this.pushUndo(prev); this.changed();
+      return { patternId: pat.id, channelIds: [into.ch], notes: parts[0].raw.length, revision: this.revision };
+    }
+    // engine.rs `apply_with_library`: the drum samples become sources, then all of it is one undo step
+    const DRUM: Record<number, [string, string]> = { 36: ['kick-808.flac', 'Bass Drum'], 38: ['snare-studio.flac', 'Snare'], 42: ['hat-808-closed.flac', 'Closed Hi-hat'] };
+    const keys = [...new Set(parts.filter(p => p.drums).flatMap(p => p.raw.map(n => n[0])))].sort((x, y) => x - y);
+    const ops: Op[] = [];
+    let next = this.p.nextId;
+    if (a.setTempo && f.bpm) ops.push({ op: 'setBpm', bpm: f.bpm });
+    const patternId = next++, notes: Note[] = [], channelIds: Id[] = [], drumCh = new Map<number, Id>();
+    for (const k of keys) {
+      const [file, name] = DRUM[k], path = libPath(file), fac = factoryFile(path)!;
+      let src = this.p.sources.find(s => s.path === path);
+      if (!src) {
+        const sm: MockSource = { id: next++, name: fac.name, color: fac.color, path, dur: fac.dur, sr: 44100, ch: fac.ch, peakDb: -1, seed: hash(path) };
+        this.srcMeta.set(sm.id, sm); this.p.sources.push(strip(sm)); src = this.p.sources[this.p.sources.length - 1];
+      }
+      const id = next++;
+      ops.push({ op: 'putChannel', channel: { id, name, color: fac.color, kind: 'sample', source: src.id, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: k } });
+      drumCh.set(k, id); channelIds.push(id);
+    }
+    for (const p of parts) {
+      if (p.drums) { for (const n of p.raw) notes.push(note(drumCh.get(n[0])!, n, false)); continue; }
+      const id = next++;
+      const base = { id, name: p.name, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null };
+      const b = p.becomes;
+      const ch: Channel = b.kind === 'synth'
+        ? { ...newSynthChannel(this.cat.synth!, id, b.preset), ...base, root: /Bas|808/.test(b.preset) ? 36 : 60 }
+        : { ...base, color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, root: 60 };
+      ops.push({ op: 'putChannel', channel: ch });
+      channelIds.push(id);
+      for (const n of p.raw) notes.push(note(id, n, true));
+    }
+    const end = Math.max(...parts.flatMap(p => p.raw.map(n => n[1] + n[2])));
+    const len = Math.max(4, Math.ceil(end / 4) * 4), beat = Math.max(0, a.beat ?? 0);
+    ops.push({ op: 'putPattern', pattern: { id: patternId, name: (a.path.split(/[\\/]/).pop() ?? 'MIDI').replace(/\.[^.]+$/, ''), color: '#7c8cf8', len, minLen: 4, notes } });
+    const free = (t: number) => !this.p.clips.some(c => c.track === t && c.start < beat + len && c.start + c.len > beat);
+    const track = a.track != null && a.track < this.p.tracks.length ? a.track : Math.max(0, this.p.tracks.findIndex((_, i) => free(i)));
+    const clipId = next++;
+    ops.push({ op: 'putClips', clips: [mkClip(clipId, track, beat, len, 'pat', patternId)] });
+    try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
+    this.p.nextId = Math.max(this.p.nextId, next);
+    this.pushUndo(prev); this.changed();
+    return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && f.bpm) };
+  }
+  async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {
+    await delay(20);
+    const pats = a.pattern != null
+      ? this.p.patterns.filter(p => p.id === a.pattern)
+      : this.p.clips.filter(c => c.kind === 'pat' && !c.muted).map(c => this.p.patterns.find(p => p.id === c.ref)).filter((p): p is Pattern => !!p);
+    if (a.pattern != null && !pats.length) throw new Error(`no pattern ${a.pattern}`);
+    const notes = pats.reduce((n, p) => n + p.notes.length, 0);
+    const what = a.pattern != null ? pats[0].name : 'song';
+    if (!notes) throw new Error(`the ${what} has no notes to export`);
+    return { out: a.out, what, tracks: new Set(pats.flatMap(p => p.notes.map(n => n.ch))).size, notes, bpm: this.p.bpm };
+  }
+  async pickMidiFile() { return this.dialog() ? 'C:\\Users\\michal\\Music\\Groove.mid' : null; }
+  async pickMidiSave(name: string) { return this.dialog() ? 'C:\\Users\\michal\\Music\\' + name : null; }
 
   async makeUnique(clipIds: Id[]) {
     const cs = clipIds.map(id => this.p.clips.find(x => x.id === id));

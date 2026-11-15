@@ -110,6 +110,9 @@ impl Host for Headless {
             })
             .clone()
     }
+    fn keys_installed(&self) -> bool {
+        crate::keys::find_dir(bundled_keys()).is_some()
+    }
     fn ensure_pitch_model(&self) {
         self.model.get_or_init(|| crate::models::activate(&self.engine).err());
     }

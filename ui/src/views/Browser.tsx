@@ -61,6 +61,13 @@ export async function importFiles(paths: string[], at?: { track: number; beat: n
 /** Import at a client point if it is over the playlist grid. */
 export function importAt(paths: string[], x: number, y: number, alt = false) {
   const p = gridPoint(x, y);
+  // a MIDI file opens the import dialog (its pattern goes where it was dropped); audio is loaded
+  const midi = paths.find(f => /\.midi?$/i.test(f));
+  if (midi) {
+    void A.midiImport({ path: midi, ...(p.inside && p.track >= 0 ? { track: p.track, beat: Math.max(0, snapFloor(p.beat, A.snapUnit(alt))) } : {}) });
+    paths = paths.filter(f => !/\.midi?$/i.test(f));
+    if (!paths.length) return;
+  }
   if (!p.inside || p.track < 0) return importFiles(paths);
   return importFiles(paths, { track: p.track, beat: Math.max(0, snapFloor(p.beat, A.snapUnit(alt))) });
 }

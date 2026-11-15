@@ -8,6 +8,7 @@ mod cli_shim;
 mod headless;
 mod keys;
 mod library;
+mod midi_actions;
 mod models;
 mod pitch_actions;
 mod plugins;
@@ -86,6 +87,9 @@ impl actions::Host for App {
     fn wait_keys(&self) -> R<()> {
         keys::wait(self);
         Ok(())
+    }
+    fn keys_installed(&self) -> bool {
+        keys::status(self).installed
     }
 }
 
@@ -349,6 +353,16 @@ async fn trim_clip(app: St<'_>, clip_id: u64) -> R<Value> {
     let e = app.engine.clone();
     let id = tauri::async_runtime::spawn_blocking(move || e.trim_clip(clip_id)).await.map_err(es)?.map_err(es)?;
     Ok(json!({ "sourceId": id }))
+}
+
+/// `midi_inspect` / `midi_import` / `midi_export` (`midi_actions.rs`), off the UI thread.
+#[tauri::command]
+async fn midi(app: St<'_>, cmd: String, args: Value) -> R<Value> {
+    if !matches!(cmd.as_str(), "midi_inspect" | "midi_import" | "midi_export") {
+        return Err(format!("not a MIDI command: {cmd}"));
+    }
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1029,6 +1043,7 @@ pub fn run(project_arg: Option<&str>) {
             missing_sources,
             relink_sources,
             relink_search,
+            midi,
             flatten_comp,
             comp_audition,
             preview_clip,

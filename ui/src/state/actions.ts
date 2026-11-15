@@ -161,6 +161,25 @@ export async function projectOpen(path?: string) {
 export function offerRelink() {
   if (Object.keys(S.missing).length) setU('missingOpen', true);
 }
+/** File → Import MIDI: pick a .mid (unless given) and show its parts; a new pattern goes at `beat`. */
+export async function midiImport(opts: { path?: string; beat?: number; track?: number; into?: { pattern: Id; ch: Id } } = {}) {
+  try {
+    const path = opts.path ?? (await be().pickMidiFile());
+    if (path) setU('midiWin', { path, beat: opts.beat ?? U.start, track: opts.track, into: opts.into });
+  } catch (e) { say(t('d.midi.fail', { err: String(e) })); }
+}
+/** Writes the song (pattern clips as placed on the Playlist) or one pattern as a .mid file. */
+export async function midiExport(pattern?: Id) {
+  const pat = pattern != null ? S.project.patterns.find(p => p.id === pattern) : undefined;
+  const base = (pat?.name ?? (S.path?.split(/[\\/]/).pop()?.replace(/\.wave$/i, '') || 'WAVE')).replace(/[<>:"/\\|?*]+/g, '_');
+  try {
+    const out = await be().pickMidiSave(base + '.mid');
+    if (!out) return;
+    await enqueue(() => Promise.resolve());
+    const r = await be().midiExport({ out, pattern });
+    say(t('d.midi.exported', { path: r.out, n: r.notes, tracks: r.tracks }));
+  } catch (e) { say(t('d.midi.fail', { err: String(e) })); }
+}
 export async function projectSave(saveAs = false): Promise<boolean> {
   flushNotebook();
   try {

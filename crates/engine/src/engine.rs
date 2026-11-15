@@ -1027,6 +1027,86 @@ impl Engine {
         Ok(RelinkSearch { relinked, candidates, not_found, scanned: found.scanned, truncated: found.truncated })
     }
 
+    /// Applies ops built against the project once the standard-library samples `files` (file
+    /// names, e.g. `kick-808.flac`) are project sources, as one undo step: `build` gets the
+    /// project with them and each file's source id. Nothing changes when `build` or the ops
+    /// fail. Library samples are decoded from the program, so this is quick.
+    pub fn apply_with_library<F>(&self, files: &[&str], if_revision: Option<u64>, build: F) -> Result<u64, EngineError>
+    where
+        F: FnOnce(&Project, &HashMap<String, Id>) -> Result<Vec<Op>, String>,
+    {
+        let have: HashSet<String> = {
+            let c = self.core.lock();
+            c.project.sources.iter().filter(|s| c.sources.get(s.id).is_some()).map(|s| s.path.clone()).collect()
+        };
+        let mut decoded = vec![];
+        let mut seen = HashSet::new();
+        for f in files {
+            let path = crate::factory::lib_path(f);
+            if !seen.insert(path.clone()) || have.contains(&path) {
+                continue;
+            }
+            let a = Audio::load_path(&path, Path::new(".")).map_err(EngineError::Msg)?;
+            decoded.push((path, a));
+        }
+        let mut c = self.core.lock();
+        if let Some(r) = if_revision {
+            if r != c.revision {
+                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+            }
+        }
+        let before = c.project.clone();
+        let mut ids: HashMap<String, Id> = HashMap::new();
+        for f in files {
+            let path = crate::factory::lib_path(f);
+            if let Some(s) = c.project.sources.iter().find(|s| s.path == path && c.sources.get(s.id).is_some()) {
+                ids.insert(f.to_string(), s.id);
+            }
+        }
+        let mut added = vec![];
+        for (path, audio) in decoded {
+            let Some(ff) = crate::factory::embedded(&path) else { continue };
+            if ids.contains_key(ff.file) {
+                continue;
+            }
+            let id = c.project.alloc_id();
+            c.project.sources.push(Source {
+                id,
+                name: ff.name.to_string(),
+                color: crate::factory::color(ff).to_string(),
+                path,
+                dur: audio.seconds(),
+                sr: audio.sr,
+                ch: audio.channels,
+                peak_db: crate::dsp::gain_to_db(audio.peak()),
+            });
+            c.sources.insert(id, Arc::new(audio));
+            ids.insert(ff.file.to_string(), id);
+            added.push(id);
+        }
+        let result = build(&c.project, &ids).map_err(EngineError::Msg).and_then(|ops| {
+            let mut p = c.project.clone();
+            ops::apply_all(&mut p, &ops).map(|_| p).map_err(EngineError::from)
+        });
+        let p = match result {
+            Ok(p) => p,
+            Err(e) => {
+                c.project = before;
+                for id in added {
+                    c.sources.audio.remove(&id);
+                }
+                return Err(e);
+            }
+        };
+        c.project = p;
+        push_undo(&mut c, before);
+        c.revision += 1;
+        self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
+        let rev = c.revision;
+        self.changed(c);
+        Ok(rev)
+    }
+
     /// Pitch curve and notes of an audio clip's source (for the note editor).
     pub fn pitch_analysis(&self, clip_id: Id) -> Result<Arc<crate::pitch::PitchAnalysis>, EngineError> {
         let clip = self.audio_clip(clip_id)?;
