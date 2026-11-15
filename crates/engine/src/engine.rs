@@ -538,6 +538,13 @@ impl Engine {
         self.core.lock().project.clone()
     }
 
+    /// The project with every VST3 slot's state read from its running plugin, as a save writes it.
+    pub fn project_with_plugin_states(&self) -> Project {
+        let mut project = self.project();
+        self.snapshot_plugin_states(&mut project);
+        project
+    }
+
     pub fn revision(&self) -> u64 {
         self.core.lock().revision
     }

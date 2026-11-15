@@ -30,6 +30,7 @@ import { MusicDialog } from './views/MusicDialog';
 import { MissingAudio } from './views/MissingAudio';
 import { MidiImport } from './views/MidiImport';
 import { FxPickerHost, openFxPicker } from './views/FxPicker';
+import { FxChainsHost } from './views/FxChains';
 import { ChannelRack } from './views/ChannelRack';
 import { PianoRoll } from './views/PianoRoll';
 import { renameCurrent } from './views/patternShared';
@@ -92,6 +93,7 @@ function onKey(e: KeyboardEvent) {
     if (U.missingOpen) return setU('missingOpen', false);
     if (U.midiWin) return setU('midiWin', null);
     if (U.fxPicker) return setU('fxPicker', null);
+    if (U.fxChainWin) return setU('fxChainWin', null);
     if (U.vstPicker) return setU('vstPicker', null);
     if (U.settings) return setU('settings', false);
     if (U.exportOpen) return void A.cancelExportOrClose();
@@ -251,6 +253,7 @@ export function App() {
       <Updates />
       <VstPicker />
       <FxPickerHost />
+      <FxChainsHost />
       <MusicDialog />
       <MidiImport />
       <AudioToast />

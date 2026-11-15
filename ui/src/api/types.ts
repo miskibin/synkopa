@@ -500,6 +500,12 @@ export type ExportResult =
 
 /** One file of a stem export: an insert's stem, or `Master` (the mix with the master's effects). */
 export interface StemFile { name: string; file: string; master: boolean; stats: ExportStats }
+/** An FX chain preset in the user's library (`fx_chains.rs`): its effects in order. `error`: the
+ *  file cannot be read (listed so it can be renamed or deleted, but it cannot be loaded). */
+export interface FxChainPreset { name: string; effects: { type: FxKind; name: string }[]; plugins: number; error?: string }
+/** `fxChainLoad`: the new effects' ids in chain order, and plugins that would not load (their slots stay). */
+export interface FxChainLoadResult { revision: number; fxIds: Id[]; replaced: boolean; failed: { fxId: Id; name: string; error: string }[] }
+
 /** `export-progress` while a mix or stems export runs (throttled to ~20 per second while rendering).
  *  `done` files finished of `total`; `name` the file in progress ('' at the end); `stage`:
  *  time-stretching audio (`prepare`), rendering, encoding (`write`), or `done`; `frac` 0‥1 through

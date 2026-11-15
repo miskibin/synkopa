@@ -4,7 +4,7 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
-  AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Id, ImportResult, LibFile, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
+  AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, LibFile, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
   KeysStatus, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, Vst3Info, Vst3Param,
 } from './types';
 
@@ -87,6 +87,15 @@ export interface Backend {
   midiImport(args: MidiImportArgs): Promise<MidiImportResult>;
   /** Writes the song (pattern clips as placed) or one pattern as a .mid file. */
   midiExport(args: { out: string; pattern?: Id }): Promise<MidiExportResult>;
+  /** FX chain presets in the user's library, by name, and the folder they are kept in. */
+  fxChains(): Promise<{ dir: string; presets: FxChainPreset[] }>;
+  /** Saves the effects of `insert` as preset `name`; an existing name fails with `EXISTS:` unless `overwrite`. */
+  fxChainSave(insert: Id, name: string, overwrite?: boolean): Promise<{ name: string; effects: number }>;
+  /** Puts a preset on `insert` as one undo step; an insert with effects needs `mode`. Never touches volume, pan or routing. */
+  fxChainLoad(insert: Id, name: string, mode?: 'replace' | 'append'): Promise<FxChainLoadResult>;
+  fxChainRename(name: string, to: string): Promise<{ name: string }>;
+  /** Deletes the preset's file for good. */
+  fxChainDelete(name: string): Promise<unknown>;
   /** Native "open" dialog for a .mid file; null when cancelled. */
   pickMidiFile(): Promise<string | null>;
   /** Native "save" dialog for a .mid file, suggesting `name`; null when cancelled. */
@@ -277,6 +286,11 @@ export function tauriBackend(): Backend {
       });
       return r == null ? null : Array.isArray(r) ? r[0] ?? null : r;
     },
+    fxChains: () => invoke('fx_chain', { cmd: 'fx_chains', args: {} }),
+    fxChainSave: (insert, name, overwrite = false) => invoke('fx_chain', { cmd: 'fx_chain_save', args: { insert, name, overwrite } }),
+    fxChainLoad: (insert, name, mode) => invoke('fx_chain', { cmd: 'fx_chain_load', args: { insert, name, mode } }),
+    fxChainRename: (name, to) => invoke('fx_chain', { cmd: 'fx_chain_rename', args: { name, to } }),
+    fxChainDelete: name => invoke('fx_chain', { cmd: 'fx_chain_delete', args: { name } }),
     midiInspect: path => invoke('midi', { cmd: 'midi_inspect', args: { path } }),
     midiImport: args => invoke('midi', { cmd: 'midi_import', args }),
     midiExport: args => invoke('midi', { cmd: 'midi_export', args }),

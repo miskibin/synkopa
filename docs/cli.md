@@ -453,6 +453,23 @@ the other way round), a slide or vibrato, and a reference that is not the same s
 as sung. Timing is never changed. `--max-cents` raises the limit when you know the take is far
 off; low-level `pitch edit` always lets you override the plan.
 
+## FX chain presets
+
+```sh
+wave fxchain list
+wave fxchain save "Vocal chain" --insert 3            # --force replaces a preset of that name
+wave fxchain load "Vocal chain" --insert 5 --mode replace
+wave fxchain rename "Vocal chain" --to "Lead vocal"
+wave fxchain delete "Lead vocal"
+```
+
+saves a mixer insert's effects, in order and with their settings and VST3 state, to your
+library (`%LOCALAPPDATA%\WAVE\FX Chains`, one `.wavechain` file per preset) and puts them on
+any insert of any project. Loading is one undo step and never changes the insert's volume, pan,
+name, colour or routing. An insert that already has effects needs `--mode replace` or
+`--mode append`. In the app: the **Presets** button above an insert's effects, or the insert's
+right-click menu.
+
 ## Plugins
 
 ```sh

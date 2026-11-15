@@ -976,6 +976,66 @@ export class MockBackend implements Backend {
     if (!notes) throw new Error(`the ${what} has no notes to export`);
     return { out: a.out, what, tracks: new Set(pats.flatMap(p => p.notes.map(n => n.ch))).size, notes, bpm: this.p.bpm };
   }
+  // ---- FX chain presets (app/src/fx_chains.rs): kept for the session, across projects
+  private chains = new Map<string, { name: string; fx: Fx[] }>();
+  private chainName(name: string) {
+    const n = name.trim();
+    if (!n) throw new Error('give the preset a name');
+    if ([...n].length > 80) throw new Error('a preset name can have at most 80 characters');
+    if (/[<>:"/\\|?*\u0000-\u001f]/.test(n) || /[. ]$/.test(n) || n.startsWith('.')) throw new Error('a preset name cannot contain < > : " / \\ | ? * or end with a dot');
+    return n;
+  }
+  private chainOf(name: string) {
+    const c = this.chains.get(name.trim().toLowerCase());
+    if (!c) throw new Error(`no FX chain preset called ${name.trim()}`);
+    return c;
+  }
+  async fxChains() {
+    await delay(10);
+    const label = (f: Fx) => f.type === 'vst3' ? (f.plugin?.name ?? 'VST3') : (mockCatalog().types[f.type]?.name ?? f.type);
+    const presets = [...this.chains.values()].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+      .map(c => ({ name: c.name, effects: c.fx.map(f => ({ type: f.type, name: label(f) })), plugins: c.fx.filter(f => f.type === 'vst3').length }));
+    return { dir: 'C:\\Users\\michal\\AppData\\Local\\WAVE\\FX Chains', presets };
+  }
+  async fxChainSave(insert: Id, name: string, overwrite = false) {
+    await delay(10);
+    const n = this.chainName(name), m = this.p.inserts.find(x => x.id === insert);
+    if (!m) throw new Error(`no insert ${insert}`);
+    if (!m.fx.length) throw new Error(`${m.name.trim() || 'the insert'} has no effects to save`);
+    if (this.chains.has(n.toLowerCase()) && !overwrite) throw new Error(`EXISTS: a preset called ${n} already exists`);
+    this.chains.set(n.toLowerCase(), { name: n, fx: m.fx.map(f => ({ ...structuredClone(f), id: 0 })) });
+    return { name: n, effects: m.fx.length };
+  }
+  async fxChainLoad(insert: Id, name: string, mode?: 'replace' | 'append') {
+    await delay(10);
+    const c = this.chainOf(name), m = this.p.inserts.find(x => x.id === insert);
+    if (!m) throw new Error(`no insert ${insert}`);
+    if (m.fx.length && !mode) throw new Error('the insert already has effects: say whether the preset replaces them or goes after them (mode replace or append)');
+    const prev = structuredClone(this.p);
+    const ids = c.fx.map((_, i) => this.p.nextId + i);
+    const ops: Op[] = [
+      ...(mode === 'replace' ? m.fx.map(f => ({ op: 'removeFx' as const, fxId: f.id })) : []),
+      ...c.fx.map((f, i) => ({ op: 'putFx' as const, insertId: insert, fx: { ...structuredClone(f), id: ids[i] } })),
+    ];
+    this.p = applyAll(this.p, ops);
+    this.p.nextId = Math.max(this.p.nextId, ids[ids.length - 1] + 1);
+    this.pushUndo(prev); this.changed();
+    return { revision: this.revision, fxIds: ids, replaced: mode === 'replace', failed: [] };
+  }
+  async fxChainRename(name: string, to: string) {
+    await delay(10);
+    const c = this.chainOf(name), n = this.chainName(to), other = this.chains.get(n.toLowerCase());
+    if (other && other !== c) throw new Error(`EXISTS: a preset called ${n} already exists`);
+    this.chains.delete(c.name.toLowerCase());
+    this.chains.set(n.toLowerCase(), { ...c, name: n });
+    return { name: n };
+  }
+  async fxChainDelete(name: string) {
+    await delay(10);
+    const c = this.chainOf(name);
+    this.chains.delete(c.name.toLowerCase());
+    return { deleted: c.name };
+  }
   async pickMidiFile() { return this.dialog() ? 'C:\\Users\\michal\\Music\\Groove.mid' : null; }
   async pickMidiSave(name: string) { return this.dialog() ? 'C:\\Users\\michal\\Music\\' + name : null; }
 

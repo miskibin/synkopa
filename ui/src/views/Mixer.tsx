@@ -16,6 +16,7 @@ import { addFrameTask } from '../ui/frameLoop';
 import { FXMETA, FxTile, Icon, ICONS } from '../ui/icons';
 import { guessIcon, InstIcon, trackIcon } from '../ui/instIcons';
 import { openFxPicker } from './FxPicker';
+import { openFxChains, saveFxChain } from './FxChains';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -39,6 +40,18 @@ export function openFxMenu(x: number, y: number, insId: Id) {
   openFxPicker(insId, x, y);
 }
 
+/** Save / load the insert's whole effect chain as a preset in the user's library. */
+function chainItems(x: number, y: number, m: Insert): MenuItem[] {
+  return [
+    { t: 'item', label: tr('e.fxc.mnSave'), disabled: !m.fx.length, title: m.fx.length ? undefined : tr('e.fxc.mnSaveNone'), act: () => saveFxChain(m.id, x, y) },
+    { t: 'item', label: tr('e.fxc.mnLoad'), act: () => openFxChains(m.id, x, y) },
+  ];
+}
+
+function openChainMenu(x: number, y: number, m: Insert) {
+  openMenu(x, y, [{ t: 'title', label: tr('e.fxc.mnTitle', { ins: insName(m) }) }, ...chainItems(x, y, m)], 110);
+}
+
 function openStripMenu(x: number, y: number, id: Id) {
   const m = S.project.inserts.find(v => v.id === id); if (!m) return;
   openMenu(x, y, [
@@ -47,6 +60,7 @@ function openStripMenu(x: number, y: number, id: Id) {
     { t: 'swatches', current: m.color, pick: col => A.setInsert(id, { color: col }, tr('c.mix.undoColor')) },
     { t: 'sep' },
     { t: 'item', label: tr('c.mix.addFx'), act: () => openFxMenu(x, y, id) },
+    ...chainItems(x, y, m),
     { t: 'item', label: tr('c.mix.resetVolPan'), act: () => A.setInsert(id, { vol: VOL_UNITY, pan: 0 }, tr('c.mix.undoReset')) },
     ...(id === 0 ? [] : [{ t: 'sep' }, { t: 'item', label: tr('c.mix.removeInsert'), danger: true, act: () => A.removeInsert(id) }] as MenuItem[]),
   ], 260);
@@ -280,6 +294,7 @@ export function Mixer() {
                   <span style={{ width: '8px', height: '8px', 'border-radius': '2px', background: ins().color }} />
                   <span class="ell" style={{ flex: 1, font: '600 11px var(--sans)', color: 'var(--fg-hi)' }}>{insName(ins())}</span>
                   <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)' }}>{ins().id === 0 ? tr('c.mix.toOutput') : '→ Master'}</span>
+                  <button class="chainbtn" title={tr('e.fxc.btnTip')} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); openChainMenu(r.left, r.bottom + 4, ins()); }}>{tr('e.fxc.btn')}</button>
                 </div>
                 <div style={{ flex: 1, 'min-height': 0, overflow: 'auto' }}>
                   <For each={ins().fx}>{(f, i) => <FxSlot f={f} n={i() + 1} insId={ins().id} />}</For>

@@ -105,6 +105,14 @@ MIDI FILES  (standard .mid, format 0 and 1)
                                            one part's notes into channel C of pattern P
   midi export --out FILE.mid [--pattern P] the song (pattern clips as placed) or one pattern, with tempo
 
+FX CHAIN PRESETS  (a mixer insert's effects, in your library, for any project)
+  fxchain list                             names and the effects in each
+  fxchain save NAME --insert ID [--force]  the insert's effects in order (--force replaces a preset)
+  fxchain load NAME --insert ID [--mode replace|append]
+                                           onto an insert, one undo step; an insert with effects
+                                           needs --mode; volume, pan and routing stay as they are
+  fxchain rename NAME --to NEW | fxchain delete NAME
+
 PITCH  (Tune to Reference: pull a vocal take onto another performance of the same melody)
   tune-ref --clip ID --reference SOURCE | --melody CHANNEL [--correction 0..100 --vibrato 0..100
            --influence 0..100 --speed 0..1000 --octave auto|-24..24 --key 0..11 --scale 0..4]
@@ -1037,10 +1045,35 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
         "f0-model" => send(cx, a, "f0_model", json!({})),
         "pitch" => pitch(cx, a),
         "midi" => midi(cx, a),
+        "fxchain" => fxchain(cx, a),
         "tune-file" => tune_file(a),
         "script" => script(cx, a),
         "new" => Err(u("`new` creates a file; run it on its own, without --project".into())),
         other => Err(u(format!("unknown command `{other}`"))),
+    }
+}
+
+/// `wave fxchain list|save|load|rename|delete`: FX chain presets in the user's library.
+fn fxchain(cx: &Cx, a: &Args) -> Result<Value, Fail> {
+    let u = Fail::Usage;
+    let name = || a.pos.get(2).cloned().ok_or_else(|| u("fxchain save|load|rename|delete NAME (quote a name with spaces)".into()));
+    let insert = || a.num("insert").map_err(u)?.map(|v| v as u64).ok_or_else(|| u("--insert ID (see `context`: inserts)".into()));
+    match a.pos.get(1).map(String::as_str) {
+        Some("list") | None => send(cx, a, "fx_chains", json!({})),
+        Some("save") => send(cx, a, "fx_chain_save", json!({ "name": name()?, "insert": insert()?, "overwrite": a.has("force") })),
+        Some("load") => {
+            let mode = a.get("mode");
+            if mode.is_some_and(|m| m != "replace" && m != "append") {
+                return Err(u("--mode replace|append".into()));
+            }
+            send(cx, a, "fx_chain_load", json!({ "name": name()?, "insert": insert()?, "mode": mode }))
+        }
+        Some("rename") => {
+            let to = a.get("to").ok_or_else(|| u("fxchain rename NAME --to NEW".into()))?;
+            send(cx, a, "fx_chain_rename", json!({ "name": name()?, "to": to }))
+        }
+        Some("delete") => send(cx, a, "fx_chain_delete", json!({ "name": name()? })),
+        _ => Err(u("fxchain list|save|load|rename|delete (see `wave help`)".into())),
     }
 }
 

@@ -5,6 +5,7 @@
 mod actions;
 mod boot;
 mod cli_shim;
+mod fx_chains;
 mod headless;
 mod keys;
 mod library;
@@ -353,6 +354,16 @@ async fn trim_clip(app: St<'_>, clip_id: u64) -> R<Value> {
     let e = app.engine.clone();
     let id = tauri::async_runtime::spawn_blocking(move || e.trim_clip(clip_id)).await.map_err(es)?.map_err(es)?;
     Ok(json!({ "sourceId": id }))
+}
+
+/// FX chain presets (`fx_chains.rs`): list, save, load onto an insert, rename, delete.
+#[tauri::command]
+async fn fx_chain(app: St<'_>, cmd: String, args: Value) -> R<Value> {
+    if !fx_chains::COMMANDS.contains(&cmd.as_str()) {
+        return Err(format!("not an FX chain command: {cmd}"));
+    }
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
 }
 
 /// `midi_inspect` / `midi_import` / `midi_export` (`midi_actions.rs`), off the UI thread.
@@ -1051,6 +1062,7 @@ pub fn run(project_arg: Option<&str>) {
             relink_sources,
             relink_search,
             midi,
+            fx_chain,
             flatten_comp,
             comp_audition,
             preview_clip,
