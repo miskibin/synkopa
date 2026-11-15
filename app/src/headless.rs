@@ -50,6 +50,7 @@ pub struct Headless {
 impl Headless {
     fn new(project: Project) -> Self {
         let plugins = Plugins::new();
+        crate::plugins::register_bundled(None);
         let engine = Engine::new(Project::empty(), plugins.factory());
         engine.new_project(project);
         Self { engine, plugins, model: OnceLock::new(), keys: OnceLock::new(), rt: Mutex::new(None) }

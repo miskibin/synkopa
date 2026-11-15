@@ -354,6 +354,20 @@ pub fn scan_instruments(rescan: bool) -> Vec<PluginInfo> {
     scan_both(rescan).1
 }
 
+/// Folders of plugins that ship with the app (WAVE Demo Synth), scanned with every list.
+static BUNDLED: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+/// Adds a folder of plugins that ship with the app. Unlike the standard folders, its modules
+/// are opened (in a child process, then cached) even by a scan that is not a rescan: they are
+/// the app's own, and they must be listed on a machine that never ran a rescan. Call it before
+/// the first [`scan`]; a missing folder is ignored.
+pub fn add_bundled_dir(dir: PathBuf) {
+    let mut dirs = BUNDLED.lock();
+    if !dirs.contains(&dir) {
+        dirs.push(dir);
+    }
+}
+
 fn scan_both(rescan: bool) -> (Vec<PluginInfo>, Vec<PluginInfo>) {
     static SCANNER: OnceLock<ModuleScan<ScannedClass>> = OnceLock::new();
     type Lists = (Vec<PluginInfo>, Vec<PluginInfo>);
@@ -364,7 +378,13 @@ fn scan_both(rescan: bool) -> (Vec<PluginInfo>, Vec<PluginInfo>) {
         }
     }
     let scanner = SCANNER.get_or_init(|| ModuleScan::persistent().with_spawn(worker_spawn()));
-    let roots = default_search_paths();
+    let bundled: Vec<PathBuf> = BUNDLED.lock().iter().filter(|dir| dir.is_dir()).cloned().collect();
+    if !rescan && !bundled.is_empty() {
+        // opens only what the cache does not know yet (a new or updated install)
+        let _ = scanner.scan_all(&module_paths(&bundled));
+    }
+    let mut roots = default_search_paths();
+    roots.extend(bundled);
     let effects = scan_with_filter(scanner, &roots, rescan, ScannedClass::is_effect);
     // the pass above opened whatever was new: this one reads the cache
     let instruments = scan_with_filter(scanner, &roots, false, ScannedClass::is_instrument);

@@ -5624,6 +5624,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wave-demo-synth"
+version = "0.4.0"
+dependencies = [
+ "vst3",
+]
+
+[[package]]
 name = "wave-engine"
 version = "0.4.0"
 dependencies = [

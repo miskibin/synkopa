@@ -17,6 +17,7 @@ members = [
     "crates/perf",
     "crates/keys-prep",
     "crates/stretch",
+    "crates/demo-synth",
 ]
 
 [workspace.package]

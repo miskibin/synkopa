@@ -1188,6 +1188,8 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     // text parsing must stay in the C locale (see ensure_c_numeric_locale)
     ensure_c_numeric_locale();
     let plugins = plugins::Plugins::new();
+    // the plugins the installer ships (WAVE Demo Synth): listed without a rescan
+    plugins::register_bundled(tapp.path().resource_dir().ok());
     let settings = settings::Settings::load();
     // reopened on a thread of its own once the window exists (decoding its audio is slow)
     let last_project = settings.last_project.as_ref().filter(|p| reopen_last && std::path::Path::new(p).is_file()).cloned();

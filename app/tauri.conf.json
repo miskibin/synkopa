@@ -50,7 +50,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/keys/": "keys/"
+      "resources/keys/": "keys/",
+      "resources/plugins/": "plugins/"
     },
     "linux": {
       "deb": {

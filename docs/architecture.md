@@ -370,9 +370,22 @@ Channel Rack's "+" and "Replace" menus list the scanned instruments (`plugin_sca
 * **CLI.** `wave channels --plugin NAME|CID` adds a scanned instrument; `channels` lists a
   plugin channel with kind `plugin` and its plugin.
 
+* **WAVE Demo Synth** (`crates/demo-synth`) ships with the app: a small VST3 instrument of
+  WAVE's own (saw, square or triangle, resonant low-pass opened by the mod wheel, ADSR, 16
+  voices; no editor window, so WAVE's parameter list is its UI; CC 1, CC 64 and pitch bend
+  through `IMidiMapping`). `node scripts/build-demo-synth.mjs` builds it into
+  `app/resources/plugins/WAVE Demo Synth.vst3`, which the installer ships as the resource
+  `plugins/`. The app registers that folder (`wave_vst3::add_bundled_dir`, from
+  `plugins::register_bundled`: the Tauri resource dir, or for the CLI on a file the
+  executable's folder and the Linux packages' `/usr/lib/WAVE`); the scan opens its modules
+  even without a rescan (only when new or changed, in a child process as always), so the
+  instrument is listed on first start.
+
 Test seams: `crates/engine/tests/plugin_instruments.rs` (a stand-in factory: format, instances,
 timing, live keys, state, missing plugins), `crates/vst3-host/tests/instrument.rs` (a real
-instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle).
+instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle; CI builds WAVE Demo Synth and runs
+it on Windows and Linux), `crates/demo-synth` (its DSP: pitch, release, note ids, pedal, bend,
+wheel, voice stealing, state).
 
 ## Ops (`crates/engine/src/ops.rs`)
 

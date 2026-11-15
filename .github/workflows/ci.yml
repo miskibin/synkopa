@@ -42,10 +42,14 @@ jobs:
       - run: pnpm --dir ui test
       - run: pnpm --dir ui build
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # a real VST3 instrument for crates/vst3-host/tests/instrument.rs
+      - name: WAVE Demo Synth
+        run: node scripts/build-demo-synth.mjs --debug
       - run: cargo test --workspace
         env:
           # the LV2 tests fail instead of skipping when lilv or the plugins above are missing
           WAVE_REQUIRE_LV2: "1"
+          WAVE_VST3_TEST_INSTRUMENT: ${{ github.workspace }}/app/resources/plugins/WAVE Demo Synth.vst3
 
   windows:
     name: Windows — ASIO build + installer
@@ -65,8 +69,14 @@ jobs:
         with: { node-version: 22, cache: pnpm, cache-dependency-path: ui/pnpm-lock.yaml }
       - run: pnpm --dir ui install --frozen-lockfile
       - run: pnpm --dir ui build
+      # a real VST3 instrument for crates/vst3-host/tests/instrument.rs, and the installer's
+      - name: WAVE Demo Synth
+        run: node scripts/build-demo-synth.mjs --debug
       - name: Tests
         run: cargo test --workspace
+        env:
+          WAVE_VST3_TEST_INSTRUMENT: ${{ github.workspace }}/app/resources/plugins/WAVE Demo Synth.vst3
+esources\plugins\WAVE Demo Synth.vst3
       - name: ASIO device recovery tests
         run: cargo test --locked -p wave-audio-io --features asio
       - name: Build app with ASIO and the session CLI

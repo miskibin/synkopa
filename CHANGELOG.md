@@ -7,6 +7,10 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **WAVE Demo Synth comes with WAVE.** A small VST3 synth (saw, square or triangle through a
+  resonant filter, with an envelope) is in the Channel Rack's "+" menu under "Plugin
+  instruments (VST3)" right after installing, so you can try plugin instruments before you own
+  any. The mod wheel opens its filter.
 - **Play your VST3 instruments in the Channel Rack.** Serum, Analog Lab, Vital and the other
   synths you have installed are listed under "Plugin instruments (VST3)" in the Channel Rack's
   "+" and "Replace" menus. Draw notes for them in the Piano roll or the step sequencer, play

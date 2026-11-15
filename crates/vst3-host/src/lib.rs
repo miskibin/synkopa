@@ -139,7 +139,7 @@ pub use effect::{instantiate, instantiate_instrument, ParamInfo, Vst3Effect, Vst
 pub use error::Vst3Error;
 pub use host::MAX_STATE_BYTES;
 pub use main_thread::{on_main_thread, set_main_thread_executor, MainThreadJob};
-pub use scan::{default_search_paths, run_scan_worker_if_requested, scan, scan_instruments, PluginInfo, SCAN_WORKER_BIN};
+pub use scan::{add_bundled_dir, default_search_paths, run_scan_worker_if_requested, scan, scan_instruments, PluginInfo, SCAN_WORKER_BIN};
 
 /// Test seams. Not part of the API; used by this crate's integration tests.
 #[doc(hidden)]

@@ -103,6 +103,23 @@ pub struct ScanResult {
     pub unavailable: HashMap<String, String>,
 }
 
+/// Tells the VST3 scan where the plugins that ship with WAVE are (`plugins/` among the app's
+/// resources: WAVE Demo Synth). `resource_dir`: the app's, when a Tauri app runs; otherwise
+/// (the CLI on a file) next to the executable, or the Linux packages' `/usr/lib/WAVE`.
+pub fn register_bundled(resource_dir: Option<std::path::PathBuf>) {
+    let dirs: Vec<std::path::PathBuf> = match resource_dir {
+        Some(dir) => vec![dir],
+        None => std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf))
+            .map(|dir| vec![dir.clone(), dir.join("..").join("lib").join("WAVE")])
+            .unwrap_or_default(),
+    };
+    for dir in dirs {
+        wave_vst3::add_bundled_dir(dir.join("plugins"));
+    }
+}
+
 pub struct Plugins {
     handles: Mutex<HashMap<Id, Handle>>,
     known: Mutex<Option<ScanResult>>,
