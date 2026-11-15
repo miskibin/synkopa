@@ -1,4 +1,5 @@
-//! `wave-vst3` -- VST3 plugins as stereo insert effects for the WAVE engine.
+//! `wave-vst3` -- VST3 plugins for the WAVE engine: stereo insert effects and Channel Rack
+//! instruments.
 //!
 //! A hosted VST3 plugin is split in two:
 //!
@@ -14,12 +15,15 @@
 //! // discovery (crash-proof: unknown modules are opened in child processes)
 //! pub fn default_search_paths() -> Vec<PathBuf>;
 //! pub fn scan(rescan: bool) -> Vec<PluginInfo>;      // effects only; cached
+//! pub fn scan_instruments(rescan: bool) -> Vec<PluginInfo>; // instruments; same cache
 //! pub fn run_scan_worker_if_requested() -> bool;     // first thing in main()
 //!
 //! // hosting
 //! pub fn set_main_thread_executor(post: impl Fn(MainThreadJob) + Send + Sync + 'static) -> bool;
 //! pub fn instantiate(path: &str, cid: &str, state: Option<&[u8]>, sample_rate: f32, max_block: usize)
 //!     -> Result<(Box<dyn wave_engine::Processor>, Vst3Handle), Vst3Error>;
+//! pub fn instantiate_instrument(path: &str, cid: &str, state: Option<&[u8]>, sample_rate: f32, max_block: usize, offline: bool)
+//!     -> Result<(Box<dyn wave_engine::Instrument>, Vst3Handle), Vst3Error>;
 //!
 //! impl Vst3Handle {
 //!     pub fn info(&self) -> &PluginInfo;
@@ -131,11 +135,11 @@ mod module;
 mod scan;
 mod state;
 
-pub use effect::{instantiate, ParamInfo, Vst3Effect, Vst3Handle};
+pub use effect::{instantiate, instantiate_instrument, ParamInfo, Vst3Effect, Vst3Handle, Vst3Instrument};
 pub use error::Vst3Error;
 pub use host::MAX_STATE_BYTES;
 pub use main_thread::{on_main_thread, set_main_thread_executor, MainThreadJob};
-pub use scan::{default_search_paths, run_scan_worker_if_requested, scan, PluginInfo, SCAN_WORKER_BIN};
+pub use scan::{default_search_paths, run_scan_worker_if_requested, scan, scan_instruments, PluginInfo, SCAN_WORKER_BIN};
 
 /// Test seams. Not part of the API; used by this crate's integration tests.
 #[doc(hidden)]
@@ -157,6 +161,13 @@ pub mod testing {
         let pass = scanner.scan_all(&modules);
         let effects = crate::scan::scan_with(&scanner, roots, false);
         (effects, pass.children, pass.newly_blocked)
+    }
+
+    /// The instruments a scan of `roots` lists (in-memory cache, modules opened by `worker`).
+    pub fn scan_instrument_roots(roots: &[PathBuf], worker: Option<&Path>) -> Vec<crate::PluginInfo> {
+        let spawn = worker.map_or(WorkerSpawn::InProcess, |path| WorkerSpawn::Program(path.to_path_buf()));
+        let scanner = ModuleScan::<ScannedClass>::in_memory().with_spawn(spawn);
+        crate::scan::scan_with_filter(&scanner, roots, true, ScannedClass::is_instrument)
     }
 
     /// [`instantiate`](crate::instantiate) returning the concrete effect.

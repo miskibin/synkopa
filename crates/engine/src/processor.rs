@@ -90,6 +90,52 @@ pub trait Processor: Send {
     }
 }
 
+/// What a hosted instrument is told within a block. `id` pairs a note-off with its note-on,
+/// so two overlapping notes of one key end independently.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum InstMsg {
+    /// `vel` 0..1.
+    NoteOn {
+        key: u8,
+        vel: f32,
+        id: i32,
+    },
+    NoteOff {
+        key: u8,
+        id: i32,
+    },
+    /// MIDI controller `cc` (0..127) to `value` 0..1. Sustain is CC 64, the mod wheel CC 1.
+    Control {
+        cc: u8,
+        value: f32,
+    },
+    /// Pitch bend, 0..1 (0.5 = centre).
+    Bend(f32),
+}
+
+/// An [`InstMsg`] at frame `offset` of the block it is delivered with.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InstEvent {
+    pub offset: u32,
+    pub msg: InstMsg,
+}
+
+/// Most events one [`Instrument::process`] call carries; the host keeps the rest for the
+/// next block.
+pub const MAX_INST_EVENTS: usize = 512;
+
+/// A note-driven stereo generator: a hosted plugin instrument (VST3) playing a Channel Rack
+/// channel. The same real-time contract as [`Processor`]: `process` must not allocate, lock,
+/// block, do I/O or panic; memory is allocated in [`Instrument::prepare`], off the audio thread.
+pub trait Instrument: Send {
+    /// Allocate for `sample_rate` and blocks of at most `max_block` frames.
+    fn prepare(&mut self, sample_rate: f32, max_block: usize);
+
+    /// Render `l.len()` frames, **overwriting** `l` and `r`. `events` are sorted by `offset`,
+    /// every offset `< l.len()`. `l.len() == r.len() <= max_block`.
+    fn process(&mut self, events: &[InstEvent], l: &mut [f32], r: &mut [f32], ctx: &ProcessCtx);
+}
+
 /// Most parameters a built-in effect can have (the delay has the most).
 pub const MAX_PARAMS: usize = 32;
 

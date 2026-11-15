@@ -157,6 +157,8 @@ wave channels --ch 1005 --preset "Pad Ciepły"     # load a synth preset (ids/na
 wave channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
 wave channels --keys                              # WAVE Keys: the sampled grand piano (see docs/keys.md)
 wave channels --ch "WAVE Keys" --param release --value 600   # its knobs: release (ms), dynamics (%)
+wave channels --plugin serum                      # a scanned VST3 instrument (name, start of one, or class id; `wave plugins --rescan` first)
+wave plugin-params --fx 1007                      # its parameters: a plugin channel's id works wherever an effect id does
 wave channels --remove 1004                       # (or a name) — also removes its notes
 wave pattern --id 2                               # step strings per channel
 wave pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"     # replace the hat's notes
@@ -474,7 +476,7 @@ right-click menu.
 ## Plugins
 
 ```sh
-wave plugins                    # installed effects: VST3 (cached scan), LV2 on Linux; --rescan
+wave plugins                    # installed effects: VST3 (cached scan), LV2 on Linux; VST3 instruments under `instruments`; --rescan
                                 # {plugins:[{format,path,cid,name,vendor,category,unsupported?}],
                                 #  unavailable:{lv2:"why"}}
 wave plugin-add --insert 2 --path "C:\…\Pro-Q 3.vst3" --cid 72C4DB…            # VST3

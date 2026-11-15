@@ -38,6 +38,8 @@ pub enum VoiceKind {
     Keys,
     /// A synth channel: its notes go to the channel's `poly::SynthInst`, not this pool.
     Synth,
+    /// A plugin-instrument channel: its notes go to the channel's `plug::PlugInst`.
+    Plugin,
     Click {
         accent: bool,
     },
@@ -294,7 +296,7 @@ impl VoicePool {
                 self.voices[i].key = key;
                 Some(i)
             }
-            VoiceKind::Synth | VoiceKind::Click { .. } => None,
+            VoiceKind::Synth | VoiceKind::Plugin | VoiceKind::Click { .. } => None,
         }
     }
 

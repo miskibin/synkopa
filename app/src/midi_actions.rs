@@ -252,6 +252,8 @@ struct Voice {
 fn voice(p: &Project, c: &Channel) -> Voice {
     match &c.src {
         ChannelSrc::Keys { .. } => Voice { drum_key: None, program: Some(0) },
+        // a hosted plugin's sound is its own: no General MIDI program stands for it
+        ChannelSrc::Plugin { .. } => Voice { drum_key: None, program: None },
         ChannelSrc::Synth { synth } => {
             let cat = synth
                 .preset

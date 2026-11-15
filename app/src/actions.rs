@@ -779,6 +779,10 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
         ),
         ChannelSrc::Synth { synth } => ("synth", json!({ "preset": synth.preset })),
         ChannelSrc::Keys { keys } => ("keys", json!({ "release": keys.release, "dynamics": keys.dynamics })),
+        ChannelSrc::Plugin { plugin } => (
+            "plugin",
+            json!({ "plugin": { "format": plugin.format, "name": plugin.name, "vendor": plugin.vendor, "path": plugin.path, "cid": plugin.cid } }),
+        ),
     };
     let mut v = json!({
         "id": c.id, "index": p.channels.iter().position(|x| x.id == c.id), "name": c.name, "kind": kind,
@@ -847,6 +851,37 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         added = Some(id);
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
+    if let Some(want) = arg(a, "plugin").and_then(Value::as_str) {
+        // a hosted VST3 instrument from the last plugin scan: its class id, or its name
+        // (case-insensitive; the start of it picks the first match)
+        let r = app.plugins().scan(false);
+        let w = want.to_lowercase();
+        let entry = r
+            .instruments
+            .iter()
+            .find(|i| i.cid.eq_ignore_ascii_case(want) || i.name.to_lowercase() == w)
+            .or_else(|| r.instruments.iter().find(|i| i.name.to_lowercase().starts_with(&w)))
+            .ok_or(format!(
+                "no scanned VST3 instrument `{want}`{}",
+                if r.instruments.is_empty() {
+                    " (none is scanned: run `wave plugin_scan --rescan`)".to_string()
+                } else {
+                    format!("; installed: {}", r.instruments.iter().map(|i| i.name.as_str()).collect::<Vec<_>>().join(", "))
+                }
+            ))?;
+        let id = p.next_id + ops.len() as u64;
+        let plugin = wave_engine::PluginRef {
+            format: entry.format.clone(),
+            path: entry.path.clone(),
+            cid: entry.cid.clone(),
+            name: entry.name.clone(),
+            vendor: entry.vendor.clone(),
+            state: None,
+        };
+        let ch = Channel::new(id, &entry.name, "#9b7cf8", ChannelSrc::Plugin { plugin });
+        added = Some(id);
+        ops.push(Op::PutChannel { channel: ch, index: None });
+    }
     if arg(a, "keys").and_then(Value::as_bool).unwrap_or(false) {
         // a WAVE Keys channel: the sampled grand piano
         let id = p.next_id + ops.len() as u64;
@@ -875,6 +910,12 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
                     .ok_or(format!("the synth has no parameter `{param}` (see `wave catalog`)"))?;
                 synth.params.insert(param.to_string(), wave_engine::poly::params::clamp(i, value) as f64);
                 synth.preset = None;
+            }
+            ChannelSrc::Plugin { plugin } => {
+                return Err(format!(
+                    "`{}` is a plugin instrument: list its parameters with `wave plugin_params --fxId {}` and set one with `wave plugin_set_param`",
+                    plugin.name, c.id
+                ))
             }
             ChannelSrc::Keys { keys } => match param {
                 "release" => keys.release = (value as f32).clamp(wave_engine::keys::RELEASE_MS.0, wave_engine::keys::RELEASE_MS.1),

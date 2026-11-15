@@ -4,12 +4,12 @@
 // column for the focused effect, Recent and Favourites at the top, built-in and VST3 separated.
 // A tile can also be dragged onto any mixer strip or the effect rack to add it there.
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { PLUGIN_FORMAT_LABEL, type BuiltinKind, type Id, type PluginInfo, type PluginScan } from '../api/types';
-import { be } from '../api/backend';
+import { PLUGIN_FORMAT_LABEL, type BuiltinKind, type Id, type PluginInfo } from '../api/types';
 import { lang, t as tr, tName, type TranslationKey } from '../lib/i18n';
 import { presetList } from '../lib/presets';
 import * as A from '../state/actions';
 import { S } from '../state/store';
+import { ensurePluginScan, pluginScan, runPluginScan, setPluginScan } from '../state/pluginScan';
 import { say, setU, U } from '../state/ui';
 import { openNotebook } from '../state/notebook';
 import { NOTEBOOK_ICON } from './Notebook';
@@ -80,17 +80,11 @@ const toggleFav = (key: string) => { const f = favs().includes(key) ? favs().fil
 
 // the plugin list is scanned once per session; "Rescan" in the Plugins category looks again
 // (new or updated plugins: a VST3 rescan opens only modules it has not seen)
-const [scan, setScan] = createSignal<PluginScan | null>(null);
-let scanning = false;
-function runScan(rescan: boolean) {
-  if (scanning) return;
-  scanning = true;
-  if (rescan) setScan(null);
-  be().pluginScan(rescan).then(setScan).catch(e => { say(String(e)); setScan({ plugins: [], unavailable: {} }); }).finally(() => { scanning = false; });
-}
-const ensureScan = () => { if (!scan()) runScan(false); };
+const scan = pluginScan;
+const runScan = (rescan: boolean) => void runPluginScan(rescan);
+const ensureScan = ensurePluginScan;
 /** Lets "Add plugin…" share a fresh rescan with the picker. */
-export const setPluginScan = (s: PluginScan) => setScan(s);
+export { setPluginScan };
 
 /** Project tools that open their own window instead of adding an effect. */
 const tools = (): Entry[] => [{ key: 'tool:notebook', tool: 'notebook', name: tr('c.picker.notebook'), desc: tr('c.picker.notebookDesc'), presets: 0 }];

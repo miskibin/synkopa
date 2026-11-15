@@ -18,7 +18,8 @@ import {
   addBar, RACK_MIN_W, STEP_MAX, STEP_MIN, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
   rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, stepPattern, toggleChanMute, toggleChanSolo,
 } from '../state/pattern';
-import { arrVersion } from '../state/store';
+import { arrVersion, S } from '../state/store';
+import { ensurePluginScan } from '../state/pluginScan';
 import { say, setU, U } from '../state/ui';
 import { dblCheck, edgeScroller, track } from '../ui/drag';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
@@ -95,6 +96,8 @@ function Rack(props: { z: number; docked?: boolean }) {
   });
   // playhead column: only when the step changes
   let lastHead = -2;
+  // the cached plugin list (opens no plugin), so "+" lists the VST3 instruments at once
+  onMount(ensurePluginScan);
   onMount(() => onCleanup(addFrameTask(() => {
     const p = curPat(); if (!p || !head || U.mixView) return;
     const s = playStep(p);
@@ -449,11 +452,13 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
         onWheel={v => commit([volOp(v)], t('b.cw.volCh'))} />
       <button class="cins" classList={{ auto: c().insert == null }} title={insTitle(c())}
         onPointerDown={e => e.stopPropagation()} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); insertMenu(c(), r.left, r.bottom + 2); }}>{insLabel(c())}</button>
-      <button class="cname" classList={{ sel: sel() }} title={t('b.pe.cnameTitle', { name: c().name, kind: chanKindLabel(c()) })}
+      <button class="cname" classList={{ sel: sel() }}
+        title={t('b.pe.cnameTitle', { name: c().name, kind: chanKindLabel(c()) }) + (S.fxErrors[c().id] ? '\n' + t('c.fx.instNotLoaded', { e: S.fxErrors[c().id] }) : '')}
         onPointerDown={nameDown}>
         <span class="cicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={11} /></span>
         <span class="ell">{c().name}</span>
         <Show when={c().kind === 'keys'}><span class="ckind">KEYS</span></Show>
+        <Show when={c().kind === 'plugin'}><span class="ckind" classList={{ err: !!S.fxErrors[c().id] }}>{S.fxErrors[c().id] ? '! VST3' : 'VST3'}</span></Show>
       </button>
     </div>
   );

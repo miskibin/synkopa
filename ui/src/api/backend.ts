@@ -181,6 +181,8 @@ export interface Backend {
   /** A VST3 plugin's own editor window (Windows); LV2 plugins have none here and reject. */
   pluginEditor(fxId: Id, open: boolean): Promise<void>;
   pluginParams(fxId: Id): Promise<PluginParam[]>;
+  /** A live plugin's current state (base64, what `PluginRef.state` stores): an effect or a plugin channel by id. */
+  pluginState(fxId: Id): Promise<string>;
   pluginSetParam(fxId: Id, id: number, value: number): Promise<void>;
   cliStatus(): Promise<CliStatus>;
   /** The running version, the version whose release notes were last shown, and whether updates are checked automatically. */
@@ -349,6 +351,7 @@ export function tauriBackend(): Backend {
     pluginScan: rescan => invoke('plugin_scan', { rescan }),
     pluginEditor: (fxId, open) => invoke('plugin_editor', { fxId, open }),
     pluginParams: fxId => invoke('plugin_params', { fxId }),
+    pluginState: fxId => invoke('plugin_state', { fxId }),
     pluginSetParam: (fxId, id, value) => invoke('plugin_set_param', { fxId, id, value }),
     cliStatus: () => invoke('cli_status'),
     appInfo: () => invoke('app_info'),

@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::model::{Id, SamplerState};
+use crate::plug::{PlugBank, PlugInst};
 use crate::poly::{Patch, SynthBank, SynthInst};
 use crate::processor::{ParamBlock, ProcessCtx, Processor, METERS};
 use crate::sources::Audio;
@@ -695,6 +696,11 @@ pub enum Cmd {
     },
     /// A synth channel is gone.
     SynthRemove(Id),
+    /// A plugin-instrument channel's instance, made off the audio thread (replaces one of the
+    /// same channel).
+    PlugAdd(Box<PlugInst>),
+    /// A plugin-instrument channel is gone (or its plugin changed).
+    PlugRemove(Id),
 }
 
 pub enum Garbage {
@@ -703,6 +709,7 @@ pub enum Garbage {
     Mix(Box<MixState>),
     Preview(Box<Preview>),
     Synth(Box<SynthInst>),
+    Plug(Box<PlugInst>),
     Patch(Box<Patch>),
     FxData(crate::processor::FxData),
 }
@@ -725,6 +732,8 @@ pub struct Rt {
     voices: VoicePool,
     /// Synth channel instances.
     synths: SynthBank,
+    /// Plugin-instrument channel instances.
+    plugs: PlugBank,
     click: Vec<f32>,
     tmp_l: Vec<f32>,
     tmp_r: Vec<f32>,
@@ -810,6 +819,7 @@ impl Rt {
             }),
             voices: VoicePool::new(sr),
             synths: SynthBank::default(),
+            plugs: PlugBank::default(),
             click: vec![0.0; max_block],
             tmp_l: vec![0.0; max_block],
             tmp_r: vec![0.0; max_block],
@@ -1045,6 +1055,7 @@ impl Rt {
                     self.rec_drain = 0;
                     self.voices.clear();
                     self.synths.stop_all();
+                    self.plugs.stop_all();
                     // the song and the pattern preview are exclusive (FL's SONG / PAT)
                     self.set_pat_play(None);
                     self.beat = from - count_in;
@@ -1099,6 +1110,7 @@ impl Rt {
                         play(
                             &mut self.voices,
                             &mut self.synths,
+                            &mut self.plugs,
                             ch,
                             i,
                             Dest::Insert(ins),
@@ -1123,6 +1135,10 @@ impl Rt {
                                 if let Some(s) = self.synths.get(chan) {
                                     s.key_down(key, vel, Dest::Insert(ins));
                                 }
+                            } else if ch.kind == VoiceKind::Plugin {
+                                if let Some(s) = self.plugs.get(chan) {
+                                    s.key_down(key, vel, Dest::Insert(ins));
+                                }
                             } else {
                                 self.voices.note_on(ch, i, Dest::Insert(ins), key, vel);
                             }
@@ -1130,21 +1146,38 @@ impl Rt {
                     } else {
                         self.voices.note_off(chan, key);
                         self.synths.key_up(chan, key);
+                        self.plugs.key_up(chan, key);
                     }
                 }
                 Cmd::MidiSustain(down) => {
                     self.voices.sustain(down);
                     self.synths.sustain(down);
+                    self.plugs.sustain(down);
                 }
                 Cmd::MidiBend(st) => {
                     self.voices.set_bend(st);
                     self.synths.set_bend(st);
+                    self.plugs.set_bend(st);
                 }
                 Cmd::MidiOff => {
                     self.voices.all_notes_off();
                     self.synths.all_notes_off();
+                    self.plugs.all_notes_off();
                 }
-                Cmd::MidiMod(v) => self.synths.set_wheel(v),
+                Cmd::MidiMod(v) => {
+                    self.synths.set_wheel(v);
+                    self.plugs.set_wheel(v);
+                }
+                Cmd::PlugAdd(s) => {
+                    if let Some(old) = self.plugs.add(s) {
+                        self.trash(Garbage::Plug(old));
+                    }
+                }
+                Cmd::PlugRemove(id) => {
+                    if let Some(old) = self.plugs.remove(id) {
+                        self.trash(Garbage::Plug(old));
+                    }
+                }
                 Cmd::SynthAdd(s) => {
                     if let Some(old) = self.synths.add(s) {
                         self.trash(Garbage::Synth(old));
@@ -1169,6 +1202,7 @@ impl Rt {
                         // a jump inside a playing loop: what sounds now must not ring on
                         self.voices.clear();
                         self.synths.stop_all();
+                        self.plugs.stop_all();
                     }
                     self.set_pat_play(id);
                     self.pat_range = range;
@@ -1230,6 +1264,7 @@ impl Rt {
                 play(
                     &mut self.voices,
                     &mut self.synths,
+                    &mut self.plugs,
                     ch,
                     nt.chan,
                     Dest::Insert(ins),
@@ -1455,6 +1490,14 @@ impl Rt {
         self.schedule_pattern(n, bps, spb);
         self.voices.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &mut self.click[..n], &self.timeline.chans);
         self.synths.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, bpm);
+        if !self.plugs.is_empty() {
+            let ctx = match pat_ctx {
+                Some(b) => ProcessCtx { sample_rate: sr, bpm, beat: b, playing: true },
+                None => ProcessCtx { sample_rate: sr, bpm, beat: block_beat, playing: self.playing },
+            };
+            let _no_denormals = crate::processor::NoDenormals::new();
+            self.plugs.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, &ctx);
+        }
         // what this block played is where the next one glides from
         for c in self.timeline.chans.iter_mut() {
             c.gain0 = c.gain;
@@ -1690,7 +1733,20 @@ impl Rt {
                                         _ => continue,
                                     },
                                 };
-                                play(&mut self.voices, &mut self.synths, ch, nt.chan, dest, delay, end, nt.key, nt.vel, gain, self.sr);
+                                play(
+                                    &mut self.voices,
+                                    &mut self.synths,
+                                    &mut self.plugs,
+                                    ch,
+                                    nt.chan,
+                                    dest,
+                                    delay,
+                                    end,
+                                    nt.key,
+                                    nt.vel,
+                                    gain,
+                                    self.sr,
+                                );
                             }
                         }
                     }
@@ -1750,6 +1806,7 @@ impl Rt {
 fn play(
     voices: &mut VoicePool,
     synths: &mut SynthBank,
+    plugs: &mut PlugBank,
     ch: &ChanRt,
     idx: usize,
     dest: Dest,
@@ -1763,6 +1820,12 @@ fn play(
     if ch.kind == VoiceKind::Synth {
         if let Some(s) = synths.get(ch.id) {
             s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest);
+        }
+    } else if ch.kind == VoiceKind::Plugin {
+        // the level on top goes to the instance's output, not into the velocity (a plugin's
+        // velocity changes its timbre)
+        if let Some(s) = plugs.get(ch.id) {
+            s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel, dest, gain);
         }
     } else {
         voices.note(ch, idx, dest, delay, end, key, vel, gain);

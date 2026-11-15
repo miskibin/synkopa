@@ -110,8 +110,15 @@ export const SAMPLER = {
   fadeMaxMs: 5000, cutGroups: 8, minSpan: 0.001,
 } as const;
 export const samplerDefault = (): SamplerState => ({ start: 0, end: 1, reverse: false, norm: false, semi: 0, fine: 0, gate: false, attack: 0, decay: 0, sustain: 1, release: SAMPLER.release.def, cut: 0, fadeInMs: 0, fadeOutMs: 0 });
-/** What a channel plays: a sample of a project source (the sampler), the built-in synth, or WAVE Keys. */
-export type ChannelSrc = { kind: 'sample'; source: Id; sampler: SamplerState } | { kind: 'synth'; synth: SynthState } | { kind: 'keys'; keys: KeysState };
+/**
+ * What a channel plays: a sample of a project source (the sampler), the built-in synth, WAVE Keys, or a hosted
+ * VST3 instrument (`plugin`; its sound, parameters and editor are the plugin's, `state` is saved with the project).
+ */
+export type ChannelSrc =
+  | { kind: 'sample'; source: Id; sampler: SamplerState }
+  | { kind: 'synth'; synth: SynthState }
+  | { kind: 'keys'; keys: KeysState }
+  | { kind: 'plugin'; plugin: PluginRef };
 /**
  * A Channel Rack row, global to the project (every pattern can have notes for it).
  * `vol` fader position (0.7937 = 0 dB), `pan` −1..1, `insert` null = the clip's track insert,
@@ -580,8 +587,11 @@ export interface MidiExportResult { out: string; what: string; tracks: number; n
 
 /** One installed effect (`plugin_scan`). `unsupported`: why it cannot be used here (an LV2 host feature it needs). */
 export interface PluginInfo { format: PluginFormat; path: string; cid: string; name: string; vendor: string; category: string; unsupported?: string }
-/** `plugin_scan`: the effects, and per format why it is unavailable on this machine (LV2 without liblilv). */
-export interface PluginScan { plugins: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
+/**
+ * `plugin_scan`: the effects, the VST3 instruments (Channel Rack), and per format why it is unavailable on this
+ * machine (LV2 without liblilv). `instruments` is absent from an older backend.
+ */
+export interface PluginScan { plugins: PluginInfo[]; instruments?: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
 /**
  * One parameter of a hosted plugin. `value`/`def` are normalized 0..1 (what `pluginSetParam` and automation take),
  * `display` the plugin's text for the value. LV2 adds the port's own range and kind: `real` within `min..max` in

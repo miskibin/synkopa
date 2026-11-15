@@ -13,7 +13,7 @@
  │ crates/engine: model · ops · history · sequencer · instruments · built-in FX  │
  │                mixer graph · recording · offline render · analysis thread    │
  │ crates/audio-io: cpal (WASAPI / ASIO / CoreAudio / ALSA / JACK) duplex streams│
- │ crates/vst3-host: VST3 effects as `Processor`s, scan in a child process      │
+ │ crates/vst3-host: VST3 effects and instruments, scan in a child process      │
  │ crates/lv2-host:  LV2 effects as `Processor`s (Linux, liblilv at run time)   │
  └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -98,8 +98,9 @@ the kit and its mixer routing in every pattern.
 * `channel.kind`: `sample` (the sampler: plays project source `source`; the note's key
   repitches it, `root` = the key at which the file plays at its own pitch, default 60 = C5 in
   FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (WAVE
-  Keys, see [keys.md](keys.md)) or `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
-  parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
+  Keys, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
+  parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)) or `plugin` (a hosted VST3
+  instrument, `plugin: PluginRef`; see [Plugin instruments](#plugin-instruments)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
   1), `pan` −1..1 (balance law of the mixer), `mute`/`solo` (with any solo, only soloed
   channels play), `insert`: a mixer insert id, or `null` = **the insert of the playlist track
   the clip is on** (how every pattern note behaved before channels existed; the track's fader
@@ -318,6 +319,61 @@ or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused)
   re-creates the instance from the saved state (the engine does that for every hosted plugin
   when the device changes).
 
+### Plugin instruments
+
+A channel of kind `plugin` plays a VST3 instrument, like FL Studio's plugin generators: the
+Channel Rack's "+" and "Replace" menus list the scanned instruments (`plugin_scan`'s
+`instruments`: classes whose `subCategories` declare `Instrument`) and add the channel with a
+`putChannel` whose `plugin` is a `PluginRef` without state. `putChannel` refuses other formats
+(LV2 instruments are not hosted) and a ref without path or class id.
+
+* **Instances.** The engine keeps one live instance per plugin channel (`sync_plugs`, built
+  through `PluginFactory::create_instrument` off the audio thread, handed over as
+  `Cmd::PlugAdd`). It is made when the channel appears or its plugin changes (another class:
+  `PluginRef::same_class`); renaming, level, routing or a stale `state` keep it. A removed
+  channel releases it; undo brings the channel back with its saved state. Opening another
+  project, or a new audio device, makes every instance again from the saved states. A plugin
+  that does not load (not installed, not an instrument: no event input, or a main output that
+  is not mono or stereo) leaves the channel silent with an `fxErrors` entry **under the channel
+  id**, and is not retried until its plugin changes or the device is rebuilt; the channel, its
+  notes and its saved state stay in the project.
+* **Notes** (`crates/engine/src/plug.rs`). Pattern notes, Channel Rack and piano-roll
+  auditions, the MIDI keyboard, sustain, pitch bend and the mod wheel reach the instance as
+  sample-accurate events: note-on/off with a note id (two overlapping notes of one key end
+  independently), controllers 64 and 1, bend 0..1 (centre 0.5, the keyboard's ±2 semitones at
+  the ends). They are queued ahead in a fixed schedule (4096 events; a full one drops new notes,
+  never allocates) and delivered per block, at most `MAX_INST_EVENTS` (512) per call. Events of
+  one instant keep the order they were queued in. Velocity is the note's; a track fader that a
+  routed channel skips scales the output, not the velocity. A transport start or jump sends a
+  note-off for every sounding note (its release rings) and drops what was scheduled.
+* **Output.** The instance's stereo output plays where its latest note was played (the clip's
+  track, or the channel's insert), scaled by the channel's gain and pan like the synth's;
+  non-finite samples are dropped. It runs every block, even silent (a plugin may sound by
+  itself), so its CPU cost is constant; there is no smart-disable yet.
+* **VST3 host** (`wave_vst3::instantiate_instrument`). The main output bus is asked for stereo
+  (a mono output is copied to both sides), extra outputs are discarded, audio inputs
+  (side-chains) read silence, event input bus 0 is activated. Notes go into a preallocated
+  `IEventList` (`kNoteOnEvent` / `kNoteOffEvent` with `sampleOffset`, `noteId`, channel 0);
+  controllers and pitch bend become sample-accurate parameter points of whatever the plugin
+  maps them to through `IMidiMapping` (looked up once at instantiation; an unmapped controller
+  is dropped). The process context carries tempo, position and playing state as for effects.
+* **Parameters, editor, state.** A plugin channel's id works wherever an effect id does:
+  `plugin_params`, `plugin_set_param`, `plugin_editor`, and `plugin_state` (its current state,
+  which the Channel Rack's Clone copies). The channel window shows the editor button and the
+  parameter list. Saving stores each live instance's state in `plugin.state` (base64 of the
+  component and controller streams, as for effects). Automating an instrument's parameters is
+  not supported yet (the parameter menu says so).
+* **Offline render.** An export makes its own instance per plugin channel from the saved state,
+  activated in VST3's `kOffline` processing mode and fed the same events; the live instance is
+  not touched. One that does not load renders silent (logged). Plugin latency of an instrument
+  is reported by the plugin but not compensated yet.
+* **CLI.** `wave channels --plugin NAME|CID` adds a scanned instrument; `channels` lists a
+  plugin channel with kind `plugin` and its plugin.
+
+Test seams: `crates/engine/tests/plugin_instruments.rs` (a stand-in factory: format, instances,
+timing, live keys, state, missing plugins), `crates/vst3-host/tests/instrument.rs` (a real
+instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle).
+
 ## Ops (`crates/engine/src/ops.rs`)
 
 All edits are "put" ops, applied atomically per batch:
@@ -412,11 +468,12 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `export_audio` | `{useLoop, tail, sampleRate, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{out, fromBeat, toBeat, tail, stats}` or `{cancelled:true}`; native save dialog; stereo WAV (32-bit float by default, or 16/24-bit PCM) or MP3; emits `export-progress` |
 | `export_stems` | `{useLoop, tail, sampleRate, includeMaster, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{dir, fromBeat, toBeat, tail, format, files, skipped}` or `{cancelled:true}`; native folder dialog; one WAV or MP3 per insert with sound, optional master mix; emits `export-progress` |
 | `export_cancel` | – | – (abort an in-flight `export_audio` before a file is written) |
-| `plugin_scan` | `{rescan}` | `{plugins: [{format,path,cid,name,vendor,category,unsupported?}], unavailable: {[format]: why}}` — VST3 everywhere, LV2 on Linux; `unsupported`: why that plugin cannot run here; `unavailable.lv2`: no liblilv |
+| `plugin_scan` | `{rescan}` | `{plugins: [{format,path,cid,name,vendor,category,unsupported?}], instruments: [...same], unavailable: {[format]: why}}` — effects: VST3 everywhere, LV2 on Linux; `instruments`: VST3 instruments for the Channel Rack; `unsupported`: why that plugin cannot run here; `unavailable.lv2`: no liblilv |
 | `plugin_add` | `{insertId, format?, path?, cid, index?}` | `{fxId, revision}` — a scanned plugin onto an insert (the UI adds with `putFx` instead) |
-| `plugin_editor` | `{fxId, open}` | – (native VST3 window, Windows; LV2 rejects) |
+| `plugin_editor` | `{fxId, open}` | – (native VST3 window, Windows; LV2 rejects). Here and below `fxId` may also be a plugin channel's id |
 | `plugin_params` | `{fxId}` | `[{id,name,value,display,def}]`; LV2 adds `{symbol,real,min,max,unit,steps?,toggle,integer,log,options?:[{value,label}]}` |
 | `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
+| `plugin_state` | `{fxId}` | the live instance's current state, base64 (what `PluginRef.state` stores) |
 | `vst3_scan` / `vst3_add` / `vst3_editor` / `vst3_params` / `vst3_set_param` | as before | older names: the same, with `vst3_scan` listing only VST3 effects as a plain array |
 | `cli_status` | – | `{installed, command, path, note?}` |
 

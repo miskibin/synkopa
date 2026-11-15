@@ -22,7 +22,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginScan, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, RelinkCandidate,
 } from './types';
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
@@ -96,6 +96,11 @@ function vocalSpec(s: VocalSample, out: Float32Array) {
   }
 }
 
+/** A VST3 plugin the mock reports as installed (class id derived from its name, like a real scan's stable id). */
+const mockVst3 = (name: string, vendor: string, category: string): PluginInfo => ({ format: 'vst3', name, vendor, category, path: 'C:\\Program Files\\Common Files\\VST3\\' + name + '.vst3', cid: hash(name).toString(16).padStart(32, '0') });
+/** The VST3 instruments the mock's scan finds: name, vendor, category. */
+const MOCK_INSTRUMENTS: [string, string, string][] = [['Serum', 'Xfer Records', 'Instrument|Synth'], ['Analog Lab V', 'Arturia', 'Instrument|Synth'], ['Kontakt 7', 'Native Instruments', 'Instrument|Sampler'], ['Vital', 'Vital Audio', 'Instrument|Synth']];
+
 export class MockBackend implements Backend {
   readonly isMock = true;
   /** No window chrome in a browser; `?chrome` previews the custom title bar with inert buttons. */
@@ -158,9 +163,16 @@ export class MockBackend implements Backend {
     return structuredClone({ project: this.p, revision: this.revision, canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0,
       transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition(), missing: this.missing(), fxErrors: this.fxErrors() });
   }
-  /** Like the engine's `fx_errors`: LV2 slots whose plugin is not "installed" here, or cannot run. */
+  /**
+   * Like the engine's `fx_errors`: LV2 slots whose plugin is not "installed" here, or cannot run, and plugin
+   * channels whose instrument is not one of the mock's installed ones (by channel id).
+   */
   private fxErrors(): Record<string, string> {
     const out: Record<string, string> = {};
+    const installed = new Set(MOCK_INSTRUMENTS.map(([name, vendor, category]) => mockVst3(name, vendor, category).cid));
+    for (const c of this.p.channels ?? []) {
+      if (c.kind === 'plugin' && !installed.has(c.plugin.cid)) out[c.id] = `${c.plugin.name}: VST3 plugin module not found: ${c.plugin.path}`;
+    }
     for (const f of this.p.inserts.flatMap(m => m.fx)) {
       if (f.type !== 'plugin' || f.plugin?.format !== 'lv2') continue;
       const p = MOCK_LV2[f.plugin.cid];
@@ -1385,23 +1397,36 @@ export class MockBackend implements Backend {
   // ---------- hosted plugins ----------
   async pluginScan(rescan: boolean): Promise<PluginScan> {
     await delay(rescan ? 600 : 20);
-    const mk = (name: string, vendor: string, category: string): PluginInfo => ({ format: 'vst3', name, vendor, category, path: 'C:\\Program Files\\Common Files\\VST3\\' + name + '.vst3', cid: hash(name).toString(16).padStart(32, '0') });
+    const mk = mockVst3;
     const lv2 = Object.entries(MOCK_LV2).map(([cid, p]): PluginInfo => ({ format: 'lv2', cid, name: p.name, vendor: p.vendor, category: p.category, path: '/usr/lib/lv2/' + p.bundle, ...(p.unsupported ? { unsupported: p.unsupported } : {}) }));
     return {
       plugins: [mk('Pro-Q 3', 'FabFilter', 'Fx|EQ'), mk('Pro-C 2', 'FabFilter', 'Fx|Dynamics'), mk('Valhalla VintageVerb', 'Valhalla DSP', 'Fx|Reverb'),
         mk('Decapitator', 'Soundtoys', 'Fx|Distortion'), mk('EchoBoy', 'Soundtoys', 'Fx|Delay'), mk('OTT', 'Xfer Records', 'Fx|Dynamics'), mk('Serum FX', 'Xfer Records', 'Fx'), ...lv2],
+      instruments: MOCK_INSTRUMENTS.map(([name, vendor, category]) => mk(name, vendor, category)),
       unavailable: {},
     };
   }
+  /** A loaded hosted plugin by id, like the engine's handles: an effect slot, or a plugin channel that loaded. */
+  private hosted(id: Id): PluginRef | undefined {
+    const fx = this.p.inserts.flatMap(m => m.fx).find(f => f.id === id);
+    if (fx?.type === 'plugin') return fx.plugin;
+    const ch = (this.p.channels ?? []).find(c => c.id === id);
+    return ch?.kind === 'plugin' && !this.fxErrors()[id] ? ch.plugin : undefined;
+  }
   /** Like the engine: only a VST3 plugin has an editor window here. */
   async pluginEditor(fxId: Id, open: boolean) {
-    const fx = this.p.inserts.flatMap(m => m.fx).find(f => f.id === fxId);
-    if (fx?.type !== 'plugin') throw new Error(`effect ${fxId} is not a loaded plugin`);
-    if (open && fx.plugin?.format === 'lv2') throw new Error('LV2 plugins are edited in WAVE\'s parameter list (their own editor windows are not supported yet)');
+    const pl = this.hosted(fxId);
+    if (!pl) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
+    if (open && pl.format === 'lv2') throw new Error('LV2 plugins are edited in WAVE\'s parameter list (their own editor windows are not supported yet)');
+  }
+  async pluginState(fxId: Id): Promise<string> {
+    if (!this.hosted(fxId)) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
+    // the mock's "state" is its parameter values
+    return btoa(JSON.stringify((this.plugParams.get(fxId) ?? []).map(p => [p.id, p.value])));
   }
   async pluginParams(fxId: Id): Promise<PluginParam[]> {
-    const fx = this.p.inserts.flatMap(m => m.fx).find(f => f.id === fxId);
-    if (fx?.type !== 'plugin' || !fx.plugin) throw new Error(`effect ${fxId} is not a loaded plugin`);
+    const fx = { plugin: this.hosted(fxId) };
+    if (!fx.plugin) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
     const lv2 = fx.plugin.format === 'lv2' ? MOCK_LV2[fx.plugin.cid] : undefined;
     if (fx.plugin.format === 'lv2') {
       if (!lv2 || lv2.unsupported) throw new Error(`effect ${fxId} is not a loaded plugin`);
@@ -1417,8 +1442,9 @@ export class MockBackend implements Backend {
   }
   async pluginSetParam(fxId: Id, id: number, value: number) {
     if (!(value >= 0 && value <= 1)) throw new Error('plugin parameter values are normalised 0..1');
-    const fx = this.p.inserts.flatMap(m => m.fx).find(f => f.id === fxId);
-    if (fx?.plugin?.format === 'lv2') {
+    const fx = { plugin: this.hosted(fxId) };
+    if (!fx.plugin) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
+    if (fx.plugin.format === 'lv2') {
       await this.pluginParams(fxId);
       const spec = MOCK_LV2[fx.plugin.cid]?.ports.find(s => s.id === id);
       if (!spec) throw new Error(`${fx.plugin.name} has no parameter ${id}`);

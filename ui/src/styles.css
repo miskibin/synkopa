@@ -563,6 +563,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .cname.sel { background: var(--on-bg); color: var(--blue-hi); }
 .crow.muted .cname { color: var(--fg5); }
 .cname .ckind { flex: none; margin-left: auto; font: 600 8px var(--mono); letter-spacing: .06em; color: var(--fg4); }
+.cname .ckind.err { color: var(--danger); }
 .hbar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: color-mix(in srgb, var(--bg0) 50%, transparent); }
 .hbar > div { position: absolute; top: 1px; height: 4px; border-radius: 2px; background: var(--fg6); cursor: grab; }
 .lanerow { flex: none; display: flex; border-bottom: 1px solid var(--bg0); }

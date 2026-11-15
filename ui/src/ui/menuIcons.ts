@@ -165,6 +165,7 @@ export const libFileGlyph = (f: { name: string; group: string }): MenuGlyph => L
 /** Other instrument-picker rows. */
 export const PICK_GLYPH = {
   emptySynth: INST_ICONS.synth,
+  plugin: INST_ICONS.synth,
   keys: INST_ICONS.piano,
   source: INST_ICONS.sample,
 } satisfies Record<string, MenuGlyph>;

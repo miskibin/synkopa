@@ -13,6 +13,7 @@ pub mod model;
 pub mod music;
 pub mod ops;
 pub mod pitch;
+pub mod plug;
 pub mod poly;
 pub mod processor;
 pub mod reference;
@@ -22,7 +23,7 @@ pub mod transform;
 
 pub use model::*;
 pub use ops::{Dirty, Op, OpError};
-pub use processor::{BandParams, FxData, ParamBlock, ProcessCtx, Processor, MAX_PARAMS};
+pub use processor::{BandParams, FxData, InstEvent, InstMsg, Instrument, ParamBlock, ProcessCtx, Processor, MAX_INST_EVENTS, MAX_PARAMS};
 pub mod analysis;
 pub mod denoise;
 pub mod dsp;

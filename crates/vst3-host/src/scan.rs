@@ -109,6 +109,12 @@ impl ScannedClass {
         matches!(Kind::from_subcategories(&self.subcategories), Kind::Effect | Kind::Unknown)
     }
 
+    /// Offered as a Channel Rack instrument: declared `Instrument` (the event-bus check at
+    /// [`instantiate_instrument`](crate::instantiate_instrument) has the final say).
+    pub(crate) fn is_instrument(&self) -> bool {
+        Kind::from_subcategories(&self.subcategories) == Kind::Instrument
+    }
+
     pub(crate) fn to_info(&self) -> PluginInfo {
         PluginInfo {
             path: self.path.to_string_lossy().into_owned(),
@@ -290,8 +296,17 @@ fn dedicated_worker() -> Option<PathBuf> {
     None
 }
 
-/// Run one pass over `roots` and turn it into a browser list.
+/// Run one pass over `roots` and turn it into a browser list of the classes `keep` accepts.
 pub(crate) fn scan_with(scanner: &ModuleScan<ScannedClass>, roots: &[PathBuf], rescan: bool) -> Vec<PluginInfo> {
+    scan_with_filter(scanner, roots, rescan, ScannedClass::is_effect)
+}
+
+pub(crate) fn scan_with_filter(
+    scanner: &ModuleScan<ScannedClass>,
+    roots: &[PathBuf],
+    rescan: bool,
+    keep: fn(&ScannedClass) -> bool,
+) -> Vec<PluginInfo> {
     let modules = module_paths(roots);
     let pass = if rescan { scanner.scan_all(&modules) } else { scanner.list_cached(&modules) };
     if rescan {
@@ -308,7 +323,7 @@ pub(crate) fn scan_with(scanner: &ModuleScan<ScannedClass>, roots: &[PathBuf], r
             log::debug!("VST3 module {}: {failure}", module.display());
         }
     }
-    let mut list: Vec<PluginInfo> = pass.found.iter().filter(|class| class.is_effect()).map(ScannedClass::to_info).collect();
+    let mut list: Vec<PluginInfo> = pass.found.iter().filter(|class| keep(class)).map(ScannedClass::to_info).collect();
     list.sort_by(|a, b| {
         a.name.to_lowercase().cmp(&b.name.to_lowercase()).then_with(|| a.vendor.cmp(&b.vendor)).then_with(|| a.path.cmp(&b.path))
     });
@@ -329,17 +344,33 @@ pub(crate) fn scan_with(scanner: &ModuleScan<ScannedClass>, roots: &[PathBuf], r
 ///
 /// Never fails: unreadable roots and broken modules are logged and skipped.
 pub fn scan(rescan: bool) -> Vec<PluginInfo> {
+    scan_both(rescan).0
+}
+
+/// The installed VST3 **instruments** (classes declaring `Instrument`), sorted by name: what
+/// the Channel Rack offers. Same cache, same rules and same cost as [`scan`]; one rescan
+/// refreshes both lists.
+pub fn scan_instruments(rescan: bool) -> Vec<PluginInfo> {
+    scan_both(rescan).1
+}
+
+fn scan_both(rescan: bool) -> (Vec<PluginInfo>, Vec<PluginInfo>) {
     static SCANNER: OnceLock<ModuleScan<ScannedClass>> = OnceLock::new();
-    static LIST: Mutex<Option<Vec<PluginInfo>>> = Mutex::new(None);
+    type Lists = (Vec<PluginInfo>, Vec<PluginInfo>);
+    static LIST: Mutex<Option<Lists>> = Mutex::new(None);
     if !rescan {
-        if let Some(list) = LIST.lock().clone() {
-            return list;
+        if let Some(lists) = LIST.lock().clone() {
+            return lists;
         }
     }
     let scanner = SCANNER.get_or_init(|| ModuleScan::persistent().with_spawn(worker_spawn()));
-    let list = scan_with(scanner, &default_search_paths(), rescan);
-    *LIST.lock() = Some(list.clone());
-    list
+    let roots = default_search_paths();
+    let effects = scan_with_filter(scanner, &roots, rescan, ScannedClass::is_effect);
+    // the pass above opened whatever was new: this one reads the cache
+    let instruments = scan_with_filter(scanner, &roots, false, ScannedClass::is_instrument);
+    let lists = (effects, instruments);
+    *LIST.lock() = Some(lists.clone());
+    lists
 }
 
 /// **Call this first thing in the app's `main()`**, before any window, audio

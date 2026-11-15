@@ -6,7 +6,7 @@ import { t, tName } from '../lib/i18n';
 import { newSynthChannel } from '../lib/synth';
 import { prefs } from './prefs';
 import { be } from '../api/backend';
-import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern } from '../api/types';
+import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
 import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
@@ -414,13 +414,26 @@ const keysChannel = (id: Id): Channel => ({ id, name: 'WAVE Keys', color: '#e0a4
 /** `root`: the key at which the file plays at its own pitch (a library file may know it). */
 const samplerChannel = (id: Id, s: { id: Id; name: string; color: string }, root: number = SAMPLE_ROOT): Channel => ({ id, name: s.name, color: s.color, kind: 'sample', source: s.id, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root });
 
-/** What a channel can play, for "add" and "replace": a synth preset, WAVE Keys, a sampler of a source (`root`: the file's own pitch, if known). */
-export type InstrumentPick = { kind: 'synth'; preset: string | null } | { kind: 'keys' } | { kind: 'sample'; source: Id; root?: number };
+/** A channel hosting a scanned VST3 instrument, from its default sound (no saved state yet). */
+const pluginChannel = (id: Id, p: PluginInfo): Channel => ({
+  id, name: p.name, color: '#9b7cf8', kind: 'plugin',
+  plugin: { format: 'vst3', path: p.path, cid: p.cid, name: p.name, vendor: p.vendor },
+  vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60,
+});
+
+/**
+ * What a channel can play, for "add" and "replace": a synth preset, WAVE Keys, a sampler of a source (`root`: the
+ * file's own pitch, if known), or a scanned VST3 instrument.
+ */
+export type InstrumentPick =
+  | { kind: 'synth'; preset: string | null } | { kind: 'keys' } | { kind: 'sample'; source: Id; root?: number }
+  | { kind: 'plugin'; plugin: PluginInfo };
 function makeChannel(id: Id, pick: InstrumentPick): Channel | null {
   switch (pick.kind) {
     case 'synth': { const cat = S.catalog?.synth; if (!cat) { say(t('b.st.synthNA')); return null; } return newSynthChannel(cat, id, pick.preset); }
     case 'keys': return keysChannel(id);
     case 'sample': { const src = S.project.sources.find(x => x.id === pick.source); return src ? samplerChannel(id, src, pick.root) : null; }
+    case 'plugin': return pluginChannel(id, pick.plugin);
   }
 }
 /**
@@ -457,6 +470,13 @@ export async function replaceWithFile(c: Channel, file?: LibFile) {
   } catch (e) { say(t('b.st.samplerErr', { err: String(e) })); }
 }
 
+/** A new channel playing a scanned VST3 instrument (the engine loads it; a failure shows on the channel). */
+export function addPlugin(p: PluginInfo) {
+  const c = pluginChannel(allocId(), p);
+  commit([chanOp(c)], t('b.st.addPlugin'));
+  selectChannel(c.id);
+  say(t('b.st.pluginSay', { name: p.name }));
+}
 /** A new WAVE Keys channel: the sampled grand piano. */
 export function addKeys() {
   const c = keysChannel(allocId());
@@ -486,9 +506,14 @@ export async function addSamplerFiles(files?: LibFile[] | null, index?: () => nu
     ids.forEach((id, k) => addSampler(id, list[k]?.root, at != null ? at + k : undefined));
   } catch (e) { say(t('b.st.samplerErr', { err: String(e) })); }
 }
-export function cloneChannel(c: Channel) {
+export async function cloneChannel(c: Channel) {
+  // a plugin's sound lives in its running instance until the project is saved: the copy starts from that
+  let src = c;
+  if (c.kind === 'plugin' && !S.fxErrors[c.id]) {
+    try { src = { ...c, plugin: { ...c.plugin, state: await be().pluginState(c.id) } }; } catch (e) { console.warn(e); }
+  }
   const id = allocId(), idx = channels().findIndex(x => x.id === c.id) + 1;
-  const ops: Op[] = [chanOp({ ...c, id, name: c.name + ' 2', mute: false, solo: false }, {}, idx)];
+  const ops: Op[] = [chanOp({ ...src, id, name: c.name + ' 2', mute: false, solo: false }, {}, idx)];
   // FL clones the channel's steps too: in every pattern
   for (const pt of S.project.patterns) if (pt.notes.some(n => n.ch === c.id)) ops.push(putNotes(pt, cloneNotes(pt.notes, c.id, id)));
   commit(ops, t('b.st.cloneCh'));
@@ -502,7 +527,14 @@ export function deleteChannel(c: Channel) {
   say(t('b.st.deletedCh', { name: c.name, used: used ? t(used === 1 ? 'b.st.usedIn1' : 'b.st.usedInN', { n: used }) : '' }));
 }
 export const chanSource = (c: Channel) => (c.kind === 'sample' ? S.project.sources.find(s => s.id === c.source) : undefined);
-export const chanKindLabel = (c: Channel) => (c.kind === 'synth' ? t('b.st.kindSynth', { name: c.synth.preset ? tName(c.synth.preset) : t('b.st.kindCustom') }) : c.kind === 'keys' ? t('b.st.kindKeys') : t('b.st.kindSample', { name: chanSource(c) ? baseName(chanSource(c)!.path) : t('b.cw.noFile') }));
+export const chanKindLabel = (c: Channel) => {
+  switch (c.kind) {
+    case 'synth': return t('b.st.kindSynth', { name: c.synth.preset ? tName(c.synth.preset) : t('b.st.kindCustom') });
+    case 'keys': return t('b.st.kindKeys');
+    case 'plugin': return t('b.st.kindPlugin', { name: [c.plugin.name, c.plugin.vendor].filter(Boolean).join(' · ') });
+    case 'sample': return t('b.st.kindSample', { name: chanSource(c) ? baseName(chanSource(c)!.path) : t('b.cw.noFile') });
+  }
+};
 
 // ---------------------------------------------------------------- sound
 

@@ -1,5 +1,5 @@
 // Channel settings window (FL "Channel settings"): click a Channel Rack name to see what makes
-// the sound — the synth or WAVE Keys — plus level,
+// the sound — the synth, WAVE Keys or a hosted VST3 instrument (its editor and parameters) — plus level,
 // pan, root key, mixer routing and a keyboard to play it.
 import { createEffect, createSignal, Show } from 'solid-js';
 import { VOL_UNITY, type AutoTarget, type Channel, type Id } from '../api/types';
@@ -14,7 +14,7 @@ import { channelIcon, InstIcon } from '../ui/instIcons';
 import { Knob } from '../ui/Knob';
 import { PianoKeys } from '../ui/PianoKeys';
 import { InsertPicker } from '../ui/InsertPicker';
-import { moveWindow } from './FxWindow';
+import { moveWindow, PluginBody } from './FxWindow';
 import { KeysPanel } from './KeysPanel';
 import { SynthPanel } from './SynthPanel';
 import { S } from '../state/store';
@@ -42,7 +42,7 @@ export function toggleChannelWindow(id: Id) {
   const kind = chanById(id)?.kind;
   if (!kind) return;
   if (chanWin()?.id === id) { closeChannelWindow(); return; }
-  const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : Math.min(620, window.innerWidth - 20);
+  const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : kind === 'plugin' ? 560 : Math.min(620, window.innerWidth - 20);
   // beside the Channel Rack: the floating window, or the docked panel's place on screen
   const dk = U.rackDock ? document.querySelector('.rackwin')?.getBoundingClientRect() : undefined;
   const r = dk ? { x: dk.left, y: dk.top, w: dk.width } : U.rackWin, W = window.innerWidth;
@@ -85,12 +85,13 @@ function Body(props: { w: Win; c: Channel }) {
   const c = () => chanById(props.c.id) ?? props.c;
   const live = () => chanById(props.c.id)!;
   const setPos = (x: number, y: number) => setWin(v => v && { ...v, x, y });
+  const plugin = () => { const x = c(); return x.kind === 'plugin' ? x.plugin : undefined; };
   return (
     <div class="win chanwin" data-channel-window={c().id} style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': 47 }}>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => props.w, setPos)}>
         <span class="chicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={14} /></span>
         <span class="title">{c().name}</span>
-        <span class="sub">{t(c().kind === 'synth' ? 'b.cw.kSynth' : 'b.cw.kKeys')}</span>
+        <span class="sub">{t(c().kind === 'synth' ? 'b.cw.kSynth' : c().kind === 'plugin' ? 'b.cw.kPlugin' : 'b.cw.kKeys')}</span>
         <div style={{ flex: 1 }} />
         <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={id => [chanOp(live(), { insert: id })]} label={t('b.pe.mixCh')}
           wheelKey={'cwroute' + props.c.id} title={t('b.cw.mixerTip')} />
@@ -99,8 +100,13 @@ function Body(props: { w: Win; c: Channel }) {
       </div>
       <Show when={c().kind === 'synth'}><SynthPanel c={c()} /></Show>
       <Show when={c().kind === 'keys' && c()}>{k => <KeysPanel c={k() as Extract<Channel, { kind: 'keys' }>} />}</Show>
+      {/* keyed by the plugin class: a replaced instrument gets a fresh list, an edit elsewhere keeps its editor open */}
+      <Show when={plugin()?.cid} keyed>
+        {_cid => <PluginBody id={c().id} plugin={plugin()} instrument />}
+      </Show>
       <div class="chknobs"><ChannelLevelKnobs channel={c()} /><ChannelRootKnob channel={c()} /></div>
       <Show when={c().kind === 'keys'}><PianoKeys ch={c().id} lo={21} hi={108} /></Show>
+      <Show when={c().kind === 'plugin'}><PianoKeys ch={c().id} lo={36} hi={96} /></Show>
     </div>
   );
 }

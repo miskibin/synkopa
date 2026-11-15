@@ -896,6 +896,11 @@ async fn plugin_params(app: St<'_>, fx_id: u64) -> R<Vec<plugins::ParamInfo>> {
 }
 
 #[tauri::command]
+async fn plugin_state(app: St<'_>, fx_id: u64) -> R<String> {
+    app.plugins.state(fx_id)
+}
+
+#[tauri::command]
 async fn plugin_set_param(app: St<'_>, fx_id: u64, id: u32, value: f64) -> R<()> {
     app.plugins.set_param(fx_id, id, value)
 }
@@ -1149,6 +1154,7 @@ pub fn run(project_arg: Option<&str>) {
             plugin_add,
             plugin_editor,
             plugin_params,
+            plugin_state,
             plugin_set_param,
             vst3_scan,
             vst3_add,

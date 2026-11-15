@@ -1,5 +1,6 @@
 //! Plugin hosting glue: the engine's `PluginFactory` for every hosted format (VST3
-//! everywhere, LV2 on Linux), per-effect handles, scanning, editors.
+//! everywhere, LV2 on Linux), per-effect and per-instrument-channel handles (by id: effect
+//! and channel ids never collide), scanning, editors.
 //!
 //! Threading: VST3 instantiate/params/state block on a UI-thread job, so they are only
 //! ever reached from async commands or worker threads — never from the UI thread itself.
@@ -12,7 +13,7 @@ use base64::Engine as _;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::Manager;
-use wave_engine::{Id, PluginFactory, PluginRef, Processor};
+use wave_engine::{Id, Instrument, PluginFactory, PluginRef, Processor};
 
 /// A live hosted effect's non-real-time side.
 #[derive(Clone)]
@@ -90,11 +91,14 @@ pub struct ScanEntry {
     pub unsupported: Option<String>,
 }
 
-/// What `plugin_scan` returns: the effects, and per format why it is unavailable here.
+/// What `plugin_scan` returns: the effects, the instruments, and per format why it is
+/// unavailable here.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanResult {
     pub plugins: Vec<ScanEntry>,
+    /// Plugin instruments for the Channel Rack (VST3).
+    pub instruments: Vec<ScanEntry>,
     /// Format → the sentence explaining why it is not available (LV2 without liblilv).
     pub unavailable: HashMap<String, String>,
 }
@@ -127,6 +131,18 @@ impl PluginFactory for Factory {
         }
         Ok(proc)
     }
+    fn create_instrument(&self, chan_id: Id, p: &PluginRef, sr: f32, max_block: usize, live: bool) -> Result<Box<dyn Instrument>, String> {
+        if p.format != PluginRef::VST3 {
+            return Err(format!("{}: {} instruments are not supported (VST3 only)", p.name, p.format_label()));
+        }
+        let state = p.state.as_deref().and_then(|s| base64::engine::general_purpose::STANDARD.decode(s).ok());
+        let (inst, h) = wave_vst3::instantiate_instrument(&p.path, &p.cid, state.as_deref(), sr, max_block, !live)
+            .map_err(|e| format!("{}: {e}", p.name))?;
+        if live {
+            self.0.handles.lock().insert(chan_id, Handle::Vst3(h));
+        }
+        Ok(inst)
+    }
     fn release(&self, fx_id: Id) {
         self.0.handles.lock().remove(&fx_id);
     }
@@ -135,7 +151,7 @@ impl PluginFactory for Factory {
         match h.state() {
             Ok(b) => Some(base64::engine::general_purpose::STANDARD.encode(b)),
             Err(e) => {
-                log::warn!("effect {fx_id}: the plugin's state could not be saved ({e}); the last saved state is kept");
+                log::warn!("plugin {fx_id}: its state could not be saved ({e}); the last saved state is kept");
                 None
             }
         }
@@ -161,18 +177,18 @@ impl Plugins {
     /// Every installed effect of every format this platform hosts (VST3; LV2 on Linux).
     /// A cold `rescan` is slow: call it from a worker thread.
     pub fn scan(&self, rescan: bool) -> ScanResult {
-        let mut plugins: Vec<ScanEntry> = wave_vst3::scan(rescan)
-            .into_iter()
-            .map(|p| ScanEntry {
-                format: PluginRef::VST3.into(),
-                path: p.path,
-                cid: p.cid,
-                name: p.name,
-                vendor: p.vendor,
-                category: p.category,
-                unsupported: None,
-            })
-            .collect();
+        let vst3 = |p: wave_vst3::PluginInfo| ScanEntry {
+            format: PluginRef::VST3.into(),
+            path: p.path,
+            cid: p.cid,
+            name: p.name,
+            vendor: p.vendor,
+            category: p.category,
+            unsupported: None,
+        };
+        let mut plugins: Vec<ScanEntry> = wave_vst3::scan(rescan).into_iter().map(vst3).collect();
+        // the effects' scan opened whatever was new: this reads the same cache
+        let instruments: Vec<ScanEntry> = wave_vst3::scan_instruments(false).into_iter().map(vst3).collect();
         let mut unavailable = HashMap::new();
         if cfg!(target_os = "linux") {
             match wave_lv2::scan(rescan) {
@@ -190,15 +206,24 @@ impl Plugins {
                 }
             }
         }
-        let r = ScanResult { plugins, unavailable };
+        let r = ScanResult { plugins, instruments, unavailable };
         *self.known.lock() = Some(r.clone());
         r
     }
 
-    /// A scanned plugin: from the last scan, else a scan that opens nothing new.
+    /// A scanned effect: from the last scan, else a scan that opens nothing new.
     pub fn info(&self, format: &str, path: &str, cid: &str) -> Option<ScanEntry> {
+        self.find(format, path, cid, |r| &r.plugins)
+    }
+
+    /// A scanned instrument (VST3): from the last scan, else a scan that opens nothing new.
+    pub fn instrument(&self, path: &str, cid: &str) -> Option<ScanEntry> {
+        self.find(PluginRef::VST3, path, cid, |r| &r.instruments)
+    }
+
+    fn find(&self, format: &str, path: &str, cid: &str, list: fn(&ScanResult) -> &Vec<ScanEntry>) -> Option<ScanEntry> {
         let find = |r: &ScanResult| {
-            r.plugins
+            list(r)
                 .iter()
                 .find(|p| {
                     p.format == format
@@ -216,11 +241,18 @@ impl Plugins {
     }
 
     fn handle(&self, fx: Id) -> Result<Handle, String> {
-        self.handles.lock().get(&fx).cloned().ok_or_else(|| format!("effect {fx} is not a loaded plugin"))
+        self.handles.lock().get(&fx).cloned().ok_or_else(|| format!("{fx} is not a loaded plugin effect or instrument"))
     }
 
     pub fn params(&self, fx: Id) -> Result<Vec<ParamInfo>, String> {
         Ok(self.handle(fx)?.params())
+    }
+
+    /// A live plugin's current state (base64, as a project stores it): what a copy of the
+    /// effect or instrument channel needs to sound the same before the project is saved.
+    pub fn state(&self, fx: Id) -> Result<String, String> {
+        let b = self.handle(fx)?.state()?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(b))
     }
 
     pub fn set_param(&self, fx: Id, id: u32, v: f64) -> Result<(), String> {

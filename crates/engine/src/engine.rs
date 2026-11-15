@@ -26,6 +26,20 @@ use crate::sources::{write_wav, Audio, SourceStore};
 pub trait PluginFactory: Send + Sync {
     /// `live` is false for offline renders: the factory must not replace the live instance's handle.
     fn create(&self, fx_id: Id, plugin: &PluginRef, sample_rate: f32, max_block: usize, live: bool) -> Result<Box<dyn Processor>, String>;
+    /// A plugin instrument for channel `chan_id`, prepared for `sample_rate` / `max_block`.
+    /// `live` as for [`PluginFactory::create`] (false: an offline render's own instance, in
+    /// offline processing mode). [`PluginFactory::release`] and [`PluginFactory::state`] take
+    /// the channel id for it (ids are unique across effects and channels).
+    fn create_instrument(
+        &self,
+        _chan_id: Id,
+        plugin: &PluginRef,
+        _sample_rate: f32,
+        _max_block: usize,
+        _live: bool,
+    ) -> Result<Box<dyn crate::processor::Instrument>, String> {
+        Err(format!("{} cannot be loaded: this build has no plugin host", plugin.name))
+    }
     /// The effect left the project (or the engine is rebuilding everything).
     fn release(&self, _fx_id: Id) {}
     /// Current opaque state of a live instance (base64), for saving.
@@ -294,6 +308,10 @@ struct Core {
     midi: MidiState,
     /// Synth channels the audio thread holds an instance for, with the patch it was last sent.
     synths: HashMap<Id, crate::poly::Patch>,
+    /// Plugin-instrument channels an instance was made for (or failed to be: the error is in
+    /// `fx_errors`), with the plugin it hosts. A failed one is retried when its plugin changes
+    /// or the audio device is rebuilt, not on every edit.
+    plugs: HashMap<Id, PluginRef>,
     /// The WAVE Keys piano, once the app has loaded it.
     keys: Option<Arc<crate::keys::KeysBank>>,
 }
@@ -384,6 +402,7 @@ impl Engine {
                 audition: HashMap::new(),
                 midi: MidiState::default(),
                 synths: HashMap::new(),
+                plugs: HashMap::new(),
                 keys: None,
             }),
             shared: Mutex::new(Arc::new(Shared::new())),
@@ -488,6 +507,7 @@ impl Engine {
         c.sent_params.clear();
         c.sent_maps.clear();
         c.synths.clear();
+        self.forget_plugs(&mut c);
         // the old stream is gone: keep what it captured instead of orphaning the take
         self.finalize_take(&mut c);
         c.wires = Some(Wires {
@@ -1838,6 +1858,8 @@ impl Engine {
         c.revision += 1;
         c.saved_revision = c.revision;
         c.fx_errors.clear();
+        // another project's channel may reuse an id: its plugin instruments start fresh
+        self.forget_plugs(&mut c);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
     }
@@ -1975,6 +1997,8 @@ impl Engine {
         c.revision += 1;
         c.saved_revision = c.revision;
         c.fx_errors.clear();
+        // another project's channel may reuse an id: its plugin instruments start fresh
+        self.forget_plugs(&mut c);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
         Ok(warnings)
@@ -2163,6 +2187,17 @@ impl Engine {
                 let _ = cmd_tx.push(Cmd::SynthAdd(Box::new(crate::poly::SynthInst::new(ch.id, crate::poly::params::resolve(synth), sr))));
             }
         }
+        // plugin instruments: the render's own instances, from the saved state, in offline mode
+        for ch in &project.channels {
+            if let ChannelSrc::Plugin { plugin } = &ch.src {
+                match self.factory.create_instrument(ch.id, plugin, sr, block, false) {
+                    Ok(inst) => {
+                        let _ = cmd_tx.push(Cmd::PlugAdd(Box::new(crate::plug::PlugInst::new(ch.id, inst, block))));
+                    }
+                    Err(e) => log::warn!("render: plugin instrument '{}' is silent: {e}", plugin.name),
+                }
+            }
+        }
         let _ = cmd_tx.push(Cmd::Timeline(Box::new(tl)));
         let _ = cmd_tx.push(Cmd::Play { from, count_in: 0.0, rec: false, rec_loop: false });
         let spb = 60.0 / project.bpm;
@@ -2241,6 +2276,16 @@ impl Engine {
 
     // ------------------------------------------------------------ internals
 
+    /// Drops every plugin-instrument instance (the next sync makes new ones from the saved
+    /// states). The audio thread's are removed by command (a rebuilt stream has none).
+    fn forget_plugs(&self, c: &mut Core) {
+        for id in c.plugs.drain().map(|(id, _)| id).collect::<Vec<_>>() {
+            self.factory.release(id);
+            c.fx_errors.remove(&id);
+            send(c, Cmd::PlugRemove(id));
+        }
+    }
+
     fn snapshot_plugin_states(&self, project: &mut Project) {
         let factory = &self.factory;
         for m in project.inserts.iter_mut() {
@@ -2249,6 +2294,13 @@ impl Engine {
                     if let Some(st) = factory.state(f.id) {
                         pl.state = Some(st);
                     }
+                }
+            }
+        }
+        for ch in project.channels.iter_mut() {
+            if let ChannelSrc::Plugin { plugin } = &mut ch.src {
+                if let Some(st) = factory.state(ch.id) {
+                    plugin.state = Some(st);
                 }
             }
         }
@@ -2261,6 +2313,7 @@ impl Engine {
         let (sr, max_block) = (w.sr, w.max_block);
         // synth instances first, so a new timeline never plays a channel without one
         sync_synths(c, sr);
+        sync_plugs(c, sr, max_block, &*self.factory);
         // a take's alignment assumes the latency at its start: hold latency changes back
         let defer = d.mixer && c.take.as_ref().is_some_and(|t| t.pdc != playback_latency_with(&c.project, sr, &c.plugin_lat));
         c.graph_deferred |= defer;
@@ -2788,7 +2841,7 @@ fn sample_audio(store: &SourceStore, chans: &[Channel]) -> HashMap<Id, Arc<Audio
         .iter()
         .filter_map(|c| match c.src {
             ChannelSrc::Sample { source, .. } => store.get(source).map(|a| (source, a.clone())),
-            ChannelSrc::Synth { .. } | ChannelSrc::Keys { .. } => None,
+            ChannelSrc::Synth { .. } | ChannelSrc::Keys { .. } | ChannelSrc::Plugin { .. } => None,
         })
         .collect()
 }
@@ -2886,6 +2939,45 @@ fn sync_synths(c: &mut Core, sr: f32) {
             }
             _ => {}
         }
+    }
+}
+
+/// Brings the audio thread's plugin instruments in line with the project's plugin channels:
+/// a new channel (or one whose plugin changed) gets an instance made here, off the audio
+/// thread, from its saved state; a removed one is released. A plugin that does not load
+/// leaves its channel silent with an `fx_errors` entry under the channel id; the channel and
+/// its saved state stay in the project.
+fn sync_plugs(c: &mut Core, sr: f32, max_block: usize, factory: &dyn PluginFactory) {
+    let gone: Vec<Id> = c
+        .plugs
+        .iter()
+        .filter(|(id, had)| !c.project.channel(**id).and_then(Channel::plugin).is_some_and(|p| p.same_class(had)))
+        .map(|(id, _)| *id)
+        .collect();
+    for id in gone {
+        c.plugs.remove(&id);
+        c.fx_errors.remove(&id);
+        factory.release(id);
+        send(c, Cmd::PlugRemove(id));
+    }
+    let want: Vec<(Id, PluginRef)> = c
+        .project
+        .channels
+        .iter()
+        .filter_map(|ch| ch.plugin().filter(|_| !c.plugs.contains_key(&ch.id)).map(|p| (ch.id, p.clone())))
+        .collect();
+    for (id, plugin) in want {
+        match factory.create_instrument(id, &plugin, sr, max_block, true) {
+            Ok(inst) => {
+                c.fx_errors.remove(&id);
+                send(c, Cmd::PlugAdd(Box::new(crate::plug::PlugInst::new(id, inst, max_block))));
+            }
+            Err(e) => {
+                log::warn!("plugin instrument '{}' did not load: {e}", plugin.name);
+                c.fx_errors.insert(id, e);
+            }
+        }
+        c.plugs.insert(id, plugin);
     }
 }
 
@@ -3109,6 +3201,7 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
                 ChannelSrc::Sample { source, .. } => (crate::synth::VoiceKind::Sample, audio.get(&source).cloned()),
                 ChannelSrc::Synth { .. } => (crate::synth::VoiceKind::Synth, None),
                 ChannelSrc::Keys { .. } => (crate::synth::VoiceKind::Keys, None),
+                ChannelSrc::Plugin { .. } => (crate::synth::VoiceKind::Plugin, None),
             };
             let ks = match c.src {
                 ChannelSrc::Keys { keys: k } => Some(k),

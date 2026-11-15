@@ -464,6 +464,14 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     return Err(OpError::Invalid("keys dynamics must be 0..100 %".into()));
                 }
             }
+            if let ChannelSrc::Plugin { plugin } = &c.src {
+                if plugin.format != PluginRef::VST3 {
+                    return Err(OpError::Invalid(format!("{} instruments are not supported (VST3 only)", plugin.format_label())));
+                }
+                if plugin.cid.trim().is_empty() || plugin.path.trim().is_empty() {
+                    return Err(OpError::Invalid("a plugin instrument needs the plugin's path and class id".into()));
+                }
+            }
             if let Some(ins) = c.insert {
                 if p.insert(ins).is_none() {
                     return Err(OpError::Missing { what: "insert", id: ins });
@@ -475,7 +483,12 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     let x = &p.channels[i];
                     // knobs and mute/solo take the fast path; what a note plays or where it goes rebuilds
                     // a synth's sound (its parameters) takes the fast path too
-                    let same_kind = matches!((&x.src, &c.src), (ChannelSrc::Synth { .. }, ChannelSrc::Synth { .. }));
+                    let same_kind = match (&x.src, &c.src) {
+                        (ChannelSrc::Synth { .. }, ChannelSrc::Synth { .. }) => true,
+                        // a plugin's saved state is not what its notes play: the live instance is
+                        (ChannelSrc::Plugin { plugin: a }, ChannelSrc::Plugin { plugin: b }) => a.same_class(b),
+                        _ => false,
+                    };
                     // (a piano's knobs are read from the channel table, which the timeline carries)
                     if (x.src != c.src && !same_kind) || x.insert != c.insert || x.root != c.root {
                         d.timeline = true;

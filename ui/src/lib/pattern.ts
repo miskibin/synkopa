@@ -131,6 +131,10 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, adopt: <T ex
         if (!(c.keys?.release >= KEYS_RELEASE.min && c.keys.release <= KEYS_RELEASE.max)) fail(`keys release must be ${KEYS_RELEASE.min}..${KEYS_RELEASE.max} ms`);
         if (!(c.keys.dynamics >= 0 && c.keys.dynamics <= 100)) fail('keys dynamics must be 0..100 %');
       }
+      if (c.kind === 'plugin') {
+        if (c.plugin?.format !== 'vst3') fail(`${c.plugin?.format === 'lv2' ? 'LV2' : 'these'} instruments are not supported (VST3 only)`);
+        if (!c.plugin.cid?.trim() || !c.plugin.path?.trim()) fail("a plugin instrument needs the plugin's path and class id");
+      }
       if (c.insert != null && !p.inserts.some(m => m.id === c.insert)) fail(`no insert with id ${c.insert}`);
       const chans = p.channels ?? (p.channels = []);
       bump(p, c.id);

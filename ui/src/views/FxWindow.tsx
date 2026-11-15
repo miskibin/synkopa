@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
 import { be } from '../api/backend';
-import { PLUGIN_FORMAT_LABEL, type Fx, type FxKind, type Id, type ParamDef, type PluginParam } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, type Fx, type FxKind, type Id, type ParamDef, type PluginParam, type PluginRef } from '../api/types';
 import { sliderStep } from '../lib/pluginParam';
 import { clamp } from '../lib/format';
 import { lang, t, tName, type TranslationKey } from '../lib/i18n';
@@ -8,7 +8,7 @@ import { NOTE_NAMES } from '../lib/pitch';
 import { knobVal, paramDefs, pFmt, pNorm, presetInfo, presetList } from '../lib/presets';
 import { noteName, stepBeats } from '../lib/beatDiv';
 import * as A from '../state/actions';
-import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
+import { autoDisplay, controlMenu, isAutomated, paramMenu } from '../state/automation';
 import type { AutoTarget } from '../api/types';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { findFx, insName, plain, S } from '../state/store';
@@ -126,7 +126,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
               </Show>
               <button class="closebtn" title={t('c.fx.close')} onClick={() => A.closePlug(fx().id)}>×</button>
             </div>
-            <Show when={!isVst()} fallback={<PluginBody fx={fx()} />}>
+            <Show when={!isVst()} fallback={<PluginBody id={fx().id} plugin={fx().plugin} />}>
               <Show when={fx().type === 'eq'} fallback={<VizCanvas fxId={props.pw.fxId} pw={props.pw} height={VIZ_H[fx().type] ?? 190} />}>
                 {/* EQ: band bank beside the graph, like FL Parametric EQ 2 */}
                 <div class="eqmain">
@@ -651,27 +651,31 @@ const nearestOption = (p: PluginParam) =>
 const paramTitle = (p: PluginParam) =>
   p.min != null && p.max != null && !p.toggle && !p.options?.length ? `${p.name} (${+p.min.toPrecision(6)} … ${+p.max.toPrecision(6)}${p.unit ? ' ' + p.unit : ''})` : p.name;
 
-/** A hosted plugin's window: its editor button (VST3 on Windows) and the generic parameter list (every format). */
-function PluginBody(props: { fx: Fx }) {
+/**
+ * A hosted plugin's controls: its editor button (VST3 on Windows) and the generic parameter list (every format).
+ * `id` is the effect's id, or with `instrument` a plugin-instrument channel's (its parameters cannot be automated yet,
+ * and a plugin that did not load leaves the channel silent rather than passing audio through).
+ */
+export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boolean }) {
   const [params, setParams] = createSignal<PluginParam[]>([]);
   const [err, setErr] = createSignal<string | null>(null);
   const [guiOpen, setGuiOpen] = createSignal(false);
   // VST3 editor windows exist on Windows only; LV2 editors are not hosted: there the list is the plugin's UI
   const [editors, setEditors] = createSignal(true);
-  const isLv2 = () => props.fx.plugin?.format === 'lv2';
+  const isLv2 = () => props.plugin?.format === 'lv2';
   const [q, setQ] = createSignal('');
   let refresh = 0;
-  const load = () => be().pluginParams(props.fx.id).then(p => { setParams(p); setErr(null); }).catch(e => setErr(String(e)));
+  const load = () => be().pluginParams(props.id).then(p => { setParams(p); setErr(null); }).catch(e => setErr(String(e)));
   /** Why the engine could not load the plugin (not installed, refused): shown instead of a parameter error. */
-  const loadErr = () => S.fxErrors[props.fx.id];
+  const loadErr = () => S.fxErrors[props.id];
   onMount(() => { load(); be().appInfo().then(i => setEditors(i.pluginEditors)).catch(() => {}); });
   // a window opened with the slot is asked before the engine has the instance: ask again once it does
   createEffect(() => { void S.revision; if (err() && !loadErr()) load(); });
-  onCleanup(() => { clearTimeout(refresh); if (guiOpen()) void be().pluginEditor(props.fx.id, false).catch(() => {}); });
-  const label = () => PLUGIN_FORMAT_LABEL[props.fx.plugin?.format ?? 'vst3'];
+  onCleanup(() => { clearTimeout(refresh); if (guiOpen()) void be().pluginEditor(props.id, false).catch(() => {}); });
+  const label = () => PLUGIN_FORMAT_LABEL[props.plugin?.format ?? 'vst3'];
   const set = (id: number, v: number) => {
     setParams(ps => ps.map(p => p.id === id ? { ...p, value: v } : p));
-    void be().pluginSetParam(props.fx.id, id, v).catch(e => say(label() + ': ' + String(e)));
+    void be().pluginSetParam(props.id, id, v).catch(e => say(label() + ': ' + String(e)));
     clearTimeout(refresh); refresh = window.setTimeout(load, 200);
   };
   const shown = () => { const s = q().toLowerCase(); return params().filter(p => !s || p.name.toLowerCase().includes(s) || (p.symbol ?? '').toLowerCase().includes(s)); };
@@ -681,21 +685,22 @@ function PluginBody(props: { fx: Fx }) {
         <Show when={editors() && !isLv2()} fallback={<span class="note" style={{ flex: 'none' }} title={isLv2() ? t('c.fx.guiNoneLv2') : t('c.fx.guiNone')}>{t('c.fx.guiNoneShort')}</span>}>
           <button class="smallbtn primary" style={{ height: '26px', padding: '0 12px' }} onClick={() => {
             const open = !guiOpen();
-            be().pluginEditor(props.fx.id, open).then(() => setGuiOpen(open)).catch(e => say(t('c.fx.guiFail', { e: String(e) })));
+            be().pluginEditor(props.id, open).then(() => setGuiOpen(open)).catch(e => say(t('c.fx.guiFail', { e: String(e) })));
           }}>{guiOpen() ? t('c.fx.guiClose') : t('c.fx.guiOpen')}</button>
         </Show>
         <span class="fxp-badge" style={{ flex: 'none' }}>{label()}</span>
-        <span class="note ell" style={{ flex: 1 }} title={props.fx.plugin?.cid}>{[props.fx.plugin?.vendor, props.fx.plugin?.path || props.fx.plugin?.cid].filter(Boolean).join(' · ')}</span>
+        <span class="note ell" style={{ flex: 1 }} title={props.plugin?.cid}>{[props.plugin?.vendor, props.plugin?.path || props.plugin?.cid].filter(Boolean).join(' · ')}</span>
       </div>
       <input class="textin" placeholder={t('c.fx.searchParam')} value={q()} onInput={e => setQ(e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
-      <Show when={loadErr() ?? err()}>{e => <span class="note err">{loadErr() ? t('c.fx.pluginNotLoaded', { e: e() }) : e()}</span>}</Show>
+      <Show when={loadErr() ?? err()}>{e => <span class="note err">{loadErr() ? t(props.instrument ? 'c.fx.instNotLoaded' : 'c.fx.pluginNotLoaded', { e: e() }) : e()}</span>}</Show>
       <div style={{ 'max-height': '320px', overflow: 'auto', 'padding-right': '4px' }}>
         <For each={shown()} fallback={<span class="note">{t('c.fx.noParams')}</span>}>
           {p => {
-            const target: AutoTarget = { kind: 'plugin', fxId: props.fx.id, paramId: p.id };
+            const target: AutoTarget = { kind: 'plugin', fxId: props.id, paramId: p.id };
             return (
               <div class="vparam" onContextMenu={e => { e.preventDefault(); e.stopPropagation();
-                paramMenu(e.clientX, e.clientY, target, () => set(p.id, p.def), undefined, { current: p.value, paramLabel: p.name });
+                if (!props.instrument) paramMenu(e.clientX, e.clientY, target, () => set(p.id, p.def), undefined, { current: p.value, paramLabel: p.name });
+                else controlMenu(e.clientX, e.clientY, p.name, () => set(p.id, p.def), t('c.fx.instNoAuto'));
               }}>
                 <span class="ell" style={{ font: '12px var(--sans)', color: 'var(--fg)' }} title={paramTitle(p)}>{p.name}</span>
                 <Show when={p.options?.length} fallback={
@@ -711,8 +716,8 @@ function PluginBody(props: { fx: Fx }) {
                     <For each={p.options}>{(o, oi) => <option value={String(oi())}>{o.label}</option>}</For>
                   </select>
                 </Show>
-                <span class="mono ell" style={{ 'font-size': '10px', color: 'var(--fg2)', 'text-align': 'right' }} title={isAutomated(target) ? t('d.ui.knob.auto') : p.display}>
-                  <Show when={isAutomated(target)}>● </Show>{p.display}
+                <span class="mono ell" style={{ 'font-size': '10px', color: 'var(--fg2)', 'text-align': 'right' }} title={!props.instrument && isAutomated(target) ? t('d.ui.knob.auto') : p.display}>
+                  <Show when={!props.instrument && isAutomated(target)}>● </Show>{p.display}
                 </span>
               </div>
             );

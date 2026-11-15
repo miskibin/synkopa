@@ -61,6 +61,7 @@ PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and
   channels                                 Channel Rack: ids, instrument/sample, volume, pan, insert
   channels --add kick-808|snare|marimba…   add a sampler of a standard-library sample (--sample SOURCE_ID: of a project source)
   channels --keys                          add WAVE Keys, the sampled grand piano
+  channels --plugin "NAME|CID"             add a scanned VST3 instrument (name, start of a name, or class id)
   channels --synth "PRESET"                add a synth channel ("" = blank patch); --ch C --preset NAME loads one
   channels --ch C --param ID --value V     one knob of a synth (ids in `catalog`) or of WAVE Keys (release ms, dynamics %)
   channels --remove ID|NAME                remove a channel and its notes
@@ -140,11 +141,11 @@ PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come fr
             [--model rmvpe.onnx | --yin] [same options as tune-ref]   headless; needs no running app
 
 PLUGINS  (VST3 everywhere, LV2 on Linux)
-  plugins [--rescan]                       installed effects of every format ({plugins, unavailable})
+  plugins [--rescan]                       installed effects of every format and VST3 instruments ({plugins, instruments, unavailable})
   plugin-add --insert ID --cid C [--format vst3|lv2] [--path P]
                                            put a plugin on an insert (VST3: --path and class id;
                                            LV2: --cid is the plugin URI)
-  plugin-params --fx ID [--query TEXT]     parameters of a plugin instance (LV2: real range and unit too)
+  plugin-params --fx ID [--query TEXT]     parameters of a plugin instance: an effect, or a plugin channel by its id (LV2: real range and unit too)
   plugin-set --fx ID --id PARAM --value 0..1
   vst3 [--rescan] | vst3-add | vst3-params | vst3-set    the same, VST3 only (older names)
   auto-add --fx ID --param ID [--points "0:0.2,4:0.8" | --value V] [--track N --name TEXT]
@@ -701,6 +702,9 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             }
             if a.has("synth") {
                 args["synth"] = json!(a.get("synth").unwrap_or(""));
+            }
+            if let Some(v) = a.get("plugin") {
+                args["plugin"] = json!(v);
             }
             if let Some(c) = a.get("ch") {
                 args["ch"] = id_or_name(c);

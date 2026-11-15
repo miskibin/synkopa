@@ -305,6 +305,12 @@ impl PluginRef {
             _ => "VST3",
         }
     }
+
+    /// Whether `other` names the same plugin class (state aside): an instance of one can
+    /// stand for the other.
+    pub fn same_class(&self, other: &PluginRef) -> bool {
+        self.format == other.format && self.path == other.path && self.cid == other.cid
+    }
 }
 
 /// MIDI key at which a sampler channel plays its sample unpitched (C5 in FL's naming).
@@ -334,6 +340,9 @@ pub enum ChannelSrc {
         #[serde(default)]
         keys: KeysState,
     },
+    /// A hosted plugin instrument (VST3): its notes, live keys and auditions go to one
+    /// instance of the plugin, whose stereo output plays like any channel's.
+    Plugin { plugin: PluginRef },
 }
 
 /// How a sampler channel plays its sample (FL Studio's Sampler, Ableton's Simpler).
@@ -539,6 +548,13 @@ impl Channel {
     pub fn sample_source(&self) -> Option<Id> {
         match self.src {
             ChannelSrc::Sample { source, .. } => Some(source),
+            _ => None,
+        }
+    }
+    /// The plugin a plugin-instrument channel hosts.
+    pub fn plugin(&self) -> Option<&PluginRef> {
+        match &self.src {
+            ChannelSrc::Plugin { plugin } => Some(plugin),
             _ => None,
         }
     }

@@ -39,20 +39,22 @@ use std::sync::{Arc, Weak};
 use parking_lot::Mutex;
 use serde::Serialize;
 use vst3::Steinberg::Vst::{
-    AudioBusBuffers, AudioBusBuffers__type0, BusDirections_, BusInfo, IAudioProcessor, IAudioProcessorTrait, IComponent, IComponentHandler,
-    IComponentTrait, IConnectionPoint, IConnectionPointTrait, IEditController, IEditControllerTrait, IEventList, IParameterChanges,
-    MediaTypes_, ParamID, ParameterInfo, ParameterInfo_::ParameterFlags_, ProcessContext, ProcessContext_, ProcessData, ProcessModes_,
-    ProcessSetup, SpeakerArr, SpeakerArrangement, String128, SymbolicSampleSizes_,
+    AudioBusBuffers, AudioBusBuffers__type0, BusDirections_, BusInfo, Event, Event_::EventTypes_, IAudioProcessor, IAudioProcessorTrait,
+    IComponent, IComponentHandler, IComponentTrait, IConnectionPoint, IConnectionPointTrait, IEditController, IEditControllerTrait,
+    IEventList, IMidiMapping, IMidiMappingTrait, IParameterChanges, MediaTypes_, NoteOffEvent, NoteOnEvent, ParamID, ParameterInfo,
+    ParameterInfo_::ParameterFlags_, ProcessContext, ProcessContext_, ProcessData, ProcessModes_, ProcessSetup, SpeakerArr,
+    SpeakerArrangement, String128, SymbolicSampleSizes_,
 };
 use vst3::Steinberg::{
     kNotImplemented, kResultOk, kResultTrue, IBStream, IPluginBaseTrait, IPluginFactory3, IPluginFactory3Trait, IPluginFactoryTrait, TUID,
 };
 use vst3::{ComPtr, ComWrapper};
-use wave_engine::{ProcessCtx, Processor};
+use wave_engine::{InstEvent, InstMsg, Instrument, ProcessCtx, Processor, MAX_INST_EVENTS};
 
 use crate::editor::EditorSession;
 use crate::host::{
-    host_context_ptr, Counters, EmptyEventList, GuiRequests, HostContext, HostFlags, MemoryStream, ParamMailbox, ParameterChanges,
+    host_context_ptr, Counters, EmptyEventList, GuiRequests, HostContext, HostFlags, MemoryStream, NoteEventList, ParamMailbox,
+    ParameterChanges,
 };
 use crate::module::{utf16_to_string, ClassId, Module};
 use crate::scan::{read_classes, PluginInfo};
@@ -83,14 +85,53 @@ pub struct ParamInfo {
 // Bus layout
 // ---------------------------------------------------------------------------
 
-/// Channel count of every audio bus, per direction.
+/// What an instance is hosted as.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Role {
+    /// A stereo insert effect (audio in, audio out).
+    Effect,
+    /// A Channel Rack instrument (events in, audio out).
+    Instrument,
+}
+
+/// Channel count of every audio bus, per direction, and the event inputs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct BusLayout {
     pub(crate) inputs: Vec<u32>,
     pub(crate) outputs: Vec<u32>,
+    /// Event input buses (notes reach bus 0).
+    pub(crate) event_inputs: u32,
 }
 
 impl BusLayout {
+    pub(crate) fn check(&self, role: Role) -> Result<(), String> {
+        match role {
+            Role::Effect => self.check_stereo_effect(),
+            Role::Instrument => self.check_instrument(),
+        }
+    }
+
+    /// `Ok` for an instrument: an event input, a mono or stereo main output, and at most a
+    /// few extra buses (side-chain inputs are fed silence, extra outputs discarded).
+    pub(crate) fn check_instrument(&self) -> Result<(), String> {
+        if self.event_inputs == 0 {
+            return Err("it takes no notes (no event input)".to_owned());
+        }
+        let Some(&main_out) = self.outputs.first() else {
+            return Err("it has no audio output".to_owned());
+        };
+        if !(1..=2).contains(&main_out) {
+            return Err(format!("its main output has {main_out} channels, not mono or stereo"));
+        }
+        if self.inputs.len() > MAX_BUSES
+            || self.outputs.len() > MAX_BUSES
+            || self.inputs.iter().chain(&self.outputs).any(|count| *count > MAX_BUS_CHANNELS)
+        {
+            return Err("it declares more buses or channels than a channel supports".to_owned());
+        }
+        Ok(())
+    }
+
     /// `Ok` for the shape of a stereo insert effect: a stereo main input and
     /// a stereo main output, plus at most a few extra (side-chain) buses.
     pub(crate) fn check_stereo_effect(&self) -> Result<(), String> {
@@ -131,7 +172,8 @@ fn read_bus_layout(component: &ComPtr<IComponent>) -> BusLayout {
                 })
                 .collect()
         };
-        BusLayout { inputs: read(BusDirections_::kInput as i32), outputs: read(BusDirections_::kOutput as i32) }
+        let event_inputs = component.getBusCount(MediaTypes_::kEvent as i32, BusDirections_::kInput as i32).clamp(0, 64) as u32;
+        BusLayout { inputs: read(BusDirections_::kInput as i32), outputs: read(BusDirections_::kOutput as i32), event_inputs }
     }
 }
 
@@ -156,6 +198,9 @@ pub(crate) struct Instance {
     single_component: bool,
     active: bool,
     layout: BusLayout,
+    role: Role,
+    /// Activated for offline processing (a render's own instance).
+    offline: bool,
     name: String,
     _module: Arc<Module>,
 }
@@ -181,7 +226,14 @@ impl Instance {
 
     /// Create and initialise the plugin class `cid` of the module at `path`,
     /// restore `state`, and check it is a stereo effect. Not yet active.
-    fn create(path: &Path, cid: ClassId, state: Option<&[u8]>, flags: Arc<HostFlags>) -> Result<(Self, PluginInfo), Vst3Error> {
+    fn create(
+        path: &Path,
+        cid: ClassId,
+        state: Option<&[u8]>,
+        flags: Arc<HostFlags>,
+        role: Role,
+        offline: bool,
+    ) -> Result<(Self, PluginInfo), Vst3Error> {
         let module = Module::shared(path)?;
         let class = read_classes(module.factory(), path)
             .into_iter()
@@ -220,6 +272,8 @@ impl Instance {
             single_component: true,
             active: false,
             layout: BusLayout::default(),
+            role,
+            offline,
             name: name.clone(),
             _module: Arc::clone(&module),
         };
@@ -272,7 +326,7 @@ impl Instance {
         let processor = component_processor(&instance, &name)?;
         instance.processor = Some(processor);
         instance.layout = read_bus_layout(instance.component());
-        instance.layout.check_stereo_effect().map_err(|message| Vst3Error::NotAStereoEffect { name: name.clone(), message })?;
+        instance.layout.check(role).map_err(|message| layout_error(role, &name, message))?;
         match state {
             Some(bytes) => instance.restore_state(bytes)?,
             None => instance.sync_controller_from_component(),
@@ -384,10 +438,12 @@ impl Instance {
         // SAFETY: live objects, the component is inactive, every pointer is to
         // a live local. This is the activation order VST3 requires.
         unsafe {
+            let role = self.role;
             let arrangements = |direction: i32, count: usize| -> Vec<SpeakerArrangement> {
                 (0..count)
                     .map(|index| {
-                        if index == 0 {
+                        // the main pair is stereo; an instrument's inputs are side-chains
+                        if index == 0 && (role == Role::Effect || direction == BusDirections_::kOutput as i32) {
                             return SpeakerArr::kStereo;
                         }
                         let mut current: SpeakerArrangement = 0;
@@ -404,10 +460,10 @@ impl Instance {
                 log::debug!("VST3 plugin '{name}' declined the stereo arrangement ({result:#x})");
             }
             let layout = read_bus_layout(&component);
-            layout.check_stereo_effect().map_err(|message| Vst3Error::NotAStereoEffect { name: name.clone(), message })?;
+            layout.check(self.role).map_err(|message| layout_error(self.role, &name, message))?;
 
             let mut setup = ProcessSetup {
-                processMode: ProcessModes_::kRealtime as i32,
+                processMode: process_mode(self.offline),
                 symbolicSampleSize: SymbolicSampleSizes_::kSample32 as i32,
                 maxSamplesPerBlock: max_samples,
                 sampleRate: sample_rate,
@@ -422,7 +478,18 @@ impl Instance {
                 [(BusDirections_::kInput as i32, layout.inputs.len()), (BusDirections_::kOutput as i32, layout.outputs.len())]
             {
                 for index in 0..count {
-                    let _ = component.activateBus(MediaTypes_::kAudio as i32, direction, index as i32, u8::from(index == 0));
+                    let main = index == 0 && (self.role == Role::Effect || direction == BusDirections_::kOutput as i32);
+                    let _ = component.activateBus(MediaTypes_::kAudio as i32, direction, index as i32, u8::from(main));
+                }
+            }
+            if self.role == Role::Instrument {
+                for index in 0..layout.event_inputs {
+                    let _ = component.activateBus(
+                        MediaTypes_::kEvent as i32,
+                        BusDirections_::kInput as i32,
+                        index as i32,
+                        u8::from(index == 0),
+                    );
                 }
             }
             let result = component.setActive(1);
@@ -498,11 +565,43 @@ impl Instance {
         unsafe { self.processor().getLatencySamples() }
     }
 
+    /// The parameter each MIDI controller (and pitch bend) of channel 1 on event bus 0 is
+    /// mapped to, from the controller's `IMidiMapping` (all `None` without one).
+    fn midi_controllers(&self) -> ControllerMap {
+        let mut map: ControllerMap = Box::new([None; CONTROLLERS]);
+        let Some(mapping) = self.controller.as_ref().and_then(ComPtr::cast::<IMidiMapping>) else {
+            return map;
+        };
+        for (number, slot) in map.iter_mut().enumerate() {
+            let mut id: ParamID = 0;
+            // SAFETY: live interface, scalar arguments, a live out-parameter.
+            if unsafe { mapping.getMidiControllerAssignment(0, 0, number as i16, &mut id) } == kResultTrue {
+                *slot = Some(id);
+            }
+        }
+        map
+    }
+
     fn set_controller_param(&self, id: ParamID, value: f64) {
         if let Some(controller) = self.controller.as_ref() {
             // SAFETY: live controller, scalar arguments.
             let _ = unsafe { controller.setParamNormalized(id, value) };
         }
+    }
+}
+
+fn layout_error(role: Role, name: &str, message: String) -> Vst3Error {
+    match role {
+        Role::Effect => Vst3Error::NotAStereoEffect { name: name.to_owned(), message },
+        Role::Instrument => Vst3Error::NotAnInstrument { name: name.to_owned(), message },
+    }
+}
+
+fn process_mode(offline: bool) -> i32 {
+    if offline {
+        ProcessModes_::kOffline as i32
+    } else {
+        ProcessModes_::kRealtime as i32
     }
 }
 
@@ -745,7 +844,7 @@ impl Vst3Effect {
         self.input_changes.fill(&self.shared.inbox, &mut self.unlisted);
         self.output_changes.clear();
 
-        let mut context = self.process_context(ctx, offset);
+        let mut context = process_context(self.sample_rate, self.continuous_samples, ctx, offset);
         let mut data = ProcessData {
             processMode: ProcessModes_::kRealtime as i32,
             symbolicSampleSize: SymbolicSampleSizes_::kSample32 as i32,
@@ -795,32 +894,31 @@ impl Vst3Effect {
             }
         });
     }
+}
 
-    /// Only what WAVE actually knows is marked valid: a plugin syncing to a
-    /// field the host left at zero is worse off than one told nothing.
-    fn process_context(&self, ctx: &ProcessCtx, offset: usize) -> ProcessContext {
-        // SAFETY: a plain aggregate of scalars; all-zero is a valid value.
-        let mut context: ProcessContext = unsafe { std::mem::zeroed() };
-        let sample_rate = self.sample_rate;
-        context.sampleRate = sample_rate;
-        context.continousTimeSamples = self.continuous_samples;
-        context.state = ProcessContext_::StatesAndFlags_::kContTimeValid as u32;
-        if ctx.bpm.is_finite() && ctx.bpm > 0.0 {
-            let beat = ctx.beat + offset as f64 / sample_rate * ctx.bpm / 60.0;
-            context.tempo = ctx.bpm;
-            context.projectTimeMusic = beat;
-            context.projectTimeSamples = (beat * 60.0 / ctx.bpm * sample_rate).round() as i64;
-            context.timeSigNumerator = 4;
-            context.timeSigDenominator = 4;
-            context.state |= ProcessContext_::StatesAndFlags_::kTempoValid as u32
-                | ProcessContext_::StatesAndFlags_::kProjectTimeMusicValid as u32
-                | ProcessContext_::StatesAndFlags_::kTimeSigValid as u32;
-        }
-        if ctx.playing {
-            context.state |= ProcessContext_::StatesAndFlags_::kPlaying as u32;
-        }
-        context
+/// The transport as VST3 sees it. Only what WAVE actually knows is marked valid: a plugin
+/// syncing to a field the host left at zero is worse off than one told nothing.
+fn process_context(sample_rate: f64, continuous_samples: i64, ctx: &ProcessCtx, offset: usize) -> ProcessContext {
+    // SAFETY: a plain aggregate of scalars; all-zero is a valid value.
+    let mut context: ProcessContext = unsafe { std::mem::zeroed() };
+    context.sampleRate = sample_rate;
+    context.continousTimeSamples = continuous_samples;
+    context.state = ProcessContext_::StatesAndFlags_::kContTimeValid as u32;
+    if ctx.bpm.is_finite() && ctx.bpm > 0.0 {
+        let beat = ctx.beat + offset as f64 / sample_rate * ctx.bpm / 60.0;
+        context.tempo = ctx.bpm;
+        context.projectTimeMusic = beat;
+        context.projectTimeSamples = (beat * 60.0 / ctx.bpm * sample_rate).round() as i64;
+        context.timeSigNumerator = 4;
+        context.timeSigDenominator = 4;
+        context.state |= ProcessContext_::StatesAndFlags_::kTempoValid as u32
+            | ProcessContext_::StatesAndFlags_::kProjectTimeMusicValid as u32
+            | ProcessContext_::StatesAndFlags_::kTimeSigValid as u32;
     }
+    if ctx.playing {
+        context.state |= ProcessContext_::StatesAndFlags_::kPlaying as u32;
+    }
+    context
 }
 
 impl Processor for Vst3Effect {
@@ -1099,6 +1197,51 @@ pub(crate) fn instantiate_effect(
     sample_rate: f32,
     max_block: usize,
 ) -> Result<(Vst3Effect, Vst3Handle), Vst3Error> {
+    let parts = create_parts(path, cid, state, sample_rate, max_block, Role::Effect, false)?;
+    let effect = Vst3Effect {
+        processor: parts.processor,
+        io: Io::new(&parts.layout, max_block),
+        input_changes: ParameterChanges::new(),
+        output_changes: ParameterChanges::new(),
+        events: EmptyEventList::new(),
+        unlisted: parts.unlisted,
+        sample_rate: parts.sample_rate,
+        max_block,
+        continuous_samples: 0,
+        failed: false,
+        shared: Arc::clone(&parts.shared),
+    };
+    Ok((effect, Vst3Handle { shared: parts.shared }))
+}
+
+/// MIDI controller numbers a plugin may map (`IMidiMapping`): 0..=127 plus the VST3
+/// pseudo-controllers up to pitch bend (129).
+pub(crate) const CONTROLLERS: usize = 130;
+/// VST3's controller number of pitch bend.
+const PITCH_BEND: usize = 129;
+
+/// Parameter each MIDI controller is mapped to.
+pub(crate) type ControllerMap = Box<[Option<ParamID>; CONTROLLERS]>;
+
+/// What creating any hosted instance yields.
+struct Parts {
+    shared: Arc<Shared>,
+    processor: ComPtr<IAudioProcessor>,
+    layout: BusLayout,
+    unlisted: rtrb::Consumer<(ParamID, f64)>,
+    controllers: ControllerMap,
+    sample_rate: f64,
+}
+
+fn create_parts(
+    path: &str,
+    cid: &str,
+    state: Option<&[u8]>,
+    sample_rate: f32,
+    max_block: usize,
+    role: Role,
+    offline: bool,
+) -> Result<Parts, Vst3Error> {
     let class_id = ClassId::from_hex(cid).ok_or_else(|| Vst3Error::InvalidClassId(cid.to_owned()))?;
     let path = std::path::PathBuf::from(path);
     let state = state.map(<[u8]>::to_vec);
@@ -1107,7 +1250,7 @@ pub(crate) fn instantiate_effect(
 
     let job_flags = Arc::clone(&flags);
     let created = main_thread::run("being instantiated", move || {
-        let (mut instance, info) = Instance::create(&path, class_id, state.as_deref(), job_flags)?;
+        let (mut instance, info) = Instance::create(&path, class_id, state.as_deref(), job_flags, role, offline)?;
         let layout = instance.activate(sample_rate, max_block)?;
         let (inbox, unlisted) = ParamMailbox::new(&instance.param_ids());
         let inbox = Arc::new(inbox);
@@ -1115,9 +1258,10 @@ pub(crate) fn instantiate_effect(
         let (feedback, _) = ParamMailbox::new(&instance.param_ids());
         let processor = instance.processor().clone();
         let latency = instance.latency();
-        Ok::<_, Vst3Error>((instance, info, layout, inbox, unlisted, feedback, processor, latency))
+        let controllers = if role == Role::Instrument { instance.midi_controllers() } else { Box::new([None; CONTROLLERS]) };
+        Ok::<_, Vst3Error>((instance, info, layout, inbox, unlisted, feedback, processor, latency, controllers))
     })??;
-    let (instance, info, layout, inbox, unlisted, feedback, processor, latency) = created;
+    let (instance, info, layout, inbox, unlisted, feedback, processor, latency, controllers) = created;
 
     let has_editor = instance.controller.is_some();
     let shared = Arc::new(Shared {
@@ -1134,20 +1278,236 @@ pub(crate) fn instantiate_effect(
     });
     // Restoring a state is not an edit.
     shared.flags.dirty.store(false, Ordering::Release);
-    let effect = Vst3Effect {
-        processor,
-        io: Io::new(&layout, max_block),
+    Ok(Parts { shared, processor, layout, unlisted, controllers, sample_rate })
+}
+
+// ---------------------------------------------------------------------------
+// Instruments
+// ---------------------------------------------------------------------------
+
+/// A hosted VST3 instrument on the audio thread: a Channel Rack channel's sound. Implements
+/// [`wave_engine::Instrument`]; get one from [`instantiate_instrument`].
+///
+/// [`process`](Instrument::process) is real-time safe like [`Vst3Effect`]'s: the block's
+/// notes go into a preallocated `IEventList` (note on/off with their sample offsets and
+/// note ids), MIDI controllers and pitch bend become sample-accurate points of the
+/// parameters the plugin maps them to (`IMidiMapping`; unmapped ones are dropped), the
+/// parameter mailbox is drained as for an effect, and the main output is copied out (a mono
+/// output to both sides). Audio inputs (side-chains) read silence, extra outputs are
+/// discarded. If the plugin reports an error for a block, that block is silent.
+pub struct Vst3Instrument {
+    processor: ComPtr<IAudioProcessor>,
+    io: Io,
+    input_changes: ComWrapper<ParameterChanges>,
+    output_changes: ComWrapper<ParameterChanges>,
+    events: ComWrapper<NoteEventList>,
+    unlisted: rtrb::Consumer<(ParamID, f64)>,
+    controllers: ControllerMap,
+    sample_rate: f64,
+    max_block: usize,
+    continuous_samples: i64,
+    offline: bool,
+    failed: bool,
+    shared: Arc<Shared>,
+}
+
+// SAFETY: as for `Vst3Effect`.
+unsafe impl Send for Vst3Instrument {}
+
+/// The VST3 event for a note message (`None` for controllers, which travel as parameters).
+pub(crate) fn note_event(offset: u32, msg: InstMsg) -> Option<Event> {
+    // SAFETY: a plain aggregate of scalars and a union of them; all-zero is a valid value.
+    let mut event: Event = unsafe { std::mem::zeroed() };
+    event.busIndex = 0;
+    event.sampleOffset = offset as i32;
+    match msg {
+        InstMsg::NoteOn { key, vel, id } => {
+            event.r#type = EventTypes_::kNoteOnEvent as u16;
+            event.__field0.noteOn = NoteOnEvent { channel: 0, pitch: i16::from(key), tuning: 0.0, velocity: vel, length: 0, noteId: id };
+        }
+        InstMsg::NoteOff { key, id } => {
+            event.r#type = EventTypes_::kNoteOffEvent as u16;
+            event.__field0.noteOff = NoteOffEvent { channel: 0, pitch: i16::from(key), velocity: 0.0, noteId: id, tuning: 0.0 };
+        }
+        InstMsg::Control { .. } | InstMsg::Bend(_) => return None,
+    }
+    Some(event)
+}
+
+impl Vst3Instrument {
+    /// One plugin call over `l.len()` frames starting at `offset` in the host block; of the
+    /// host block's sorted `events`, those inside this chunk are delivered.
+    fn run_block(&mut self, events: &[InstEvent], l: &mut [f32], r: &mut [f32], ctx: &ProcessCtx, offset: usize) {
+        let frames = l.len();
+        for buffer in &mut self.io.main_in {
+            buffer[..frames].fill(0.0);
+        }
+        self.io.silence[..frames].fill(0.0);
+        self.io.wire();
+        self.input_changes.fill(&self.shared.inbox, &mut self.unlisted);
+        self.output_changes.clear();
+        self.events.clear();
+        let (from, to) = (offset as u32, (offset + frames) as u32);
+        for e in events.iter().filter(|e| e.offset >= from && e.offset < to) {
+            let at = e.offset - from;
+            let mapped = match e.msg {
+                InstMsg::Control { cc, value } => Some((usize::from(cc), value)),
+                InstMsg::Bend(value) => Some((PITCH_BEND, value)),
+                _ => None,
+            };
+            match mapped {
+                Some((controller, value)) => {
+                    if let Some(id) = self.controllers.get(controller).copied().flatten() {
+                        let _ = self.input_changes.add_point(id, at as i32, f64::from(value.clamp(0.0, 1.0)));
+                    }
+                }
+                None => {
+                    if let Some(event) = note_event(at, e.msg) {
+                        if !self.events.push(event) {
+                            self.shared.counters.events_dropped.fetch_add(1, Ordering::Relaxed);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut context = process_context(self.sample_rate, self.continuous_samples, ctx, offset);
+        let mut data = ProcessData {
+            processMode: process_mode(self.offline),
+            symbolicSampleSize: SymbolicSampleSizes_::kSample32 as i32,
+            numSamples: frames as i32,
+            numInputs: self.io.in_buses.len() as i32,
+            numOutputs: self.io.out_buses.len() as i32,
+            inputs: self.io.in_buses.as_mut_ptr(),
+            outputs: self.io.out_buses.as_mut_ptr(),
+            inputParameterChanges: self
+                .input_changes
+                .as_com_ref::<IParameterChanges>()
+                .map_or(std::ptr::null_mut(), |changes| changes.as_ptr()),
+            outputParameterChanges: self
+                .output_changes
+                .as_com_ref::<IParameterChanges>()
+                .map_or(std::ptr::null_mut(), |changes| changes.as_ptr()),
+            inputEvents: self.events.as_com_ref::<IEventList>().map_or(std::ptr::null_mut(), |events| events.as_ptr()),
+            outputEvents: std::ptr::null_mut(),
+            processContext: &mut context,
+        };
+        // SAFETY: as in `Vst3Effect::run_block`: active and processing, every pointer is to a
+        // live local or this instrument's own buffers, `frames <= max_block`.
+        let result = unsafe { self.processor.process(&mut data) };
+        self.continuous_samples += frames as i64;
+        if result == kResultOk {
+            l.copy_from_slice(&self.io.main_out[0][..frames]);
+            let stereo = self.io.out_channels.first().is_some_and(|channels| *channels >= 2);
+            r.copy_from_slice(&self.io.main_out[usize::from(stereo)][..frames]);
+        } else {
+            l.fill(0.0);
+            r.fill(0.0);
+            self.shared.counters.process_errors.fetch_add(1, Ordering::Relaxed);
+        }
+        let shared = &self.shared;
+        self.output_changes.for_each_last(|id, value| {
+            if !shared.feedback.post_listed(id, value) {
+                shared.counters.feedback_dropped.fetch_add(1, Ordering::Relaxed);
+            }
+        });
+    }
+}
+
+impl Instrument for Vst3Instrument {
+    fn prepare(&mut self, sample_rate: f32, max_block: usize) {
+        let sample_rate = f64::from(sample_rate);
+        if (sample_rate - self.sample_rate).abs() < 1e-6 && max_block <= self.max_block && !self.failed {
+            return;
+        }
+        let shared = Arc::clone(&self.shared);
+        let activated = main_thread::run("being re-activated", move || {
+            let mut guard = shared.instance.lock();
+            let instance = guard.as_mut().ok_or(Vst3Error::Closed)?;
+            let layout = instance.activate(sample_rate, max_block)?;
+            shared.latency.store(instance.latency(), Ordering::Release);
+            Ok(layout)
+        })
+        .and_then(|result| result);
+        match activated {
+            Ok(layout) => {
+                self.io = Io::new(&layout, max_block);
+                self.sample_rate = sample_rate;
+                self.max_block = max_block;
+                self.failed = false;
+            }
+            Err(err) => {
+                log::error!(
+                    "VST3 instrument '{}' could not be re-activated at {sample_rate} Hz / {max_block}: {err}; it is silent",
+                    self.shared.info.name
+                );
+                self.failed = true;
+            }
+        }
+    }
+
+    fn process(&mut self, events: &[InstEvent], l: &mut [f32], r: &mut [f32], ctx: &ProcessCtx) {
+        let frames = l.len().min(r.len());
+        if self.failed || self.max_block == 0 {
+            l[..frames].fill(0.0);
+            r[..frames].fill(0.0);
+            return;
+        }
+        let mut done = 0;
+        while done < frames {
+            let chunk = (frames - done).min(self.max_block);
+            let (l_chunk, r_chunk) = (&mut l[done..done + chunk], &mut r[done..done + chunk]);
+            self.run_block(events, l_chunk, r_chunk, ctx, done);
+            done += chunk;
+        }
+    }
+}
+
+impl std::fmt::Debug for Vst3Instrument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Vst3Instrument")
+            .field("plugin", &self.shared.info.name)
+            .field("sample_rate", &self.sample_rate)
+            .field("max_block", &self.max_block)
+            .field("offline", &self.offline)
+            .field("failed", &self.failed)
+            .finish()
+    }
+}
+
+/// Load the instrument `cid` from the module at `path`, restore `state` and activate it for
+/// `sample_rate` and blocks of at most `max_block` frames; `offline` activates it in VST3's
+/// offline processing mode (a render's own instance). Same threading and blocking as
+/// [`instantiate`]; the [`Vst3Handle`] gives its parameters, state and editor.
+///
+/// # Errors
+/// As [`instantiate`], with [`Vst3Error::NotAnInstrument`] for a plugin without an event
+/// input or a mono/stereo output.
+pub fn instantiate_instrument(
+    path: &str,
+    cid: &str,
+    state: Option<&[u8]>,
+    sample_rate: f32,
+    max_block: usize,
+    offline: bool,
+) -> Result<(Box<dyn Instrument>, Vst3Handle), Vst3Error> {
+    let parts = create_parts(path, cid, state, sample_rate, max_block, Role::Instrument, offline)?;
+    let instrument = Vst3Instrument {
+        processor: parts.processor,
+        io: Io::new(&parts.layout, max_block),
         input_changes: ParameterChanges::new(),
         output_changes: ParameterChanges::new(),
-        events: EmptyEventList::new(),
-        unlisted,
-        sample_rate,
+        events: NoteEventList::new(MAX_INST_EVENTS),
+        unlisted: parts.unlisted,
+        controllers: parts.controllers,
+        sample_rate: parts.sample_rate,
         max_block,
         continuous_samples: 0,
+        offline,
         failed: false,
-        shared: Arc::clone(&shared),
+        shared: Arc::clone(&parts.shared),
     };
-    Ok((effect, Vst3Handle { shared }))
+    Ok((Box::new(instrument), Vst3Handle { shared: parts.shared }))
 }
 
 #[cfg(test)]
@@ -1155,29 +1515,67 @@ mod tests {
     use super::*;
 
     fn stereo() -> BusLayout {
-        BusLayout { inputs: vec![2], outputs: vec![2] }
+        BusLayout { inputs: vec![2], outputs: vec![2], event_inputs: 0 }
     }
 
     #[test]
     fn only_a_stereo_in_stereo_out_layout_is_an_insert_effect() {
         assert!(stereo().check_stereo_effect().is_ok());
-        let sidechain = BusLayout { inputs: vec![2, 2], outputs: vec![2] };
+        let sidechain = BusLayout { inputs: vec![2, 2], outputs: vec![2], event_inputs: 0 };
         assert!(sidechain.check_stereo_effect().is_ok(), "a side-chain bus is fed silence");
 
-        let instrument = BusLayout { inputs: vec![], outputs: vec![2] };
+        let instrument = BusLayout { inputs: vec![], outputs: vec![2], event_inputs: 0 };
         let err = instrument.check_stereo_effect().unwrap_err();
         assert!(err.contains("no audio input"), "{err}");
-        let mono = BusLayout { inputs: vec![1], outputs: vec![1] };
+        let mono = BusLayout { inputs: vec![1], outputs: vec![1], event_inputs: 0 };
         assert!(mono.check_stereo_effect().unwrap_err().contains("1 channel"));
-        let sink = BusLayout { inputs: vec![2], outputs: vec![] };
+        let sink = BusLayout { inputs: vec![2], outputs: vec![], event_inputs: 0 };
         assert!(sink.check_stereo_effect().is_err());
-        let absurd = BusLayout { inputs: vec![2; MAX_BUSES + 1], outputs: vec![2] };
+        let absurd = BusLayout { inputs: vec![2; MAX_BUSES + 1], outputs: vec![2], event_inputs: 0 };
         assert!(absurd.check_stereo_effect().is_err());
     }
 
     #[test]
+    fn an_instrument_needs_an_event_input_and_a_mono_or_stereo_output() {
+        let synth = BusLayout { inputs: vec![], outputs: vec![2], event_inputs: 1 };
+        assert!(synth.check(Role::Instrument).is_ok());
+        assert!(synth.check(Role::Effect).is_err(), "and it is not an insert effect");
+        let mono = BusLayout { inputs: vec![], outputs: vec![1], event_inputs: 1 };
+        assert!(mono.check_instrument().is_ok(), "a mono output is copied to both sides");
+        let sidechained = BusLayout { inputs: vec![2], outputs: vec![2, 2, 2], event_inputs: 2 };
+        assert!(sidechained.check_instrument().is_ok());
+        let deaf = BusLayout { inputs: vec![2], outputs: vec![2], event_inputs: 0 };
+        assert!(deaf.check_instrument().unwrap_err().contains("no notes"));
+        let mute = BusLayout { inputs: vec![], outputs: vec![], event_inputs: 1 };
+        assert!(mute.check_instrument().unwrap_err().contains("no audio output"));
+        let surround = BusLayout { inputs: vec![], outputs: vec![6], event_inputs: 1 };
+        assert!(surround.check_instrument().unwrap_err().contains("6 channels"));
+    }
+
+    #[test]
+    fn notes_become_vst3_events_with_their_offset_and_id() {
+        let on = note_event(17, InstMsg::NoteOn { key: 64, vel: 0.5, id: 9 }).unwrap();
+        assert_eq!((on.sampleOffset, on.r#type, on.busIndex), (17, EventTypes_::kNoteOnEvent as u16, 0));
+        // SAFETY: the variant written for this event type.
+        let n = unsafe { on.__field0.noteOn };
+        assert_eq!((n.pitch, n.velocity, n.noteId, n.channel), (64, 0.5, 9, 0));
+        let off = note_event(3, InstMsg::NoteOff { key: 64, id: 9 }).unwrap();
+        assert_eq!(off.r#type, EventTypes_::kNoteOffEvent as u16);
+        // SAFETY: as above.
+        assert_eq!(unsafe { off.__field0.noteOff }.noteId, 9);
+        assert!(note_event(0, InstMsg::Control { cc: 64, value: 1.0 }).is_none(), "controllers go as parameters");
+        assert!(note_event(0, InstMsg::Bend(0.5)).is_none());
+    }
+
+    #[test]
+    fn instantiating_an_instrument_from_garbage_is_a_typed_error() {
+        let err = instantiate_instrument("/nowhere/x.vst3", "zz", None, 48_000.0, 256, false).err().expect("must fail");
+        assert!(matches!(err, Vst3Error::InvalidClassId(_)), "got {err:?}");
+    }
+
+    #[test]
     fn io_wires_the_main_pair_to_real_buffers_and_extras_to_silence_and_a_sink() {
-        let layout = BusLayout { inputs: vec![2, 1], outputs: vec![2, 2] };
+        let layout = BusLayout { inputs: vec![2, 1], outputs: vec![2, 2], event_inputs: 0 };
         let mut io = Io::new(&layout, 64);
         io.wire();
         assert_eq!(io.in_buses.len(), 2);

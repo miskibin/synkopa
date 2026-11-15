@@ -7,6 +7,13 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Play your VST3 instruments in the Channel Rack.** Serum, Analog Lab, Vital and the other
+  synths you have installed are listed under "Plugin instruments (VST3)" in the Channel Rack's
+  "+" and "Replace" menus. Draw notes for them in the Piano roll or the step sequencer, play
+  them from your MIDI keyboard (sustain, pitch bend and mod wheel included), open their own
+  window from the channel's settings, and export the song with them. Your sound is saved with
+  the project. A plugin that is missing on another computer keeps the channel and its notes
+  and is marked in the rack.
 - **Ask AI how to do something (F1).** Click Ask next to the menus, press F1 or pick Help → Ask
   AI, and type your question, e.g. "can I reorder the effects on a mixer track?". It opens
   ChatGPT with the question and your WAVE version, and since WAVE is open source it checks the

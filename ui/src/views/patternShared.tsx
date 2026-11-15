@@ -7,10 +7,11 @@ import { clamp } from '../lib/format';
 import { FACTORY_KIT, LIB_SCHEME } from '../lib/factory';
 import { barsText, clearChannel, fillEvery, notesText, rotate, stepsOf } from '../lib/pattern';
 import { libGroup, loadStdLib, stdLibGroups } from '../state/library';
+import { ensurePluginScan, pluginScan, runPluginScan } from '../state/pluginScan';
 import { isTypingKey } from '../state/typingKeys';
 import { commit } from '../state/edit';
 import {
-  addBar, addKeys, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, channels, clonePattern, cloneChannel, curPat, deleteChannel,
+  addBar, addKeys, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, channels, clonePattern, cloneChannel, curPat, deleteChannel,
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved, setRackDock, setRollDock,
 } from '../state/pattern';
@@ -192,6 +193,34 @@ function instrumentItems(pick: (p: InstrumentPick) => void, file: (f?: LibFile) 
     items.push({ t: 'item', label: t('b.pe.menuSynthEmpty'), glyph: PICK_GLYPH.emptySynth, act: () => pick({ kind: 'synth', preset: null }) });
   }
   items.push({ t: 'sep' }, { t: 'title', label: t('b.pe.menuSampled') }, { t: 'item', label: t('b.pe.menuKeys'), glyph: PICK_GLYPH.keys, act: () => pick({ kind: 'keys' }) });
+  items.push({ t: 'sep' }, { t: 'title', label: t('b.pe.menuPlugins') }, ...pluginItems(pick));
+  return items;
+}
+
+/** Most instruments listed directly; more are grouped by vendor. */
+const FLAT_PLUGINS = 12;
+
+/** The scanned VST3 instruments (FL's generators), and a rescan for new ones. */
+function pluginItems(pick: (p: InstrumentPick) => void): MenuItem[] {
+  const r = pluginScan();
+  if (!r) { ensurePluginScan(); return [{ t: 'item', label: t('b.pe.menuPluginsScanning'), disabled: true, act: () => {} }]; }
+  const list = r.instruments ?? [];
+  const item = (p: (typeof list)[number]): MenuItem => ({
+    t: 'item', label: p.name, glyph: PICK_GLYPH.plugin, title: [p.vendor, p.category, p.path].filter(Boolean).join(' · '),
+    act: () => pick({ kind: 'plugin', plugin: p }),
+  });
+  const items: MenuItem[] = [];
+  if (!list.length) items.push({ t: 'item', label: t('b.pe.menuPluginsNone'), title: t('b.pe.menuPluginsNoneTip'), disabled: true, act: () => {} });
+  else if (list.length <= FLAT_PLUGINS) items.push(...list.map(item));
+  else {
+    const vendors = new Map<string, typeof list>();
+    for (const p of list) { const v = p.vendor || '—'; vendors.set(v, [...(vendors.get(v) ?? []), p]); }
+    for (const [v, ps] of [...vendors].sort((a, b) => a[0].localeCompare(b[0]))) items.push({ t: 'sub', label: v, glyph: PICK_GLYPH.plugin, items: ps.map(item) });
+  }
+  items.push({ t: 'item', label: t('b.pe.menuRescan'), title: t('b.pe.menuRescanTip'), act: () => {
+    say(t('b.pe.rescanning'));
+    void runPluginScan(true).then(s => say(t('b.pe.rescanDone', { n: (s.instruments ?? []).length })));
+  } });
   return items;
 }
 
@@ -199,6 +228,7 @@ export function addChannelMenu(x: number, y: number) {
   const add = (p: InstrumentPick) => {
     if (p.kind === 'synth') addSynth(p.preset);
     else if (p.kind === 'keys') addKeys();
+    else if (p.kind === 'plugin') addPlugin(p.plugin);
     else addSampler(p.source);
   };
   const items = instrumentItems(add, f => void addSamplerFiles(f ? [f] : null));
