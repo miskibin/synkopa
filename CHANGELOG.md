@@ -4,6 +4,18 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Dock the Channel rack and the Piano roll.** Click the dock button in a window's title bar,
+  or use the View menu, to keep the Channel rack on the left of the Playlist and the Piano roll
+  under it, so they never get lost behind other windows. Drag their edges to resize them.
+  F6 and F7 show, focus and hide a docked panel, and your layout is kept after a restart.
+
+### Changed
+- The Channel rack and the Piano roll remember where you put them when floating, after a restart too.
+- A short Channel rack or Piano roll hides its hint line at the bottom to leave room for the notes.
+
 ## 0.9.15 — 2026-11-14
 
 ### Added

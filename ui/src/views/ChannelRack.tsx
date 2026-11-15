@@ -336,7 +336,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     stepPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
   };
   return (
-    <PatFrame win={U.rackWin!} key="rackWin" z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} docked={props.docked} front={rackFront} onKey={onKey} onHeadWheel={headWheel}
+    <PatFrame win={U.rackWin!} key="rackWin" z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} front={rackFront} onKey={onKey} onHeadWheel={headWheel}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>
         <span class="wintitle">Channel rack</span>

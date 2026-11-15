@@ -467,6 +467,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line2); border-top-color: var(--blue); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .pstatus { height: 22px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; font-size: 10px; color: var(--fg5); border-top: 1px solid var(--bg0); white-space: nowrap; overflow: hidden; }
+.patwin.compact .pstatus { display: none; }
 .resizer { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--fg6) 50%, var(--fg6) 60%, transparent 60%, transparent 70%, var(--fg6) 70%, var(--fg6) 80%, transparent 80%); }
 
 /* ---------- pattern editor (Channel Rack + piano roll) ---------- */

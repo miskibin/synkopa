@@ -64,6 +64,8 @@ export function guardKeys(e: KeyboardEvent, own?: (e: KeyboardEvent) => void) {
 export function PatFrame(props: {
   win: PatWin; key: 'rackWin' | 'rollWin'; z: number; class: string; minW: number; minH: number; docked?: boolean;
   front: () => void; onKey?: (e: KeyboardEvent) => void; head: JSX.Element; children: JSX.Element;
+  /** Below this height (px) the window hides its status / hint footer (`.pstatus`) to keep room for the editor. */
+  compactH: number;
   /** Wheel over the title bar (the Channel Rack switches pattern). */
   onHeadWheel?: (e: WheelEvent) => void;
   /** Double-click on the empty part of the title bar (the Piano roll maximises / restores). */
@@ -71,6 +73,9 @@ export function PatFrame(props: {
 }) {
   let root!: HTMLDivElement;
   const W = () => props.win;
+  // a short window (small screen, both panels docked) drops the hint footer: the rows matter more
+  const size = useSize(() => root);
+  const compact = () => size().h > 0 && size().h < props.compactH;
   // a move or resize the user makes takes the Piano roll out of full screen (it then stays where they put it)
   const put = (g: Partial<PatWin>) => {
     const w = W(); if (Object.entries(g).every(([k, v]) => w[k as keyof PatWin] === v)) return;
@@ -83,7 +88,7 @@ export function PatFrame(props: {
     track(ev => put({ w: clamp(o.w + ev.clientX - sx, props.minW, window.innerWidth - 20), h: clamp(o.h + ev.clientY - sy, props.minH, window.innerHeight - 20) }), null, 'nwse-resize');
   };
   return (
-    <div ref={root} tabIndex={0} class={'win patwin ' + props.class} classList={{ docked: !!props.docked }}
+    <div ref={root} tabIndex={0} class={'win patwin ' + props.class} classList={{ docked: !!props.docked, compact: compact() }}
       style={props.docked ? undefined : { left: W().x + 'px', top: W().y + 'px', width: W().w + 'px', height: W().h + 'px', 'z-index': props.z }}
       onPointerDown={e => { if (!props.docked) props.front(); const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
       onKeyDown={e => guardKeys(e, props.onKey)}>

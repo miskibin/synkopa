@@ -874,7 +874,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     );
   }
   return (
-    <PatFrame win={U.rollWin!} key="rollWin" z={props.z} class="rollwin" minW={560} minH={300} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
+    <PatFrame win={U.rollWin!} key="rollWin" z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: ch().color + '2e', color: ch().color }}><Icon d={ROLL_ICON} size={12} /></span>
         <span class="wintitle">Piano roll</span>
