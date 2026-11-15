@@ -280,6 +280,7 @@ export function Playlist() {
   };
 
   const draw = (now: number) => {
+    if (U.mixView) return; // under the Mix view: nothing to paint (following catches up on the way back)
     if (paintedFull && lastDrawAt) { paintGaps.push(now - lastDrawAt); if (paintGaps.length > 5) paintGaps.shift(); }
     lastDrawAt = now; paintedFull = false;
     const recActive = recState.active && tele.frame.playing;

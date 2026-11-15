@@ -168,6 +168,35 @@ describe('make unique (audio) in the mock', () => {
   });
 });
 
+describe('routing channels to inserts in the mock (like the engine)', () => {
+  it('creates inserts and routes channels to them in one undo step', async () => {
+    const be = new MockBackend();
+    const p0 = (await be.projectNew()).project;
+    const before = structuredClone(p0);
+    const [kick, clap] = p0.channels!;
+    const last = p0.inserts[p0.inserts.length - 1];
+    const fresh = { id: 90001, name: 'Clap', color: '#8b93a1', vol: 0.7937, pan: 0, muted: false, solo: false, fx: [] };
+    await be.applyOps([
+      { op: 'putInsert', insert: fresh },
+      { op: 'putChannel', channel: { ...kick, insert: last.id } },
+      { op: 'putChannel', channel: { ...clap, insert: fresh.id } },
+    ], { label: 'Route channels to inserts' });
+    const p = (await be.getState()).project;
+    expect(p.inserts[p.inserts.length - 1]).toMatchObject({ id: 90001, name: 'Clap' });
+    expect(p.channels!.find(c => c.id === kick.id)!.insert).toBe(last.id);
+    expect(p.channels!.find(c => c.id === clap.id)!.insert).toBe(90001);
+    await be.undo();
+    expect((await be.getState()).project).toEqual(before);
+  });
+  it('refuses a channel routed to an insert that does not exist, changing nothing', async () => {
+    const be = new MockBackend();
+    const p0 = (await be.projectNew()).project;
+    const before = structuredClone(p0);
+    await expect(be.applyOps([{ op: 'putChannel', channel: { ...p0.channels![0], insert: 424242 } }])).rejects.toThrow(/insert/);
+    expect((await be.getState()).project).toEqual(before);
+  });
+});
+
 describe('pattern loop in the mock (like the engine)', () => {
   it('starts where asked, loops the range, and keeps its place when the range changes', async () => {
     const be = new MockBackend();

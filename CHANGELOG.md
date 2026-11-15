@@ -11,10 +11,24 @@ shown in the app after an update and is published as the release notes (see
   or use the View menu, to keep the Channel rack on the left of the Playlist and the Piano roll
   under it, so they never get lost behind other windows. Drag their edges to resize them.
   F6 and F7 show, focus and hide a docked panel, and your layout is kept after a restart.
+- **Mix view (F9).** Press F9 (or the toolbar's mixer button) to give the whole window to the
+  mixer, with a level readout and what plays through each insert. Press F9 or Esc, or click
+  Back to arrange, and your Playlist, docked panels and windows come back exactly as you left
+  them. Effect windows stay on top while you mix.
+- **Route channels to the mixer like in FL Studio.** Shift+click channel names in the Channel
+  rack to select several, pick an insert and press Ctrl+L to send them all there, or Shift+Ctrl+L
+  to give each its own insert from that one on (new inserts are added and named after the
+  channels). Both are in a strip's right-click menu too, and one Ctrl+Z undoes them.
 
 ### Changed
 - The Channel rack and the Piano roll remember where you put them when floating, after a restart too.
 - A short Channel rack or Piano roll hides its hint line at the bottom to leave room for the notes.
+- The mixer under the Playlist has no title bar any more, so the Playlist gets more room. Drag
+  its top edge down to collapse it to a thin handle; click the handle or drag it up to bring
+  it back at the same height. View → Collapse docked mixer does the same.
+- Mixer strips show one name row: the insert number and its name, with the effect count beside
+  it. Inserts you have not named show just their number. The docked mixer keeps only the
+  controls you need while arranging; the Mix view shows the rest.
 
 ## 0.9.15 — 2026-11-14
 

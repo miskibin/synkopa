@@ -14,6 +14,7 @@ import { S } from '../state/store';
 import { curBeat, tele } from '../state/telemetry';
 import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { checkUpdates, showWhatsNew } from '../state/updates';
+import { toggleMixView } from '../state/mixView';
 import { midiFlash, midiStatus } from '../state/midi';
 import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
@@ -208,7 +209,7 @@ export function Toolbar() {
           <Icon d="M4 7h12v12H4z M8 3h12v12" size={14} /><span class="cnt mono">{wins()}</span>
         </button>
       </Show>
-      <button class="tbtn icon" classList={{ on: U.mixOpen }} onClick={() => setU('mixOpen', !U.mixOpen)} title={t('a.tb.mixerTip')} aria-label={t('a.mn.mixer')}>
+      <button class="tbtn icon" classList={{ on: U.mixView }} onClick={toggleMixView} title={t(U.mixView ? 'a.tb.mixViewBackTip' : 'a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={U.mixView}>
         <Icon d="M5 21v-7M5 10V3M12 21v-9M12 8V3M19 21v-5M19 12V3M2 14h6M9 8h6M16 16h6" size={14} />
       </button>
       <Show when={midiStatus()?.selected}>
@@ -274,7 +275,8 @@ function MenuBar() {
     ]],
     ['a.mn.view', () => [
       { t: 'item', label: t('a.mn.browser'), kbd: 'Alt+F8', checked: U.pickOpen, act: () => setU('pickOpen', !U.pickOpen) },
-      { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: U.mixOpen, act: () => setU('mixOpen', !U.mixOpen) },
+      { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: U.mixView, act: toggleMixView },
+      { t: 'item', label: t(U.mixMin ? 'a.mn.mixExpand' : 'a.mn.mixCollapse'), disabled: U.mixView, title: t(U.mixView ? 'a.mn.mixDockOff' : 'a.mn.mixDockTip'), act: () => setU('mixMin', !U.mixMin) },
       { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRackShown },
       { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRollShown },
       { t: 'item', label: t('a.mn.rackDock'), checked: U.rackDock, title: t('a.mn.rackDockTip'), act: () => setRackDock(!U.rackDock) },
@@ -345,6 +347,9 @@ function PatSelector() {
 const shortcuts = (): [string, string][] => [
   ['Play / Stop', t('a.sc.1')],
   [t('a.sc.2'), 'F9'],
+  [t('a.sc.routeCh'), 'Ctrl+L'],
+  [t('a.sc.spreadCh'), 'Shift+Ctrl+L'],
+  [t('a.sc.selCh'), t('a.sc.selChKeys')],
   [t('a.sc.3'), 'F5'],
   [t('a.sc.4'), t('a.sc.5')],
   [t('a.sc.107'), 'F7'],

@@ -16,7 +16,7 @@ import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { commit, Gesture } from '../state/edit';
 import {
   addBar, RACK_MIN_W, STEP_MAX, STEP_MIN, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
-  rackFront, rackPlaceFor, removeBar, selChan, selectChannel, stepPattern, toggleChanMute, toggleChanSolo,
+  rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, stepPattern, toggleChanMute, toggleChanSolo,
 } from '../state/pattern';
 import { arrVersion } from '../state/store';
 import { say, setU, U } from '../state/ui';
@@ -96,7 +96,7 @@ function Rack(props: { z: number; docked?: boolean }) {
   // playhead column: only when the step changes
   let lastHead = -2;
   onMount(() => onCleanup(addFrameTask(() => {
-    const p = curPat(); if (!p || !head) return;
+    const p = curPat(); if (!p || !head || U.mixView) return;
     const s = playStep(p);
     if (s === lastHead) return;
     lastHead = s;
@@ -407,7 +407,7 @@ function Rack(props: { z: number; docked?: boolean }) {
 
 function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => void; onMove: (c: Channel, e: PointerEvent) => void }) {
   const c = () => props.c;
-  const sel = () => selChan()?.id === c().id;
+  const sel = () => isChannelSelected(c().id);
   const anySolo = () => channels().some(x => x.solo);
   let vg: Gesture | null = null, pg: Gesture | null = null;
   const live = () => chanById(c().id) ?? c();
@@ -417,6 +417,8 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
   const nameDown = (e: PointerEvent) => {
     if (e.button === 2) { e.stopPropagation(); props.onMenu(c(), e); return; }
     if (e.button !== 0) return;
+    // Shift+click: a range of channels, Shift+Ctrl+click: one more or one less (to route them to the mixer, Ctrl+L)
+    if (e.shiftKey) { e.stopPropagation(); return (e.ctrlKey || e.metaKey) ? toggleChannelSelected(c().id) : selectChannelRange(c().id); }
     selectChannel(c().id);
     if (e.ctrlKey || e.metaKey) { audition(c().id, undefined, 0.8, true); return; }
     if (dblCheck('cname' + c().id)) { e.stopPropagation(); closeChannelWindow(); openRoll(c().id); return; }
@@ -424,7 +426,7 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
   };
   return (
     <div class="crow" data-ch={c().id} classList={{ sel: sel(), muted: c().mute || (anySolo() && !c().solo) }} style={{ height: RACK_ROW + 'px' }}
-      onPointerDown={e => { if (e.button === 0) selectChannel(c().id); }}
+      onPointerDown={e => { if (e.button === 0 && !e.shiftKey) selectChannel(c().id); }}
       onContextMenu={e => props.onMenu(c(), e)}>
       <span class="cstrip" style={{ color: c().color }} title={t('b.rk.dragChannel')} onPointerDown={e => props.onMove(c(), e)} />
       <button class="led" classList={{ on: !c().mute && (!anySolo() || c().solo), solo: c().solo }}

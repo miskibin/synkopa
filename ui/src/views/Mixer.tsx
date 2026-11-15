@@ -1,9 +1,11 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { ROLL_DOCKED_RESERVE } from '../lib/layout';
+import { fitMixH, MIX_HANDLE_H, mixHandleDrag, mixMaxH, mixSplitDrag, SPLIT } from '../lib/layout';
+import { stripLabel } from '../lib/mixer';
 import { t as tr, tName } from '../lib/i18n';
-import { channels } from '../state/pattern';
+import { channels, routeSelectedChannels, selectedChannels } from '../state/pattern';
+import { leaveMixView } from '../state/mixView';
 import { presetInfo } from '../lib/presets';
 import * as A from '../state/actions';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -53,6 +55,16 @@ function openChainMenu(x: number, y: number, m: Insert) {
   openMenu(x, y, [{ t: 'title', label: tr('e.fxc.mnTitle', { ins: insName(m) }) }, ...chainItems(x, y, m)], 110);
 }
 
+/** Route-to-insert items (FL's "link selected channels"): disabled, saying why, until channels are selected in the Channel Rack. */
+function routeItems(id: Id): MenuItem[] {
+  const n = selectedChannels().length, master = id === 0;
+  const none = n ? undefined : tr('c.mv.noSelTip');
+  return [
+    { t: 'item', label: n > 1 ? tr('c.mv.routeN', { n }) : tr('c.mv.route'), kbd: 'Ctrl+L', disabled: !n, title: none, act: () => routeSelectedChannels(id, false) },
+    { t: 'item', label: tr('c.mv.spread'), kbd: 'Shift+Ctrl+L', disabled: !n || master, title: none ?? (master ? tr('c.mv.spreadMaster') : undefined), act: () => routeSelectedChannels(id, true) },
+  ];
+}
+
 function openStripMenu(x: number, y: number, id: Id) {
   const m = S.project.inserts.find(v => v.id === id); if (!m) return;
   openMenu(x, y, [
@@ -63,11 +75,14 @@ function openStripMenu(x: number, y: number, id: Id) {
     { t: 'item', label: tr('c.mix.addFx'), act: () => openFxMenu(x, y, id) },
     ...chainItems(x, y, m),
     { t: 'item', label: tr('c.mix.resetVolPan'), act: () => A.setInsert(id, { vol: VOL_UNITY, pan: 0 }, tr('c.mix.undoReset')) },
+    { t: 'sep' },
+    ...routeItems(id),
     ...(id === 0 ? [] : [{ t: 'sep' }, { t: 'item', label: tr('c.mix.removeInsert'), danger: true, act: () => A.removeInsert(id) }] as MenuItem[]),
-  ], 260);
+  ], 330);
 }
 
-function Strip(props: { m: Insert; idx: number }) {
+/** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
+function Strip(props: { m: Insert; idx: number; full: boolean }) {
   const m = () => props.m;
   let fl!: HTMLDivElement, fr!: HTMLDivElement;
   onMount(() => { meterEls.set(props.m.id, [fl, fr]); hold.delete(props.m.id); });
@@ -121,19 +136,23 @@ function Strip(props: { m: Insert; idx: number }) {
   };
   const stop = (e: Event) => e.stopPropagation();
   const icon = () => { if (m().id === 0) return null; const t = S.project.tracks.find(x => x.insert === m().id); return guessIcon(m().name) ?? (t ? trackIcon(t) : null); };
+  const label = () => stripLabel(m().name, props.idx);
+  const rename = (e: MouseEvent) => openRename(e.clientX, e.clientY, m().name, v => A.setInsert(m().id, { name: v }, tr('c.mix.undoName')));
   return (
     <div class="strip" data-ins={m().id} classList={{ on: U.mixSel === m().id, dimmed: !audible() }} onPointerDown={select}>
       <div class="bar" style={{ background: m().color }} />
-      <div class="row" style={{ 'justify-content': 'space-between', gap: '4px' }}>
-        <span class="lbl">{m().id === 0 ? 'MASTER' : 'INS ' + props.idx}</span>
+      {/* one row: the insert's number and name (a default "Insert 7" is just its number), the effect count on the right */}
+      <div class="nmrow" title={tName(label().full) + ' — ' + tr('c.mix.nameTip')} onDblClick={rename}>
+        <Show when={label().num}><span class="num" classList={{ only: !label().name }}>{label().num}</span></Show>
+        <Show when={label().name}>
+          <span class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }}>
+            <Show when={icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show>{tName(label().name)}</span>
+        </Show>
         <Show when={m().fx.length}>
-          <button class="fxn" classList={{ off: m().fx.every(f => f.bypass) }} onPointerDown={stop} onClick={() => A.toggleInsertFx(m().id)}
-            title={tr('c.mix.fxToggleTip')}>{m().fx.length + ' FX'}</button>
+          <button class="fxn" classList={{ off: m().fx.every(f => f.bypass) }} onPointerDown={stop} onDblClick={stop} onClick={() => A.toggleInsertFx(m().id)}
+            title={tr('c.mix.fxToggleTip')}>{m().fx.length + 'FX'}</button>
         </Show>
       </div>
-      <span class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }} title={tr('c.mix.nameTip')}
-        onDblClick={e => openRename(e.clientX, e.clientY, m().name, v => A.setInsert(m().id, { name: v }, tr('c.mix.undoName')))}>
-        <Show when={icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show>{tName(m().name)}</span>
       <div class="knobrow">
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
         <div class="pandial" classList={{ auto: isAutomated(panT()) }} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
@@ -173,8 +192,10 @@ function Strip(props: { m: Insert; idx: number }) {
           <div class="cap" style={{ top: `calc(${1 - shownVol()} * (100% - 14px))` }}><div /></div>
         </div>
       </div>
-      <span class="db">{volText(shownVol())}</span>
-      <span class="route" title={route()}>{route()}</span>
+      <Show when={props.full}>
+        <span class="db">{volText(shownVol())}</span>
+        <span class="route" title={route()}>{route()}</span>
+      </Show>
     </div>
   );
 }
@@ -230,35 +251,75 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
 }
 
 /** Strip width (`.strip`, border-box) and how many strips past each edge stay built. */
-const STRIP_W = 80, STRIP_MARGIN = 4;
+const STRIP_W = 86, STRIP_MARGIN = 4;
+/** Where each strip row was scrolled (the docked row is built again after the Mix view, and the other way round). */
+const stripScroll = { dock: 0, full: 0 };
 
 /**
  * The strip row. Only strips in (or near) the visible part are built; the others are empty
  * placeholders of the same size. Out of view they look the same, and the browser no longer
  * lays every strip of a 60-insert mixer into the compositor on each frame of playback.
+ * One strip row is mounted at a time (docked or Mix view): it runs the meters of its strips.
  */
-function Strips() {
+function Strips(props: { full: boolean }) {
   let el!: HTMLDivElement;
+  const key = props.full ? 'full' : 'dock';
   const [view, setView] = createSignal({ x: 0, w: window.innerWidth });
-  const sync = () => { if (el.scrollLeft !== view().x || el.clientWidth !== view().w) setView({ x: el.scrollLeft, w: el.clientWidth }); };
+  const sync = () => { stripScroll[key] = el.scrollLeft; if (el.scrollLeft !== view().x || el.clientWidth !== view().w) setView({ x: el.scrollLeft, w: el.clientWidth }); };
   onMount(() => {
+    el.scrollLeft = stripScroll[key];
     sync();
     el.addEventListener('scroll', sync, { passive: true });
     const ro = new ResizeObserver(sync); ro.observe(el);
-    onCleanup(() => { el.removeEventListener('scroll', sync); ro.disconnect(); });
+    const stop = addFrameTask(meterTask);
+    onCleanup(() => { el.removeEventListener('scroll', sync); ro.disconnect(); stop(); });
   });
   const near = (i: number) => { const v = view(), m = STRIP_MARGIN * STRIP_W; return (i + 1) * STRIP_W > v.x - m && i * STRIP_W < v.x + v.w + m; };
   return (
     <div ref={el} class="strips">
-      <For each={S.project.inserts}>{(m, i) => <Show when={near(i())} fallback={<div class="strip" />}><Strip m={m} idx={i()} /></Show>}</For>
+      <For each={S.project.inserts}>{(m, i) => <Show when={near(i())} fallback={<div class="strip" />}><Strip m={m} idx={i()} full={props.full} /></Show>}</For>
       <button class="addIns" onClick={A.addInsert} title={tr('c.mix.addInsert')}>+</button>
     </div>
   );
 }
 
-export function Mixer() {
-  onMount(() => { const stop = addFrameTask(meterTask); onCleanup(stop); });
+/** The selected insert's effects; its small header names the insert the slots belong to. */
+function FxChain() {
   const selIns = () => S.project.inserts.find(m => m.id === U.mixSel) ?? S.project.inserts[0];
+  return (
+    <Show when={selIns()}>
+      {ins => (
+        <div class="fxchain" data-ins={ins().id}>
+          <div class="hd">
+            <span style={{ width: '8px', height: '8px', 'border-radius': '2px', background: ins().color }} />
+            <span class="ell" style={{ flex: 1, font: '600 11px var(--sans)', color: 'var(--fg-hi)' }}>{insName(ins())}</span>
+            <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)' }}>{ins().id === 0 ? tr('c.mix.toOutput') : '→ Master'}</span>
+            <button class="chainbtn" title={tr('e.fxc.btnTip')} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); openChainMenu(r.left, r.bottom + 4, ins()); }}>{tr('e.fxc.btn')}</button>
+          </div>
+          <div style={{ flex: 1, 'min-height': 0, overflow: 'auto' }}>
+            <For each={ins().fx}>{(f, i) => <FxSlot f={f} n={i() + 1} insId={ins().id} />}</For>
+            <div class="slot" title={tr('c.mix.addFxTip')} onPointerDown={e => { if (e.button === 0) openFxMenu(e.clientX, e.clientY, ins().id); }}>
+              <span class="n">{ins().fx.length + 1}</span>
+              <span class="tile addtile"><Icon d={ICONS.plus} /></span>
+              <span style={{ flex: 1, font: '500 12px var(--sans)', color: 'var(--blue)' }}>{tr('c.mix.addFxLabel')}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </Show>
+  );
+}
+
+/** FL: a right-click on the mixer sends the floating windows behind (like a click on the playlist). */
+const hideWins = (e: PointerEvent) => { if (e.button === 2) A.playlistFront(); };
+
+/**
+ * The docked mixer under the Playlist. No title bar: its splitter sizes it, and dragged below the
+ * breakpoint it collapses to a thin handle (click it, Enter, or drag it up to open it again at
+ * the height it had). It cannot be closed; F9 is the Mix view. While the Mix view is on, the slot
+ * keeps its size (so the Playlist under the Mix view does not move) and builds no strips.
+ */
+export function Mixer() {
   // One clamp for both the drag and the display: the old pair (drag up to innerHeight-200,
   // show at most 40 %) let the stored height run past what was drawn, so the splitter
   // stalled, then jumped, and the playlist above it jerked.
@@ -266,52 +327,67 @@ export function Mixer() {
   onMount(() => { const r = () => setWinH(window.innerHeight); window.addEventListener('resize', r); onCleanup(() => window.removeEventListener('resize', r)); });
   // A docked Piano roll needs its minimum height too: the mixer gives way (down to its own minimum)
   // rather than squeezing the roll to a toolbar without notes. Its stored height is kept.
-  const fitH = (h: number) => clamp(h, 170, Math.max(170, winH() - (U.rollDock && U.rollWin ? ROLL_DOCKED_RESERVE : 200)));
-  const mixH = () => Math.round(fitH(U.mixH));
+  const maxH = () => mixMaxH(winH(), !!(U.rollDock && U.rollWin));
+  const mixH = () => fitMixH(U.mixH, maxH());
   const split = (e: PointerEvent) => {
     if (e.button !== 0) return; e.preventDefault();
     const sy = e.clientY, h0 = mixH();
-    track(ev => setU('mixH', Math.round(fitH(h0 - (ev.clientY - sy)))), null, 'row-resize');
+    track(ev => { const r = mixSplitDrag(h0, ev.clientY - sy, maxH()); if (r.min !== U.mixMin || r.h !== U.mixH) setU({ mixMin: r.min, mixH: r.h }); }, null, 'row-resize');
   };
-  const hideWins = (e: PointerEvent) => { if (e.button === 2) A.playlistFront(); };
+  const expand = () => { setU('mixMin', false); say(tr('c.mv.expanded')); };
+  const collapse = () => { setU('mixMin', true); say(tr('c.mv.collapsed')); };
+  const handleDown = (e: PointerEvent) => {
+    if (e.button !== 0) return; e.preventDefault();
+    const sy = e.clientY, last = U.mixH;
+    let moved = false;
+    track(ev => {
+      if (!moved && Math.abs(ev.clientY - sy) < 4) return;
+      moved = true;
+      const r = mixHandleDrag(last, ev.clientY - sy, maxH());
+      if (r.min !== U.mixMin || r.h !== U.mixH) setU({ mixMin: r.min, mixH: r.h });
+    }, () => { if (!moved) expand(); }, 'row-resize');
+  };
+  const key = (open: boolean) => (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); e.stopPropagation();
+    if (open) expand(); else collapse();
+  };
   return (
-    <>
-      <Show when={!U.mixMin}><div class="mixsplit" onPointerDown={split} title={tr('c.mix.heightTip')} /></Show>
-      {/* FL: a right-click on the mixer sends the floating windows behind (like a click on the playlist) */}
-      <div class="mixbar" on:pointerdown={{ capture: true, handleEvent: hideWins }}>
-        <span class="t">MIXER</span>
-        <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)' }}>{tr('c.mix.insertCount', { n: S.project.inserts.length - 1 })}</span>
-        <div style={{ flex: 1 }} />
-        <button onClick={() => setU('mixMin', !U.mixMin)} title={U.mixMin ? tr('c.mix.expand') : tr('c.mix.collapse')}>
-          <Icon d={U.mixMin ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} size={12} sw={2.2} />
-        </button>
-        <button onClick={() => setU('mixOpen', false)} title={tr('c.mix.close')}>×</button>
-      </div>
-      <Show when={!U.mixMin}>
-        <div class="mixer" style={{ height: mixH() + 'px' }} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
-          <Strips />
-          <Show when={selIns()}>
-            {ins => (
-              <div class="fxchain" data-ins={ins().id}>
-                <div class="hd">
-                  <span style={{ width: '8px', height: '8px', 'border-radius': '2px', background: ins().color }} />
-                  <span class="ell" style={{ flex: 1, font: '600 11px var(--sans)', color: 'var(--fg-hi)' }}>{insName(ins())}</span>
-                  <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)' }}>{ins().id === 0 ? tr('c.mix.toOutput') : '→ Master'}</span>
-                  <button class="chainbtn" title={tr('e.fxc.btnTip')} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); openChainMenu(r.left, r.bottom + 4, ins()); }}>{tr('e.fxc.btn')}</button>
-                </div>
-                <div style={{ flex: 1, 'min-height': 0, overflow: 'auto' }}>
-                  <For each={ins().fx}>{(f, i) => <FxSlot f={f} n={i() + 1} insId={ins().id} />}</For>
-                  <div class="slot" title={tr('c.mix.addFxTip')} onPointerDown={e => { if (e.button === 0) openFxMenu(e.clientX, e.clientY, ins().id); }}>
-                    <span class="n">{ins().fx.length + 1}</span>
-                    <span class="tile addtile"><Icon d={ICONS.plus} /></span>
-                    <span style={{ flex: 1, font: '500 12px var(--sans)', color: 'var(--blue)' }}>{tr('c.mix.addFxLabel')}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+    <div class="mixdock" inert={U.mixView} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
+      <Show when={!U.mixMin} fallback={
+        <div class="mixhandle" style={{ height: MIX_HANDLE_H + 'px' }} role="button" tabIndex={0} aria-expanded="false"
+          aria-label={tr('c.mv.handleLabel')} title={tr('c.mv.handleTip')} onPointerDown={handleDown} onKeyDown={key(true)}>
+          <span class="grip" />
+        </div>
+      }>
+        <div class="mixsplit" style={{ height: SPLIT + 'px' }} role="separator" aria-orientation="horizontal" tabIndex={0}
+          aria-label={tr('c.mv.splitLabel')} title={tr('c.mv.splitTip')} onPointerDown={split} onKeyDown={key(false)} />
+        <div class="mixer" style={{ height: mixH() + 'px' }}>
+          <Show when={!U.mixView}>
+            <Strips full={false} />
+            <FxChain />
           </Show>
         </div>
       </Show>
-    </>
+    </div>
+  );
+}
+
+/** F9: the mixer over the whole workspace, with the way back and what Ctrl+L would route. */
+export function MixView() {
+  const n = () => selectedChannels().length;
+  return (
+    <div class="mixview" role="region" aria-label={tr('c.mv.title')} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
+      <div class="mvbar">
+        <button class="mvback" onClick={() => leaveMixView()} title={tr('c.mv.backTip')}>
+          <Icon d="M15 18l-6-6 6-6" size={12} sw={2.2} /><span>{tr('c.mv.back')}</span><span class="kbd mono">F9</span>
+        </button>
+        <span class="mvhint">{n() ? tr('c.mv.selHint', { n: n() }) : tr('c.mv.noSelHint')}</span>
+      </div>
+      <div class="mixer full">
+        <Strips full />
+        <FxChain />
+      </div>
+    </div>
   );
 }

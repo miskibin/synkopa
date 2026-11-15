@@ -159,7 +159,34 @@ windows only, Escape never closes a docked panel, and F6 / F7 on a docked panel 
 give it the keyboard, then hide it. Docked panels keep the `.win.patwin` frame, so their keys
 are guarded exactly like the floating windows'. Docking, docked sizes and the floating places
 are per user in `localStorage` (`wave.layout`, validated by `parseLayout`), never in the
-project. PAT mode (L) loops the current pattern and follows
+project.
+
+**The mixer: docked, and the Mix view (F9).** The docked mixer (`views/Mixer.tsx` `Mixer`) sits
+under the Playlist (and a docked Piano roll) without a title bar: its splitter sizes it, and
+dragged below 110 px it collapses to a 6 px handle (`U.mixMin`; click, Enter / Space or drag the
+handle up to open it again at `U.mixH`, which the collapse keeps). It cannot be closed; a layout
+saved with the old closed or minimised mixer opens collapsed (`parseLayout`). The size math is
+pure (`lib/layout.ts` `mixMaxH`, `fitMixH`, `mixSplitDrag`, `mixHandleDrag`). Docked strips are
+lean: one name row (number and name, a default "Insert N" is just its number, the effect count
+on the right), pan, width, M/S, meters and fader. F9 (the toolbar's mixer button, View → Mix view)
+toggles the **Mix view** (`state/mixView.ts`, `MixView`): the mixer covers the whole area under the
+toolbar with a "Back to arrange" bar, its strips add the level readout and what plays through
+them. The arrange layout under it stays mounted and laid out (`.workcol.away`:
+`content-visibility: hidden`, `inert`; the docked mixer keeps its height without building strips;
+floating Channel Rack / Piano roll are `visibility: hidden`), so scroll, zoom and sizes are kept,
+and the Playlist / rack / roll frame tasks skip drawing while it is on. Entering takes a
+detached snapshot of the layout fields (`lib/mixer.ts` `takeArrange`); F9, Esc (unless the last
+click or the keyboard is in a floating window, which Esc then closes) or the back button restore
+it exactly, and asking for a pattern window (F6 / F7, docking) leaves the Mix view first.
+Effect windows keep floating above. The Mix view is per session (never saved).
+**Routing channels** (FL's "link selected channels"): Shift+click (range) and Shift+Ctrl+click
+(toggle) select several Channel Rack channels (`U.chSel`, with `U.selCh` the anchor); Ctrl+L
+routes them to the selected insert, Shift+Ctrl+L one per insert from it on, creating the
+missing inserts after the last one, named after their channel (`planRoute`; also in a strip's
+right-click menu, disabled with the reason while nothing is selected). It is one `commit` of
+`putInsert` + `putChannel` ops, so one undo step, in the engine and in the mock alike.
+
+PAT mode (L) loops the current pattern and follows
 it when it changes. The Playlist, the Piano roll and the Pitch editor share one overview bar
 on top (`ui/ZoomScrollbar` with a minimap: drag = scroll, drag an end = zoom) and one time
 ruler (`ui/timeRuler.ts`, `lib/rulerEdit.ts`: click = start, drag = loop, drag a loop edge =
