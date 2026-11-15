@@ -11,10 +11,11 @@ import { findFx, S } from './state/store';
 import { swapTake } from './state/comp';
 import { closeMenu, say, setU, U } from './state/ui';
 import { ContextMenu } from './ui/Menu';
-import { Browser, importAt } from './views/Browser';
+import { importAt } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
 import { Mixer } from './views/Mixer';
-import { Playlist, playlistZoom } from './views/Playlist';
+import { playlistZoom } from './views/Playlist';
+import { Workspace } from './views/PatDock';
 import { SampleEditor } from './views/SampleEditor';
 import { ChannelWindow } from './views/ChannelWindow';
 import { PitchEditor } from './views/PitchEditor';
@@ -34,19 +35,19 @@ import { PianoRoll } from './views/PianoRoll';
 import { renameCurrent } from './views/patternShared';
 import { NotebookHost } from './views/Notebook';
 import { toggleNotebook } from './state/notebook';
-import { clonePattern, closeTopPatWin, nextEmptyPattern, patMode, pickPatternNum, stepPattern, toggleRack, toggleRoll } from './state/pattern';
+import { clonePattern, closeTopPatWin, nextEmptyPattern, patMode, pickPatternNum, rackFloating, rollFloating, stepPattern, toggleRack, toggleRoll } from './state/pattern';
 import { Help, Toolbar, TOOLS } from './views/Toolbar';
 
-/** Stacking rank of a window (effect windows, Channel Rack, Piano roll) inside the window layer (1 = bottom). */
+/** Stacking rank of a window (effect windows, floating Channel Rack, floating Piano roll) inside the window layer (1 = bottom). */
 function plugRank(z: number) {
   let r = 1;
   for (const p of U.plugs) if (p.z < z) r++;
-  if (U.rackWin && U.rackWin.z < z) r++;
-  if (U.rollWin && U.rollWin.z < z) r++;
+  if (rackFloating() && U.rackWin!.z < z) r++;
+  if (rollFloating() && U.rollWin!.z < z) r++;
   return r;
 }
 
-/** A click on the playlist/toolbar takes the keyboard back from a floating window (Channel Rack, Piano roll, effects):
+/** A click on the playlist/toolbar takes the keyboard back from a window (Channel Rack, Piano roll — floating or docked —, effects):
  * the canvas calls preventDefault on pointerdown, so focus would otherwise stay in that window and swallow the keys. */
 function reclaimFocus(e: PointerEvent) {
   const ae = document.activeElement as HTMLElement | null, tg = e.target as HTMLElement;
@@ -94,7 +95,7 @@ function onKey(e: KeyboardEvent) {
     if (U.settings) return setU('settings', false);
     if (U.exportOpen) return void A.cancelExportOrClose();
     if (U.help) return setU('help', false);
-    if (NB.open && !U.rackWin && !U.rollWin && !U.plugs.length) return closeNotebook();
+    if (NB.open && !rackFloating() && !rollFloating() && !U.plugs.length) return closeNotebook();
     if (chanWin()) return closeChannelWindow();
     if (U.editor) return A.closeEditor();
     if (closeTopPatWin()) return;
@@ -226,18 +227,15 @@ export function App() {
     <>
     <div class="app" inert={U.openingProject} onContextMenu={e => e.preventDefault()}>
       <Toolbar />
-      <div style={{ flex: 1, 'min-height': 0, display: 'flex' }}>
-        <Show when={U.pickOpen}><Browser /></Show>
-        <Playlist />
-      </div>
+      <Workspace />
       <Show when={U.mixOpen}><Mixer /></Show>
       <SampleEditor />
       <ChannelWindow />
       <PitchEditor />
       <div class="winlayer" classList={{ hidden: U.plugsHidden }}>
         <For each={U.plugs}>{pw => <FxWindow pw={pw} z={plugRank(pw.z)} />}</For>
-        <ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} />
-        <PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} />
+        <Show when={!U.rackDock}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
+        <Show when={!U.rollDock}><PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} /></Show>
       </div>
       <NotebookHost />
       <Show when={U.ghost}>{g => <div class="ghost" style={{ left: g().x + 'px', top: g().y + 'px', 'box-shadow': `inset 0 0 0 1px ${g().color},0 6px 16px rgba(0,0,0,.45)` }}>{g().name}</div>}</Show>

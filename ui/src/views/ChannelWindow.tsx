@@ -43,7 +43,9 @@ export function toggleChannelWindow(id: Id) {
   if (!kind) return;
   if (chanWin()?.id === id) { closeChannelWindow(); return; }
   const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : Math.min(620, window.innerWidth - 20);
-  const r = U.rackWin, W = window.innerWidth;
+  // beside the Channel Rack: the floating window, or the docked panel's place on screen
+  const dk = U.rackDock ? document.querySelector('.rackwin')?.getBoundingClientRect() : undefined;
+  const r = dk ? { x: dk.left, y: dk.top, w: dk.width } : U.rackWin, W = window.innerWidth;
   const center = Math.max(20, (W - width) / 2);
   const x = r && r.x + r.w + 8 + width <= W - 10 ? r.x + r.w + 8 : r && r.x - 8 - width >= 10 ? r.x - 8 - width : center;
   const y = r && x !== center ? r.y : kind === 'synth' ? 70 : 110;

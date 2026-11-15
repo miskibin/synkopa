@@ -144,11 +144,22 @@ the kit and its mixer routing in every pattern.
 **The UI, as in FL Studio.** The *current pattern* is global (the toolbar's pattern selector,
 numpad 1–9 / + / −, F4 next empty pattern, F2 rename, Shift+Ctrl+C clone); picking a pattern
 clip on the playlist or in the browser makes it current, and the playlist paints it. Two
-separate floating windows show it: the **Channel Rack** (F6: a row per channel — mute LED,
+two windows show it: the **Channel Rack** (F6: a row per channel — mute LED,
 pan, volume, mixer insert, name, steps — "+ / −" bars, swing, and the graph editor `G` for
 per-step velocity and key of the selected channel) and the **Piano roll** (F7: the selected
 channel's notes in the current pattern, any channel; the pattern's other channels as ghost
-notes, double right-click one to switch). PAT mode (L) loops the current pattern and follows
+notes, double right-click one to switch). Each one floats in the effect-window layer or is
+docked: the Channel Rack left of the Playlist (beside the Browser, full height of that row), the
+Piano roll under the Playlist and above the Mixer (title-bar button or View menu;
+`U.rackDock` / `U.rollDock`, `views/PatDock.tsx`). Docked panels have a splitter on their Playlist
+side; their sizes are clamped by `lib/layout.ts` `fitDock` so the Playlist keeps ≥ 320 × 140 px
+(below that both give way instead of running off the window) and the Mixer shrinks to leave a
+docked roll its 300 px. F5, a Playlist click and a right-click on the Mixer tuck away floating
+windows only, Escape never closes a docked panel, and F6 / F7 on a docked panel show it, then
+give it the keyboard, then hide it. Docked panels keep the `.win.patwin` frame, so their keys
+are guarded exactly like the floating windows'. Docking, docked sizes and the floating places
+are per user in `localStorage` (`wave.layout`, validated by `parseLayout`), never in the
+project. PAT mode (L) loops the current pattern and follows
 it when it changes. The Playlist, the Piano roll and the Pitch editor share one overview bar
 on top (`ui/ZoomScrollbar` with a minimap: drag = scroll, drag an end = zoom) and one time
 ruler (`ui/timeRuler.ts`, `lib/rulerEdit.ts`: click = start, drag = loop, drag a loop edge =

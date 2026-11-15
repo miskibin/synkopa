@@ -10,6 +10,7 @@ import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, 
 import { baseName, clamp, mod } from '../lib/format';
 import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
+import { dockKeyAction } from '../lib/layout';
 import { commit, enqueue } from './edit';
 import { newTrack } from '../lib/clipOps';
 import { planMoveNotes } from '../lib/moveNotes';
@@ -78,9 +79,13 @@ export function nextEmptyPattern() {
 // ---------------------------------------------------------------- windows
 
 type WinKey = 'rackWin' | 'rollWin';
-/** Bring a pattern window to the front of the window layer (showing the layer if it was tucked away). */
+const dockOf = (k: WinKey) => (k === 'rackWin' ? U.rackDock : U.rollDock);
+/** The Channel Rack / Piano roll is open as a floating window (not docked): it counts among the window layer's windows. */
+export const rackFloating = () => !!U.rackWin && !U.rackDock;
+export const rollFloating = () => !!U.rollWin && !U.rollDock;
+/** Bring a pattern window to the front of the window layer (showing the layer if it was tucked away). A docked panel has no front. */
 function front(k: WinKey) {
-  const w = U[k]; if (!w) return;
+  const w = U[k]; if (!w || dockOf(k)) return;
   if (U.plugsHidden) setU('plugsHidden', false);
   if (w.z === U.zTop) return;
   const z = U.zTop + 1;
@@ -91,10 +96,15 @@ export const rollFront = () => front('rollWin');
 /** The window is open and visible on top of every other floating window. */
 function onTop(k: WinKey) {
   const w = U[k];
-  if (!w || U.plugsHidden) return false;
-  const other = U[k === 'rackWin' ? 'rollWin' : 'rackWin'];
+  if (!w || U.plugsHidden || dockOf(k)) return false;
+  const ok: WinKey = k === 'rackWin' ? 'rollWin' : 'rackWin', other = dockOf(ok) ? null : U[ok];
   return U.plugs.every(p => p.z < w.z) && (!other || other.z < w.z);
 }
+const SEL: Record<WinKey, string> = { rackWin: '.rackwin', rollWin: '.rollwin' };
+/** The pattern window (floating or docked) has the keyboard. */
+const hasFocus = (k: WinKey) => !!document.querySelector(SEL[k])?.contains(document.activeElement);
+/** Give a pattern window the keyboard once it is on screen. */
+const focusSoon = (k: WinKey) => requestAnimationFrame(() => (document.querySelector(SEL[k]) as HTMLElement | null)?.focus({ preventScroll: true }));
 
 /**
  * The Channel Rack's width for a pattern of `steps` steps at window position `x`: the pattern and
@@ -106,24 +116,44 @@ export const rackPlaceFor = (steps: number, x: number) => fitOnScreen(x, rackWid
 /** F6: open the Channel Rack (or bring it to the front). */
 export function openRack() {
   if (!S.project.patterns.length) { say(t('b.st.noPatterns')); return; }
+  if (U.rackDock) focusSoon('rackWin');
   if (U.rackWin) { rackFront(); return; }
   const pt = curPat()!, rows = Math.max(4, channels().length + 1);
   const w = rackWidthFor(stepsOf(pt), 30);
   const need = RACK_HEAD + rows * RACK_ROW + 12 + 2 * RACK_PAD_Y;
   const z = U.zTop + 1;
   // where it was when it was last closed (kept on screen), else centred under the toolbar
-  const g = lastWin.rackWin;
+  const g = U.rackFloat;
   const x = g ? clamp(g.x, 0, Math.max(0, window.innerWidth - 120)) : Math.max(20, Math.round((window.innerWidth - w) / 2));
   const y = g ? clamp(g.y, 0, Math.max(0, window.innerHeight - 80)) : 64;
   const h = clamp(Math.max(need, g?.h ?? 0), 220, Math.max(220, window.innerHeight - y - 20));
   // as wide as when it was closed if that is wider (patterns browsed before), like FL
   const fit = rackPlaceFor(stepsOf(pt), x), pl = g && g.w > fit.w ? fitOnScreen(x, g.w, window.innerWidth) : fit;
-  setU({ zTop: z, plugsHidden: false, rackWin: { x: pl.x, y, w: pl.w, h, z } });
+  // a docked rack keeps the floating place for when it floats again; opening it docked does not show the window layer
+  setU({ zTop: z, rackWin: { x: pl.x, y, w: pl.w, h, z }, ...(U.rackDock ? {} : { plugsHidden: false }) });
 }
-/** Where the pattern windows were when last closed: they reopen there instead of jumping back to the centre. */
-const lastWin: { rackWin?: { x: number; y: number; w: number; h: number }; rollWin?: { x: number; y: number; w: number; h: number } } = {};
-export function closeRack() { const w = U.rackWin; if (w) lastWin.rackWin = { x: w.x, y: w.y, w: w.w, h: w.h }; setU('rackWin', null); }
-export function toggleRack() { if (onTop('rackWin')) closeRack(); else openRack(); }
+/** Close the Channel Rack; it reopens where it was (`rackFloat`: kept across restarts). */
+export function closeRack() { const w = U.rackWin; if (w) setU('rackFloat', { x: w.x, y: w.y, w: w.w, h: w.h }); setU('rackWin', null); }
+/** A docked panel's F6 / F7: show it, give it the keyboard, or hide it when it already has the keyboard. */
+function dockKey(k: WinKey, open: () => void, close: () => void) {
+  const a = dockKeyAction(!!U[k], hasFocus(k));
+  if (a === 'hide') close(); else if (a === 'show') open(); else focusSoon(k);
+}
+export function toggleRack() {
+  if (U.rackDock) return dockKey('rackWin', openRack, closeRack);
+  if (onTop('rackWin')) closeRack(); else openRack();
+}
+/** View menu: show / hide the Channel Rack (the check mark is whether it is open). */
+export function toggleRackShown() { if (U.rackDock) { if (U.rackWin) closeRack(); else openRack(); } else toggleRack(); }
+/** Dock the Channel Rack left of the Playlist (showing it), or float it as a window again. */
+export function setRackDock(on: boolean) {
+  if (U.rackDock === on) { if (on && !U.rackWin) openRack(); return; }
+  setU('rackDock', on);
+  say(t(on ? 'b.dk.rackDocked' : 'b.dk.rackFloats'));
+  // after the message: opening can say why it cannot (no pattern, no channel)
+  if (on) openRack();
+  else if (U.rackWin) { keepOnScreen(); rackFront(); focusSoon('rackWin'); }
+}
 
 /** F7: open the Piano roll on `ch` (default: the selected channel), or bring it to the front. */
 export function openRoll(ch?: Id) {
@@ -131,18 +161,19 @@ export function openRoll(ch?: Id) {
   if (ch != null) selectChannel(ch);
   if (!selChan()) { say(t('b.st.noChannels')); return; }
   // the roll takes the keyboard (tools, arrows, Ctrl+C/V) as soon as it is shown
-  requestAnimationFrame(() => (document.querySelector('.rollwin') as HTMLElement | null)?.focus({ preventScroll: true }));
+  focusSoon('rollWin');
   if (U.rollWin) { rollFront(); return; }
-  const z = U.zTop + 1, g = lastWin.rollWin, W = window.innerWidth, H = window.innerHeight;
+  const z = U.zTop + 1, g = U.rollFloat, W = window.innerWidth, H = window.innerHeight;
+  // docked: the floating place is only kept for later, the window layer stays as it is
+  const shown = U.rollDock ? {} : { plugsHidden: false };
   // full screen by default, like FL's piano roll (a melody needs the room; the Channel Rack stays
   // one F6 away). A window the user made smaller reopens where they left it.
-  if (g && !rollMax) {
+  if (g && !U.rollMax) {
     const w = clamp(g.w, 640, Math.max(640, W - 20)), h = clamp(g.h, 360, Math.max(360, H - 20));
-    setU({ zTop: z, plugsHidden: false, rollWin: { x: clamp(g.x, 0, Math.max(0, W - 120)), y: clamp(g.y, 0, Math.max(0, H - 80)), w, h, z } });
+    setU({ zTop: z, ...shown, rollWin: { x: clamp(g.x, 0, Math.max(0, W - 120)), y: clamp(g.y, 0, Math.max(0, H - 80)), w, h, z } });
     return;
   }
-  rollMax = true;
-  setU({ zTop: z, plugsHidden: false, rollWin: { ...fullArea(), z } });
+  setU({ zTop: z, ...shown, rollMax: true, rollWin: { ...fullArea(), z } });
 }
 /** Everything under the toolbar: where the maximised Piano roll goes (it covers the browser and the mixer too). */
 function fullArea() {
@@ -150,23 +181,36 @@ function fullArea() {
   const y = Math.round(document.querySelector('.toolbar')?.getBoundingClientRect().bottom ?? 54);
   return { x: 0, y, w: Math.max(640, W), h: Math.max(360, H - y) };
 }
-/** The Piano roll fills `fullArea()`: it follows the app window's size and reopens full screen. */
-let rollMax = true;
 let rollRestore: { x: number; y: number; w: number; h: number } | null = null;
-/** Double-click on the Piano roll's title bar: go back to the size before, or fill the screen again. */
+/** Double-click on the floating Piano roll's title bar: go back to the size before, or fill the screen again. Docked, it has no such size. */
 export function toggleRollMax() {
-  const w = U.rollWin; if (!w) return;
-  if (!rollMax) { rollRestore = { x: w.x, y: w.y, w: w.w, h: w.h }; rollMax = true; setU('rollWin', v => v && { ...v, ...fullArea() }); return; }
+  const w = U.rollWin; if (!w || U.rollDock) return;
+  if (!U.rollMax) { rollRestore = { x: w.x, y: w.y, w: w.w, h: w.h }; setU('rollMax', true); setU('rollWin', v => v && { ...v, ...fullArea() }); return; }
   const W = window.innerWidth, H = window.innerHeight;
   const b = rollRestore ?? { w: clamp(Math.round(W * 0.62), 640, W - 40), h: clamp(Math.round(H * 0.58), 360, H - 100), x: Math.round(W * 0.19), y: 96 };
-  rollMax = false;
+  setU('rollMax', false);
   setU('rollWin', v => v && { ...v, ...b });
 }
 /** A drag or resize of the Piano roll's frame: it is no longer full screen. */
-export function rollMoved() { rollMax = false; }
-export function closeRoll() { const w = U.rollWin; if (w) lastWin.rollWin = { x: w.x, y: w.y, w: w.w, h: w.h }; setU('rollWin', null); }
-export function toggleRoll() { if (onTop('rollWin')) closeRoll(); else openRoll(); }
-/** Escape: close the top pattern window when it is above every effect window. True when one closed. */
+export function rollMoved() { if (U.rollMax) setU('rollMax', false); }
+/** Close the Piano roll; it reopens where it was (`rollFloat`: kept across restarts). */
+export function closeRoll() { const w = U.rollWin; if (w) setU('rollFloat', { x: w.x, y: w.y, w: w.w, h: w.h }); setU('rollWin', null); }
+export function toggleRoll() {
+  if (U.rollDock) return dockKey('rollWin', () => openRoll(), closeRoll);
+  if (onTop('rollWin')) closeRoll(); else openRoll();
+}
+/** View menu: show / hide the Piano roll (the check mark is whether it is open). */
+export function toggleRollShown() { if (U.rollDock) { if (U.rollWin) closeRoll(); else openRoll(); } else toggleRoll(); }
+/** Dock the Piano roll under the Playlist (showing it), or float it as a window again. */
+export function setRollDock(on: boolean) {
+  if (U.rollDock === on) { if (on && !U.rollWin) openRoll(); return; }
+  setU('rollDock', on);
+  say(t(on ? 'b.dk.rollDocked' : 'b.dk.rollFloats'));
+  // after the message: opening can say why it cannot (no pattern, no channel)
+  if (on) openRoll();
+  else if (U.rollWin) { keepOnScreen(); rollFront(); focusSoon('rollWin'); }
+}
+/** Escape: close the top floating pattern window when it is above every effect window (never a docked panel). True when one closed. */
 export function closeTopPatWin(): boolean {
   if (onTop('rollWin')) { closeRoll(); return true; }
   if (onTop('rackWin')) { closeRack(); return true; }
@@ -488,17 +532,18 @@ export const playStep = (pt: Pattern) => { const b = patPlayhead(pt); return b <
 // below the window's edge), and both pattern windows stay reachable when the app window shrinks.
 createRoot(() => {
   createEffect(on(() => channels().length, (n, prev) => {
-    const w = U.rackWin; if (!w || prev == null || n <= prev) return;
+    const w = U.rackWin; if (!w || U.rackDock || prev == null || n <= prev) return;
     const need = RACK_HEAD + (n + 1) * RACK_ROW + 12 + 2 * RACK_PAD_Y;
     if (need > w.h) setU('rackWin', 'h', Math.min(need, Math.max(220, window.innerHeight - w.y - 20)));
   }));
-  const keepOnScreen = () => {
-    if (U.rollWin && rollMax) { const a = fullArea(); setU('rollWin', v => v && { ...v, ...a }); }
-    for (const k of ['rackWin', 'rollWin'] as const) {
-      const w = U[k]; if (!w) continue;
-      const x = clamp(w.x, 0, Math.max(0, window.innerWidth - 120)), y = clamp(w.y, 0, Math.max(0, window.innerHeight - 80));
-      if (x !== w.x || y !== w.y) setU(k, v => v && { ...v, x, y });
-    }
-  };
   window.addEventListener('resize', keepOnScreen);
 });
+/** Keep the floating pattern windows reachable (the app window shrank, or a docked panel floats again at an old place). */
+function keepOnScreen() {
+  if (U.rollWin && U.rollMax) { const a = fullArea(); setU('rollWin', v => v && { ...v, ...a }); }
+  for (const k of ['rackWin', 'rollWin'] as const) {
+    const w = U[k]; if (!w) continue;
+    const x = clamp(w.x, 0, Math.max(0, window.innerWidth - 120)), y = clamp(w.y, 0, Math.max(0, window.innerHeight - 80));
+    if (x !== w.x || y !== w.y) setU(k, v => v && { ...v, x, y });
+  }
+}

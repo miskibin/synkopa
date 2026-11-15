@@ -25,6 +25,7 @@ import { commit, Gesture, inGesture } from '../state/edit';
 import { clipPeaksPending, getClipPeaks, peakRange, peaksVersion } from '../state/peaks';
 import { plain, S } from '../state/store';
 import { tele } from '../state/telemetry';
+import { rackFloating, rollFloating } from '../state/pattern';
 import { say, setU, U } from '../state/ui';
 import { dblCheck, track } from '../ui/drag';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
@@ -692,7 +693,7 @@ function PitchBody(props: { clipId: number }) {
     track(ev => setU('pitchEd', ed => ed && { ...ed, w: clamp(o.w + ev.clientX - sx, 720, window.innerWidth - 20), h: clamp(o.h + ev.clientY - sy, 380, window.innerHeight - 20) }), null, 'nwse-resize');
   };
   // over the plugin / Channel Rack / Piano roll layer when it was used after them
-  const aboveWins = () => { const z = E().z ?? 0; return !U.plugsHidden && [...U.plugs.map(p => p.z), U.rackWin?.z ?? 0, U.rollWin?.z ?? 0].every(o => z > o); };
+  const aboveWins = () => { const z = E().z ?? 0; return !U.plugsHidden && [...U.plugs.map(p => p.z), rackFloating() ? U.rackWin!.z : 0, rollFloating() ? U.rollWin!.z : 0].every(o => z > o); };
   void theme; void fonts;
   return (
     <div ref={root} tabIndex={0} class="win pitchwin" style={{ left: E().x + 'px', top: E().y + 'px', width: E().w + 'px', height: E().h + 'px', 'z-index': aboveWins() ? 46 : 44 }}

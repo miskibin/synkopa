@@ -1,6 +1,7 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
+import { ROLL_DOCKED_RESERVE } from '../lib/layout';
 import { t as tr, tName } from '../lib/i18n';
 import { channels } from '../state/pattern';
 import { presetInfo } from '../lib/presets';
@@ -249,7 +250,9 @@ export function Mixer() {
   // stalled, then jumped, and the playlist above it jerked.
   const [winH, setWinH] = createSignal(window.innerHeight);
   onMount(() => { const r = () => setWinH(window.innerHeight); window.addEventListener('resize', r); onCleanup(() => window.removeEventListener('resize', r)); });
-  const fitH = (h: number) => clamp(h, 170, Math.max(170, winH() - 200));
+  // A docked Piano roll needs its minimum height too: the mixer gives way (down to its own minimum)
+  // rather than squeezing the roll to a toolbar without notes. Its stored height is kept.
+  const fitH = (h: number) => clamp(h, 170, Math.max(170, winH() - (U.rollDock && U.rollWin ? ROLL_DOCKED_RESERVE : 200)));
   const mixH = () => Math.round(fitH(U.mixH));
   const split = (e: PointerEvent) => {
     if (e.button !== 0) return; e.preventDefault();

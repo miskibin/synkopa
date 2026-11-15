@@ -12,10 +12,11 @@ import { commit } from '../state/edit';
 import {
   addBar, addKeys, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, channels, clonePattern, cloneChannel, curPat, deleteChannel,
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
-  rollMoved,
+  rollMoved, setRackDock, setRollDock,
 } from '../state/pattern';
+import { Icon } from '../ui/icons';
 import { arrVersion, S } from '../state/store';
-import { openMenu, openRename, say, setU, type MenuItem, type PatWin } from '../state/ui';
+import { openMenu, openRename, say, setU, U, type MenuItem, type PatWin } from '../state/ui';
 import { track } from '../ui/drag';
 import { libGlyph, PICK_GLYPH, synthCategoryGlyph } from '../ui/menuIcons';
 import { theme } from '../ui/theme';
@@ -55,9 +56,13 @@ export function guardKeys(e: KeyboardEvent, own?: (e: KeyboardEvent) => void) {
   else if (!m && !e.altKey && k.length === 1 && 'pbdtce'.includes(k)) e.stopPropagation();
 }
 
-/** A pattern window: frame, title bar (drag to move), bottom-right resize grip. */
+/**
+ * A pattern window: frame, title bar (drag to move), bottom-right resize grip. `docked`: the same
+ * frame laid out in the main window instead (no move, no grip, never "in front"); it keeps
+ * `.win.patwin` so the keyboard rules of the floating window (focus, guarded keys) stay the same.
+ */
 export function PatFrame(props: {
-  win: PatWin; key: 'rackWin' | 'rollWin'; z: number; class: string; minW: number; minH: number;
+  win: PatWin; key: 'rackWin' | 'rollWin'; z: number; class: string; minW: number; minH: number; docked?: boolean;
   front: () => void; onKey?: (e: KeyboardEvent) => void; head: JSX.Element; children: JSX.Element;
   /** Wheel over the title bar (the Channel Rack switches pattern). */
   onHeadWheel?: (e: WheelEvent) => void;
@@ -78,14 +83,33 @@ export function PatFrame(props: {
     track(ev => put({ w: clamp(o.w + ev.clientX - sx, props.minW, window.innerWidth - 20), h: clamp(o.h + ev.clientY - sy, props.minH, window.innerHeight - 20) }), null, 'nwse-resize');
   };
   return (
-    <div ref={root} tabIndex={0} class={'win patwin ' + props.class} style={{ left: W().x + 'px', top: W().y + 'px', width: W().w + 'px', height: W().h + 'px', 'z-index': props.z }}
-      onPointerDown={e => { props.front(); const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
+    <div ref={root} tabIndex={0} class={'win patwin ' + props.class} classList={{ docked: !!props.docked }}
+      style={props.docked ? undefined : { left: W().x + 'px', top: W().y + 'px', width: W().w + 'px', height: W().h + 'px', 'z-index': props.z }}
+      onPointerDown={e => { if (!props.docked) props.front(); const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
       onKeyDown={e => guardKeys(e, props.onKey)}>
-      <div class="winhd" onPointerDown={e => moveWindow(e, () => W(), (x, y) => put({ x, y }))} onWheel={e => props.onHeadWheel?.(e)}
-        onDblClick={e => { if (!(e.target as HTMLElement).closest('button, select, input, .numf, .seg')) props.onHeadDbl?.(); }}>{props.head}</div>
+      <div class="winhd" onPointerDown={e => { if (!props.docked) moveWindow(e, () => W(), (x, y) => put({ x, y })); }} onWheel={e => props.onHeadWheel?.(e)}
+        onDblClick={e => { if (!props.docked && !(e.target as HTMLElement).closest('button, select, input, .numf, .seg')) props.onHeadDbl?.(); }}>{props.head}</div>
       {props.children}
-      <div class="resizer" onPointerDown={resize} title={t('b.pe.resize')} />
+      {!props.docked && <div class="resizer" onPointerDown={resize} title={t('b.pe.resize')} />}
     </div>
+  );
+}
+
+/** Dock-left / dock-bottom glyphs (a frame with the panel's side drawn) and the float glyph (two windows). */
+const DOCK_ICON = { rack: 'M4 5h16v14H4z M10 5v14', roll: 'M4 5h16v14H4z M4 13h16' } as const;
+const FLOAT_ICON = 'M9 9h11v10H9z M5 15H4V5h11v1';
+/**
+ * The title-bar button that switches a pattern window between floating and docked (the Channel
+ * Rack docks left of the Playlist, the Piano roll under it). The View menu has the same switch.
+ */
+export function DockBtn(props: { which: 'rack' | 'roll' }) {
+  const docked = () => (props.which === 'rack' ? U.rackDock : U.rollDock);
+  const tip = () => t(docked() ? 'b.dk.float' : props.which === 'rack' ? 'b.dk.dockLeft' : 'b.dk.dockBottom');
+  return (
+    <button class="iconbtn dockbtn" title={tip()} aria-label={tip()} aria-pressed={docked()}
+      onClick={() => (props.which === 'rack' ? setRackDock : setRollDock)(!docked())}>
+      <Icon d={docked() ? FLOAT_ICON : DOCK_ICON[props.which]} size={13} />
+    </button>
   );
 }
 
