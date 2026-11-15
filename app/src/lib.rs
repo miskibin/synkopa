@@ -18,6 +18,8 @@ mod project_launch;
 mod recovery;
 mod settings;
 mod updater;
+#[cfg(test)]
+mod watch_tests;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};

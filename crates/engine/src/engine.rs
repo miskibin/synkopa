@@ -685,6 +685,67 @@ impl Engine {
         true
     }
 
+    /// Replaces the whole project with `project` as one undo step, without stopping the
+    /// transport (`wave watch`: a script's result, made on a copy, applied in one go). Audio
+    /// already loaded for a source of the same id and file is kept; a new source's file is
+    /// decoded first, outside the lock (a file that does not decode makes the source missing,
+    /// as on open). Hosted plugins of the same class keep their running instance and sound;
+    /// effects keep their DSP state by id, as after an undo. `Ok(revision)`; a project equal to
+    /// the current one changes nothing. Refused while recording, or when `if_revision` is not
+    /// the current revision.
+    pub fn set_project(&self, project: Project, if_revision: Option<u64>) -> Result<u64, EngineError> {
+        let mut project = project;
+        project.migrate();
+        if project.inserts.first().map(|m| m.id) != Some(0) {
+            return Err(EngineError::Msg("the project has no master insert".into()));
+        }
+        let have =
+            |c: &Core, s: &Source| c.sources.get(s.id).is_some() && c.project.sources.iter().any(|o| o.id == s.id && o.path == s.path);
+        let todo: Vec<(Id, String)> = {
+            let c = self.core.lock();
+            project.sources.iter().filter(|s| !have(&c, s)).map(|s| (s.id, s.path.clone())).collect()
+        };
+        let loaded: Vec<(Id, String, Result<Audio, String>)> =
+            todo.into_iter().map(|(id, path)| (id, path.clone(), Audio::load_path(&path, Path::new(".")))).collect();
+        let mut c = self.core.lock();
+        if let Some(r) = if_revision {
+            if r != c.revision {
+                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+            }
+        }
+        if c.take.is_some() || self.midi_take.lock().rec.is_some() {
+            return Err(EngineError::Msg("recording: stop it first".into()));
+        }
+        if c.project == project {
+            return Ok(c.revision);
+        }
+        for (id, path, r) in loaded {
+            // the project may have changed while the files decoded: only what is still wanted
+            if !project.sources.iter().any(|s| s.id == id && s.path == path) {
+                continue;
+            }
+            match r {
+                Ok(a) => {
+                    c.sources.insert(id, Arc::new(a));
+                    c.source_errors.remove(&id);
+                }
+                Err(e) => {
+                    c.sources.drop_audio(id);
+                    c.source_errors.insert(id, e);
+                }
+            }
+        }
+        c.gesture = None;
+        c.gesture_unreported = false;
+        let before = std::mem::replace(&mut c.project, project);
+        push_undo(&mut c, before);
+        c.revision += 1;
+        self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
+        let rev = c.revision;
+        self.changed(c);
+        Ok(rev)
+    }
+
     pub fn redo(&self) -> bool {
         let mut c = self.core.lock();
         c.gesture = None;

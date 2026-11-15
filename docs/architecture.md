@@ -500,6 +500,15 @@ device), so plain edits and bounces do not pay for them. `crates/cli` owns load 
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs
 `script` files with one load and one save.
 
+**`wave watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
+headless `Doc`, as for `--project`), reset to the project as it was when the watch started, runs
+the script lines on it on every save and sends the result to the app with the `set_project`
+action: `Engine::set_project` decodes only the sources whose id/file are new (outside the lock),
+swaps the whole project as one undo step without stopping the transport, and syncs like an undo
+(effects keep DSP state by id, plugin instruments of the same class keep their instance). The
+watch passes the revision of its last apply as `if_revision`, so an edit made in the app
+meanwhile is refused (`REVISION_CONFLICT`) rather than overwritten.
+
 Events: `state` (a `StateDto`, after every change from any origin: UI, CLI,
 undo, import, recording, file open), `library-progress`, `model-progress`, `audio-status`,
 `export-progress` (`{done, total, name, stage, frac, beat, peak, wave}` while a bounce runs: the

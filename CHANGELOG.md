@@ -4,6 +4,16 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Live coding from a text file: `wave watch song.txt`.** Write the song as `wave` commands
+  in a file (tempo, step patterns, effects…), start the loop and save: the song changes while
+  it plays, every time you save. The file is the song: remove a line and its effect is gone.
+  Each save is one undo step; a mistake in the file changes nothing and the terminal names the
+  line; an edit you make in WAVE meanwhile is not overwritten. Without the app,
+  `wave -p song.wave watch song.txt --render preview.wav` bounces a preview on every save.
+
 ## 0.9.16 — 2026-11-15
 
 ### Added

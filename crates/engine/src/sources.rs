@@ -303,6 +303,11 @@ impl SourceStore {
         self.audio.insert(id, a);
     }
 
+    /// The source's file did not decode: it goes missing (plays silence) until relinked.
+    pub fn drop_audio(&mut self, id: u64) {
+        self.forget(id);
+    }
+
     /// Drops a source's audio and everything derived from it (the source goes missing).
     fn forget(&mut self, id: u64) {
         self.derived.retain(|k, _| k.0 != id);

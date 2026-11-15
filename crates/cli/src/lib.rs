@@ -10,6 +10,8 @@ use std::process::ExitCode;
 use serde_json::{json, Value};
 use wave_session as ws;
 
+mod watch;
+
 const HELP: &str = r#"wave — edit, render and inspect WAVE projects
 docs: https://github.com/miskibin/wave-DAW/blob/main/docs/cli.md
 
@@ -33,6 +35,13 @@ SCRIPTS
   script FILE|-                            one command per line ('…'/"…" quote, # comments, a leading
                                            `wave` is ignored); stops at the first failing line. With -p:
                                            one load and one save, nothing written if a line fails
+  watch FILE [--render OUT.wav] [--once] [--force]
+                                           live coding: the script FILE describes the song. On every save
+                                           it runs on a copy of the project as it was when the watch
+                                           started and the result replaces the open project as one undo
+                                           step while the loop plays (a failing line changes nothing).
+                                           One JSON line per save on stdout. --render: bounce it each time;
+                                           --once: apply and exit. With -p FILE: on the file, never saved
 
 READ
   sessions                                 list running WAVE apps
@@ -192,6 +201,7 @@ const SWITCHES: &[&str] = &[
     "dry-run",
     "flatten",
     "force",
+    "once",
     "full",
     "help",
     "keys",
@@ -311,14 +321,7 @@ pub fn run_cli_with(raw: Vec<String>, files: Option<&dyn Files>) -> ExitCode {
         print!("{HELP}");
         return ExitCode::SUCCESS;
     }
-    let res = if cmd == "new" {
-        new_file(files, &a)
-    } else if a.has("project") {
-        on_file(files, &cmd, &a)
-    } else {
-        run(&Cx { doc: None }, &cmd, &a)
-    };
-    match res {
+    match dispatch(&cmd, &a, files) {
         Ok(mut v) => {
             tidy_numbers(&mut v);
             let s = if pretty { serde_json::to_string_pretty(&v) } else { serde_json::to_string(&v) };
@@ -338,6 +341,28 @@ pub fn run_cli_with(raw: Vec<String>, files: Option<&dyn Files>) -> ExitCode {
             ExitCode::from(3)
         }
     }
+}
+
+fn dispatch(cmd: &str, a: &Args, files: Option<&dyn Files>) -> Result<Value, Fail> {
+    if cmd == "watch" {
+        watch::watch(files, a)
+    } else if cmd == "new" {
+        new_file(files, a)
+    } else if a.has("project") {
+        on_file(files, cmd, a)
+    } else {
+        run(&Cx { doc: None }, cmd, a)
+    }
+}
+
+/// One command, as [`run_cli_with`] runs it, with the result returned instead of printed
+/// (the message of a failure). For embedders and tests; `watch` without `--once` never returns.
+pub fn execute(raw: Vec<String>, files: Option<&dyn Files>) -> Result<Value, String> {
+    let a = Args::parse(raw);
+    let cmd = a.pos.first().cloned().ok_or("no command")?;
+    dispatch(&cmd, &a, files).map_err(|e| match e {
+        Fail::Usage(m) | Fail::Conn(m) | Fail::App(m) => m,
+    })
 }
 
 fn need_files(files: Option<&dyn Files>) -> Result<&dyn Files, Fail> {
@@ -563,6 +588,12 @@ fn script(cx: &Cx, a: &Args) -> Result<Value, Fail> {
     } else {
         std::fs::read_to_string(src).map_err(|e| u(format!("{src}: {e}")))?
     };
+    Ok(json!({ "results": run_lines(cx, a, &text)? }))
+}
+
+/// Runs a script's lines (see [`script`]): the results of each, or the first failure, naming its line.
+fn run_lines(cx: &Cx, a: &Args, text: &str) -> Result<Vec<Value>, Fail> {
+    let u = Fail::Usage;
     let mut results = vec![];
     for (i, line) in text.lines().enumerate() {
         let n = i + 1;
@@ -576,7 +607,7 @@ fn script(cx: &Cx, a: &Args) -> Result<Value, Fail> {
         }
         let mut la = Args::parse(words);
         let Some(cmd) = la.pos.first().cloned() else { continue };
-        if matches!(cmd.as_str(), "script" | "new" | "help") {
+        if matches!(cmd.as_str(), "script" | "new" | "help" | "watch") {
             return Err(u(format!("line {n}: `{cmd}` cannot run inside a script")));
         }
         if let Some((k, _)) = la.opts.iter().find(|(k, _)| OUTER_ONLY.contains(&k.as_str())) {
@@ -616,7 +647,7 @@ fn script(cx: &Cx, a: &Args) -> Result<Value, Fail> {
             }
         }
     }
-    Ok(json!({ "results": results }))
+    Ok(results)
 }
 
 /// `12` → 12, `kick` → "kick".

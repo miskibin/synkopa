@@ -48,7 +48,7 @@ pub struct Headless {
 }
 
 impl Headless {
-    fn new(project: Project) -> Self {
+    pub(crate) fn new(project: Project) -> Self {
         let plugins = Plugins::new();
         crate::plugins::register_bundled(None);
         let engine = Engine::new(Project::empty(), plugins.factory());

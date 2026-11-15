@@ -84,6 +84,45 @@ run (`--project`, `--session`, `--save-as`, `--dry-run`, `--force`, `--pretty`) 
 `script`, not on its lines; a leading `wave` on a line is ignored. Relative paths in a line are
 relative to the current folder.
 
+### Live coding: `wave watch`
+
+```sh
+wave watch song.txt                                    # the running app: every save replaces the song
+wave -p song.wave watch song.txt --render preview.wav  # no app: every save bounces preview.wav
+```
+
+```text
+# song.txt — the song, as `wave script` lines
+bpm 128
+pattern --id 1 --ch kick --steps "x... x... x... x..."
+pattern --id 1 --ch hat  --steps "..x. ..x. ..x. ..x5"
+add-fx --insert 3 --type reverb --preset 2
+```
+
+Start the loop in WAVE (or `wave play`), open the file in your editor (or let an agent write it)
+and save: the song changes while the loop plays. The file is the song, as a buffer in Sonic Pi
+or Strudel: each save runs the whole file again on a copy of the project *as it was when the
+watch started*, and the result replaces the open project. Delete a line and its effect is gone;
+a line that adds something (an effect, a channel) adds it once, not once per save.
+
+- **One undo step per save** ("wave watch: song.txt"); a save that changes nothing adds none.
+  The transport is not stopped, effects keep their tails, plugin instruments keep their sound.
+- **A failing line changes nothing**: the open project stays as the last good save, and the
+  error names the line. Transport and undo commands (`play`, `undo` …) do not belong in the
+  file: they answer `NEEDS_APP` there.
+- **An edit in the app is not overwritten.** After you change the project in WAVE (or with
+  another `wave` command), the next save is refused with `REVISION_CONFLICT`. Restart `wave watch`
+  to build on the project as it is now, or pass `--force` to let the file win (what it replaces
+  stays one undo away).
+- **Output**: one JSON line per save on stdout: `{"event":"applied","lines":4,"revision":57,
+  "changed":true}` (plus `render` with `--render`) or `{"event":"failed","error":"line 3 …"}`.
+  `--once` runs the file once, prints that line and exits. Ctrl+C stops watching.
+- **With `-p FILE`** the copy is the file's project: it is never saved (bounce with `--render`,
+  or save the result with `wave -p song.wave script song.txt`).
+
+The file is checked every 150 ms and read once it holds still, so an editor that writes in
+steps is read once.
+
 ## Reading
 
 | command | what you get |
