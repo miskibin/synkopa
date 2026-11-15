@@ -1,4 +1,4 @@
-// The Piano roll (F7), as in FL Studio: a window of its own that edits the selected channel's
+// The Piano roll (F7), as in FL Studio: a floating window, or a panel docked under the Playlist, that edits the selected channel's
 // notes in the current pattern — every channel, drums included (built-in drums and samplers
 // follow the key). The pattern's other channels show as ghost notes; double right-click one to
 // switch to its channel. Drawing past the end makes the pattern longer (its length follows the
@@ -42,7 +42,7 @@ import { noteClip, setNoteClip } from '../state/noteClipboard';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
-import { PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
+import { DockBtn, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
 
 const LANE_H = 76, KW = 48;
 /** Steps past the pattern's end the roll lets you scroll to and draw in (the pattern grows). */
@@ -61,9 +61,9 @@ const TOOLS: { id: Tool; key: string; label: Parameters<typeof t>[0]; icon: stri
   { id: 'erase', key: 'd', label: 'b.pe.tool.erase', icon: 'M8 20h12 M4.5 15.5L14 6l5 5-7.5 7.5H8z', tip: 'b.pe.tool.erase.tip' },
 ];
 
-/** The Piano roll window (shown while `U.rollWin` is set and there is a pattern and a channel). */
-export function PianoRoll(props: { z: number }) {
-  return <Show when={U.rollWin && curPat() && selChan()}><Roll z={props.z} /></Show>;
+/** The Piano roll window (shown while `U.rollWin` is set and there is a pattern and a channel). `docked`: laid out under the Playlist. */
+export function PianoRoll(props: { z: number; docked?: boolean }) {
+  return <Show when={U.rollWin && curPat() && selChan()}><Roll z={props.z} docked={props.docked} /></Show>;
 }
 
 const [lastLen, setLastLen] = createSignal(2);
@@ -97,7 +97,7 @@ function projectKey(): { root: number; scale: number } {
   return { root: 0, scale: S.project.scale ?? 1 };
 }
 
-function Roll(props: { z: number }) {
+function Roll(props: { z: number; docked?: boolean }) {
   let wrap!: HTMLDivElement, cv!: HTMLCanvasElement, phead!: HTMLDivElement, laneCv!: HTMLCanvasElement, laneWrap!: HTMLDivElement;
   let rulerCv!: HTMLCanvasElement, phRuler!: HTMLDivElement;
   // memos: every read was a find() through the store (thousands per redraw of a big pattern)
@@ -874,7 +874,7 @@ function Roll(props: { z: number }) {
     );
   }
   return (
-    <PatFrame win={U.rollWin!} key="rollWin" z={props.z} class="rollwin" minW={560} minH={300} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
+    <PatFrame win={U.rollWin!} key="rollWin" z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: ch().color + '2e', color: ch().color }}><Icon d={ROLL_ICON} size={12} /></span>
         <span class="wintitle">Piano roll</span>
@@ -886,7 +886,8 @@ function Roll(props: { z: number }) {
           <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
         </button>
         <div style={{ flex: 1 }} />
-        <button class="closebtn" title={t('b.pe.close')} onClick={closeRoll}>×</button>
+        <DockBtn which="roll" />
+        <button class="closebtn" title={t(props.docked ? 'b.dk.closeRoll' : 'b.pe.close')} onClick={closeRoll}>×</button>
       </>}>
     <div class="roll">
       <div class="ptools">

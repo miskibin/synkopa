@@ -1,4 +1,4 @@
-import { curPat, newPattern, openRack, patMode, stepPattern, toggleRack, toggleRoll } from '../state/pattern';
+import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, setRackDock, setRollDock, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
@@ -127,7 +127,7 @@ export function Toolbar() {
     lastDown = now;
     void win.startDragging();
   };
-  const wins = () => U.plugs.length + (U.rackWin ? 1 : 0) + (U.rollWin ? 1 : 0);
+  const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
   const hint = () => t('a.tb.statusHint', { tool: t(TOOLS.find(x => x[0] === U.tool)![2]), hint: t(TOOL_HINT[U.tool]), snap: U.alt ? 'off' : snapLabel(U.snap, U.bw).replace('Snap: ', '') });
   return (
     <div class="toolbar" classList={{ native: !!win }} onMouseDown={dragDown}>
@@ -242,7 +242,7 @@ function MenuBar() {
   createEffect(() => { if (!U.menu) setOpen(-1); });
   const win = be().win;
   const none = () => !U.sel.length;
-  const wins = () => U.plugs.length + (U.rackWin ? 1 : 0) + (U.rollWin ? 1 : 0);
+  const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
   const menus: [TranslationKey, () => MenuItem[]][] = [
     ['a.mn.file', () => [
       { t: 'item', label: t('a.mn.new'), kbd: 'Ctrl+N', act: () => void A.projectNew() },
@@ -275,8 +275,10 @@ function MenuBar() {
     ['a.mn.view', () => [
       { t: 'item', label: t('a.mn.browser'), kbd: 'Alt+F8', checked: U.pickOpen, act: () => setU('pickOpen', !U.pickOpen) },
       { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: U.mixOpen, act: () => setU('mixOpen', !U.mixOpen) },
-      { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRack },
-      { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRoll },
+      { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRackShown },
+      { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRollShown },
+      { t: 'item', label: t('a.mn.rackDock'), checked: U.rackDock, title: t('a.mn.rackDockTip'), act: () => setRackDock(!U.rackDock) },
+      { t: 'item', label: t('a.mn.rollDock'), checked: U.rollDock, title: t('a.mn.rollDockTip'), act: () => setRollDock(!U.rollDock) },
       { t: 'item', label: t(U.plugsHidden ? 'a.mn.winsShow' : 'a.mn.winsHide'), kbd: 'F5', disabled: !wins(), act: () => (U.plugsHidden ? A.showPlugs() : A.playlistFront()) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.follow'), kbd: 'F', checked: U.follow, act: () => setU('follow', !U.follow) },

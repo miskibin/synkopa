@@ -145,11 +145,22 @@ the kit and its mixer routing in every pattern.
 **The UI, as in FL Studio.** The *current pattern* is global (the toolbar's pattern selector,
 numpad 1–9 / + / −, F4 next empty pattern, F2 rename, Shift+Ctrl+C clone); picking a pattern
 clip on the playlist or in the browser makes it current, and the playlist paints it. Two
-separate floating windows show it: the **Channel Rack** (F6: a row per channel — mute LED,
+two windows show it: the **Channel Rack** (F6: a row per channel — mute LED,
 pan, volume, mixer insert, name, steps — "+ / −" bars, swing, and the graph editor `G` for
 per-step velocity and key of the selected channel) and the **Piano roll** (F7: the selected
 channel's notes in the current pattern, any channel; the pattern's other channels as ghost
-notes, double right-click one to switch). PAT mode (L) loops the current pattern and follows
+notes, double right-click one to switch). Each one floats in the effect-window layer or is
+docked: the Channel Rack left of the Playlist (beside the Browser, full height of that row), the
+Piano roll under the Playlist and above the Mixer (title-bar button or View menu;
+`U.rackDock` / `U.rollDock`, `views/PatDock.tsx`). Docked panels have a splitter on their Playlist
+side; their sizes are clamped by `lib/layout.ts` `fitDock` so the Playlist keeps ≥ 320 × 140 px
+(below that both give way instead of running off the window) and the Mixer shrinks to leave a
+docked roll its 300 px. F5, a Playlist click and a right-click on the Mixer tuck away floating
+windows only, Escape never closes a docked panel, and F6 / F7 on a docked panel show it, then
+give it the keyboard, then hide it. Docked panels keep the `.win.patwin` frame, so their keys
+are guarded exactly like the floating windows'. Docking, docked sizes and the floating places
+are per user in `localStorage` (`wave.layout`, validated by `parseLayout`), never in the
+project. PAT mode (L) loops the current pattern and follows
 it when it changes. The Playlist, the Piano roll and the Pitch editor share one overview bar
 on top (`ui/ZoomScrollbar` with a minimap: drag = scroll, drag an end = zoom) and one time
 ruler (`ui/timeRuler.ts`, `lib/rulerEdit.ts`: click = start, drag = loop, drag a loop edge =
@@ -346,6 +357,10 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `midi` | `{cmd: "midi_inspect", args: {path}}` | `{bpm, tempoChanges, warnings, end, parts: [{index, track, channel (1–16), name, program, gmName, drums, notes, becomes}]}` — a standard MIDI file (format 0/1, `crates/engine/src/midi_file.rs`); `becomes` = `{kind:"drums", drums}` / `{kind:"keys"}` / `{kind:"synth", preset}` |
 | `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or WAVE Keys) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
 | `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + 4/4, one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
+| `fx_chain` | `{cmd: "fx_chains", args: {}}` | `{dir, presets: [{name, effects: [{type, name}], plugins, error?}]}` — FX chain presets in the user's library (`app/src/fx_chains.rs`): one `<name>.wavechain` JSON file each in `%LOCALAPPDATA%\WAVE\FX Chains` |
+| `fx_chain` | `{cmd: "fx_chain_save", args: {insert, name, overwrite?}}` | `{name, effects}` — the insert's effects in order (parameters, EQ bands, dry/wet, bypass, Warp maps, VST3 state); never its volume, pan, name, colour or routing; an existing name fails with `EXISTS:` |
+| `fx_chain` | `{cmd: "fx_chain_load", args: {insert, name, mode?: "replace"\|"append"}}` | `{revision, fxIds, replaced, failed: [{fxId, name, error}]}` — one undo step, fresh ids; an insert with effects needs `mode`; a VST3 that will not load keeps its slot and state |
+| `fx_chain` | `{cmd: "fx_chain_rename", args: {name, to}}` / `{cmd: "fx_chain_delete", args: {name}}` | `{name}` / `{deleted}` |
 | `make_unique` | `{clipIds}` | `{sourceId, track, insertId}` — FL's "Make unique" for audio clips (one source, one track): a copy of the source entry (same file and decoded audio, name "Name #n"), a new track right below that plays where the old track does (the master unless the user routed it; no insert is claimed), the clips move there. One undo step |
 | `flatten_comp` | `{clipId}` | `{sourceId}` — renders a comp clip to a new file; the clip becomes an `audio` clip, the takes go (one undo step) |
 | `comp_audition` | `{compId, takeId?}` | – ; plays one whole take instead of the comp (`null` = the comp). Live only: not saved, not undone, ignored by renders |

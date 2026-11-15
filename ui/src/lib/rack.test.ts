@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { samplerDefault, type Channel, type Note, type Project } from '../api/types';
 import { applyAll } from './applyOps';
 import { copyChannelNotes, gridW, pasteChannelNotes } from './pattern';
-import { fitOnScreen, moveIndex, RACK_FIT_STEPS, rackFitWidth, rackMoveIndex, rackSampleDrop } from './rack';
+import { fitOnScreen, moveIndex, RACK_FIT_STEPS, rackDockFitWidth, rackFitWidth, rackMoveIndex, rackSampleDrop } from './rack';
 
 const geo = { left: 212, cw: 22, pad: 8, min: 480, room: 5000 };
 const ch = (id: number, name: string): Channel => ({ id, name, color: '#4f8ef7', kind: 'sample', source: 1, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
@@ -104,5 +104,18 @@ describe('Channel Rack clipboard', () => {
     expect(out.patterns[0].len).toBe(12);
     expect(out.patterns[0].notes.filter(n => n.ch === 12).map(n => n.step)).toEqual([0, 40]);
     expect(out.patterns[0].notes.filter(n => n.ch === 11).length).toBe(1);
+  });
+});
+
+describe('rackDockFitWidth', () => {
+  const g = { left: 212, cw: 16, pad: 22, min: 480 };
+  it('fits the pattern steps only (no greyed extra bar), at the compact step width', () => {
+    expect(rackDockFitWidth(16, g)).toBe(Math.max(480, 212 + gridW(16, 16) + 22));
+    expect(rackDockFitWidth(16, g)).toBeLessThan(rackFitWidth(16, { ...g, room: 5000 }));
+  });
+  it('grows with the pattern, never below the minimum, and is bounded', () => {
+    expect(rackDockFitWidth(1, g)).toBe(480);
+    expect(rackDockFitWidth(32, g)).toBeGreaterThan(rackDockFitWidth(16, g));
+    expect(rackDockFitWidth(100000, g)).toBe(rackDockFitWidth(RACK_FIT_STEPS, g));
   });
 });

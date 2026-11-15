@@ -2,7 +2,8 @@
 // volume, mixer insert, name — and the current pattern's steps for it. A channel whose notes are
 // more than steps (lengths, chords, off-grid) shows a mini piano roll; a click opens the Piano
 // roll. The graph editor (G) edits the selected channel's per-step velocity and key.
-// It is a floating window in the effect-window layer; every edit is an op and one undo step.
+// It floats in the effect-window layer, or is docked left of the Playlist (`U.rackDock`); every
+// edit is an op and one undo step.
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, untrack } from 'solid-js';
 import { unwrap } from 'solid-js/store';
 import { t } from '../lib/i18n';
@@ -14,7 +15,7 @@ import { noteName } from '../lib/pitch';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { commit, Gesture } from '../state/edit';
 import {
-  addBar, STEP_MAX, STEP_MIN, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
+  addBar, RACK_MIN_W, STEP_MAX, STEP_MIN, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
   rackFront, rackPlaceFor, removeBar, selChan, selectChannel, stepPattern, toggleChanMute, toggleChanSolo,
 } from '../state/pattern';
 import { arrVersion } from '../state/store';
@@ -26,7 +27,7 @@ import { channelIcon, InstIcon } from '../ui/instIcons';
 import { MiniKnob, NumField, parseNum } from '../ui/Knob';
 import { closeChannelWindow, toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
-import { addChannelMenu, chanMenu, insertMenu, insLabel, insTitle, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
+import { addChannelMenu, chanMenu, DockBtn, insertMenu, insLabel, insTitle, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
 const RACK_ICON = 'M4 5h4v4H4z M10 5h4v4h-4z M16 5h4v4h-4z M4 15h4v4H4z M10 15h4v4h-4z M16 15h4v4h-4z';
@@ -36,12 +37,12 @@ const KEY_SPAN = 12;
 /** The rack's clipboard (Ctrl+C / X / V): one channel's notes, kept apart from the playlist's clips. */
 let rackClip: ChannelClip | null = null;
 
-/** The Channel Rack window (shown while `U.rackWin` is set and the project has a pattern). */
-export function ChannelRack(props: { z: number }) {
-  return <Show when={U.rackWin && curPat()}><Rack z={props.z} /></Show>;
+/** The Channel Rack window (shown while `U.rackWin` is set and the project has a pattern). `docked`: laid out left of the Playlist. */
+export function ChannelRack(props: { z: number; docked?: boolean }) {
+  return <Show when={U.rackWin && curPat()}><Rack z={props.z} docked={props.docked} /></Show>;
 }
 
-function Rack(props: { z: number }) {
+function Rack(props: { z: number; docked?: boolean }) {
   let gridWrap!: HTMLDivElement, cv!: HTMLCanvasElement, head!: HTMLCanvasElement, graphCv!: HTMLCanvasElement, graphWrap!: HTMLDivElement;
   const ptM = createMemo(() => curPat()!);
   const pt = () => ptM();
@@ -194,18 +195,19 @@ function Rack(props: { z: number }) {
     else commit([op], 'Swing');
     say(pt().name + ' · swing ' + Math.round(clamp(v, 0, 100)) + '%');
   };
-  /** The graph editor adds its own height to the window instead of squeezing the channel rows. */
+  /** The graph editor adds its own height to the floating window instead of squeezing the channel rows; docked, it shares the panel's height (the rows scroll). */
   const toggleGraph = () => {
     const on = !graph(), w = U.rackWin;
     setU('rackGraph', on ? 'vel' : null);
-    if (w) setU('rackWin', 'h', clamp(w.h + (on ? GRAPH_H : -GRAPH_H), 200, window.innerHeight - w.y - 10));
+    if (w && !props.docked) setU('rackWin', 'h', clamp(w.h + (on ? GRAPH_H : -GRAPH_H), 200, window.innerHeight - w.y - 10));
   };
   // The window's width follows the pattern's length: the pattern and its greyed bar at the
   // comfortable step width, up to the screen's edge (beyond that the grid scrolls). Switching to
   // another pattern only ever widens it (FL keeps the rack's size as you browse patterns: a
   // shorter one shows empty room instead of the window jumping); + / − bar and undo on the same
   // pattern refit both ways. Only a change refits, so a width set by hand stays until then; never
-  // while steps are painted (`hold`): on release.
+  // while steps are painted (`hold`): on release. Docked, the panel keeps the width the user gave
+  // it and the grid scrolls.
   let fitted = stepsOf(pt()), fittedId = pt().id;
   createEffect(() => {
     const steps = stepsOf(pt()), id = pt().id;
@@ -213,7 +215,7 @@ function Rack(props: { z: number }) {
     const other = id !== fittedId;
     fitted = steps; fittedId = id;
     untrack(() => {
-      const w = U.rackWin; if (!w) return;
+      const w = U.rackWin; if (!w || props.docked) return;
       const pl = rackPlaceFor(steps, w.x);
       if (other && pl.w <= w.w) return;
       setU('rackWin', v => v && { ...v, x: pl.x, w: pl.w });
@@ -334,7 +336,7 @@ function Rack(props: { z: number }) {
     stepPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
   };
   return (
-    <PatFrame win={U.rackWin!} key="rackWin" z={props.z} class="rackwin" minW={480} minH={200} front={rackFront} onKey={onKey} onHeadWheel={headWheel}
+    <PatFrame win={U.rackWin!} key="rackWin" z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} front={rackFront} onKey={onKey} onHeadWheel={headWheel}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>
         <span class="wintitle">Channel rack</span>
@@ -353,7 +355,8 @@ function Rack(props: { z: number }) {
         </div>
         <button class="iconbtn" classList={{ on: !!graph() }} title={t('b.rk.graphTitle')} onClick={toggleGraph}><Icon d={GRAPH_ICON} size={13} /></button>
         <div style={{ flex: 1 }} />
-        <button class="closebtn" title={t('b.pe.close')} onClick={closeRack}>×</button>
+        <DockBtn which="rack" />
+        <button class="closebtn" title={t(props.docked ? 'b.dk.closeRack' : 'b.pe.close')} onClick={closeRack}>×</button>
       </>}>
       <div class="rack">
         <div class="rackbody" onWheel={wheel}>

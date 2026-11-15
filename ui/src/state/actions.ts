@@ -12,7 +12,7 @@ import { deletePoints } from '../lib/envEdit';
 import { acceptReply, commit, endWheelGestures, enqueue, inGesture, projectRevision, resync } from './edit';
 import { flushNotebook } from './notebook';
 import { clearPeaks } from './peaks';
-import { modePattern, openRack, patMode, setPatMode, stopPreview, togglePreview } from './pattern';
+import { modePattern, openRack, patMode, rackFloating, rollFloating, setPatMode, stopPreview, togglePreview } from './pattern';
 import { allocId, findFx, insName, plain, S, setTransport } from './store';
 import { say, setU, U, type SampleTarget } from './ui';
 import { confirmRecover, confirmUnsaved } from '../ui/Confirm';
@@ -521,8 +521,8 @@ export function stepPreset(fxId: Id, d: number) {
 // ---------- windows ----------
 const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, delay: 760, warp: 820 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
-/** Playlist to the front: effect windows go behind it (they keep their place and state). */
-export function playlistFront() { if ((U.plugs.length || U.rackWin || U.rollWin) && !U.plugsHidden) setU('plugsHidden', true); }
+/** Playlist to the front: floating windows go behind it (they keep their place and state); docked panels stay. */
+export function playlistFront() { if ((U.plugs.length || rackFloating() || rollFloating()) && !U.plugsHidden) setU('plugsHidden', true); }
 export function showPlugs() { setU('plugsHidden', false); }
 
 /** The real-time Pitch Correct effect onto insert `insId` (key and scale from the caller, e.g. the pitch editor's). */

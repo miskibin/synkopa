@@ -4,6 +4,8 @@ import { createStore } from 'solid-js/store';
 import { t } from '../lib/i18n';
 import type { ClipKind, Id } from '../api/types';
 import type { MenuGlyph } from '../ui/menuIcons';
+import { parseLayout, RACK_DOCK_W, ROLL_DOCK_H, type Geo } from '../lib/layout';
+export { parseLayout } from '../lib/layout';
 
 export type Tool = 'draw' | 'paint' | 'erase' | 'mute' | 'slice' | 'select';
 
@@ -15,9 +17,11 @@ export type SampleTarget = { kind: 'clip' | 'channel'; id: Id };
 export type EditorWin = SampleTarget & { x: number; y: number; w: number };
 export interface MusicWin { clipId?: Id; fxId?: Id }
 /**
- * A pattern window: the Channel Rack (F6) or the Piano roll (F7). Both live in the effect-window
- * layer (F5 / a playlist click hide them with the effect windows, "Okna" brings them back) and
- * both show the current pattern (`UiState.pat`); the piano roll edits the selected channel.
+ * A pattern window: the Channel Rack (F6) or the Piano roll (F7), open while set. Both show the
+ * current pattern (`UiState.pat`); the piano roll edits the selected channel. Floating, they live
+ * in the effect-window layer (F5 / a playlist click hide them with the effect windows, "Windows"
+ * brings them back) at x/y/w/h; docked (`rackDock` / `rollDock`) they sit in the main layout and
+ * x/y/w/h keep the floating place for when they float again.
  */
 export interface PatWin { x: number; y: number; w: number; h: number; z: number }
 
@@ -58,6 +62,8 @@ export interface UiState {
   vstPicker: { insId: Id } | null;
   /** add-effect picker, anchored at (x, y) (−1 = centred) */
   fxPicker: { insId: Id; x: number; y: number } | null;
+  /** "Load FX chain preset" list for an insert, opened at x/y. */
+  fxChainWin: { insId: Id; x: number; y: number } | null;
   musicWin: MusicWin | null;
   /** The "Missing audio" dialog (relink moved files). */
   missingOpen: boolean;
@@ -76,6 +82,14 @@ export interface UiState {
   selCh: Id | null;
   rackWin: PatWin | null;
   rollWin: PatWin | null;
+  /** The Channel Rack is docked left of the Playlist (`rackDockW` px wide; 0 = as wide as the pattern) instead of floating. */
+  rackDock: boolean; rackDockW: number;
+  /** The Piano roll is docked under the Playlist, above the Mixer (`rollDockH` px high) instead of floating. */
+  rollDock: boolean; rollDockH: number;
+  /** Where the floating Channel Rack / Piano roll was last (they reopen there, also after a restart). */
+  rackFloat: Geo | null; rollFloat: Geo | null;
+  /** The floating Piano roll fills everything under the toolbar (follows the app window, reopens full screen). */
+  rollMax: boolean;
   /** The Channel Rack's graph editor (per-step velocity / key of the selected channel) is shown. */
   rackGraph: 'vel' | 'key' | null;
   /** True while the engine loops a pattern on its own (telemetry `patBeat` ≥ 0). */
@@ -102,12 +116,14 @@ export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1 },
   start: 0, follow: true, alt: false,
   mixOpen: true, mixMin: false, mixH: 300, mixSel: 6, fxSel: 903, fxDrag: null,
-  plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, musicWin: null, missingOpen: false, midiWin: null,
+  plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
   openingProject: false,
   projectZipBusy: false,
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'project',
-  ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, rackWin: null, rollWin: null, rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
+  ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, rackWin: null, rollWin: null,
+  rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true,
+  rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
   playing: false, previewing: false, previewPath: null, stretchMode: false,
 });
 
@@ -118,27 +134,13 @@ createRoot(() => createEffect(() => { const ready = t('d.ui.ready'); if (readout
 // The working set-up survives a restart: tool, snap, zoom, follow and the panel layout used to
 // reset on every launch (the mixer reopened, the browser went back to the Project tab, ...).
 const LAYOUT_KEY = 'wave.layout';
-const TOOLS_OK: Tool[] = ['draw', 'paint', 'erase', 'mute', 'slice', 'select'];
-const num = (v: unknown, lo: number, hi: number): number | undefined => (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : undefined);
-const bool = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
-/** A saved layout as a patch of valid fields only (pure: tested). */
-export function parseLayout(raw: string | null): Partial<UiState> {
-  let v: Record<string, unknown>;
-  try { v = JSON.parse(raw ?? '{}') ?? {}; } catch { return {}; }
-  if (typeof v !== 'object') return {};
-  const p: Partial<UiState> = {
-    tool: TOOLS_OK.includes(v.tool as Tool) ? (v.tool as Tool) : undefined,
-    snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 96), follow: bool(v.follow),
-    mixOpen: bool(v.mixOpen), mixMin: bool(v.mixMin), mixH: num(v.mixH, 100, 2000),
-    headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),
-    browserTab: v.browserTab === 'project' || v.browserTab === 'library' ? v.browserTab : undefined,
-  };
-  for (const k of Object.keys(p) as (keyof UiState)[]) if (p[k] === undefined) delete p[k];
-  return p;
-}
 try { setU(parseLayout(localStorage.getItem(LAYOUT_KEY))); } catch { /* private window */ }
+const geo = (w: PatWin): Geo => ({ x: w.x, y: w.y, w: w.w, h: w.h });
 createRoot(() => createEffect(() => {
-  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixOpen: U.mixOpen, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab });
+  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixOpen: U.mixOpen, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
+    rackDock: U.rackDock, rackDockW: U.rackDockW, rollDock: U.rollDock, rollDockH: U.rollDockH, rollMax: U.rollMax,
+    // the floating place: live while the window is open (a restart with it open keeps it), else where it closed
+    rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat });
   try { localStorage.setItem(LAYOUT_KEY, s); } catch { /* private window */ }
 }));
 export const say = (msg: string) => { readoutPristine = false; setU('readout', msg); };
