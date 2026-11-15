@@ -151,7 +151,13 @@ impl Watch {
         let text = std::fs::read_to_string(&self.file).map_err(|e| Fail::Usage(format!("{}: {e}", self.file.display())))?;
         self.scratch.call("set_project", &json!({ "project": self.base }), None).map_err(|e| Fail::App(super::app_error(e)))?;
         let cx = Cx { doc: Some(&*self.scratch) };
-        let results = run_lines(&cx, &Args::parse(vec![]), &text)?;
+        // on the copy a failing line "saved nothing"; what matters here is that nothing reached the song
+        let not_applied = |m: String| m.replace("; nothing was saved", "; nothing was applied (the song stays as the last good save)");
+        let results = run_lines(&cx, &Args::parse(vec![]), &text).map_err(|e| match e {
+            Fail::Usage(m) => Fail::Usage(not_applied(m)),
+            Fail::Conn(m) => Fail::Conn(not_applied(m)),
+            Fail::App(m) => Fail::App(not_applied(m)),
+        })?;
         let mut ev = json!({ "event": "applied", "file": self.file.display().to_string(), "lines": results.len() });
         if let Target::App { ep, rev } = &mut self.target {
             let project = full(&*self.scratch)?;

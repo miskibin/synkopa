@@ -68,7 +68,7 @@ fn once_on_a_file_runs_the_script_on_a_copy_and_renders_it() {
 
     std::fs::write(&script, "bpm 141\nadd-fx --insert 999 --type eq\n").unwrap();
     let e = wave(&["watch", &s(&script), "--project", &s(&song), "--once"]).unwrap_err();
-    assert!(e.contains("line 2"), "{e}");
+    assert!(e.contains("line 2") && e.contains("nothing was applied"), "{e}");
     assert!(wave(&["watch", &s(&d.join("nope.txt")), "--project", &s(&song), "--once"]).is_err());
     std::fs::remove_dir_all(&d).ok();
 }
