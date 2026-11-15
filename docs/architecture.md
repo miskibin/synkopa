@@ -504,12 +504,16 @@ Events: `state` (a `StateDto`, after every change from any origin: UI, CLI,
 undo, import, recording, file open), `library-progress`, `model-progress`, `audio-status`,
 `export-progress` (`{done, total, name, stage, frac, beat, peak, wave}` while a bounce runs: the
 file in progress, `prepare`/`render`/`write`/`done`, the song position and a live peak waveform).
+`media-reload` (`{kind, path, name, sourceIds, seconds, lengthDiffers, wasMissing, error}`: one of
+the project's audio files changed on disk and was reloaded, did not decode (`failed`, the old
+audio plays on) or went away (`gone`, it plays from memory); see *Hot reload of audio files*).
 
 ```ts
 type StateDto = { project: Project; revision: number; canUndo: boolean; canRedo: boolean;
                   transport: TransportDto; path: string | null; dirty: boolean;
                   audition: { [compId: string]: number };     // comp → auditioned take
-                  missing: { [sourceId: string]: string } };  // sources whose audio is not loaded → why
+                  missing: { [sourceId: string]: string };   // sources whose audio is not loaded → why
+                  audioGen: { [sourceId: string]: number } }; // which audio a loaded source plays: changes on a reload
 type TransportDto = { playing: boolean; rec: boolean; monitor: boolean; metro: boolean; countIn: boolean; startBeat: number };
 type AudioConfig = { host: string; output: string | null; input: string | null; sampleRate: number | null; bufferSize: number | null;
                      inputChannel?: number | null; recOffsetMs?: number | null };
@@ -518,6 +522,43 @@ type AudioStatus = AudioConfig & { running: boolean; actualRate: number; actualB
                                    unavailableOutput: string | null;
                                    inputUnderruns: number; inputOverruns: number; inputDriftPpm: number };
 ```
+
+## Hot reload of audio files
+
+A source's file that changes on disk while the project is open (re-bounced, edited in another
+app, restored) plays its new audio without the musician doing anything. FL Studio (Reload in
+the clip menu), Ableton Live (Manage Sample File → Edit) and REAPER (media set offline while
+the app is inactive) make this a manual or focus-driven step; WAVE does it as the file settles.
+
+* **Watching** (`app/src/media_watch.rs`, thread `wave-media-watch`): `notify` watches the
+  folders of the project's files (not recursive, ≤ 1024 folders), refreshed from every `state`
+  (`reload::source_files`: one entry per file, `lib:` samples never). `Tracker` decides when a
+  file is done changing: events must stop for 300 ms, then the size and modification time must
+  hold still for 250 ms; a touch that leaves both as they were (a read, our own decode) does
+  nothing. Reads (`Access` events) are ignored except a writer closing the file; a lost-events
+  signal looks at every file.
+* **Swap** (`Engine::reload_source_file`): the file is decoded outside the engine lock, then
+  every source that plays it (Make unique copies share one) gets the new `Audio` through
+  `SourceStore::reload` and the timeline is rebuilt and sent through the command ring as for any
+  edit; the old audio goes back on the garbage ring. Each audio a source gets has a process-wide
+  *generation* (`SourceStore::generation`, `StateDto.audioGen`): stretch and pitch renders are
+  keyed by it, so a render of the old audio still in flight is never played, and the UI drops
+  the source's cached waveforms when it changes. Clips keep their start, offset and length.
+  The source's `dur`/`sr`/`ch`/`peakDb` follow the file in the project and in the undo history.
+  It is not an undo step (the file changed, not the project), and a project with nothing
+  unsaved stays saved.
+* **Failures**: a file that does not decode (half written, locked by its writer) keeps the old
+  audio and is tried again 4 times, 0.5–4 s apart, before `media-reload` reports `failed`; it is
+  tried again on its next change. A deleted or renamed-away file plays from memory and is
+  reported `gone` once; when a file of that path appears it is loaded, as is the file of a
+  source that was missing when the project opened (atomic saves — a temporary file renamed over
+  the old one — are one reload, not a delete).
+* **Not covered**: the `.wave` project file is not reloaded when it changes on disk (the app
+  owns the open project and its undo; `wave --project` refuses to edit a file the app has open,
+  and plain `wave` edits the open project live). A folder that does not exist when the project
+  opens is not watched, nor are folders past the limit; `wave reload` decodes every file at once
+  for those (and network shares without change notifications). Audio a relink kept for undo is
+  refreshed only while its source still plays that file.
 
 ## Telemetry frame (binary, little-endian, ≤ 60 Hz)
 

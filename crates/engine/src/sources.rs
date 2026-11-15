@@ -155,7 +155,13 @@ pub struct SourceStore {
     /// Audio a relink replaced, by (source id, path), so undo and redo of a relink play the
     /// file the restored path names. Holds one entry per relink made since the project opened.
     parked: HashMap<(u64, String), Arc<Audio>>,
+    /// Source id → generation of the audio it has now (see [`Self::generation`]).
+    gen: HashMap<u64, u64>,
 }
+
+/// Generations are unique for the whole process, so a new project (a new store) never
+/// repeats one an old waveform or render was made for.
+static NEXT_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 /// (source id, identity of the audio before stretching, render ratio bits, `Clip::pitch` bits)
 pub type StretchKey = (u64, u64, u64, u32);
@@ -300,7 +306,30 @@ impl SourceStore {
         self.aligned.retain(|k, _| k.0 .0 != id && k.1 .0 != id);
         self.music.retain(|k, _| k.0 != id);
         self.stretch.forget_source(id);
+        self.gen.insert(id, NEXT_GEN.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         self.audio.insert(id, a);
+    }
+
+    /// Which audio source `id` has: a number that changes whenever other audio is put in its
+    /// place (opened, relinked, reloaded from a changed file), `None` while it has none. Renders
+    /// made of a source carry it, so one started before a swap is never played after it.
+    pub fn generation(&self, id: u64) -> Option<u64> {
+        self.gen.get(&id).copied()
+    }
+
+    /// The file a source plays changed on disk and was decoded again: it plays `audio` from
+    /// now on. Audio a relink kept for undo under the same file (`same` says which paths are
+    /// that file) is replaced too, so undoing the relink brings back what the file holds now.
+    pub fn reload(&mut self, id: u64, audio: Arc<Audio>, same: impl Fn(&str) -> bool) {
+        for ((_, p), a) in self.parked.iter_mut() {
+            if same(p) {
+                *a = audio.clone();
+            }
+        }
+        self.insert(id, audio);
+        // pitch renders of its clips are redone (their key holds the generation, the cache
+        // would only grow)
+        self.tuned.clear();
     }
 
     /// Drops a source's audio and everything derived from it (the source goes missing).
@@ -311,6 +340,7 @@ impl SourceStore {
         self.aligned.retain(|k, _| k.0 .0 != id && k.1 .0 != id);
         self.music.retain(|k, _| k.0 != id);
         self.stretch.forget_source(id);
+        self.gen.remove(&id);
         self.audio.remove(&id);
     }
 
@@ -488,8 +518,10 @@ impl SourceStore {
     fn pre_stretch(&mut self, c: &crate::model::Clip, allow_stale: bool, bpm: f64) -> Option<(Arc<Audio>, u64)> {
         use std::hash::{Hash, Hasher};
         let base = self.variant(c.source, c.norm, c.rev)?;
+        // the generation keeps a render of replaced audio (still in flight) from being played
+        let generation = self.gen.get(&c.source).copied().unwrap_or_default() & (u64::MAX >> 3);
         let Some(_) = c.tune.as_ref().filter(|t| t.is_active()) else {
-            return Some((base, (c.norm as u64) | (c.rev as u64) << 1));
+            return Some((base, (c.norm as u64) | (c.rev as u64) << 1 | generation << 2));
         };
         let a = self.tuned_audio(c, base, allow_stale, bpm)?;
         // the hash of the edits the returned render was made with (a stale one in a drag)
@@ -618,7 +650,7 @@ impl SourceStore {
         let hash = {
             use std::hash::{Hash, Hasher};
             let mut h = std::collections::hash_map::DefaultHasher::new();
-            (c.source, c.norm, c.rev, region).hash(&mut h);
+            (c.source, self.gen.get(&c.source), c.norm, c.rev, region).hash(&mut h);
             serde_json::to_string(tune).unwrap_or_default().hash(&mut h);
             h.finish()
         };

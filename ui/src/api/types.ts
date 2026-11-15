@@ -408,6 +408,18 @@ export interface StateDto {
   missing?: Record<string, string>;
   /** Hosted plugins that did not load (not installed, refused; they pass audio through, their saved state is kept): fx id → why. */
   fxErrors?: Record<string, string>;
+  /** Source id → generation of the audio it plays (loaded sources). It changes when the source's file changed on disk and
+   *  was reloaded under the same path: waveforms of the old audio are stale. */
+  audioGen?: Record<string, number>;
+}
+
+/** What happened to one of the project's audio files on disk (event `media-reload`, `app/src/media_watch.rs`):
+ *  `reloaded` = its sources play the new audio; `failed` = it changed but did not decode, the old audio plays;
+ *  `gone` = deleted or moved, it plays from memory. */
+export interface MediaReload {
+  kind: 'reloaded' | 'failed' | 'gone';
+  path: string; name: string; sourceIds: Id[];
+  seconds: number | null; lengthDiffers: boolean; wasMissing: boolean; error: string | null;
 }
 
 /** `options`: a discrete choice (value = index), shown as buttons instead of a knob. */

@@ -45,6 +45,8 @@ sha2.workspace = true
 libc = "0.2"
 base64.workspace = true
 tempfile = "3"
+# hot reload of audio files changed on disk (ReadDirectoryChangesW / FSEvents / inotify)
+notify = "8"
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2.5"

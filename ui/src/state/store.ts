@@ -118,11 +118,17 @@ function fresh<T extends object>(v: T): T {
   return v;
 }
 
+/** The last state's `audioGen` (not reactive: only compared on the next state). */
+let audioGen: Record<string, number> = {};
+
 export function replaceState(dto: StateDto) {
   tellArrangement(null);
   // a relink (or its undo) gives a source other audio under the same id: its waveform is redrawn
   const was = new Map((rawOf(S.project) as Project).sources.map(s => [s.id, s.path]));
   for (const s of dto.project.sources) { const p = was.get(s.id); if (p != null && p !== s.path) dropSourcePeaks(s.id); }
+  // the same path, other audio: the file changed on disk and was reloaded
+  for (const [id, g] of Object.entries(dto.audioGen ?? {})) { const w = audioGen[id]; if (w != null && w !== g) dropSourcePeaks(+id); }
+  audioGen = dto.audioGen ?? {};
   batch(() => {
     setS('project', reconcile(fresh(dto.project), { key: 'id', merge: true }));
     bumpProject();

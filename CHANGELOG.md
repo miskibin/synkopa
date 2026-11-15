@@ -4,6 +4,18 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Audio files you change in another app play straight away.** Re-bounce a stem, or edit a
+  sample in Audacity, RX or any editor, and save it over the same file: WAVE notices, plays
+  the new audio within about a second, even while the song plays, and redraws its waveform.
+  Clips keep their place and length, and the status line says which file was reloaded (and its
+  new length when it changed). It is not an undo step and does not count as an unsaved change.
+  A file that cannot be read yet keeps the previous audio playing; a deleted file keeps
+  playing from memory until you close the project; a missing file that comes back plays
+  again. From the command line, `wave reload` does the same at once.
+
 ## 0.9.16 — 2026-11-15
 
 ### Added

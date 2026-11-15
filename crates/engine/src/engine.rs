@@ -100,6 +100,10 @@ pub struct StateDto {
     /// Sources whose audio is not loaded (file moved, deleted, unreadable; they play
     /// silence): source id → why. Relink them with [`Engine::relink_sources`].
     pub missing: HashMap<Id, String>,
+    /// Source id → generation of the audio it plays (loaded sources only). It changes when
+    /// other audio takes the source's place under the same path (its file changed on disk and
+    /// was reloaded, [`Engine::reload_source_file`]): waveforms drawn of the old audio are stale.
+    pub audio_gen: HashMap<Id, u64>,
 }
 
 /// A source to point at another file ([`Engine::relink_sources`]).
@@ -557,6 +561,7 @@ impl Engine {
             stretching,
             stretch_errors,
             missing: missing_sources(c),
+            audio_gen: c.project.sources.iter().filter_map(|s| Some((s.id, c.sources.generation(s.id)?))).collect(),
         }
     }
 
@@ -1031,6 +1036,69 @@ impl Engine {
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
         Ok(out)
+    }
+
+    /// The files the project's sources play (not the sample library's), each once, as the
+    /// project names them. What a file watcher watches ([`Self::reload_source_file`]).
+    pub fn source_files(&self) -> Vec<PathBuf> {
+        let c = self.core.lock();
+        crate::reload::source_files(&c.project)
+    }
+
+    /// The file `path` changed on disk: decodes it again (slow; call off the UI and audio
+    /// threads, without the lock) and swaps it in for every source that plays it. The audio
+    /// thread gets a new timeline through the usual ring; the old audio is dropped off it.
+    /// Clips keep their place and length. Not an undo step (the file changed, not the
+    /// project): the sources' length, rate and peak are updated in the undo history too, and a
+    /// project with nothing unsaved stays so. `Ok(None)`: no source plays that file. A file
+    /// that does not decode is an error and every source keeps the audio it had.
+    pub fn reload_source_file(&self, path: &Path) -> Result<Option<crate::reload::SourceReload>, EngineError> {
+        use crate::reload::same_file;
+        if !self.core.lock().project.sources.iter().any(|s| same_file(&s.path, path)) {
+            return Ok(None);
+        }
+        let audio = Arc::new(Audio::load(path).map_err(EngineError::Msg)?);
+        let mut c = self.core.lock();
+        // the project may have changed while the file decoded: take its sources as they are now
+        let ids: Vec<Id> = c.project.sources.iter().filter(|s| same_file(&s.path, path)).map(|s| s.id).collect();
+        let Some(first) = ids.first().and_then(|id| c.project.sources.iter().find(|s| s.id == *id)) else {
+            return Ok(None);
+        };
+        let seconds = audio.seconds();
+        let report = crate::reload::SourceReload {
+            path: first.path.clone(),
+            source_ids: ids.clone(),
+            name: first.name.clone(),
+            seconds,
+            length_differs: !crate::relink::same_length(first.dur, seconds),
+            was_missing: ids.iter().any(|id| c.sources.get(*id).is_none()),
+        };
+        let (sr, ch, peak_db) = (audio.sr, audio.channels, crate::dsp::gain_to_db(audio.peak()));
+        let fix = |p: &mut Project| {
+            for s in p.sources.iter_mut().filter(|s| ids.contains(&s.id) && same_file(&s.path, path)) {
+                s.dur = seconds;
+                s.sr = sr;
+                s.ch = ch;
+                s.peak_db = peak_db;
+            }
+        };
+        {
+            let c = &mut *c;
+            fix(&mut c.project);
+            c.undo.iter_mut().chain(c.redo.iter_mut()).chain(c.gesture.iter_mut()).for_each(fix);
+        }
+        for id in &ids {
+            c.sources.reload(*id, audio.clone(), |p| same_file(p, path));
+            c.source_errors.remove(id);
+        }
+        let clean = c.revision == c.saved_revision;
+        c.revision += 1;
+        if clean {
+            c.saved_revision = c.revision;
+        }
+        self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
+        self.changed(c);
+        Ok(Some(report))
     }
 
     /// Looks for the missing sources' files under `folder` (slow: walks it and decodes the
