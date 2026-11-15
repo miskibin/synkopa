@@ -1,4 +1,4 @@
-import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { fitMixH, MIX_HANDLE_H, mixHandleDrag, mixMaxH, mixSplitDrag, SPLIT } from '../lib/layout';
@@ -137,6 +137,12 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   const stop = (e: Event) => e.stopPropagation();
   const icon = () => { if (m().id === 0) return null; const t = S.project.tracks.find(x => x.insert === m().id); return guessIcon(m().name) ?? (t ? trackIcon(t) : null); };
   const label = () => stripLabel(m().name, props.idx);
+  // the instrument icon gives way when the name would be cut off (it is decoration; the name is the information)
+  let nmEl: HTMLSpanElement | undefined, nmText: HTMLSpanElement | undefined;
+  const [tight, setTight] = createSignal(false);
+  const measure = () => { if (nmEl && nmText) setTight(nmText.getBoundingClientRect().width + ICON_W > nmEl.clientWidth); };
+  createEffect(() => { label(); icon(); U.mixView; m().fx.length; requestAnimationFrame(measure); });
+  onMount(() => { void document.fonts?.ready.then(measure); });
   const rename = (e: MouseEvent) => openRename(e.clientX, e.clientY, m().name, v => A.setInsert(m().id, { name: v }, tr('c.mix.undoName')));
   return (
     <div class="strip" data-ins={m().id} classList={{ on: U.mixSel === m().id, dimmed: !audible() }} onPointerDown={select}>
@@ -145,12 +151,14 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       <div class="nmrow" title={tName(label().full) + ' — ' + tr('c.mix.nameTip')} onDblClick={rename}>
         <Show when={label().num}><span class="num" classList={{ only: !label().name }}>{label().num}</span></Show>
         <Show when={label().name}>
-          <span class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }}>
-            <Show when={icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show>{tName(label().name)}</span>
+          <span ref={nmEl} class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }}>
+            <Show when={!tight() && icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show><span ref={nmText}>{tName(label().name)}</span></span>
         </Show>
         <Show when={m().fx.length}>
+          {/* docked: a dot (the name needs the room); the wider Mix view strips spell out the count */}
           <button class="fxn" classList={{ off: m().fx.every(f => f.bypass) }} onPointerDown={stop} onDblClick={stop} onClick={() => A.toggleInsertFx(m().id)}
-            title={tr('c.mix.fxToggleTip')}>{m().fx.length + 'FX'}</button>
+            title={tr('c.mix.fxCountTip', { n: m().fx.length }) + ' · ' + tr('c.mix.fxToggleTip')} aria-label={tr('c.mix.fxCountTip', { n: m().fx.length })}>
+            <span class="fxdot" /><span class="fxt">{m().fx.length + ' FX'}</span></button>
         </Show>
       </div>
       <div class="knobrow">
@@ -319,6 +327,9 @@ const hideWins = (e: PointerEvent) => { if (e.button === 2) A.playlistFront(); }
  * the height it had). It cannot be closed; F9 is the Mix view. While the Mix view is on, the slot
  * keeps its size (so the Playlist under the Mix view does not move) and builds no strips.
  */
+/** The instrument icon's width in a strip's name, its margin included (px). */
+const ICON_W = 14;
+
 export function Mixer() {
   // One clamp for both the drag and the display: the old pair (drag up to innerHeight-200,
   // show at most 40 %) let the stored height run past what was drawn, so the splitter
