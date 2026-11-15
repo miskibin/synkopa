@@ -41,7 +41,12 @@ pub fn same_file(stored: &str, file: &Path) -> bool {
 /// [`same_file`] accepts (a map key).
 pub fn file_key(p: &Path) -> String {
     if cfg!(any(windows, target_os = "macos")) {
-        p.to_string_lossy().replace('\\', "/").to_lowercase()
+        let k = p.to_string_lossy().replace('\\', "/").to_lowercase();
+        // a verbatim Windows path (`\\?\C:\…`, what `canonicalize` returns) names the same file
+        match k.strip_prefix("//?/") {
+            Some(rest) if !rest.starts_with("unc/") => rest.to_string(),
+            _ => k,
+        }
     } else {
         p.to_string_lossy().into_owned()
     }
@@ -78,5 +83,7 @@ mod tests {
     #[test]
     fn windows_ignores_case_and_slashes() {
         assert!(same_file(r"C:\Music\Pad.WAV", Path::new("c:/music/pad.wav")));
+        assert!(same_file(r"\\?\C:\Music\pad.wav", Path::new(r"C:\Music\pad.wav")));
+        assert_ne!(file_key(Path::new(r"\\?\UNC\server\share\a.wav")), file_key(Path::new(r"C:\a.wav")));
     }
 }
