@@ -5,6 +5,7 @@ use std::f32::consts::PI;
 pub mod delay;
 pub mod halftime;
 pub mod limiter_v2;
+pub mod modulation;
 pub mod reverb_v2;
 pub mod saturator;
 pub mod warp;
@@ -41,6 +42,8 @@ pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
         FxKind::Delay => Box::new(delay::Delay::default()),
         FxKind::Half => Box::new(halftime::HalfTime::default()),
         FxKind::Warp => Box::new(warp::Warp::default()),
+        FxKind::Chorus => Box::new(modulation::Chorus::default()),
+        FxKind::Phaser => Box::new(modulation::Phaser::default()),
         FxKind::Reverb => Box::new(reverb_v2::ReverbV2::default()),
         FxKind::Limit => Box::new(limiter_v2::LimiterV2::default()),
         FxKind::Fet => Box::new(crate::vocal::Fet::default()),

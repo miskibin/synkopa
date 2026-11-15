@@ -19,7 +19,7 @@ export interface Track {
 }
 
 /** `plugin`: a hosted VST3 or LV2 effect (`Fx.plugin.format`); projects from before LV2 said `vst3`, which the engine reads as `plugin`. */
-export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'plugin';
+export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'chorus' | 'phaser' | 'plugin';
 /** Built-in kinds the effect picker lists (the views keep a label and blurb per kind). */
 export type BuiltinKind = Exclude<FxKind, 'plugin'>;
 /** Every built-in kind, including ones the picker does not list yet ('rider': added by "Auto wokal"). */

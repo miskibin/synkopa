@@ -71,12 +71,20 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
     choice('pos', 'Position', 0, ['Song', 'Trigger']), choice('oneshot', 'One-shot', 0, ['Off', 'On']), choice('hold', 'Hold', 0, ['Off', 'Poprzedni takt', 'Następny takt']),
     p('tmix', 'Time mix', 0, 100, 100, '%'), p('vmix', 'Volume mix', 0, 100, 100, '%'), p('att', 'Attack', 0, 500, 0, 'ms'), p('rel', 'Release', 0, 1000, 0, 'ms'),
     p('tns', 'Tension', -100, 100, 0, '%'), choice('click', 'Click reduction', 1, ['Off', 'On']), choice('attack', 'Attack protect', 1, ['Off', 'On']), choice('dc', 'DC removal', 1, ['Off', 'On'])],
+  // catalog.rs CHORUS / PHASER (dsp::modulation::chorus_idx / phaser_idx order)
+  chorus: [choice('mode', 'Mode', 0, ['Chorus', 'Ensemble', 'Vibrato']), choice('sync', 'Rate', 0, ['Hz', 'Tempo']), p('rate', 'Rate', 0.05, 10, 0.6, 'Hz', true),
+    choice('div', 'Rate', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']), p('depth', 'Depth', 0, 100, 40, '%'), p('delay', 'Delay', 2, 40, 12, 'ms', true),
+    p('fb', 'Feedback', -90, 90, 0, '%'), p('width', 'Width', 0, 200, 100, '%'), p('hp', 'Safe bass', 20, 1000, 20, 'Hz', true),
+    p('tone', 'Tone', 1000, 20000, 20000, 'Hz', true), p('mix', 'Mix', 0, 100, 50, '%')],
+  phaser: [choice('stages', 'Stages', 1, ['2', '4', '6', '8', '12']), choice('sync', 'Rate', 0, ['Hz', 'Tempo']), p('rate', 'Rate', 0.02, 10, 0.4, 'Hz', true),
+    choice('div', 'Rate', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']), p('center', 'Center', 100, 8000, 800, 'Hz', true), p('depth', 'Depth', 0, 100, 70, '%'),
+    p('fb', 'Feedback', -95, 95, 30, '%'), p('stereo', 'Stereo', 0, 180, 90, '°'), p('mix', 'Mix', 0, 100, 50, '%')],
   half: [choice('speed', 'Speed', 1, ['1.5×', '2×', '4×']), choice('loop', 'Loop', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']),
     p('smooth', 'Smooth', -100, 100, 10, '%'), p('lo', 'Band low', 20, 20000, 20, 'Hz', true), p('hi', 'Band high', 20, 20000, 20000, 'Hz', true),
     choice('solo', 'Band solo', 0, ['Off', 'On']), p('mix', 'Mix', 0, 100, 100, '%')],
 };
 const NAMES: Record<AnyBuiltinKind, string> = { eq: 'Parametric EQ', comp: 'Compressor', sat: 'Saturator', delay: 'Delay', reverb: 'Reverb', limit: 'Limiter',
-  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp' };
+  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser' };
 
 type BandEdit = [number, boolean | null, number | null, number | null, number | null];
 function eqp(name: string, out: number, edits: BandEdit[]): Preset {
@@ -102,7 +110,35 @@ const dly = (name: string, beats: number, fb: number, mix: number, kv: Record<st
 const dlyMs = (name: string, time: number, fb: number, mix: number, kv: Record<string, number> = {}): Preset => ({ name, params: { ...kv, sync: 1, time, fb, mix } });
 const T = true, n = null;
 
+/** catalog.rs chorus presets: (name, mode, rate, depth, delay, feedback, width, safe bass, tone, mix). */
+const cho = (name: string, mode: number, rate: number, depth: number, delay: number, fb: number, width: number, hp: number, tone: number, mix: number, kv: Record<string, number> = {}): Preset =>
+  ({ name, params: { mode, rate, depth, delay, fb, width, hp, tone, mix, ...kv } });
+/** catalog.rs phaser presets: (name, stages index, rate, center, depth, feedback, stereo, mix). */
+const pha = (name: string, stages: number, rate: number, center: number, depth: number, fb: number, stereo: number, mix: number, kv: Record<string, number> = {}): Preset =>
+  ({ name, params: { stages, rate, center, depth, fb, stereo, mix, ...kv } });
+
 const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
+  chorus: [
+    cho('Klasyczny chorus', 0, 0.6, 40, 12, 0, 100, 20, 20000, 50),
+    cho('Wokal — zagęszczenie', 0, 0.35, 18, 16, 0, 130, 150, 12000, 22),
+    cho('Szeroki syntezator', 1, 0.5, 55, 14, 0, 180, 20, 16000, 50),
+    cho('Vintage — dwa BBD', 0, 0.5, 70, 5, 0, 160, 80, 7000, 50),
+    cho('Czysta gitara lat 80', 0, 0.9, 45, 8, 15, 140, 60, 10000, 45),
+    cho('Bas — stabilny dół', 0, 0.45, 35, 10, 0, 120, 250, 9000, 45),
+    cho('Smyczki — ensemble', 1, 0.7, 35, 18, 0, 160, 100, 9000, 60),
+    cho('Wir z tempem (1 takt)', 1, 0.6, 50, 15, -30, 200, 120, 14000, 45, { sync: 1, div: 4 }),
+    cho('Vibrato', 2, 5.5, 35, 12, 0, 0, 20, 20000, 100),
+  ],
+  phaser: [
+    pha('Klasyczny, 4 stopnie', 1, 0.5, 900, 70, 0, 90, 50),
+    pha('Delikatny', 0, 0.2, 1200, 45, 10, 60, 35),
+    pha('Głębokie przemiatanie', 4, 0.08, 700, 90, 45, 120, 50),
+    pha('Funk — gitara (1/8)', 2, 0.4, 1100, 60, 55, 0, 50, { sync: 1, div: 1 }),
+    pha('Odrzutowiec', 4, 0.05, 1500, 85, 85, 30, 50),
+    pha('Wir stereo', 3, 0.3, 800, 75, 35, 180, 50),
+    pha('Pusty (ujemny feedback)', 2, 0.35, 600, 70, -60, 90, 50),
+    pha('Pad — przemiatanie (2 takty)', 3, 0.4, 900, 80, 40, 90, 50, { sync: 1, div: 5 }),
+  ],
   eq: [
     eqp('Flat', 0, []),
     eqp('Wokal — obecność', 0, [[0, T, 100, n, n], [2, n, 300, -2.5, 1.2], [4, n, 3500, 3, 0.9], [5, n, 10000, 2.5, n]]),
@@ -219,7 +255,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
 };
 
 /** catalog.rs `BUILTIN` (also the order of the "add effect" menu). */
-export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'reverb', 'limit'];
+export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'reverb', 'limit'];
 
 export function mockCatalog(): Catalog {
   return {

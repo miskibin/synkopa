@@ -91,7 +91,9 @@ export function pFmt(p: ParamDef, v: number): string {
   if (u === 'bit') return v >= 24 ? 'Off' : Math.round(v) + ' bit';
   // the delay's sample-rate reduction is off at the top of its range (dsp::delay::SRATE_OFF)
   if (p.id === 'srate' && v >= 47000) return 'Off';
-  if (u === 'Hz') return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : Math.round(v) + ' Hz';
+  // LFO rates live below 10 Hz: keep their decimals ("0.60 Hz", not "1 Hz")
+  if (u === 'Hz') return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : v < 10 ? v.toFixed(2) + ' Hz' : v < 100 ? v.toFixed(1) + ' Hz' : Math.round(v) + ' Hz';
+  if (u === '°') return Math.round(v) + '°';
   if (u === 'ms') return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ms';
   if (u === 's') return v.toFixed(2) + ' s';
   if (u === '%') return Math.round(v) + '%';

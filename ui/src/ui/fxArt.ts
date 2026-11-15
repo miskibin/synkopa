@@ -6,6 +6,16 @@ import type { FxKind } from '../api/types';
 const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" width="100%" height="100%">${body}</svg>`;
 
 export const FX_ART: Record<FxKind, string> = {
+  chorus: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#E0F2FE"/>
+  <path d="M16 38c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#7DD3FC" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M16 50c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+  <path d="M16 62c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#0369A1" stroke-width="5" stroke-linecap="round" fill="none"/>`),
+  phaser: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#F3E8FF"/>
+  <path d="M16 36h10c4 0 5 30 9 30s5-30 9-30 5 30 9 30 5-30 9-30h22" stroke="#7E22CE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M30 74h40" stroke="#C084FC" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M64 69l6 5-6 5 M36 69l-6 5 6 5" stroke="#C084FC" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`),
   warp: svg(`
   <rect x="10" y="16" width="80" height="68" rx="12" fill="#CCFBF1"/>
   <path d="M18 28h16v14h12l14 24v-38l14 18" stroke="#0F766E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>

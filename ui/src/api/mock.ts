@@ -504,6 +504,26 @@ export class MockBackend implements Backend {
       meters[1] = Math.round(pr.tslot ?? 0); meters[2] = Math.round(pr.vslot ?? 0); meters[3] = -1; meters[4] = -1;
       meters[9] = Math.round(pr.hold ?? 0) ? 2 : 0; meters[10] = on ? Math.min(12.5, Math.max(0, b) * 60 / this.p.bpm) : 0;
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k];
+    } else if (fx.type === 'chorus' || fx.type === 'phaser') {
+      // dsp::modulation meters. Chorus: [0] LFO phase, [1..4]/[4..7] left/right voices' delay ms, [7] voices.
+      // Phaser: [0]/[1] stages' break frequency left/right, [2] stages, [3] LFO phase.
+      const synced = (pr.sync ?? 0) >= 0.5, div = [0.25, 0.5, 1, 2, 4, 8, 16, 32][Math.round(pr.div ?? 4)] ?? 4;
+      const ph = synced ? (((beat / div) % 1) + 1) % 1 : (t * (pr.rate ?? 0.5)) % 1;
+      if (fx.type === 'chorus') {
+        const mode = Math.round(pr.mode ?? 0), voices = mode === 1 ? 3 : mode === 2 ? 1 : 2;
+        const depth = (pr.depth ?? 40) / 100, base = pr.delay ?? 12, swing = mode === 2 ? 2 : Math.min(depth * 0.25 * base, 6);
+        meters[0] = ph; meters[7] = voices;
+        for (let c = 0; c < 2; c++) for (let v = 0; v < voices; v++) {
+          const centre = mode === 2 ? swing + 1 : voices === 2 && v === 1 ? base * 1.37 : base;
+          meters[1 + c * 3 + v] = centre + swing * Math.sin(2 * Math.PI * (ph + (c ? (mode === 1 ? 1 / 6 : mode === 2 ? 0 : 0.25) : 0) + v / voices));
+        }
+      } else {
+        const tri = (x: number) => { const q = ((x % 1) + 1) % 1; return q < 0.5 ? 4 * q - 1 : 3 - 4 * q; };
+        const c = pr.center ?? 800, d = (pr.depth ?? 70) / 100, st = (pr.stereo ?? 90) / 360;
+        meters[0] = c * Math.pow(2, 3 * d * tri(ph)); meters[1] = c * Math.pow(2, 3 * d * tri(ph + st));
+        meters[2] = [2, 4, 6, 8, 12][Math.round(pr.stages ?? 1)] ?? 4; meters[3] = ph;
+      }
+      for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k];
     } else if (fx.type === 'delay') {
       // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms
       const model = Math.round(pr.model ?? 1), base = delayMs(pr, this.p.bpm), lfo = Math.sin(t * 2 * Math.PI * (pr.rate ?? 0.5));

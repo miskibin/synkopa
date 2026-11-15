@@ -46,7 +46,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
   undo | redo                              (running app only)
   bpm <value>
-  add-fx --insert ID --type eq|comp|sat|delay|half|warp|reverb|limit|... [--preset N]
+  add-fx --insert ID --type eq|comp|sat|delay|half|warp|chorus|phaser|reverb|limit|... [--preset N]
   set-param --fx ID --param NAME --value V
   preset --fx ID --index N
   import <file>... [--track N --beat B]    load audio, optionally place it

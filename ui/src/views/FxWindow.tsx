@@ -34,6 +34,7 @@ import { DelayViz } from './fx/delay';
 import { TuneViz } from './fx/tune';
 import { RiderViz } from './fx/rider';
 import { halfHit, HalfViz, halfXf } from './fx/half';
+import { ChorusViz, PhaserViz } from './fx/modulation';
 import { warpDown, warpHover, WarpViz } from './fx/warp';
 import { onVoicePad, padParams, padToVoice, VoiceViz } from './fx/voice';
 
@@ -53,12 +54,14 @@ function makeViz(f: Fx): Viz | null {
     case 'rider': return new RiderViz();
     case 'half': return new HalfViz();
     case 'warp': return new WarpViz();
+    case 'chorus': return new ChorusViz();
+    case 'phaser': return new PhaserViz();
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 260, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 260, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220 };
 /** Default window widths per type (actions.openPlug). */
-export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820 };
+export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -71,6 +74,8 @@ const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   delay: 'c.fx.hint.delay',
   warp: 'c.fx.hint.warp',
   voice: 'c.fx.hint.voice',
+  chorus: 'c.fx.hint.chorus',
+  phaser: 'c.fx.hint.phaser',
 };
 
 /** Move a fixed window by its header. */
@@ -139,7 +144,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
 }
 
 /** Dry/wet of the effect (fx.mix), automatable. */
-const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp']);
+const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp', 'chorus', 'phaser']);
 function MixControl(props: { fx: Fx }) {
   const target = () => ({ kind: 'mix' as const, fxId: props.fx.id });
   const val = () => autoDisplay(target()) ?? props.fx.mix ?? 1;
@@ -334,6 +339,26 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.volEnv', items: [{ id: 'att', size: 'sm' }, { id: 'rel', size: 'sm' }, { id: 'tns', size: 'sm' }] },
     { title: 'c.fx.sec.cleanup', adv: true, items: [{ stack: [{ id: 'click', small: true }, { id: 'attack', small: true }] }, { stack: [{ id: 'dc', small: true }] }] },
   ],
+  chorus: [
+    { title: 'c.fx.sec.mode', items: [{ stack: [{ id: 'mode', small: true }] }] },
+    { title: 'c.fx.sec.motion', items: [
+      { stack: [{ id: 'sync', small: true }, { id: 'div', small: true, when: synced }] },
+      { id: 'rate', size: 'lg', when: fx => !synced(fx) }, { id: 'depth', size: 'lg' },
+    ] },
+    { title: 'c.fx.sec.voices', items: [{ id: 'delay', when: fx => Math.round(fx.params.mode ?? 0) !== 2 }, { id: 'fb', when: fx => Math.round(fx.params.mode ?? 0) !== 2 }] },
+    { title: 'c.fx.sec.stereoTone', items: [{ id: 'width', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { id: 'hp', size: 'sm' }, { id: 'tone', size: 'sm', ends: ['c.fx.end.dark', 'c.fx.end.bright'] }] },
+    { title: 'c.fx.sec.output', items: [{ id: 'mix' }] },
+  ],
+  phaser: [
+    { title: 'c.fx.sec.stages', items: [{ stack: [{ id: 'stages', small: true }] }] },
+    { title: 'c.fx.sec.sweep', items: [{ id: 'center', size: 'lg' }, { id: 'depth', size: 'lg' }] },
+    { title: 'c.fx.sec.motion', items: [
+      { stack: [{ id: 'sync', small: true }, { id: 'div', small: true, when: synced }] },
+      { id: 'rate', when: fx => !synced(fx) }, { id: 'stereo', size: 'sm' },
+    ] },
+    { title: 'c.fx.sec.feedback', items: [{ id: 'fb', ends: ['c.fx.end.hollow', 'c.fx.end.resonant'] }] },
+    { title: 'c.fx.sec.output', items: [{ id: 'mix' }] },
+  ],
   half: [
     { title: 'c.fx.sec.slowdown', items: [{ stack: [{ id: 'speed', labels: ['c.fx.lab.halfFifth', 'c.fx.lab.halfOctave', 'c.fx.lab.halfTwoOct'], small: true }, { id: 'loop', small: true }] }] },
     { title: 'c.fx.sec.transitions', items: [{ id: 'smooth', size: 'lg', ends: ['c.fx.end.percussive', 'c.fx.end.swell'] }] },
@@ -342,6 +367,8 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
   ],
 };
 
+/** Chorus / Phaser: the LFO follows the tempo. */
+function synced(fx: Fx) { return (fx.params.sync ?? 0) >= 0.5; }
 /** The delay's model index (0 mono, 1 stereo, 2 ping-pong, 3 off). */
 const dlyModel = (fx: Fx) => Math.round(fx.params.model ?? 1);
 

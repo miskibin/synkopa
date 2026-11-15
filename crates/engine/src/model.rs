@@ -128,6 +128,10 @@ pub enum FxKind {
     Half,
     /// Time and volume maps over a two-bar buffer (`dsp::warp`).
     Warp,
+    /// Modulated delay voices: Chorus, Ensemble, Vibrato (`dsp::modulation`).
+    Chorus,
+    /// Swept all-pass stages with feedback (`dsp::modulation`).
+    Phaser,
     /// A hosted plugin (VST3 or LV2, see [`PluginRef::format`]). Written as `"plugin"`;
     /// projects from before LV2 support say `"vst3"`, which still loads.
     #[serde(alias = "vst3")]

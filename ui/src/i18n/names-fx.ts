@@ -196,4 +196,21 @@ export const names: Record<string, string> = {
   // vocal rider
   'Wokal — śpiew': 'Vocal — singing',
   'Wokal — śpiew (długi look-ahead, opóźnienie)': 'Vocal — singing (long look-ahead, latency)',
+  // chorus
+  'Klasyczny chorus': 'Classic chorus',
+  'Wokal — zagęszczenie': 'Vocal — thicken',
+  'Szeroki syntezator': 'Wide synth',
+  'Vintage — dwa BBD': 'Vintage — dual BBD',
+  'Czysta gitara lat 80': 'Clean guitar, 80s',
+  'Bas — stabilny dół': 'Bass — steady low end',
+  'Smyczki — ensemble': 'Strings — ensemble',
+  'Wir z tempem (1 takt)': 'Tempo swirl (1 bar)',
+  // phaser
+  'Klasyczny, 4 stopnie': 'Classic, 4 stages',
+  'Głębokie przemiatanie': 'Deep sweep',
+  'Funk — gitara (1/8)': 'Funk — guitar (1/8)',
+  'Odrzutowiec': 'Jet',
+  'Wir stereo': 'Stereo swirl',
+  'Pusty (ujemny feedback)': 'Hollow (negative feedback)',
+  'Pad — przemiatanie (2 takty)': 'Pad sweep (2 bars)',
 };

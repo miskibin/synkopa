@@ -212,7 +212,35 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         choice("attack", "Attack protect", 1.0, &["Off", "On"]),
         choice("dc", "DC removal", 1.0, &["Off", "On"]),
     ];
+    // order = dsp::modulation::chorus_idx
+    const CHORUS: &[ParamDef] = &[
+        choice("mode", "Mode", 0.0, &crate::dsp::modulation::CHORUS_MODES),
+        choice("sync", "Rate", 0.0, &crate::dsp::modulation::SYNCS),
+        p("rate", "Rate", 0.05, 10.0, 0.6, "Hz", true),
+        choice("div", "Rate", 4.0, &crate::dsp::modulation::DIVS),
+        p("depth", "Depth", 0.0, 100.0, 40.0, "%", false),
+        p("delay", "Delay", 2.0, 40.0, 12.0, "ms", true),
+        p("fb", "Feedback", -90.0, 90.0, 0.0, "%", false),
+        p("width", "Width", 0.0, 200.0, 100.0, "%", false),
+        p("hp", "Safe bass", 20.0, 1000.0, 20.0, "Hz", true),
+        p("tone", "Tone", 1000.0, 20000.0, 20000.0, "Hz", true),
+        p("mix", "Mix", 0.0, 100.0, 50.0, "%", false),
+    ];
+    // order = dsp::modulation::phaser_idx
+    const PHASER: &[ParamDef] = &[
+        choice("stages", "Stages", 1.0, &crate::dsp::modulation::STAGES),
+        choice("sync", "Rate", 0.0, &crate::dsp::modulation::SYNCS),
+        p("rate", "Rate", 0.02, 10.0, 0.4, "Hz", true),
+        choice("div", "Rate", 4.0, &crate::dsp::modulation::DIVS),
+        p("center", "Center", 100.0, 8000.0, 800.0, "Hz", true),
+        p("depth", "Depth", 0.0, 100.0, 70.0, "%", false),
+        p("fb", "Feedback", -95.0, 95.0, 30.0, "%", false),
+        p("stereo", "Stereo", 0.0, 180.0, 90.0, "°", false),
+        p("mix", "Mix", 0.0, 100.0, 50.0, "%", false),
+    ];
     match kind {
+        FxKind::Chorus => CHORUS,
+        FxKind::Phaser => PHASER,
         FxKind::Warp => WARP,
         FxKind::Half => HALF,
         FxKind::Rider => RIDER,
@@ -247,11 +275,13 @@ pub fn type_name(kind: FxKind) -> &'static str {
         FxKind::Rider => "Vocal Rider",
         FxKind::Half => "Half-Speed",
         FxKind::Warp => "Warp",
+        FxKind::Chorus => "Chorus",
+        FxKind::Phaser => "Phaser",
         FxKind::Plugin => "Plugin",
     }
 }
 
-pub const BUILTIN: [FxKind; 14] = [
+pub const BUILTIN: [FxKind; 16] = [
     FxKind::Denoise,
     FxKind::Tune,
     FxKind::Voice,
@@ -264,6 +294,8 @@ pub const BUILTIN: [FxKind; 14] = [
     FxKind::Delay,
     FxKind::Half,
     FxKind::Warp,
+    FxKind::Chorus,
+    FxKind::Phaser,
     FxKind::Reverb,
     FxKind::Limit,
 ];
@@ -633,6 +665,80 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
             pr("Stutter 1/8 + bramka", &[("tslot", 5.0), ("vslot", 4.0)]),
             pr("Wyzwalanie na żywo (co ćwierćnutę, one-shot)", &[("trig", 3.0), ("oneshot", 1.0)]),
         ],
+        FxKind::Chorus => {
+            // (name, mode, rate Hz, depth, delay ms, feedback, width, safe bass Hz, tone Hz, mix)
+            #[allow(clippy::too_many_arguments)]
+            fn c(
+                n: &'static str,
+                mode: f64,
+                rate: f64,
+                depth: f64,
+                delay: f64,
+                fb: f64,
+                width: f64,
+                hp: f64,
+                tone: f64,
+                mix: f64,
+            ) -> Preset {
+                let kv = [
+                    ("mode", mode),
+                    ("rate", rate),
+                    ("depth", depth),
+                    ("delay", delay),
+                    ("fb", fb),
+                    ("width", width),
+                    ("hp", hp),
+                    ("tone", tone),
+                    ("mix", mix),
+                ];
+                pr(n, &kv)
+            }
+            let mut swirl = c("Wir z tempem (1 takt)", 1.0, 0.6, 50.0, 15.0, -30.0, 200.0, 120.0, 14000.0, 45.0);
+            swirl.params.extend([("sync", 1.0), ("div", 4.0)]);
+            vec![
+                c("Klasyczny chorus", 0.0, 0.6, 40.0, 12.0, 0.0, 100.0, 20.0, 20000.0, 50.0),
+                c("Wokal — zagęszczenie", 0.0, 0.35, 18.0, 16.0, 0.0, 130.0, 150.0, 12000.0, 22.0),
+                c("Szeroki syntezator", 1.0, 0.5, 55.0, 14.0, 0.0, 180.0, 20.0, 16000.0, 50.0),
+                c("Vintage — dwa BBD", 0.0, 0.5, 70.0, 5.0, 0.0, 160.0, 80.0, 7000.0, 50.0),
+                c("Czysta gitara lat 80", 0.0, 0.9, 45.0, 8.0, 15.0, 140.0, 60.0, 10000.0, 45.0),
+                c("Bas — stabilny dół", 0.0, 0.45, 35.0, 10.0, 0.0, 120.0, 250.0, 9000.0, 45.0),
+                c("Smyczki — ensemble", 1.0, 0.7, 35.0, 18.0, 0.0, 160.0, 100.0, 9000.0, 60.0),
+                swirl,
+                c("Vibrato", 2.0, 5.5, 35.0, 12.0, 0.0, 0.0, 20.0, 20000.0, 100.0),
+            ]
+        }
+        FxKind::Phaser => {
+            // (name, stages index, rate Hz, center Hz, depth, feedback, stereo °, mix)
+            #[allow(clippy::too_many_arguments)]
+            fn ph(n: &'static str, stages: f64, rate: f64, center: f64, depth: f64, fb: f64, stereo: f64, mix: f64) -> Preset {
+                pr(
+                    n,
+                    &[
+                        ("stages", stages),
+                        ("rate", rate),
+                        ("center", center),
+                        ("depth", depth),
+                        ("fb", fb),
+                        ("stereo", stereo),
+                        ("mix", mix),
+                    ],
+                )
+            }
+            let synced = |mut p: Preset, div: f64| {
+                p.params.extend([("sync", 1.0), ("div", div)]);
+                p
+            };
+            vec![
+                ph("Klasyczny, 4 stopnie", 1.0, 0.5, 900.0, 70.0, 0.0, 90.0, 50.0),
+                ph("Delikatny", 0.0, 0.2, 1200.0, 45.0, 10.0, 60.0, 35.0),
+                ph("Głębokie przemiatanie", 4.0, 0.08, 700.0, 90.0, 45.0, 120.0, 50.0),
+                synced(ph("Funk — gitara (1/8)", 2.0, 0.4, 1100.0, 60.0, 55.0, 0.0, 50.0), 1.0),
+                ph("Odrzutowiec", 4.0, 0.05, 1500.0, 85.0, 85.0, 30.0, 50.0),
+                ph("Wir stereo", 3.0, 0.3, 800.0, 75.0, 35.0, 180.0, 50.0),
+                ph("Pusty (ujemny feedback)", 2.0, 0.35, 600.0, 70.0, -60.0, 90.0, 50.0),
+                synced(ph("Pad — przemiatanie (2 takty)", 3.0, 0.4, 900.0, 80.0, 40.0, 90.0, 50.0), 5.0),
+            ]
+        }
         FxKind::Plugin => vec![],
     }
 }
