@@ -10,6 +10,7 @@ mod headless;
 mod keys;
 mod library;
 mod links;
+mod media_watch;
 mod midi_actions;
 mod models;
 mod pitch_actions;
@@ -57,6 +58,8 @@ pub struct App {
     pub recovery: recovery::Recovery,
     /// Startup progress: the UI's first state reply waits for the last project here.
     pub boot: Arc<boot::Boot>,
+    /// Hot reload of the project's audio files when they change on disk.
+    pub media: Arc<media_watch::MediaWatch>,
 }
 
 impl App {
@@ -1227,7 +1230,17 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
             },
         )
     };
+    // audio files re-bounced or edited in another app play their new audio
+    let media = {
+        let ev = events.clone();
+        Arc::new(media_watch::MediaWatch::start(engine.clone(), move |m| {
+            if let Some(h) = ev.get() {
+                let _ = h.emit("media-reload", m);
+            }
+        }))
+    };
     let app = Arc::new(App {
+        media: media.clone(),
         engine: engine.clone(),
         audio,
         midi,
@@ -1283,6 +1296,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     let a = app.clone();
     engine.on_change(move |dto| {
         keys::ensure(&a, dto.project.channels.iter().any(|c| matches!(c.src, wave_engine::ChannelSrc::Keys { .. })));
+        media.set_files(wave_engine::reload::source_files(&dto.project));
         let _ = h.emit("state", dto);
     });
     if let Some(w) = tapp.get_webview_window("main") {

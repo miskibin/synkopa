@@ -216,6 +216,35 @@ mod tests {
         assert!(!doc.dirty());
     }
 
+    /// `wave reload` (the running app's; refused on a file above): the files are decoded again,
+    /// a file that does not decode is listed and changes nothing, a library sample is refused.
+    #[test]
+    fn reload_decodes_the_files_again() {
+        let d = tmp("reload");
+        let wav = d.join("pad.wav");
+        let one = |level: f32| (0..4800).flat_map(|_| [level, level]).collect::<Vec<f32>>();
+        wave_engine::sources::write_wav(&wav, &one(0.3), 48000).unwrap();
+        let h = super::Headless::new(wave_engine::Project::sketch());
+        let (srcs, _) = h.engine.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
+        wave_engine::sources::write_wav(&wav, &one(0.1), 48000).unwrap();
+        let r = crate::actions::reload(&h, &json!({})).unwrap();
+        assert_eq!(r["reloaded"].as_array().unwrap().len(), 1, "only the user's file, not the library's: {r}");
+        assert_eq!(r["reloaded"][0]["sourceIds"], json!(srcs));
+        let peak = h.engine.project().sources.iter().find(|s| s.id == srcs[0]).unwrap().peak_db;
+        assert!((peak - wave_engine::dsp::gain_to_db(0.1)).abs() < 0.1, "{peak}");
+
+        std::fs::write(&wav, b"half a file").unwrap();
+        let r = crate::actions::reload(&h, &json!({ "sourceIds": srcs })).unwrap();
+        assert_eq!(r["reloaded"], json!([]));
+        assert_eq!(r["failed"][0]["path"], json!(wav.display().to_string()));
+        assert!(h.engine.state().missing.is_empty(), "the source keeps the audio it had");
+
+        let lib = h.engine.project().sources.iter().find(|s| s.path.starts_with("lib:")).unwrap().id;
+        assert!(crate::actions::reload(&h, &json!({ "sourceIds": [lib] })).unwrap_err().contains("library"));
+        assert!(crate::actions::reload(&h, &json!({ "sourceIds": [999_999] })).is_err());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
     #[test]
     fn renders_and_stems_come_from_the_file() {
         let d = tmp("render");

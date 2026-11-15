@@ -161,7 +161,7 @@ export class MockBackend implements Backend {
   // ---------- state ----------
   private dto(): StateDto {
     return structuredClone({ project: this.p, revision: this.revision, canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0,
-      transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition(), missing: this.missing(), fxErrors: this.fxErrors() });
+      transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition(), missing: this.missing(), fxErrors: this.fxErrors(), audioGen: this.audioGen() });
   }
   /**
    * Like the engine's `fx_errors`: LV2 slots whose plugin is not "installed" here, or cannot run, and plugin
@@ -890,6 +890,42 @@ export class MockBackend implements Backend {
     const out: Record<string, string> = {};
     for (const s of this.p.sources) if (this.moved.has(s.path)) out[s.id] = `${s.path}: file not found`;
     return out;
+  }
+  // ---------- hot reload (app/src/media_watch.rs, engine.rs `reload_source_file`) ----------
+  /** Source id → generation of its audio; bumped when its file is reloaded. */
+  private gens = new Map<Id, number>();
+  private audioGen(): Record<string, number> {
+    const missing = this.missing(), out: Record<string, number> = {};
+    for (const s of this.p.sources) if (!(s.id in missing)) out[s.id] = this.gens.get(s.id) ?? 0;
+    return out;
+  }
+  /**
+   * Dev/tests: the file at `path` changed on disk, as the app's watcher reports it: its sources play new audio (other
+   * peaks, `seconds` long), not an undo step and not an unsaved change; or it did not decode (`fail`: why), or it was
+   * deleted (`gone`: it keeps playing from memory). A missing file that appears plays again.
+   */
+  simulateChangedFile(path: string, change: { seconds?: number; fail?: string; gone?: boolean } = {}) {
+    const srcs = this.p.sources.filter(s => s.path === path);
+    if (!srcs.length) return;
+    const ev = { path, name: srcs[0].name, sourceIds: srcs.map(s => s.id), seconds: null as number | null, lengthDiffers: false, wasMissing: false, error: null as string | null };
+    if (change.gone || change.fail != null) {
+      this.emit('media-reload', { ...ev, kind: change.gone ? 'gone' : 'failed', error: change.fail ?? null });
+      return;
+    }
+    const wasMissing = this.moved.delete(path);
+    const oldDur = srcs[0].dur, seconds = change.seconds ?? oldDur;
+    for (const s of srcs) {
+      const meta = this.srcMeta.get(s.id);
+      if (meta) { meta.seed = (meta.seed * 31 + 7) >>> 0; meta.dur = seconds; }
+      s.dur = seconds;
+      this.gens.set(s.id, (this.gens.get(s.id) ?? 0) + 1);
+    }
+    for (const snap of [...this.undoStack, ...this.redoStack]) for (const s of snap.sources) if (s.path === path) s.dur = seconds;
+    const clean = this.revision === this.savedRev;
+    this.revision++;
+    if (clean) this.savedRev = this.revision;
+    this.emit('state', this.dto());
+    this.emit('media-reload', { ...ev, kind: 'reloaded', seconds, lengthDiffers: Math.abs(seconds - oldDur) > Math.max(oldDur * 0.005, 0.02), wasMissing });
   }
   /** Dev/tests: those files moved (each to the given places; [] = deleted). Their sources go missing. */
   simulateMovedFiles(m: Record<string, string[]>) {

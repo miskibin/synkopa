@@ -34,6 +34,7 @@ pub mod midi_file;
 pub mod pitch_api;
 mod project_zip;
 pub mod relink;
+pub mod reload;
 pub mod rt;
 pub mod sources;
 pub mod synth;

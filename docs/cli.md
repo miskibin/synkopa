@@ -112,6 +112,8 @@ wave import kick.wav loop.wav --track 3 --beat 16
 wave missing                                          # sources whose audio file is missing (they play silence)
 wave relink --folder D:/Backup/Samples                # find them there by name; relinks unambiguous matches of the same length
 wave relink --source 1010 --path D:/new/pad.wav       # point one source at another file (one undo step)
+wave reload                                           # decode the sources' files again now (not an undo step)
+wave reload --source 1010,1011                        # only these sources' files
 wave midi inspect song.mid                             # parts, channels, instruments, what each becomes
 wave midi import song.mid --parts 0,2 --tempo --beat 16   # a new pattern on the Playlist (one undo step)
 wave midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one part into a channel
@@ -130,6 +132,16 @@ wave undo
   {"op": "setLoop", "loop": {"a": 0, "b": 16}}
 ]
 ```
+
+**Changed audio files reload by themselves.** The running app watches the folders of the
+project's audio files: a file re-bounced or edited in another app plays its new audio within
+about a second, while the loop plays, so a script can bounce a stem and keep going. `wave
+reload` does it at once and waits for it (`{"reloaded": [{sourceIds, path, seconds,
+lengthDiffers, wasMissing}], "failed": [{path, error}]}`), for a folder the watcher cannot see (a
+network share without change notifications) or when the next command must hear the new audio.
+On a project file (`--project`) it is refused with `NEEDS_APP`: the file's audio is decoded
+afresh on every command anyway. The `.wave` project file itself is not reloaded when it changes
+on disk: edit the open project through the app (without `--project`), as above.
 
 Every note names its channel with `ch` (see `wave channels`).
 

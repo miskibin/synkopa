@@ -9,6 +9,7 @@ import { openRack } from './state/pattern';
 import { startTelemetry } from './state/telemetry';
 import { say, setU } from './state/ui';
 import { watchAudio } from './state/audioWatch';
+import { watchMedia } from './state/mediaWatch';
 import { App } from './App';
 import { initTheme } from './ui/theme';
 import { initPrefs } from './state/prefs';
@@ -30,6 +31,7 @@ async function boot() {
   await startTelemetry();
   void watchAudio(() => be.audioGetConfig(), cb => be.on('audio-status', cb), say)
     .catch(e => console.error('[wave] audio status', e));
+  void watchMedia(cb => be.on('media-reload', cb), say).catch(e => console.error('[wave] media reload', e));
   // the standard library's file list, so the first "add channel" menu already offers it
   void loadStdLib();
   // initial selection like the prototype: the Vocal insert with its compressor

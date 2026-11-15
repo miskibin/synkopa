@@ -54,6 +54,8 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   relink --folder DIR                      find missing files in DIR (and below) by name; relinks each
                                            unambiguous match of the remembered length, lists the rest
   relink --source ID --path FILE           point a source at another file (one undo step)
+  reload [--source ID[,ID...]]             decode the sources' files again now (the app does it by itself
+                                           when a file changes on disk; not an undo step)
   make-unique --clip ID[,ID...]            give audio clips (one sample, one track) their own copy of the
                                            sample on a new track below, routed to a free mixer insert
 
@@ -769,6 +771,17 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 (None, Some(id), Some(p)) => send(cx, a, "relink", json!({ "sourceId": id as u64, "path": abs(p) })),
                 _ => Err(u("relink --folder DIR | --source ID --path FILE".into())),
             }
+        }
+        "reload" => {
+            let mut args = json!({});
+            if let Some(v) = a.get("source") {
+                let ids = v
+                    .split(',')
+                    .map(|x| x.trim().parse::<u64>().map_err(|_| u(format!("--source takes source ids separated by commas, got {x}"))))
+                    .collect::<Result<Vec<_>, _>>()?;
+                args["sourceIds"] = json!(ids);
+            }
+            send(cx, a, "reload", args)
         }
         "make-unique" => {
             let ids = a

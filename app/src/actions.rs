@@ -51,12 +51,14 @@ pub trait Host {
 }
 
 /// Commands that need the audio device, the musician's undo history or the app's window.
-pub const LIVE_ONLY: &[&str] = &["play", "stop", "pattern_play", "pattern_loop", "comp_audition", "note_audition", "undo", "redo", "open"];
+pub const LIVE_ONLY: &[&str] =
+    &["play", "stop", "pattern_play", "pattern_loop", "comp_audition", "note_audition", "undo", "redo", "open", "reload"];
 
 fn live_only_error(cmd: &str) -> String {
     let why = match cmd {
         "undo" | "redo" => "a project file has no undo history (each `wave --project` call starts fresh; edit with `apply` and keep the file under version control, or use --dry-run / --save-as to try an edit)",
         "open" => "pass the file with --project instead",
+        "reload" => "a project file decodes its audio afresh on every command",
         _ => "it plays through the audio device; render with `wave --project FILE render --out x.wav` to listen",
     };
     format!("NEEDS_APP: `{cmd}` needs the running app: {why}")
@@ -767,6 +769,42 @@ pub fn relink(app: &dyn Host, a: &Value) -> R<Value> {
     Ok(json!({ "relinked": r, "revision": e.revision() }))
 }
 
+/// Decodes the sources' files again now and plays what they hold (what the app's file watcher
+/// does by itself when one changes): `{sourceIds?}` names sources, none = every file of the
+/// project. Not an undo step. A file that does not decode leaves its sources as they were and
+/// is listed under `failed`.
+pub fn reload(app: &dyn Host, a: &Value) -> R<Value> {
+    let e = app.engine();
+    let project = e.project();
+    let files: Vec<PathBuf> = match arg(a, "sourceIds") {
+        Some(v) => {
+            let ids: Vec<u64> = serde_json::from_value(v.clone()).map_err(|x| format!("`sourceIds`: {x}"))?;
+            let mut files: Vec<PathBuf> = vec![];
+            for id in ids {
+                let s = project.sources.iter().find(|s| s.id == id).ok_or_else(|| format!("no source {id}"))?;
+                if s.path.starts_with(wave_engine::factory::SCHEME) {
+                    return Err(format!("{}: a library sample, not a file of yours", s.name));
+                }
+                if !files.iter().any(|f| wave_engine::reload::same_file(&s.path, f)) {
+                    files.push(PathBuf::from(&s.path));
+                }
+            }
+            files
+        }
+        None => wave_engine::reload::source_files(&project),
+    };
+    let mut reloaded = vec![];
+    let mut failed = vec![];
+    for f in files {
+        match e.reload_source_file(&f) {
+            Ok(Some(r)) => reloaded.push(r),
+            Ok(None) => {}
+            Err(x) => failed.push(json!({ "path": f.display().to_string(), "error": x.to_string() })),
+        }
+    }
+    Ok(json!({ "reloaded": reloaded, "failed": failed, "revision": e.revision() }))
+}
+
 // ---------------------------------------------------------------- channels & patterns
 
 fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
@@ -1319,7 +1357,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","reload","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1392,6 +1430,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         "comp" => comp(app, a, if_revision),
         "missing" => Ok(missing(app)),
         "relink" => relink(app, a),
+        "reload" => reload(app, a),
         "make_unique" => {
             let ids: Vec<u64> = arg(a, "clipIds")
                 .and_then(Value::as_array)
