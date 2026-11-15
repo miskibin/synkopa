@@ -1,5 +1,6 @@
 import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, setRackDock, setRollDock, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
+import { APP_GLYPH as G } from '../ui/menuIcons';
 import { t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
@@ -20,6 +21,7 @@ import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
 import { Icon, ICONS } from '../ui/icons';
 import { UpdateChip } from './Updates';
+import { AskButton, openAsk } from './Ask';
 import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
@@ -136,6 +138,7 @@ export function Toolbar() {
       <div class="tbleft" data-drag>
         <div class="tbmenu" data-drag>
           <MenuBar />
+          <AskButton />
           <UpdateChip />
           <MissingChip />
           <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
@@ -246,52 +249,53 @@ function MenuBar() {
   const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
   const menus: [TranslationKey, () => MenuItem[]][] = [
     ['a.mn.file', () => [
-      { t: 'item', label: t('a.mn.new'), kbd: 'Ctrl+N', act: () => void A.projectNew() },
-      { t: 'item', label: t('a.mn.open'), kbd: 'Ctrl+O', act: () => void A.projectOpen() },
+      { t: 'item', label: t('a.mn.new'), glyph: G.new, kbd: 'Ctrl+N', act: () => void A.projectNew() },
+      { t: 'item', label: t('a.mn.open'), glyph: G.open, kbd: 'Ctrl+O', act: () => void A.projectOpen() },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.save'), kbd: 'Ctrl+S', act: () => void A.projectSave(false) },
-      { t: 'item', label: t('a.mn.saveAs'), kbd: 'Ctrl+Shift+S', act: () => void A.projectSave(true) },
+      { t: 'item', label: t('a.mn.save'), glyph: G.save, kbd: 'Ctrl+S', act: () => void A.projectSave(false) },
+      { t: 'item', label: t('a.mn.saveAs'), glyph: G.saveAs, kbd: 'Ctrl+Shift+S', act: () => void A.projectSave(true) },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.export'), kbd: 'Ctrl+Shift+R', act: () => setU('exportOpen', true) },
-      { t: 'item', label: t('a.mn.exportProjectZip'), disabled: U.projectZipBusy || U.openingProject, act: () => void A.projectExportZip() },
+      { t: 'item', label: t('a.mn.export'), glyph: G.export, kbd: 'Ctrl+Shift+R', act: () => setU('exportOpen', true) },
+      { t: 'item', label: t('a.mn.exportProjectZip'), glyph: G.exportZip, disabled: U.projectZipBusy || U.openingProject, act: () => void A.projectExportZip() },
       { t: 'sep' },
-      { t: 'item', label: t('d.midi.mnImport'), act: () => void A.midiImport() },
-      { t: 'item', label: t('d.midi.mnExport'), disabled: !S.project.clips.some(c => c.kind === 'pat' && !c.muted), act: () => void A.midiExport() },
+      { t: 'item', label: t('d.midi.mnImport'), glyph: G.midiImport, act: () => void A.midiImport() },
+      { t: 'item', label: t('d.midi.mnExport'), glyph: G.midiExport, disabled: !S.project.clips.some(c => c.kind === 'pat' && !c.muted), act: () => void A.midiExport() },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.settings'), act: () => setU('settings', true) },
-      ...(win ? [{ t: 'sep' } as MenuItem, { t: 'item', label: t('a.mn.exit'), kbd: 'Alt+F4', act: () => void win.close() } as MenuItem] : []),
+      { t: 'item', label: t('a.mn.settings'), glyph: G.settings, act: () => setU('settings', true) },
+      ...(win ? [{ t: 'sep' } as MenuItem, { t: 'item', label: t('a.mn.exit'), glyph: G.exit, kbd: 'Alt+F4', act: () => void win.close() } as MenuItem] : []),
     ]],
     ['a.mn.edit', () => [
-      { t: 'item', label: t('a.mn.undo'), kbd: 'Ctrl+Z', disabled: !S.canUndo, act: () => void A.undo() },
-      { t: 'item', label: t('a.mn.redo'), kbd: 'Ctrl+Shift+Z', disabled: !S.canRedo, act: () => void A.redo() },
+      { t: 'item', label: t('a.mn.undo'), glyph: G.undo, kbd: 'Ctrl+Z', disabled: !S.canUndo, act: () => void A.undo() },
+      { t: 'item', label: t('a.mn.redo'), glyph: G.redo, kbd: 'Ctrl+Shift+Z', disabled: !S.canRedo, act: () => void A.redo() },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.cut'), kbd: 'Ctrl+X', disabled: none(), act: A.cut },
-      { t: 'item', label: t('a.mn.copy'), kbd: 'Ctrl+C', disabled: none(), act: A.copy },
-      { t: 'item', label: t('a.mn.paste'), kbd: 'Ctrl+V', disabled: !A.hasClipboard(), act: () => A.paste() },
-      { t: 'item', label: t('a.mn.dup'), kbd: 'Ctrl+B', disabled: none(), act: A.duplicate },
-      { t: 'item', label: t('a.mn.del'), kbd: 'Del', disabled: none(), act: () => A.delIds([...U.sel]) },
+      { t: 'item', label: t('a.mn.cut'), glyph: G.cut, kbd: 'Ctrl+X', disabled: none(), act: A.cut },
+      { t: 'item', label: t('a.mn.copy'), glyph: G.copy, kbd: 'Ctrl+C', disabled: none(), act: A.copy },
+      { t: 'item', label: t('a.mn.paste'), glyph: G.paste, kbd: 'Ctrl+V', disabled: !A.hasClipboard(), act: () => A.paste() },
+      { t: 'item', label: t('a.mn.dup'), glyph: G.dup, kbd: 'Ctrl+B', disabled: none(), act: A.duplicate },
+      { t: 'item', label: t('a.mn.del'), glyph: G.del, kbd: 'Del', disabled: none(), act: () => A.delIds([...U.sel]) },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.selAll'), kbd: 'Ctrl+A', disabled: !S.project.clips.length, act: A.selectAll },
+      { t: 'item', label: t('a.mn.selAll'), glyph: G.selAll, kbd: 'Ctrl+A', disabled: !S.project.clips.length, act: A.selectAll },
     ]],
     ['a.mn.view', () => [
       { t: 'item', label: t('a.mn.browser'), kbd: 'Alt+F8', checked: U.pickOpen, act: () => setU('pickOpen', !U.pickOpen) },
       { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: U.mixView, act: toggleMixView },
-      { t: 'item', label: t(U.mixMin ? 'a.mn.mixExpand' : 'a.mn.mixCollapse'), disabled: U.mixView, title: t(U.mixView ? 'a.mn.mixDockOff' : 'a.mn.mixDockTip'), act: () => setU('mixMin', !U.mixMin) },
+      { t: 'item', label: t(U.mixMin ? 'a.mn.mixExpand' : 'a.mn.mixCollapse'), glyph: U.mixMin ? G.expand : G.collapse, disabled: U.mixView, title: t(U.mixView ? 'a.mn.mixDockOff' : 'a.mn.mixDockTip'), act: () => setU('mixMin', !U.mixMin) },
       { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRackShown },
       { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRollShown },
       { t: 'item', label: t('a.mn.rackDock'), checked: U.rackDock, title: t('a.mn.rackDockTip'), act: () => setRackDock(!U.rackDock) },
       { t: 'item', label: t('a.mn.rollDock'), checked: U.rollDock, title: t('a.mn.rollDockTip'), act: () => setRollDock(!U.rollDock) },
-      { t: 'item', label: t(U.plugsHidden ? 'a.mn.winsShow' : 'a.mn.winsHide'), kbd: 'F5', disabled: !wins(), act: () => (U.plugsHidden ? A.showPlugs() : A.playlistFront()) },
+      { t: 'item', label: t(U.plugsHidden ? 'a.mn.winsShow' : 'a.mn.winsHide'), glyph: G.windows, kbd: 'F5', disabled: !wins(), act: () => (U.plugsHidden ? A.showPlugs() : A.playlistFront()) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.follow'), kbd: 'F', checked: U.follow, act: () => setU('follow', !U.follow) },
-      { t: 'item', label: t('a.mn.zoomIn'), kbd: 'Ctrl+=', act: () => A.zoomAt(1.25) },
-      { t: 'item', label: t('a.mn.zoomOut'), kbd: 'Ctrl+−', act: () => A.zoomAt(0.8) },
+      { t: 'item', label: t('a.mn.zoomIn'), glyph: G.zoomIn, kbd: 'Ctrl+=', act: () => A.zoomAt(1.25) },
+      { t: 'item', label: t('a.mn.zoomOut'), glyph: G.zoomOut, kbd: 'Ctrl+−', act: () => A.zoomAt(0.8) },
     ]],
     ['a.mn.help', () => [
-      { t: 'item', label: t('a.mn.shortcuts'), kbd: '?', act: () => setU('help', true) },
+      { t: 'item', label: t('d.ask.menu'), glyph: G.ask, kbd: 'F1', act: openAsk },
+      { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },
       { t: 'sep' },
-      { t: 'item', label: t('a.mn.updates'), act: () => void checkUpdates() },
-      { t: 'item', label: t('a.mn.whatsNew'), act: () => void showWhatsNew() },
+      { t: 'item', label: t('a.mn.updates'), glyph: G.updates, act: () => void checkUpdates() },
+      { t: 'item', label: t('a.mn.whatsNew'), glyph: G.whatsNew, act: () => void showWhatsNew() },
     ]],
   ];
   const show = (i: number, el: HTMLElement) => {
@@ -346,6 +350,7 @@ function PatSelector() {
 
 const shortcuts = (): [string, string][] => [
   ['Play / Stop', t('a.sc.1')],
+  [t('d.ask.menu'), 'F1'],
   [t('a.sc.2'), 'F9'],
   [t('a.sc.routeCh'), 'Ctrl+L'],
   [t('a.sc.spreadCh'), 'Shift+Ctrl+L'],

@@ -106,26 +106,7 @@ pub fn release_url(version: Option<&str>) -> Result<String, String> {
 
 /// Opens an https link into this repository in the system browser.
 pub fn open_release(version: Option<&str>) -> Result<(), String> {
-    let url = release_url(version)?;
-    #[cfg(windows)]
-    let mut cmd = {
-        let mut c = std::process::Command::new("rundll32");
-        c.args(["url.dll,FileProtocolHandler", &url]);
-        c
-    };
-    #[cfg(target_os = "macos")]
-    let mut cmd = {
-        let mut c = std::process::Command::new("open");
-        c.arg(&url);
-        c
-    };
-    #[cfg(not(any(windows, target_os = "macos")))]
-    let mut cmd = {
-        let mut c = std::process::Command::new("xdg-open");
-        c.arg(&url);
-        c
-    };
-    cmd.spawn().map(|_| ()).map_err(|e| format!("could not open {url}: {e}"))
+    crate::links::open_browser(&release_url(version)?)
 }
 
 /// Limits `update-progress` events: one per percent (or per 512 KiB when the size is

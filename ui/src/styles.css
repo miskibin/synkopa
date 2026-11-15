@@ -1084,3 +1084,23 @@ select option { background: var(--bg4); color: var(--fg); }
 .fxcl-err { margin: 0; }
 .fxcl-ft { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .fxcl-ft .note { flex: 1; min-width: 0; }
+
+/* Ask AI: the labelled button in the menu row and its dialog */
+.askbtn { flex: none; display: flex; align-items: center; gap: 5px; height: 20px; margin-left: 4px; padding: 0 8px; border: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue-hi); font: 600 11px var(--sans); cursor: pointer; white-space: nowrap; }
+.askbtn:hover, .askbtn.on { background: color-mix(in srgb, var(--blue) 26%, transparent); color: var(--fg-hi); }
+.askbtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.askdlg { width: min(520px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.askintro { margin: 0; font: 400 12px/1.45 var(--sans); color: var(--fg2); }
+.askq { width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line3); border-radius: 5px; background: var(--bg1); color: var(--fg-hi); font: 400 13px/1.4 var(--sans); }
+.askq:focus { outline: none; border-color: var(--blue); }
+.askto { display: flex; align-items: center; gap: 10px; }
+.askto .cl { font: 500 11px var(--sans); color: var(--fg3); }
+.asksvc > button { width: auto; padding: 0 12px; font: 500 11px var(--sans); color: var(--fg2); }
+.asksvc > button.on { background: var(--line3); color: var(--fg-hi); }
+.asknote { font: 400 11px/1.4 var(--sans); color: var(--fg3); }
+.asknote.warn { color: var(--amber); }
+.askerr { font: 500 11px/1.4 var(--sans); color: var(--red); }
+.askfoot { display: flex; align-items: center; gap: 8px; }
+.askfoot .askpriv { flex: 1; min-width: 0; font: 400 10px/1.3 var(--sans); color: var(--fg4); }
+.askfoot .smallbtn { height: 24px; padding: 0 12px; }
+.askfoot .smallbtn:disabled { opacity: .45; cursor: default; }

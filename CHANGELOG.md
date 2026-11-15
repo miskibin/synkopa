@@ -7,6 +7,11 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Ask AI how to do something (F1).** Click Ask next to the menus, press F1 or pick Help → Ask
+  AI, and type your question, e.g. "can I reorder the effects on a mixer track?". It opens
+  ChatGPT with the question and your WAVE version, and since WAVE is open source it checks the
+  code and answers with steps. Prefer DeepWiki? Switch to it: your question is copied, paste it there.
+- **Icons in the menus.** Every command in File, Edit, View and Help now has an icon.
 - **Use LV2 effects on Linux.** WAVE finds the LV2 plugins installed on your system (for example LSP,
   x42, swh and others) next to your VST3s: pick one from Plugins in the effect picker, edit it in
   WAVE's parameter list and automate it. Its settings are saved with the project. Needs liblilv

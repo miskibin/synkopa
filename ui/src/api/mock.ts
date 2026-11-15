@@ -1,6 +1,7 @@
 // In-browser fake engine, used when the page is not running inside Tauri.
 // Holds the demo project, applies ops with undo/gestures, plays a fake transport and
 // streams binary telemetry frames (encoded exactly like the real ones).
+import { askUrl, MAX_ASK_URL, type AskService } from '../lib/askLink';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
 import type { Backend, EventMap, OsDropEvent } from './backend';
@@ -1436,6 +1437,12 @@ export class MockBackend implements Backend {
   updateSetAuto(on: boolean) { return this.upd.updateSetAuto(on); }
   updateMarkSeen(version: string) { return this.upd.updateMarkSeen(version); }
   openReleasePage(version?: string | null) { return this.upd.openReleasePage(version); }
+  async openAsk(service: AskService, prompt: string | null) {
+    // like links::ask_url: a ChatGPT question must fit in the link
+    const url = askUrl(service, prompt);
+    if (!url) throw new Error(`the question is too long for a link (> ${MAX_ASK_URL} characters)`);
+    try { window.open(url, '_blank', 'noopener'); } catch { /* no window */ }
+  }
   async cliStatus() { return { installed: false, command: 'wave', path: null, note: t('d.mock.nocli') }; }
 
   async on<K extends keyof EventMap>(ev: K, cb: (p: EventMap[K]) => void) {

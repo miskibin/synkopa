@@ -1,5 +1,6 @@
 // Typed wrappers over the Tauri commands/events in docs/architecture.md.
 // When `window.__TAURI_INTERNALS__` is absent (plain browser) the in-browser mock is used.
+import type { AskService } from '../lib/askLink';
 import { Channel, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
@@ -195,6 +196,9 @@ export interface Backend {
   updateMarkSeen(version: string): Promise<void>;
   /** Opens the release page of `version` (null = the releases list) in the system browser. */
   openReleasePage(version?: string | null): Promise<void>;
+  /** "Ask AI": opens `service` in the system browser (ChatGPT with `prompt` in the link, DeepWiki on the
+   *  repository). No ChatGPT prompt opens a new chat; one whose link is past MAX_ASK_URL (lib/askLink) is rejected. */
+  openAsk(service: AskService, prompt: string | null): Promise<void>;
   on<K extends keyof EventMap>(ev: K, cb: (payload: EventMap[K]) => void): Promise<() => void>;
   /** OS file drag & drop with real paths (Tauri) or file names (mock). */
   onOsDrop(cb: (e: OsDropEvent) => void): Promise<() => void>;
@@ -354,6 +358,7 @@ export function tauriBackend(): Backend {
     updateSetAuto: on => invoke('update_set_auto', { on }),
     updateMarkSeen: version => invoke('update_mark_seen', { version }),
     openReleasePage: version => invoke('open_release_page', { version: version ?? null }),
+    openAsk: (service, prompt) => invoke('open_ask', { service, prompt }),
     on: async (ev, cb) => listen(ev, e => cb(e.payload as never)),
     async onOsDrop(cb) {
       const { getCurrentWebview } = await import('@tauri-apps/api/webview');

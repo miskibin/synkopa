@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://github.com/miskibin/wave-DAW/releases/latest"><img src="https://img.shields.io/github/v/release/miskibin/wave-DAW?label=release" alt="Latest release"></a>
   <a href="https://github.com/miskibin/wave-DAW/actions/workflows/ci.yml"><img src="https://github.com/miskibin/wave-DAW/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://deepwiki.com/miskibin/wave-DAW"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 [![WAVE: playlist, automation and the mixer. Click for the video.](site/img/hero.png)](https://www.youtube.com/watch?v=wtuHDyIQpYk)

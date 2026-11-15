@@ -1,3 +1,4 @@
+import { AskDialog, toggleAsk } from './views/Ask';
 import { t as tl } from './lib/i18n';
 import { closeNotebook, NB } from './state/notebook';
 import { ConfirmDialog } from './ui/Confirm';
@@ -128,6 +129,7 @@ function onKey(e: KeyboardEvent) {
     const n = +e.code.slice(5);
     return n === 4 ? playlistZoom.fit() : playlistZoom.preset(n - 1);
   }
+  if (e.key === 'F1') { e.preventDefault(); return toggleAsk(); }
   if (e.key === 'F8') { e.preventDefault(); return e.altKey ? setU('pickOpen', !U.pickOpen) : toggleNotebook(); }
   // FL Studio's window keys: F6 Channel rack, F7 Piano roll; the effect picker sits next to the mixer (Shift+F9)
   if (e.key === 'F9' && e.shiftKey) { e.preventDefault(); return U.fxPicker ? setU('fxPicker', null) : openFxPicker(U.mixSel); }
@@ -266,6 +268,7 @@ export function App() {
       <Export />
       <Settings />
       <Updates />
+      <AskDialog />
       <VstPicker />
       <FxPickerHost />
       <FxChainsHost />

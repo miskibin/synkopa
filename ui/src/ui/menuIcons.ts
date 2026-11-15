@@ -8,6 +8,9 @@ import {
   faRotateLeft, faScissors, faSliders, faStopwatch, faTableCells, faTrashCan, faVolumeHigh, faVolumeXmark, faWandMagicSparkles,
   faWaveSquare, faCircle, faFolderOpen, faBell, faBolt, faCircleDot, faCloud, faDrumSteelpan, faGuitar, faHandsClapping, faRadio,
   faStairs, faWind, faDrum, faCompactDisc, faHandFist,
+  faFloppyDisk, faFilePen, faFileExport, faFileZipper, faFileImport, faGear, faRightFromBracket, faRotateRight,
+  faMagnifyingGlassPlus, faMagnifyingGlassMinus, faWindowRestore, faArrowsRotate, faGift,
+  faUpRightAndDownLeftFromCenter, faDownLeftAndUpRightToCenter, faComments,
 } from '@fortawesome/free-solid-svg-icons';
 import { INST_ICONS } from './instIcons';
 
@@ -79,6 +82,19 @@ export function menuGlyph(label: string): MenuGlyph | null {
   }
   return v;
 }
+
+// ---------------------------------------------------------------- application menus
+// The menu bar names its glyphs explicitly: its labels are translated and too generic to guess from.
+export const APP_GLYPH = {
+  new: g(faFileCirclePlus), open: g(faFolderOpen), save: g(faFloppyDisk), saveAs: g(faFilePen),
+  export: g(faFileAudio), exportZip: g(faFileZipper), midiImport: g(faFileImport), midiExport: g(faFileExport),
+  settings: g(faGear), exit: g(faRightFromBracket),
+  undo: g(faRotateLeft), redo: g(faRotateRight), cut: g(faScissors), copy: g(faCopy), paste: g(faPaste),
+  dup: g(faClone), del: g(faTrashCan), selAll: g(faCheckDouble),
+  expand: g(faUpRightAndDownLeftFromCenter), collapse: g(faDownLeftAndUpRightToCenter), windows: g(faWindowRestore),
+  zoomIn: g(faMagnifyingGlassPlus), zoomOut: g(faMagnifyingGlassMinus),
+  shortcuts: g(faKeyboard), updates: g(faArrowsRotate), whatsNew: g(faGift), ask: g(faComments),
+} satisfies Record<string, MenuGlyph>;
 
 // ---------------------------------------------------------------- instrument picker
 // Keyed by engine ids (synth categories, built-in instruments), never by translated labels.

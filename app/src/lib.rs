@@ -9,6 +9,7 @@ mod fx_chains;
 mod headless;
 mod keys;
 mod library;
+mod links;
 mod midi_actions;
 mod models;
 mod pitch_actions;
@@ -1006,6 +1007,12 @@ async fn open_release_page(version: Option<String>) -> R<()> {
     updater::open_release(version.as_deref())
 }
 
+/// "Ask AI": opens `service` in the system browser, with `prompt` when the service takes one.
+#[tauri::command]
+async fn open_ask(service: links::AskService, prompt: Option<String>) -> R<()> {
+    links::open_browser(&links::ask_url(service, prompt.as_deref())?)
+}
+
 #[tauri::command]
 async fn cli_status(app: St<'_>) -> R<CliStatus> {
     Ok(app.cli.lock().clone())
@@ -1155,7 +1162,8 @@ pub fn run(project_arg: Option<&str>) {
             update_check,
             update_download,
             update_install,
-            open_release_page
+            open_release_page,
+            open_ask
         ])
         .build(tauri::generate_context!())
         .expect("error while building WAVE");
