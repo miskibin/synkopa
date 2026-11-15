@@ -9,6 +9,7 @@ members = [
     "crates/audio-file",
     "crates/plugin-scan",
     "crates/vst3-host",
+    "crates/lv2-host",
     "crates/plugin-windows",
     "crates/rmvpe",
     "crates/tune-bench",

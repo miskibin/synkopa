@@ -1,23 +1,107 @@
-//! VST3 hosting glue: the engine's `PluginFactory`, per-effect handles, editors.
+//! Plugin hosting glue: the engine's `PluginFactory` for every hosted format (VST3
+//! everywhere, LV2 on Linux), per-effect handles, scanning, editors.
 //!
-//! Threading (see `wave_vst3` docs): instantiate/params/state block on a UI-thread
-//! job, so they are only ever reached from async commands or worker threads —
-//! never from the UI thread itself.
+//! Threading: VST3 instantiate/params/state block on a UI-thread job, so they are only
+//! ever reached from async commands or worker threads — never from the UI thread itself.
+//! LV2 work runs on the calling thread.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use base64::Engine as _;
 use parking_lot::Mutex;
-use serde_json::{json, Value};
+use serde::Serialize;
 use tauri::Manager;
 use wave_engine::{Id, PluginFactory, PluginRef, Processor};
 
-pub use wave_vst3::ParamInfo;
+/// A live hosted effect's non-real-time side.
+#[derive(Clone)]
+enum Handle {
+    Vst3(wave_vst3::Vst3Handle),
+    Lv2(wave_lv2::Lv2Handle),
+}
+
+impl Handle {
+    fn params(&self) -> Vec<ParamInfo> {
+        match self {
+            Handle::Vst3(h) => h.params().into_iter().map(ParamInfo::Vst3).collect(),
+            Handle::Lv2(h) => h.params().into_iter().map(ParamInfo::Lv2).collect(),
+        }
+    }
+    fn set_param(&self, id: u32, v: f64) -> Result<(), String> {
+        match self {
+            Handle::Vst3(h) => h.set_param(id, v).map_err(|e| e.to_string()),
+            Handle::Lv2(h) => h.set_param(id, v),
+        }
+    }
+    fn state(&self) -> Result<Vec<u8>, String> {
+        match self {
+            Handle::Vst3(h) => h.get_state().map_err(|e| e.to_string()),
+            Handle::Lv2(h) => h.get_state(),
+        }
+    }
+    fn latency(&self) -> usize {
+        match self {
+            Handle::Vst3(h) => h.latency(),
+            Handle::Lv2(h) => h.latency(),
+        }
+    }
+}
+
+/// One parameter of a hosted plugin as `plugin_params` reports it: `{id, name, value,
+/// display, def}` for every format (values normalized 0..1); LV2 adds the port's real
+/// range and kind (`symbol, real, min, max, unit, steps, toggle, integer, log, options`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum ParamInfo {
+    Vst3(wave_vst3::ParamInfo),
+    Lv2(wave_lv2::ParamInfo),
+}
+
+impl ParamInfo {
+    pub fn id(&self) -> u32 {
+        match self {
+            ParamInfo::Vst3(p) => p.id,
+            ParamInfo::Lv2(p) => p.id,
+        }
+    }
+    pub fn name(&self) -> &str {
+        match self {
+            ParamInfo::Vst3(p) => &p.name,
+            ParamInfo::Lv2(p) => &p.name,
+        }
+    }
+}
+
+/// One installed effect, as `plugin_scan` lists it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanEntry {
+    /// `vst3` or `lv2`.
+    pub format: String,
+    pub path: String,
+    /// VST3 class id, LV2 plugin URI.
+    pub cid: String,
+    pub name: String,
+    pub vendor: String,
+    pub category: String,
+    /// Why it cannot be used here (LV2: a host feature it needs); absent when it can.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unsupported: Option<String>,
+}
+
+/// What `plugin_scan` returns: the effects, and per format why it is unavailable here.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanResult {
+    pub plugins: Vec<ScanEntry>,
+    /// Format → the sentence explaining why it is not available (LV2 without liblilv).
+    pub unavailable: HashMap<String, String>,
+}
 
 pub struct Plugins {
-    handles: Mutex<HashMap<Id, wave_vst3::Vst3Handle>>,
-    known: Mutex<Vec<wave_vst3::PluginInfo>>,
+    handles: Mutex<HashMap<Id, Handle>>,
+    known: Mutex<Option<ScanResult>>,
 }
 
 struct Factory(Arc<Plugins>);
@@ -25,8 +109,19 @@ struct Factory(Arc<Plugins>);
 impl PluginFactory for Factory {
     fn create(&self, fx_id: Id, p: &PluginRef, sr: f32, max_block: usize, live: bool) -> Result<Box<dyn Processor>, String> {
         let state = p.state.as_deref().and_then(|s| base64::engine::general_purpose::STANDARD.decode(s).ok());
-        let (proc, handle) =
-            wave_vst3::instantiate(&p.path, &p.cid, state.as_deref(), sr, max_block).map_err(|e| format!("{}: {e}", p.name))?;
+        let (proc, handle) = match p.format.as_str() {
+            PluginRef::LV2 => {
+                let (proc, h) =
+                    wave_lv2::instantiate(&p.cid, state.as_deref(), sr, max_block).map_err(|e| format!("{} (LV2): {e}", p.name))?;
+                (proc, Handle::Lv2(h))
+            }
+            PluginRef::VST3 => {
+                let (proc, h) =
+                    wave_vst3::instantiate(&p.path, &p.cid, state.as_deref(), sr, max_block).map_err(|e| format!("{}: {e}", p.name))?;
+                (proc, Handle::Vst3(h))
+            }
+            other => return Err(format!("{}: WAVE does not host `{other}` plugins", p.name)),
+        };
         if live {
             self.0.handles.lock().insert(fx_id, handle);
         }
@@ -37,44 +132,91 @@ impl PluginFactory for Factory {
     }
     fn state(&self, fx_id: Id) -> Option<String> {
         let h = self.0.handles.lock().get(&fx_id).cloned()?;
-        h.get_state().ok().map(|b| base64::engine::general_purpose::STANDARD.encode(b))
+        match h.state() {
+            Ok(b) => Some(base64::engine::general_purpose::STANDARD.encode(b)),
+            Err(e) => {
+                log::warn!("effect {fx_id}: the plugin's state could not be saved ({e}); the last saved state is kept");
+                None
+            }
+        }
     }
     fn has_plugin_param(&self, fx_id: Id, param_id: u32) -> bool {
-        self.0.params(fx_id).ok().is_some_and(|ps| ps.iter().any(|p| p.id == param_id))
+        self.0.params(fx_id).ok().is_some_and(|ps| ps.iter().any(|p| p.id() == param_id))
+    }
+    fn latency(&self, fx_id: Id) -> Option<usize> {
+        let h = self.0.handles.lock().get(&fx_id).cloned()?;
+        Some(h.latency())
     }
 }
 
 impl Plugins {
     pub fn new() -> Arc<Self> {
-        Arc::new(Plugins { handles: Mutex::new(HashMap::new()), known: Mutex::new(vec![]) })
+        Arc::new(Plugins { handles: Mutex::new(HashMap::new()), known: Mutex::new(None) })
     }
 
     pub fn factory(self: &Arc<Self>) -> Arc<dyn PluginFactory> {
         Arc::new(Factory(self.clone()))
     }
 
-    pub fn scan(&self, rescan: bool) -> Vec<Value> {
-        let list = wave_vst3::scan(rescan);
-        *self.known.lock() = list.clone();
-        list.into_iter().map(|p| json!(p)).collect()
-    }
-
-    /// (name, vendor) of a scanned plugin.
-    pub fn info(&self, path: &str, cid: &str) -> Option<(String, String)> {
-        let find = |l: &[wave_vst3::PluginInfo]| {
-            l.iter().find(|p| p.path == path && p.cid.eq_ignore_ascii_case(cid)).map(|p| (p.name.clone(), p.vendor.clone()))
-        };
-        if let Some(x) = find(&self.known.lock()) {
-            return Some(x);
+    /// Every installed effect of every format this platform hosts (VST3; LV2 on Linux).
+    /// A cold `rescan` is slow: call it from a worker thread.
+    pub fn scan(&self, rescan: bool) -> ScanResult {
+        let mut plugins: Vec<ScanEntry> = wave_vst3::scan(rescan)
+            .into_iter()
+            .map(|p| ScanEntry {
+                format: PluginRef::VST3.into(),
+                path: p.path,
+                cid: p.cid,
+                name: p.name,
+                vendor: p.vendor,
+                category: p.category,
+                unsupported: None,
+            })
+            .collect();
+        let mut unavailable = HashMap::new();
+        if cfg!(target_os = "linux") {
+            match wave_lv2::scan(rescan) {
+                Ok(list) => plugins.extend(list.into_iter().map(|p| ScanEntry {
+                    format: PluginRef::LV2.into(),
+                    path: p.path,
+                    cid: p.cid,
+                    name: p.name,
+                    vendor: p.vendor,
+                    category: p.category,
+                    unsupported: p.unsupported,
+                })),
+                Err(e) => {
+                    unavailable.insert(PluginRef::LV2.to_owned(), e);
+                }
+            }
         }
-        let list = wave_vst3::scan(false);
-        let r = find(&list);
-        *self.known.lock() = list;
+        let r = ScanResult { plugins, unavailable };
+        *self.known.lock() = Some(r.clone());
         r
     }
 
-    fn handle(&self, fx: Id) -> Result<wave_vst3::Vst3Handle, String> {
-        self.handles.lock().get(&fx).cloned().ok_or_else(|| format!("effect {fx} is not a loaded VST3 plugin"))
+    /// A scanned plugin: from the last scan, else a scan that opens nothing new.
+    pub fn info(&self, format: &str, path: &str, cid: &str) -> Option<ScanEntry> {
+        let find = |r: &ScanResult| {
+            r.plugins
+                .iter()
+                .find(|p| {
+                    p.format == format
+                        && match format {
+                            PluginRef::LV2 => p.cid == cid,
+                            _ => p.path == path && p.cid.eq_ignore_ascii_case(cid),
+                        }
+                })
+                .cloned()
+        };
+        if let Some(x) = self.known.lock().as_ref().and_then(find) {
+            return Some(x);
+        }
+        find(&self.scan(false))
+    }
+
+    fn handle(&self, fx: Id) -> Result<Handle, String> {
+        self.handles.lock().get(&fx).cloned().ok_or_else(|| format!("effect {fx} is not a loaded plugin"))
     }
 
     pub fn params(&self, fx: Id) -> Result<Vec<ParamInfo>, String> {
@@ -83,13 +225,19 @@ impl Plugins {
 
     pub fn set_param(&self, fx: Id, id: u32, v: f64) -> Result<(), String> {
         if !(0.0..=1.0).contains(&v) {
-            return Err("VST3 parameter values are normalised 0..1".into());
+            return Err("plugin parameter values are normalised 0..1".into());
         }
-        self.handle(fx)?.set_param(id, v).map_err(|e| e.to_string())
+        self.handle(fx)?.set_param(id, v)
     }
 
     pub fn editor(&self, app: &tauri::AppHandle, fx: Id, open: bool) -> Result<(), String> {
-        let h = self.handle(fx)?;
+        let h = match self.handle(fx)? {
+            Handle::Vst3(h) => h,
+            Handle::Lv2(_) if !open => return Ok(()),
+            Handle::Lv2(_) => {
+                return Err("LV2 plugins are edited in WAVE's parameter list (their own editor windows are not supported yet)".into())
+            }
+        };
         if open && !h.has_editor() {
             return Err("this plugin has no editor; use the parameter list".into());
         }
@@ -106,5 +254,153 @@ impl Plugins {
         })
         .map_err(|e| e.to_string())?;
         rx.recv().map_err(|e| e.to_string())?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_entries_and_params_serialise_in_the_shapes_the_ui_expects() {
+        let e = ScanEntry {
+            format: "lv2".into(),
+            path: "/usr/lib/lv2/amp.lv2".into(),
+            cid: "http://example.org/amp".into(),
+            name: "Amp".into(),
+            vendor: "Ex".into(),
+            category: "Amplifier".into(),
+            unsupported: None,
+        };
+        let j = serde_json::to_value(&e).unwrap();
+        assert_eq!(j["format"], "lv2");
+        assert!(j.get("unsupported").is_none());
+        let v = ParamInfo::Vst3(wave_vst3::ParamInfo { id: 3, name: "Gain".into(), value: 0.5, display: "-6 dB".into(), def: 1.0 });
+        assert_eq!(
+            serde_json::to_value(&v).unwrap(),
+            serde_json::json!({"id": 3, "name": "Gain", "value": 0.5, "display": "-6 dB", "def": 1.0})
+        );
+        let spec = wave_lv2::ParamSpec::new(-24.0, 12.0, 0.0, false, false, false, false, vec![], "dB".into());
+        let l = ParamInfo::Lv2(wave_lv2::ParamInfo::new(4, "gain", "Gain".into(), &spec, -6.0));
+        let j = serde_json::to_value(&l).unwrap();
+        assert_eq!((j["id"].as_u64(), j["unit"].as_str(), j["min"].as_f64()), (Some(4), Some("dB"), Some(-24.0)));
+        assert_eq!(l.id(), 4);
+        assert_eq!(l.name(), "Gain");
+    }
+
+    /// The whole path with a real LV2 plugin (Linux, liblilv and `swh-lv2` installed; CI
+    /// sets `WAVE_REQUIRE_LV2=1`): scan → slot → live instance → parameter → offline render
+    /// at the set gain → save → reopen in a fresh engine → the same sound; and plugin
+    /// delay compensation from a plugin that reports latency.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn an_lv2_effect_renders_saves_and_reopens_with_its_settings() {
+        use wave_engine::{Engine, Op, Project};
+        const AMP: &str = "http://plugin.org.uk/swh-plugins/amp";
+        let required = std::env::var_os("WAVE_REQUIRE_LV2").is_some_and(|v| v == "1");
+        let plugins = Plugins::new();
+        let scan = plugins.scan(false);
+        let Some(amp) = scan.plugins.iter().find(|p| p.cid == AMP).cloned() else {
+            assert!(!required, "WAVE_REQUIRE_LV2=1 but {AMP} is not available: {:?}", scan.unavailable);
+            eprintln!("skipping: {AMP} not installed ({:?})", scan.unavailable);
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("wave-lv2-app-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut p = Project::routed();
+        for m in p.inserts.iter_mut() {
+            m.fx.clear();
+        }
+        let e = Engine::new(p, plugins.factory());
+        e.save(&dir.join("song.wave")).unwrap();
+        let wav = dir.join("sine.wav");
+        let sine: Vec<f32> = (0..48_000).map(|i| 0.25 * (std::f32::consts::TAU * 440.0 * i as f32 / 48_000.0).sin()).collect();
+        wave_engine::sources::write_wav(&wav, &sine, 48_000).unwrap();
+        e.import_audio(&[wav], Some((0, 0.0))).unwrap();
+        let rms = |x: &[f32]| (x.iter().map(|v| f64::from(*v).powi(2)).sum::<f64>() / x.len() as f64).sqrt();
+        let dry = rms(&e.render(0.0, 1.0, 0.0, 48_000).unwrap());
+        assert!(dry > 0.05, "the clip plays ({dry})");
+
+        let ins = e.project().tracks[0].insert;
+        let fx = wave_engine::catalog::new_fx(7000, wave_engine::FxKind::Plugin, 120.0);
+        let fx = wave_engine::Fx {
+            plugin: Some(PluginRef {
+                format: amp.format.clone(),
+                path: amp.path.clone(),
+                cid: amp.cid.clone(),
+                name: amp.name.clone(),
+                vendor: amp.vendor.clone(),
+                state: None,
+            }),
+            ..fx
+        };
+        e.apply(&[Op::PutFx { insert_id: ins, fx, index: None }], false, None).unwrap();
+        let _rt = e.create_rt(48_000.0, 256);
+        assert!(e.state().fx_errors.is_empty(), "{:?}", e.state().fx_errors);
+        let gain = match plugins.params(7000).unwrap().into_iter().find(|p| p.name().to_lowercase().contains("gain")) {
+            Some(ParamInfo::Lv2(p)) => p,
+            other => panic!("no LV2 gain parameter: {other:?}"),
+        };
+        plugins.set_param(7000, gain.id, (-6.0 - gain.min) / (gain.max - gain.min)).unwrap();
+        let want = 10f64.powf(-6.0 / 20.0);
+        let wet = rms(&e.render(0.0, 1.0, 0.0, 48_000).unwrap());
+        assert!((wet / dry - want).abs() < 0.01, "rendered gain {} want {want}", wet / dry);
+
+        // the setting lives in the project file
+        let saved = dir.join("saved.wave");
+        e.save(&saved).unwrap();
+        let st = e.project().find_fx(7000).unwrap().1.plugin.clone().unwrap().state;
+        assert!(st.is_some_and(|s| !s.is_empty()), "no state saved");
+        let plugins2 = Plugins::new();
+        let e2 = Engine::new(Project::empty(), plugins2.factory());
+        e2.open(&saved).unwrap();
+        let again = rms(&e2.render(0.0, 1.0, 0.0, 48_000).unwrap());
+        assert!((again / dry - want).abs() < 0.01, "reopened gain {} want {want}", again / dry);
+
+        // a plugin that reports latency is compensated (x42 dpl has look-ahead)
+        if let Some(dpl) = scan.plugins.iter().find(|p| p.cid.starts_with("http://gareus.org/oss/lv2/dpl#stereo")) {
+            let ins1 = e.project().tracks[1].insert;
+            let fx = wave_engine::Fx {
+                plugin: Some(PluginRef {
+                    format: dpl.format.clone(),
+                    path: dpl.path.clone(),
+                    cid: dpl.cid.clone(),
+                    name: dpl.name.clone(),
+                    vendor: dpl.vendor.clone(),
+                    state: None,
+                }),
+                ..wave_engine::catalog::new_fx(7001, wave_engine::FxKind::Plugin, 120.0)
+            };
+            e.apply(&[Op::PutFx { insert_id: ins1, fx, index: None }], false, None).unwrap();
+            let lat = Factory(plugins.clone()).latency(7001).unwrap();
+            eprintln!("x42 dpl reports {lat} samples");
+            assert!(lat > 0, "dpl should report its look-ahead");
+            assert_eq!(e.playback_latency(), lat, "the compensation follows the plugin");
+        } else {
+            assert!(!required, "WAVE_REQUIRE_LV2=1 but x42 dpl is not installed");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_plugin_of_an_unknown_format_is_a_load_error_not_a_panic() {
+        let f = Plugins::new().factory();
+        let p =
+            PluginRef { format: "clap".into(), path: "x".into(), cid: "y".into(), name: "Z".into(), vendor: String::new(), state: None };
+        let err = f.create(1, &p, 48_000.0, 256, true).err().unwrap();
+        assert!(err.contains("does not host `clap`"), "{err}");
+        // and an LV2 that is not installed (or a platform without LV2) is a sentence too
+        let p = PluginRef {
+            format: "lv2".into(),
+            path: String::new(),
+            cid: "urn:wave:not-installed".into(),
+            name: "Gone".into(),
+            vendor: String::new(),
+            state: None,
+        };
+        let err = f.create(2, &p, 48_000.0, 256, true).err().unwrap();
+        assert!(err.starts_with("Gone (LV2): "), "{err}");
+        assert!(f.latency(2).is_none() && f.state(2).is_none());
     }
 }

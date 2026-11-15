@@ -124,4 +124,6 @@ jobs:
             ldd "$b" > ldd.txt 2>&1 || true
             cat ldd.txt | grep -E "not found|GLIBC" && { echo "RESULT $b: MISSING LIBRARIES"; exit 1; } || echo "RESULT $b: libraries ok"
           done
+          # LV2 hosting opens liblilv at run time (so ldd does not list it): the package must pull it in
+          ls /usr/lib*/liblilv-0.so.0 /usr/lib/*-linux-gnu/liblilv-0.so.0 2>/dev/null | grep -q . && echo "RESULT lilv: installed" || { echo "RESULT lilv: MISSING"; exit 1; }
           ls /usr/bin | grep -i wave

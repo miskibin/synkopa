@@ -1,5 +1,5 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { t as tr, tName } from '../lib/i18n';
 import { channels } from '../state/pattern';
@@ -195,9 +195,13 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
       <FxTile type={f().type} size={22} dim={f().bypass} />
       <div style={{ flex: 1, 'min-width': 0, display: 'flex', 'flex-direction': 'column', gap: '1px' }}>
         <span class="ell" style={{ font: '500 12px var(--sans)', color: f().bypass ? 'var(--fg4)' : 'var(--fg-hi)' }}>{A.fxName(f())}</span>
-        <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--fg4)' }}>{f().type === 'vst3' ? (f().plugin?.vendor || 'VST3') : tName(info().name) + (info().mod ? ' *' : '')}</span>
+        <Show when={S.fxErrors[f().id]} fallback={
+          <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
+        }>
+          {e => <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--red)' }} title={e()}>{tr('c.mix.pluginNotLoaded')}</span>}
+        </Show>
       </div>
-      <Show when={f().type !== 'vst3'}>
+      <Show when={f().type !== 'plugin'}>
         <div class="slotmix" title={'Mix ' + Math.round(mixV() * 100) + '%'}>
           <MiniKnob key={'smix' + f().id} title={tr('c.mix.slotMixTip', { v: Math.round(mixV() * 100) })} t={mixV} automated={() => isAutomated(mixT())}
             onStart={() => { mg = new Gesture('Mix'); }} onChange={t => { mg?.update([mixOp(t)]); say(A.fxName(f()) + ' · Mix ' + Math.round(t * 100) + '%'); }}

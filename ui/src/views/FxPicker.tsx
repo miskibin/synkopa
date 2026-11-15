@@ -4,7 +4,7 @@
 // column for the focused effect, Recent and Favourites at the top, built-in and VST3 separated.
 // A tile can also be dragged onto any mixer strip or the effect rack to add it there.
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import type { BuiltinKind, Id, Vst3Info } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, type BuiltinKind, type Id, type PluginInfo, type PluginScan } from '../api/types';
 import { be } from '../api/backend';
 import { lang, t as tr, tName, type TranslationKey } from '../lib/i18n';
 import { presetList } from '../lib/presets';
@@ -57,13 +57,13 @@ const CATS: Cat[] = [
 
 /**
  * The section an entry is listed under in "All": the first effect category holding it (an effect
- * in two categories is listed once), then VST3 plugins, then project tools.
+ * in two categories is listed once), then hosted plugins (VST3, LV2), then project tools.
  */
-const sectionOf = (e: { builtin?: BuiltinKind; vst?: unknown; tool?: string }): string =>
-  e.tool ? 'tools' : e.vst ? 'vst' : CATS.find(c => c.types?.includes(e.builtin!))?.id ?? 'vst';
+const sectionOf = (e: { builtin?: BuiltinKind; plugin?: unknown; tool?: string }): string =>
+  e.tool ? 'tools' : e.plugin ? 'vst' : CATS.find(c => c.types?.includes(e.builtin!))?.id ?? 'vst';
 
-/** An entry in the grid: a built-in effect or a scanned VST3 plugin. */
-type Entry = { key: string; builtin?: BuiltinKind; vst?: Vst3Info; tool?: 'notebook'; name: string; desc: string; presets: number };
+/** An entry in the grid: a built-in effect or a scanned plugin (one that cannot run here says why in `desc`). */
+type Entry = { key: string; builtin?: BuiltinKind; plugin?: PluginInfo; tool?: 'notebook'; name: string; desc: string; presets: number };
 
 // ---- per-user conveniences (best effort, never required)
 const LS_RECENT = 'wave.fxpicker.recent', LS_FAV = 'wave.fxpicker.fav';
@@ -74,19 +74,25 @@ const [favs, setFavs] = createSignal<string[]>(load(LS_FAV));
 const remember = (key: string) => { const r = [key, ...recent().filter(k => k !== key)].slice(0, 8); setRecent(r); save(LS_RECENT, r); };
 const toggleFav = (key: string) => { const f = favs().includes(key) ? favs().filter(k => k !== key) : [...favs(), key]; setFavs(f); save(LS_FAV, f); };
 
-// VST3 list is scanned once per session (rescan lives in Settings)
-const [vsts, setVsts] = createSignal<Vst3Info[] | null>(null);
+// the plugin list is scanned once per session; "Rescan" in the Plugins category looks again
+// (new or updated plugins: a VST3 rescan opens only modules it has not seen)
+const [scan, setScan] = createSignal<PluginScan | null>(null);
 let scanning = false;
-function ensureVsts() {
-  if (vsts() || scanning) return;
+function runScan(rescan: boolean) {
+  if (scanning) return;
   scanning = true;
-  be().vst3Scan(false).then(setVsts).catch(() => setVsts([])).finally(() => { scanning = false; });
+  if (rescan) setScan(null);
+  be().pluginScan(rescan).then(setScan).catch(e => { say(String(e)); setScan({ plugins: [], unavailable: {} }); }).finally(() => { scanning = false; });
 }
+const ensureScan = () => { if (!scan()) runScan(false); };
+/** Lets "Add plugin…" share a fresh rescan with the picker. */
+export const setPluginScan = (s: PluginScan) => setScan(s);
 
 /** Project tools that open their own window instead of adding an effect. */
 const tools = (): Entry[] => [{ key: 'tool:notebook', tool: 'notebook', name: tr('c.picker.notebook'), desc: tr('c.picker.notebookDesc'), presets: 0 }];
 
-const vstKey = (p: Vst3Info) => 'vst:' + p.cid;
+/** Recent/favourite key (VST3 keeps the key it had before LV2 support). */
+const pluginKey = (p: PluginInfo) => (p.format === 'lv2' ? 'lv2:' : 'vst:') + p.cid;
 /** "N presets": Polish has three forms, English two. */
 const presetsWord = (n: number) => lang() === 'pl' ? tr(n === 1 ? 'c.picker.preset1' : n < 5 ? 'c.picker.preset2' : 'c.picker.preset5') : tr(n === 1 ? 'c.picker.preset1' : 'c.picker.preset5');
 
@@ -108,7 +114,7 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
   const [presetFocus, setPresetFocus] = createSignal(-1); // -1: grid has the keyboard
   let input!: HTMLInputElement, grid!: HTMLDivElement;
   const close = () => setU('fxPicker', null);
-  onMount(() => { ensureVsts(); setTimeout(() => input?.focus(), 0); });
+  onMount(() => { ensureScan(); setTimeout(() => input?.focus(), 0); });
 
   const insName = () => { const m = S.project.inserts.find(i => i.id === props.insId); return m ? (m.id === 0 ? 'Master' : m.name) : ''; };
 
@@ -116,7 +122,12 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
     key: t, builtin: t, name: t === 'comp' ? tr('c.picker.compressor') : tName(S.catalog!.types[t]!.name), desc: DESC[t] ? tr(DESC[t]) : tr(FXMETA[t].tag),
     presets: presetList(S.catalog, t).length + (t === 'comp' ? presetList(S.catalog, 'fet').length : 0),
   })));
-  const plugins = createMemo<Entry[]>(() => (vsts() ?? []).map(p => ({ key: vstKey(p), vst: p, name: p.name, desc: [p.vendor, p.category].filter(Boolean).join(' · '), presets: 0 })));
+  const plugins = createMemo<Entry[]>(() => (scan()?.plugins ?? []).map(p => ({
+    key: pluginKey(p), plugin: p, name: p.name, presets: 0,
+    desc: p.unsupported ? tr('c.picker.unsupported') : [p.vendor, p.category].filter(Boolean).join(' · '),
+  })));
+  /** Why a plugin format is missing on this machine (LV2 without liblilv), shown above the plugin list. */
+  const unavailable = () => Object.values(scan()?.unavailable ?? {}).filter((s): s is string => !!s);
 
   const shown = createMemo(() => {
     const s = q().trim().toLowerCase();
@@ -159,7 +170,7 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
     if (!e) return;
     if (e.tool === 'notebook') { openNotebook(); remember(e.key); close(); return; }
     if (e.builtin) { const p = preset != null ? curPresets()[preset] : undefined; A.addFx(props.insId, p?.type ?? e.builtin, p?.idx); }
-    else if (e.vst) { A.addVst(props.insId, e.vst); say(tr('c.picker.added', { name: e.vst.name })); }
+    else if (e.plugin) { if (!A.addPlugin(props.insId, e.plugin)) return; say(tr('c.picker.added', { name: e.plugin.name })); }
     remember(e.key);
     close();
   };
@@ -235,7 +246,7 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
       if (!dragging) return add(e);
       if (e.tool) return;
       if (target != null) {
-        if (e.builtin) A.addFx(target, e.builtin); else if (e.vst) A.addVst(target, e.vst);
+        if (e.builtin) A.addFx(target, e.builtin); else if (e.plugin && !A.addPlugin(target, e.plugin)) return;
         remember(e.key); close();
       }
     };
@@ -273,7 +284,7 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
                   <Show when={i() === 3 || i() === 8 || i() === 9}><div class="fxp-sep" /></Show>
                   <button classList={{ on: cat() === c.id && !q() }} onClick={() => { setCat(c.id); setQ(''); input.focus(); }}>
                     <span>{tr(c.label)}</span>
-                    <span class="n">{c.id === 'recent' ? recent().length || '' : c.id === 'fav' ? favs().length || '' : c.id === 'vst' ? (vsts() ? vsts()!.length : '…') : c.id === 'tools' ? tools().length : c.types ? c.types.length : builtins().length + plugins().length + tools().length}</span>
+                    <span class="n">{c.id === 'recent' ? recent().length || '' : c.id === 'fav' ? favs().length || '' : c.id === 'vst' ? (scan() ? plugins().length : '…') : c.id === 'tools' ? tools().length : c.types ? c.types.length : builtins().length + plugins().length + tools().length}</span>
                   </button>
                 </>
               )}
@@ -286,16 +297,25 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
               </Show>
             </div>
             <div class="fxp-grid" ref={grid}>
-              <For each={shown()} fallback={<div class="fxp-empty">{cat() === 'fav' && !q() ? tr('c.picker.emptyFav') : cat() === 'recent' && !q() ? tr('c.picker.emptyRecent') : cat() === 'vst' && !vsts() ? tr('c.picker.scanning') : tr('c.picker.noMatch')}</div>}>
+              <Show when={cat() === 'vst' && !q()}>
+                <div class="row" style={{ 'grid-column': '1 / -1', gap: '8px', 'align-items': 'flex-start' }}>
+                  <div style={{ flex: 1, 'min-width': 0 }}>
+                    <For each={unavailable()}>{s => <div class="fxp-note" title={s}>{s}</div>}</For>
+                  </div>
+                  <button class="smallbtn" style={{ height: '24px', flex: 'none' }} disabled={!scan()} title={tr('d.set.rescan.tip')} onClick={() => runScan(true)}>{tr('d.set.rescan')}</button>
+                </div>
+              </Show>
+              <For each={shown()} fallback={<div class="fxp-empty">{cat() === 'fav' && !q() ? tr('c.picker.emptyFav') : cat() === 'recent' && !q() ? tr('c.picker.emptyRecent') : cat() === 'vst' && !scan() ? tr('c.picker.scanning') : tr('c.picker.noMatch')}</div>}>
                 {(e, i) => (<>
                   <Show when={sectionStart(i())}><div class="fxp-sect">{tr(CATS.find(c => c.id === sectionOf(e))!.label)}</div></Show>
-                  <div class="fxp-tile" data-i={i()} classList={{ focus: i() === focus() && presetFocus() < 0, cur: i() === focus() }}
-                    onPointerDown={ev => tileDown(ev, e, i())} onPointerEnter={() => presetFocus() < 0 && setFocus(i())} title={e.vst?.path ?? (e.tool ? tr('c.picker.tipOpen') : tr('c.picker.tipAdd'))}>
-                    <Show when={e.builtin} fallback={<span class="tile" style={{ width: '40px', height: '40px', background: e.tool ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : FXMETA.vst3.color + '26', color: e.tool ? 'var(--blue)' : FXMETA.vst3.color }}><Icon d={e.tool ? NOTEBOOK_ICON : ICONS.vst} size={20} /></span>}>
+                  <div class="fxp-tile" data-i={i()} classList={{ focus: i() === focus() && presetFocus() < 0, cur: i() === focus() }} style={e.plugin?.unsupported ? { opacity: 0.55 } : undefined}
+                    onPointerDown={ev => tileDown(ev, e, i())} onPointerEnter={() => presetFocus() < 0 && setFocus(i())}
+                    title={e.plugin ? (e.plugin.unsupported ? tr('c.picker.unsupportedTip', { why: e.plugin.unsupported }) : e.plugin.path || e.plugin.cid) : e.tool ? tr('c.picker.tipOpen') : tr('c.picker.tipAdd')}>
+                    <Show when={e.builtin} fallback={<span class="tile" style={{ width: '40px', height: '40px', background: e.tool ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : FXMETA.plugin.color + '26', color: e.tool ? 'var(--blue)' : FXMETA.plugin.color }}><Icon d={e.tool ? NOTEBOOK_ICON : ICONS.vst} size={20} /></span>}>
                       <FxTile type={e.builtin!} size={40} icon={20} />
                     </Show>
                     <div class="fxp-txt">
-                      <div class="fxp-name"><span class="ell">{e.name}</span>{e.vst && <span class="fxp-badge">VST3</span>}</div>
+                      <div class="fxp-name"><span class="ell">{e.name}</span>{e.plugin && <span class="fxp-badge">{PLUGIN_FORMAT_LABEL[e.plugin.format]}</span>}</div>
                       <div class="fxp-desc">{e.desc}</div>
                       <Show when={e.presets}><div class="fxp-meta">{e.presets} {presetsWord(e.presets)}</div></Show>
                     </div>
@@ -314,7 +334,7 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
                     <Show when={e().builtin}><FxTile type={e().builtin!} size={22} icon={12} /></Show>
                     <span class="ell">{e().name}</span>
                   </div>
-                  <Show when={curPresets().length} fallback={<div class="fxp-note">{e().vst ? tr('c.picker.pluginPresets') : tr('c.picker.noPresets')}</div>}>
+                  <Show when={curPresets().length} fallback={<div class="fxp-note">{e().plugin?.unsupported ? tr('c.picker.unsupportedTip', { why: e().plugin!.unsupported! }) : e().plugin ? tr('c.picker.pluginPresets') : tr('c.picker.noPresets')}</div>}>
                     <div class="fxp-plabel">{tr('c.picker.addWithPreset')}</div>
                     <For each={curPresets()}>
                       {(p, pi) => (

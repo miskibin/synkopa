@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { be } from '../api/backend';
-import type { AudioConfig, AudioDevices, AudioHost, AudioStatus, CliStatus, MidiDevice, Vst3Info } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, type AudioConfig, type AudioDevices, type AudioHost, type AudioStatus, type CliStatus, type MidiDevice, type PluginInfo, type PluginScan } from '../api/types';
 import * as A from '../state/actions';
 import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, switchToWasapi } from '../state/audioWatch';
 import { keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget } from '../state/midi';
@@ -11,6 +11,7 @@ import { prefs, resetPrefs, setPref } from '../state/prefs';
 import { setTheme, THEMES, themeMode, themeName } from '../ui/theme';
 import { t } from '../lib/i18n';
 import { UpdatesSettings } from './Updates';
+import { setPluginScan } from './FxPicker';
 import type { TranslationKey } from '../lib/i18n';
 
 const RATES = [44100, 48000, 88200, 96000];
@@ -272,40 +273,47 @@ function MidiSection() {
   );
 }
 
-/** "VST3…" from the add-effect menu: a searchable list of scanned plugins. */
+/** "Add plugin…" from the add-effect menu: a searchable list of scanned plugins (VST3; LV2 on Linux), with a rescan. */
 export function VstPicker() {
-  return <Show when={U.vstPicker}>{v => <VstPickerDialog insId={v().insId} />}</Show>;
+  return <Show when={U.vstPicker}>{v => <PluginPickerDialog insId={v().insId} />}</Show>;
 }
-function VstPickerDialog(props: { insId: number }) {
-  const [list, setList] = createSignal<Vst3Info[] | null>(null);
+function PluginPickerDialog(props: { insId: number }) {
+  const [res, setRes] = createSignal<PluginScan | null>(null);
   const [q, setQ] = createSignal('');
   const [err, setErr] = createSignal<string | null>(null);
-  const scan = (rescan: boolean) => { setList(null); setErr(null); be().vst3Scan(rescan).then(setList).catch(e => { setErr(String(e)); setList([]); }); };
+  const scan = (rescan: boolean) => {
+    setRes(null); setErr(null);
+    be().pluginScan(rescan).then(r => { setRes(r); if (rescan) setPluginScan(r); }).catch(e => { setErr(String(e)); setRes({ plugins: [], unavailable: {} }); });
+  };
   onMount(() => scan(false));
   let input!: HTMLInputElement;
   onMount(() => setTimeout(() => input?.focus(), 0));
-  const shown = () => { const s = q().toLowerCase(); return (list() ?? []).filter(p => !s || (p.name + ' ' + p.vendor + ' ' + p.category).toLowerCase().includes(s)); };
+  const shown = () => { const s = q().toLowerCase(); return (res()?.plugins ?? []).filter(p => !s || (p.name + ' ' + p.vendor + ' ' + p.category + ' ' + p.format).toLowerCase().includes(s)); };
   const close = () => setU('vstPicker', null);
+  const pick = (p: PluginInfo) => { if (A.addPlugin(props.insId, p)) close(); };
   return (
     <div class="overlay" onPointerDown={close}>
-      <div class="dialog" style={{ width: 'min(440px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
+      <div class="dialog" style={{ width: 'min(480px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
         <div class="hd" style={{ 'margin-bottom': 0 }}><span>{t('d.set.vst.title')}</span><button onClick={close}>×</button></div>
         <div class="row" style={{ gap: '8px' }}>
           <input ref={input} class="textin" style={{ flex: 1 }} placeholder={t('d.set.search')} value={q()} onInput={e => setQ(e.currentTarget.value)}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') close(); if (e.key === 'Enter' && shown()[0]) { A.addVst(props.insId, shown()[0]); close(); } }} />
+            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') close(); const first = shown().find(p => !p.unsupported); if (e.key === 'Enter' && first) pick(first); }} />
           <button class="smallbtn" style={{ height: '26px' }} onClick={() => scan(true)} title={t('d.set.rescan.tip')}>{t('d.set.rescan')}</button>
         </div>
         <Show when={err()}><span class="note err">{err()}</span></Show>
+        <For each={Object.values(res()?.unavailable ?? {})}>{s => <span class="note" title={s}>{s}</span>}</For>
         <div class="plist" style={{ height: '300px' }}>
-          <Show when={list()} fallback={<span class="note">{t('d.set.scanning')}</span>}>
+          <Show when={res()} fallback={<span class="note">{t('d.set.scanning')}</span>}>
             <For each={shown()} fallback={<span class="note">{t('d.set.novst')}</span>}>
               {p => (
-                <div class="pi" onClick={() => { A.addVst(props.insId, p); close(); say(t('d.set.vst.added', { name: p.name })); }} title={p.path}>
+                <div class="pi" onClick={() => pick(p)} style={p.unsupported ? { opacity: 0.55 } : undefined}
+                  title={p.unsupported ? t('c.picker.unsupportedTip', { why: p.unsupported }) : p.path || p.cid}>
                   <span class="tile" style={{ width: '20px', height: '20px', background: '#9a8cf026', color: '#9a8cf0' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16v12H4z M8 10v4 M12 9v6 M16 11v2" /></svg>
                   </span>
                   <span class="ell" style={{ flex: 1, font: '500 12px var(--sans)', color: 'var(--fg-hi)' }}>{p.name}</span>
-                  <span class="ell" style={{ font: '11px var(--sans)', color: 'var(--fg4)', 'max-width': '140px' }}>{p.vendor}</span>
+                  <span class="fxp-badge" style={{ flex: 'none' }}>{PLUGIN_FORMAT_LABEL[p.format]}</span>
+                  <span class="ell" style={{ font: '11px var(--sans)', color: 'var(--fg4)', 'max-width': '140px' }}>{p.unsupported ? t('c.picker.unsupported') : p.vendor}</span>
                 </div>
               )}
             </For>

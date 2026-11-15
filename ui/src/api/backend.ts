@@ -5,7 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Id, ImportResult, LibFile, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
-  KeysStatus, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, Vst3Info, Vst3Param,
+  KeysStatus, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam,
 } from './types';
 
 export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[]; x: number; y: number }
@@ -166,10 +166,12 @@ export interface Backend {
   exportStems(opts: ExportStemsOptions): Promise<ExportStemsResult>;
   /** Abort an in-flight `exportAudio` / `exportStems` before a file is written. */
   exportCancel(): Promise<void>;
-  vst3Scan(rescan: boolean): Promise<Vst3Info[]>;
-  vst3Editor(fxId: Id, open: boolean): Promise<void>;
-  vst3Params(fxId: Id): Promise<Vst3Param[]>;
-  vst3SetParam(fxId: Id, id: number, value: number): Promise<void>;
+  /** Installed effects of every hosted format (VST3; LV2 on Linux). A cold `rescan` is slow. */
+  pluginScan(rescan: boolean): Promise<PluginScan>;
+  /** A VST3 plugin's own editor window (Windows); LV2 plugins have none here and reject. */
+  pluginEditor(fxId: Id, open: boolean): Promise<void>;
+  pluginParams(fxId: Id): Promise<PluginParam[]>;
+  pluginSetParam(fxId: Id, id: number, value: number): Promise<void>;
   cliStatus(): Promise<CliStatus>;
   /** The running version, the version whose release notes were last shown, and whether updates are checked automatically. */
   appInfo(): Promise<AppInfo>;
@@ -326,10 +328,10 @@ export function tauriBackend(): Backend {
     exportAudio: opts => invoke('export_audio', { ...opts }),
     exportStems: opts => invoke('export_stems', { ...opts }),
     exportCancel: () => invoke('export_cancel'),
-    vst3Scan: rescan => invoke('vst3_scan', { rescan }),
-    vst3Editor: (fxId, open) => invoke('vst3_editor', { fxId, open }),
-    vst3Params: fxId => invoke('vst3_params', { fxId }),
-    vst3SetParam: (fxId, id, value) => invoke('vst3_set_param', { fxId, id, value }),
+    pluginScan: rescan => invoke('plugin_scan', { rescan }),
+    pluginEditor: (fxId, open) => invoke('plugin_editor', { fxId, open }),
+    pluginParams: fxId => invoke('plugin_params', { fxId }),
+    pluginSetParam: (fxId, id, value) => invoke('plugin_set_param', { fxId, id, value }),
     cliStatus: () => invoke('cli_status'),
     appInfo: () => invoke('app_info'),
     updateCheck: () => invoke('update_check'),

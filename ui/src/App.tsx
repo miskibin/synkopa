@@ -206,7 +206,7 @@ export function App() {
   let lastWatch = '';
   createEffect(() => {
     // the 8 front-most windows (engine limit), in a stable order so focusing does not re-send
-    const ids = (U.plugsHidden ? [] : [...U.plugs]).sort((a, b) => b.z - a.z).map(p => p.fxId).filter(id => { const f = findFx(id)?.f; return f && f.type !== 'vst3'; }).slice(0, 8).sort((a, b) => a - b);
+    const ids = (U.plugsHidden ? [] : [...U.plugs]).sort((a, b) => b.z - a.z).map(p => p.fxId).filter(id => { const f = findFx(id)?.f; return f && f.type !== 'plugin'; }).slice(0, 8).sort((a, b) => a - b);
     const key = ids.join(',');
     if (key !== lastWatch) { lastWatch = key; be().watchFx(ids).catch(e => console.warn(e)); }
   });

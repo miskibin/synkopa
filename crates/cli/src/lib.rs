@@ -131,11 +131,14 @@ PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come fr
   tune-file --take u.wav --reference r.wav --out o.wav [--json target.json]
             [--model rmvpe.onnx | --yin] [same options as tune-ref]   headless; needs no running app
 
-PLUGINS
-  vst3 [--rescan]                          installed VST3 effects
-  vst3-add --insert ID --path P --cid C    put a VST3 on an insert
-  vst3-params --fx ID [--query TEXT]       parameters of a VST3 instance
-  vst3-set --fx ID --id PARAM --value 0..1
+PLUGINS  (VST3 everywhere, LV2 on Linux)
+  plugins [--rescan]                       installed effects of every format ({plugins, unavailable})
+  plugin-add --insert ID --cid C [--format vst3|lv2] [--path P]
+                                           put a plugin on an insert (VST3: --path and class id;
+                                           LV2: --cid is the plugin URI)
+  plugin-params --fx ID [--query TEXT]     parameters of a plugin instance (LV2: real range and unit too)
+  plugin-set --fx ID --id PARAM --value 0..1
+  vst3 [--rescan] | vst3-add | vst3-params | vst3-set    the same, VST3 only (older names)
   auto-add --fx ID --param ID [--points "0:0.2,4:0.8" | --value V] [--track N --name TEXT]
                                            automate a hosted plugin parameter (adds the playlist clip too)
 
@@ -843,6 +846,25 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             let p = a.pos.get(1).ok_or_else(|| u("open <file>".into()))?;
             send(cx, a, "open", json!({"path": std::path::absolute(p).map(|x| x.display().to_string()).unwrap_or_else(|_| p.clone())}))
         }
+        "plugins" => send(cx, a, "plugin_scan", json!({"rescan": a.has("rescan")})),
+        "plugin-add" => send(
+            cx,
+            a,
+            "plugin_add",
+            json!({"insertId": a.num("insert").map_err(u)?.ok_or_else(|| u("missing --insert".into()))? as u64, "format": a.get("format"), "path": a.get("path"), "cid": a.need("cid").map_err(u)?}),
+        ),
+        "plugin-params" => send(
+            cx,
+            a,
+            "plugin_params",
+            json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64, "query": a.get("query")}),
+        ),
+        "plugin-set" => send(
+            cx,
+            a,
+            "plugin_set_param",
+            json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64, "id": a.num("id").map_err(u)?.ok_or_else(|| u("missing --id".into()))? as u64, "value": a.num("value").map_err(u)?.ok_or_else(|| u("missing --value".into()))?}),
+        ),
         "vst3" => send(cx, a, "vst3_scan", json!({"rescan": a.has("rescan")})),
         "vst3-add" => send(
             cx,
@@ -863,7 +885,7 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64, "id": a.num("id").map_err(u)?.ok_or_else(|| u("missing --id".into()))? as u64, "value": a.num("value").map_err(u)?.ok_or_else(|| u("missing --value".into()))?}),
         ),
         "auto-add" => {
-            // an automation envelope on a hosted VST3 parameter, plus the playlist clip that plays it
+            // an automation envelope on a hosted plugin parameter, plus the playlist clip that plays it
             let fx = a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64;
             let param = a.num("param").map_err(u)?.ok_or_else(|| u("missing --param".into()))? as u64;
             let mut points: Vec<Value> = vec![];

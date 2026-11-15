@@ -335,7 +335,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     for f in &m.fx {
                         bump(p, f.id);
                     }
-                    m.fx.retain(|f| f.kind != FxKind::Vst3);
+                    m.fx.retain(|f| f.kind != FxKind::Plugin);
                     p.inserts.push(m);
                     d.mixer = true;
                 }
@@ -362,9 +362,10 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 if m.id != *insert_id || old.kind != fx.kind {
                     return Err(OpError::Invalid(format!("effect {} cannot change insert or type; remove and add it", fx.id)));
                 }
-                let plugin_changed = old.plugin.as_ref().map(|x| (&x.path, &x.cid)) != fx.plugin.as_ref().map(|x| (&x.path, &x.cid));
+                let plugin_changed =
+                    old.plugin.as_ref().map(|x| (&x.format, &x.path, &x.cid)) != fx.plugin.as_ref().map(|x| (&x.format, &x.path, &x.cid));
                 if plugin_changed {
-                    return Err(OpError::Invalid("a VST3 slot cannot swap its plugin; remove and add it".into()));
+                    return Err(OpError::Invalid("a plugin slot cannot swap its plugin; remove and add it".into()));
                 }
                 // a parameter that changes the effect's latency (look-ahead) re-plans the PDC
                 let bypass_changed =
@@ -874,8 +875,8 @@ fn validate_fx(fx: &Fx) -> Result<(), OpError> {
             _ => return Err(OpError::Invalid(format!("an EQ has 0..{MAX_BANDS} bands"))),
         }
     }
-    if fx.kind == FxKind::Vst3 && fx.plugin.is_none() {
-        return Err(OpError::Invalid("a VST3 slot needs `plugin`".into()));
+    if fx.kind == FxKind::Plugin && fx.plugin.is_none() {
+        return Err(OpError::Invalid("a plugin slot needs `plugin`".into()));
     }
     match (&fx.maps, fx.kind == FxKind::Warp) {
         (None, true) => return Err(OpError::Invalid("a Warp needs `maps` (see fx_catalog().warp for the factory slots)".into())),

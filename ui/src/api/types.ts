@@ -18,11 +18,12 @@ export interface Track {
   icon?: string | null;
 }
 
-export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'vst3';
+/** `plugin`: a hosted VST3 or LV2 effect (`Fx.plugin.format`); projects from before LV2 said `vst3`, which the engine reads as `plugin`. */
+export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'plugin';
 /** Built-in kinds the effect picker lists (the views keep a label and blurb per kind). */
-export type BuiltinKind = Exclude<FxKind, 'vst3'>;
+export type BuiltinKind = Exclude<FxKind, 'plugin'>;
 /** Every built-in kind, including ones the picker does not list yet ('rider': added by "Auto wokal"). */
-export type AnyBuiltinKind = Exclude<FxKind, 'vst3'>;
+export type AnyBuiltinKind = Exclude<FxKind, 'plugin'>;
 export type BandType = 'lowcut' | 'lowshelf' | 'peak' | 'highshelf' | 'highcut' | 'notch' | 'bandpass' | 'tilt';
 /** Which part of the stereo image a band works on. */
 export type Placement = 'stereo' | 'left' | 'right' | 'mid' | 'side';
@@ -36,8 +37,12 @@ export interface EqBand {
 }
 export const MAX_BANDS = 24;
 
+/** Hosted plugin formats: VST3 everywhere, LV2 on Linux. */
+export type PluginFormat = 'vst3' | 'lv2';
+export const PLUGIN_FORMAT_LABEL: Record<PluginFormat, string> = { vst3: 'VST3', lv2: 'LV2' };
+/** What a project stores about a hosted plugin. `cid`: VST3 class id, LV2 plugin URI. */
 export interface PluginRef {
-  format: string; path: string; cid: string; name: string; vendor: string; state?: string;
+  format: PluginFormat; path: string; cid: string; name: string; vendor: string; state?: string;
 }
 
 export interface Fx {
@@ -223,7 +228,7 @@ export interface F0ModelStatus {
 /** An update found on GitHub Releases (`update_check`). `notes`: the release notes (Markdown), `date`: `YYYY-MM-DD`. */
 export interface UpdateInfo { version: string; notes: string | null; date: string | null }
 /** `app_info`: the running version, the version whose notes were last shown (null on a fresh install), the auto-check switch. */
-/** `pluginEditors`: VST3 plugins can open their own editor windows (Windows only for now). */
+/** `pluginEditors`: VST3 plugins can open their own editor windows (Windows only for now; LV2 plugins never do yet). */
 export interface AppInfo { version: string; seenVersion: string | null; autoUpdate: boolean; pluginEditors: boolean }
 export interface UpdateProgress { done: number; total: number }
 export interface ModelProgress { id: string; done: number; total: number; error?: string }
@@ -303,7 +308,7 @@ export type AutoTarget =
   | { kind: 'synth'; chanId: Id; param: string }
   /** A WAVE Keys channel's release (ms, log) or dynamics (%). */
   | { kind: 'keys'; chanId: Id; param: 'release' | 'dynamics' }
-  /** A hosted VST3 parameter (`paramId` as `vst3Params` reports it); values are the plugin's normalized 0..1. */
+  /** A hosted plugin parameter (`paramId` as `pluginParams` reports it: VST3 id, LV2 port index); values are normalized 0..1. */
   | { kind: 'plugin'; fxId: Id; paramId: number }
   /** An audio clip's own gain (−24..+12 dB, `CLIP_GAIN_DB`) and pan. */
   | { kind: 'clipGain'; id: Id }
@@ -394,6 +399,8 @@ export interface StateDto {
   stretchErrors?: Record<string, string>;
   /** Sources whose audio is not loaded (moved, deleted, unreadable; they play silence): source id → why. */
   missing?: Record<string, string>;
+  /** Hosted plugins that did not load (not installed, refused; they pass audio through, their saved state is kept): fx id → why. */
+  fxErrors?: Record<string, string>;
 }
 
 /** `options`: a discrete choice (value = index), shown as buttons instead of a knob. */
@@ -565,7 +572,20 @@ export interface MidiImportResult {
 }
 export interface MidiExportResult { out: string; what: string; tracks: number; notes: number; bpm: number }
 
-export interface Vst3Info { path: string; cid: string; name: string; vendor: string; category: string }
-export interface Vst3Param { id: number; name: string; value: number; display: string; def: number }
+/** One installed effect (`plugin_scan`). `unsupported`: why it cannot be used here (an LV2 host feature it needs). */
+export interface PluginInfo { format: PluginFormat; path: string; cid: string; name: string; vendor: string; category: string; unsupported?: string }
+/** `plugin_scan`: the effects, and per format why it is unavailable on this machine (LV2 without liblilv). */
+export interface PluginScan { plugins: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
+/**
+ * One parameter of a hosted plugin. `value`/`def` are normalized 0..1 (what `pluginSetParam` and automation take),
+ * `display` the plugin's text for the value. LV2 adds the port's own range and kind: `real` within `min..max` in
+ * `unit`, `steps` for discrete controls, `toggle`, `integer`, `log`, and `options` (scale points) for an enumeration.
+ */
+export interface PluginParam {
+  id: number; name: string; value: number; display: string; def: number;
+  symbol?: string; real?: number; min?: number; max?: number; unit?: string;
+  steps?: number; toggle?: boolean; integer?: boolean; log?: boolean;
+  options?: { value: number; label: string }[];
+}
 
 export interface CliStatus { installed: boolean; command: string; path: string | null; note?: string | null }

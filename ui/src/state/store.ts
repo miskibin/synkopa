@@ -25,6 +25,8 @@ export interface EngineState {
   stretching: Record<string, string>;
   /** Source id → why its audio is not loaded (it plays silence until relinked). */
   missing: Record<string, string>;
+  /** Fx id → why its hosted plugin did not load (the slot passes audio through; its data is kept). */
+  fxErrors: Record<string, string>;
 }
 
 const emptyProject = (): Project => ({ version: 2, bpm: 128, tracks: [], inserts: [], patterns: [], sources: [], clips: [], loop: null, nextId: 1 });
@@ -32,7 +34,7 @@ const emptyProject = (): Project => ({ version: 2, bpm: 128, tracks: [], inserts
 export const [S, setS] = createStore<EngineState>({
   ready: false, project: emptyProject(), revision: 0, canUndo: false, canRedo: false,
   transport: { playing: false, rec: false, monitor: false, metro: false, countIn: true, startBeat: 0 },
-  path: null, dirty: false, catalog: null, audition: {}, stretching: {}, missing: {},
+  path: null, dirty: false, catalog: null, audition: {}, stretching: {}, missing: {}, fxErrors: {},
 });
 
 function stretchStatus(dto: StateDto): Record<string, string> {
@@ -129,6 +131,7 @@ export function replaceState(dto: StateDto) {
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
     setS('missing', reconcile(dto.missing ?? {}));
+    setS('fxErrors', reconcile(dto.fxErrors ?? {}));
   });
   localNext = Math.max(localNext, dto.project.nextId);
 }
@@ -141,6 +144,7 @@ export function replaceMeta(dto: StateDto) {
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
     setS('missing', reconcile(dto.missing ?? {}));
+    setS('fxErrors', reconcile(dto.fxErrors ?? {}));
   });
   localNext = Math.max(localNext, dto.project.nextId);
 }
@@ -197,7 +201,7 @@ function applyInPlace(p: Project, op: Op) {
     case 'putInsert': {
       const m = p.inserts.find(x => x.id === op.insert.id);
       const { fx, ...rest } = op.insert;
-      if (m) Object.assign(m, rest); else p.inserts.push({ ...clone(rest), fx: clone(fx.filter(f => f.type !== 'vst3')) } as Insert);
+      if (m) Object.assign(m, rest); else p.inserts.push({ ...clone(rest), fx: clone(fx.filter(f => f.type !== 'plugin')) } as Insert);
       if (op.insert.id >= p.nextId) p.nextId = op.insert.id + 1;
       return;
     }

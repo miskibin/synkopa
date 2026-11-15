@@ -45,7 +45,7 @@ export interface PresetInfo { idx: number; name: string; mod: boolean }
 
 /** Which preset the effect currently is: an exact match wins, else the last loaded one marked modified. */
 export function presetInfo(cat: Catalog | null, fx: Fx, bpm: number): PresetInfo {
-  if (!cat || fx.type === 'vst3') return { idx: -1, name: fx.plugin?.vendor ?? '', mod: false };
+  if (!cat || fx.type === 'plugin') return { idx: -1, name: fx.plugin?.vendor ?? '', mod: false };
   const list = presetList(cat, fx.type);
   for (let i = 0; i < list.length; i++) {
     const r = resolvePreset(cat, fx.type, i, bpm);

@@ -259,7 +259,7 @@ mod tests {
         let doc = Files.create("sketch").unwrap();
         // the master limiter is a built-in effect, not a hosted plugin
         let e = doc.call("vst3_params", &json!({"fxId": 900}), None).unwrap_err();
-        assert!(e.contains("not a loaded VST3 plugin"), "{e}");
+        assert!(e.contains("not a loaded plugin"), "{e}");
         doc.call("set_param", &json!({"fxId": 900, "param": "ceil", "value": -1.0}), None).unwrap();
         let out = d.join("after.wav");
         let r = doc.call("render", &json!({"out": out.display().to_string(), "to": 4.0}), None).unwrap();

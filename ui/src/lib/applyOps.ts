@@ -1,7 +1,7 @@
 // A TS port of crates/engine/src/ops.rs `apply` — used by the in-browser mock backend.
 // The real engine is the source of truth; this only has to agree on the happy path and
 // reject the same obviously-invalid batches.
-import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type ClipTune, type Id, type Op, type Project } from '../api/types';
+import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { applyNotebookOp } from './notebook';
 import { applyPatternOp, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
@@ -62,7 +62,7 @@ export function applyOp(p: Project, op: Op): void {
       else {
         const m = structuredClone(op.insert);
         for (const f of m.fx) bump(p, f.id);
-        m.fx = m.fx.filter(f => f.type !== 'vst3');
+        m.fx = m.fx.filter(f => f.type !== 'plugin');
         p.inserts.push(m);
       }
       return;
@@ -86,14 +86,15 @@ export function applyOp(p: Project, op: Op): void {
     case 'putFx': {
       const fx = op.fx;
       if (fx.type === 'eq' && (!fx.bands || fx.bands.length > MAX_BANDS)) throw new OpError(`an EQ has 0..${MAX_BANDS} bands`);
-      if (fx.type === 'vst3' && !fx.plugin) throw new OpError('a VST3 slot needs `plugin`');
+      if (fx.type === 'plugin' && !fx.plugin) throw new OpError('a plugin slot needs `plugin`');
       for (const [k, v] of Object.entries(fx.params)) if (!isFinite(v)) throw new OpError(`parameter ${k} is not a number`);
       for (const m of p.inserts) {
         const j = m.fx.findIndex(f => f.id === fx.id);
         if (j < 0) continue;
         const old = m.fx[j];
         if (m.id !== op.insertId || old.type !== fx.type) throw new OpError(`effect ${fx.id} cannot change insert or type; remove and add it`);
-        if ((old.plugin?.path ?? '') + (old.plugin?.cid ?? '') !== (fx.plugin?.path ?? '') + (fx.plugin?.cid ?? '')) throw new OpError('a VST3 slot cannot swap its plugin; remove and add it');
+        const ident = (f: Fx) => [f.plugin?.format ?? '', f.plugin?.path ?? '', f.plugin?.cid ?? ''].join('\n');
+        if (ident(old) !== ident(fx)) throw new OpError('a plugin slot cannot swap its plugin; remove and add it');
         m.fx[j] = structuredClone(fx);
         return;
       }

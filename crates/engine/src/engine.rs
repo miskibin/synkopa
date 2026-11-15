@@ -38,6 +38,13 @@ pub trait PluginFactory: Send + Sync {
     fn has_plugin_param(&self, _fx_id: Id, _param_id: u32) -> bool {
         false
     }
+    /// The latency a live instance reports now, when it may have changed since it was
+    /// created (a plugin switching to a look-ahead mode). `None`: unknown or unchanged
+    /// is the processor's own [`Processor::latency_samples`]. Called without the engine
+    /// lock held, from the engine's housekeeping thread (about twice a second).
+    fn latency(&self, _fx_id: Id) -> Option<usize> {
+        None
+    }
 }
 
 pub struct NoPlugins;
@@ -272,6 +279,8 @@ struct Core {
     /// Warp maps the audio thread has, by effect id (a change is sent as `Cmd::FxData`).
     sent_maps: HashMap<Id, crate::model::WarpMaps>,
     fx_errors: HashMap<Id, String>,
+    /// Latency each live hosted plugin reported, by effect id (plugin delay compensation).
+    plugin_lat: HashMap<Id, usize>,
     /// Why a source's audio did not load when the project was opened (by source id).
     source_errors: HashMap<Id, String>,
     wires: Option<Wires>,
@@ -366,6 +375,7 @@ impl Engine {
                 sent_params: HashMap::new(),
                 sent_maps: HashMap::new(),
                 fx_errors: HashMap::new(),
+                plugin_lat: HashMap::new(),
                 source_errors: HashMap::new(),
                 wires: None,
                 take: None,
@@ -474,6 +484,7 @@ impl Engine {
         for id in c.live_fx.drain().collect::<Vec<_>>() {
             self.factory.release(id);
         }
+        c.plugin_lat.clear();
         c.sent_params.clear();
         c.sent_maps.clear();
         c.synths.clear();
@@ -580,9 +591,9 @@ impl Engine {
         for op in ops {
             if let Op::PutAutomation { automation } = op {
                 if let AutoTarget::Plugin { fx_id, param_id } = &automation.target {
-                    let in_project = c.project.find_fx(*fx_id).is_some_and(|(_, f)| f.kind == FxKind::Vst3);
+                    let in_project = c.project.find_fx(*fx_id).is_some_and(|(_, f)| f.kind == FxKind::Plugin);
                     if !in_project || !self.factory.has_plugin_param(*fx_id, *param_id) {
-                        return Err(EngineError::Msg(format!("effect {fx_id} has no VST3 parameter {param_id} to automate")));
+                        return Err(EngineError::Msg(format!("effect {fx_id} has no plugin parameter {param_id} to automate")));
                     }
                 }
             }
@@ -791,7 +802,7 @@ impl Engine {
     fn new_take(&self, c: &Core, track: usize, start: f64, lap: Option<(f64, f64)>) -> Option<RecBuf> {
         let w = c.wires.as_ref()?;
         let sr = w.sr as u32;
-        let pdc = playback_latency(&c.project, w.sr);
+        let pdc = playback_latency_with(&c.project, w.sr, &c.plugin_lat);
         let shared = self.shared();
         let skip = shared.io_latency() as usize + pdc;
         shared.reset_take_latency();
@@ -2133,7 +2144,8 @@ impl Engine {
         rt.set_skip_silent(self.skip_silent.load(Relaxed));
         rt.set_workers(self.render_workers.load(Relaxed));
         let mut errs = HashMap::new();
-        let graph = build_graph(&project, &HashSet::new(), sr, block, &*self.factory, false, &mut errs);
+        let mut hosted = HashMap::new();
+        let graph = build_graph(&project, &HashSet::new(), sr, block, &*self.factory, false, &mut errs, &mut hosted);
         let mut tl = build_timeline(&project, &mut |clip| store_snapshot.get(&clip.id).cloned(), &takes, &HashMap::new(), keys.as_ref());
         let wrap = matches!(tail, RenderTail::Wrap);
         tl.loop_range = wrap.then_some((from, to));
@@ -2162,7 +2174,7 @@ impl Engine {
         // plugin delay compensation delays everything by `pdc` frames: render that much
         // longer and drop it from the front, so the file starts on `from` and the last
         // `pdc` frames of the song are not cut off
-        let pdc = playback_latency(&project, sr);
+        let pdc = playback_latency_with(&project, sr, &hosted);
         let too_long = || EngineError::Msg("render is too long".into());
         let discard = warmup.checked_add(pdc).ok_or_else(too_long)?;
         let total = frames.checked_add(discard).ok_or_else(too_long)?;
@@ -2243,7 +2255,7 @@ impl Engine {
         // synth instances first, so a new timeline never plays a channel without one
         sync_synths(c, sr);
         // a take's alignment assumes the latency at its start: hold latency changes back
-        let defer = d.mixer && c.take.as_ref().is_some_and(|t| t.pdc != playback_latency(&c.project, sr));
+        let defer = d.mixer && c.take.as_ref().is_some_and(|t| t.pdc != playback_latency_with(&c.project, sr, &c.plugin_lat));
         c.graph_deferred |= defer;
         if d.mixer && !defer {
             c.graph_deferred = false;
@@ -2253,8 +2265,10 @@ impl Engine {
                 c.fx_errors.remove(&gone);
             }
             let mut errs = std::mem::take(&mut c.fx_errors);
-            let graph = build_graph(&c.project, &c.live_fx, sr, max_block, &*self.factory, true, &mut errs);
+            let mut hosted = std::mem::take(&mut c.plugin_lat);
+            let graph = build_graph(&c.project, &c.live_fx, sr, max_block, &*self.factory, true, &mut errs, &mut hosted);
             c.fx_errors = errs;
+            c.plugin_lat = hosted;
             c.live_fx = graph.inserts.iter().flat_map(|i| i.fx.iter().map(|s| s.id)).collect();
             c.sent_params = c.project.inserts.iter().flat_map(|m| m.fx.iter()).map(|f| (f.id, fx_send(f))).collect();
             // fresh processors got their maps in `build_graph`; carried ones keep what they had
@@ -2309,6 +2323,47 @@ impl Engine {
         }
     }
 
+    /// Asks the live hosted plugins for their latency again; when one changed, the
+    /// mixer graph is rebuilt (running instances are kept) so the compensation follows.
+    /// The factory is asked without the engine lock: it may wait for the UI thread.
+    /// Returns whether anything changed.
+    pub fn refresh_plugin_latency(&self) -> bool {
+        let ids: Vec<Id> = {
+            let c = self.core.lock();
+            if c.wires.is_none() {
+                return false;
+            }
+            c.plugin_lat.keys().copied().collect()
+        };
+        if ids.is_empty() {
+            return false;
+        }
+        let now: Vec<(Id, usize)> = ids.into_iter().filter_map(|id| self.factory.latency(id).map(|l| (id, l))).collect();
+        let mut c = self.core.lock();
+        let mut changed = false;
+        for (id, l) in now {
+            if let Some(old) = c.plugin_lat.get_mut(&id) {
+                if *old != l {
+                    log::info!("effect {id}: plugin latency {old} -> {l} samples; re-planning delay compensation");
+                    *old = l;
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            self.sync(&mut c, Dirty { mixer: true, ..Default::default() });
+        }
+        changed
+    }
+
+    /// Frames between the timeline and the speakers inside the mixer of the running audio
+    /// half, hosted plugins included (`playback_latency` counts built-in effects only).
+    pub fn playback_latency(&self) -> usize {
+        let c = self.core.lock();
+        let sr = c.wires.as_ref().map_or(48_000.0, |w| w.sr);
+        playback_latency_with(&c.project, sr, &c.plugin_lat)
+    }
+
     fn housekeeping(&self, tick: u32) {
         {
             // finished time-stretches replace their resampled stand-ins
@@ -2317,6 +2372,10 @@ impl Engine {
                 self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
                 self.changed(c);
             }
+        }
+        // a plugin may change its latency (a look-ahead switch): re-plan the compensation
+        if tick % 30 == 15 {
+            self.refresh_plugin_latency();
         }
         let shared = self.shared();
         let frame_parts;
@@ -2743,7 +2802,7 @@ fn live_audition(c: &Core) -> HashMap<Id, Id> {
 }
 
 fn fx_send(f: &Fx) -> (Option<ParamBlock>, f32) {
-    (if f.kind == FxKind::Vst3 { None } else { Some(param_block(f)) }, f.mix.clamp(0.0, 1.0))
+    (if f.kind == FxKind::Plugin { None } else { Some(param_block(f)) }, f.mix.clamp(0.0, 1.0))
 }
 
 fn c_watch(w: &[Id]) -> Vec<Id> {
@@ -2979,10 +3038,26 @@ fn audible_inserts(p: &Project) -> Vec<(Id, f32, f32, f32, bool)> {
 
 /// Frames between the timeline and the speakers inside the mixer: the slowest non-master
 /// insert (plugin delay compensation delays every insert to match it) plus the master chain.
+/// Built-in effects only: hosted plugins count as 0 here (see [`Engine::playback_latency`]).
 pub fn playback_latency(p: &Project, sr: f32) -> usize {
-    let lat = |m: &crate::model::Insert| m.fx.iter().map(|f| crate::catalog::latency(f, sr)).sum::<usize>();
+    playback_latency_with(p, sr, &HashMap::new())
+}
+
+/// [`playback_latency`] with the latency each hosted plugin reports (`hosted`, by effect id).
+pub(crate) fn playback_latency_with(p: &Project, sr: f32, hosted: &HashMap<Id, usize>) -> usize {
+    let lat = |m: &crate::model::Insert| m.fx.iter().map(|f| fx_latency(f, sr, hosted)).sum::<usize>();
     let master = p.inserts.first().map(lat).unwrap_or(0);
     master + p.inserts.iter().skip(1).map(lat).max().unwrap_or(0)
+}
+
+/// The delay one effect adds: `catalog::latency` for built-in effects, the reported value
+/// for hosted plugins (0 when bypassed or not loaded).
+fn fx_latency(f: &crate::model::Fx, sr: f32, hosted: &HashMap<Id, usize>) -> usize {
+    match f.kind {
+        FxKind::Plugin if f.bypass => 0,
+        FxKind::Plugin => hosted.get(&f.id).copied().unwrap_or(0),
+        _ => crate::catalog::latency(f, sr),
+    }
 }
 
 fn monitor_track(p: &Project) -> Option<usize> {
@@ -3089,6 +3164,12 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
 
 /// Builds the mixer graph. Effects in `live` are left as `proc: None` so the audio
 /// thread keeps the running instance; everything else is created and prepared here.
+///
+/// `hosted`: the latency of every hosted plugin by effect id. Read for the instances in
+/// `live` (they keep running, and so keep the latency they had), written for the ones
+/// created here (what the new processor reports), pruned of effects that are gone. Plugin
+/// delay compensation uses it the way it uses `catalog::latency` for built-in effects.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_graph(
     p: &Project,
     live: &HashSet<Id>,
@@ -3097,42 +3178,59 @@ pub(crate) fn build_graph(
     factory: &dyn PluginFactory,
     live_instances: bool,
     errs: &mut HashMap<Id, String>,
+    hosted: &mut HashMap<Id, usize>,
 ) -> Graph {
     let ins_state = audible_inserts(p);
-    let lat: Vec<usize> = p.inserts.iter().map(|m| m.fx.iter().map(|f| crate::catalog::latency(f, sr)).sum()).collect();
+    // processors first: a hosted plugin's latency is only known once it exists
+    let procs: Vec<Vec<Option<Box<dyn Processor>>>> = p
+        .inserts
+        .iter()
+        .map(|m| {
+            m.fx.iter()
+                .map(|f| {
+                    if live.contains(&f.id) {
+                        None
+                    } else if f.kind == FxKind::Plugin {
+                        match factory.create(f.id, f.plugin.as_ref().unwrap(), sr, max_block, live_instances) {
+                            Ok(p) => {
+                                errs.remove(&f.id);
+                                hosted.insert(f.id, p.latency_samples());
+                                Some(p)
+                            }
+                            Err(e) => {
+                                errs.insert(f.id, e);
+                                hosted.remove(&f.id);
+                                None
+                            }
+                        }
+                    } else {
+                        let mut pr = crate::dsp::create(f.kind).unwrap();
+                        pr.prepare(sr, max_block);
+                        pr.set_params(&param_block(f));
+                        if let Some(m) = &f.maps {
+                            let _ = pr.swap_data(Box::new(m.clone()));
+                        }
+                        Some(pr)
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    hosted.retain(|id, _| p.find_fx(*id).is_some_and(|(_, f)| f.kind == FxKind::Plugin));
+    let lat: Vec<usize> = p.inserts.iter().map(|m| m.fx.iter().map(|f| fx_latency(f, sr, hosted)).sum()).collect();
     let max_lat = lat.iter().skip(1).copied().max().unwrap_or(0);
     let inserts = p
         .inserts
         .iter()
         .zip(ins_state)
-        .map(|(m, (id, gain, pan, width, on))| {
+        .zip(procs)
+        .map(|((m, (id, gain, pan, width, on)), procs)| {
             let fx =
                 m.fx.iter()
-                    .map(|f| {
-                        let proc: Option<Box<dyn Processor>> = if live.contains(&f.id) {
-                            None
-                        } else if f.kind == FxKind::Vst3 {
-                            match factory.create(f.id, f.plugin.as_ref().unwrap(), sr, max_block, live_instances) {
-                                Ok(p) => {
-                                    errs.remove(&f.id);
-                                    Some(p)
-                                }
-                                Err(e) => {
-                                    errs.insert(f.id, e);
-                                    None
-                                }
-                            }
-                        } else {
-                            let mut pr = crate::dsp::create(f.kind).unwrap();
-                            pr.prepare(sr, max_block);
-                            pr.set_params(&param_block(f));
-                            if let Some(m) = &f.maps {
-                                let _ = pr.swap_data(Box::new(m.clone()));
-                            }
-                            Some(pr)
-                        };
-                        let params = if f.kind == FxKind::Vst3 { None } else { Some(param_block(f)) };
-                        FxSlot::new(f.id, f.bypass, f.mix.clamp(0.0, 1.0), proc, params, crate::catalog::latency(f, sr))
+                    .zip(procs)
+                    .map(|(f, proc)| {
+                        let params = if f.kind == FxKind::Plugin { None } else { Some(param_block(f)) };
+                        FxSlot::new(f.id, f.bypass, f.mix.clamp(0.0, 1.0), proc, params, fx_latency(f, sr, hosted))
                     })
                     .collect();
             let k = p.inserts.iter().position(|x| x.id == id).unwrap_or(0);
@@ -3281,7 +3379,7 @@ fn resolve_target(p: &Project, t: &AutoTarget) -> Option<TargetRt> {
             }
         }
         AutoTarget::Plugin { fx_id, param_id } => {
-            p.find_fx(*fx_id).filter(|(_, f)| f.kind == FxKind::Vst3)?;
+            p.find_fx(*fx_id).filter(|(_, f)| f.kind == FxKind::Plugin)?;
             TargetRt::PluginParam { fx: *fx_id, param_id: *param_id }
         }
         // the clip id for now: `build_timeline` turns it into the clip's index once sorted

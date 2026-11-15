@@ -854,14 +854,53 @@ async fn export_cancel(app: St<'_>) -> R<()> {
 // ---------------------------------------------------------------- plugins
 
 #[tauri::command]
-async fn vst3_scan(app: St<'_>, rescan: bool) -> R<Vec<Value>> {
+async fn plugin_scan(app: St<'_>, rescan: bool) -> R<plugins::ScanResult> {
     let p = app.plugins.clone();
     tauri::async_runtime::spawn_blocking(move || p.scan(rescan)).await.map_err(es)
 }
 
 #[tauri::command]
+async fn plugin_add(
+    app: St<'_>,
+    insert_id: u64,
+    format: Option<String>,
+    path: Option<String>,
+    cid: String,
+    index: Option<usize>,
+) -> R<Value> {
+    let format = format.unwrap_or_else(|| wave_engine::PluginRef::VST3.into());
+    let (id, rev) = actions::plugin_add(&**app, insert_id, &format, path.as_deref().unwrap_or(""), &cid, index)?;
+    Ok(json!({ "fxId": id, "revision": rev }))
+}
+
+#[tauri::command]
+async fn plugin_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool) -> R<()> {
+    app.plugins.editor(&handle, fx_id, open)
+}
+
+#[tauri::command]
+async fn plugin_params(app: St<'_>, fx_id: u64) -> R<Vec<plugins::ParamInfo>> {
+    app.plugins.params(fx_id)
+}
+
+#[tauri::command]
+async fn plugin_set_param(app: St<'_>, fx_id: u64, id: u32, value: f64) -> R<()> {
+    app.plugins.set_param(fx_id, id, value)
+}
+
+// The VST3-era names, kept for scripts and older front ends: same behaviour, except that
+// `vst3_scan` lists only VST3 effects (as a plain array, as before).
+
+#[tauri::command]
+async fn vst3_scan(app: St<'_>, rescan: bool) -> R<Vec<plugins::ScanEntry>> {
+    let p = app.plugins.clone();
+    let r = tauri::async_runtime::spawn_blocking(move || p.scan(rescan)).await.map_err(es)?;
+    Ok(r.plugins.into_iter().filter(|p| p.format == wave_engine::PluginRef::VST3).collect())
+}
+
+#[tauri::command]
 async fn vst3_add(app: St<'_>, insert_id: u64, path: String, cid: String, index: Option<usize>) -> R<Value> {
-    let (id, rev) = actions::vst3_add(&**app, insert_id, &path, &cid, index)?;
+    let (id, rev) = actions::plugin_add(&**app, insert_id, wave_engine::PluginRef::VST3, &path, &cid, index)?;
     Ok(json!({ "fxId": id, "revision": rev }))
 }
 
@@ -1087,6 +1126,11 @@ pub fn run(project_arg: Option<&str>) {
             export_audio,
             export_stems,
             export_cancel,
+            plugin_scan,
+            plugin_add,
+            plugin_editor,
+            plugin_params,
+            plugin_set_param,
             vst3_scan,
             vst3_add,
             vst3_editor,

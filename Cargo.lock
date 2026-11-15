@@ -5581,6 +5581,7 @@ dependencies = [
  "wave-audio-io",
  "wave-cli",
  "wave-engine",
+ "wave-lv2",
  "wave-midi-in",
  "wave-plugin-windows",
  "wave-rmvpe",
@@ -5649,6 +5650,20 @@ dependencies = [
  "flacenc",
  "wave-audio-file",
  "wave-engine",
+]
+
+[[package]]
+name = "wave-lv2"
+version = "0.4.0"
+dependencies = [
+ "libc",
+ "log",
+ "parking_lot",
+ "rtrb",
+ "serde",
+ "serde_json",
+ "wave-engine",
+ "wave-plugin-scan",
 ]
 
 [[package]]

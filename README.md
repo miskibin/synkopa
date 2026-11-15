@@ -101,7 +101,7 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 | **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser; presets on every effect |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
-| **Plugins and audio** | VST3 effects after a crash-proof scan (their own windows on Windows, WAVE's parameter list on Linux); WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
+| **Plugins and audio** | VST3 effects after a crash-proof scan (their own windows on Windows, WAVE's parameter list on Linux); LV2 effects on Linux, edited in WAVE's parameter list; latency the plugins report is compensated; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
 | **Export** | Offline bounce of the song or a loop to 32-bit float WAV or MP3 |
 | **Portable projects** | File → Export project as ZIP packages the current arrangement, samples and recordings for sharing |
 | **Language** | English and Polish |
@@ -119,7 +119,7 @@ than twenty-five years behind it and wins on breadth.
 | Vocal pitch editing | Included | NewTone and Pitcher come with the higher editions |
 | Working with an AI agent | The agent edits the open project and measures its own renders | No command line into the open project |
 | Built-in instruments and effects | 14 | More than a hundred across the editions |
-| Third-party plugins | VST3 effects only; plugin windows on Windows only | VST instruments and effects, and more formats |
+| Third-party plugins | VST3 effects, and LV2 effects on Linux; plugin windows on Windows only | VST instruments and effects, and more formats |
 | Platforms | Windows and Linux | Windows and macOS |
 | Maturity | Version 0.9, one developer, expect rough edges | Since 1998, large community, tutorials, sample packs |
 
@@ -134,8 +134,13 @@ view or clip launcher, so if you write by launching clips, it does not replace L
 Version 0.9, built by one person with AI agents. It covers a complete beat and a vocal
 session. What it does not do yet:
 
-- no VST instruments, only VST3 effects, and no CLAP or LV2; on Linux a VST3 effect is edited
-  through WAVE's parameter list, because plugin windows work on Windows only;
+- no VST or LV2 instruments, only effects (VST3 everywhere, LV2 on Linux), and no CLAP; on
+  Linux an effect is edited through WAVE's parameter list, because plugin windows work on
+  Windows only (and LV2 plugins' own windows are not hosted yet);
+- LV2 needs the lilv library (`liblilv-0-0` on Debian/Ubuntu, `lilv-libs` on Fedora): the
+  `.deb` and `.rpm` packages install it; with the AppImage, LV2 works when the system has it and
+  WAVE says what to install when it does not. An LV2 plugin that needs a host feature WAVE does
+  not provide (for example a fixed block size) is listed with the reason and cannot be added;
 - no macOS build;
 - no Session view or clip launching;
 - no import of FL Studio projects (`.flp`); bring stems or samples over instead;
@@ -176,7 +181,9 @@ Linux packages are attached to the same release.
 To share an editable project, choose **File → Export project as ZIP**. Unzip the whole archive
 and open the `.wave` file inside it. Keep the `Audio` folder beside the project. The ZIP includes
 the project's samples and recorded takes. WAVE looks for third-party plugins at the locations
-stored in the project. WAVE Keys uses its bundled or separately installed piano library.
+stored in the project (LV2 plugins by their URI), and files a plugin itself loads (an impulse
+response, a sample) are not collected into the ZIP. WAVE Keys uses its bundled or separately
+installed piano library.
 
 ## Build from source
 
@@ -221,6 +228,7 @@ wave undo                                 # or press Ctrl+Z in the app
 | `crates/engine` | project model, ops + undo, sequencer, synth and piano voices, built-in DSP, mixer graph, recording, offline render, analysis |
 | `crates/audio-io` | cpal devices: WASAPI / ASIO / CoreAudio / ALSA, duplex in/out |
 | `crates/vst3-host`, `crates/plugin-windows`, `crates/plugin-scan` | VST3 effects as engine processors, crash-proof out-of-process scan, native editor windows |
+| `crates/lv2-host` | LV2 effects as engine processors on Linux (liblilv opened at run time): metadata scan, worker thread, state, latency |
 | `crates/audio-file` | WAV/FLAC/OGG/MP3 decoding |
 | `crates/session`, `crates/cli` | the local socket the CLI uses, and the CLI itself |
 | `app` | Tauri shell: commands, library downloads, settings, CLI launcher |

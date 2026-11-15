@@ -14,6 +14,7 @@
  │                mixer graph · recording · offline render · analysis thread    │
  │ crates/audio-io: cpal (WASAPI / ASIO / CoreAudio / ALSA / JACK) duplex streams│
  │ crates/vst3-host: VST3 effects as `Processor`s, scan in a child process      │
+ │ crates/lv2-host:  LV2 effects as `Processor`s (Linux, liblilv at run time)   │
  └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -229,8 +230,54 @@ worker threads (`Engine::set_render_workers`), bit-identical to one thread.
 Effect types: `eq` (7 `bands`), `comp`, `sat` (character saturator, see
 `docs/saturator.md`), `delay` (echo with a processing loop, `docs/delay.md`), `half`, `warp`
 (time and volume maps, `maps: {time, vol}` slots, `docs/warp.md`), `reverb`, `limit`,
-`vst3` (`plugin: {format,path,cid,name,vendor,state}`). Parameter ids, ranges
-and presets come from `fx_catalog` — the UI must not hard-code them.
+`plugin` (a hosted VST3 or LV2 effect: `plugin: {format,path,cid,name,vendor,state}`, see
+[Hosted plugins](#hosted-plugins); files from before LV2 support say `vst3`, which still loads
+and is written back as `plugin`). Parameter ids, ranges and presets come from `fx_catalog` —
+the UI must not hard-code them.
+
+### Hosted plugins
+
+A slot of type `plugin` holds a `PluginRef`: `format` (`vst3` or `lv2`), `path` (VST3: the
+module; LV2: the bundle directory, for people), `cid` (VST3: class id in hex; LV2: the plugin
+URI, which is what finds it), `name`, `vendor` and `state` (base64 of the plugin's opaque state:
+VST3 component + controller streams; LV2: lilv's state as Turtle text, the plugin's own state
+extension data plus every control port value). The engine builds processors through the app's
+`PluginFactory`, which dispatches on `format` (`app/src/plugins.rs`): `wave_vst3::instantiate`
+or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused) becomes an
+`fxErrors` entry; its slot and saved state stay in the project and are saved back unchanged.
+
+* **Parameters** are by plugin id: a VST3 `ParamID`, an LV2 control input port index. Values
+  are normalized 0..1 everywhere (automation `{kind:"plugin", fxId, paramId}`,
+  `plugin_set_param`); for LV2 the host maps them onto the port's range (`lv2:integer`,
+  `lv2:toggled`, `lv2:enumeration` snap; `pprops:logarithmic` maps geometrically;
+  `lv2:sampleRate` ranges are scaled). On the audio thread a move is an atomic store, picked up
+  at the next block.
+* **Latency.** `Processor::latency_samples` reports a hosted plugin's delay (VST3
+  `getLatencySamples`; LV2 the `lv2:reportsLatency` / `lv2:latency` control output, read after
+  every block, with a short silent block run at creation so it is known up front). The engine
+  keeps it per effect and uses it like `catalog::latency` in plugin delay compensation (the
+  per-insert delays, the dry/wet line, take alignment, offline renders). The housekeeping thread
+  asks live plugins again twice a second (`PluginFactory::latency`; VST3 only when the plugin
+  sent `kLatencyChanged`) and rebuilds the graph, keeping running instances, when one changed.
+* **LV2 host** (`crates/lv2-host`, Linux only; elsewhere every call says LV2 is hosted on Linux).
+  liblilv is opened with `dlopen` on first use (`liblilv-0.so.0`), never linked: WAVE builds
+  and starts without it and the scan reports why LV2 is unavailable. The scan reads Turtle only
+  (no plugin code runs, so no child process is needed); it lists plugins with audio in and out,
+  leaves out instruments and analysers, and gives the reason for plugins that require a feature
+  or option WAVE does not provide. Bundles named in `lv2-blocklist.txt` in WAVE's data folder
+  are skipped. Provided: `urid:map`/`unmap`, `options:options` (sample rate, min/max/nominal
+  block), `buf-size:boundedBlockLength`, `worker:schedule`, `state:mapPath`/`makePath`/
+  `freePath`, `log:log`. Inputs and outputs always have separate buffers (so
+  `lv2:inPlaceBroken` plugins run). Wiring to the stereo slot: stereo directly; 1 in / 1 out as
+  two instances with linked parameters; 1 in / 2 out fed the mono sum; 2 in / 1 out to both
+  sides; side-chain and CV inputs read silence, atom inputs an empty sequence, extra outputs are
+  discarded; `lv2:enabled`, `lv2:freeWheeling` and `time:beatsPerMinute` ports are driven by the
+  host. The worker extension gets a thread per instance fed through lock-free byte rings (the
+  audio thread never waits; the thread polls every 2 ms), answers are delivered after `run()`.
+  Every buffer is allocated at instantiation; `process` does no allocation, locking or system
+  call. LV2 fixes the sample rate and block bound at instantiation, so a new device rate
+  re-creates the instance from the saved state (the engine does that for every hosted plugin
+  when the device changes).
 
 ## Ops (`crates/engine/src/ops.rs`)
 
@@ -258,7 +305,7 @@ f log 20–20k, g −30..30 dB, q log 0.1–18), `{kind:"mix", fxId}`,
 `{kind:"chanVol"|"chanPan", id}` (Channel Rack channel), `{kind:"synth", chanId, param}`
 (synth catalog id), `{kind:"keys", chanId, param:"release"|"dynamics"}` (release log
 40–3000 ms, dynamics 0–100 %), `{kind:"plugin", fxId, paramId}` (a hosted VST3
-parameter, `paramId` as `vst3_params` reports it; `v` is the plugin's normalised
+or LV2 parameter, `paramId` as `plugin_params` reports it; `v` is normalised
 0..1; `apply` refuses unknown fx/param pairs), `{kind:"clipGain"|"clipPan", id}` (an audio clip; gain
 −24..+12 dB). `v` is 0..1; log parameters are normalised logarithmically, vol is the
 fader position, pan maps −1..1 to 0..1, choices snap to an option. While playing, the
@@ -322,17 +369,19 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `export_audio` | `{useLoop, tail, sampleRate, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{out, fromBeat, toBeat, tail, stats}` or `{cancelled:true}`; native save dialog; stereo WAV (32-bit float by default, or 16/24-bit PCM) or MP3; emits `export-progress` |
 | `export_stems` | `{useLoop, tail, sampleRate, includeMaster, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{dir, fromBeat, toBeat, tail, format, files, skipped}` or `{cancelled:true}`; native folder dialog; one WAV or MP3 per insert with sound, optional master mix; emits `export-progress` |
 | `export_cancel` | – | – (abort an in-flight `export_audio` before a file is written) |
-| `vst3_scan` | `{rescan}` | `[{path,cid,name,vendor,category}]` |
-| `vst3_editor` | `{fxId, open}` | – (native window) |
-| `vst3_params` | `{fxId}` | `[{id,name,value,display,def}]` |
-| `vst3_set_param` | `{fxId,id,value}` | – |
+| `plugin_scan` | `{rescan}` | `{plugins: [{format,path,cid,name,vendor,category,unsupported?}], unavailable: {[format]: why}}` — VST3 everywhere, LV2 on Linux; `unsupported`: why that plugin cannot run here; `unavailable.lv2`: no liblilv |
+| `plugin_add` | `{insertId, format?, path?, cid, index?}` | `{fxId, revision}` — a scanned plugin onto an insert (the UI adds with `putFx` instead) |
+| `plugin_editor` | `{fxId, open}` | – (native VST3 window, Windows; LV2 rejects) |
+| `plugin_params` | `{fxId}` | `[{id,name,value,display,def}]`; LV2 adds `{symbol,real,min,max,unit,steps?,toggle,integer,log,options?:[{value,label}]}` |
+| `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
+| `vst3_scan` / `vst3_add` / `vst3_editor` / `vst3_params` / `vst3_set_param` | as before | older names: the same, with `vst3_scan` listing only VST3 effects as a plain array |
 | `cli_status` | – | `{installed, command, path, note?}` |
 
 **CLI on a file (`wave --project FILE`).** The same binary (`WAVE --cli`) runs
 `actions::control` in-process on an engine of its own (`app/src/headless.rs`), against the
 `actions::Host` trait that `App` also implements: no window, no audio device, no MIDI, no
 session socket. Commands in `actions::LIVE_ONLY` (transport, auditions, undo/redo, open) are
-refused with `NEEDS_APP`. Hosted plugins become live instances only when a VST3 parameter is
+refused with `NEEDS_APP`. Hosted plugins become live instances only when a plugin parameter is
 asked for (`create_rt` on an audio half that is pumped by hand after each command, never by a
 device), so plain edits and bounces do not pay for them. `crates/cli` owns load → run → save
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs

@@ -93,8 +93,8 @@ pub fn parse_kind(s: &str) -> R<FxKind> {
 }
 
 pub fn add_fx(app: &dyn Host, insert_id: u64, kind: FxKind, preset: Option<usize>, index: Option<usize>) -> R<(u64, u64)> {
-    if kind == FxKind::Vst3 {
-        return Err("use vst3_add for plugins".into());
+    if kind == FxKind::Plugin {
+        return Err("use plugin_add for hosted plugins".into());
     }
     let p = app.engine().project();
     if p.insert(insert_id).is_none() {
@@ -139,24 +139,39 @@ pub fn preset(app: &dyn Host, fx_id: u64, index: usize) -> R<u64> {
     app.engine().apply(&[Op::PutFx { insert_id: m.id, fx: f, index: None }], false, None).map_err(|e| e.to_string())
 }
 
-pub fn vst3_add(app: &dyn Host, insert_id: u64, path: &str, cid: &str, index: Option<usize>) -> R<(u64, u64)> {
+/// Put a scanned plugin (`format` `vst3` or `lv2`; LV2 plugins are found by `cid`, their
+/// URI, and `path` may be empty) on an insert.
+pub fn plugin_add(app: &dyn Host, insert_id: u64, format: &str, path: &str, cid: &str, index: Option<usize>) -> R<(u64, u64)> {
+    if format != PluginRef::VST3 && format != PluginRef::LV2 {
+        return Err(format!("unknown plugin format `{format}` (vst3, lv2)"));
+    }
     let p = app.engine().project();
     if p.insert(insert_id).is_none() {
         return Err(format!("no insert {insert_id}"));
     }
-    let (name, vendor) = app.plugins().info(path, cid).ok_or("that plugin is not in the scan results; run a VST3 scan first")?;
+    let entry = app.plugins().info(format, path, cid).ok_or("that plugin is not in the scan results; run a plugin scan first")?;
+    if let Some(why) = &entry.unsupported {
+        return Err(format!("{} cannot be used: {why}", entry.name));
+    }
     // the load error below comes from instantiating the plugin live
     app.ensure_live_plugins();
     let id = p.next_id;
     let fx = wave_engine::Fx {
         id,
-        kind: FxKind::Vst3,
+        kind: FxKind::Plugin,
         bypass: false,
         mix: 1.0,
         preset: None,
         params: Default::default(),
         bands: None,
-        plugin: Some(PluginRef { format: "vst3".into(), path: path.into(), cid: cid.into(), name, vendor, state: None }),
+        plugin: Some(PluginRef {
+            format: entry.format,
+            path: entry.path,
+            cid: entry.cid,
+            name: entry.name,
+            vendor: entry.vendor,
+            state: None,
+        }),
         maps: None,
     };
     let rev = app.engine().apply(&[Op::PutFx { insert_id, fx, index }], false, None).map_err(|e| e.to_string())?;
@@ -1238,7 +1253,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
     match cmd {
         "pitch_analyze" | "pitch_target" | "tune_ref" | "auto_vocal_plan" | "f0_model" => app.ensure_pitch_model(),
         c if crate::pitch_actions::COMMANDS.contains(&c) => app.ensure_pitch_model(),
-        "vst3_params" | "vst3_set_param" => app.ensure_live_plugins(),
+        "vst3_params" | "vst3_set_param" | "plugin_params" | "plugin_set_param" => app.ensure_live_plugins(),
         _ => {}
     }
     if let Some(r) = crate::pitch_actions::control(app, cmd, a, if_revision) {
@@ -1256,7 +1271,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1402,17 +1417,32 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             let (source, clip) = e.bake_rider(cid, &params).map_err(|x| x.to_string())?;
             Ok(json!({ "clipId": clip, "sourceId": source, "revision": e.revision() }))
         }
-        "vst3_scan" => Ok(json!(app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
-        "vst3_add" => {
-            let (id, rev) = vst3_add(app, need_u64(a, "insertId")?, need_str(a, "path")?, need_str(a, "cid")?, None)?;
+        "plugin_scan" => Ok(json!(app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
+        "vst3_scan" => {
+            let r = app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false));
+            Ok(json!(r.plugins.into_iter().filter(|p| p.format == PluginRef::VST3).collect::<Vec<_>>()))
+        }
+        "plugin_add" | "vst3_add" => {
+            let cid = need_str(a, "cid")?;
+            // an LV2 plugin is named by its URI; a VST3 class id is hex
+            let guess = if cid.contains(":") { PluginRef::LV2 } else { PluginRef::VST3 };
+            let format = if cmd == "vst3_add" { PluginRef::VST3 } else { arg(a, "format").and_then(Value::as_str).unwrap_or(guess) };
+            let path = arg(a, "path").and_then(Value::as_str).unwrap_or("");
+            if format == PluginRef::VST3 && path.is_empty() {
+                return Err("`path` is required for a VST3 plugin".into());
+            }
+            let (id, rev) = plugin_add(app, need_u64(a, "insertId")?, format, path, cid, None)?;
             Ok(json!({ "fxId": id, "revision": rev }))
         }
-        "vst3_params" => {
+        "plugin_params" | "vst3_params" => {
             let q = arg(a, "query").and_then(Value::as_str).map(str::to_lowercase);
             let ps = app.plugins().params(need_u64(a, "fxId")?)?;
-            Ok(json!(ps.into_iter().filter(|p| q.as_ref().map(|q| p.name.to_lowercase().contains(q)).unwrap_or(true)).collect::<Vec<_>>()))
+            Ok(json!(ps
+                .into_iter()
+                .filter(|p| q.as_ref().map(|q| p.name().to_lowercase().contains(q)).unwrap_or(true))
+                .collect::<Vec<_>>()))
         }
-        "vst3_set_param" => {
+        "plugin_set_param" | "vst3_set_param" => {
             app.plugins().set_param(need_u64(a, "fxId")?, need_u64(a, "id")? as u32, opt_f64(a, "value").ok_or("`value` is required")?)?;
             Ok(json!({}))
         }

@@ -33,7 +33,7 @@
 
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
@@ -492,6 +492,12 @@ impl Instance {
         }
     }
 
+    /// The processing delay the plugin reports, in samples.
+    fn latency(&self) -> u32 {
+        // SAFETY: live processor; a scalar getter.
+        unsafe { self.processor().getLatencySamples() }
+    }
+
     fn set_controller_param(&self, id: ParamID, value: f64) {
         if let Some(controller) = self.controller.as_ref() {
             // SAFETY: live controller, scalar arguments.
@@ -561,7 +567,13 @@ pub(crate) struct Shared {
     gui: Arc<GuiRequests>,
     counters: Counters,
     editor_open: AtomicBool,
+    /// What `IAudioProcessor::getLatencySamples` said at the last (re)activation or
+    /// latency-change request.
+    latency: AtomicU32,
 }
+
+/// `IComponentHandler::restartComponent` flag: the plugin's latency changed.
+const LATENCY_CHANGED: i32 = 8;
 
 impl Shared {
     /// Hand the processor's output parameter values to the controller. UI
@@ -821,7 +833,9 @@ impl Processor for Vst3Effect {
         let activated = main_thread::run("being re-activated", move || {
             let mut guard = shared.instance.lock();
             let instance = guard.as_mut().ok_or(Vst3Error::Closed)?;
-            instance.activate(sample_rate, max_block)
+            let layout = instance.activate(sample_rate, max_block)?;
+            shared.latency.store(instance.latency(), Ordering::Release);
+            Ok(layout)
         })
         .and_then(|result| result);
         match activated {
@@ -853,6 +867,10 @@ impl Processor for Vst3Effect {
             self.run_block(l_chunk, r_chunk, ctx, done);
             done += chunk;
         }
+    }
+
+    fn latency_samples(&self) -> usize {
+        self.shared.latency.load(Ordering::Acquire) as usize
     }
 
     fn set_plugin_param(&mut self, param_id: u32, normalized: f32) {
@@ -955,6 +973,24 @@ impl Vst3Handle {
     /// mark the project dirty only when something happened.
     pub fn take_state_changed(&self) -> bool {
         self.shared.flags.dirty.swap(false, Ordering::AcqRel)
+    }
+
+    /// The processing delay (samples) the plugin reports, for delay compensation. When
+    /// the plugin announced a latency change (`restartComponent(kLatencyChanged)`), it
+    /// is asked again on the UI thread (blocking); otherwise this is an atomic read.
+    pub fn latency(&self) -> usize {
+        if self.shared.flags.restart.fetch_and(!LATENCY_CHANGED, Ordering::AcqRel) & LATENCY_CHANGED != 0 {
+            let shared = Arc::clone(&self.shared);
+            let asked = main_thread::run("reporting its latency", move || {
+                if let Some(instance) = shared.instance.lock().as_ref() {
+                    shared.latency.store(instance.latency(), Ordering::Release);
+                }
+            });
+            if let Err(err) = asked {
+                log::warn!("VST3 plugin '{}': {err}", self.shared.info.name);
+            }
+        }
+        self.shared.latency.load(Ordering::Acquire) as usize
     }
 
     /// Whether the plugin has an edit controller, and so *may* have an editor
@@ -1078,9 +1114,10 @@ pub(crate) fn instantiate_effect(
         instance.context.connect_inbox(Arc::clone(&inbox));
         let (feedback, _) = ParamMailbox::new(&instance.param_ids());
         let processor = instance.processor().clone();
-        Ok::<_, Vst3Error>((instance, info, layout, inbox, unlisted, feedback, processor))
+        let latency = instance.latency();
+        Ok::<_, Vst3Error>((instance, info, layout, inbox, unlisted, feedback, processor, latency))
     })??;
-    let (instance, info, layout, inbox, unlisted, feedback, processor) = created;
+    let (instance, info, layout, inbox, unlisted, feedback, processor, latency) = created;
 
     let has_editor = instance.controller.is_some();
     let shared = Arc::new(Shared {
@@ -1093,6 +1130,7 @@ pub(crate) fn instantiate_effect(
         gui: Arc::new(GuiRequests::default()),
         counters: Counters::default(),
         editor_open: AtomicBool::new(false),
+        latency: AtomicU32::new(latency),
     });
     // Restoring a state is not an edit.
     shared.flags.dirty.store(false, Ordering::Release);

@@ -1,5 +1,5 @@
 // Coloured flat effect icons (viewBox 0 0 100 100, no background). Most come from the
-// owner's set (2026-11-09); reverb, fet, deess, denoise, voice and vst3 are drawn in the same
+// owner's set (2026-11-09); reverb, fet, deess, denoise, voice and hosted plugins are drawn in the same
 // style. Rendered via innerHTML by FxTile, so keep them static markup without ids.
 import type { FxKind } from '../api/types';
 
@@ -134,7 +134,7 @@ export const FX_ART: Record<FxKind, string> = {
   <line x1="40" y1="49" x2="60" y2="49" stroke="#1E1E24" stroke-width="2.5" stroke-linecap="round"/>
   <polygon points="50,2 44,10 56,10" fill="#FCD34D"/>
   <polygon points="50,98 44,90 56,90" fill="#FCD34D"/>`),
-  vst3: svg(`
+  plugin: svg(`
   <rect x="14" y="26" width="72" height="58" rx="8" fill="#7C3AED" stroke="#1E1E24" stroke-width="2.5"/>
   <rect x="32" y="10" width="9" height="18" rx="2" fill="#A78BFA" stroke="#1E1E24" stroke-width="2.5"/>
   <rect x="59" y="10" width="9" height="18" rx="2" fill="#A78BFA" stroke="#1E1E24" stroke-width="2.5"/>

@@ -50,7 +50,8 @@ missing sources play silence, as in the app).
 - **What is the same.** Renders and stems are the same bounce as the app's export (the WAVE Keys
   piano is loaded, or the command fails with `KEYS_MISSING` instead of rendering silence;
   pitch-edited clips use the installed RMVPE model as the app does). VST3 effects load from the
-  scan cache. `vst3-params` and `vst3-set` work, and the plugin's state is saved in the file.
+  scan cache, LV2 effects (Linux) from the installed bundles. `plugin-params` and `plugin-set`
+  work, and the plugin's state is saved in the file.
 
 ### Share an editable project
 
@@ -456,10 +457,16 @@ off; low-level `pitch edit` always lets you override the plan.
 ## Plugins
 
 ```sh
-wave vst3                       # installed VST3 effects (cached scan; --rescan)
-wave vst3-add --insert 2 --path "C:\…\Pro-Q 3.vst3" --cid 72C4DB…
-wave vst3-params --fx 1210 --query freq
-wave vst3-set --fx 1210 --id 42 --value 0.3
+wave plugins                    # installed effects: VST3 (cached scan), LV2 on Linux; --rescan
+                                # {plugins:[{format,path,cid,name,vendor,category,unsupported?}],
+                                #  unavailable:{lv2:"why"}}
+wave plugin-add --insert 2 --path "C:\…\Pro-Q 3.vst3" --cid 72C4DB…            # VST3
+wave plugin-add --insert 2 --format lv2 --cid http://gareus.org/oss/lv2/dpl#stereo   # LV2: the URI
+wave plugin-params --fx 1210 --query freq
+                # VST3: {id,name,value,display,def}; LV2 also {symbol,real,min,max,unit,
+                # steps,toggle,integer,log,options}: id is the control port index
+wave plugin-set --fx 1210 --id 42 --value 0.3   # normalised 0..1 (LV2: over the port's range)
+                # vst3, vst3-add, vst3-params, vst3-set: the older names, VST3 only
 wave auto-add --fx 1210 --param 42 --points "0:0.2,8:0.8" --name "Reverb decay"
                 # automate a hosted plugin parameter: an envelope plus the
                 # playlist clip that plays it; ids come from context.nextId

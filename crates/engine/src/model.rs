@@ -128,7 +128,10 @@ pub enum FxKind {
     Half,
     /// Time and volume maps over a two-bar buffer (`dsp::warp`).
     Warp,
-    Vst3,
+    /// A hosted plugin (VST3 or LV2, see [`PluginRef::format`]). Written as `"plugin"`;
+    /// projects from before LV2 support say `"vst3"`, which still loads.
+    #[serde(alias = "vst3")]
+    Plugin,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -150,7 +153,7 @@ pub struct Fx {
     /// EQ only: up to 24 bands.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bands: Option<Vec<EqBand>>,
-    /// VST3 only.
+    /// Hosted plugins only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginRef>,
     /// Warp only: its time and volume map slots.
@@ -272,9 +275,12 @@ pub const MAX_BANDS: usize = 24;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginRef {
+    /// `"vst3"` or `"lv2"` ([`PluginRef::VST3`], [`PluginRef::LV2`]).
     pub format: String,
+    /// VST3: the module (`.vst3` bundle). LV2: the bundle directory (informational:
+    /// LV2 plugins are found by URI).
     pub path: String,
-    /// VST3 class id (hex) as reported by the scan.
+    /// VST3: class id (hex) as reported by the scan. LV2: the plugin URI.
     pub cid: String,
     pub name: String,
     #[serde(default)]
@@ -282,6 +288,19 @@ pub struct PluginRef {
     /// Opaque plugin state (base64), refreshed on save.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+}
+
+impl PluginRef {
+    pub const VST3: &'static str = "vst3";
+    pub const LV2: &'static str = "lv2";
+
+    /// The format's label for people (`VST3`, `LV2`).
+    pub fn format_label(&self) -> &'static str {
+        match self.format.as_str() {
+            Self::LV2 => "LV2",
+            _ => "VST3",
+        }
+    }
 }
 
 /// MIDI key at which a sampler channel plays its sample unpitched (C5 in FL's naming).
@@ -694,9 +713,9 @@ pub enum AutoTarget {
         chan_id: Id,
         param: String,
     },
-    /// A hosted VST3 parameter (`param_id` is the plugin's own id, as
-    /// `vst3_params` reports it). The envelope value is the plugin's
-    /// normalized 0..1.
+    /// A hosted plugin parameter (`param_id` is the plugin's own id, as
+    /// `plugin_params` reports it: VST3 parameter id, LV2 control port index).
+    /// The envelope value is normalized 0..1 (LV2: over the port's range).
     Plugin {
         fx_id: Id,
         param_id: u32,

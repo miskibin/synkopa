@@ -2,7 +2,7 @@
 import { batch } from 'solid-js';
 import { be } from '../api/backend';
 import { t, tName } from '../lib/i18n';
-import { VOL_UNITY, type AnyBuiltinKind, type Clip, type Fx, type Id, type Insert, type Op, type RecoveredProject, type Track } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type AnyBuiltinKind, type PluginInfo, type Clip, type Fx, type Id, type Insert, type Op, type RecoveredProject, type Track } from '../api/types';
 import { clampMove, duplicateSpan, insertTrackOps, moveClips, muteOps, pasteClips, sliceClip, TOTAL } from '../lib/clipOps';
 import { clamp, fmtPos } from '../lib/format';
 import { loadPreset as loadPresetFx, newFx, presetInfo, presetList } from '../lib/presets';
@@ -461,12 +461,15 @@ export function addFx(insId: Id, type: AnyBuiltinKind, preset?: number) {
   const pr = presetList(S.catalog, type)[preset ?? 0];
   say(t('d.act.added', { name: tName(S.catalog.types[type]?.name ?? type) }) + (pr ? t('d.act.added.preset', { name: tName(pr.name) }) : ''));
 }
-export function addVst(insId: Id, info: { path: string; cid: string; name: string; vendor: string }) {
-  const f: Fx = { id: allocId(), type: 'vst3', bypass: false, preset: null, params: {}, plugin: { format: 'vst3', path: info.path, cid: info.cid, name: info.name, vendor: info.vendor } };
-  commit([{ op: 'putFx', insertId: insId, fx: f }], t('d.act.op.addvst'));
+/** Put a scanned plugin on an insert. One that cannot run here (`unsupported`) is refused with its reason. */
+export function addPlugin(insId: Id, info: PluginInfo): boolean {
+  if (info.unsupported) { say(t('d.act.pluginUnsupported', { name: info.name, why: info.unsupported })); return false; }
+  const f: Fx = { id: allocId(), type: 'plugin', bypass: false, preset: null, params: {}, plugin: { format: info.format, path: info.path, cid: info.cid, name: info.name, vendor: info.vendor } };
+  commit([{ op: 'putFx', insertId: insId, fx: f }], t('d.act.op.addplugin', { format: PLUGIN_FORMAT_LABEL[info.format] }));
   setU({ mixSel: insId, fxSel: f.id });
   openPlug(f.id);
   say(t('d.act.added', { name: info.name }));
+  return true;
 }
 export function removeFx(fxId: Id) {
   closePlug(fxId);
@@ -501,7 +504,7 @@ export function toggleInsertFx(insId: Id) {
   if (!on) fxWasOn.delete(m.id);
   say(insName(m) + t(on ? 'd.act.fxoff' : 'd.act.fxon'));
 }
-export const fxName = (f: Fx) => f.type === 'vst3' ? (f.plugin?.name ?? 'VST3') : (S.catalog?.types[f.type]?.name ?? f.type);
+export const fxName = (f: Fx) => f.type === 'plugin' ? (f.plugin?.name ?? 'Plugin') : (S.catalog?.types[f.type]?.name ?? f.type);
 export function loadPreset(fxId: Id, i: number) {
   const ff = findFx(fxId); if (!ff || !S.catalog) return;
   const list = presetList(S.catalog, ff.f.type); if (!list.length) return;
@@ -516,7 +519,7 @@ export function stepPreset(fxId: Id, d: number) {
 }
 
 // ---------- windows ----------
-const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 640, vst3: 520, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, delay: 760, warp: 820 };
+const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, delay: 760, warp: 820 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
 /** Playlist to the front: effect windows go behind it (they keep their place and state). */
 export function playlistFront() { if ((U.plugs.length || U.rackWin || U.rollWin) && !U.plugsHidden) setU('plugsHidden', true); }

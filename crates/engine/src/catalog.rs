@@ -227,7 +227,7 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         FxKind::Delay => DELAY,
         FxKind::Reverb => REVERB,
         FxKind::Limit => LIMIT,
-        FxKind::Vst3 => &[],
+        FxKind::Plugin => &[],
     }
 }
 
@@ -247,7 +247,7 @@ pub fn type_name(kind: FxKind) -> &'static str {
         FxKind::Rider => "Vocal Rider",
         FxKind::Half => "Half-Speed",
         FxKind::Warp => "Warp",
-        FxKind::Vst3 => "VST3",
+        FxKind::Plugin => "Plugin",
     }
 }
 
@@ -633,7 +633,7 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
             pr("Stutter 1/8 + bramka", &[("tslot", 5.0), ("vslot", 4.0)]),
             pr("Wyzwalanie na żywo (co ćwierćnutę, one-shot)", &[("trig", 3.0), ("oneshot", 1.0)]),
         ],
-        FxKind::Vst3 => vec![],
+        FxKind::Plugin => vec![],
     }
 }
 

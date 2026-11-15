@@ -127,7 +127,7 @@ mod tests {
         fs::write(&plugin, b"plugin binary").unwrap();
 
         let mut project = Project::empty();
-        let mut fx = new_fx(project.alloc_id(), FxKind::Vst3, project.bpm);
+        let mut fx = new_fx(project.alloc_id(), FxKind::Plugin, project.bpm);
         fx.plugin = Some(PluginRef {
             format: "vst3".into(),
             path: plugin.display().to_string(),

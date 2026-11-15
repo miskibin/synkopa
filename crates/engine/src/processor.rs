@@ -1,4 +1,4 @@
-//! The one interface every effect in an insert chain implements — built-in DSP and hosted VST3 alike.
+//! The one interface every effect in an insert chain implements — built-in DSP and hosted plugins (VST3, LV2) alike.
 
 /// Live readings per effect for its visualisation.
 pub const METERS: usize = 32;
@@ -35,8 +35,8 @@ pub trait Processor: Send {
     fn set_params(&mut self, _params: &ParamBlock) {}
 
     /// A hosted plugin's parameter, `normalized` 0..1 (`AutoTarget::Plugin`
-    /// automation; the plugin's own parameter id, as `vst3_params` reports
-    /// it). No-op for built-in effects. Unknown ids are ignored. Audio thread:
+    /// automation; the plugin's own parameter id, as `plugin_params` reports
+    /// it: a VST3 parameter id, an LV2 control port index). No-op for built-in effects. Unknown ids are ignored. Audio thread:
     /// no allocation, no lock.
     fn set_plugin_param(&mut self, _param_id: u32, _normalized: f32) {}
 
@@ -48,6 +48,15 @@ pub trait Processor: Send {
 
     /// Forget tails and envelopes (transport jump, bypass toggled on).
     fn reset(&mut self) {}
+
+    /// Samples by which this processor delays its input (look-ahead, linear-phase
+    /// filters), for plugin delay compensation. Built-in effects report theirs through
+    /// `catalog::latency`; hosted plugins report what the plugin says (VST3
+    /// `getLatencySamples`, an LV2 `lv2:reportsLatency` port). Called off the audio thread
+    /// right after creation, and by the engine when it re-plans the compensation.
+    fn latency_samples(&self) -> usize {
+        0
+    }
 
     /// How many samples of output this processor can still produce, and how long its
     /// state needs to settle, after its input became exact digital silence (the time to
