@@ -21,7 +21,7 @@ export const TOOLBAR_H = 54, MIXER_BAR_H = 31;
 /** What the Mixer leaves of the window's height while the Piano roll is docked: toolbar, Playlist, roll, their splitter, its own bar. */
 export const ROLL_DOCKED_RESERVE = TOOLBAR_H + PLAYLIST_MIN_H + SPLIT + ROLL_DOCK_MIN_H + MIXER_BAR_H;
 /** Default docked sizes. */
-export const RACK_DOCK_W = 640, ROLL_DOCK_H = 320;
+export const RACK_DOCK_W = 0, ROLL_DOCK_H = 320;  // rackDockW 0: fit the pattern (`rackDockFitWidth`)
 
 /**
  * The size (px) a docked panel gets: the size the user wants, no less than `min` and leaving
@@ -68,7 +68,7 @@ export function parseLayout(raw: string | null): Partial<UiState> {
     mixOpen: bool(v.mixOpen), mixMin: bool(v.mixMin), mixH: num(v.mixH, 100, 2000),
     headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),
     browserTab: v.browserTab === 'project' || v.browserTab === 'library' ? v.browserTab : undefined,
-    rackDock: bool(v.rackDock), rackDockW: num(v.rackDockW, 200, 8000),
+    rackDock: bool(v.rackDock), rackDockW: v.rackDockW === 0 ? 0 : num(v.rackDockW, 200, 8000),
     rollDock: bool(v.rollDock), rollDockH: num(v.rollDockH, 100, 8000),
     rackFloat: parseGeo(v.rackFloat), rollFloat: parseGeo(v.rollFloat), rollMax: bool(v.rollMax),
   };

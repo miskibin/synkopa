@@ -78,7 +78,7 @@ export interface UiState {
   selCh: Id | null;
   rackWin: PatWin | null;
   rollWin: PatWin | null;
-  /** The Channel Rack is docked left of the Playlist (`rackDockW` px wide) instead of floating. */
+  /** The Channel Rack is docked left of the Playlist (`rackDockW` px wide; 0 = as wide as the pattern) instead of floating. */
   rackDock: boolean; rackDockW: number;
   /** The Piano roll is docked under the Playlist, above the Mixer (`rollDockH` px high) instead of floating. */
   rollDock: boolean; rollDockH: number;

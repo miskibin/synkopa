@@ -23,6 +23,9 @@ describe('parseLayout', () => {
   });
   it('ignores a non-number size (NaN / Infinity are not JSON, strings are)', () => {
     expect(parseLayout('{"rackDockW":"700","rollDockH":"Infinity"}')).toEqual({});
+    // 0 = the docked rack fits its pattern; small non-zero widths are still rejected
+    expect(parseLayout('{"rackDockW":0}')).toEqual({ rackDockW: 0 });
+    expect(parseLayout('{"rackDockW":50}')).toEqual({});
   });
   it('survives junk', () => {
     expect(parseLayout(null)).toEqual({});

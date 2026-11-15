@@ -22,6 +22,15 @@ export function rackFitWidth(steps: number, o: { left: number; cw: number; pad: 
 }
 
 /**
+ * The docked Channel Rack's width (px) when the user has not set one: the pattern's own steps
+ * (no greyed extra bar) at the compact step width `cw`, no less than `min`. Docked, the rack shares
+ * the row with the Playlist, so it takes what the beat needs and the grid scrolls for longer ones.
+ */
+export function rackDockFitWidth(steps: number, o: { left: number; cw: number; pad: number; min: number }): number {
+  return Math.round(Math.max(o.min, o.left + gridW(Math.min(Math.max(steps, 1), RACK_FIT_STEPS), o.cw) + o.pad));
+}
+
+/**
  * Where a window of width `w` at `x` goes so that it stays on a screen `screen` px wide with
  * `margin` px to spare: it keeps its place while it fits and slides left when it has grown past
  * the right edge (the Channel Rack widening with its pattern).
