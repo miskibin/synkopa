@@ -147,6 +147,17 @@ pub enum RenderTail {
     Wrap,
 }
 
+/// Progress of an offline render, reported between DSP blocks (on the rendering thread).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RenderProgress {
+    /// Time-stretching clips nobody has played yet: `done` of `total` finished.
+    Preparing { done: usize, total: usize },
+    /// `done` of `total` frames rendered (a wrapped loop's warm-up pass and the delay
+    /// compensation count too); `peak` is the largest |sample| since the previous report and
+    /// `beat` the song position just rendered (past `to` while the tail rings out).
+    Rendering { done: usize, total: usize, peak: f32, beat: f64 },
+}
+
 impl From<String> for EngineError {
     fn from(s: String) -> Self {
         EngineError::Msg(s)
@@ -2031,6 +2042,21 @@ impl Engine {
         sample_rate: u32,
         cancel: &AtomicBool,
     ) -> Result<Vec<f32>, EngineError> {
+        self.render_export_with(stem, from, to, tail, sample_rate, cancel, &mut |_| {})
+    }
+
+    /// [`Self::render_export`] that reports its progress to `progress` after every block.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_export_with(
+        &self,
+        stem: Option<Id>,
+        from: f64,
+        to: f64,
+        tail: RenderTail,
+        sample_rate: u32,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(RenderProgress),
+    ) -> Result<Vec<f32>, EngineError> {
         if !from.is_finite() || !to.is_finite() || to <= from {
             return Err(EngineError::Msg("render range must be finite and `to` must be after `from`".into()));
         }
@@ -2068,7 +2094,9 @@ impl Engine {
         };
         // time-stretches nobody played yet are rendered here, without holding the project
         let mut rendered: HashMap<crate::sources::StretchKey, (Arc<Audio>, f64)> = HashMap::new();
-        for (clip_id, job) in stretches {
+        let stretch_total = stretches.len();
+        for (i, (clip_id, job)) in stretches.into_iter().enumerate() {
+            progress(RenderProgress::Preparing { done: i, total: stretch_total });
             if cancel.load(Relaxed) {
                 return Err(EngineError::Cancelled);
             }
@@ -2144,6 +2172,13 @@ impl Engine {
         let mut r = vec![0f32; block];
         let mut done = 0;
         let mut stopped = false;
+        let frames_per_beat = spb * f64::from(sample_rate);
+        let beat_at = |done: usize| {
+            let rendered = done.saturating_sub(pdc);
+            let at = if wrap { rendered % frames } else { rendered };
+            from + at as f64 / frames_per_beat
+        };
+        let peak_of = |l: &[f32], r: &[f32]| l.iter().chain(r).fold(0f32, |m, x| if x.abs() > m { x.abs() } else { m });
         let keep = |out: &mut Vec<f32>, at: usize, l: &[f32], r: &[f32]| {
             for i in discard.saturating_sub(at)..l.len() {
                 out.push(l[i]);
@@ -2168,6 +2203,7 @@ impl Engine {
                     rt.process(&mut l[..k], &mut r[..k], None);
                     keep(&mut out, done, &l[..k], &r[..k]);
                     done += k;
+                    progress(RenderProgress::Rendering { done, total, peak: peak_of(&l[..k], &r[..k]), beat: beat_at(done) });
                 }
                 let _ = cmd_tx.push(Cmd::Stop);
                 stopped = true;
@@ -2176,6 +2212,9 @@ impl Engine {
             rt.process(&mut l[..n], &mut r[..n], None);
             keep(&mut out, done, &l[..n], &r[..n]);
             done += n;
+            // the discarded warm-up and delay-compensation frames do not reach the file
+            let peak = if done > discard { peak_of(&l[..n], &r[..n]) } else { 0.0 };
+            progress(RenderProgress::Rendering { done, total, peak, beat: beat_at(done) });
             while gb_rx.pop().is_ok() {}
         }
         Ok(out)

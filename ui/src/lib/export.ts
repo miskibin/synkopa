@@ -66,3 +66,55 @@ export function uniqueFileStems(names: string[]): string[] {
     return cand;
   });
 }
+
+/** What a file of the chosen format is: WAV at a bit depth (32 = float) or MP3 at a bitrate. */
+export type ExportEncoding = { format: 'wav'; bits: 16 | 24 | 32 } | { format: 'mp3'; kbps: number };
+
+/** Approximate size of one stereo file `seconds` long: WAV is exact up to its header; MP3 is CBR. */
+export function exportBytes(seconds: number, rate: number, enc: ExportEncoding): number {
+  const s = Math.max(0, seconds);
+  if (enc.format === 'mp3') return Math.round(s * enc.kbps * 1000 / 8);
+  return 44 + Math.round(s * rate) * 2 * (enc.bits / 8);
+}
+
+/** The bit depth as the dialog and the summary name it. */
+export function depthText(bits: 16 | 24 | 32): string {
+  return bits === 32 ? '32-bit float' : bits + '-bit PCM';
+}
+
+/** Share of one file's time each stage takes, for the overall bar (rendering dominates). */
+const PREPARE = 0.05, WRITE = 0.95;
+
+/** 0‥1 through the whole export: finished files plus how far the current one is. */
+export function exportOverall(p: { done: number; total: number; stage: string; frac: number }): number {
+  const total = Math.max(1, p.total);
+  if (p.stage === 'done' || p.done >= total) return 1;
+  const f = Math.min(1, Math.max(0, p.frac));
+  const inFile = p.stage === 'prepare' ? PREPARE * f : p.stage === 'render' ? PREPARE + (WRITE - PREPARE) * f : WRITE;
+  return Math.min(1, (p.done + inFile) / total);
+}
+
+/** Milliseconds left, extrapolated from the time so far; null until there is enough to go on. */
+export function exportRemaining(elapsedMs: number, overall: number): number | null {
+  if (elapsedMs < 600 || overall < 0.03) return null;
+  if (overall >= 1) return 0;
+  return elapsedMs * (1 - overall) / overall;
+}
+
+/** m:ss for a duration in milliseconds (rounded up, so "0:00" means done). */
+export function fmtMs(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/** SVG path of a peak waveform (0‥255 per slice), mirrored around the middle of a `w`×`h` box. */
+export function wavePath(wave: readonly number[], w: number, h: number): string {
+  if (!wave.length) return '';
+  const dx = w / wave.length, mid = h / 2;
+  let d = '';
+  wave.forEach((v, i) => {
+    const a = Math.max(0.5, (Math.min(255, v) / 255) * mid);
+    if (v > 0) d += `M${(i * dx).toFixed(2)} ${(mid - a).toFixed(2)}h${Math.max(0.5, dx * 0.8).toFixed(2)}v${(2 * a).toFixed(2)}h${(-Math.max(0.5, dx * 0.8)).toFixed(2)}z`;
+  });
+  return d;
+}

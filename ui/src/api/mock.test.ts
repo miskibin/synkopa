@@ -60,9 +60,30 @@ describe('stem export in the mock', () => {
     expect(new Set(r.files.map(f => f.stats.seconds)).size).toBe(1); // all the same length
     expect(r.format).toBe('wav');
     await new Promise(res => setTimeout(res, 5)); // the mock delivers events on a timer
-    expect(seen.map(p => p.done)).toEqual([0, 1, 2, 3, 4]);
-    expect(seen[0]).toMatchObject({ total: 4, name: 'Master' });
-    expect(seen.at(-1)).toMatchObject({ done: 4, total: 4, name: '' });
+    expect([...new Set(seen.map(p => p.done))]).toEqual([0, 1, 2, 3, 4]);
+    expect(seen[0]).toMatchObject({ total: 4, name: 'Master', stage: 'prepare' });
+    expect(seen.at(-1)).toMatchObject({ done: 4, total: 4, name: '', stage: 'done' });
+    // like the engine: each file is prepared, rendered with a growing waveform, then written
+    const bass = seen.filter(p => p.name === 'Bass');
+    expect(bass.map(p => p.stage)).toEqual(['prepare', ...bass.slice(1, -1).map(() => 'render'), 'write']);
+    const nonzero = bass.map(p => p.wave.filter(v => v > 0).length);
+    expect(nonzero.every((n, i) => i === 0 || n >= nonzero[i - 1])).toBe(true);
+    expect(bass.at(-1)!.wave).toHaveLength(240);
+    expect(bass.at(-1)!.peak).toBeGreaterThan(0);
+  });
+  it('reports the progress of a mix export too', async () => {
+    const be = new MockBackend();
+    const seen: ExportProgress[] = [];
+    await be.on('export-progress', p => seen.push(p));
+    const { includeMaster: _, ...mix } = opts;
+    const r = await be.exportAudio({ ...mix, format: 'wav', wavBits: 16, dither: true });
+    expect(r.cancelled).toBeFalsy();
+    await new Promise(res => setTimeout(res, 5));
+    expect(seen[0]).toMatchObject({ done: 0, total: 1, name: 'Song.wav', stage: 'prepare' });
+    const renders = seen.filter(p => p.stage === 'render');
+    expect(renders.length).toBeGreaterThan(4);
+    expect(renders.every((p, i) => i === 0 || p.beat >= renders[i - 1].beat)).toBe(true);
+    expect(seen.at(-1)).toMatchObject({ done: 1, total: 1, stage: 'done' });
   });
   it('uses MP3 for every file including the master', async () => {
     const be = new MockBackend();

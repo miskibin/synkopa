@@ -1218,13 +1218,10 @@ export class MockBackend implements Backend {
     const { from, to } = exportRange(this.p, opts.useLoop);
     const tail = opts.format !== 'mp3' && opts.wrapTail ? 0 : opts.tail;
     const secs = exportSeconds(from, to, this.p.bpm, tail);
-    // Simulate a short offline bounce so the dialog's busy/cancel path is exercisable.
-    const steps = 8;
-    for (let i = 0; i < steps; i++) {
-      await delay(40);
-      if (this.exportAbort) return { cancelled: true };
-    }
     const name = (this.path ? this.path.replace(/\.wave$/i, '') : 'C:\\Users\\michal\\Music\\Song') + (opts.format === 'mp3' ? '.mp3' : '.wav');
+    // a short offline bounce with the engine's progress reports, so the dialog's readout and cancel work
+    if (!(await this.mockBounce(0, 1, name.split(/[\\/]/).pop()!, from, to, 12))) return { cancelled: true };
+    this.emit('export-progress', { done: 1, total: 1, name: '', stage: 'done', frac: 1, beat: to, peak: 0, wave: [] });
     const silent = this.p.clips.length === 0 || this.p.tracks.every(t => t.muted);
     return {
       out: name,
@@ -1257,19 +1254,37 @@ export class MockBackend implements Backend {
     const stems = uniqueFileStems(jobs.map(j => j.name));
     const files: Extract<ExportStemsResult, { files: unknown }>['files'] = [];
     for (let i = 0; i < jobs.length; i++) {
-      this.emit('export-progress', { done: i, total: jobs.length, name: jobs[i].name });
-      await delay(40);
-      if (this.exportAbort) return { cancelled: true };
+      if (!(await this.mockBounce(i, jobs.length, jobs[i].name, from, to, 5))) return { cancelled: true };
       files.push({
         name: jobs[i].name, file: `${stems[i]}.${format}`, master: jobs[i].master,
         stats: { seconds: secs, sampleRate: opts.sampleRate, peakDbfs: -6.1, rmsDbfs: -18.2, crestDb: 12.1, clippedSamples: 0, silent: false },
       });
     }
-    this.emit('export-progress', { done: jobs.length, total: jobs.length, name: '' });
+    this.emit('export-progress', { done: jobs.length, total: jobs.length, name: '', stage: 'done', frac: 1, beat: to, peak: 0, wave: [] });
     const dir = this.path ? this.path.replace(/[\\/][^\\/]*$/, '') : 'C:\\Users\\michal\\Music';
     return { dir, fromBeat: from, toBeat: to, tail, format, files, skipped: [] };
   }
   async exportCancel() { this.exportAbort = true; }
+  /** One file of a mock export: prepare, `steps` render reports with a growing waveform, write. False when cancelled. */
+  private async mockBounce(done: number, total: number, name: string, from: number, to: number, steps: number): Promise<boolean> {
+    const SLICES = 240, wave: number[] = new Array(SLICES).fill(0);
+    let peak = 0;
+    this.emit('export-progress', { done, total, name, stage: 'prepare', frac: 0, beat: from, peak: 0, wave: [...wave] });
+    for (let k = 1; k <= steps; k++) {
+      await delay(40);
+      if (this.exportAbort) return false;
+      for (let i = Math.floor((k - 1) * SLICES / steps); i < Math.floor(k * SLICES / steps); i++) {
+        // a beat-shaped envelope, quieter for later stems
+        const v = (0.35 + 0.5 * Math.exp(-((i * 16 / SLICES) % 1) * 5)) / (1 + done * 0.4);
+        wave[i] = Math.round(v * 255);
+        peak = Math.max(peak, v);
+      }
+      this.emit('export-progress', { done, total, name, stage: 'render', frac: k / steps, beat: from + (to - from) * k / steps, peak, wave: [...wave] });
+    }
+    this.emit('export-progress', { done, total, name, stage: 'write', frac: 1, beat: to, peak, wave: [...wave] });
+    await delay(20);
+    return !this.exportAbort;
+  }
 
   // ---------- VST3 ----------
   async vst3Scan(rescan: boolean): Promise<Vst3Info[]> {

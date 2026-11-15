@@ -771,3 +771,97 @@ fn wrapped_mix_and_stem_keep_exactly_one_pass_with_the_echo_at_its_start() {
     cancel.store(true, std::sync::atomic::Ordering::Relaxed);
     assert!(matches!(e.render_export(None, 4.0, 8.0, RenderTail::Wrap, 48_000, &cancel), Err(EngineError::Cancelled)));
 }
+
+#[test]
+fn pcm16_export_round_trips_signed_samples_and_clamps_full_scale() {
+    let dir = std::env::temp_dir().join(format!("wave-pcm16-{}", std::process::id()));
+    let path = dir.join("mix.wav");
+    let lsb = 1.0 / 32_768.0;
+    let input = [0.25, -0.5, 1.25, -1.25, 1.0, -1.0, 0.49 * lsb, -0.75 * lsb, f32::NAN, f32::NEG_INFINITY];
+    wave_engine::sources::write_wav_pcm16(&path, &input, 44_100, false).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    // PCM format tag, 2 channels, block align 4, 16 bits per sample
+    assert_eq!(u16::from_le_bytes([bytes[20], bytes[21]]), 1);
+    assert_eq!(u16::from_le_bytes([bytes[32], bytes[33]]), 4);
+    assert_eq!(u16::from_le_bytes([bytes[34], bytes[35]]), 16);
+    let mut reader = hound::WavReader::open(&path).unwrap();
+    let spec = reader.spec();
+    assert_eq!((spec.channels, spec.sample_rate, spec.bits_per_sample), (2, 44_100, 16));
+    assert_eq!(spec.sample_format, hound::SampleFormat::Int);
+    assert_eq!(reader.duration(), 5);
+    assert_eq!(
+        reader.samples::<i16>().collect::<Result<Vec<_>, _>>().unwrap(),
+        [8_192, -16_384, 32_767, -32_768, 32_767, -32_768, 0, -1, 0, 0]
+    );
+    drop(reader);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn pcm16_dither_is_one_lsb_triangular_and_differs_between_files() {
+    let dir = std::env::temp_dir().join(format!("wave-pcm16-dither-{}", std::process::id()));
+    let input = [0.0; 16_384];
+    let read = |name: &str, dither: bool| -> Vec<i16> {
+        let path = dir.join(name);
+        wave_engine::sources::write_wav_pcm16(&path, &input, 48_000, dither).unwrap();
+        hound::WavReader::open(path).unwrap().samples().map(Result::unwrap).collect()
+    };
+    assert!(read("plain.wav", false).iter().all(|&x| x == 0), "silence stays digital silence without dither");
+    let a = read("a.wav", true);
+    let b = read("b.wav", true);
+    for s in [&a, &b] {
+        assert_eq!((s.iter().min(), s.iter().max()), (Some(&-1), Some(&1)));
+        // TPDF of ±1 LSB rounds to a non-zero value a quarter of the time
+        let nonzero = s.iter().filter(|&&x| x != 0).count();
+        assert!((3_400..4_800).contains(&nonzero), "{nonzero} nonzero samples");
+        assert!(s.iter().map(|&x| i32::from(x)).sum::<i32>().abs() < 300, "dither has no DC");
+    }
+    // two stems summed must not add the same noise twice
+    let same = a.iter().zip(&b).filter(|(x, y)| x == y && **x != 0).count();
+    let shared = a.iter().zip(&b).filter(|(x, y)| **x != 0 && **y != 0).count();
+    assert!(same * 3 < shared * 2, "{same} of {shared} dithered samples match: the files share a noise sequence");
+    // a quiet signal below 1 LSB survives as dithered noise around its level instead of vanishing
+    let quiet = [0.4 / 32_768.0f32; 16_384];
+    let path = dir.join("quiet.wav");
+    wave_engine::sources::write_wav_pcm16(&path, &quiet, 48_000, true).unwrap();
+    let q: Vec<i16> = hound::WavReader::open(path).unwrap().samples().map(Result::unwrap).collect();
+    let mean = q.iter().map(|&x| f64::from(x)).sum::<f64>() / q.len() as f64;
+    assert!((mean - 0.4).abs() < 0.05, "mean {mean}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn an_offline_render_reports_its_progress_block_by_block() {
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    let cancel = AtomicBool::new(false);
+    let mut seen = vec![];
+    let out = e.render_export_with(None, 0.0, 8.0, RenderTail::Seconds(1.0), 48_000, &cancel, &mut |p| seen.push(p)).unwrap();
+    let rendering: Vec<(usize, usize, f32, f64)> = seen
+        .iter()
+        .filter_map(|p| match *p {
+            RenderProgress::Rendering { done, total, peak, beat } => Some((done, total, peak, beat)),
+            RenderProgress::Preparing { .. } => None,
+        })
+        .collect();
+    let (done, total, _, _) = *rendering.last().unwrap();
+    assert_eq!(done, total, "the last report is the end");
+    assert!(total >= out.len() / 2, "{total} frames for {} in the file", out.len() / 2);
+    assert!(rendering.windows(2).all(|w| w[0].0 < w[1].0 && w[0].3 <= w[1].3), "frames and beats only move forward");
+    // the song position goes from the start through `to` and on into the tail
+    assert!(rendering[0].3 < 0.1);
+    let spb = 60.0 / 128.0;
+    assert!((rendering.last().unwrap().3 - (8.0 + 1.0 / spb)).abs() < 0.05, "{}", rendering.last().unwrap().3);
+    let file_peak = out.iter().fold(0f32, |m, x| m.max(x.abs()));
+    let reported = rendering.iter().fold(0f32, |m, r| m.max(r.2));
+    assert!((file_peak - reported).abs() < 1e-6, "reported peak {reported} vs file {file_peak}");
+    // cancelling from the progress callback stops the render
+    let mut calls = 0;
+    let r = e.render_export_with(None, 0.0, 64.0, RenderTail::Seconds(0.0), 48_000, &cancel, &mut |_| {
+        calls += 1;
+        if calls == 10 {
+            cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+    });
+    assert!(matches!(r, Err(EngineError::Cancelled)));
+    assert_eq!(calls, 10);
+}

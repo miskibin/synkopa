@@ -717,11 +717,12 @@ async fn recovery_discard(app: St<'_>, id: String) -> R<()> {
     app.recovery.discard(&id)
 }
 
-/// Bounce the master mix to a 32-bit float or 24-bit PCM stereo WAV, or a CBR MP3 (`format: "mp3"`,
+/// Bounce the master mix to a 32-bit float or 16/24-bit PCM stereo WAV, or a CBR MP3 (`format: "mp3"`,
 /// `mp3_kbps` 128/192/256/320, default 320), song or loop + tail.
 ///
 /// Opens a native save dialog first. The render runs off the UI thread so playback
-/// keeps going; call `export_cancel` to abort before a file is written.
+/// keeps going; it emits `export-progress` as it goes. Call `export_cancel` to abort before a
+/// file is written.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 async fn export_audio(
@@ -773,9 +774,15 @@ async fn export_audio(
     app.export_cancel.store(false, Ordering::Relaxed);
     let a = app.inner().clone();
     let out = path.clone();
-    let result = tauri::async_runtime::spawn_blocking(move || actions::render_to_file(a.as_ref(), &out, bounce, &a.export_cancel, fmt))
-        .await
-        .map_err(es)?;
+    let h = handle.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let progress = |s: &actions::ExportStatus| {
+            let _ = h.emit("export-progress", s);
+        };
+        actions::render_to_file(a.as_ref(), &out, bounce, &a.export_cancel, fmt, &progress)
+    })
+    .await
+    .map_err(es)?;
     match result {
         Ok(v) => Ok(v),
         Err(e) if e == "cancelled" => Ok(json!({ "cancelled": true })),
@@ -822,8 +829,8 @@ async fn export_stems(
     let a = app.inner().clone();
     let h = handle.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let progress = |done: usize, total: usize, name: &str| {
-            let _ = h.emit("export-progress", json!({ "done": done, "total": total, "name": name }));
+        let progress = |s: &actions::ExportStatus| {
+            let _ = h.emit("export-progress", s);
         };
         // a stem export must not start while the piano is still loading (its stems would be silent)
         keys::wait(&a);

@@ -479,7 +479,8 @@ export interface LibraryList { kits: Kit[]; folders: string[] }
 export interface LibFile { name: string; path: string; group: string; root?: number; pitched?: boolean }
 export interface LibraryProgress { id: string; done: number; total: number; error?: string }
 
-export interface WavExportOptions { wavBits?: 24 | 32; dither?: boolean; wrapTail?: boolean }
+/** `wavBits`: 16 or 24 = signed PCM, 32 = float (default); `dither` (TPDF, ±1 LSB) only for PCM. */
+export interface WavExportOptions { wavBits?: 16 | 24 | 32; dither?: boolean; wrapTail?: boolean }
 export interface ExportRangeOptions { useLoop: boolean; tail: number; sampleRate: number }
 export type ExportAudioOptions = ExportRangeOptions & (
   | ({ format?: 'wav' } & WavExportOptions)
@@ -499,8 +500,15 @@ export type ExportResult =
 
 /** One file of a stem export: an insert's stem, or `Master` (the mix with the master's effects). */
 export interface StemFile { name: string; file: string; master: boolean; stats: ExportStats }
-/** `export-progress` while stems render: `done` files finished of `total`, `name` = the one in progress ('' at the end). */
-export interface ExportProgress { done: number; total: number; name: string }
+/** `export-progress` while a mix or stems export runs (throttled to ~20 per second while rendering).
+ *  `done` files finished of `total`; `name` the file in progress ('' at the end); `stage`:
+ *  time-stretching audio (`prepare`), rendering, encoding (`write`), or `done`; `frac` 0‥1 through
+ *  that stage; `beat` the song position just rendered (past the end in the tail); `peak` the
+ *  current file's largest |sample| so far; `wave` its peak per slice, 0‥255 (`WAVE_SLICES` long). */
+export interface ExportProgress {
+  done: number; total: number; name: string;
+  stage: 'prepare' | 'render' | 'write' | 'done'; frac: number; beat: number; peak: number; wave: number[];
+}
 /** Result of `exportStems`; `{ cancelled: true }` when the folder dialog or the render was aborted.
  *  `skipped`: inserts that looked busy but rendered silent, so got no file. */
 export type ExportStemsResult =

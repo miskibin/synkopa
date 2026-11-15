@@ -219,7 +219,8 @@ musician keeps playing) and prints peak/RMS/crest/clipping so an agent can
 check its work, then listen to the WAV. The same bounce is available in the
 app as **Eksport** (`Ctrl+Shift+R`): song or loop, a 0/2/8 s effect tail, and
 44.1 or 48 kHz. Stereo WAV defaults to 32-bit float. Select 24-bit PCM with
-`--wav-bits 24` and add `--dither` for optional triangular dither. Integer WAV
+`--wav-bits 24`, or 16-bit PCM (CD audio) with `--wav-bits 16`, and add `--dither`
+for triangular dither of ±1 LSB, applied once at the final conversion. Integer WAV
 clips samples beyond full scale. The export stats report those peaks before conversion.
 
 Select **Wrap** when exporting a WAV loop to carry the effect tail into its
@@ -233,6 +234,7 @@ and stems.
 wave render --stems --out stems/ --from 0 --to 32     # a folder, created if needed
 wave render --stems --out stems/ --no-master          # without Master.wav
 wave render --stems --out stems/ --wav-bits 24 --dither
+wave render --out cd.wav --wav-bits 16 --dither --rate 44100
 wave render --stems --out stems/ --format mp3 --kbps 192
 ```
 

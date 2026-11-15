@@ -90,7 +90,7 @@ FILES
                                            bounce offline (mp3 chosen by .mp3 extension); prints level stats
   render --stems --out FOLDER [--no-master] [--from B --to B --tail SEC --rate HZ --format wav|mp3 --kbps 128|192|256|320]
                                            one file per mixer insert with sound, plus the optional master mix
-  WAV options: --wav-bits 24|32 (default 32-bit float); --dither (24-bit PCM only)
+  WAV options: --wav-bits 16|24|32 (default 32-bit float); --dither (16/24-bit PCM only)
                --wrap-tail (carry effects into the start of the loop)
   save [--path FILE] | open <FILE>          (app; with -p the file is saved for you, --save-as copies)
   export-project --out FILE.zip            package the project and its audio sources for sharing
@@ -802,9 +802,10 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             let wav_bits = if a.has("wav-bits") {
                 let bits = a.need("wav-bits").map_err(u)?;
                 Some(match bits {
+                    "16" => 16,
                     "24" => 24,
                     "32" => 32,
-                    _ => return Err(u("--wav-bits must be 24 or 32".into())),
+                    _ => return Err(u("--wav-bits must be 16, 24 or 32".into())),
                 })
             } else {
                 None

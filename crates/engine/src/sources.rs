@@ -664,24 +664,43 @@ pub fn write_wav(path: &Path, interleaved: &[f32], sr: u32) -> Result<(), String
 
 /// Quantizes interleaved stereo to signed 24-bit PCM. TPDF is applied once, just before rounding.
 pub fn write_wav_pcm24(path: &Path, interleaved: &[f32], sr: u32, dither: bool) -> Result<(), String> {
+    write_wav_pcm(path, interleaved, sr, 24, dither)
+}
+
+/// Quantizes interleaved stereo to signed 16-bit PCM (CD audio). TPDF is applied once, just
+/// before rounding; full scale is clipped to the 16-bit limits.
+pub fn write_wav_pcm16(path: &Path, interleaved: &[f32], sr: u32, dither: bool) -> Result<(), String> {
+    write_wav_pcm(path, interleaved, sr, 16, dither)
+}
+
+/// Signed PCM WAV of `bits` (16 or 24): ±1 LSB TPDF dither when `dither`, a fresh noise sequence
+/// per file, non-finite samples written as silence.
+fn write_wav_pcm(path: &Path, interleaved: &[f32], sr: u32, bits: u16, dither: bool) -> Result<(), String> {
     use std::hash::{BuildHasher, RandomState};
 
+    if bits != 16 && bits != 24 {
+        return Err("PCM WAV must be 16 or 24 bits".into());
+    }
     if !interleaved.len().is_multiple_of(2) {
         return Err("stereo WAV needs complete frames".into());
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
-    let spec = hound::WavSpec { channels: 2, sample_rate: sr, bits_per_sample: 24, sample_format: hound::SampleFormat::Int };
+    let spec = hound::WavSpec { channels: 2, sample_rate: sr, bits_per_sample: bits, sample_format: hound::SampleFormat::Int };
     let mut writer = hound::WavWriter::create(path, spec).map_err(|e| e.to_string())?;
     // Give each file its own sequence so stems don't sum correlated dither noise.
     let mut noise = tpdf((RandomState::new().hash_one(path) as u32).max(1));
-    const SCALE: f64 = 8_388_608.0;
+    let scale = f64::from(1u32 << (bits - 1));
     for &x in interleaved {
         let sample = if x.is_finite() { f64::from(x) } else { 0.0 };
         let d = if dither { f64::from(noise()) } else { 0.0 };
-        let pcm = (sample * SCALE + d).round().clamp(-SCALE, SCALE - 1.0) as i32;
-        writer.write_sample(pcm).map_err(|e| e.to_string())?;
+        let pcm = (sample * scale + d).round().clamp(-scale, scale - 1.0);
+        if bits == 16 {
+            writer.write_sample(pcm as i16).map_err(|e| e.to_string())?;
+        } else {
+            writer.write_sample(pcm as i32).map_err(|e| e.to_string())?;
+        }
     }
     writer.finalize().map_err(|e| e.to_string())
 }
