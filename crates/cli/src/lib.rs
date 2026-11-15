@@ -50,6 +50,10 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   set-param --fx ID --param NAME --value V
   preset --fx ID --index N
   import <file>... [--track N --beat B]    load audio, optionally place it
+  missing                                  sources whose audio file is missing (they play silence)
+  relink --folder DIR                      find missing files in DIR (and below) by name; relinks each
+                                           unambiguous match of the remembered length, lists the rest
+  relink --source ID --path FILE           point a source at another file (one undo step)
   make-unique --clip ID[,ID...]            give audio clips (one sample, one track) their own copy of the
                                            sample on a new track below, routed to a free mixer insert
 
@@ -727,6 +731,15 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 args["notes"] = serde_json::from_str(n).map_err(|e| u(format!("--notes is not JSON: {e}")))?;
             }
             send(cx, a, "pattern", args)
+        }
+        "missing" => send(cx, a, "missing", json!({})),
+        "relink" => {
+            let abs = |p: &str| std::fs::canonicalize(p).map(|x| x.display().to_string()).unwrap_or_else(|_| p.to_string());
+            match (a.get("folder"), a.num("source").map_err(u)?, a.get("path")) {
+                (Some(f), None, None) => send(cx, a, "relink", json!({ "folder": abs(f) })),
+                (None, Some(id), Some(p)) => send(cx, a, "relink", json!({ "sourceId": id as u64, "path": abs(p) })),
+                _ => Err(u("relink --folder DIR | --source ID --path FILE".into())),
+            }
         }
         "make-unique" => {
             let ids = a

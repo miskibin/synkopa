@@ -41,6 +41,14 @@ export function dropPeaks(id: Id) {
   for (const k of [...cache.keys()]) if (k.replace(/[nr]+$/, '') === String(id)) cache.delete(k);
 }
 
+/** A source now plays other audio (relinked, or that undone): forget its waveforms, the source's
+ *  and those rendered for its clips, and redraw. */
+export function dropSourcePeaks(id: Id) {
+  dropPeaks(id);
+  for (const [cid, e] of clipCache) if (e.ref === id) { clearTimeout(e.timer); clipCache.delete(cid); }
+  setVersion(x => x + 1);
+}
+
 /** Min/max of peaks over pair indices [i0, i1). */
 export function peakRange(pk: Float32Array, i0: number, i1: number): [number, number] {
   const n = pk.length >> 1;
@@ -52,7 +60,7 @@ export function peakRange(pk: Float32Array, i0: number, i1: number): [number, nu
 
 // ---- clips with pitch edits: what the clip actually plays (`clip_peaks`) ----
 
-interface ClipEntry { key: string; pk: Float32Array | null; want: string; timer: number; busy: boolean }
+interface ClipEntry { key: string; pk: Float32Array | null; want: string; timer: number; busy: boolean; ref: Id }
 const clipCache = new Map<Id, ClipEntry>();
 let gestureOpen: () => boolean = () => false;
 /** edit.ts tells us when a drag is in progress (the engine re-renders only at its end). */
@@ -69,7 +77,8 @@ export function getClipPeaks(c: Clip): Float32Array | null {
   if (tuneIsNeutral(c.tune)) { clipCache.delete(c.id); return getPeaks(c.ref, c.norm, c.rev); }
   const key = clipKey(c);
   let e = clipCache.get(c.id);
-  if (!e) { e = { key: '', pk: null, want: '', timer: 0, busy: false }; clipCache.set(c.id, e); }
+  if (!e) { e = { key: '', pk: null, want: '', timer: 0, busy: false, ref: c.ref }; clipCache.set(c.id, e); }
+  e.ref = c.ref;
   if (e.key !== key && e.want !== key) {
     e.want = key;
     clearTimeout(e.timer);

@@ -969,3 +969,18 @@ select option { background: var(--bg4); color: var(--fg); }
 .pcbtn { display: inline-flex; align-items: center; gap: 5px; position: relative; }
 .pcbtn .pcon { width: 5px; height: 5px; border-radius: 50%; }
 .refnote.warn { color: var(--amber); }
+
+/* Missing audio (views/MissingAudio.tsx) */
+.dialog.missdlg { width: min(640px, 94vw); display: flex; flex-direction: column; }
+.missbar { gap: 10px; margin: 10px 0 8px; min-height: 22px; }
+.missstatus { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.missstatus .spin { flex: none; }
+.misslist { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow: auto; border-top: 1px solid var(--line); }
+.misslist > li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
+.misshd { gap: 8px; min-width: 0; }
+.missname { font: 600 12px var(--sans); color: var(--fg-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+.misspath { font-size: 10px; color: var(--fg4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; direction: rtl; text-align: left; }
+.misscands { list-style: none; margin: 2px 0 0; padding: 0 0 0 10px; display: flex; flex-direction: column; gap: 3px; }
+.misscands li { gap: 8px; min-width: 0; }
+.misscands .misspath { flex: 1; color: var(--fg2); }
+.misschip { background: var(--amber); }

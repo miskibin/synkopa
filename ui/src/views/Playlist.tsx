@@ -213,6 +213,7 @@ export function Playlist() {
   createEffect(() => {
     for (const k in S.audition) void S.audition[k];
     for (const k in S.stretching) void S.stretching[k];
+    for (const k in S.missing) void S.missing[k];
     U.compSel?.from; U.compSel?.to; U.compSel?.clipId; rows(); bndHover(); dirtyGrid = true;
   });
   // envelope focus and point selection: only the automation clips involved are repainted
@@ -230,7 +231,7 @@ export function Playlist() {
   /** The grid view of one frame; `at` places it on a region of the tile (tile-local CSS px). */
   const frameView = (): View => ({
     offX: 0, offY: 0, W: 0, H: 0, bw: U.bw, snap: U.snap, spb: 60 / S.project.bpm, tops: tops(), sel: new Set(U.sel), editable: editable(), recArmedBg: S.transport.rec, env: envHover(), autoSel: U.autoSel ? { clip: U.autoSel.clip, idx: [...U.autoSel.idx] } : null,
-    rows: rows().map(r => r && { clip: unwrap(r.clip), comp: unwrap(r.comp) }), laneH: LANE_H, audition: { ...S.audition }, stretching: { ...S.stretching }, compSel: U.compSel ? { ...U.compSel } : null, bndHover: bndHover(), ver: lookVer,
+    rows: rows().map(r => r && { clip: unwrap(r.clip), comp: unwrap(r.comp) }), laneH: LANE_H, audition: { ...S.audition }, stretching: { ...S.stretching }, missing: { ...S.missing }, compSel: U.compSel ? { ...U.compSel } : null, bndHover: bndHover(), ver: lookVer,
   });
   const at = (v: View, t: Tile, r: Rect): View => ({ ...v, offX: t.x + r.x, offY: t.y + r.y, W: r.w, H: r.h });
   /** Draws the grid into `r` of the grid canvas only (clipped to whole device pixels: nothing is painted twice). */
@@ -1087,6 +1088,7 @@ export function Playlist() {
         { t: 'sec', label: 'Audio' } as MenuItem,
         { t: 'gain', clipId: c.id } as MenuItem,
         ...(c.kind === 'audio' ? [
+          ...(c.ref in S.missing ? [{ t: 'item', label: tl('d.miss.menu'), title: S.missing[c.ref], act: () => setU('missingOpen', true) } as MenuItem] : []),
           { t: 'item', label: tl('a.pl.makeUnique'), title: tl('a.pl.makeUniqueAudioTip'), act: () => A.makeUnique(c) } as MenuItem,
           { t: 'item', label: tl('a.pl.editSample'), kbd: tl('a.pl.dblClick'), act: () => A.openEditor(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.editPitch'), kbd: c.tune?.notes.length ? tl('a.pl.edited') : '', act: () => A.openPitchEditor(c.id) } as MenuItem,

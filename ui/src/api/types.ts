@@ -392,6 +392,8 @@ export interface StateDto {
   stretching?: Id[];
   /** Audio clips whose stretch failed (they play resampled): clip id → message. */
   stretchErrors?: Record<string, string>;
+  /** Sources whose audio is not loaded (moved, deleted, unreadable; they play silence): source id → why. */
+  missing?: Record<string, string>;
 }
 
 /** `options`: a discrete choice (value = index), shown as buttons instead of a knob. */
@@ -515,6 +517,20 @@ export type SaveResult = { cancelled: true } | { cancelled?: false; path: string
 export interface RecoveredProject { id: string; savedMs: number }
 
 export interface ImportResult { sourceIds: Id[]; clipIds: Id[] }
+
+/** One relink (`relinkSources`): `error` = why it was not done (the source is unchanged). */
+export interface Relinked { sourceId: Id; path: string; error: string | null; lengthDiffers: boolean }
+/** A file that may be a missing source's (best first): `exactName` false = only the name without the extension matches. */
+export interface RelinkCandidate { path: string; exactName: boolean; sharedFolders: number }
+/** `relinkSearch`: what was relinked (one undo step), what needs the user's choice, what was not found. */
+export interface RelinkSearch {
+  relinked: Relinked[];
+  candidates: Record<string, RelinkCandidate[]>;
+  notFound: Id[];
+  scanned: number;
+  /** The search stopped at its limit before seeing the whole folder. */
+  truncated: boolean;
+}
 
 export interface Vst3Info { path: string; cid: string; name: string; vendor: string; category: string }
 export interface Vst3Param { id: number; name: string; value: number; display: string; def: number }

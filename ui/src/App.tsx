@@ -27,6 +27,7 @@ import { releaseAll, setTypingOn, typingDown, typingOn, typingUp } from './state
 import { chanWin, closeChannelWindow } from './views/ChannelWindow';
 import { channels } from './state/pattern';
 import { MusicDialog } from './views/MusicDialog';
+import { MissingAudio } from './views/MissingAudio';
 import { FxPickerHost, openFxPicker } from './views/FxPicker';
 import { ChannelRack } from './views/ChannelRack';
 import { PianoRoll } from './views/PianoRoll';
@@ -87,6 +88,7 @@ function onKey(e: KeyboardEvent) {
     if (U.menu) return closeMenu();
     if (U.autoSel) return setU('autoSel', null);
     if (U.musicWin) return A.closeMusicAnalysis();
+    if (U.missingOpen) return setU('missingOpen', false);
     if (U.fxPicker) return setU('fxPicker', null);
     if (U.vstPicker) return setU('vstPicker', null);
     if (U.settings) return setU('settings', false);
@@ -249,6 +251,7 @@ export function App() {
       <FxPickerHost />
       <MusicDialog />
       <AudioToast />
+      <MissingAudio />
     </div>
     <Show when={U.openingProject}>
       <div class="overlay" style={{ 'z-index': 400 }}>

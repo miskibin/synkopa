@@ -352,6 +352,24 @@ async fn trim_clip(app: St<'_>, clip_id: u64) -> R<Value> {
 }
 
 #[tauri::command]
+async fn missing_sources(app: St<'_>) -> R<Value> {
+    Ok(actions::missing(app.inner().as_ref()))
+}
+
+#[tauri::command]
+async fn relink_sources(app: St<'_>, args: Value) -> R<Value> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::relink(&*a, &args)).await.map_err(es)?
+}
+
+#[tauri::command]
+async fn relink_search(app: St<'_>, args: Value) -> R<Value> {
+    let a = app.inner().clone();
+    let folder = args.get("folder").and_then(Value::as_str).ok_or("`folder` is required")?.to_string();
+    tauri::async_runtime::spawn_blocking(move || actions::relink(&*a, &json!({ "folder": folder }))).await.map_err(es)?
+}
+
+#[tauri::command]
 async fn make_unique(app: St<'_>, clip_ids: Vec<u64>) -> R<Value> {
     let e = app.engine.clone();
     let r = tauri::async_runtime::spawn_blocking(move || e.make_unique_audio(&clip_ids)).await.map_err(es)?.map_err(es)?;
@@ -1008,6 +1026,9 @@ pub fn run(project_arg: Option<&str>) {
             bake_rider,
             trim_clip,
             make_unique,
+            missing_sources,
+            relink_sources,
+            relink_search,
             flatten_comp,
             comp_audition,
             preview_clip,

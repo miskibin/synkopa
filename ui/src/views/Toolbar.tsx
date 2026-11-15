@@ -19,6 +19,7 @@ import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
 import { Icon, ICONS } from '../ui/icons';
 import { UpdateChip } from './Updates';
+import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
 import { volText } from '../lib/format';
@@ -135,6 +136,7 @@ export function Toolbar() {
         <div class="tbmenu" data-drag>
           <MenuBar />
           <UpdateChip />
+          <MissingChip />
           <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
         </div>
         <div class="tbhint" data-drag>

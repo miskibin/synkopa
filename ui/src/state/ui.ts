@@ -59,6 +59,8 @@ export interface UiState {
   /** add-effect picker, anchored at (x, y) (−1 = centred) */
   fxPicker: { insId: Id; x: number; y: number } | null;
   musicWin: MusicWin | null;
+  /** The "Missing audio" dialog (relink moved files). */
+  missingOpen: boolean;
   readout: string;
   headW: number; pickW: number; pickOpen: boolean; browserTab: 'project' | 'library';
   ghost: { x: number; y: number; name: string; color: string } | null;
@@ -98,7 +100,7 @@ export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1 },
   start: 0, follow: true, alt: false,
   mixOpen: true, mixMin: false, mixH: 300, mixSel: 6, fxSel: 903, fxDrag: null,
-  plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, musicWin: null,
+  plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, musicWin: null, missingOpen: false,
   openingProject: false,
   projectZipBusy: false,
   readout: t('d.ui.ready'),

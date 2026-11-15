@@ -266,6 +266,36 @@ mod tests {
     }
 
     #[test]
+    fn missing_audio_is_listed_and_relinked_from_a_folder_through_the_shared_actions() {
+        let d = tmp("relink");
+        let old = d.join("samples").join("loop.wav");
+        std::fs::create_dir_all(old.parent().unwrap()).unwrap();
+        let data: Vec<f32> = (0..24_000).flat_map(|_| [0.2f32, 0.2]).collect();
+        wave_engine::sources::write_wav(&old, &data, 48_000).unwrap();
+        let doc = Files.create("empty").unwrap();
+        doc.call("import", &json!({"paths": [old.display().to_string()], "track": 0, "beat": 0}), None).unwrap();
+        let project = d.join("song.wave");
+        doc.save(&project).unwrap();
+        let moved = d.join("elsewhere").join("loop.wav");
+        std::fs::create_dir_all(moved.parent().unwrap()).unwrap();
+        std::fs::rename(&old, &moved).unwrap();
+
+        let (doc, warnings) = Files.open(&project).unwrap();
+        assert_eq!(warnings.len(), 1);
+        let list = doc.call("missing", &json!({}), None).unwrap();
+        let row = &list.as_array().unwrap()[0];
+        assert_eq!(row["name"], "loop");
+        assert_eq!(row["clips"], 1);
+        assert_eq!(row["library"], false);
+        let r = doc.call("relink", &json!({"folder": d.display().to_string()}), None).unwrap();
+        assert_eq!(r["search"]["relinked"].as_array().unwrap().len(), 1, "{r}");
+        assert!(doc.dirty());
+        assert_eq!(doc.call("missing", &json!({}), None).unwrap(), json!([]));
+        assert!(doc.call("relink", &json!({"sourceId": 1}), None).is_err(), "a path is required");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
     fn a_broken_file_is_an_error_not_an_empty_project() {
         let d = tmp("broken");
         let p = d.join("x.wave");

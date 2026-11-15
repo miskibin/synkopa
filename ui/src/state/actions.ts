@@ -153,8 +153,13 @@ export async function projectOpen(path?: string) {
     acceptReply(r.state); afterProjectLoad();
     const openedPath = S.path ?? '';
     say(r.warnings.length ? t('d.act.openedwarn', { path: openedPath, n: r.warnings.length, first: r.warnings[0] }) : t('d.act.opened', { path: openedPath }));
+    offerRelink();
   } catch (e) { say(t('d.act.openfail', { err: String(e) })); }
   finally { setU('openingProject', false); }
+}
+/** A project just loaded with audio files missing: show them with the ways to find them. */
+export function offerRelink() {
+  if (Object.keys(S.missing).length) setU('missingOpen', true);
 }
 export async function projectSave(saveAs = false): Promise<boolean> {
   flushNotebook();
@@ -203,6 +208,7 @@ export async function offerRecovery() {
       const res = await enqueue(() => be().recoveryRestore(r.id));
       acceptReply(res.state); afterProjectLoad();
       say(res.warnings.length ? t('d.act.openedwarn', { path: t('d.ui.unnamed'), n: res.warnings.length, first: res.warnings[0] }) : t('d.act.recovered'));
+      offerRelink();
     } catch (e) { say(t('d.act.recoverfail', { err: String(e) })); }
     return;
   }

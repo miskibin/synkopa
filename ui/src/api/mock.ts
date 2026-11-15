@@ -21,10 +21,11 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, SaveResult, Source, StateDto, TransportDto, Vst3Info, Vst3Param,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, RelinkCandidate, SaveResult, Source, StateDto, TransportDto, Vst3Info, Vst3Param,
 } from './types';
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
+import { candidate, rank, unambiguous } from '../lib/relink';
 
 const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#e0a44a', '#9a8cf0', '#d9678f', '#8b93a1'];
 const BAND_F = new Float32Array(SPEC_BANDS).map((_, k) => 20 * Math.pow(1000, k / (SPEC_BANDS - 1)));
@@ -148,7 +149,7 @@ export class MockBackend implements Backend {
   // ---------- state ----------
   private dto(): StateDto {
     return structuredClone({ project: this.p, revision: this.revision, canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0,
-      transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition() });
+      transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition(), missing: this.missing() });
   }
   private emit<K extends keyof EventMap>(ev: K, payload: EventMap[K]) {
     const ls = this.listeners.get(ev); if (!ls) return;
@@ -579,6 +580,7 @@ export class MockBackend implements Backend {
     await delay(5);
     const s = this.srcMeta.get(id) ?? this.p.sources.find(x => x.id === id);
     if (!s) throw new Error('no source ' + id);
+    if (this.moved.has(this.p.sources.find(x => x.id === id)?.path ?? '')) throw new Error('audio not loaded');
     let pk: Float32Array;
     const meta = this.srcMeta.get(id);
     if (this.recPeaks.has(id)) pk = this.recPeaks.get(id)!.slice();
@@ -831,6 +833,56 @@ export class MockBackend implements Backend {
     this.pushUndo(prev); this.changed();
     return { sourceId: id };
   }
+  // ---------- missing audio (engine.rs `relink_sources` / `relink_search`) ----------
+  /** Files moved on the fake disk: old path → where copies of it are now. A source whose path is a key is missing. */
+  private moved = new Map<string, string[]>();
+  private missing(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const s of this.p.sources) if (this.moved.has(s.path)) out[s.id] = `${s.path}: file not found`;
+    return out;
+  }
+  /** Dev/tests: those files moved (each to the given places; [] = deleted). Their sources go missing. */
+  simulateMovedFiles(m: Record<string, string[]>) {
+    for (const [from, to] of Object.entries(m)) this.moved.set(from, to);
+    this.emit('state', this.dto());
+  }
+  private fileExists(path: string) { return !this.moved.has(path) && /^([a-z]:[\\/]|[\\/])/i.test(path) && /\.(wav|flac|ogg|oga|mp3)$/i.test(path); }
+  async relinkSources(items: { sourceId: Id; path: string }[]) {
+    await delay(20);
+    for (const it of items) {
+      const s = this.p.sources.find(x => x.id === it.sourceId);
+      if (!s) throw new Error(`no source ${it.sourceId}`);
+      if (s.path.startsWith(LIB_SCHEME)) throw new Error(`${s.name}: a library sample; install its kit instead`);
+    }
+    const out = items.map(it => ({ sourceId: it.sourceId, path: it.path, error: this.fileExists(it.path) ? null : `${it.path}: file not found`, lengthDiffers: false }));
+    if (!out.some(r => r.error == null)) throw new Error(out.map(r => r.error).join('; '));
+    const prev = structuredClone(this.p);
+    for (const r of out) if (r.error == null) this.p.sources.find(x => x.id === r.sourceId)!.path = r.path;
+    this.pushUndo(prev); this.changed();
+    return out;
+  }
+  async relinkSearch(folder: string) {
+    await delay(60);
+    const under = (p: string) => p.toLowerCase().startsWith(folder.replace(/[\\/]+$/, '').toLowerCase());
+    const candidates: Record<string, RelinkCandidate[]> = {}, notFound: Id[] = [], take: { sourceId: Id; path: string }[] = [];
+    const missing = this.missing();
+    let scanned = 0;
+    for (const s of this.p.sources) {
+      if (!(s.id in missing) || s.path.startsWith(LIB_SCHEME)) continue;
+      const found = rank((this.moved.get(s.path) ?? []).filter(under).map(p => candidate(s.path, p)).filter((c): c is RelinkCandidate => !!c));
+      scanned += found.length;
+      if (!found.length) { notFound.push(s.id); continue; }
+      const best = unambiguous(found);
+      if (best) take.push({ sourceId: s.id, path: best.path }); else candidates[s.id] = found;
+    }
+    const relinked = take.length ? await this.relinkSources(take) : [];
+    return { relinked, candidates, notFound, scanned, truncated: false };
+  }
+  /** Tests: what the next folder / file dialog returns (null = cancelled). */
+  nextPick: string | null = 'C:\\Users\\michal\\Music';
+  async pickFolder() { return this.dialog() ? this.nextPick : null; }
+  async pickAudioFile() { return this.dialog() ? this.nextPick : null; }
+
   async makeUnique(clipIds: Id[]) {
     const cs = clipIds.map(id => this.p.clips.find(x => x.id === id));
     const first = cs[0];

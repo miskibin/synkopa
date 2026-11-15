@@ -9,6 +9,7 @@ import { boundaries, takeEnd, toComp } from '../lib/comp';
 import { mix } from '../lib/color';
 import { rgba, T } from '../ui/theme';
 import { clamp, dbg, mod } from '../lib/format';
+import { t } from '../lib/i18n';
 import { snapRes } from '../lib/snap';
 import { getClipPeaks, getPeaks, peakRange } from '../state/peaks';
 import { prefs } from '../state/prefs';
@@ -32,6 +33,8 @@ export interface View {
   audition?: Record<string, number>;
   /** clip id → stretch status: being rendered (`''`) or failed (message) */
   stretching?: Record<string, string>;
+  /** source id → why its audio is not loaded (its clips are drawn offline) */
+  missing?: Record<string, string>;
   /** comp time selection (comp beats) */
   compSel?: { clipId: number; from: number; to: number } | null;
   /** comp boundary under the pointer: clip id + boundary index */
@@ -60,6 +63,7 @@ function lookupsOf(p: Project, ver: number | undefined): Lookups {
 
 const FONT = '500 10px "Geist Variable", Geist, system-ui, sans-serif';
 const MONO9 = '500 9px "Geist Mono Variable", "Geist Mono", monospace';
+const OFFLINE = () => t('d.miss.offline');
 
 const patCache = new Map<string, Float32Array>();
 /** Channels that play more than one key in the pattern (a bass line, chords): the others are one-note parts, i.e. drums. */
@@ -421,6 +425,18 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
       g.rect(x, by + r[i + 1], w, r[i + 3]);
     }
     g.fill();
+  } else if (v.missing && c.ref in v.missing) {
+    // the file is missing: no waveform, a dashed centre line and the word, in the warning colour
+    const mid = by + bh / 2;
+    g.strokeStyle = T.red; g.globalAlpha *= 0.7; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(cx, mid + 0.5); g.lineTo(cx + cw, mid + 0.5); g.stroke();
+    g.setLineDash([]); g.globalAlpha = c.muted ? 0.38 : prevAlpha;
+    if (cw > 44 && bh > 12) {
+      g.font = MONO9; g.fillStyle = T.red;
+      const label = OFFLINE(), w = g.measureText(label).width;
+      g.fillStyle = mix(color, T.clipBodyPct, T.clipBase); g.fillRect(cx + 4, mid - 6, w + 6, 12);
+      g.fillStyle = T.red; g.fillText(label, cx + 7, mid + 3);
+    }
   } else {
     const pk = getClipPeaks(c);
     // peaks are in source time: a stretched clip shows them stretched

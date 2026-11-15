@@ -589,6 +589,48 @@ pub fn import(app: &dyn Host, a: &Value) -> R<Value> {
     Ok(json!({ "sourceIds": s, "clipIds": c }))
 }
 
+// ---------------------------------------------------------------- missing audio
+
+/// Sources whose audio is not loaded: `[{sourceId, name, path, error, library, clips, channels}]`
+/// (`library`: a `lib:` sample of a kit that is not installed — install the kit, not relinkable).
+pub fn missing(app: &dyn Host) -> Value {
+    let st = app.engine().state();
+    let p = &st.project;
+    let mut out: Vec<Value> = p
+        .sources
+        .iter()
+        .filter_map(|s| {
+            let why = st.missing.get(&s.id)?;
+            let clips = p.clips.iter().filter(|c| c.kind == wave_engine::ClipKind::Audio && c.source == s.id).count();
+            let channels = p.channels.iter().filter(|c| c.sample_source() == Some(s.id)).count();
+            Some(json!({ "sourceId": s.id, "name": s.name, "path": s.path, "error": why,
+                         "library": s.path.starts_with(wave_engine::factory::SCHEME), "clips": clips, "channels": channels }))
+        })
+        .collect();
+    out.sort_by_key(|v| v["sourceId"].as_u64());
+    json!(out)
+}
+
+/// Points missing (or any non-library) sources at files again, as one undo step:
+/// `{folder}` searches a folder and relinks the unambiguous matches (the rest come back as
+/// `candidates`); `{items: [{sourceId, path}]}` or `{sourceId, path}` relinks those files.
+pub fn relink(app: &dyn Host, a: &Value) -> R<Value> {
+    let e = app.engine();
+    if let Some(folder) = arg(a, "folder").and_then(Value::as_str) {
+        let r = e.relink_search(Path::new(folder)).map_err(|x| x.to_string())?;
+        return Ok(json!({ "search": r, "revision": e.revision() }));
+    }
+    let items: Vec<wave_engine::Relink> = match arg(a, "items") {
+        Some(v) => serde_json::from_value(v.clone()).map_err(|x| format!("`items`: {x}"))?,
+        None => vec![wave_engine::Relink { source_id: need_u64(a, "sourceId")?, path: need_str(a, "path")?.to_string() }],
+    };
+    if items.is_empty() {
+        return Err("nothing to relink".into());
+    }
+    let r = e.relink_sources(&items).map_err(|x| x.to_string())?;
+    Ok(json!({ "relinked": r, "revision": e.revision() }))
+}
+
 // ---------------------------------------------------------------- channels & patterns
 
 fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
@@ -1094,7 +1136,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","missing","relink","make_unique","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1165,6 +1207,8 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             Ok(json!({}))
         }
         "comp" => comp(app, a, if_revision),
+        "missing" => Ok(missing(app)),
+        "relink" => relink(app, a),
         "make_unique" => {
             let ids: Vec<u64> = arg(a, "clipIds")
                 .and_then(Value::as_array)

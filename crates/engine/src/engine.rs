@@ -76,6 +76,46 @@ pub struct StateDto {
     pub stretching: Vec<Id>,
     /// Audio clips whose time-stretch failed (they play resampled): clip id → message.
     pub stretch_errors: HashMap<Id, String>,
+    /// Sources whose audio is not loaded (file moved, deleted, unreadable; they play
+    /// silence): source id → why. Relink them with [`Engine::relink_sources`].
+    pub missing: HashMap<Id, String>,
+}
+
+/// A source to point at another file ([`Engine::relink_sources`]).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Relink {
+    pub source_id: Id,
+    pub path: String,
+}
+
+/// How one relink went.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Relinked {
+    pub source_id: Id,
+    pub path: String,
+    /// `None` = done; otherwise why not (the source is unchanged).
+    pub error: Option<String>,
+    /// Done, but the file's length differs from the one the project remembers.
+    pub length_differs: bool,
+}
+
+/// What [`Engine::relink_search`] did.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelinkSearch {
+    /// Sources relinked (one undo step).
+    pub relinked: Vec<Relinked>,
+    /// Missing sources the user has to choose for: id → files, best first (several files of
+    /// that name, only a converted one, or a different length).
+    pub candidates: HashMap<Id, Vec<crate::relink::Candidate>>,
+    /// Missing sources nothing was found for.
+    pub not_found: Vec<Id>,
+    /// Directory entries looked at.
+    pub scanned: usize,
+    /// The search stopped at its limit before seeing the whole folder.
+    pub truncated: bool,
 }
 
 /// What `Engine::make_unique_audio` made.
@@ -221,6 +261,8 @@ struct Core {
     /// Warp maps the audio thread has, by effect id (a change is sent as `Cmd::FxData`).
     sent_maps: HashMap<Id, crate::model::WarpMaps>,
     fx_errors: HashMap<Id, String>,
+    /// Why a source's audio did not load when the project was opened (by source id).
+    source_errors: HashMap<Id, String>,
     wires: Option<Wires>,
     take: Option<RecBuf>,
     /// A mixer change that would alter the playback latency arrived during a take: the
@@ -313,6 +355,7 @@ impl Engine {
                 sent_params: HashMap::new(),
                 sent_maps: HashMap::new(),
                 fx_errors: HashMap::new(),
+                source_errors: HashMap::new(),
                 wires: None,
                 take: None,
                 graph_deferred: false,
@@ -471,6 +514,7 @@ impl Engine {
             audition: live_audition(c),
             stretching,
             stretch_errors,
+            missing: missing_sources(c),
         }
     }
 
@@ -584,6 +628,8 @@ impl Engine {
         let Some(p) = c.undo.pop() else { return false };
         let cur = std::mem::replace(&mut c.project, p);
         c.redo.push(cur);
+        let Core { sources, project, .. } = &mut *c;
+        sources.reconcile(&project.sources);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
@@ -597,6 +643,8 @@ impl Engine {
         let Some(p) = c.redo.pop() else { return false };
         let cur = std::mem::replace(&mut c.project, p);
         c.undo.push(cur);
+        let Core { sources, project, .. } = &mut *c;
+        sources.reconcile(&project.sources);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
@@ -868,6 +916,115 @@ impl Engine {
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
         Ok((src_ids, clip_ids))
+    }
+
+    /// Points sources at other files (slow: decodes them; call off the UI thread), as one undo
+    /// step. A file that does not decode leaves its source unchanged and is reported; when no
+    /// file decodes nothing changes and it is an error. Library (`lib:`) sources come with
+    /// their kit and cannot be relinked. The source keeps its name; its length, rate and
+    /// channels become the new file's. Undo brings back the old path and what it played.
+    pub fn relink_sources(&self, items: &[Relink]) -> Result<Vec<Relinked>, EngineError> {
+        let mut out = vec![];
+        let mut loaded = vec![];
+        {
+            let c = self.core.lock();
+            for it in items {
+                let Some(s) = c.project.sources.iter().find(|s| s.id == it.source_id) else {
+                    return Err(EngineError::Msg(format!("no source {}", it.source_id)));
+                };
+                if s.path.starts_with(crate::factory::SCHEME) {
+                    return Err(EngineError::Msg(format!("{}: a library sample; install its kit instead", s.name)));
+                }
+            }
+        }
+        for it in items {
+            let p = PathBuf::from(&it.path);
+            if !p.is_absolute() {
+                out.push(Relinked {
+                    source_id: it.source_id,
+                    path: it.path.clone(),
+                    error: Some(format!("{}: not an absolute path", it.path)),
+                    length_differs: false,
+                });
+                continue;
+            }
+            match Audio::load(&p) {
+                Ok(a) => loaded.push((it.source_id, p.display().to_string(), Arc::new(a))),
+                Err(e) => out.push(Relinked { source_id: it.source_id, path: it.path.clone(), error: Some(e), length_differs: false }),
+            }
+        }
+        if loaded.is_empty() {
+            let why: Vec<String> = out.iter().filter_map(|r| r.error.clone()).collect();
+            return Err(EngineError::Msg(why.join("; ")));
+        }
+        let mut c = self.core.lock();
+        let before = c.project.clone();
+        for (id, path, audio) in loaded {
+            // the source may have gone while the files decoded
+            let Some(k) = c.project.sources.iter().position(|s| s.id == id) else {
+                out.push(Relinked { source_id: id, path, error: Some("the source was removed".into()), length_differs: false });
+                continue;
+            };
+            let seconds = audio.seconds();
+            let s = &mut c.project.sources[k];
+            let length_differs = !crate::relink::same_length(s.dur, seconds);
+            let old = std::mem::replace(&mut s.path, path.clone());
+            s.dur = seconds;
+            s.sr = audio.sr;
+            s.ch = audio.channels;
+            s.peak_db = crate::dsp::gain_to_db(audio.peak());
+            c.sources.relink(id, &old, &path, audio);
+            c.source_errors.remove(&id);
+            out.push(Relinked { source_id: id, path, error: None, length_differs });
+        }
+        push_undo(&mut c, before);
+        c.revision += 1;
+        self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
+        self.changed(c);
+        Ok(out)
+    }
+
+    /// Looks for the missing sources' files under `folder` (slow: walks it and decodes the
+    /// files it takes; call off the UI thread). A source whose file is the only best match by
+    /// name and has the remembered length is relinked (all of them as one undo step); the
+    /// others are returned as candidates for the user to choose from.
+    pub fn relink_search(&self, folder: &Path) -> Result<RelinkSearch, EngineError> {
+        if !folder.is_dir() {
+            return Err(EngineError::Msg(format!("{}: not a folder", folder.display())));
+        }
+        let wanted: Vec<(Id, String, f64)> = {
+            let c = self.core.lock();
+            let missing = missing_sources(&c);
+            c.project
+                .sources
+                .iter()
+                .filter(|s| missing.contains_key(&s.id) && !s.path.starts_with(crate::factory::SCHEME))
+                .map(|s| (s.id, s.path.clone(), s.dur))
+                .collect()
+        };
+        let names: Vec<(Id, String)> = wanted.iter().map(|w| (w.0, w.1.clone())).collect();
+        let found = crate::relink::search(folder, &names, crate::relink::Limits::default());
+        let mut candidates = found.candidates;
+        let mut take = vec![];
+        let mut not_found = vec![];
+        for (id, _, dur) in &wanted {
+            let Some(list) = candidates.get(id) else {
+                not_found.push(*id);
+                continue;
+            };
+            let Some(best) = crate::relink::unambiguous(list) else { continue };
+            // the length decides; a file that does not decode stays a candidate
+            if let Ok(a) = Audio::load(Path::new(&best.path)) {
+                if crate::relink::same_length(*dur, a.seconds()) {
+                    take.push(Relink { source_id: *id, path: best.path.clone() });
+                }
+            }
+        }
+        let relinked = if take.is_empty() { vec![] } else { self.relink_sources(&take)? };
+        for r in relinked.iter().filter(|r| r.error.is_none()) {
+            candidates.remove(&r.source_id);
+        }
+        Ok(RelinkSearch { relinked, candidates, not_found, scanned: found.scanned, truncated: found.truncated })
     }
 
     /// Pitch curve and notes of an audio clip's source (for the note editor).
@@ -1563,6 +1720,7 @@ impl Engine {
         let mut sources = SourceStore::default();
         load_library_sources(&project, &mut sources);
         c.sources = sources;
+        c.source_errors.clear();
         c.project = project;
         c.undo.clear();
         c.redo.clear();
@@ -1666,6 +1824,7 @@ impl Engine {
         p.migrate();
         let dir = path.parent().unwrap_or(Path::new("."));
         let mut warnings = vec![];
+        let mut errors = HashMap::new();
         let mut store = SourceStore::default();
         for s in p.sources.iter_mut() {
             // library paths stay portable; everything else is absolute in memory
@@ -1676,7 +1835,10 @@ impl Engine {
             }
             match Audio::load_path(&s.path, dir) {
                 Ok(a) => store.insert(s.id, Arc::new(a)),
-                Err(e) => warnings.push(e),
+                Err(e) => {
+                    errors.insert(s.id, e.clone());
+                    warnings.push(e);
+                }
             }
         }
         if p.inserts.first().map(|m| m.id) != Some(0) {
@@ -1695,6 +1857,7 @@ impl Engine {
         send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None });
         c.transport.playing = false;
         c.sources = store;
+        c.source_errors = errors;
         c.project = p;
         c.audition.clear();
         c.undo.clear();
@@ -2474,6 +2637,16 @@ fn unique_base(name: &str) -> &str {
         Some((b, n)) if !b.is_empty() && !n.is_empty() && n.bytes().all(|d| d.is_ascii_digit()) => b,
         _ => name,
     }
+}
+
+/// Sources the project has whose audio is not loaded, with why (see [`StateDto::missing`]).
+fn missing_sources(c: &Core) -> HashMap<Id, String> {
+    c.project
+        .sources
+        .iter()
+        .filter(|s| c.sources.get(s.id).is_none())
+        .map(|s| (s.id, c.source_errors.get(&s.id).cloned().unwrap_or_else(|| format!("{}: not loaded", s.path))))
+        .collect()
 }
 
 fn push_undo(c: &mut Core, before: Project) {

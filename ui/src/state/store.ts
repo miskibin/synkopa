@@ -7,6 +7,7 @@ import { applyCompOp, compExtent } from '../lib/comp';
 import { applyNotebookOp } from '../lib/notebook';
 import { applyPatternOp } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
+import { dropSourcePeaks } from './peaks';
 
 export interface EngineState {
   ready: boolean;
@@ -22,6 +23,8 @@ export interface EngineState {
   audition: Record<string, Id>;
   /** Clip id → stretch status: being rendered (`''`) or failed (the message). Live only. */
   stretching: Record<string, string>;
+  /** Source id → why its audio is not loaded (it plays silence until relinked). */
+  missing: Record<string, string>;
 }
 
 const emptyProject = (): Project => ({ version: 2, bpm: 128, tracks: [], inserts: [], patterns: [], sources: [], clips: [], loop: null, nextId: 1 });
@@ -29,7 +32,7 @@ const emptyProject = (): Project => ({ version: 2, bpm: 128, tracks: [], inserts
 export const [S, setS] = createStore<EngineState>({
   ready: false, project: emptyProject(), revision: 0, canUndo: false, canRedo: false,
   transport: { playing: false, rec: false, monitor: false, metro: false, countIn: true, startBeat: 0 },
-  path: null, dirty: false, catalog: null, audition: {}, stretching: {},
+  path: null, dirty: false, catalog: null, audition: {}, stretching: {}, missing: {},
 });
 
 function stretchStatus(dto: StateDto): Record<string, string> {
@@ -115,6 +118,9 @@ function fresh<T extends object>(v: T): T {
 
 export function replaceState(dto: StateDto) {
   tellArrangement(null);
+  // a relink (or its undo) gives a source other audio under the same id: its waveform is redrawn
+  const was = new Map((rawOf(S.project) as Project).sources.map(s => [s.id, s.path]));
+  for (const s of dto.project.sources) { const p = was.get(s.id); if (p != null && p !== s.path) dropSourcePeaks(s.id); }
   batch(() => {
     setS('project', reconcile(fresh(dto.project), { key: 'id', merge: true }));
     bumpProject();
@@ -122,6 +128,7 @@ export function replaceState(dto: StateDto) {
     setS('transport', reconcile(dto.transport));
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
+    setS('missing', reconcile(dto.missing ?? {}));
   });
   localNext = Math.max(localNext, dto.project.nextId);
 }
@@ -133,6 +140,7 @@ export function replaceMeta(dto: StateDto) {
     setS('transport', reconcile(dto.transport));
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
+    setS('missing', reconcile(dto.missing ?? {}));
   });
   localNext = Math.max(localNext, dto.project.nextId);
 }

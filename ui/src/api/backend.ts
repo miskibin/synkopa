@@ -4,7 +4,7 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
-  AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Id, ImportResult, LibFile,
+  AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Id, ImportResult, LibFile, Relinked, RelinkSearch,
   KeysStatus, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, Vst3Info, Vst3Param,
 } from './types';
 
@@ -73,6 +73,14 @@ export interface Backend {
    *  insert (no track or channel routed to it, no effects; a new one when none is free), named after the copy.
    *  One undo step; other clips of the source are untouched. Rejects other clip kinds and mixed sources/tracks. */
   makeUnique(clipIds: Id[]): Promise<{ sourceId: Id; track: number; insertId: Id }>;
+  /** Points sources at other files (decoded first), one undo step. Rejects when no file decodes. */
+  relinkSources(items: { sourceId: Id; path: string }[]): Promise<Relinked[]>;
+  /** Finds the missing sources' files in `folder` (and below) by name; relinks the unambiguous ones of the remembered length. */
+  relinkSearch(folder: string): Promise<RelinkSearch>;
+  /** Native folder dialog (starting in `start`); null when cancelled. */
+  pickFolder(start?: string): Promise<string | null>;
+  /** Native "open file" dialog for one audio file (starting in `start`); null when cancelled. */
+  pickAudioFile(start?: string): Promise<string | null>;
   /** Renders a comp clip to a new source; the clip becomes an ordinary audio clip (one undo step). */
   flattenComp(clipId: Id): Promise<{ sourceId: Id }>;
   /** Plays one whole take instead of the comp (null = back to the comp). Live only, not undone. */
@@ -247,6 +255,18 @@ export function tauriBackend(): Backend {
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),
+    relinkSources: async items => (await invoke<{ relinked: Relinked[] }>('relink_sources', { args: { items } })).relinked,
+    relinkSearch: async folder => (await invoke<{ search: RelinkSearch }>('relink_search', { args: { folder } })).search,
+    async pickFolder(start) {
+      const r = await invoke<string | null>('plugin:dialog|open', { options: { directory: true, multiple: false, defaultPath: start ?? undefined } });
+      return r ?? null;
+    },
+    async pickAudioFile(start) {
+      const r = await invoke<string | string[] | null>('plugin:dialog|open', {
+        options: { multiple: false, directory: false, defaultPath: start ?? undefined, filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'flac', 'ogg', 'oga'] }] },
+      });
+      return r == null ? null : Array.isArray(r) ? r[0] ?? null : r;
+    },
     flattenComp: clipId => invoke('flatten_comp', { clipId }),
     compAudition: (compId, takeId) => invoke('comp_audition', { compId, takeId }),
     previewClip: (clipId, from) => invoke('preview_clip', { clipId, from: from ?? null }),

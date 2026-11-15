@@ -150,6 +150,11 @@ pub struct SourceStore {
     stretch: Stretcher,
     /// Pitch detector for analysis (`None` = built-in YIN).
     estimator: Option<Arc<dyn F0Estimator>>,
+    /// The path a relinked source's audio was decoded from (only relinked sources).
+    origin: HashMap<u64, String>,
+    /// Audio a relink replaced, by (source id, path), so undo and redo of a relink play the
+    /// file the restored path names. Holds one entry per relink made since the project opened.
+    parked: HashMap<(u64, String), Arc<Audio>>,
 }
 
 /// (source id, identity of the audio before stretching, render ratio bits, `Clip::pitch` bits)
@@ -296,6 +301,53 @@ impl SourceStore {
         self.music.retain(|k, _| k.0 != id);
         self.stretch.forget_source(id);
         self.audio.insert(id, a);
+    }
+
+    /// Drops a source's audio and everything derived from it (the source goes missing).
+    fn forget(&mut self, id: u64) {
+        self.derived.retain(|k, _| k.0 != id);
+        self.analysis.retain(|k, _| k.0 != id);
+        self.content.retain(|k, _| k.0 != id);
+        self.aligned.retain(|k, _| k.0 .0 != id && k.1 .0 != id);
+        self.music.retain(|k, _| k.0 != id);
+        self.stretch.forget_source(id);
+        self.audio.remove(&id);
+    }
+
+    /// Plays `audio` (decoded from `path`) for source `id` from now on. The audio it replaces,
+    /// decoded from `old_path`, is kept for undo. Pitch renders of clips are redone.
+    pub fn relink(&mut self, id: u64, old_path: &str, path: &str, audio: Arc<Audio>) {
+        if let Some(prev) = self.audio.get(&id).cloned() {
+            self.parked.insert((id, old_path.to_string()), prev);
+        }
+        self.parked.remove(&(id, path.to_string()));
+        self.insert(id, audio);
+        self.origin.insert(id, path.to_string());
+        self.tuned.clear();
+    }
+
+    /// After undo/redo: a relinked source whose path changed plays the audio of the path it
+    /// has now (kept by [`Self::relink`]), or nothing when that path never loaded.
+    pub fn reconcile(&mut self, sources: &[crate::model::Source]) {
+        let mut changed = false;
+        for s in sources {
+            let Some(from) = self.origin.get(&s.id).cloned() else { continue };
+            if from == s.path {
+                continue;
+            }
+            if let Some(prev) = self.audio.get(&s.id).cloned() {
+                self.parked.insert((s.id, from), prev);
+            }
+            match self.parked.remove(&(s.id, s.path.clone())) {
+                Some(a) => self.insert(s.id, a),
+                None => self.forget(s.id),
+            }
+            self.origin.insert(s.id, s.path.clone());
+            changed = true;
+        }
+        if changed {
+            self.tuned.clear();
+        }
     }
 
     /// Switches the pitch detector; every analysis (and what depends on it) is redone.

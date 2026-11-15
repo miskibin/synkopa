@@ -108,6 +108,9 @@ wave add-fx --insert 6 --type reverb --preset 3          # → {"fxId":1203,…}
 wave set-param --fx 1203 --param mix --value 30
 wave preset --fx 1203 --index 4
 wave import kick.wav loop.wav --track 3 --beat 16
+wave missing                                          # sources whose audio file is missing (they play silence)
+wave relink --folder D:/Backup/Samples                # find them there by name; relinks unambiguous matches of the same length
+wave relink --source 1010 --path D:/new/pad.wav       # point one source at another file (one undo step)
 wave make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
 wave apply --file edit.json --label "Busier hats"
 wave undo

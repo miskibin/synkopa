@@ -30,6 +30,7 @@ pub mod engine;
 pub mod keys;
 pub mod pitch_api;
 mod project_zip;
+pub mod relink;
 pub mod rt;
 pub mod sources;
 pub mod synth;
@@ -38,5 +39,7 @@ pub mod tune_edit;
 pub mod tune_render;
 pub mod vocal;
 
-pub use engine::{Engine, EngineError, MadeUnique, NoPlugins, PluginFactory, RenderTail, StateDto, TransportDto};
+pub use engine::{
+    Engine, EngineError, MadeUnique, NoPlugins, PluginFactory, Relink, RelinkSearch, Relinked, RenderTail, StateDto, TransportDto,
+};
 pub use rt::Rt;

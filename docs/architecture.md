@@ -293,6 +293,9 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `auto_vocal_plan` | `{clipId, beatClipId?, style?: "natural"\|"hard"}` | `AutoVocalPlan` (`ui/src/api/types.ts`): `{version, style, analysis, chain: [{type, params, mix, enabled, note}], trackGainDb\|null, stages, warnings}` — "Auto wokal": measures the vocal clip's region and calibrates tune → rider → fet → comp → deess → reverb → limit on it (`crates/engine/src/autovocal.rs`; key from `beatClipId`, else from the tracks not routed to the vocal's insert). Read-only, seconds per minute of audio; the UI applies the chain with `apply_ops` |
 | `clip_peaks` | `{clipId}` | like `source_peaks`, but of what the clip actually plays (norm/rev/pitch edits applied), in source time: a stretched clip draws them stretched |
 | `trim_clip` | `{clipId}` | `{sourceId}` — writes a new file with only the clip region, clip now points at it |
+| `missing_sources` | – | `[{sourceId, name, path, error, library, clips, channels}]` — sources whose audio is not loaded (also `StateDto.missing`: source id → why) |
+| `relink_sources` | `{args: {items: [{sourceId, path}]}}` | `{relinked: [{sourceId, path, error, lengthDiffers}]}` — decodes the files, then points the sources at them as one undo step (undo/redo also swap the decoded audio back; `SourceStore::relink`/`reconcile`). A file that does not decode leaves its source unchanged; none decoding is an error. `lib:` sources are refused |
+| `relink_search` | `{args: {folder}}` | `{search: {relinked, candidates: {[sourceId]: [{path, exactName, sharedFolders}]}, notFound, scanned, truncated}}` — walks the folder (≤ 250 000 entries, depth 24, no hidden or linked folders) for the missing sources' file names (`crates/engine/src/relink.rs`); relinks each one whose only best match has the remembered length, returns the rest ranked |
 | `make_unique` | `{clipIds}` | `{sourceId, track, insertId}` — FL's "Make unique" for audio clips (one source, one track): a copy of the source entry (same file and decoded audio, name "Name #n"), a new track right below that plays where the old track does (the master unless the user routed it; no insert is claimed), the clips move there. One undo step |
 | `flatten_comp` | `{clipId}` | `{sourceId}` — renders a comp clip to a new file; the clip becomes an `audio` clip, the takes go (one undo step) |
 | `comp_audition` | `{compId, takeId?}` | – ; plays one whole take instead of the comp (`null` = the comp). Live only: not saved, not undone, ignored by renders |
@@ -338,7 +341,8 @@ undo, import, recording, file open), `library-progress`, `model-progress`, `audi
 ```ts
 type StateDto = { project: Project; revision: number; canUndo: boolean; canRedo: boolean;
                   transport: TransportDto; path: string | null; dirty: boolean;
-                  audition: { [compId: string]: number } };   // comp → auditioned take
+                  audition: { [compId: string]: number };     // comp → auditioned take
+                  missing: { [sourceId: string]: string } };  // sources whose audio is not loaded → why
 type TransportDto = { playing: boolean; rec: boolean; monitor: boolean; metro: boolean; countIn: boolean; startBeat: number };
 type AudioConfig = { host: string; output: string | null; input: string | null; sampleRate: number | null; bufferSize: number | null;
                      inputChannel?: number | null; recOffsetMs?: number | null };
