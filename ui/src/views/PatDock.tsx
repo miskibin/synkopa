@@ -37,7 +37,8 @@ export function Workspace() {
     track(ev => setU('rollDockH', rollH(h0 - (ev.clientY - sy))), null, 'row-resize');
   };
   return (
-    <div ref={col} class="workcol">
+    // the Mix view (F9) covers this; it stays laid out (scroll, zoom and sizes are kept) but is not painted or reachable
+    <div ref={col} class="workcol" classList={{ away: U.mixView }} inert={U.mixView} aria-hidden={U.mixView}>
       <div ref={row} class="workrow">
         <Show when={U.pickOpen}><Browser /></Show>
         <Show when={rackOn()}>

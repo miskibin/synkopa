@@ -16,10 +16,36 @@ export const PLAYLIST_MIN_W = 320, PLAYLIST_MIN_H = 140;
  * The Mixer gives way to it (Mixer.tsx).
  */
 export const ROLL_DOCK_MIN_H = 300;
-/** The toolbar's and the mixer's title bar + splitter's heights (px), for the room a docked roll needs. */
-export const TOOLBAR_H = 54, MIXER_BAR_H = 31;
-/** What the Mixer leaves of the window's height while the Piano roll is docked: toolbar, Playlist, roll, their splitter, its own bar. */
+/** The toolbar's height and the docked mixer's splitter (it has no title bar), for the room a docked roll needs. */
+export const TOOLBAR_H = 54, MIXER_BAR_H = SPLIT;
+/** What the Mixer leaves of the window's height while the Piano roll is docked: toolbar, Playlist, roll, their splitter, its own splitter. */
 export const ROLL_DOCKED_RESERVE = TOOLBAR_H + PLAYLIST_MIN_H + SPLIT + ROLL_DOCK_MIN_H + MIXER_BAR_H;
+
+/**
+ * The docked mixer's height. It has no title bar: dragging its splitter below `MIX_COLLAPSE_AT`
+ * collapses it to a thin handle (`MIX_HANDLE_H`) and keeps the height it had for when it opens
+ * again; between the breakpoint and `MIX_MIN_H` it stays at its minimum. Dragging the collapsed
+ * handle up by `MIX_OPEN_DRAG` opens it under the pointer.
+ */
+export const MIX_MIN_H = 170, MIX_COLLAPSE_AT = 110, MIX_HANDLE_H = 6, MIX_OPEN_DRAG = 24;
+/** The tallest docked mixer for a window `winH` high: it leaves the Playlist (and a docked Piano roll) their room. */
+export function mixMaxH(winH: number, rollDocked: boolean): number {
+  return Math.max(MIX_MIN_H, winH - (rollDocked ? ROLL_DOCKED_RESERVE : 200));
+}
+/** A wanted docked height clamped to what fits (whole px). */
+export function fitMixH(h: number, max: number): number {
+  return Math.round(Math.min(Math.max(h, MIX_MIN_H), Math.max(MIX_MIN_H, max)));
+}
+/** Where the docked mixer goes while its splitter is dragged by `dy` (down = positive) from height `h0`: collapsed below the breakpoint (the height before the drag is kept), else the fitted height. */
+export function mixSplitDrag(h0: number, dy: number, max: number): { min: boolean; h: number } {
+  const raw = h0 - dy;
+  return raw < MIX_COLLAPSE_AT ? { min: true, h: h0 } : { min: false, h: fitMixH(raw, max) };
+}
+/** Dragging the collapsed handle by `dy`: it opens once pulled up by `MIX_OPEN_DRAG` and then follows the pointer; pushed back down it collapses again, keeping `last`. */
+export function mixHandleDrag(last: number, dy: number, max: number): { min: boolean; h: number } {
+  const raw = -dy;
+  return raw < MIX_OPEN_DRAG ? { min: true, h: last } : { min: false, h: fitMixH(raw, max) };
+}
 /** Default docked sizes. */
 export const RACK_DOCK_W = 0, ROLL_DOCK_H = 320;  // rackDockW 0: fit the pattern (`rackDockFitWidth`)
 
@@ -65,7 +91,8 @@ export function parseLayout(raw: string | null): Partial<UiState> {
   const p: Partial<UiState> = {
     tool: TOOLS_OK.includes(v.tool as Tool) ? (v.tool as Tool) : undefined,
     snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 96), follow: bool(v.follow),
-    mixOpen: bool(v.mixOpen), mixMin: bool(v.mixMin), mixH: num(v.mixH, 100, 2000),
+    // the docked mixer can no longer be closed: a layout saved with it closed opens collapsed
+    mixMin: v.mixOpen === false || v.mixMin === true ? true : bool(v.mixMin), mixH: num(v.mixH, 100, 2000),
     headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),
     browserTab: v.browserTab === 'project' || v.browserTab === 'library' ? v.browserTab : undefined,
     rackDock: bool(v.rackDock), rackDockW: v.rackDockW === 0 ? 0 : num(v.rackDockW, 200, 8000),

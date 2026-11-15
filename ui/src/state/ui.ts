@@ -50,7 +50,10 @@ export interface UiState {
   tool: Tool; snap: number; bw: number;
   sel: Id[]; cur: { kind: ClipKind; ref: Id } | null;
   start: number; follow: boolean; alt: boolean;
-  mixOpen: boolean; mixMin: boolean; mixH: number; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
+  /** The docked mixer is collapsed to its thin handle (`mixH`: the height it opens to again). */
+  mixMin: boolean; mixH: number; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
+  /** F9: the Mix view fills the workspace with the mixer (not saved: a launch starts in the arrange layout). */
+  mixView: boolean;
   plugs: PlugWin[];
   /** effect windows tucked behind the playlist (FL-style: clicking the playlist brings it to the front) */
   plugsHidden: boolean;
@@ -80,6 +83,8 @@ export interface UiState {
   pat: Id | null;
   /** The selected Channel Rack channel: the Piano roll's channel, the graph editor's, the typing keyboard's. */
   selCh: Id | null;
+  /** More selected Channel Rack channels (Shift+click / Shift+Ctrl+click), `selCh` among them; empty = only `selCh`. */
+  chSel: Id[];
   rackWin: PatWin | null;
   rollWin: PatWin | null;
   /** The Channel Rack is docked left of the Playlist (`rackDockW` px wide; 0 = as wide as the pattern) instead of floating. */
@@ -115,13 +120,13 @@ export interface UiState {
 export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1 },
   start: 0, follow: true, alt: false,
-  mixOpen: true, mixMin: false, mixH: 300, mixSel: 6, fxSel: 903, fxDrag: null,
+  mixMin: false, mixH: 300, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null,
   plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
   openingProject: false,
   projectZipBusy: false,
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'project',
-  ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, rackWin: null, rollWin: null,
+  ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, chSel: [], rackWin: null, rollWin: null,
   rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true,
   rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
   playing: false, previewing: false, previewPath: null, stretchMode: false,
@@ -137,7 +142,7 @@ const LAYOUT_KEY = 'wave.layout';
 try { setU(parseLayout(localStorage.getItem(LAYOUT_KEY))); } catch { /* private window */ }
 const geo = (w: PatWin): Geo => ({ x: w.x, y: w.y, w: w.w, h: w.h });
 createRoot(() => createEffect(() => {
-  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixOpen: U.mixOpen, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
+  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
     rackDock: U.rackDock, rackDockW: U.rackDockW, rollDock: U.rollDock, rollDockH: U.rollDockH, rollMax: U.rollMax,
     // the floating place: live while the window is open (a restart with it open keeps it), else where it closed
     rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat });

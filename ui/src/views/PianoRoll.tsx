@@ -254,7 +254,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   });
   onCleanup(() => { cancelAnimationFrame(rafMain); cancelAnimationFrame(rafVel); });
   onMount(() => onCleanup(addFrameTask(() => {
-    const p = curPat(); if (!p || !phead || !U.rollWin) return;
+    const p = curPat(); if (!p || !phead || !U.rollWin || U.mixView) return;
     const b = patPlayhead(p);
     if (b < 0) { phead.style.opacity = phRuler.style.opacity = '0'; playingNow = false; followHold = false; lastBeat = -1; return; }
     playingNow = true;

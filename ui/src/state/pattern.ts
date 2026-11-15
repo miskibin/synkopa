@@ -6,7 +6,7 @@ import { t, tName } from '../lib/i18n';
 import { newSynthChannel } from '../lib/synth';
 import { prefs } from './prefs';
 import { be } from '../api/backend';
-import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, type Channel, type Id, type LibFile, type Note, type Op, type Pattern } from '../api/types';
+import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
 import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
@@ -19,6 +19,8 @@ import { allocId, plain, plainNotes, S } from './store';
 import { curBeat, tele } from './telemetry';
 import { loopSpan, type BeatRange } from '../lib/patLoop';
 import { say, setU, U } from './ui';
+import { leaveMixView } from './mixView';
+import { planRoute, rangeSelect, toggleSelect } from '../lib/mixer';
 
 /** Channel Rack geometry shared with the view (sizes the window to its content). */
 export const RACK_LEFT = 212, RACK_HEAD = 34, RACK_ROW = 32;
@@ -115,6 +117,7 @@ export const rackWidthFor = (steps: number, x: number) => rackFitWidth(steps, { 
 export const rackPlaceFor = (steps: number, x: number) => fitOnScreen(x, rackWidthFor(steps, 10), window.innerWidth);
 /** F6: open the Channel Rack (or bring it to the front). */
 export function openRack() {
+  leaveMixView(); // the pattern windows live in the arrange layout
   if (!S.project.patterns.length) { say(t('b.st.noPatterns')); return; }
   if (U.rackDock) focusSoon('rackWin');
   if (U.rackWin) { rackFront(); return; }
@@ -140,13 +143,15 @@ function dockKey(k: WinKey, open: () => void, close: () => void) {
   if (a === 'hide') close(); else if (a === 'show') open(); else focusSoon(k);
 }
 export function toggleRack() {
+  if (leaveMixView()) return openRack(); // F6 in the Mix view: back to arrange, rack shown
   if (U.rackDock) return dockKey('rackWin', openRack, closeRack);
   if (onTop('rackWin')) closeRack(); else openRack();
 }
 /** View menu: show / hide the Channel Rack (the check mark is whether it is open). */
-export function toggleRackShown() { if (U.rackDock) { if (U.rackWin) closeRack(); else openRack(); } else toggleRack(); }
+export function toggleRackShown() { if (leaveMixView()) return openRack(); if (U.rackDock) { if (U.rackWin) closeRack(); else openRack(); } else toggleRack(); }
 /** Dock the Channel Rack left of the Playlist (showing it), or float it as a window again. */
 export function setRackDock(on: boolean) {
+  leaveMixView();
   if (U.rackDock === on) { if (on && !U.rackWin) openRack(); return; }
   setU('rackDock', on);
   say(t(on ? 'b.dk.rackDocked' : 'b.dk.rackFloats'));
@@ -157,6 +162,7 @@ export function setRackDock(on: boolean) {
 
 /** F7: open the Piano roll on `ch` (default: the selected channel), or bring it to the front. */
 export function openRoll(ch?: Id) {
+  leaveMixView();
   if (!S.project.patterns.length) { say(t('b.st.noPatterns')); return; }
   if (ch != null) selectChannel(ch);
   if (!selChan()) { say(t('b.st.noChannels')); return; }
@@ -196,13 +202,15 @@ export function rollMoved() { if (U.rollMax) setU('rollMax', false); }
 /** Close the Piano roll; it reopens where it was (`rollFloat`: kept across restarts). */
 export function closeRoll() { const w = U.rollWin; if (w) setU('rollFloat', { x: w.x, y: w.y, w: w.w, h: w.h }); setU('rollWin', null); }
 export function toggleRoll() {
+  if (leaveMixView()) return openRoll();
   if (U.rollDock) return dockKey('rollWin', () => openRoll(), closeRoll);
   if (onTop('rollWin')) closeRoll(); else openRoll();
 }
 /** View menu: show / hide the Piano roll (the check mark is whether it is open). */
-export function toggleRollShown() { if (U.rollDock) { if (U.rollWin) closeRoll(); else openRoll(); } else toggleRoll(); }
+export function toggleRollShown() { if (leaveMixView()) return openRoll(); if (U.rollDock) { if (U.rollWin) closeRoll(); else openRoll(); } else toggleRoll(); }
 /** Dock the Piano roll under the Playlist (showing it), or float it as a window again. */
 export function setRollDock(on: boolean) {
+  leaveMixView();
   if (U.rollDock === on) { if (on && !U.rollWin) openRoll(); return; }
   setU('rollDock', on);
   say(t(on ? 'b.dk.rollDocked' : 'b.dk.rollFloats'));
@@ -230,10 +238,56 @@ export function openPattern(id: Id) {
 }
 /** Select a channel; the mixer follows to the insert it plays through (FL), so mixing it needs no hunt for the strip. */
 export function selectChannel(id: Id) {
+  if (U.chSel.length) setU('chSel', []);
   if (U.selCh === id) return;
   setU('selCh', id);
   const ins = chanById(id)?.insert, m = ins ? S.project.inserts.find(x => x.id === ins) : undefined;
   if (m && U.mixSel !== m.id) setU({ mixSel: m.id, fxSel: m.fx[0]?.id ?? null });
+}
+
+/** Shift+click on a channel name: select the channels from the selected one to this one (the selected one stays the anchor). */
+export function selectChannelRange(id: Id) {
+  const anchor = selChan()?.id ?? null;
+  if (anchor == null) return selectChannel(id);
+  setU('chSel', rangeSelect(channels().map(c => c.id), anchor, id));
+}
+/** Shift+Ctrl+click: add the channel to the selection or take it out. */
+export function toggleChannelSelected(id: Id) {
+  const anchor = selChan()?.id ?? null;
+  const next = toggleSelect(U.chSel.filter(x => chanById(x)), anchor, id);
+  if (!next.length) return setU('chSel', []);
+  // the anchor (the Piano roll's channel) stays a selected one
+  if (anchor == null || !next.includes(anchor)) setU('selCh', next[next.length - 1]);
+  setU('chSel', next.length > 1 ? next : []);
+}
+/** The selected Channel Rack channels, in rack order: the multi-selection, else the selected channel (as the rack highlights it; none without channels). */
+export function selectedChannels(): Channel[] {
+  if (!U.chSel.length) { const c = selChan(); return c ? [c] : []; }
+  const ids = new Set(U.chSel);
+  return channels().filter(c => ids.has(c.id));
+}
+export const isChannelSelected = (id: Id) => (U.chSel.length ? U.chSel.includes(id) : selChan()?.id === id);
+
+/**
+ * FL's Ctrl+L / Shift+Ctrl+L: route the selected channels to the insert `insId`, or one per insert
+ * from it on (creating the missing inserts, named after their channel). One undo step.
+ */
+export function routeSelectedChannels(insId: Id, spread: boolean) {
+  const cs = selectedChannels();
+  if (!cs.length) { say(t('c.mv.noSel')); return; }
+  const at = S.project.inserts.findIndex(m => m.id === insId);
+  if (spread && at === 0) { say(t('c.mv.spreadMaster')); return; }
+  const plan = planRoute(cs, S.project.inserts, insId, spread, allocId);
+  if (!plan) return;
+  const ops: Op[] = plan.create.map(n => ({ op: 'putInsert' as const, insert: { id: n.id, name: n.name, color: '#8b93a1', vol: VOL_UNITY, pan: 0, muted: false, solo: false, fx: [] } }));
+  for (const [ch, ins] of plan.assign) { const c = chanById(ch); if (c && c.insert !== ins) ops.push(chanOp(c, { insert: ins })); }
+  if (!ops.length) { say(t('c.mv.already')); return; }
+  commit(ops, t(spread ? 'c.mv.undoSpread' : 'c.mv.undoRoute'));
+  const label = (id: Id) => { const i = S.project.inserts.findIndex(m => m.id === id); return i === 0 ? 'Master' : t('b.pe.insWord', { n: i }); };
+  const last = plan.assign[plan.assign.length - 1][1];
+  say(spread
+    ? t('c.mv.saySpread', { n: cs.length, from: label(insId), to: label(last) }) + (plan.create.length ? t('c.mv.sayNew', { n: plan.create.length }) : '')
+    : t('c.mv.sayRoute', { names: cs.length > 3 ? t('c.mv.nChannels', { n: cs.length }) : cs.map(c => c.name).join(', '), to: label(insId) }));
 }
 
 // ---------------------------------------------------------------- patterns

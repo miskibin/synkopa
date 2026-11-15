@@ -205,19 +205,42 @@ a { color: var(--blue); }
 .dropHint span { padding: 6px 12px; border-radius: 4px; background: var(--bg7); font: 500 12px var(--sans); color: var(--fg-hi); }
 
 /* ---------- mixer ---------- */
-.mixsplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); }
-.mixsplit:hover { background: var(--blue); }
-.mixbar { height: 26px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 4px 0 10px; background: var(--bg5); border-bottom: 1px solid var(--bg0); }
-.mixbar .t { font: 600 10px var(--sans); letter-spacing: .12em; color: var(--fg3); }
-.mixbar button { width: 24px; height: 20px; border: 0; border-radius: 3px; background: transparent; color: var(--fg3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; padding: 0; }
-.mixbar button:hover { background: var(--line); color: var(--fg-hi); }
+/* the area under the toolbar: the arrange layout (Playlist, docked panels, docked mixer) or the Mix view over it */
+.stage { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.workcol.away { content-visibility: hidden; }
+.mixdock { flex: none; display: flex; flex-direction: column; }
+.mixsplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
+.mixsplit:hover, .mixsplit:focus-visible { background: var(--blue); }
+/* the collapsed docked mixer: a thin full-width handle with a grip */
+.mixhandle { flex: none; display: flex; align-items: center; justify-content: center; cursor: row-resize; background: var(--bg5); border-top: 1px solid var(--bg0); outline: none; }
+.mixhandle .grip { width: 40px; height: 2px; border-radius: 1px; background: var(--fg5); }
+.mixhandle:hover, .mixhandle:focus-visible { background: var(--blue); }
+.mixhandle:hover .grip, .mixhandle:focus-visible .grip { background: var(--on-accent, #fff); }
+.mixview { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--mixer-bg); }
+.mvbar { height: 30px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 8px; background: var(--bg5); border-bottom: 1px solid var(--bg0); min-width: 0; }
+.mvback { height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 5px; border: 0; border-radius: 4px; background: var(--line); color: var(--fg-hi); font: 500 11px var(--sans); cursor: pointer; flex: none; }
+.mvback:hover { background: var(--line2); }
+.mvback .kbd { font-size: 9px; color: var(--fg4); }
+.mvhint { flex: 1; min-width: 0; font: 400 11px var(--sans); color: var(--fg4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mixer.full { flex: 1; min-height: 0; }
+.winlayer.mv > .patwin { visibility: hidden; }
 .mixer { flex: none; display: flex; background: var(--mixer-bg); min-height: 0; }
 .strips { flex: 1; min-width: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
-.strip { width: 80px; flex: none; display: flex; flex-direction: column; gap: 6px; padding: 0 6px 8px; background: var(--bg4); border-right: 1px solid var(--bg0); min-height: 0; }
+.strip { width: 86px; flex: none; display: flex; flex-direction: column; gap: 6px; padding: 0 6px 8px; background: var(--bg4); border-right: 1px solid var(--bg0); min-height: 0; }
 .strip.on { background: var(--sel-bg2); box-shadow: inset 0 0 0 1px var(--sel-ring); }
 .strip .bar { height: 3px; margin: 0 -6px; }
-.strip .lbl { font: 500 9px var(--mono); color: var(--fg4); }
-.strip .fxn { font: 500 9px var(--mono); color: var(--blue-hi); white-space: nowrap; padding: 1px 3px; margin: -1px -3px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
+.strip .nmrow { display: flex; align-items: baseline; gap: 3px; min-width: 0; height: 15px; margin-top: 2px; }
+.strip .nmrow .num { flex: none; font: 500 9px var(--mono); color: var(--fg4); }
+.strip .nmrow .num.only { flex: 1; font: 600 11px var(--sans); color: var(--fg2); }
+.strip.dimmed .nmrow .num.only { color: var(--fg4); }
+.strip .nmrow .nm { flex: 1; min-width: 0; text-align: left; }
+.strip .fxn { flex: none; align-self: center; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: 500 9px var(--mono); color: var(--blue-hi); white-space: nowrap; padding: 3px; margin-right: -3px; border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
+.strip .fxn .fxdot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-hi); }
+.strip .fxn.off .fxdot { background: transparent; box-shadow: inset 0 0 0 1px var(--fg5); }
+.strip .fxn .fxt { display: none; }
+.mixer.full .strip .fxn .fxdot { display: none; }
+.mixer.full .strip .fxn .fxt { display: inline; }
+.mixer.full .strip { width: 112px; }
 .strip .fxn:hover { background: var(--bg6); }
 .strip .fxn.off { color: var(--fg5); text-decoration: line-through; }
 .strip .nm { font: 500 11px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
@@ -776,7 +799,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .pitem .picon, .sitem .picon, .cname .cicon, .strip .micon { display: inline-flex; flex: none; opacity: .9; }
 .pitem .picon, .sitem .picon { width: 12px; justify-content: center; }
 .cname .cicon { margin-right: 4px; }
-.strip .micon { margin-right: 4px; vertical-align: -1px; }
+.strip .micon { margin-right: 3px; vertical-align: -1px; }
 
 /* settings dialog: tabs on the left */
 .dialog.setdlg { width: min(660px, 94vw); height: min(560px, 90vh); display: flex; flex-direction: column; }

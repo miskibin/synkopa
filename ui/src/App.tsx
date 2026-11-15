@@ -13,7 +13,9 @@ import { closeMenu, say, setU, U } from './state/ui';
 import { ContextMenu } from './ui/Menu';
 import { importAt } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
-import { Mixer } from './views/Mixer';
+import { Mixer, MixView } from './views/Mixer';
+import { leaveMixView, toggleMixView } from './state/mixView';
+import { routeSelectedChannels } from './state/pattern';
 import { playlistZoom } from './views/Playlist';
 import { Workspace } from './views/PatDock';
 import { SampleEditor } from './views/SampleEditor';
@@ -53,8 +55,11 @@ function plugRank(z: number) {
  * the canvas calls preventDefault on pointerdown, so focus would otherwise stay in that window and swallow the keys. */
 function reclaimFocus(e: PointerEvent) {
   const ae = document.activeElement as HTMLElement | null, tg = e.target as HTMLElement;
-  if (ae && ae !== document.body && ae.closest('.win') && !tg.closest('.win') && !typingIn(tg)) ae.blur();
+  lastClickInWin = !!tg.closest('.win');
+  if (ae && ae !== document.body && ae.closest('.win') && !lastClickInWin && !typingIn(tg)) ae.blur();
 }
+/** The last click was in a floating window (an effect window's title bar takes no focus, so the focus alone does not tell). */
+let lastClickInWin = false;
 
 /** The channel the typing keyboard plays: the open channel window, the selected channel while the rack or the roll is open,
  * the channel feeding the top effect window's insert, the MIDI target, else the first instrument. */
@@ -102,6 +107,13 @@ function onKey(e: KeyboardEvent) {
     if (NB.open && !rackFloating() && !rollFloating() && !U.plugs.length) return closeNotebook();
     if (chanWin()) return closeChannelWindow();
     if (U.editor) return A.closeEditor();
+    if (U.mixView) {
+      // the Mix view: Esc closes the effect window you are working in (last click or keyboard there), else goes back to arrange
+      const inWin = lastClickInWin || !!(document.activeElement as HTMLElement | null)?.closest?.('.win');
+      if (inWin && U.plugs.length && !U.plugsHidden) return A.closePlug(A.topPlug()!.fxId);
+      if (inWin && U.pitchEd) return A.closePitchEditor();
+      return void leaveMixView();
+    }
     if (closeTopPatWin()) return;
     if (U.plugs.length) return A.closePlug(A.topPlug()!.fxId);
     if (U.pitchEd) return A.closePitchEditor();
@@ -129,7 +141,9 @@ function onKey(e: KeyboardEvent) {
   if (!m && !e.altKey && /^Numpad[1-9]$/.test(e.code)) { e.preventDefault(); return pickPatternNum(+e.code.slice(6)); }
   if (m && e.shiftKey && k === 'c') { e.preventDefault(); return clonePattern(); }
   if (e.key === 'F5') { e.preventDefault(); return U.plugsHidden ? A.showPlugs() : A.playlistFront(); }
-  if (e.key === 'F9') { e.preventDefault(); return setU('mixOpen', !U.mixOpen); }
+  if (e.key === 'F9') { e.preventDefault(); return toggleMixView(); }
+  // FL: route the selected Channel Rack channels to the selected mixer insert (Shift: one per insert from it on)
+  if (m && !e.altKey && e.code === 'KeyL') { e.preventDefault(); return routeSelectedChannels(U.mixSel, e.shiftKey); }
   if (m && k === 'z') { e.preventDefault(); return void (e.shiftKey ? A.redo() : A.undo()); }
   if (m && k === 'y') { e.preventDefault(); return void A.redo(); }
   if (m && k === 'n') { e.preventDefault(); return void A.projectNew(); }
@@ -231,12 +245,15 @@ export function App() {
     <>
     <div class="app" inert={U.openingProject} onContextMenu={e => e.preventDefault()}>
       <Toolbar />
-      <Workspace />
-      <Show when={U.mixOpen}><Mixer /></Show>
+      <div class="stage">
+        <Workspace />
+        <Mixer />
+        <Show when={U.mixView}><MixView /></Show>
+      </div>
       <SampleEditor />
       <ChannelWindow />
       <PitchEditor />
-      <div class="winlayer" classList={{ hidden: U.plugsHidden }}>
+      <div class="winlayer" classList={{ hidden: U.plugsHidden, mv: U.mixView }}>
         <For each={U.plugs}>{pw => <FxWindow pw={pw} z={plugRank(pw.z)} />}</For>
         <Show when={!U.rackDock}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
         <Show when={!U.rollDock}><PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} /></Show>
