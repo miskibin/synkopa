@@ -357,7 +357,9 @@ export type TransformVerb =
   | { kind: 'euclidFill'; ch: Id; k: number; n: number; rotate?: number; vel?: number }
   | { kind: 'strum'; width?: number; ramp?: number }
   | { kind: 'euclidDrums'; voices: { ch: Id; k: number; n: number; rotate?: number; vel?: number }[]; bars?: number }
-  | { kind: 'melody'; ch: Id; bars?: number; density?: number; repeat?: number };
+  | { kind: 'melody'; ch: Id; bars?: number; density?: number; repeat?: number }
+  | { kind: 'chord'; harmony?: string }
+  | { kind: 'progression'; ch: Id; bars?: number; template?: string; voiceLead?: boolean; degrees?: number[] };
 /** Which notes a `transformNotes` verb touches. */
 export type TransformSelect =
   | { kind: 'indices'; indices: number[] }

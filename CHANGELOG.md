@@ -4,6 +4,21 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Chord tools in the Piano roll.** New **Chord stamp** tool (C): pick a chord type (18, from
+  major and minor through 9ths to power chords) and an inversion, then click the grid — the
+  chord is written with the clicked key as its root; clicking the same spot again replaces it,
+  and right-click removes the whole chord. The roll ghosts the chord under the pointer and its
+  status bar names it. In the **Tools** strip, *Chord* harmonizes selected single notes into
+  chords (diatonic in the project key, or a named type spelled by interval), and *Progression*
+  generates one chord per bar from templates like Pop, the minor loop, Trap, Andalusian and an
+  8-bar canon — or a seeded *Chance* walk — with optional **Voice-lead** that picks inversions
+  so the chords move as little as possible. The same verbs work headless: `wave notes stamp`,
+  `wave notes chord` and `wave notes progression` (with `--degrees "0:5:2:6"` for arbitrary
+  chord sequences).
+
 ## 0.9.17 — 2026-11-15
 
 ### Added

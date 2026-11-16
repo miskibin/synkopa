@@ -27,6 +27,126 @@ export class SplitMix64 {
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+// ---------------------------------------------------------------------------
+// chord tools — the mirror of transform.rs's chord tables and helpers
+// ---------------------------------------------------------------------------
+
+/** The stampable chord types in picker order: `[id, semitone intervals from the root]`.
+ * The engine pins the same table (`CHORD_TYPES` in transform.rs) and the golden tests
+ * assert the same voicings on both sides. */
+export const CHORD_TYPES: [string, number[]][] = [
+  ['maj', [0, 4, 7]],
+  ['min', [0, 3, 7]],
+  ['dim', [0, 3, 6]],
+  ['aug', [0, 4, 8]],
+  ['sus2', [0, 2, 7]],
+  ['sus4', [0, 5, 7]],
+  ['7', [0, 4, 7, 10]],
+  ['maj7', [0, 4, 7, 11]],
+  ['min7', [0, 3, 7, 10]],
+  ['9', [0, 4, 7, 10, 14]],
+  ['add9', [0, 4, 7, 14]],
+  ['maj9', [0, 4, 7, 11, 14]],
+  ['min9', [0, 3, 7, 10, 14]],
+  ['6', [0, 4, 7, 9]],
+  ['m6', [0, 3, 7, 9]],
+  ['dim7', [0, 3, 6, 9]],
+  ['m7b5', [0, 3, 6, 10]],
+  ['5', [0, 7]],
+];
+
+const CHORD_SUFFIX: Record<string, string> = {
+  maj: '', min: 'm', dim: '°', aug: '+', sus2: 'sus2', sus4: 'sus4', 7: '7', maj7: 'maj7',
+  min7: 'm7', 9: '9', add9: 'add9', maj9: 'maj9', min9: 'm9', 6: '6', m6: 'm6', dim7: '°7',
+  m7b5: 'm7♭5', 5: '5',
+};
+
+/** Harmony types the `chord` verb can spell; the stamp picker's exotic types stay stamp-only. */
+export const HARMONY_TYPES = ['diatonic', 'maj', 'min', '7', 'maj7', 'min7'];
+
+/** Progression templates: one diatonic 7th chord per bar, as scale-degree indices. */
+export const PROGRESSION_TEMPLATES: [string, number[]][] = [
+  ['pop', [0, 4, 5, 3]],               // I V vi IV
+  ['pop2', [5, 3, 0, 4]],              // vi IV I V
+  ['minloop', [0, 5, 2, 6]],           // i VI III VII
+  ['trap', [0, 3, 5, 4]],              // i iv VI v
+  ['iivI', [1, 4, 0]],                 // ii V I
+  ['doowop', [0, 5, 3, 4]],            // I vi IV V
+  ['andalusian', [0, 6, 5, 4]],        // i VII VI v
+  ['blues', [0, 3, 4]],                // i iv v
+  ['canon', [0, 4, 5, 2, 3, 0, 3, 4]], // 8-bar canon cycle
+];
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+/** Absolute pitches of a chord rooted at `root` (MIDI), rotated `inversion` times (each
+ * rotation lifts the lowest voice an octave, clamped to the last inversion), ascending.
+ * `null` for an unknown type or a root pushing the top voice past MIDI 127. */
+export function chordPitches(root: number, typeId: string, inversion = 0): number[] | null {
+  const t = CHORD_TYPES.find(([id]) => id === typeId);
+  if (!t || !Number.isInteger(root) || root < 0 || root + t[1][t[1].length - 1] > 127) return null;
+  const p = t[1].map(v => root + v);
+  for (let k = 0; k < Math.min(inversion, t[1].length - 1); k++) {
+    let lo = 0;
+    p.forEach((v, i) => { if (v < p[lo]) lo = i; });
+    p[lo] += 12;
+  }
+  return p.sort((a, b) => a - b);
+}
+
+/** The chord a pitch set spells, bass-first: the lowest note's pitch class is tried as
+ * the root first, so a root-position C6 is "C6", never "Am7". Unknown sets → "X?". */
+export function chordName(pitches: number[]): string {
+  if (!pitches.length) return '?';
+  const bass = ((Math.min(...pitches) % 12) + 12) % 12;
+  const pcs = [...new Set(pitches.map(p => ((p % 12) + 12) % 12))].sort((a, b) => a - b);
+  for (const pc of [bass, ...pcs.filter(pc => pc !== bass)]) {
+    const rel = pcs.map(p => (p - pc + 12) % 12).sort((a, b) => a - b).join(',');
+    for (const [id, iv] of CHORD_TYPES) {
+      const sig = [...new Set(iv.map(v => v % 12))].sort((a, b) => a - b).join(',');
+      if (rel === sig) return NOTE_NAMES[pc] + CHORD_SUFFIX[id];
+    }
+  }
+  return NOTE_NAMES[bass] + '?';
+}
+
+/** The scale's semitone offsets from the key, ascending (the set bits of the mask). */
+function scaleOffsets(scale: number): number[] {
+  const mask = scaleMask(scale);
+  const out: number[] = [];
+  for (let k = 0; k < 12; k++) if (mask & (1 << k)) out.push(k);
+  return out;
+}
+
+/** The diatonic stack on scale degree `deg` — degrees deg, deg+2, deg+4 (+deg+6 for a
+ * seventh) — as semitones above the key, octave-wrapped. */
+function diatonicStack(scale: number, deg: number, seventh: boolean): number[] {
+  const offs = scaleOffsets(scale);
+  const n = offs.length;
+  return (seventh ? [0, 2, 4, 6] : [0, 2, 4]).map(i => {
+    const k = deg + i;
+    return offs[k % n] + 12 * Math.floor(k / n);
+  });
+}
+
+/** Expand a progression mode into per-bar scale degrees: a named template cycles, or
+ * `chance` walks ±2 degrees from a seeded random start. `null` for an unknown id. */
+export function progressionDegrees(mode: string, bars: number, seed: number, scaleDegrees: number): number[] | null {
+  const n = scaleDegrees;
+  if (mode === 'chance') {
+    const rng = new SplitMix64(seed);
+    let d = rng.below(n);
+    const out: number[] = [];
+    for (let b = 0; b < bars; b++) {
+      out.push(d);
+      d = (d + rng.below(5) + n - 2) % Math.max(1, n);
+    }
+    return out;
+  }
+  const t = PROGRESSION_TEMPLATES.find(([id]) => id === mode);
+  return t ? Array.from({ length: bars }, (_, b) => t[1][b % t[1].length]) : null;
+}
+
 /** The engine's `transform::snap_midi` (`pitch::snap` within MIDI keys): nearest
  * in-scale key in 0..=127, ties keep the lower note. */
 export function snapMidi(m: number, key: number, mask: number): number {
@@ -62,7 +182,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
   // generators replace every note of their target channel(s) and keep the other
   // channels, so a selection does not scope them (it would leave unselected notes of the
   // target channel under the new ones); it is still validated, like the engine does
-  const generative = verb.kind === 'euclidFill' || verb.kind === 'euclidDrums' || verb.kind === 'melody';
+  const generative = verb.kind === 'euclidFill' || verb.kind === 'euclidDrums' || verb.kind === 'melody' || verb.kind === 'progression';
   // the notes the verb sees — the engine builds the same index list
   const selIdx = !select
     ? notes.map((_, i) => i)
@@ -76,6 +196,103 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
   const target: Note[] = idx.map(i => structuredClone(notes[i]));
 
   switch (verb.kind) {
+    case 'chord': {
+      const harmony = verb.harmony ?? 'diatonic';
+      if (!HARMONY_TYPES.includes(harmony)) {
+        throw new Error(`chord harmony must be one of ${HARMONY_TYPES.join(', ')} (the other chord types are stamp-only)`);
+      }
+      if (harmony === 'diatonic' && (key == null || (scale ?? 1) === 0)) {
+        throw new Error('chord diatonic needs a project key and scale (`wave key A minor`)');
+      }
+      const groups = new Map<string, number[]>();
+      target.forEach((n, i) => {
+        const k = `${n.ch}:${n.step}`;
+        const g = groups.get(k);
+        if (g) g.push(i); else groups.set(k, [i]);
+      });
+      // process groups in (channel, step) order: appended tones land deterministically
+      const order = [...groups.keys()].sort((a, b) => {
+        const [ca, sa] = a.split(':').map(Number);
+        const [cb, sb] = b.split(':').map(Number);
+        return ca - cb || sa - sb;
+      });
+      for (const k of order) {
+        const g = groups.get(k)!;
+        if (g.length !== 1) continue; // a step that already has a chord is not a root
+        const i = g[0];
+        const n = target[i];
+        const root = n.p ?? roots.find(r => r.id === n.ch)?.root;
+        if (root == null) continue;
+        let ivs: number[];
+        if (harmony === 'diatonic') {
+          const pc = root % 12;
+          const deg = scaleOffsets(scale ?? 1).findIndex(o => ((key ?? 0) + o) % 12 === pc);
+          if (deg < 0) continue; // out of scale: leave it alone
+          const stack = diatonicStack(scale ?? 1, deg, false);
+          ivs = stack.slice(1).map(s => s - stack[0]);
+        } else {
+          const t = CHORD_TYPES.find(([id]) => id === harmony);
+          if (!t) continue;
+          ivs = t[1].slice(1);
+        }
+        const vel = Math.fround(Math.min(1, Math.max(0.05, Math.fround((n.v ?? 1) * 0.9))));
+        for (const v of ivs) {
+          const p = root + v;
+          // a tone any channel already sounds at this step is not doubled
+          if (!target.some(x => x.step === n.step && x.p === p)) {
+            target.push({ ch: n.ch, step: n.step, len: n.len ?? 1, p, v: vel });
+          }
+        }
+      }
+      break;
+    }
+    case 'progression': {
+      const ch = verb.ch;
+      if (!chanOk(ch)) throw new Error(`no channel with id ${ch}`);
+      if (key == null || (scale ?? 1) === 0) throw new Error('progression needs a project key and scale (`wave key A minor`)');
+      const n = scaleOffsets(scale ?? 1).length;
+      const degrees = verb.degrees ?? [];
+      if (degrees.length) {
+        if (degrees.length > 32) throw new Error('progression degrees: at most 32 entries');
+        if (degrees.some(d => d < 0 || d >= n)) throw new Error(`progression degrees must be 0..${n - 1} in this scale`);
+      } else {
+        const bars = verb.bars ?? 4;
+        if (bars < 1 || bars > 32) throw new Error('progression bars must be 1..=32');
+        const template = verb.template ?? 'pop';
+        if (template !== 'chance' && !PROGRESSION_TEMPLATES.some(([id]) => id === template)) {
+          throw new Error(`unknown progression template \`${template}\` (${PROGRESSION_TEMPLATES.map(([id]) => id).join(', ')}, chance)`);
+        }
+      }
+      const degs = degrees.length
+        ? degrees
+        : progressionDegrees(verb.template ?? 'pop', Math.max(1, verb.bars ?? 4), seed, n) ?? [];
+      // the generator owns its channel: like euclidFill, its previous notes make way
+      for (let i = target.length - 1; i >= 0; i--) if (target[i].ch === ch) target.splice(i, 1);
+      const chords = degs.map(d => {
+        const stack = diatonicStack(scale ?? 1, d, true);
+        const base = 48 + (((key ?? 0) + stack[0]) % 12);
+        return stack.map(s => base + (s - stack[0]));
+      });
+      if (verb.voiceLead ?? true) {
+        for (let i = 1; i < chords.length; i++) {
+          const prev = [...chords[i - 1]].sort((a, b) => a - b);
+          let best: { cost: number; cand: number[] } | null = null;
+          for (let r = 0; r < chords[i].length; r++) {
+            const cand = [...chords[i]];
+            for (let k = 0; k < r; k++) cand[k] += 12;
+            const sorted = [...cand].sort((a, b) => a - b);
+            let cost = 0;
+            sorted.forEach((v, j) => { cost += Math.abs(v - prev[Math.min(j, prev.length - 1)]); });
+            if (!best || cost < best.cost) best = { cost, cand };
+          }
+          if (best) chords[i] = best.cand;
+        }
+      }
+      chords.forEach((chd, bar) => {
+        [...chd].sort((a, b) => a - b).forEach(p => target.push({ ch, step: bar * 16, len: 16, p, v: 0.75 }));
+      });
+      break;
+    }
     case 'humanize': {
       const maxJitter = Math.fround(0.34 * clamp01(verb.timing ?? 0.5));
       const vel = clamp01(verb.velocity ?? 0.5);
@@ -196,6 +413,13 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
 
   if (!select || generative) {
     notes.splice(0, notes.length, ...target);
+  } else if (verb.kind === 'chord') {
+    // chord grew its selection (roots stay, tones appended): everything unselected
+    // stays, the roots keep their slots and the appended tones follow the target
+    const selected = new Set(idx);
+    const merged = notes.filter((_, i) => !selected.has(i));
+    merged.push(...target);
+    notes.splice(0, notes.length, ...merged);
   } else {
     idx.forEach((ni, k) => { notes[ni] = target[k]; });
   }

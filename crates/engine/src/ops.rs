@@ -641,6 +641,43 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         return Err(OpError::Invalid(format!("drums voice k/n must be 1..={MAX_SLOTS}")));
                     }
                 }
+                crate::transform::TransformVerb::Chord { harmony } => {
+                    if !crate::transform::HARMONY_TYPES.contains(&harmony.as_str()) {
+                        return Err(OpError::Invalid(format!(
+                            "chord harmony must be one of {} (the other chord types are stamp-only)",
+                            crate::transform::HARMONY_TYPES.join(", ")
+                        )));
+                    }
+                    if harmony == "diatonic" && (p.key.is_none() || p.scale == 0) {
+                        return Err(OpError::Invalid("chord diatonic needs a project key and scale (`wave key A minor`)".into()));
+                    }
+                }
+                crate::transform::TransformVerb::Progression { ch, bars, template, degrees, .. } => {
+                    if !chan_ok(*ch) {
+                        return Err(OpError::Missing { what: "channel", id: *ch });
+                    }
+                    if p.key.is_none() || p.scale == 0 {
+                        return Err(OpError::Invalid("progression needs a project key and scale (`wave key A minor`)".into()));
+                    }
+                    if degrees.is_empty() {
+                        if !(1..=MAX_BARS).contains(bars) {
+                            return Err(OpError::Invalid(format!("progression bars must be 1..={MAX_BARS}")));
+                        }
+                        if template != "chance" && !crate::transform::PROGRESSION_TEMPLATES.iter().any(|(id, _)| id == template) {
+                            let known: Vec<&str> = crate::transform::PROGRESSION_TEMPLATES.iter().map(|(id, _)| *id).collect();
+                            return Err(OpError::Invalid(format!("unknown progression template `{template}` ({}, chance)", known.join(", "))));
+                        }
+                    } else {
+                        // an explicit degree list replaces template and bars; bounded the same
+                        let n = crate::transform::scale_offsets(p.scale).len();
+                        if degrees.len() > MAX_BARS as usize {
+                            return Err(OpError::Invalid(format!("progression degrees: at most {MAX_BARS} entries")));
+                        }
+                        if let Some(bad) = degrees.iter().find(|&&d| d as usize >= n) {
+                            return Err(OpError::Invalid(format!("progression degrees must be 0..{} in this scale (got {bad})", n - 1)));
+                        }
+                    }
+                }
                 crate::transform::TransformVerb::Humanize { .. }
                 | crate::transform::TransformVerb::Quantize { .. }
                 | crate::transform::TransformVerb::Strum { .. } => {}
@@ -649,13 +686,18 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             // Generators replace every note of their target channel(s) and leave the
             // other channels alone, so a selection does not scope them: scoping would keep
             // unselected notes of the target channel under the new ones (duplicates)
-            let generative = matches!(
+            // generators are unscoped (the selection is ignored) and replace their
+            // channel; `chord` stays scoped to the selection but grows it (roots stay,
+            // tones are appended), so its result merges with the unselected notes
+            let unscoped = matches!(
                 verb,
                 crate::transform::TransformVerb::EuclidFill { .. }
                     | crate::transform::TransformVerb::EuclidDrums { .. }
                     | crate::transform::TransformVerb::Melody { .. }
+                    | crate::transform::TransformVerb::Progression { .. }
             );
-            let all_notes = select.is_none() || generative;
+            let growing = matches!(verb, crate::transform::TransformVerb::Chord { .. });
+            let all_notes = select.is_none() || unscoped;
             // a copy: every refusal below leaves the pattern as it was (`apply` promises that)
             let mut notes = p.patterns[pi].notes.clone();
             let idx: Vec<usize> = match select {
@@ -677,7 +719,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 }
             };
             // (the selection is still validated above, so a bad index fails either way)
-            let idx: Vec<usize> = if generative { (0..notes.len()).collect() } else { idx };
+            let idx: Vec<usize> = if unscoped { (0..notes.len()).collect() } else { idx };
             let mut target: Vec<Note> = idx.iter().map(|&i| notes[i].clone()).collect();
             let rng = &mut crate::transform::SplitMix64::new(seed.unwrap_or(0));
             match verb {
@@ -713,9 +755,33 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         seed.unwrap_or(0),
                     );
                 }
+                crate::transform::TransformVerb::Chord { harmony } => {
+                    crate::transform::chord(&mut target, ks, harmony, &roots);
+                }
+                crate::transform::TransformVerb::Progression { ch, bars, template, voice_lead, degrees } => {
+                    let degs: Vec<usize> = if degrees.is_empty() {
+                        let n = crate::transform::scale_offsets(p.scale).len();
+                        crate::transform::progression_degrees(template, *bars as usize, seed.unwrap_or(0), n).unwrap_or_default()
+                    } else {
+                        degrees.iter().map(|&d| d as usize).collect()
+                    };
+                    crate::transform::progression(&mut target, *ch, p.key.unwrap_or(0), p.scale, &degs, *voice_lead);
+                }
             }
             let new_notes = if all_notes {
                 target
+            } else if growing {
+                // `chord` changed cardinality: everything unselected stays, the roots
+                // keep their array slots and the appended tones follow the target
+                let selected: std::collections::HashSet<usize> = idx.iter().copied().collect();
+                let mut merged: Vec<Note> = notes
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| !selected.contains(i))
+                    .map(|(_, n)| n.clone())
+                    .collect();
+                merged.extend(target);
+                merged
             } else {
                 for (slot, i) in idx.iter().enumerate() {
                     notes[*i] = target[slot].clone();
@@ -1252,5 +1318,191 @@ mod transform_tests {
         assert_eq!(notes.len(), 4);
         assert!(notes.iter().all(|n| n.ch == 1001));
         assert_eq!(notes[0].step, 0.0);
+    }
+
+    // --- chord tools -------------------------------------------------------
+
+    fn set_key_a_minor(p: &mut Project) {
+        crate::ops::apply_all(p, &[Op::SetKey { key: Some(9), scale: 2 }]).unwrap();
+    }
+
+    #[test]
+    fn chord_verb_is_channel_pinned_and_merges() {
+        let mut p = project_with_notes();
+        set_key_a_minor(&mut p);
+        // notes at 0.0 (C#4), 4.3 (E4), 8.0 (C4) on ch 1001; a hit on another channel at 5.0
+        let other = p.channels.iter().map(|c| c.id).find(|id| *id != 1001).unwrap();
+        p.patterns[0].notes.push(Note { ch: other, step: 5.0, len: 1.0, p: None, v: 0.8 });
+        // range select pinned to ch 1001, steps 4..9: E4 → Em, C4 → C; the C# (out of
+        // scale) is outside the range and the drum hit is on another channel — both stay
+        crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Chord { harmony: "diatonic".into() },
+                seed: None,
+                select: Some(crate::ops::TransformSelect::Range { from: 4.0, to: 9.0, ch: Some(1001) }),
+            }],
+        )
+        .unwrap();
+        let notes = &p.patterns[0].notes;
+        assert_eq!(notes.len(), 8); // 4 originals + 2 + 2 added tones
+        let step_ps = |s: f32| -> Vec<u8> {
+            let mut v: Vec<u8> = notes.iter().filter(|n| n.step == s).map(|n| n.p.unwrap()).collect();
+            v.sort_unstable();
+            v
+        };
+        assert_eq!(step_ps(0.0), [61]); // out of the range: untouched
+        assert_eq!(step_ps(4.3), [64, 67, 71]); // Em above E4
+        assert_eq!(notes.iter().filter(|n| n.step == 5.0).count(), 1); // the other-channel hit
+        assert_eq!(notes.iter().find(|n| n.step == 5.0).unwrap().p, None); // no tones added on it
+        assert_eq!(step_ps(8.0), [60, 64, 67]); // C above C4
+    }
+
+    #[test]
+    fn chord_verb_diatonic_needs_key_and_scale() {
+        let mut p = project_with_notes();
+        let err = crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Chord { harmony: "diatonic".into() },
+                seed: None,
+                select: None,
+            }],
+        )
+        .unwrap_err();
+        assert!(matches!(err, crate::ops::OpError::Invalid(_)));
+        // named types work without a key: interval spelling anywhere
+        crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Chord { harmony: "min".into() },
+                seed: None,
+                select: Some(crate::ops::TransformSelect::Range { from: 0.0, to: 1.0, ch: None }),
+            }],
+        )
+        .unwrap();
+        let mut ps: Vec<u8> = p.patterns[0]
+            .notes
+            .iter()
+            .filter(|n| n.step == 0.0)
+            .map(|n| n.p.unwrap())
+            .collect();
+        ps.sort_unstable();
+        assert_eq!(ps, [61, 64, 68]); // C#m above the first note
+    }
+
+    #[test]
+    fn chord_verb_rejects_unknown_harmony() {
+        let mut p = project_with_notes();
+        set_key_a_minor(&mut p);
+        let err = crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Chord { harmony: "m7b5".into() },
+                seed: None,
+                select: None,
+            }],
+        )
+        .unwrap_err();
+        assert!(matches!(err, crate::ops::OpError::Invalid(_)));
+    }
+
+    #[test]
+    fn progression_verb_generates_and_grows_the_pattern() {
+        let mut p = project_with_notes();
+        set_key_a_minor(&mut p);
+        crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Progression {
+                    ch: 1001,
+                    bars: 4,
+                    template: "minloop".into(),
+                    voice_lead: true,
+                    degrees: vec![],
+                },
+                seed: None,
+                select: None,
+            }],
+        )
+        .unwrap();
+        let notes = &p.patterns[0].notes;
+        // the generator replaced the pattern's notes and grew it to 4 bars
+        assert_eq!(notes.len(), 16);
+        assert_eq!(p.patterns[0].len, 16.0);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [57, 60, 64, 67, 57, 60, 64, 65, 59, 60, 64, 67, 59, 62, 65, 67]);
+    }
+
+    #[test]
+    fn progression_verb_validates_bars_templates_and_degrees() {
+        let mut p = project_with_notes();
+        set_key_a_minor(&mut p);
+        let run = |p: &mut Project, verb| {
+            crate::ops::apply_all(p, &[Op::TransformNotes { pattern: 1, verb, seed: None, select: None }])
+        };
+        let prog = |bars: u32, template: &str, degrees: Vec<u8>| crate::transform::TransformVerb::Progression {
+            ch: 1001,
+            bars,
+            template: template.into(),
+            voice_lead: false,
+            degrees,
+        };
+        assert!(matches!(run(&mut p, prog(33, "pop", vec![])), Err(crate::ops::OpError::Invalid(_))));
+        assert!(matches!(run(&mut p, prog(4, "nope", vec![])), Err(crate::ops::OpError::Invalid(_))));
+        assert!(matches!(run(&mut p, prog(4, "pop", vec![33])), Err(crate::ops::OpError::Invalid(_))));
+        assert!(matches!(run(&mut p, prog(4, "pop", (0..33).collect())), Err(crate::ops::OpError::Invalid(_))));
+        assert_eq!(p.patterns[0].notes.len(), 3); // nothing applied
+        // the legal degree list works and replaces bars
+        run(&mut p, prog(4, "pop", vec![0, 5, 2, 6])).unwrap();
+        assert_eq!(p.patterns[0].notes.len(), 16);
+    }
+
+    #[test]
+    fn progression_verb_needs_a_key() {
+        let mut p = project_with_notes();
+        let err = crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Progression {
+                    ch: 1001,
+                    bars: 4,
+                    template: "pop".into(),
+                    voice_lead: false,
+                    degrees: vec![],
+                },
+                seed: None,
+                select: None,
+            }],
+        )
+        .unwrap_err();
+        assert!(matches!(err, crate::ops::OpError::Invalid(_)));
+    }
+
+    #[test]
+    fn progression_chance_is_deterministic_in_the_seed() {
+        let mut a = project_with_notes();
+        let mut b = project_with_notes();
+        set_key_a_minor(&mut a);
+        set_key_a_minor(&mut b);
+        let verb = crate::transform::TransformVerb::Progression {
+            ch: 1001,
+            bars: 4,
+            template: "chance".into(),
+            voice_lead: true,
+            degrees: vec![],
+        };
+        let op = |seed| Op::TransformNotes { pattern: 1, verb: verb.clone(), seed, select: None };
+        crate::ops::apply_all(&mut a, &[op(Some(41))]).unwrap();
+        crate::ops::apply_all(&mut b, &[op(Some(41))]).unwrap();
+        assert_eq!(a.patterns[0].notes, b.patterns[0].notes);
+        crate::ops::apply_all(&mut a, &[op(Some(42))]).unwrap();
+        assert_ne!(a.patterns[0].notes, b.patterns[0].notes);
     }
 }

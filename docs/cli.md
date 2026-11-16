@@ -549,10 +549,22 @@ wave notes euclid --pattern 1 --ch 1001 --k 5 --n 16 --rotate 2  # E(k,n) fill f
 wave notes strum --pattern 1 --width 0.5 --ramp 0.05
 wave notes drums --pattern 2 --bars 2 --seed 42 --voice "1001:4:16:0" --voice "1002:2:16:8"
 wave notes melody --pattern 3 --ch 1003 --bars 2 --seed 7 --density 0.5
+wave notes chord --pattern 3 --type diatonic                      # harmonize single notes (A3 → Am)
+wave notes chord --pattern 3 --select "0:16" --type min7          # spelled by interval, any key
+wave notes progression --pattern 4 --ch 1003 --bars 4 --template minloop --seed 7
+wave notes progression --pattern 4 --ch 1003 --degrees "0:5:2:6" --no-voice-lead
+wave notes stamp --pattern 3 --ch 1003 --step 0 --root A3 --type min7 --inv 1
 wave notes humanize --pattern 1 --select "0:16"                  # limit to a step range
-wave key C minor                                                  # project key for --scale
+wave key A minor                                                  # project key for --scale / diatonic spelling
 wave key --off
 ```
+
+Chord tools: `stamp` writes one chord (18 types, optional inversion; `--root` takes a MIDI
+key or a note name like `A3`) and replaces that step; `chord` harmonizes selected single
+notes — `--type diatonic` spells the triad from the project key and leaves out-of-scale
+notes alone, named types spell by interval; `progression` generates one diatonic 7th chord
+per bar (`--degrees "d:d:d"` replaces the template with an arbitrary degree list, at most
+32; inversions are voice-led to move the least unless `--no-voice-lead`).
 
 `--select "0:16@1001"` also filters one channel; `--indices "1,2,5"` selects exact notes.
 

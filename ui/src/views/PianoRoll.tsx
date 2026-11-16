@@ -18,6 +18,7 @@ import { TOTAL_BEATS, type Note } from '../api/types';
 import { clamp } from '../lib/format';
 import { duplicateRight, keyOf, moveNotes, noteAt, noteWidth, notesText, resizeNotes, ROLL_SNAPS, SCALES, scaleMask, snapStep, stepsOf, transpose, velOf } from '../lib/pattern';
 import { NOTE_NAMES, noteName } from '../lib/pitch';
+import { CHORD_TYPES, chordName, chordPitches, PROGRESSION_TEMPLATES } from '../lib/transforms';
 import {
   applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, notesOfKey, nudgeVelocity,
   parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
@@ -53,12 +54,13 @@ const ROW_H = 18, ROW_MIN = 6, ROW_MAX = 40;
 /** Time zoom limits, relative to the fit-the-pattern width. */
 const Z_MIN = 0.5, Z_MAX = 8;
 const ROLL_ICON = 'M4 4h16v16H4z M4 9h16 M4 14h16 M9 4v5 M15 14v6';
-type Tool = 'draw' | 'paint' | 'select' | 'erase';
+type Tool = 'draw' | 'paint' | 'select' | 'erase' | 'stamp';
 const TOOLS: { id: Tool; key: string; label: Parameters<typeof t>[0]; icon: string; tip: Parameters<typeof t>[0] }[] = [
   { id: 'draw', key: 'p', label: 'b.pe.tool.draw', icon: 'M4 20l4.5-1L19 8.5 15.5 5 5 15.5z M13.5 7l3.5 3.5', tip: 'b.pe.tool.draw.tip' },
   { id: 'paint', key: 'b', label: 'b.pe.tool.paint', icon: 'M18 3l3 3-9 9-3-3z M9 12c-3 0-4 2-4 4s-1 3-2 4c4 0 8-1 8-5', tip: 'b.pe.tool.paint.tip' },
   { id: 'select', key: 'e', label: 'b.pe.tool.select', icon: 'M4 4h4 M12 4h4 M20 4v4 M20 12v4 M20 20h-4 M12 20H8 M4 20v-4 M4 12V8', tip: 'b.pe.tool.select.tip' },
   { id: 'erase', key: 'd', label: 'b.pe.tool.erase', icon: 'M8 20h12 M4.5 15.5L14 6l5 5-7.5 7.5H8z', tip: 'b.pe.tool.erase.tip' },
+  { id: 'stamp', key: 'c', label: 'b.pe.tool.stamp', icon: 'M5 14h3v6H5z M10.5 11h3v9h-3z M16 8h3v12h-3z', tip: 'b.pe.tool.stamp.tip' },
 ];
 
 /** The Piano roll window (shown while `U.rollWin` is set and there is a pattern and a channel). `docked`: laid out under the Playlist. */
@@ -71,20 +73,59 @@ const [lastLen, setLastLen] = createSignal(2);
 const [lastVel, setLastVel] = createSignal(1);
 const velProp = () => (lastVel() < 0.995 ? { v: lastVel() } : {});
 const [rollTool, setRollTool] = createSignal<Tool>('draw');
+/** The stamp picker: chord type and inversion for the stamp tool (a click writes the
+ * chord rooted at the clicked key). */
+const [stampType, setStampType] = createSignal('min');
+const [stampInv, setStampInv] = createSignal(0);
 const [rollSnap, setRollSnap] = createSignal(1);
 
-/** The note tools the roll header offers: [A, B] are the two params' defaults; the
- * meaning of A/B is per tool (timing/velocity, grid/amount, hits/slots, width/ramp,
- * hits/slots, density/motif-bars). */
-const TOOL_META: Record<'humanize' | 'quantize' | 'euclid' | 'strum' | 'drums' | 'melody', { label: TranslationKey; labelA: TranslationKey; labelB: TranslationKey; defA: number; defB: number }> = {
-  humanize: { label: 'b.pr.tool.humanize', labelA: 'b.pr.tool.humanizeA', labelB: 'b.pr.tool.humanizeB', defA: 0.3, defB: 0.2 },
-  quantize: { label: 'b.pr.tool.quantize', labelA: 'b.pr.tool.quantizeA', labelB: 'b.pr.tool.quantizeB', defA: 1, defB: 1 },
-  euclid: { label: 'b.pr.tool.euclid', labelA: 'b.pr.tool.euclidA', labelB: 'b.pr.tool.euclidB', defA: 4, defB: 16 },
-  strum: { label: 'b.pr.tool.strum', labelA: 'b.pr.tool.strumA', labelB: 'b.pr.tool.strumB', defA: 0.5, defB: 0.05 },
-  drums: { label: 'b.pr.tool.drums', labelA: 'b.pr.tool.drumsA', labelB: 'b.pr.tool.drumsB', defA: 4, defB: 16 },
-  melody: { label: 'b.pr.tool.melody', labelA: 'b.pr.tool.melodyA', labelB: 'b.pr.tool.melodyB', defA: 0.5, defB: 2 },
+/** The note tools the roll header offers. Each tool declares its own controls: a
+ * number, a select or a checkbox per param (the seed field is shared, last). */
+type ToolId = 'humanize' | 'quantize' | 'euclid' | 'strum' | 'drums' | 'melody' | 'chord' | 'progression';
+type ToolField =
+  | { kind: 'num'; label: TranslationKey; def: number }
+  | { kind: 'select'; label: TranslationKey; def: string; options: { v: string; l: TranslationKey }[] }
+  | { kind: 'check'; label: TranslationKey; def: boolean };
+const HARMONY_OPTIONS: { v: string; l: TranslationKey }[] = [
+  { v: 'diatonic', l: 'b.pr.chord.diatonic' },
+  ...['maj', 'min', '7', 'maj7', 'min7'].map(id => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey })),
+];
+const TEMPLATE_OPTIONS: { v: string; l: TranslationKey }[] = [
+  ...PROGRESSION_TEMPLATES.map(([id]) => ({ v: id, l: `b.pr.tpl.${id}` as TranslationKey })),
+  { v: 'chance', l: 'b.pr.tpl.chance' },
+];
+const STAMP_TYPES: { v: string; l: TranslationKey }[] = CHORD_TYPES.map(([id]) => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey }));
+const STAMP_INVS: { v: number; l: TranslationKey }[] = [
+  { v: 0, l: 'b.pr.stamp.inv0' }, { v: 1, l: 'b.pr.stamp.inv1' }, { v: 2, l: 'b.pr.stamp.inv2' }, { v: 3, l: 'b.pr.stamp.inv3' },
+];
+const TOOL_META: Record<ToolId, { label: TranslationKey; fields: ToolField[] }> = {
+  humanize: { label: 'b.pr.tool.humanize', fields: [
+    { kind: 'num', label: 'b.pr.tool.humanizeA', def: 0.3 }, { kind: 'num', label: 'b.pr.tool.humanizeB', def: 0.2 },
+  ] },
+  quantize: { label: 'b.pr.tool.quantize', fields: [
+    { kind: 'num', label: 'b.pr.tool.quantizeA', def: 1 }, { kind: 'num', label: 'b.pr.tool.quantizeB', def: 1 },
+  ] },
+  euclid: { label: 'b.pr.tool.euclid', fields: [
+    { kind: 'num', label: 'b.pr.tool.euclidA', def: 4 }, { kind: 'num', label: 'b.pr.tool.euclidB', def: 16 },
+  ] },
+  strum: { label: 'b.pr.tool.strum', fields: [
+    { kind: 'num', label: 'b.pr.tool.strumA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.strumB', def: 0.05 },
+  ] },
+  drums: { label: 'b.pr.tool.drums', fields: [
+    { kind: 'num', label: 'b.pr.tool.drumsA', def: 4 }, { kind: 'num', label: 'b.pr.tool.drumsB', def: 16 },
+  ] },
+  melody: { label: 'b.pr.tool.melody', fields: [
+    { kind: 'num', label: 'b.pr.tool.melodyA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.melodyB', def: 2 },
+  ] },
+  chord: { label: 'b.pr.tool.chord', fields: [
+    { kind: 'select', label: 'b.pr.tool.chordH', def: 'diatonic', options: HARMONY_OPTIONS },
+  ] },
+  progression: { label: 'b.pr.tool.progression', fields: [
+    { kind: 'select', label: 'b.pr.tool.progTpl', def: 'pop', options: TEMPLATE_OPTIONS },
+    { kind: 'num', label: 'b.pr.tool.progBars', def: 4 },
+    { kind: 'check', label: 'b.pr.tool.progVl', def: true },
+  ] },
 };
-type ToolId = keyof typeof TOOL_META;
 
 /** Key and scale to highlight: the project key (chosen here; also what scale-aware
  * transforms use), else the project's Pitch Correct (a detected key), else C in the
@@ -112,43 +153,63 @@ function Roll(props: { z: number; docked?: boolean }) {
   const [sel, setSel] = createSignal<Set<number>>(new Set());
   const [hoverKey, setHoverKey] = createSignal<number | null>(null);
   const [marq, setMarq] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  /** The chord name under the pointer (status bar): every note of the channel at the hovered note's step. */
+  const [hoverChord, setHoverChord] = createSignal('');
   const [zbox, setZbox] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   /** The note properties popover (double-click a note): the notes it edits, the clicked one last. */
   const [propsFor, setPropsFor] = createSignal<number[] | null>(null);
   const [view, setViewS] = createSignal({ sx: 0, sy: 0, zoom: 1, rowH: ROW_H });
   const pk = createMemo(projectKey, undefined, { equals: (a, b) => a.root === b.root && a.scale === b.scale });
-  // the note tools strip: verb + two params (meaning per verb) + an optional seed
-  const [toolId, setToolId] = createSignal<'humanize' | 'quantize' | 'euclid' | 'strum' | 'drums' | 'melody'>('humanize');
-  const [toolA, setToolA] = createSignal(0.3);
-  const [toolB, setToolB] = createSignal(0.2);
+  // the note tools strip: verb + its declared fields (meaning per verb) + an optional seed
+  const [toolId, setToolId] = createSignal<ToolId>('humanize');
+  const [vals, setVals] = createSignal<unknown[]>(TOOL_META.humanize.fields.map(f => f.def));
+  const setField = (i: number, v: unknown) => setVals(xs => { const c = xs.slice(); c[i] = v; return c; });
   const [toolSeed, setToolSeed] = createSignal('');
   const applyTool = () => {
     const p = pt();
     const chan = ch().id;
     const seed = toolSeed().trim() === '' ? undefined : Math.max(0, Math.floor(+toolSeed() || 0));
-    const id = toolId(), a = toolA(), b = toolB();
-    const verb: TransformVerb = id === 'humanize' ? { kind: 'humanize', timing: a, velocity: b }
-      : id === 'quantize' ? { kind: 'quantize', grid: a || 1, amount: Math.min(1, Math.max(0, b)), scaleAware: false }
-      : id === 'euclid' ? { kind: 'euclidFill', ch: chan, k: Math.max(1, Math.round(a)), n: Math.max(1, Math.round(b)), rotate: 0 }
-      : id === 'strum' ? { kind: 'strum', width: a, ramp: b }
-      : id === 'drums' ? { kind: 'euclidDrums', voices: [{ ch: chan, k: Math.max(1, Math.round(a)), n: Math.max(1, Math.round(b)) }], bars: Math.max(1, Math.round(p.len / 4)) }
-      : { kind: 'melody', ch: chan, bars: Math.max(1, Math.round(p.len / 4)), density: Math.min(1, Math.max(0.05, a)), repeat: Math.max(1, Math.round(b)) };
+    const id = toolId();
+    const num = (i: number, d: number) => (typeof vals()[i] === 'number' ? (vals()[i] as number) : d);
+    const str = (i: number) => String(vals()[i] ?? '');
+    const verb: TransformVerb = id === 'humanize' ? { kind: 'humanize', timing: num(0, 0.3), velocity: num(1, 0.2) }
+      : id === 'quantize' ? { kind: 'quantize', grid: num(0, 1) || 1, amount: Math.min(1, Math.max(0, num(1, 1))), scaleAware: false }
+      : id === 'euclid' ? { kind: 'euclidFill', ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))), rotate: 0 }
+      : id === 'strum' ? { kind: 'strum', width: num(0, 0.5), ramp: num(1, 0.05) }
+      : id === 'drums' ? { kind: 'euclidDrums', voices: [{ ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))) }], bars: Math.max(1, Math.round(p.len / 4)) }
+      : id === 'melody' ? { kind: 'melody', ch: chan, bars: Math.max(1, Math.round(p.len / 4)), density: Math.min(1, Math.max(0.05, num(0, 0.5))), repeat: Math.max(1, Math.round(num(1, 2))) }
+      : id === 'chord' ? { kind: 'chord', harmony: str(0) }
+      : { kind: 'progression', ch: chan, bars: Math.min(32, Math.max(1, Math.round(num(1, 4)))), template: str(0), voiceLead: vals()[2] !== false, degrees: [] };
     const op: { op: 'transformNotes'; pattern: number; verb: TransformVerb; seed?: number; select?: TransformSelect } = {
       op: 'transformNotes', pattern: p.id, verb,
       ...(seed !== undefined ? { seed } : {}),
       // scope: the selection, else the channel the roll is showing — never the whole
       // pattern (a pattern is multi-channel; humanize with Hat shown must not jitter
       // the kick). Generators replace their whole channel whatever the selection
-      // (the engine ignores a select for them), so they stay unscoped.
-      ...(id !== 'humanize' && id !== 'quantize' && id !== 'strum'
-        ? {}
-        : sel().size > 0
+      // (the engine ignores a select for them), so they stay unscoped — `chord` is
+      // positional like humanize: scoped to the selection, else the shown channel.
+      ...(id === 'humanize' || id === 'quantize' || id === 'strum' || id === 'chord'
+        ? sel().size > 0
           ? { select: { kind: 'indices' as const, indices: [...sel()].sort((x, y) => x - y) } }
-          : { select: { kind: 'range' as const, from: 0, to: 1e9, ch: chan } }),
+          : { select: { kind: 'range' as const, from: 0, to: 1e9, ch: chan } }
+        : {}),
     };
     commit([op], t(TOOL_META[id].label));
     setSel(new Set<number>());
     say(t('b.pr.toolApplied', { verb: t(TOOL_META[id].label) }));
+  };
+  /** The stamp tool: one chord per click, the clicked key is the root, snapped to the grid.
+   * Re-stamping a step replaces its chord on the channel (one op per stamp, clean undo). */
+  const stampAt = (p: { step: number; key: number }, e: PointerEvent) => {
+    const pitches = chordPitches(p.key, stampType(), stampInv());
+    if (!pitches) { say(t('b.pr.stampRange')); return; }
+    const s = snapStep(p.step, unit(e.altKey), true);
+    if (s < 0 || s + lastLen() > MAX_STEPS) return;
+    const kept = notesRaw().filter(n => !(n.ch === ch().id && n.step === s));
+    const stamped = pitches.map(k => ({ ch: ch().id, step: s, len: lastLen(), p: k, ...velProp() }));
+    commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
+    stamped.forEach(n => audition(ch().id, n.p ?? p.key, n.v ?? 1));
+    say(t('b.pr.stamped', { label: chordName(pitches) }));
   };
   const root = () => pk().root;
   const scaleIdx = () => pk().scale;
@@ -597,9 +658,9 @@ function Roll(props: { z: number; docked?: boolean }) {
         return;
       }
     }
-    // Shift with any tool: drag on empty space adds a box to the selection; on a note, a click
-    // toggles it in the selection and a drag clones (FL): copies of the selection (or of that
-    // note alone when it is not selected) move, the originals stay
+    // the stamp tool: a click writes the chord rooted at the clicked key (right-click still erases, below)
+    if (tool === 'stamp' && e.button === 0 && !m && !e.shiftKey) return stampAt(p, e);
+    // Shift with any tool: drag on empty space adds a box to the roll's marquee or clones (FL)
     if (e.button === 0 && e.shiftKey) {
       if (i < 0) return marqueeDrag(e, true);
       const toggle = () => {
@@ -645,9 +706,15 @@ function Roll(props: { z: number; docked?: boolean }) {
     const p = pos(e);
     ptr = { x: p.x, y: p.y };
     if (e.buttons) return;
-    if (p.x < KW) { cv.style.cursor = 'pointer'; return; }
+    if (p.x < KW) { cv.style.cursor = 'pointer'; setHoverChord(''); return; }
     const i = hitNote(p.step, p.key), t = rollTool();
-    cv.style.cursor = e.ctrlKey || e.metaKey ? 'crosshair' : t === 'erase' ? 'not-allowed' : i >= 0 ? (t !== 'select' && edgeHit(i, p.x) ? 'ew-resize' : 'grab') : t === 'select' ? 'crosshair' : 'copy';
+    cv.style.cursor = e.ctrlKey || e.metaKey ? 'crosshair' : t === 'erase' ? 'not-allowed' : t === 'stamp' ? 'copy' : i >= 0 ? (t !== 'select' && edgeHit(i, p.x) ? 'ew-resize' : 'grab') : t === 'select' ? 'crosshair' : 'copy';
+    // the chord sounding under the pointer: every note of the channel at that step
+    if (i >= 0) {
+      const s0 = notesRaw()[i].step;
+      const ps = notesRaw().filter(n => n.ch === ch().id && n.step === s0 && n.p != null).map(n => n.p!);
+      setHoverChord(ps.length >= 2 ? chordName(ps) : '');
+    } else setHoverChord('');
   };
   let velAcc = 0;
   /** Alt+wheel on note `i`: its velocity (the selection's when it is selected), 5 % a notch, 1 % with Ctrl; one undo step per wheel burst. */
@@ -925,15 +992,37 @@ function Roll(props: { z: number; docked?: boolean }) {
         <label class="plab" title={t('b.pr.toolsTip')}>
           {t('b.pr.tools')}
           <span class="row" style={{ gap: '4px', 'align-items': 'center' }}>
-            <select class="sel" value={toolId()} onChange={e => { setToolId(e.currentTarget.value as ToolId); const m = TOOL_META[e.currentTarget.value as ToolId]; setToolA(m.defA); setToolB(m.defB); backToRoll(e.currentTarget); }}>
+            <select class="sel" value={toolId()} onChange={e => { const id = e.currentTarget.value as ToolId; setToolId(id); setVals(TOOL_META[id].fields.map(f => f.def)); backToRoll(e.currentTarget); }}>
               <For each={Object.keys(TOOL_META) as ToolId[]}>{v => <option value={v}>{t(TOOL_META[v].label)}</option>}</For>
             </select>
-            <input class="textin" style={{ width: '52px' }} title={t(TOOL_META[toolId()].labelA)} type="number" step="0.1" value={toolA()} onInput={e => setToolA(+e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
-            <input class="textin" style={{ width: '52px' }} title={t(TOOL_META[toolId()].labelB)} type="number" step="0.1" value={toolB()} onInput={e => setToolB(+e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
+            <For each={TOOL_META[toolId()].fields}>{(f, i) => f.kind === 'num' ? (
+              <input class="textin" style={{ width: '52px' }} title={t(f.label)} type="number" step="0.1" value={typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def} onInput={e => setField(i(), +e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
+            ) : f.kind === 'select' ? (
+              <select class="sel" title={t(f.label)} value={String(vals()[i()] ?? f.def)} onChange={e => { setField(i(), e.currentTarget.value); backToRoll(e.currentTarget); }}>
+                <For each={f.options}>{o => <option value={o.v}>{t(o.l)}</option>}</For>
+              </select>
+            ) : (
+              <label class="plab" style={{ gap: '2px' }} title={t(f.label)}>
+                <input type="checkbox" checked={vals()[i()] !== false} onInput={e => setField(i(), e.currentTarget.checked)} />
+                <span style={{ 'font-size': '11px' }}>{t(f.label)}</span>
+              </label>
+            )}</For>
             <input class="textin" style={{ width: '64px' }} title={t('b.pr.seedTip')} placeholder={t('b.pr.seed')} type="number" step="1" value={toolSeed()} onInput={e => setToolSeed(e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
             <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pr.applyTip')} onClick={e => { applyTool(); backToRoll(e.currentTarget); }}>{t('b.pr.apply')}</button>
           </span>
         </label>
+        <Show when={rollTool() === 'stamp'}>
+          <label class="plab">{t('b.pr.stamp.type')}
+            <span class="row" style={{ gap: '4px' }}>
+              <select class="sel" title={t('b.pr.stamp.typeTitle')} value={stampType()} onChange={e => { setStampType(e.currentTarget.value); backToRoll(e.currentTarget); }}>
+                <For each={STAMP_TYPES}>{o => <option value={o.v}>{t(o.l)}</option>}</For>
+              </select>
+              <select class="sel" title={t('b.pr.stamp.invTitle')} value={String(stampInv())} onChange={e => { setStampInv(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
+                <For each={STAMP_INVS}>{o => <option value={String(o.v)}>{t(o.l)}</option>}</For>
+              </select>
+            </span>
+          </label>
+        </Show>
         <span class="note mono" style={{ 'align-self': 'center', 'font-size': '10px', color: 'var(--fg5)' }}>{sel().size ? t('b.pe.nSel', { n: sel().size }) : notesText(chanNotes().length)}{t('b.pe.newNote', { len: lastLenText() })}</span>
       </div>
       <div class="rollgrid">
@@ -967,6 +1056,9 @@ function Roll(props: { z: number; docked?: boolean }) {
       <div class="pstatus mono">
         <span>{ch().name} · {chanKindLabel(ch())}</span>
         <span>{t(TOOLS.find(x => x.id === rollTool())!.tip)}</span>
+        <Show when={hoverChord()}>
+          <span title={t('b.pr.chordTitle')} style={{ color: 'var(--acc2)' }}>{hoverChord()}</span>
+        </Show>
         <span class="rollhint" title={t('b.pr.keysTip')}>{t('b.pe.rollHint')}</span>
       </div>
     </div>

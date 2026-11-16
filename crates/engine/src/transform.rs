@@ -120,6 +120,23 @@ pub enum TransformVerb {
         #[serde(default = "one_u")]
         repeat: u32,
     },
+    /// Harmonize the selected single notes into chords: "diatonic" spells the triad
+    /// from the project key/scale, the named types spell by interval from each root.
+    Chord { #[serde(default = "diatonic_harmony")] harmony: String },
+    /// Generate one diatonic 7th chord per bar on one channel: `template` cycles a
+    /// named progression, `chance` walks seeded ±2 degrees, and a non-empty `degrees`
+    /// list overrides both. `voice_lead` picks inversions that move the least.
+    Progression {
+        ch: Id,
+        #[serde(default = "four_bars")]
+        bars: u32,
+        #[serde(default = "pop_template")]
+        template: String,
+        #[serde(default = "voice_lead_on")]
+        voice_lead: bool,
+        #[serde(default)]
+        degrees: Vec<u8>,
+    },
 }
 
 fn half() -> f32 {
@@ -136,6 +153,18 @@ fn eighth() -> f32 {
 }
 fn two_bars() -> u32 {
     2
+}
+fn four_bars() -> u32 {
+    4
+}
+fn diatonic_harmony() -> String {
+    "diatonic".into()
+}
+fn pop_template() -> String {
+    "pop".into()
+}
+fn voice_lead_on() -> bool {
+    true
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +326,264 @@ pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, de
             }
             let midi = (48 + key as i32 + degrees[d as usize] as i32) as u8;
             notes.push(Note { ch, step: (bar * 16 + slot) as f32, len, p: Some(midi), v: 0.8, trig: Some(false) });
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// chord tools: tables, stamping, naming, harmonizing, progressions
+// ---------------------------------------------------------------------------
+
+/// The stampable chord types in picker order: `(id, semitone intervals from the root)`.
+/// Pure theory data — the TS mirror pins the same table and the golden tests assert the
+/// same voicings, so engine, browser and CLI agree on every chord.
+pub const CHORD_TYPES: &[(&str, &[u8])] = &[
+    ("maj", &[0, 4, 7]),
+    ("min", &[0, 3, 7]),
+    ("dim", &[0, 3, 6]),
+    ("aug", &[0, 4, 8]),
+    ("sus2", &[0, 2, 7]),
+    ("sus4", &[0, 5, 7]),
+    ("7", &[0, 4, 7, 10]),
+    ("maj7", &[0, 4, 7, 11]),
+    ("min7", &[0, 3, 7, 10]),
+    ("9", &[0, 4, 7, 10, 14]),
+    ("add9", &[0, 4, 7, 14]),
+    ("maj9", &[0, 4, 7, 11, 14]),
+    ("min9", &[0, 3, 7, 10, 14]),
+    ("6", &[0, 4, 7, 9]),
+    ("m6", &[0, 3, 7, 9]),
+    ("dim7", &[0, 3, 6, 9]),
+    ("m7b5", &[0, 3, 6, 10]),
+    ("5", &[0, 7]),
+];
+
+/// The suffix a chord type contributes to a detected name ([`chord_name`]).
+const CHORD_SUFFIX: &[(&str, &str)] = &[
+    ("maj", ""),
+    ("min", "m"),
+    ("dim", "°"),
+    ("aug", "+"),
+    ("sus2", "sus2"),
+    ("sus4", "sus4"),
+    ("7", "7"),
+    ("maj7", "maj7"),
+    ("min7", "m7"),
+    ("9", "9"),
+    ("add9", "add9"),
+    ("maj9", "maj9"),
+    ("min9", "m9"),
+    ("6", "6"),
+    ("m6", "m6"),
+    ("dim7", "°7"),
+    ("m7b5", "m7♭5"),
+    ("5", "5"),
+];
+
+/// Harmony types the `chord` verb can spell; "diatonic" reads the project key/scale.
+/// The stamp picker's exotic types stay stamp-only — they harmonize poorly by rule.
+pub const HARMONY_TYPES: &[&str] = &["diatonic", "maj", "min", "7", "maj7", "min7"];
+
+/// Progression templates: one diatonic 7th chord per bar, as scale-degree indices.
+/// `chance` (a seeded random walk) is a verb mode, not a row here.
+pub const PROGRESSION_TEMPLATES: &[(&str, &[u8])] = &[
+    ("pop", &[0, 4, 5, 3]),               // I V vi IV
+    ("pop2", &[5, 3, 0, 4]),              // vi IV I V
+    ("minloop", &[0, 5, 2, 6]),           // i VI III VII
+    ("trap", &[0, 3, 5, 4]),              // i iv VI v
+    ("iivI", &[1, 4, 0]),                 // ii V I
+    ("doowop", &[0, 5, 3, 4]),            // I vi IV V
+    ("andalusian", &[0, 6, 5, 4]),        // i VII VI v
+    ("blues", &[0, 3, 4]),                // i iv v
+    ("canon", &[0, 4, 5, 2, 3, 0, 3, 4]), // 8-bar canon cycle
+];
+
+const NOTE_NAMES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/// Intervals of a chord type, or `None` for an unknown id.
+pub fn chord_intervals(type_id: &str) -> Option<&'static [u8]> {
+    CHORD_TYPES.iter().find(|(id, _)| *id == type_id).map(|(_, iv)| *iv)
+}
+
+fn chord_suffix(type_id: &str) -> &'static str {
+    CHORD_SUFFIX.iter().find(|(id, _)| *id == type_id).map(|(_, s)| *s).unwrap_or("")
+}
+
+/// Absolute pitches of a chord rooted at `root` (a MIDI note), rotated `inversion`
+/// times: each rotation lifts the lowest voice an octave, clamped to the voicing's
+/// last inversion. Returned ascending. `None` for an unknown type or a root that
+/// pushes the top voice past MIDI 127.
+pub fn chord_pitches(root: u8, type_id: &str, inversion: u32) -> Option<Vec<u8>> {
+    let iv = chord_intervals(type_id)?;
+    if root as u16 + *iv.last().unwrap() as u16 > 127 {
+        return None;
+    }
+    let mut p: Vec<u8> = iv.iter().map(|&i| root + i).collect();
+    for _ in 0..inversion.min(iv.len() as u32 - 1) {
+        let lo = p.iter().enumerate().min_by_key(|(_, &v)| v).map(|(i, _)| i).unwrap();
+        p[lo] += 12;
+    }
+    p.sort_unstable();
+    Some(p)
+}
+
+/// The chord a pitch set spells, bass-first: the lowest note's pitch class is tried
+/// as the root before any other, so a root-position C6 is "C6", never "Am7" — while
+/// the same set with A in the bass reads "Am7", which is what the ear hears. Unknown
+/// sets fall back to the bass pitch class and "?".
+pub fn chord_name(pitches: &[u8]) -> String {
+    let Some(&bass) = pitches.iter().min() else {
+        return "?".into();
+    };
+    let mut pcs: Vec<u8> = pitches.iter().map(|p| p % 12).collect();
+    pcs.sort_unstable();
+    pcs.dedup();
+    let bass_pc = bass % 12;
+    let candidates = std::iter::once(bass_pc).chain(pcs.iter().copied().filter(|pc| *pc != bass_pc));
+    for pc in candidates {
+        let mut rel: Vec<u8> = pcs.iter().map(|p| (p + 12 - pc) % 12).collect();
+        rel.sort_unstable();
+        for (id, iv) in CHORD_TYPES {
+            let mut sig: Vec<u8> = iv.iter().map(|i| i % 12).collect();
+            sig.sort_unstable();
+            sig.dedup();
+            if rel == sig {
+                return format!("{}{}", NOTE_NAMES[pc as usize], chord_suffix(id));
+            }
+        }
+    }
+    format!("{}?", NOTE_NAMES[bass_pc as usize])
+}
+
+/// The scale's semitone offsets from the key, ascending (the set bits of the mask).
+pub(crate) fn scale_offsets(scale_id: u32) -> Vec<u8> {
+    let mask = pitch::scale_mask(scale_id);
+    (0..12u16).filter(|k| mask & (1 << k) != 0).map(|k| k as u8).collect()
+}
+
+/// The diatonic stack on scale degree `deg` — degrees deg, deg+2, deg+4 (+deg+6 for a
+/// seventh) — as semitones above the key, octave-wrapped.
+fn diatonic_stack(scale_id: u32, deg: usize, seventh: bool) -> Vec<u8> {
+    let offs = scale_offsets(scale_id);
+    let n = offs.len();
+    let idx: &[usize] = if seventh { &[0, 2, 4, 6] } else { &[0, 2, 4] };
+    idx.iter().map(|&i| { let k = deg + i; offs[k % n] + 12 * (k / n) as u8 }).collect()
+}
+
+/// Expand a progression mode into per-bar scale degrees: a named template cycles, or
+/// `chance` walks ±2 degrees from a seeded random start. `None` for an unknown id.
+pub fn progression_degrees(mode: &str, bars: usize, seed: u64, scale_degrees: usize) -> Option<Vec<usize>> {
+    let n = scale_degrees;
+    if mode == "chance" {
+        let rng = &mut SplitMix64::new(seed);
+        let mut d = rng.below(n);
+        let mut out = Vec::with_capacity(bars);
+        for _ in 0..bars {
+            out.push(d);
+            d = (d + rng.below(5) + n - 2) % n.max(1);
+        }
+        Some(out)
+    } else {
+        let t = PROGRESSION_TEMPLATES.iter().find(|(id, _)| *id == mode).map(|(_, d)| *d)?;
+        Some((0..bars).map(|b| t[b % t.len()] as usize).collect())
+    }
+}
+
+    /// Generate one diatonic 7th chord per degree on channel `ch`: chord on beat 1 of
+    /// each bar (16 steps, a bar long on the 16th grid), roots in the C3..B3 window.
+    /// With `voice_lead`, every chord after the first picks the rotation (lift the
+    /// lowest voices an octave) minimizing total movement against the previous voicing
+    /// — the harmony stays, the hands move less.
+pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degrees: &[usize], voice_lead: bool) {
+    // the generator owns its channel: like `euclidean_fill`, its previous notes make
+    // way (a selection limits which old notes the verb sees at all)
+    notes.retain(|n| n.ch != ch);
+    let mut chords: Vec<Vec<u8>> = degrees
+        .iter()
+        .map(|&d| {
+            let stack = diatonic_stack(scale_id, d, true);
+            let base = 48 + ((key + stack[0]) % 12);
+            stack.iter().map(|&s| base + (s - stack[0])).collect()
+        })
+        .collect();
+    if voice_lead {
+        for i in 1..chords.len() {
+            let mut prev = chords[i - 1].clone();
+            prev.sort_unstable();
+            let mut best: Option<(u32, Vec<u8>)> = None;
+            for r in 0..chords[i].len() {
+                let mut cand = chords[i].clone();
+                for c in cand.iter_mut().take(r) {
+                    *c += 12;
+                }
+                let mut sorted = cand.clone();
+                sorted.sort_unstable();
+                let cost: u32 = sorted
+                    .iter()
+                    .enumerate()
+                    .map(|(j, &v)| (v as i32 - prev[j.min(prev.len() - 1)] as i32).unsigned_abs())
+                    .sum();
+                if best.as_ref().is_none_or(|(bc, _)| cost < *bc) {
+                    best = Some((cost, cand));
+                }
+            }
+            chords[i] = best.map(|(_, c)| c).unwrap_or_else(|| chords[i].clone());
+        }
+    }
+    for (bar, chd) in chords.iter().enumerate() {
+        let mut ps = chd.clone();
+        ps.sort_unstable();
+        for p in ps {
+            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75 });
+        }
+    }
+}
+
+/// Harmonize single notes: every (channel, step) group holding exactly one note gains
+/// the tones of `harmony` above it (roots stay; a tone any channel already sounds at
+/// that step is not doubled). `diatonic` spells the triad from the project key/scale
+/// and leaves out-of-scale roots alone — chromatic passing notes stay unharmonized;
+/// named types spell by interval from the root, whatever the key. A `None` pitch
+/// resolves to the channel root, like [`quantize`].
+pub fn chord(notes: &mut Vec<Note>, key_scale: Option<(u8, u32)>, harmony: &str, roots: &[(Id, u8)]) {
+    // group indices by (channel, step) — the same grouping rule as `strum`; processed
+    // in key order so the appended tones land deterministically, and indices stay
+    // valid because only pushes happen below
+    let mut groups: std::collections::HashMap<(Id, u64), Vec<usize>> = std::collections::HashMap::new();
+    for (i, n) in notes.iter().enumerate() {
+        groups.entry((n.ch, n.step.to_bits() as u64)).or_default().push(i);
+    }
+    let mut groups: Vec<((Id, u64), Vec<usize>)> = groups.into_iter().collect();
+    groups.sort_by_cached_key(|(k, _)| *k);
+    for ((cid, _), g) in groups {
+        if g.len() != 1 {
+            continue; // a step that already has a chord is not a root
+        }
+        let i = g[0];
+        let step = notes[i].step;
+        let len = notes[i].len;
+        let vel = (notes[i].v * 0.9).clamp(0.05, 1.0);
+        let Some(root) = notes[i].p.or_else(|| roots.iter().find(|(id, _)| *id == cid).map(|(_, r)| *r)) else {
+            continue;
+        };
+        let ivs = if harmony == "diatonic" {
+            let Some((key, scale_id)) = key_scale else { continue };
+            let pc = root % 12;
+            let deg = scale_offsets(scale_id).iter().position(|&o| (key + o) % 12 == pc);
+            let Some(deg) = deg else { continue }; // out of scale: leave it alone
+            let stack = diatonic_stack(scale_id, deg, false);
+            stack[1..].iter().map(|&s| s - stack[0]).collect::<Vec<u8>>()
+        } else {
+            match chord_intervals(harmony) {
+                Some(iv) => iv[1..].to_vec(),
+                None => continue,
+            }
+        };
+        for v in ivs {
+            let p = root + v;
+            if !notes.iter().any(|x| x.step == step && x.p == Some(p)) {
+                notes.push(Note { ch: cid, step, len, p: Some(p), v: vel });
+            }
         }
     }
 }
@@ -499,6 +786,221 @@ mod tests {
         assert!(notes.iter().any(|n| n.p == Some(57) && (n.step - 4.0).abs() < 1e-4));
         assert!(notes.iter().any(|n| n.p == Some(60) && (n.step - 4.25).abs() < 1e-4));
         assert!(notes.iter().any(|n| n.p == Some(64) && (n.step - 8.0).abs() < 1e-4));
+    }
+
+    // --- chord tools -------------------------------------------------------
+
+    const AT_C4: &[(&str, &str)] = &[
+        ("maj", "60,64,67"),
+        ("min", "60,63,67"),
+        ("dim", "60,63,66"),
+        ("aug", "60,64,68"),
+        ("sus2", "60,62,67"),
+        ("sus4", "60,65,67"),
+        ("7", "60,64,67,70"),
+        ("maj7", "60,64,67,71"),
+        ("min7", "60,63,67,70"),
+        ("9", "60,64,67,70,74"),
+        ("add9", "60,64,67,74"),
+        ("maj9", "60,64,67,71,74"),
+        ("min9", "60,63,67,70,74"),
+        ("6", "60,64,67,69"),
+        ("m6", "60,63,67,69"),
+        ("dim7", "60,63,66,69"),
+        ("m7b5", "60,63,66,70"),
+        ("5", "60,67"),
+    ];
+
+    #[test]
+    fn stamp_table_matches_the_pinned_voicings() {
+        for (id, want) in AT_C4 {
+            let got = chord_pitches(60, id, 0).unwrap();
+            let got: Vec<String> = got.iter().map(|p| p.to_string()).collect();
+            assert_eq!(&got.join(","), want, "type {id}");
+        }
+        assert_eq!(CHORD_TYPES.len(), 18);
+    }
+
+    #[test]
+    fn inversions_lift_the_lowest_voice_and_clamp() {
+        // min7 at A3, root..3rd
+        let want = [[57, 60, 64, 67], [60, 64, 67, 69], [64, 67, 69, 72], [67, 69, 72, 76]];
+        for (inv, want) in want.iter().enumerate() {
+            assert_eq!(chord_pitches(57, "min7", inv as u32).unwrap(), want);
+        }
+        // a two-note voicing has one inversion; a triad has two (inv 5 clamps to the 2nd)
+        assert_eq!(chord_pitches(60, "5", 3).unwrap(), [67, 72]);
+        assert_eq!(chord_pitches(60, "maj", 5).unwrap(), [67, 72, 76]);
+    }
+
+    #[test]
+    fn chord_pitches_rejects_unknown_types_and_roots_past_127() {
+        assert!(chord_pitches(60, "nope", 0).is_none());
+        assert!(chord_pitches(118, "maj", 0).is_some()); // top voice 125
+        assert!(chord_pitches(121, "maj", 0).is_none()); // top voice would be 128
+        assert!(chord_pitches(114, "maj9", 0).is_none()); // top voice would be 128
+    }
+
+    #[test]
+    fn chord_name_is_bass_first() {
+        assert_eq!(chord_name(&[60, 64, 67, 69]), "C6"); // never "Am7"
+        assert_eq!(chord_name(&[57, 60, 64, 67]), "Am7"); // the same set, A in the bass
+        assert_eq!(chord_name(&[60, 63, 66, 69]), "C°7");
+        assert_eq!(chord_name(&[60, 63, 66, 70]), "Cm7♭5");
+        assert_eq!(chord_name(&[60, 64, 67, 70, 74]), "C9");
+        assert_eq!(chord_name(&[60, 64, 67, 74]), "Cadd9");
+        assert_eq!(chord_name(&[60, 61]), "C?"); // unknown sets say so
+        assert_eq!(chord_name(&[]), "?");
+    }
+
+    fn a_minor() -> (u8, u32) {
+        (9, 2)
+    }
+
+    #[test]
+    fn chord_harmonizes_diatonic_triads_and_skips_out_of_scale_roots() {
+        // E3 in A natural minor is degree v: E G B
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8 }];
+        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [52, 55, 59]);
+        // a chromatic root stays unharmonized — diatonic mode leaves passing notes alone
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8 }];
+        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        assert_eq!(notes.len(), 1);
+    }
+
+    #[test]
+    fn chord_harmonizes_named_types_by_interval_anywhere() {
+        // C#3 + minor 7th = C#m7, spelled by the table whatever the project key is
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8 }];
+        chord(notes, Some(a_minor()), "min7", &[(1, 60)]);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [49, 52, 56, 59]);
+    }
+
+    #[test]
+    fn chord_harmonizes_each_channel_and_never_doubles_a_sounding_tone() {
+        // E3 (ch 1) and B3 (ch 2) share step 0; groups are (channel, step), so both are
+        // roots — but E's chord must not double the B that is already sounding
+        let notes = &mut vec![
+            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8 },
+            Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8 },
+        ];
+        chord(notes, Some(a_minor()), "diatonic", &[(1, 60), (2, 60)]);
+        // E gains G (B exists → skipped); B (degree ii°) gains D and F
+        assert_eq!(notes.len(), 5);
+        assert_eq!(notes.iter().filter(|n| n.p == Some(59)).count(), 1);
+        let ch2: Vec<u8> = notes.iter().filter(|n| n.ch == 2).map(|n| n.p.unwrap()).collect();
+        assert_eq!(ch2, [59, 62, 65]);
+    }
+
+    #[test]
+    fn chord_ignores_steps_that_already_hold_a_chord() {
+        let notes = &mut vec![
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(52), v: 0.8 },
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8 },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8 },
+        ];
+        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        // step 0 has two notes (not a single root) and stays; step 4 becomes Am (+C, +E)
+        assert_eq!(notes.len(), 5);
+        assert_eq!(notes.iter().filter(|n| n.step == 0.0).count(), 2);
+        let ps: Vec<u8> = notes.iter().filter(|n| n.step == 4.0).map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [57, 60, 64]);
+    }
+
+    #[test]
+    fn chord_resolves_a_missing_pitch_to_the_channel_root() {
+        // the root note keeps `p: None` (it still follows the channel root); the added
+        // tones are spelled out explicitly
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8 }];
+        chord(notes, Some(a_minor()), "maj", &[(1, 60)]);
+        assert_eq!(notes[0].p, None);
+        let ps: Vec<u8> = notes.iter().skip(1).map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [64, 67]);
+    }
+
+    #[test]
+    fn progression_minloop_matches_the_golden_voicings() {
+        // i–VI–III–VII in A natural minor, 7th stacks, roots in C3..B3
+        let notes = &mut vec![];
+        progression(notes, 1, 9, 2, &[0, 5, 2, 6], false);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [57, 60, 64, 67, 53, 57, 60, 64, 48, 52, 55, 59, 55, 59, 62, 65]);
+        assert!(notes.iter().enumerate().all(|(i, n)| n.step == (i / 4 * 16) as f32 && n.len == 16.0 && (n.v - 0.75).abs() < 1e-6));
+        // voice-lead picks inversions: F→C→G move as little as possible
+        let notes = &mut vec![];
+        progression(notes, 1, 9, 2, &[0, 5, 2, 6], true);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [57, 60, 64, 67, 57, 60, 64, 65, 59, 60, 64, 67, 59, 62, 65, 67]);
+    }
+
+    #[test]
+    fn progression_templates_cover_trap_andalusian_and_canon() {
+        let names = |notes: &Vec<Note>, bars: usize| {
+            (0..bars)
+                .map(|b| {
+                    let ps: Vec<u8> = notes.iter().skip(b * 4).take(4).map(|n| n.p.unwrap()).collect();
+                    chord_name(&ps)
+                })
+                .collect::<Vec<String>>()
+        };
+        // root position (voice-lead off): the degree names read cleanly
+        let t = &mut vec![];
+        progression(t, 1, 9, 2, &[0, 3, 5, 4], false);
+        assert_eq!(names(t, 4), ["Am7", "Dm7", "Fmaj7", "Em7"]);
+        let a = &mut vec![];
+        progression(a, 1, 9, 2, &[0, 6, 5, 4], false);
+        assert_eq!(names(a, 4), ["Am7", "G7", "Fmaj7", "Em7"]);
+        let c = &mut vec![];
+        progression(c, 1, 9, 2, &[0, 4, 5, 2, 3, 0, 3, 4], false);
+        assert_eq!(names(c, 8), ["Am7", "Em7", "Fmaj7", "Cmaj7", "Dm7", "Am7", "Dm7", "Em7"]);
+        // voice-lead on: trap's last chord lands G-in-bass ([55,59,62,64]) — the same
+        // pitch set as Em7, but bass-first naming reads it "G6", exactly like a chart
+        let t = &mut vec![];
+        progression(t, 1, 9, 2, &[0, 3, 5, 4], true);
+        let last: Vec<u8> = t[12..].iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(last, [55, 59, 62, 64]);
+        assert_eq!(chord_name(&last), "G6");
+    }
+
+    #[test]
+    fn progression_chance_is_seeded_and_deterministic() {
+        let run = |seed: u64| {
+            let degs = progression_degrees("chance", 4, seed, 7).unwrap();
+            let notes = &mut vec![];
+            progression(notes, 1, 9, 2, &degs, true);
+            notes.iter().map(|n| n.p.unwrap()).collect::<Vec<u8>>()
+        };
+        assert_eq!(run(7), run(7));
+        assert_ne!(run(7), run(8));
+        // every degree stays inside the scale
+        for d in progression_degrees("chance", 64, 3, 7).unwrap() {
+            assert!(d < 7);
+        }
+    }
+
+    #[test]
+    fn progression_degrees_expands_templates() {
+        assert_eq!(progression_degrees("pop", 6, 0, 7).unwrap(), [0, 4, 5, 3, 0, 4]);
+        assert_eq!(progression_degrees("canon", 10, 0, 7).unwrap(), [0, 4, 5, 2, 3, 0, 3, 4, 0, 4]);
+        assert!(progression_degrees("nope", 4, 0, 7).is_none());
+    }
+
+    /// Golden values for the chord tools at one fixed seed; the TS mirror pins the same
+    /// numbers (`ui/src/lib/transforms.test.ts`), so engine and browser agree bit for bit.
+    #[test]
+    fn golden_chord_tool_values() {
+        // chance walk, seed 2026, A minor, voice-lead on
+        let degs = progression_degrees("chance", 4, 2026, 7).unwrap();
+        assert_eq!(degs, [2, 4, 3, 2]);
+        let notes = &mut vec![];
+        progression(notes, 2, 9, 2, &degs, true);
+        let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
+        assert_eq!(ps, [48, 52, 55, 59, 52, 55, 59, 62, 53, 57, 60, 62, 52, 55, 59, 60]);
+        let steps: Vec<f32> = notes.iter().map(|n| n.step).collect();
+        assert_eq!(steps, [0.0, 0.0, 0.0, 0.0, 16.0, 16.0, 16.0, 16.0, 32.0, 32.0, 32.0, 32.0, 48.0, 48.0, 48.0, 48.0]);
     }
 
     /// Golden values for one fixed seed per verb; the TS mirror pins the same numbers

@@ -142,6 +142,15 @@ the kit and its mixer routing in every pattern.
   delayed by `swing × ½` step. 100 % puts the off-beat 16th at 75 % of its 8th (MPC 75 %),
   ~67 % is close to triplet feel; 0 is straight. Even 16ths and off-grid notes never move.
   Swing is applied when the timeline is built (schedule time), never written into the notes.
+* **Chord tools** (piano roll Tools strip + `wave notes chord|progression|stamp`): the chord
+  theory lives in one place per language — `transform.rs`'s tables (`CHORD_TYPES`,
+  `PROGRESSION_TEMPLATES`) and helpers (`chord_pitches`, `chord_name`, `progression`),
+  mirrored by `ui/src/lib/transforms.ts`, with golden tests pinning both sides to identical
+  voicings and seeds. Stamped notes are concrete pitches (a later key change does not
+  re-harmonize); naming is bass-first, so a root-position C6 reads "C6", not "Am7"; the
+  `progression` generator replaces its channel's notes and grows the pattern like the other
+  generators, bars bounded before allocation. Stamps go through the existing note op — the
+  only new engine surface is the two `TransformVerb` kinds.
 
 **The UI, as in FL Studio.** The *current pattern* is global (the toolbar's pattern selector,
 numpad 1–9 / + / −, F4 next empty pattern, F2 rename, Shift+Ctrl+C clone); picking a pattern

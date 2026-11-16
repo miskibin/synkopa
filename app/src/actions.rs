@@ -698,7 +698,7 @@ pub fn schema() -> Value {
             "setLoop": {"loop": {"a": 0, "b": 16}},
             "putAutomation": {"automation": {"id": 0, "name": "Reverb mix", "color": "#e0a44a", "target": {"kind": "fx|mix|insertVol|insertPan|trackVol|chanVol|chanPan|synth|keys|clipGain|clipPan", "fxId": 0, "chanId": 0, "param": "fx: mix or band:<i>:f|g|q; synth: catalog id; keys: release|dynamics", "id": "insert/track/channel/clip id for vol/pan/gain"}, "points": [{"t": 0, "v": 0.2}, {"t": 8, "v": 0.8, "tension": -0.4}, {"t": 12, "v": 0.5, "shape": "hold"}]}},
             "removeAutomation": {"id": 0},
-            "transformNotes": {"pattern": 1, "verb": {"kind": "humanize|quantize|euclidFill|strum|euclidDrums|melody", "timing": 0.3, "velocity": 0.2, "grid": 1, "amount": 1, "scaleAware": false, "ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7, "width": 0.5, "ramp": 0.05, "voices": [{"ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7}], "bars": 2, "density": 0.5, "repeat": 1}, "seed": 7, "select": {"kind": "indices|range", "indices": [1, 2], "from": 0, "to": 16, "ch": 0}},
+            "transformNotes": {"pattern": 1, "verb": {"kind": "humanize|quantize|euclidFill|strum|euclidDrums|melody|chord|progression", "timing": 0.3, "velocity": 0.2, "grid": 1, "amount": 1, "scaleAware": false, "ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7, "width": 0.5, "ramp": 0.05, "voices": [{"ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7}], "bars": 2, "density": 0.5, "repeat": 1, "harmony": "diatonic|maj|min|7|maj7|min7", "template": "pop|pop2|minloop|trap|iivI|doowop|andalusian|blues|canon|chance", "voiceLead": true, "degrees": [0, 5, 2, 6]}, "seed": 7, "select": {"kind": "indices|range", "indices": [1, 2], "from": 0, "to": 16, "ch": 0}},
             "setKey": {"key": 2, "scale": 1},
             "putComp": {"comp": {"id": 0, "name": "Comp 1", "xfade": 0.01, "takes": [{"id": 0, "name": "Take 1", "ref": "source id", "start": 0, "len": 8, "offset": 0}], "regions": [{"take": 0, "from": 0, "to": 4, "xfade": 0.02}]}},
             "removeComp": {"id": 0},
@@ -1073,8 +1073,9 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     }
     let steps = arg(a, "steps").and_then(Value::as_str);
     let notes = arg(a, "notes");
-    if steps.is_some() || notes.is_some() || arg(a, "clear").and_then(Value::as_bool).unwrap_or(false) {
-        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --steps / --notes / --clear")?)?.id;
+    let stamp = arg(a, "stamp");
+    if steps.is_some() || notes.is_some() || stamp.is_some() || arg(a, "clear").and_then(Value::as_bool).unwrap_or(false) {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --steps / --notes / --stamp / --clear")?)?.id;
         pt.notes.retain(|n| n.ch != ch);
         if let Some(s) = steps {
             let vel = opt_f64(a, "vel").unwrap_or(1.0) as f32;
@@ -1094,6 +1095,31 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
                 pt.notes.push(Note { v, trig: Some(trigger), ..Note::new(ch, step, len, key) });
             }
         }
+    }
+    // `wave notes stamp` lands here: one chord written through the existing note op
+    let mut stamped: Option<Value> = stamp.map(|st| -> Result<Value, String> {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --stamp")?)?.id;
+        let step = opt_f64(st, "step").ok_or("stamp needs `step` (16ths)")? as f32;
+        let root = arg(st, "root").and_then(as_index).filter(|r| *r <= 127).ok_or("stamp needs `root` (a MIDI key 0..127, or a note name)")? as u8;
+        let ty = st.get("type").and_then(Value::as_str).ok_or("stamp needs `type` (a chord id like min7 — see `wave schema`)")?;
+        let inv = arg(st, "inv").and_then(as_index).unwrap_or(0);
+        let len = opt_f64(st, "len").unwrap_or(4.0) as f32;
+        if !(step.is_finite() && step >= 0.0 && len.is_finite() && len > 0.0) {
+            return Err("stamp: `step` must be ≥ 0 and `len` > 0".into());
+        }
+        if wave_engine::transform::chord_intervals(ty).is_none() {
+            return Err(format!("stamp: unknown chord type `{}` ({})", ty, wave_engine::transform::CHORD_TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>().join(", ")));
+        }
+        let pitches = wave_engine::transform::chord_pitches(root, ty, inv as u32)
+            .ok_or_else(|| format!("stamp: root {root} pushes the top voice past MIDI 127"))?;
+        // re-stamping a step replaces its notes on that channel: no pile-up
+        pt.notes.retain(|n| !(n.ch == ch && n.step == step));
+        pt.notes.extend(pitches.iter().map(|&k| Note { v: 0.8, ..Note::new(ch, step, len, Some(k)) }));
+        Ok(json!({ "notes": pitches.iter().map(|&k| json!({ "step": step, "len": len, "p": k, "v": 0.8 })).collect::<Vec<_>>(), "label": wave_engine::transform::chord_name(&pitches) }))
+    }).transpose()?;
+    if let Some(s) = stamped.as_mut() {
+        s["revision"] = json!(e.apply(&[Op::PutPattern { pattern: pt.clone() }], false, if_revision).map_err(|x| x.to_string())?);
+        return Ok(s.clone());
     }
     if !new && pt == before {
         return Ok(pattern_json(&p, &pt));

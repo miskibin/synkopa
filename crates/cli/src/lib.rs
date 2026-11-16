@@ -169,6 +169,13 @@ NOTES  (deterministic transforms and generators for a pattern's notes)
   notes strum --pattern ID [--width STEPS --ramp VEL]
   notes drums --pattern ID --bars N --seed S --voice "CH:K:N[:ROT[:VEL]]" (repeatable)
   notes melody --pattern ID --ch CH [--bars N --density 0..1 --repeat N --seed S]
+  notes chord --pattern ID [--type diatonic|maj|min|7|maj7|min7]        harmonize single notes
+  notes progression --pattern ID --ch CH [--bars 1..32 --template pop|pop2|minloop|trap|iivI|doowop|
+           andalusian|blues|canon|chance --seed S --degrees "0:5:2:6" --no-voice-lead]
+           one diatonic 7th chord per bar; --degrees replaces template+bars; inversions are
+           voice-led to move the least unless --no-voice-lead
+  notes stamp --pattern ID --ch CH --step S --root R --type maj|min|…|5 [--inv 0..3 --len STEPS]
+           write one chord rooted at R (MIDI key or note name like A3); replaces that step
   notes … [--select "FROM:TO[@CH]" | --indices "1,2,5"]                limit the notes a verb touches
   key [NOTE] [SCALE] [--off]                            project key/scale (major minor pent…) for scale-aware tools
 
@@ -657,6 +664,56 @@ fn id_or_name(s: &str) -> Value {
     s.parse::<u64>().map(|n| json!(n)).unwrap_or_else(|_| json!(s))
 }
 
+/// A stamp root: a MIDI key (`57`) or a note name with octave (`A3`, `C#4`, `Bb2` —
+/// C4 = 60). Returns the MIDI key.
+fn parse_root(s: &str) -> Result<u64, String> {
+    let t = s.trim();
+    if let Ok(n) = t.parse::<u64>() {
+        return if n <= 127 { Ok(n) } else { Err(format!("--root {n} is outside 0..127")) };
+    }
+    let bad = || format!("--root `{s}` is not a MIDI key or note name (A3, C#4)");
+    let (name, oct) = t.split_at(t.len().checked_sub(1).ok_or_else(bad)?);
+    let oct = oct.trim().parse::<i64>().map_err(|_| bad())?;
+    let (letter, acc): (char, i64) = match name.chars().collect::<Vec<_>>().as_slice() {
+        [l] => (*l, 0),
+        [l, '#'] => (*l, 1),
+        [l, 'b'] | [l, '♭'] => (*l, -1),
+        _ => return Err(bad()),
+    };
+    let base = match letter.to_ascii_uppercase() {
+        'C' => 0,
+        'D' => 2,
+        'E' => 4,
+        'F' => 5,
+        'G' => 7,
+        'A' => 9,
+        'B' => 11,
+        _ => return Err(bad()),
+    };
+    let midi = 12 * (oct + 1) + base + acc;
+    if !(0..=127).contains(&midi) {
+        return Err(format!("--root {s} is outside 0..127"));
+    }
+    Ok(midi as u64)
+}
+
+#[cfg(test)]
+mod root_tests {
+    #[test]
+    fn parse_root_takes_midi_and_note_names() {
+        assert_eq!(super::parse_root("57").unwrap(), 57);
+        assert_eq!(super::parse_root("60").unwrap(), 60);
+        assert_eq!(super::parse_root("A3").unwrap(), 57);
+        assert_eq!(super::parse_root("c4").unwrap(), 60);
+        assert_eq!(super::parse_root("C#4").unwrap(), 61);
+        assert_eq!(super::parse_root("bb2").unwrap(), 46);
+        assert_eq!(super::parse_root("B3").unwrap(), 59);
+        assert!(super::parse_root("H4").is_err());
+        assert!(super::parse_root("A").is_err());
+        assert!(super::parse_root("128").is_err());
+    }
+}
+
 fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     match cmd {
@@ -979,9 +1036,22 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             )
         }
         "notes" => {
-            let verb = a.pos.get(1).ok_or_else(|| u("notes <humanize|quantize|euclid|strum|drums|melody> …".into()))?.clone();
+            let verb = a.pos.get(1).ok_or_else(|| u("notes <humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp> …".into()))?.clone();
             let pattern = a.num("pattern").map_err(u)?.ok_or_else(|| u("missing --pattern".into()))? as u64;
             let f = |k: &str| a.num(k);
+            if verb == "stamp" {
+                // one chord through the app's `pattern` command (the existing note op):
+                // replaces the notes at that step on the channel, prints notes + label
+                let root = a.get("root").ok_or_else(|| u("missing --root (MIDI key or note name like A3)".into()))?;
+                let st = json!({
+                    "step": f("step").map_err(u)?.ok_or_else(|| u("missing --step (16ths)".into()))?,
+                    "root": parse_root(root).map_err(u)?,
+                    "type": a.need("type").map_err(u)?,
+                    "inv": f("inv").map_err(u)?.unwrap_or(0.0),
+                    "len": f("len").map_err(u)?.unwrap_or(4.0),
+                });
+                return send(cx, a, "pattern", json!({"id": pattern, "ch": id_or_name(a.need("ch").map_err(u)?), "stamp": st}));
+            }
             let (verb_json, needs_ch) = match verb.as_str() {
                 "humanize" => (
                     json!({"kind": "humanize", "timing": f("timing").map_err(u)?.unwrap_or(0.5), "velocity": f("velocity").map_err(u)?.unwrap_or(0.4)}),
@@ -999,6 +1069,29 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                     json!({"kind": "strum", "width": f("width").map_err(u)?.unwrap_or(0.5), "ramp": f("ramp").map_err(u)?.unwrap_or(0.05)}),
                     false,
                 ),
+                "chord" => {
+                    let ty = a.get("type").map(str::to_owned).unwrap_or_else(|| "diatonic".into());
+                    let harmony = match ty.as_str() {
+                        "major" => "maj".to_string(),
+                        "minor" => "min".to_string(),
+                        t => t.to_string(),
+                    };
+                    (json!({"kind": "chord", "harmony": harmony}), false)
+                }
+                "progression" => {
+                    let mut v = json!({
+                        "kind": "progression",
+                        "ch": f("ch").map_err(u)?.ok_or_else(|| u("missing --ch (the channel the chords go to)".into()))? as u64,
+                        "bars": f("bars").map_err(u)?.unwrap_or(4.0) as u32,
+                        "template": a.get("template").map(str::to_owned).unwrap_or_else(|| "pop".into()),
+                        "voiceLead": !a.has("no-voice-lead"),
+                    });
+                    if let Some(d) = a.get("degrees") {
+                        let list: Result<Vec<u64>, _> = d.split(':').map(|x| x.trim().parse::<u64>()).collect();
+                        v["degrees"] = json!(list.map_err(|_| u("--degrees is a colon list of scale degrees, e.g. \"0:5:2:6\"".into()))?);
+                    }
+                    (v, true)
+                }
                 "drums" => {
                     let mut voices = vec![];
                     for (i, v) in a.get_all("voice").iter().enumerate() {
@@ -1027,7 +1120,7 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                     json!({"kind": "melody", "ch": f("ch").map_err(u)?.ok_or_else(|| u("missing --ch".into()))? as u64, "bars": f("bars").map_err(u)?.unwrap_or(2.0) as u32, "density": f("density").map_err(u)?.unwrap_or(0.5), "repeat": f("repeat").map_err(u)?.unwrap_or(1.0) as u32}),
                     true,
                 ),
-                other => return Err(u(format!("unknown notes verb `{other}` (humanize|quantize|euclid|strum|drums|melody)"))),
+                other => return Err(u(format!("unknown notes verb `{other}` (humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp)"))),
             };
             if needs_ch {
                 // a channel id here is the Channel Rack channel: accepted as-is, validated by the engine
