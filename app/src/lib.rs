@@ -19,6 +19,8 @@ mod plugins;
 mod project_launch;
 mod recovery;
 mod settings;
+#[cfg(test)]
+mod ui_prefixes_tests;
 mod updater;
 #[cfg(test)]
 mod watch_tests;

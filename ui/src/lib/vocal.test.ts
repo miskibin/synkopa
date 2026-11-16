@@ -233,7 +233,7 @@ describe('Tune to Reference', () => {
     const ok = put({ ...p, source: 7002 });
     expect(ok.clips.find(c => c.id === 7003)!.tune!.reference!.source).toBe(7002);
     const gone = applyAll(ok, [{ op: 'removeSource', id: 7002 }]);
-    expect(gone.clips.find(c => c.id === 7003)!.tune!.reference).toBeNull();
+    expect(gone.clips.find(c => c.id === 7003)!.tune!.reference).toBeUndefined(); // the engine omits the reference, it does not write null
   });
 });
 

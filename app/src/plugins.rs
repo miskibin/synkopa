@@ -120,7 +120,8 @@ pub fn register_bundled(resource_dir: Option<std::path::PathBuf>) {
     }
 }
 
-/// The error of a plugin that has no window of its own (WAVE Demo Synth): the UI matches its prefix.
+/// The error of a plugin that has no window of its own (WAVE Demo Synth): the UI matches its
+/// prefix (`wave_engine::errors::ERR_NO_EDITOR`, pinned by `tests/ui_error_prefixes.rs`).
 pub const NO_EDITOR: &str = "NO_EDITOR: this plugin has no window of its own; its parameters are listed below";
 
 fn vst3_editor_error(e: wave_vst3::Vst3Error) -> String {

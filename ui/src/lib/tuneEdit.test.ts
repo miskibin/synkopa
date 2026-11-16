@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './__fixtures__/tune-edit.json';
 import { applyTuneEdit, segmentationFingerprint } from './pitch';
+import { close } from './closeCompare';
 import { applyAll } from './applyOps';
 import type { ClipTune, NoteEdit, Project, TuneEdit } from '../api/types';
 
@@ -14,18 +15,6 @@ const norm = (t: ClipTune | null) => t && {
   pencil: t.pencil ?? [],
   reference: t.reference ?? null,
 };
-
-function close(a: unknown, b: unknown, path = ''): void {
-  if (typeof a === 'number' && typeof b === 'number') { expect(Math.abs(a - b), path).toBeLessThan(1e-6); return; }
-  if (Array.isArray(a) && Array.isArray(b)) { expect(a.length, path).toBe(b.length); a.forEach((x, i) => close(x, b[i], `${path}[${i}]`)); return; }
-  if (a && b && typeof a === 'object' && typeof b === 'object') {
-    const ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
-    expect(ka, path).toEqual(kb);
-    for (const k of ka) close((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`);
-    return;
-  }
-  expect(a, path).toEqual(b);
-}
 
 describe('editTune', () => {
   it('fingerprints segmentations like the engine', () => {

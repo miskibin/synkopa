@@ -7,12 +7,13 @@ import { createSignal } from 'solid-js';
 import { be } from '../api/backend';
 import { PLUGIN_FORMAT_LABEL, type Id, type PluginRef } from '../api/types';
 import { t } from '../lib/i18n';
+import { ERR_NO_EDITOR } from '../api/errors';
 import { chanById } from './pattern';
 import { findFx, insName, S } from './store';
 import { say } from './ui';
 
 /** The error of a plugin without a window of its own (plugins.rs `NO_EDITOR`). */
-export const isNoEditor = (e: unknown) => /NO_EDITOR/.test(String(e));
+export const isNoEditor = (e: unknown) => String(e).replace(/^Error: /, '').startsWith(ERR_NO_EDITOR);
 
 /** Plugin classes known to have no window of their own (this session). */
 const noEditorCids = new Set<string>();

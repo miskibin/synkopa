@@ -13,6 +13,8 @@ use std::time::{Duration, SystemTime};
 
 use serde_json::{json, Value};
 
+use wave_engine::errors::ERR_REVISION_CONFLICT;
+
 use super::{abs, need_files, run, run_lines, session, tidy_numbers, ws, Args, Cx, Doc, Fail, Files};
 
 /// How often the file is looked at.
@@ -169,7 +171,7 @@ impl Watch {
                 let e = rep.error.unwrap_or_else(|| ws::ErrorBody::new("ERROR", "unknown error"));
                 if e.code == "REVISION_CONFLICT" {
                     return Err(Fail::App(format!(
-                        "REVISION_CONFLICT: the project changed in WAVE since the watch last applied {} (an edit in the app or another command); the file was not applied, so that edit is kept. Restart `wave watch` to build on the project as it is now, or add --force to let the file replace it (the replaced state stays one undo away)",
+                        "{ERR_REVISION_CONFLICT} the project changed in WAVE since the watch last applied {} (an edit in the app or another command); the file was not applied, so that edit is kept. Restart `wave watch` to build on the project as it is now, or add --force to let the file replace it (the replaced state stays one undo away)",
                         self.file.display()
                     )));
                 }

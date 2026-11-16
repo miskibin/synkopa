@@ -5,12 +5,15 @@ import { askUrl, MAX_ASK_URL, type AskService } from '../lib/askLink';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
 import type { Backend, EventMap, OsDropEvent } from './backend';
+import type { Json } from '../lib/projectEq';
 import { encodeFrame, SCOPE_LEN, SPEC_BANDS, type EncFx } from './telemetry';
 import { BUILTIN, emptyProject, mockCatalog, sketchProject } from './mockData';
 import { FACTORY_FILES, FACTORY_KIT, factoryFile, LIB_SCHEME, libPath } from '../lib/factory';
 
 /** Reverb mix (%) the engine computes for the research plate at a -18 dB send (autovocal::reverb_mix_for_send). */
 const MOCK_REVERB_MIX = 37.2;
+import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_REVISION_CONFLICT } from './errors';
+import { projectEq } from '../lib/projectEq';
 import { applyAll } from '../lib/applyOps';
 import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
@@ -201,11 +204,17 @@ export class MockBackend implements Backend {
         const { fxId, paramId } = op.automation.target;
         const fx = this.p.inserts.flatMap(m => m.fx).find(f => f.id === fxId);
         if (fx?.type !== 'plugin' || !(await this.pluginParams(fxId).catch(() => [])).some(q => q.id === paramId))
-          throw new Error(`INVALID_TARGET: effect ${fxId} has no plugin parameter ${paramId} to automate`);
+          throw new Error(`${ERR_INVALID_TARGET} effect ${fxId} has no plugin parameter ${paramId} to automate`);
       }
     }
     const prev = this.p;
-    this.p = applyAll(this.p, ops); // throws (rejects) on an invalid batch
+    const next = applyAll(prev, ops); // throws (rejects) on an invalid batch
+    if (projectEq(prev as unknown as Json, next as unknown as Json)) {
+      // like the engine (engine.rs apply): an unchanged batch is not an edit — no undo
+      // step, no revision, no state event
+      return { revision: this.revision };
+    }
+    this.p = next;
     // like the engine: no state event per transient batch of a gesture (endGesture reports it)
     if (opts?.transient && this.gesture) this.revision++;
     else { this.pushUndo(prev); this.changed(); }
@@ -1076,7 +1085,7 @@ export class MockBackend implements Backend {
     const n = this.chainName(name), m = this.p.inserts.find(x => x.id === insert);
     if (!m) throw new Error(`no insert ${insert}`);
     if (!m.fx.length) throw new Error(`${m.name.trim() || 'the insert'} has no effects to save`);
-    if (this.chains.has(n.toLowerCase()) && !overwrite) throw new Error(`EXISTS: a preset called ${n} already exists`);
+    if (this.chains.has(n.toLowerCase()) && !overwrite) throw new Error(`${ERR_EXISTS} a preset called ${n} already exists`);
     this.chains.set(n.toLowerCase(), { name: n, fx: m.fx.map(f => ({ ...structuredClone(f), id: 0 })) });
     return { name: n, effects: m.fx.length };
   }
@@ -1099,7 +1108,7 @@ export class MockBackend implements Backend {
   async fxChainRename(name: string, to: string) {
     await delay(10);
     const c = this.chainOf(name), n = this.chainName(to), other = this.chains.get(n.toLowerCase());
-    if (other && other !== c) throw new Error(`EXISTS: a preset called ${n} already exists`);
+    if (other && other !== c) throw new Error(`${ERR_EXISTS} a preset called ${n} already exists`);
     this.chains.delete(c.name.toLowerCase());
     this.chains.set(n.toLowerCase(), { ...c, name: n });
     return { name: n };
@@ -1318,7 +1327,7 @@ export class MockBackend implements Backend {
     if (path == null && !this.dialog()) return { cancelled: true };
     // the engine's `open_at_revision`: a take in progress first, then the approved revision
     if (this.rec) throw new Error('recording: stop it first');
-    if (ifRevision != null && ifRevision !== this.revision) throw new Error('REVISION_CONFLICT: project changed');
+    if (ifRevision != null && ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
     this.resetTo(sketchProject(this.cat), path ?? 'C:\\Users\\michal\\Music\\Demo.wave');
     this.recovery = null;
     return { state: this.dto(), warnings: [] };
@@ -1336,7 +1345,7 @@ export class MockBackend implements Backend {
   async projectExportZip(ifRevision: number): Promise<SaveResult> {
     if (!this.dialog()) return { cancelled: true };
     if (this.rec) throw new Error('recording: stop it first');
-    if (ifRevision !== this.revision) throw new Error('REVISION_CONFLICT: project changed');
+    if (ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
     return { path: this.path?.replace(/\.wave$/i, '.zip') ?? 'Song.zip' };
   }
 
@@ -1470,7 +1479,7 @@ export class MockBackend implements Backend {
   async pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }) {
     const pl = this.hosted(fxId);
     if (!pl) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
-    if (open && /demo synth/i.test(pl.name)) throw new Error('NO_EDITOR: this plugin has no window of its own; its parameters are listed below');
+    if (open && /demo synth/i.test(pl.name)) throw new Error(ERR_NO_EDITOR + ' this plugin has no window of its own; its parameters are listed below');
     if (open) this.editors.set(fxId, label ?? { title: '', subtitle: '' }); else this.editors.delete(fxId);
   }
   private editors = new Map<Id, { title: string; subtitle: string }>();

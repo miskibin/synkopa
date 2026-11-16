@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analysis::Analyzer;
 use crate::catalog::param_block;
+use crate::errors::{ERR_INVALID_TARGET, ERR_REVISION_CONFLICT};
 use crate::midi::{self, MidiMsg, MidiRecorder};
 use crate::model::*;
 use crate::ops::{self, Dirty, Op};
@@ -678,7 +679,7 @@ impl Engine {
     ) -> Result<u64, EngineError> {
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let before = c.project.clone();
@@ -689,7 +690,9 @@ impl Engine {
                 if let AutoTarget::Plugin { fx_id, param_id } = &automation.target {
                     let in_project = c.project.find_fx(*fx_id).is_some_and(|(_, f)| f.kind == FxKind::Plugin);
                     if !in_project || !self.factory.has_plugin_param(*fx_id, *param_id) {
-                        return Err(EngineError::Msg(format!("effect {fx_id} has no plugin parameter {param_id} to automate")));
+                        return Err(EngineError::Msg(format!(
+                            "{ERR_INVALID_TARGET} effect {fx_id} has no plugin parameter {param_id} to automate"
+                        )));
                     }
                 }
             }
@@ -779,7 +782,7 @@ impl Engine {
         let mut c = self.core.lock();
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         if c.take.is_some() || self.midi_take.lock().rec.is_some() {
@@ -1321,7 +1324,7 @@ impl Engine {
         let mut c = self.core.lock();
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let before = c.project.clone();
@@ -2176,7 +2179,7 @@ impl Engine {
         }
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let origin = c.path.clone();
@@ -2236,7 +2239,7 @@ impl Engine {
         }
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         send(&mut c, Cmd::Stop);
