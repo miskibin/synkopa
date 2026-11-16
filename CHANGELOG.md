@@ -19,6 +19,13 @@ shown in the app after an update and is published as the release notes (see
 - **Effects in the mixer strips.** When the mixer is taller, each strip lists its effects
   above the knobs (icon, name, on/bypass dot; click to open), as many as fit; the strip
   itself keeps its size. In the maximized mixer there is always room for five effects, and the faders take the rest of the height.
+- **Arrange the windows the way you work.** The Channel rack, the Piano roll and the Mixer can
+  each dock to the left, the right or the bottom of the main window, or float. Drag a window's
+  title bar and dock guides appear (as in Visual Studio): drop it on an edge, beside the
+  Playlist, or on another docked panel's guide to put the two side by side or one above the
+  other. Drag a docked panel's title bar to pull it off. Right-click a title bar, or use
+  View → Window layout, to dock it without dragging. Every splitter resizes, the Playlist always
+  keeps room, and the layout is remembered. View → Window layout → Reset puts it back.
 - **Three new themes**: *Dim*, a mid-grey dark theme, and *Fog* (cool) and *Sand* (warm), two
   mid-grey light themes for when white is too bright.
 

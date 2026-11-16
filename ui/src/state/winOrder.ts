@@ -3,12 +3,12 @@
 import { createSignal } from 'solid-js';
 import type { Id } from '../api/types';
 import { rackFloating, rollFloating } from './pattern';
-import { U } from './ui';
+import { docked, U } from './ui';
 
 /** The open channel window (synth / WAVE Keys / plugin settings) and its place; null when closed. */
 export type Win = { id: Id; x: number; y: number; w: number; z: number };
 /** The Mixer floats as a window and is open. */
-export const mixFloating = () => !U.mixDock && !U.mixMin;
+export const mixFloating = () => !docked('mix') && !U.mixMin;
 
 export const [win, setWin] = createSignal<Win | null>(null);
 

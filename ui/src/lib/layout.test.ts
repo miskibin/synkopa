@@ -1,31 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { dockKeyAction, fitDock, fitMixH, MIX_COLLAPSE_AT, MIX_MIN_H, MIX_OPEN_DRAG, mixHandleDrag, mixMaxH, mixSplitDrag, MIXER_BAR_H, parseGeo, parseLayout, PLAYLIST_MIN_H, PLAYLIST_MIN_W, ROLL_DOCK_MIN_H, ROLL_DOCKED_RESERVE, SPLIT, TOOLBAR_H } from './layout';
-/** The Channel Rack's narrowest width (state/pattern RACK_MIN_W; not imported: that module needs the app's store). */
-const RACK_MIN_W = 480;
+import { dockKeyAction, fitMixH, MIX_COLLAPSE_AT, MIX_MIN_H, MIX_OPEN_DRAG, mixHandleDrag, mixSplitDrag, parseGeo, parseLayout } from './layout';
+import { defaultHomes, defaultSizes } from './dock';
 
 describe('parseLayout', () => {
-  it('keeps the docked panels and the floating places', () => {
+  it('translates the docked panels of a layout saved before #90 and keeps the floating places', () => {
     const p = parseLayout(JSON.stringify({
-      rackDock: true, rackDockW: 700, rollDock: true, rollDockH: 360, rollMax: false,
+      rackDock: true, rackDockW: 700, rollDock: true, rollDockH: 360, rollMax: false, mixH: 280,
       rackFloat: { x: 40, y: 80, w: 900, h: 400 }, rollFloat: { x: 0, y: 54, w: 1280, h: 600 },
     }));
     expect(p).toEqual({
-      rackDock: true, rackDockW: 700, rollDock: true, rollDockH: 360, rollMax: false,
-      rackFloat: { x: 40, y: 80, w: 900, h: 400 }, rollFloat: { x: 0, y: 54, w: 1280, h: 600 },
+      // the rack left, the roll at the bottom above the mixer, as they were
+      dock: { left: [[{ id: 'rack', share: 1 }]], right: [], bottom: [[{ id: 'roll', share: 1 }], [{ id: 'mix', share: 1 }]] },
+      paneSize: { rack: { w: 700, h: defaultSizes().rack.h }, roll: { w: defaultSizes().roll.w, h: 360 }, mix: { w: defaultSizes().mix.w, h: 280 } },
+      rollMax: false, rackFloat: { x: 40, y: 80, w: 900, h: 400 }, rollFloat: { x: 0, y: 54, w: 1280, h: 600 },
     });
+    // the floating mixer of an old layout stays floating
+    expect(parseLayout(JSON.stringify({ mixDock: false })).dock).toEqual({ left: [], right: [], bottom: [] });
+  });
+  it('keeps a saved dock layout, sizes and homes', () => {
+    const dock = { left: [], right: [[{ id: 'roll', share: 2 }, { id: 'rack', share: 1 }]], bottom: [[{ id: 'mix', share: 1 }]] };
+    const p = parseLayout(JSON.stringify({ dock, paneSize: { roll: { w: 700, h: 300 } }, dockHome: { rack: { edge: 'right', outer: true } } }));
+    expect(p.dock).toEqual(dock);
+    expect(p.paneSize!.roll).toEqual({ w: 700, h: 300 });
+    expect(p.paneSize!.mix).toEqual(defaultSizes().mix);
+    expect(p.dockHome).toEqual({ ...defaultHomes(), rack: { edge: 'right', outer: true } });
   });
   it('drops bad values and keeps the good ones', () => {
     const p = parseLayout(JSON.stringify({
-      rackDock: 'yes', rackDockW: -5, rollDock: 1, rollDockH: 1e9, rollMax: null,
-      rackFloat: { x: 'a', y: 0, w: 500, h: 300 }, rollFloat: [1, 2, 3, 4], mixH: 300,
+      rollMax: null, rackFloat: { x: 'a', y: 0, w: 500, h: 300 }, rollFloat: [1, 2, 3, 4], headW: 300,
     }));
-    expect(p).toEqual({ mixH: 300 });
+    expect(p).toEqual({ headW: 300 });
+    // a broken dock layout falls back to the default one (the store's)
+    expect(parseLayout(JSON.stringify({ dock: 'left' }))).toEqual({ paneSize: defaultSizes(), dockHome: defaultHomes() });
   });
-  it('ignores a non-number size (NaN / Infinity are not JSON, strings are)', () => {
-    expect(parseLayout('{"rackDockW":"700","rollDockH":"Infinity"}')).toEqual({});
-    // 0 = the docked rack fits its pattern; small non-zero widths are still rejected
-    expect(parseLayout('{"rackDockW":0}')).toEqual({ rackDockW: 0 });
-    expect(parseLayout('{"rackDockW":50}')).toEqual({});
+  it('old sizes that are not numbers fall back to the defaults', () => {
+    expect(parseLayout('{"rackDockW":"700","rollDockH":"Infinity"}').paneSize).toEqual(defaultSizes());
+    // 0 = the docked rack fits its pattern; small non-zero widths are rejected
+    expect(parseLayout('{"rackDockW":0}').paneSize!.rack.w).toBe(0);
+    expect(parseLayout('{"rackDockW":50}').paneSize!.rack.w).toBe(defaultSizes().rack.w);
   });
   it('survives junk', () => {
     expect(parseLayout(null)).toEqual({});
@@ -54,50 +66,6 @@ describe('parseGeo', () => {
   });
 });
 
-describe('fitDock', () => {
-  it('gives the panel what the user asked for when it fits', () => {
-    expect(fitDock(640, RACK_MIN_W, 1000, PLAYLIST_MIN_W)).toBe(640);
-  });
-  it('keeps the panel at its minimum', () => {
-    expect(fitDock(100, RACK_MIN_W, 2000, PLAYLIST_MIN_W)).toBe(RACK_MIN_W);
-  });
-  it('leaves the Playlist its minimum', () => {
-    expect(fitDock(1500, RACK_MIN_W, 1000, PLAYLIST_MIN_W)).toBe(1000 - PLAYLIST_MIN_W);
-  });
-  it('rounds to whole pixels', () => {
-    expect(fitDock(600.6, 480, 2000, 320)).toBe(601);
-  });
-  it('is the wanted size until the area is measured', () => {
-    expect(fitDock(700, RACK_MIN_W, 0, PLAYLIST_MIN_W)).toBe(700);
-    expect(fitDock(100, RACK_MIN_W, NaN, PLAYLIST_MIN_W)).toBe(RACK_MIN_W);
-  });
-  it('never overflows when both minimums do not fit: the panel gives way, down to half', () => {
-    // 1280×720 at 150 % UI scale: ~853 CSS px wide, browser 220 + splitters
-    const room = 853 - 220 - 2 * SPLIT;
-    const w = fitDock(640, RACK_MIN_W, room, PLAYLIST_MIN_W);
-    expect(w).toBeLessThanOrEqual(room);
-    expect(w).toBeGreaterThanOrEqual(room / 2);
-    expect(room - w).toBeGreaterThan(0);
-    // just short of both minimums: the Playlist keeps its minimum, the panel takes the rest
-    expect(fitDock(640, 480, 780, 320)).toBe(460);
-  });
-  it('fits the docked Piano roll between the Playlist and the Mixer at 1280×720', () => {
-    // the mixer gives way to a docked roll (Mixer.tsx: at most innerHeight − ROLL_DOCKED_RESERVE),
-    // so the column under the toolbar holds the Playlist, the roll's splitter and the roll's minimum
-    const mixer = 720 - ROLL_DOCKED_RESERVE;
-    expect(mixer).toBeGreaterThanOrEqual(170); // the mixer's own minimum still fits
-    const col = 720 - TOOLBAR_H - MIXER_BAR_H - mixer;
-    const h = fitDock(320, ROLL_DOCK_MIN_H, col - SPLIT, PLAYLIST_MIN_H);
-    expect(h).toBeGreaterThanOrEqual(ROLL_DOCK_MIN_H);
-    expect(col - SPLIT - h).toBeGreaterThanOrEqual(PLAYLIST_MIN_H);
-    // a tall mixer leaves too little: both shrink, nothing runs off the window
-    const tight = 150;
-    const h2 = fitDock(320, ROLL_DOCK_MIN_H, tight, PLAYLIST_MIN_H);
-    expect(h2).toBeLessThanOrEqual(tight);
-    expect(h2).toBe(75);
-  });
-});
-
 describe('dockKeyAction (F6 / F7 on a docked panel)', () => {
   it('shows a hidden panel', () => {
     expect(dockKeyAction(false, false)).toBe('show');
@@ -113,7 +81,7 @@ describe('dockKeyAction (F6 / F7 on a docked panel)', () => {
 
 describe('docked mixer height and collapse', () => {
   it('migrates a saved closed or minimised mixer to the collapsed handle', () => {
-    expect(parseLayout(JSON.stringify({ mixOpen: false, mixMin: false, mixH: 280 }))).toEqual({ mixMin: true, mixH: 280 });
+    expect(parseLayout(JSON.stringify({ mixOpen: false, mixMin: false, mixH: 280 }))).toMatchObject({ mixMin: true, paneSize: { mix: { h: 280 } } });
     expect(parseLayout(JSON.stringify({ mixOpen: true, mixMin: true }))).toEqual({ mixMin: true });
     expect(parseLayout(JSON.stringify({ mixOpen: true, mixMin: false }))).toEqual({ mixMin: false });
     expect(parseLayout(JSON.stringify({ mixMin: 'no' }))).toEqual({});
@@ -121,12 +89,12 @@ describe('docked mixer height and collapse', () => {
     expect(parseLayout(JSON.stringify({ mixOpen: true }))).toEqual({});
   });
   it('keeps the mixer between its minimum and what leaves the Playlist room', () => {
-    expect(mixMaxH(1080, false)).toBe(880);
-    expect(mixMaxH(720, true)).toBe(720 - ROLL_DOCKED_RESERVE);
-    expect(mixMaxH(300, false)).toBe(MIX_MIN_H); // a tiny window: never below the minimum
     expect(fitMixH(400.4, 880)).toBe(400);
     expect(fitMixH(50, 880)).toBe(MIX_MIN_H);
     expect(fitMixH(2000, 880)).toBe(880);
+    expect(fitMixH(100, 120)).toBe(MIX_MIN_H); // a tiny window: never below the minimum
+    // docked on a side edge its minimum is a width
+    expect(fitMixH(200, 880, 360)).toBe(360);
   });
   it('collapses when the splitter goes below the breakpoint, keeping the height it had', () => {
     expect(mixSplitDrag(300, 100, 880)).toEqual({ min: false, h: 200 });
@@ -143,8 +111,5 @@ describe('docked mixer height and collapse', () => {
     expect(mixHandleDrag(320, -MIX_OPEN_DRAG, 880)).toEqual({ min: false, h: MIX_MIN_H });
     expect(mixHandleDrag(320, -400, 880)).toEqual({ min: false, h: 400 });
     expect(mixHandleDrag(320, 30, 880)).toEqual({ min: true, h: 320 });
-  });
-  it('the docked mixer has no title bar: only its splitter counts towards a docked roll', () => {
-    expect(MIXER_BAR_H).toBe(SPLIT);
   });
 });

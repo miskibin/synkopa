@@ -1,4 +1,4 @@
-import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, setRackDock, setRollDock, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
+import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { APP_GLYPH as G } from '../ui/menuIcons';
 import { t, type TranslationKey } from '../lib/i18n';
@@ -15,7 +15,8 @@ import { S } from '../state/store';
 import { curBeat, tele } from '../state/telemetry';
 import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { checkUpdates, showWhatsNew } from '../state/updates';
-import { setMixDock, toggleMixer, toggleMixView } from '../state/mixView';
+import { toggleMixer, toggleMixView } from '../state/mixView';
+import { dockMenu, resetLayout } from '../state/docking';
 import { midiFlash, midiStatus } from '../state/midi';
 import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
@@ -314,9 +315,13 @@ function MenuBar() {
       { t: 'item', label: t('a.mn.mixMax'), checked: U.mixView, title: t('a.mn.mixMaxTip'), act: toggleMixView },
       { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRackShown },
       { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRollShown },
-      { t: 'item', label: t('a.mn.rackDock'), checked: U.rackDock, title: t('a.mn.rackDockTip'), act: () => setRackDock(!U.rackDock) },
-      { t: 'item', label: t('a.mn.rollDock'), checked: U.rollDock, title: t('a.mn.rollDockTip'), act: () => setRollDock(!U.rollDock) },
-      { t: 'item', label: t('a.mn.mixDock'), checked: U.mixDock, title: t('a.mn.mixDockTip'), act: () => setMixDock(!U.mixDock) },
+      { t: 'sub', label: t('a.mn.layout'), glyph: G.windows, items: [
+        { t: 'sec', label: t('a.mn.rack') }, ...dockMenu('rack'),
+        { t: 'sec', label: t('a.mn.roll') }, ...dockMenu('roll'),
+        { t: 'sec', label: t('a.mn.mixer') }, ...dockMenu('mix'),
+        { t: 'sep' },
+        { t: 'item', label: t('a.mn.layoutReset'), title: t('a.mn.layoutResetTip'), act: resetLayout },
+      ] },
       { t: 'item', label: t(U.plugsHidden ? 'a.mn.winsShow' : 'a.mn.winsHide'), glyph: G.windows, kbd: 'F5', disabled: !wins(), act: () => (U.plugsHidden ? A.showPlugs() : A.playlistFront()) },
       { t: 'sep' },
       // the transport toggles the toolbar hides first on a narrow window

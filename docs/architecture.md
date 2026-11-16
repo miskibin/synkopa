@@ -169,24 +169,43 @@ pan, volume, mixer insert, name, steps — "+ / −" bars, swing, and the graph 
 per-step velocity and key of the selected channel) and the **Piano roll** (F7: the selected
 channel's notes in the current pattern, any channel; the pattern's other channels as ghost
 notes, double right-click one to switch). Each one floats in the effect-window layer or is
-docked: the Channel Rack left of the Playlist (beside the Browser, full height of that row), the
-Piano roll under the Playlist and above the Mixer (title-bar button or View menu;
-`U.rackDock` / `U.rollDock`, `views/PatDock.tsx`). Docked panels have a splitter on their Playlist
-side; their sizes are clamped by `lib/layout.ts` `fitDock` so the Playlist keeps ≥ 320 × 140 px
-(below that both give way instead of running off the window) and the Mixer shrinks to leave a
-docked roll its 300 px. F5, a Playlist click and a right-click on the Mixer tuck away floating
-windows only, Escape never closes a docked panel, and F6 / F7 on a docked panel show it, then
-give it the keyboard, then hide it. Docked panels keep the `.win.patwin` frame, so their keys
-are guarded exactly like the floating windows'. Docking, docked sizes and the floating places
-are per user in `localStorage` (`wave.layout`, validated by `parseLayout`), never in the
-project.
+docked; F5, a Playlist click and a right-click on the Mixer tuck away floating windows only,
+Escape never closes a docked panel, and F6 / F7 on a docked panel show it, then give it the
+keyboard, then hide it. Docked panels keep the `.win.patwin` frame, so their keys are guarded
+exactly like the floating windows'.
 
-**The mixer: docked, and the Mix view (F9).** The docked mixer (`views/Mixer.tsx` `Mixer`) sits
-under the Playlist (and a docked Piano roll) without a title bar: its splitter sizes it, and
-dragged below 110 px it collapses to a 6 px handle (`U.mixMin`; click, Enter / Space or drag the
-handle up to open it again at `U.mixH`, which the collapse keeps). It cannot be closed; a layout
-saved with the old closed or minimised mixer opens collapsed (`parseLayout`). The size math is
-pure (`lib/layout.ts` `mixMaxH`, `fitMixH`, `mixSplitDrag`, `mixHandleDrag`). Docked strips are
+**Docking (#90).** The Channel Rack, the Piano roll and the Mixer each float or are docked to the
+left, right or bottom edge (`U.dock`, pure model in `lib/dock.ts`, actions in `state/docking.ts`,
+layout in `views/PatDock.tsx` `Workspace`). An edge holds *strips* from the Playlist outward;
+a strip holds one panel or several that share it (stacked on a side edge, side by side at the
+bottom; each panel's `share` is its flex). Left/right strips sit between the Browser and the
+Playlist, bottom strips span the whole width under them (so the default — Mixer at the bottom —
+looks as before). A strip's thickness is its first shown panel's `U.paneSize[id].w|h` (the rack's
+`w` 0 = as wide as the pattern), clamped by `fitStrips` so the Playlist keeps ≥ 320 × 140 px: when
+the wants do not fit, every strip gives up the same part of what it has above its minimum
+(`PANE_MIN`), and when even the minimums do not fit they shrink alike down to half the room.
+Splitters: one on each strip's Playlist side (drag, arrow keys; a rack strip's double-click fits
+the pattern) and one between panels sharing a strip (`splitShares`). Dragging a title bar
+(`paneHeadDown`) moves the window — a docked panel floats off under the pointer first — and
+shows the dock guides (`dockGuides`, Visual Studio's): one at each outer edge (dock outside every
+strip there), a compass over the Playlist (dock beside it) and one over each docked panel (along
+its strip = share it, across = a new strip on that side). Only a drop on a guide docks; anywhere
+else the window stays floating. The title bar's dock button floats a panel or docks it back where
+it was (`U.dockHome`); its right-click menu and View → Window layout dock it to an edge without
+dragging, and *Reset window layout* restores the first-launch layout. Rows are keyed by strings,
+so opening, closing or resizing one panel never rebuilds the others. The docked Mixer alone in a
+strip collapses to a thin handle (below); sharing a strip it simply leaves while hidden; on a side
+edge its effect chain goes under the strips. Dock layout, sizes, homes and the floating places
+are per user in `localStorage` (`wave.layout`, validated by `parseLayout`; a layout from before
+#90 — `rackDock` / `rollDock` / `mixDock` — is translated), never in the project.
+
+**The mixer: docked, and the Mix view (F9).** The docked mixer (`views/Mixer.tsx` `MixDockPane`)
+is a strip like the other panels (at the bottom by default). Alone in its strip, its splitter
+dragged below 110 px collapses it to a 6 px handle (`U.mixMin`; click, Enter / Space or drag the
+handle toward the Playlist to open it again at `U.paneSize.mix`, which the collapse keeps). It
+cannot be closed; a layout saved with the old closed or minimised mixer opens collapsed
+(`parseLayout`). The collapse math is pure (`lib/layout.ts` `fitMixH`, `mixSplitDrag`,
+`mixHandleDrag`). Docked strips are
 lean: one name row (number and name, a default "Insert N" is just its number, the effect count
 on the right), pan, width, M/S, meters and fader. F9 (the toolbar's mixer button, View → Mix view)
 toggles the **Mix view** (`state/mixView.ts`, `MixView`): the mixer covers the whole area under the
@@ -195,7 +214,7 @@ them. The arrange layout under it stays mounted and laid out (`.workcol.away`:
 `content-visibility: hidden`, `inert`; the docked mixer keeps its height without building strips;
 floating Channel Rack / Piano roll are `visibility: hidden`), so scroll, zoom and sizes are kept,
 and the Playlist / rack / roll frame tasks skip drawing while it is on. Entering takes a
-detached snapshot of the layout fields (`lib/mixer.ts` `takeArrange`); F9, Esc (unless the last
+detached snapshot of the layout fields (`lib/mixer.ts` `takeArrange`, a deep copy: the dock layout nests); F9, Esc (unless the last
 click or the keyboard is in a floating window, which Esc then closes) or the back button restore
 it exactly, and asking for a pattern window (F6 / F7, docking) leaves the Mix view first.
 Effect windows keep floating above. The Mix view is per session (never saved).

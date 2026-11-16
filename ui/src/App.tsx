@@ -10,15 +10,15 @@ import { snapRes } from './lib/snap';
 import * as A from './state/actions';
 import { findFx, S } from './state/store';
 import { swapTake } from './state/comp';
-import { closeMenu, say, setU, U } from './state/ui';
+import { closeMenu, docked, say, setU, U } from './state/ui';
 import { ContextMenu } from './ui/Menu';
 import { osDragEnd, osDragOver, osDrop } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
-import { Mixer, MixerWindow, MixView } from './views/Mixer';
+import { MixerWindow, MixView } from './views/Mixer';
 import { hideMixer, leaveMixView, toggleMixer } from './state/mixView';
 import { chanById, routeSelectedChannels } from './state/pattern';
 import { playlistZoom } from './views/Playlist';
-import { Workspace } from './views/PatDock';
+import { DockGuides, Workspace } from './views/PatDock';
 import { SampleEditor } from './views/SampleEditor';
 import { ChannelWindow } from './views/ChannelWindow';
 import { PitchEditor } from './views/PitchEditor';
@@ -275,7 +275,6 @@ export function App() {
       <Toolbar />
       <div class="stage">
         <Workspace />
-        <Mixer />
         <Show when={U.mixView}><MixView /></Show>
       </div>
       {/* the editors float outside the window layer (own z order, see outerZ); F5 tucks them away too */}
@@ -286,10 +285,11 @@ export function App() {
       </div>
       <div class="winlayer" classList={{ hidden: U.plugsHidden, mv: U.mixView }}>
         <For each={U.plugs}>{pw => <FxWindow pw={pw} z={plugRank(pw.z)} />}</For>
-        <Show when={!U.rackDock}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
-        <Show when={!U.rollDock}><PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} /></Show>
+        <Show when={!docked('rack')}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
+        <Show when={!docked('roll')}><PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} /></Show>
         <Show when={mixFloating()}><MixerWindow z={plugRank(U.mixWin.z)} /></Show>
       </div>
+      <DockGuides />
       <NotebookHost />
       <Show when={U.ghost}>{g => <div class="ghost" style={{ left: g().x + 'px', top: g().y + 'px', 'box-shadow': `inset 0 0 0 1px ${g().color},0 6px 16px rgba(0,0,0,.45)` }}>{g().name}</div>}</Show>
       <ContextMenu />

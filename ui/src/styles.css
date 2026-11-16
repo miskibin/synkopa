@@ -212,14 +212,18 @@ a { color: var(--blue); }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 /* visibility, not content-visibility: WebKitGTK (Linux) drops the canvases' pixels of skipped content, and the Playlist and Channel Rack came back blank */
 .workcol.away { visibility: hidden; }
-.mixdock { flex: none; display: flex; flex-direction: column; }
-.mixsplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
-.mixsplit:hover, .mixsplit:focus-visible { background: var(--blue); }
-/* the collapsed docked mixer: a thin full-width handle with a grip */
+.mixdock { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.mixer.docked { flex: 1; min-height: 0; }
+.mixer.docked.side { flex-direction: column; }
+.mixer.docked.side .strips { min-height: 240px; }
+.mixer.docked.side .fxchain { width: auto; flex: 0 1 36%; min-height: 120px; max-height: 320px; border-left: 0; border-top: 1px solid var(--bg0); }
+/* the collapsed docked mixer: a thin handle with a grip along its edge (`.vert` on a side edge) */
 .mixhandle { flex: none; display: flex; align-items: center; justify-content: center; cursor: row-resize; background: var(--bg5); border-top: 1px solid var(--bg0); outline: none; }
 .mixhandle .grip { width: 40px; height: 2px; border-radius: 1px; background: var(--fg5); }
 .mixhandle:hover, .mixhandle:focus-visible { background: var(--blue); }
 .mixhandle:hover .grip, .mixhandle:focus-visible .grip { background: var(--on-accent, #fff); }
+.mixhandle.vert { cursor: col-resize; border-top: 0; border-left: 1px solid var(--bg0); }
+.mixhandle.vert .grip { width: 2px; height: 40px; }
 .mixview { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--mixer-bg); }
 .mixhd { flex: none; }
 .mixhd .mvhint, .mixwin .mvhint { margin-left: 10px; }
@@ -508,13 +512,28 @@ select option { background: var(--bg4); color: var(--fg); }
 .patwin .wintitle { font: 600 11px var(--sans); color: var(--fg2); letter-spacing: .02em; white-space: nowrap; }
 .patwin .iconbtn.on { background: var(--on-bg); color: var(--blue-hi); }
 .patwin .dockbtn { width: 24px; height: 22px; }
-/* docked pattern panels: the work area is a column (row: browser, rack, playlist; then the roll) */
+/* docked panels (#90): the work area is a column — a row (browser, left strips, playlist, right
+   strips) then the bottom strips. A strip holds one panel or several sharing it (stacked on a side,
+   side by side at the bottom); each panel's `flex` is its share. */
 .workcol { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .workrow { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-.dockpane { flex: none; display: flex; min-width: 0; min-height: 0; overflow: hidden; }
-.docksplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); }
+.dockstrip { flex: none; display: flex; align-items: stretch; min-width: 0; min-height: 0; overflow: hidden; }
+.dockstrip.stack { flex-direction: column; }
+.dockpane { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+.docksplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
+.docksplit:hover, .docksplit:focus-visible, .vsplit:focus-visible { background: var(--blue); outline: none; }
+.panesplit { flex: none; background: var(--bg0); }
+.panesplit.h { height: 5px; cursor: row-resize; }
+.panesplit.v { width: 5px; cursor: col-resize; }
+.panesplit:hover { background: var(--blue); }
+/* the dock guides while a title bar is dragged: over every window, never in the way of the pointer */
+.dockguides { position: fixed; inset: 0; z-index: 49; pointer-events: none; }
+.dockguide { position: absolute; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+  background: var(--bg7); color: var(--fg2); border: 1px solid var(--line3); box-shadow: 0 4px 14px var(--shadow); }
+.dockguide.hot { background: var(--blue); color: var(--on-accent, #fff); border-color: var(--blue-hi); }
+.dockpreview { position: absolute; background: color-mix(in srgb, var(--blue) 22%, transparent); border: 2px solid var(--blue); border-radius: 3px; }
 .win.docked { position: relative; flex: 1; min-width: 0; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
-.win.docked > .winhd { cursor: default; }
+.win.docked > .winhd, .mixdock > .mixhd { cursor: grab; }
 /* which docked panel has the keyboard (F6 / F7 hide it only then; otherwise they give it the keyboard) */
 .win.docked:focus-within > .winhd { box-shadow: inset 0 2px 0 var(--blue); }
 .win.docked:focus-within > .winhd .wintitle { color: var(--fg-hi); }

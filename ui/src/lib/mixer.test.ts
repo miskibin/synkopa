@@ -1,3 +1,4 @@
+import { defaultHomes, defaultSizes } from './dock';
 import { describe, expect, it } from 'vitest';
 import { isDefaultInsertName, planRoute, rangeSelect, restoreArrange, stripLabel, takeArrange, toggleSelect, type Arrange } from './mixer';
 
@@ -71,8 +72,9 @@ describe('channel multi-selection', () => {
 
 describe('Mix view snapshot of the arrange layout', () => {
   const arrange = (): Arrange => ({
-    rackWin: { x: 10, y: 60, w: 700, h: 400, z: 3 }, rollWin: null, rackDock: false, rollDock: true, rackDockW: 0, rollDockH: 320,
-    rollMax: false, rackFloat: { x: 10, y: 60, w: 700, h: 400 }, rollFloat: null, plugsHidden: false, mixH: 260, mixMin: true, pickOpen: true, pickW: 240,
+    rackWin: { x: 10, y: 60, w: 700, h: 400, z: 3 }, rollWin: null,
+    dock: { left: [], right: [], bottom: [[{ id: 'roll', share: 1 }], [{ id: 'mix', share: 1 }]] }, paneSize: defaultSizes(), dockHome: defaultHomes(),
+    rollMax: false, rackFloat: { x: 10, y: 60, w: 700, h: 400 }, rollFloat: null, plugsHidden: false, mixMin: true, pickOpen: true, pickW: 240,
   });
   it('gives back exactly what was taken', () => {
     const u = arrange();
@@ -82,10 +84,12 @@ describe('Mix view snapshot of the arrange layout', () => {
   it('is detached from the live state (moving a window later does not change it)', () => {
     const u = arrange();
     const snap = takeArrange(u);
-    u.rackWin!.x = 500; u.mixH = 400; u.rollDock = false;
+    u.rackWin!.x = 500; u.paneSize.mix.h = 400; u.dock.bottom[0][0].share = 3; u.dock.bottom.shift();
     const back = restoreArrange(snap);
     expect(back.rackWin).toEqual({ x: 10, y: 60, w: 700, h: 400, z: 3 });
-    expect(back).toMatchObject({ mixH: 260, rollDock: true, mixMin: true });
+    expect(back).toMatchObject({ paneSize: { mix: { h: defaultSizes().mix.h } }, mixMin: true });
+    // the dock layout is copied deep: strips and shares too
+    expect(back.dock).toEqual(arrange().dock);
     // and the restore patch is a copy too: the snapshot can be restored again
     back.rackWin!.y = 0;
     expect(restoreArrange(snap).rackWin!.y).toBe(60);

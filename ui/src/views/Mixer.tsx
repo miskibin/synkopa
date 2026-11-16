@@ -1,11 +1,12 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { fitMixH, MIX_HANDLE_H, mixHandleDrag, mixMaxH, mixSplitDrag, SPLIT } from '../lib/layout';
 import { stripLabel } from '../lib/mixer';
 import { t as tr, tName } from '../lib/i18n';
 import { channels, routeSelectedChannels, selectedChannels } from '../state/pattern';
-import { hideMixer, mixFront, revealed, setMixDock, toggleMixView } from '../state/mixView';
+import { hideMixer, mixFront, revealed, toggleMixView } from '../state/mixView';
+import { openDockMenu, paneDock, paneHeadDown } from '../state/docking';
+import { findPane } from '../lib/dock';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { presetInfo } from '../lib/presets';
 import * as A from '../state/actions';
@@ -590,8 +591,6 @@ function FxChain() {
 const hideWins = (e: PointerEvent) => { if (e.button === 2) A.playlistFront(); };
 
 const MIX_ICON = 'M6 4v16 M12 4v16 M18 4v16 M4 14h4 M10 8h4 M16 12h4';
-const DOCK_BOTTOM_ICON = 'M4 5h16v14H4z M4 13h16';
-const FLOAT_ICON = 'M9 9h11v10H9z M5 15H4V5h11v1';
 /** Height of the Mixer's title bar (px). */
 const MIXHD_H = 28;
 
@@ -612,15 +611,17 @@ function MixHead() {
 function MixControls() {
   return (
     <WinControls
-      dock={{ docked: U.mixDock, toggle: () => setMixDock(!U.mixDock), tip: tr(U.mixDock ? 'b.dk.float' : 'c.mv.dockBottom'), icon: U.mixDock ? FLOAT_ICON : DOCK_BOTTOM_ICON }}
+      dock={paneDock('mix')}
       max={{ on: U.mixView, toggle: toggleMixView }}
       close={{ tip: tr('c.mv.hideTip'), act: hideMixer }} />
   );
 }
-/** The title bar of the docked and the maximized Mixer (the floating one gets it from `PanelFrame`). */
-function MixBar() {
+/** The title bar of the docked and the maximized Mixer (the floating one gets it from `PanelFrame`). Docked, it drags the mixer off onto the dock guides. */
+function MixBar(props: { docked?: boolean }) {
   return (
     <div class="winhd mixhd" style={{ height: MIXHD_H + 'px' }}
+      onPointerDown={e => { if (props.docked) paneHeadDown(e, 'mix'); }}
+      onContextMenu={e => { if (props.docked) openDockMenu(e, 'mix'); }}
       onDblClick={e => { if (!(e.target as HTMLElement).closest('button')) toggleMixView(); }}>
       <MixHead />
       <div style={{ flex: 1 }} />
@@ -629,77 +630,33 @@ function MixBar() {
   );
 }
 
-/**
- * The Mixer docked under the Playlist: its splitter sizes it, its title bar floats, maximizes or
- * hides it. Hidden (× or F9) or dragged below the breakpoint it collapses to a thin handle (click
- * it, Enter, or drag it up to open it again at the height it had). While maximized, the slot keeps
- * its size (so the Playlist under the full view does not move) and builds no strips.
- */
 /** The instrument icon's width in a strip's name, its margin included (px). */
 const ICON_W = 14;
 
-export function Mixer() {
-  // One clamp for both the drag and the display: the old pair (drag up to innerHeight-200,
-  // show at most 40 %) let the stored height run past what was drawn, so the splitter
-  // stalled, then jumped, and the playlist above it jerked.
-  const [winH, setWinH] = createSignal(window.innerHeight);
-  onMount(() => { const r = () => setWinH(window.innerHeight); window.addEventListener('resize', r); onCleanup(() => window.removeEventListener('resize', r)); });
-  // A docked Piano roll needs its minimum height too: the mixer gives way (down to its own minimum)
-  // rather than squeezing the roll to a toolbar without notes. Its stored height is kept.
-  const maxH = () => mixMaxH(winH(), !!(U.rollDock && U.rollWin));
-  const mixH = () => fitMixH(U.mixH, maxH());
-  const split = (e: PointerEvent) => {
-    if (e.button !== 0) return; e.preventDefault();
-    const sy = e.clientY, h0 = mixH();
-    track(ev => { const r = mixSplitDrag(h0, ev.clientY - sy, maxH()); if (r.min !== U.mixMin || r.h !== U.mixH) setU({ mixMin: r.min, mixH: r.h }); }, null, 'row-resize');
-  };
-  const expand = () => { setU('mixMin', false); say(tr('c.mv.expanded')); };
-  const collapse = () => { setU('mixMin', true); say(tr('c.mv.collapsed')); };
-  const handleDown = (e: PointerEvent) => {
-    if (e.button !== 0) return; e.preventDefault();
-    const sy = e.clientY, last = U.mixH;
-    let moved = false;
-    track(ev => {
-      if (!moved && Math.abs(ev.clientY - sy) < 4) return;
-      moved = true;
-      const r = mixHandleDrag(last, ev.clientY - sy, maxH());
-      if (r.min !== U.mixMin || r.h !== U.mixH) setU({ mixMin: r.min, mixH: r.h });
-    }, () => { if (!moved) expand(); }, 'row-resize');
-  };
-  const key = (open: boolean) => (e: KeyboardEvent) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault(); e.stopPropagation();
-    if (open) expand(); else collapse();
-  };
+/**
+ * The Mixer docked (in a strip of the main window, `PatDock.tsx` sizes it): its title bar floats,
+ * moves, maximizes or hides it. While maximized the pane keeps its size (so the Playlist under the
+ * full view does not move) and builds no strips.
+ */
+export function MixDockPane() {
   return (
-    // floating, the Mixer is a window in the window layer (`MixerWindow`): the dock slot is empty
-    <Show when={U.mixDock}>
-    <div class="mixdock" inert={U.mixView} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
-      <Show when={!U.mixMin} fallback={
-        <div class="mixhandle" style={{ height: MIX_HANDLE_H + 'px' }} role="button" tabIndex={0} aria-expanded="false"
-          aria-label={tr('c.mv.handleLabel')} title={tr('c.mv.handleTip')} onPointerDown={handleDown} onKeyDown={key(true)}>
-          <span class="grip" />
-        </div>
-      }>
-        <div class="mixsplit" style={{ height: SPLIT + 'px' }} role="separator" aria-orientation="horizontal" tabIndex={0}
-          aria-label={tr('c.mv.splitLabel')} title={tr('c.mv.splitTip')} onPointerDown={split} onKeyDown={key(false)} />
-        <MixBar />
-        <div class="mixer" style={{ height: Math.max(60, mixH() - MIXHD_H) + 'px' }}>
-          <Show when={!U.mixView}>
-            <Strips full={false} />
-            <FxChain />
-          </Show>
-        </div>
-      </Show>
+    <div class="mixdock" on:pointerdown={{ capture: true, handleEvent: hideWins }}>
+      <MixBar docked />
+      {/* on a side edge the mixer is narrow and tall: the effect chain goes under the strips */}
+      <div class="mixer docked" classList={{ side: findPane(U.dock, 'mix')?.edge !== 'bottom' }}>
+        <Show when={!U.mixView}>
+          <Strips full={false} />
+          <FxChain />
+        </Show>
+      </div>
     </div>
-    </Show>
   );
 }
 
 /** The floating Mixer: the same window frame as the Channel Rack and the Piano roll. */
 export function MixerWindow(props: { z: number }) {
   return (
-    <PanelFrame geom={() => U.mixWin} setGeom={g => setU('mixWin', w => ({ ...w, ...g }))} z={props.z} class="mixwin" minW={480} minH={260}
+    <PanelFrame geom={() => U.mixWin} setGeom={g => setU('mixWin', w => ({ ...w, ...g }))} z={props.z} class="mixwin" dockId="mix" minW={480} minH={260}
       front={mixFront} onHeadDbl={toggleMixView} head={<MixHead />} controls={<MixControls />}>
       <div class="mixer floating" on:pointerdown={{ capture: true, handleEvent: hideWins }}>
         <Show when={!U.mixView}>

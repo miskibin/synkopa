@@ -7,7 +7,7 @@ import type { Id } from '../api/types';
 import { t } from '../lib/i18n';
 import { restoreArrange, takeArrange, type Arrange } from '../lib/mixer';
 import { insName, S } from './store';
-import { say, setU, U } from './ui';
+import { docked, say, setU, U } from './ui';
 import { topFloating } from './winOrder';
 
 let saved: Arrange | null = null, savedPlugs = new Set<number>();
@@ -60,7 +60,7 @@ export function showInsert(id: Id | null | undefined) {
 
 /** Bring the floating Mixer in front of the other floating windows (showing them if F5 tucked them away). */
 export function mixFront() {
-  if (U.mixDock || U.mixMin) return;
+  if (docked('mix') || U.mixMin) return;
   if (U.plugsHidden) setU('plugsHidden', false);
   if (U.mixWin.z === U.zTop) return;
   const z = U.zTop + 1;
@@ -75,23 +75,19 @@ export function showMixer() {
 export function hideMixer() {
   leaveMixView();
   setU('mixMin', true);
-  say(t(U.mixDock ? 'c.mv.collapsed' : 'c.mv.hidden'));
+  say(t(docked('mix') ? 'c.mv.collapsed' : 'c.mv.hidden'));
 }
-/** Dock the Mixer under the Playlist, or float it as a window (kept on screen). */
-export function setMixDock(dock: boolean) {
-  leaveMixView();
-  if (!dock) {
-    const W = window.innerWidth, H = window.innerHeight, o = U.mixWin;
-    const w = Math.min(o.w, W - 20), h = Math.min(o.h, H - 60);
-    setU('mixWin', { ...o, w, h, x: Math.max(0, Math.min(o.x, W - w)), y: Math.max(44, Math.min(o.y, H - h)) });
-  }
-  setU({ mixDock: dock, mixMin: false });
+/** The Mixer floats again: its window kept on screen and in front. */
+export function mixFloated() {
+  const W = window.innerWidth, H = window.innerHeight, o = U.mixWin;
+  const w = Math.min(o.w, W - 20), h = Math.min(o.h, H - 60);
+  setU('mixWin', { ...o, w, h, x: Math.max(0, Math.min(o.x, W - w)), y: Math.max(44, Math.min(o.y, H - h)) });
   mixFront();
 }
 /** F9 / the toolbar's mixer button: maximized → back; hidden → shown; floating behind → in front; else hidden. */
 export function toggleMixer() {
   if (leaveMixView()) return;
   if (U.mixMin) return showMixer();
-  if (!U.mixDock && topFloating()?.kind !== 'mix') return mixFront();
+  if (!docked('mix') && topFloating()?.kind !== 'mix') return mixFront();
   hideMixer();
 }

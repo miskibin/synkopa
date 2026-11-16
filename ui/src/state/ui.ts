@@ -4,7 +4,8 @@ import { createStore } from 'solid-js/store';
 import { t } from '../lib/i18n';
 import type { ClipKind, Id } from '../api/types';
 import type { MenuGlyph } from '../ui/menuIcons';
-import { parseLayout, RACK_DOCK_W, ROLL_DOCK_H, type Geo } from '../lib/layout';
+import { parseLayout, type Geo } from '../lib/layout';
+import { defaultDock, defaultHomes, defaultSizes, isDocked, type DockHomes, type DockLayout, type PaneId, type PaneSizes } from '../lib/dock';
 export { parseLayout } from '../lib/layout';
 
 export type Tool = 'draw' | 'paint' | 'erase' | 'mute' | 'slice' | 'select';
@@ -21,7 +22,7 @@ export interface MusicWin { clipId?: Id; fxId?: Id }
  * A pattern window: the Channel Rack (F6) or the Piano roll (F7), open while set. Both show the
  * current pattern (`UiState.pat`); the piano roll edits the selected channel. Floating, they live
  * in the effect-window layer (F5 / a playlist click hide them with the effect windows, "Windows"
- * brings them back) at x/y/w/h; docked (`rackDock` / `rollDock`) they sit in the main layout and
+ * brings them back) at x/y/w/h; docked (`UiState.dock`) they sit in the main layout and
  * x/y/w/h keep the floating place for when they float again.
  */
 export interface PatWin { x: number; y: number; w: number; h: number; z: number }
@@ -52,8 +53,8 @@ export interface UiState {
   /** Brush source: a clicked playlist clip paints that exact region; a Browser pick paints the full source. */
   sel: Id[]; cur: { kind: ClipKind; ref: Id; clipId: Id | null } | null;
   start: number; follow: boolean; alt: boolean;
-  /** The docked mixer is collapsed to its thin handle (`mixH`: the height it opens to again). */
-  mixMin: boolean; mixH: number; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
+  /** The Mixer is hidden: docked alone in its strip it is a thin handle (`paneSize.mix`: the size it opens to again). */
+  mixMin: boolean; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
   /** F9: the Mix view fills the workspace with the mixer (not saved: a launch starts in the arrange layout). */
   mixView: boolean;
   plugs: PlugWin[];
@@ -89,16 +90,18 @@ export interface UiState {
   chSel: Id[];
   rackWin: PatWin | null;
   rollWin: PatWin | null;
-  /** The Channel Rack is docked left of the Playlist (`rackDockW` px wide; 0 = as wide as the pattern) instead of floating. */
-  rackDock: boolean; rackDockW: number;
-  /** The Piano roll is docked under the Playlist, above the Mixer (`rollDockH` px high) instead of floating. */
-  rollDock: boolean; rollDockH: number;
+  /** Which panels (Channel Rack, Piano roll, Mixer) are docked and where (`lib/dock.ts`); the others float. */
+  dock: DockLayout;
+  /** The docked panels' wanted thickness per edge kind (the rack's `w` 0 = as wide as the pattern). */
+  paneSize: PaneSizes;
+  /** Where the dock button puts each panel back. */
+  dockHome: DockHomes;
   /** Where the floating Channel Rack / Piano roll was last (they reopen there, also after a restart). */
   rackFloat: Geo | null; rollFloat: Geo | null;
   /** The floating Piano roll fills everything under the toolbar (follows the app window, reopens full screen). */
   rollMax: boolean;
-  /** The Mixer is docked under the Playlist (`mixMin`: hidden to its handle) instead of floating at `mixWin` (`mixMin`: closed). */
-  mixDock: boolean; mixWin: PatWin;
+  /** The floating Mixer's place (used while it is not docked; `mixMin`: closed). */
+  mixWin: PatWin;
   /** The Channel Rack's graph editor (per-step velocity / key of the selected channel) is shown. */
   rackGraph: 'vel' | 'key' | null;
   /** True while the engine loops a pattern on its own (telemetry `patBeat` ≥ 0). */
@@ -131,14 +134,14 @@ export const revealInPlaylist = (track: number, beat: number) => setRevealReq(r 
 export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1, clipId: null },
   start: 0, follow: true, alt: false,
-  mixMin: false, mixH: 300, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null,
+  mixMin: false, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null,
   plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
   openingProject: false,
   projectZipBusy: false,
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'patterns',
   ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, chSel: [], rackWin: null, rollWin: null,
-  rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true, mixDock: true, mixWin: { x: 120, y: 140, w: 1100, h: 420, z: 0 },
+  dock: defaultDock(), paneSize: defaultSizes(), dockHome: defaultHomes(), rackFloat: null, rollFloat: null, rollMax: true, mixWin: { x: 120, y: 140, w: 1100, h: 420, z: 0 },
   rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
   playing: false, previewing: false, previewPath: null, stretchMode: false,
 });
@@ -153,12 +156,14 @@ const LAYOUT_KEY = 'wave.layout';
 try { setU(parseLayout(localStorage.getItem(LAYOUT_KEY))); } catch { /* private window */ }
 const geo = (w: PatWin): Geo => ({ x: w.x, y: w.y, w: w.w, h: w.h });
 createRoot(() => createEffect(() => {
-  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
-    rackDock: U.rackDock, rackDockW: U.rackDockW, rollDock: U.rollDock, rollDockH: U.rollDockH, rollMax: U.rollMax,
+  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
+    dock: U.dock, paneSize: U.paneSize, dockHome: U.dockHome, rollMax: U.rollMax,
     // the floating place: live while the window is open (a restart with it open keeps it), else where it closed
-    rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat, mixDock: U.mixDock, mixFloat: geo(U.mixWin) });
+    rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat, mixFloat: geo(U.mixWin) });
   try { localStorage.setItem(LAYOUT_KEY, s); } catch { /* private window */ }
 }));
+/** The panel is docked (anywhere); otherwise it floats as a window when open. */
+export const docked = (id: PaneId) => isDocked(U.dock, id);
 export const say = (msg: string) => { readoutPristine = false; setU('readout', msg); };
 export const closeMenu = () => { if (U.menu) setU('menu', null); };
 export function menuPos(x: number, y: number, h: number) {
