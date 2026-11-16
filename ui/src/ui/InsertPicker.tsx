@@ -8,7 +8,8 @@ import { commit, wheelEdit } from '../state/edit';
 import { insName, S } from '../state/store';
 import { say, setU } from '../state/ui';
 
-export function InsertPicker(props: {
+/** What an insert choice is made of: shared by the picker and the Channel Rack's mixer box. */
+export interface InsertChoice {
   /** The insert chosen, or null for `nullLabel` (e.g. "like the clip's track"). */
   value: Id | null;
   /** When given, null is a choice too, listed first. */
@@ -17,25 +18,39 @@ export function InsertPicker(props: {
   ops: (id: Id | null) => Op[];
   /** Undo label. */
   label: string;
-  /** Wheel gesture key (one per window). */
+  /** Wheel gesture key (one per window or row). */
   wheelKey: string;
-  title: string;
   /** Master can be picked (a track can play into it; a channel's null already means "its track"). */
   master?: boolean;
-}) {
-  const ids = (): (Id | null)[] => [...(props.nullLabel != null ? [null] : []), ...S.project.inserts.filter(m => props.master || m.id !== 0).map(m => m.id)];
-  const nameOf = (id: Id | null) => { const m = id == null ? undefined : S.project.inserts.find(x => x.id === id); return m ? insName(m) : props.nullLabel ?? ''; };
-  const show = (id: Id | null) => { if (id != null) setU('mixSel', id); };
-  const pick = (id: Id | null) => { commit(props.ops(id), props.label); show(id); say(t('d.smp.routedTo', { name: nameOf(id) })); };
-  const wheel = (e: WheelEvent) => {
-    e.preventDefault();
-    if (!e.deltaY) return;
-    const l = ids(), i = l.indexOf(props.value), j = Math.min(l.length - 1, Math.max(0, i + (e.deltaY > 0 ? 1 : -1)));
-    if (i < 0 || j === i) return;
-    wheelEdit(props.wheelKey, props.label, props.ops(l[j]));
-    show(l[j]);
-    say(t('d.smp.routedTo', { name: nameOf(l[j]) }));
-  };
+}
+
+const choiceIds = (p: InsertChoice): (Id | null)[] => [...(p.nullLabel != null ? [null] : []), ...S.project.inserts.filter(m => p.master || m.id !== 0).map(m => m.id)];
+const choiceName = (p: InsertChoice, id: Id | null) => { const m = id == null ? undefined : S.project.inserts.find(x => x.id === id); return m ? insName(m) : p.nullLabel ?? ''; };
+const select = (id: Id | null) => { if (id != null) setU('mixSel', id); };
+
+/** Routes to `id` (one undo step) and selects that insert in the mixer. */
+export function pickInsert(p: InsertChoice, id: Id | null) {
+  commit(p.ops(id), p.label);
+  select(id);
+  say(t('d.smp.routedTo', { name: choiceName(p, id) }));
+}
+
+/** The mouse wheel over an insert choice: down = the next insert, up = the previous (FL's FX-track box). */
+export function wheelInsert(p: InsertChoice, e: WheelEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+  const d = e.deltaY || e.deltaX;
+  if (!d) return;
+  const l = choiceIds(p), i = l.indexOf(p.value), j = Math.min(l.length - 1, Math.max(0, i + (d > 0 ? 1 : -1)));
+  if (i < 0 || j === i) return;
+  wheelEdit(p.wheelKey, p.label, p.ops(l[j]));
+  select(l[j]);
+  say(t('d.smp.routedTo', { name: choiceName(p, l[j]) }));
+}
+
+export function InsertPicker(props: InsertChoice & { title: string }) {
+  const pick = (id: Id | null) => pickInsert(props, id);
+  const wheel = (e: WheelEvent) => wheelInsert(props, e);
   return (
     <>
       <span class="tag9">MIXER</span>

@@ -5704,6 +5704,7 @@ dependencies = [
 name = "wave-engine"
 version = "0.4.0"
 dependencies = [
+ "audio_thread_priority",
  "hound",
  "log",
  "midly",

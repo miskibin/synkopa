@@ -393,3 +393,58 @@ fn the_computer_keyboard_records_a_midi_take_in_the_song() {
     assert_eq!(pat.notes.len(), 1);
     assert_eq!(pat.notes[0].p, Some(64));
 }
+
+#[test]
+fn starting_the_song_ends_a_pat_mode_take_and_lands_its_notes() {
+    let (p, pid) = with_pattern();
+    let e = engine(p);
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.midi_configure(None, true);
+    e.set_transport(None, Some(false), Some(true), None);
+    e.pattern_play(Some(pid), 0.0, None).unwrap();
+    run(&mut rt, 4000);
+    e.midi_event(on(48));
+    run(&mut rt, 4000);
+    e.midi_event(off(48));
+    // the song starts straight from the looping pattern (no stop first)
+    e.play(0.0);
+    assert!(e.state().transport.playing, "the song starts instead of being refused");
+    assert_eq!(e.project().patterns[0].notes.len(), 2, "the loop's notes joined the pattern");
+    e.stop();
+}
+
+#[test]
+fn a_pattern_loop_cannot_start_during_a_notes_only_song_recording() {
+    let (p, pid) = with_pattern();
+    let e = engine(p);
+    let _rt = e.create_rt(SR as f32, BLOCK);
+    e.midi_configure(None, true);
+    e.set_rec_filter(Some(false), Some(true));
+    e.set_transport(None, Some(false), Some(true), None);
+    e.play(0.0);
+    assert!(e.pattern_play(Some(pid), 0.0, None).is_err(), "the song take keeps running");
+    e.stop();
+}
+
+#[test]
+fn pat_mode_quantize_snaps_to_the_pattern_grid_on_later_passes() {
+    // a 1.125-beat loop is not a whole number of quarter beats: a note at beat 0.5 of the
+    // second pass must still land on step 2, not on the grid of the unwrapped beat
+    let (p, pid) = with_pattern();
+    let bpm = p.bpm;
+    let e = engine(p);
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    let beat = |b: f64| (b * 60.0 / bpm * SR as f64) as usize;
+    e.midi_configure(None, true);
+    e.set_rec_quantize(0.25);
+    e.set_transport(None, Some(false), Some(true), None);
+    e.pattern_play(Some(pid), 0.0, Some((0.0, 1.125))).unwrap();
+    run(&mut rt, beat(1.125 + 0.52));
+    e.midi_event(on(48));
+    run(&mut rt, beat(0.2));
+    e.midi_event(off(48));
+    e.pattern_play(None, 0.0, None).unwrap();
+    let pat = e.project().patterns.into_iter().find(|x| x.id == pid).unwrap();
+    let n = pat.notes.iter().find(|n| n.p == Some(48)).expect("the recorded note");
+    assert!((n.step - 2.0).abs() < 1e-3, "lands at step {}", n.step);
+}

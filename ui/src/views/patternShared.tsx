@@ -10,8 +10,9 @@ import { libGroup, loadStdLib, stdLibGroups } from '../state/library';
 import { ensurePluginScan, pluginScan, runPluginScan } from '../state/pluginScan';
 import { isTypingKey } from '../state/typingKeys';
 import { commit } from '../state/edit';
+import { pickInsert, type InsertChoice } from '../ui/InsertPicker';
 import {
-  addBar, addKeys, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, channels, clonePattern, cloneChannel, curPat, deleteChannel,
+  addBar, addKeys, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, chanOp, channels, clonePattern, cloneChannel, curPat, deleteChannel,
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved, setRackDock, setRollDock,
 } from '../state/pattern';
@@ -132,10 +133,15 @@ export function insTitle(c: Channel): string {
   const m = S.project.inserts.find(x => x.id === c.insert);
   return t('b.pe.insTo', { name: m ? (m.id === 0 ? 'Master' : m.name) : '?' });
 }
+/** A channel's mixer box as an insert choice (the same one the channel window's MIXER picker makes). */
+export function chanInsertChoice(c: Channel): InsertChoice {
+  return { value: c.insert ?? null, nullLabel: t('b.cw.likeClipTrack'), ops: insert => [chanOp(c, { insert })], label: t('b.pe.mixCh'), wheelKey: 'cins' + c.id };
+}
+
 export function insertMenu(c: Channel, x: number, y: number) {
   const items: MenuItem[] = [{ t: 'title', label: t('b.pe.mixChName', { name: c.name }) },
-    { t: 'item', label: t('b.pe.clipTrack'), kbd: c.insert == null ? '✓' : '', title: t('b.pe.clipTrackTitle'), act: () => setChannel(c, { insert: null }, t('b.pe.mixCh')) }, { t: 'sep' }];
-  S.project.inserts.forEach((m, i) => items.push({ t: 'item', label: i === 0 ? 'Master' : i + ' · ' + m.name, kbd: c.insert === m.id ? '✓' : '', act: () => { setChannel(c, { insert: m.id }, t('b.pe.mixCh')); say(c.name + ' → ' + (i === 0 ? 'Master' : t('b.pe.insWord', { n: i }))); } }));
+    { t: 'item', label: t('b.pe.clipTrack'), kbd: c.insert == null ? '✓' : '', title: t('b.pe.clipTrackTitle'), act: () => pickInsert(chanInsertChoice(c), null) }, { t: 'sep' }];
+  S.project.inserts.forEach((m, i) => items.push({ t: 'item', label: i === 0 ? 'Master' : i + ' · ' + m.name, kbd: c.insert === m.id ? '✓' : '', act: () => pickInsert(chanInsertChoice(c), m.id) }));
   openMenu(x, y, items, Math.min(window.innerHeight - 20, 60 + items.length * 26));
 }
 

@@ -26,9 +26,11 @@ import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { channelIcon, InstIcon } from '../ui/instIcons';
 import { MiniKnob, NumField, parseNum } from '../ui/Knob';
+import { wheelInsert } from '../ui/InsertPicker';
+import { showInsert } from '../state/mixView';
 import { closeChannelWindow, toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
-import { addChannelMenu, chanMenu, DockBtn, insertMenu, insLabel, insTitle, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
+import { addChannelMenu, chanMenu, DockBtn, chanInsertChoice, insertMenu, insLabel, insTitle, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
 const RACK_ICON = 'M4 5h4v4H4z M10 5h4v4h-4z M16 5h4v4h-4z M4 15h4v4H4z M10 15h4v4h-4z M16 15h4v4h-4z';
@@ -413,6 +415,14 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
   const sel = () => isChannelSelected(c().id);
   const anySolo = () => channels().some(x => x.solo);
   let vg: Gesture | null = null, pg: Gesture | null = null;
+  // one click opens the insert menu, a double-click goes to that insert in the mixer instead
+  let insTimer = 0;
+  onCleanup(() => clearTimeout(insTimer));
+  const insClick = (e: MouseEvent) => {
+    if (insTimer) { clearTimeout(insTimer); insTimer = 0; if (c().insert == null) say(t('b.pe.insAutoGo')); else showInsert(c().insert); return; }
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    insTimer = window.setTimeout(() => { insTimer = 0; insertMenu(c(), r.left, r.bottom + 2); }, 250);
+  };
   const live = () => chanById(c().id) ?? c();
   const volOp = (v: number) => chanOp(live(), { vol: Math.round(clamp(v, 0, 1) * 10000) / 10000 });
   const volT = () => ({ kind: 'chanVol' as const, id: c().id }), panT = () => ({ kind: 'chanPan' as const, id: c().id });
@@ -451,7 +461,8 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
         onEnd={() => { vg?.end(); vg = null; }} onReset={() => commit([volOp(VOL_UNITY)], t('b.cw.volCh'))}
         onWheel={v => commit([volOp(v)], t('b.cw.volCh'))} />
       <button class="cins" classList={{ auto: c().insert == null }} title={insTitle(c())}
-        onPointerDown={e => e.stopPropagation()} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); insertMenu(c(), r.left, r.bottom + 2); }}>{insLabel(c())}</button>
+        onPointerDown={e => e.stopPropagation()} onClick={insClick}
+        onWheel={e => wheelInsert(chanInsertChoice(c()), e)}>{insLabel(c())}</button>
       <button class="cname" classList={{ sel: sel() }}
         title={t(c().kind === 'plugin' ? 'b.pe.cnameTitlePlugin' : 'b.pe.cnameTitle', { name: c().name, kind: chanKindLabel(c()) }) + (S.fxErrors[c().id] ? '\n' + t('c.fx.instNotLoaded', { e: S.fxErrors[c().id] }) : '')}
         onPointerDown={nameDown}>

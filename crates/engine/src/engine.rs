@@ -835,7 +835,13 @@ impl Engine {
     pub fn play(&self, from: f64) {
         let control = self.transport_control.lock();
         let mut c = self.core.lock();
+        // starting the song stops the pattern loop: notes recorded over it join their pattern
+        let recorded = self.finish_pat_take(&mut c);
         if c.take.is_some() || self.midi_take.lock().rec.is_some() {
+            drop(control);
+            if recorded {
+                self.changed(c);
+            }
             return;
         }
         let from = from.max(0.0);
@@ -943,7 +949,8 @@ impl Engine {
             let at = self.shared().beat();
             let lap = c.project.loop_range.filter(|l| l.b > l.a).map(|l| (l.a, l.b));
             let track = self.rec_target(&mut c, at, lap.map_or(f64::INFINITY, |l| l.1));
-            if let Some(t) = self.new_take(&c, track, f64::NAN, lap).filter(|_| c.transport.rec_audio) {
+            let take = if c.transport.rec_audio { self.new_take(&c, track, f64::NAN, lap) } else { None };
+            if let Some(t) = take {
                 self.shared().set_rec_start(f64::NAN);
                 c.take = Some(t);
                 self.send_monitor(&mut c);
@@ -2016,7 +2023,11 @@ impl Engine {
             if !c.project.patterns.iter().any(|p| p.id == id) {
                 return Err(EngineError::Msg(format!("no pattern {id}")));
             }
-            if c.take.is_some() {
+            let song_notes = {
+                let t = self.midi_take.lock();
+                t.rec.is_some() && t.pat.is_none()
+            };
+            if c.take.is_some() || song_notes {
                 return Err(EngineError::Msg("recording: stop it first".into()));
             }
         }
@@ -2045,9 +2056,15 @@ impl Engine {
             return Err(EngineError::Msg("pattern loop: not a number".into()));
         }
         let mut c = self.core.lock();
+        // notes recorded over the old range are folded into it before the range changes
+        let recorded = self.finish_pat_take(&mut c);
         send(&mut c, Cmd::PatRange(range));
         if let Some(p) = c.pat_loop.as_mut() {
             p.1 = range;
+        }
+        self.begin_pat_take(&mut c);
+        if recorded {
+            self.changed(c);
         }
         Ok(())
     }
@@ -2992,6 +3009,15 @@ impl Engine {
         };
         let end = pl.unwrap(pb);
         let mut played = rec.finish(end);
+        // quantize in pattern beats: unwrapped beats are off the grid after the first pass
+        // whenever the loop is not a whole number of grid steps
+        if pl.span > 0.0 {
+            for n in &mut played {
+                let at = pl.la + (n.start - pl.la).rem_euclid(pl.span);
+                n.end += at - n.start;
+                n.start = at;
+            }
+        }
         midi::quantize(&mut played, c.transport.rec_quantize);
         let notes = midi::fold_loop(&played, ch, pl.la, pl.span);
         let Some(mut pat) = c.project.patterns.iter().find(|p| p.id == pl.id).cloned() else { return true };

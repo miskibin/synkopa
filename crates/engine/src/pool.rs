@@ -217,6 +217,14 @@ fn boost_priority() {
         }
         SetThreadPriority(GetCurrentThread(), 15);
     }
+    // ALSA/JACK (rtkit) and CoreAudio callbacks run real-time: the workers ask for the same
+    // class, or a worker preempted mid-job makes the callback wait past its deadline. Without
+    // permission (no rtkit, no rtprio limit) they stay at normal priority.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    if let Ok(h) = audio_thread_priority::promote_current_thread_to_real_time(512, 48_000) {
+        // the worker keeps the class until it exits
+        std::mem::forget(h);
+    }
 }
 
 #[cfg(test)]

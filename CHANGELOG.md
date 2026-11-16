@@ -4,7 +4,7 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.18 — 2026-11-16
 
 ### Added
 - **Chord tools in the Piano roll.** New **Chord stamp** tool (C): pick a chord type (18, from
@@ -36,6 +36,9 @@ shown in the app after an update and is published as the release notes (see
   which leaves room against dropouts while you edit. The sound is bit-for-bit the same.
 - **Metronome, count-in, input monitoring and the computer keyboard as piano** are in the
   View menu too.
+- **The Channel Rack's mixer box works like the one in the sample editor.** Scroll over it to
+  route the channel to the next or previous insert, and double-click it to show that insert in
+  the mixer. A single click still opens the list.
 
 ### Changed
 - **The toolbar fits any window size.** On a smaller window the least needed controls step
@@ -44,8 +47,6 @@ shown in the app after an update and is published as the release notes (see
   any width.
 - **Dragging a clip shows it moving a frame sooner.** The Playlist draws clips with the
   low-latency canvas where the system supports it.
-
-### Changed
 - **Recording works like FL Studio: nothing to arm.** Press R and Space: the recording goes to the
   first track that has room from the playhead on, or to a new track when every track is in use
   (undo removes that track with the take). The record button on every track is gone; a track's
@@ -72,13 +73,21 @@ shown in the app after an update and is published as the release notes (see
   editor brings it back on top.
 - DISTRHO-based plugins (Vitalium and others) can now talk between their engine and their
   interface: knobs and displays stay in step.
-
-### Fixed
 - **Browsing big sample folders works again.** In a folder with many groups, opening a group
   further down the list could show only a "search to narrow the list" note instead of its
   files. The library list is now virtualized: it draws only the rows on screen, so any folder
   browses fully whatever its size, and a folder beyond the 5000-file walk limit says so
   instead of ending silently.
+- **Starting the song while a pattern loops with Record on** now ends the pattern recording and
+  plays the song. Before, the song did not start until you stopped first.
+- **Changing the pattern loop range while recording in PAT mode** keeps your notes where you
+  played them. Before, notes played after the change could land on the wrong steps.
+- **Quantized notes stay on the grid on every pass of the loop**, also when the loop is not a
+  whole number of grid steps long.
+- A pattern loop can no longer start during a notes-only song recording, which left the
+  recording stuck until Stop.
+- **Linux and macOS: fewer dropouts with multi-core playback.** The audio worker threads now run
+  at real-time priority like the audio callback, where the system allows it.
 
 ## 0.9.17 — 2026-11-15
 

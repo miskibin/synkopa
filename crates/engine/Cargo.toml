@@ -22,5 +22,9 @@ tempfile = "3"
 zip = { version = "9.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 midly = { version = "0.5", default-features = false, features = ["std"] }
 
+# real-time class for the audio worker threads (the same crate cpal uses for its callback)
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+audio_thread_priority = "0.35"
+
 [dev-dependencies]
 hound.workspace = true
