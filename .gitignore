@@ -29,3 +29,4 @@ app/resources/keys/*.flac
 app/resources/keys/ATTRIBUTION.txt
 # WAVE Demo Synth: built by scripts/build-demo-synth.mjs, bundled by `tauri build`.
 app/resources/plugins/*.vst3
+graphify-out/**
