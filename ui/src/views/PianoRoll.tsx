@@ -39,7 +39,8 @@ import { noteClip, setNoteClip } from '../state/noteClipboard';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
-import { DockBtn, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
+import { patDock, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
+import { PanelFrame, WinControls } from './PanelFrame';
 import { KW, type RollCtx, type RollPtr, type Tool } from './roll/types';
 import { rollDown, rollMove } from './roll/grid';
 import { buildTransformOp, TOOL_META, type ToolId } from './roll/noteTools';
@@ -655,7 +656,9 @@ function Roll(props: { z: number; docked?: boolean }) {
     );
   }
   return (
-    <PatFrame win={U.rollWin!} key="rollWin" z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
+    <PanelFrame {...patGeom('rollWin')} z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
+      controls={<WinControls dock={patDock('roll')} max={props.docked ? undefined : { on: U.rollMax, toggle: toggleRollMax }}
+        close={{ tip: t(props.docked ? 'b.dk.closeRoll' : 'b.pe.close'), act: closeRoll }} />}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: ch().color + '2e', color: ch().color }}><Icon d={ROLL_ICON} size={12} /></span>
         <span class="wintitle">Piano roll</span>
@@ -666,9 +669,6 @@ function Roll(props: { z: number; docked?: boolean }) {
           <span class="sw" style={{ background: pt().color }} /><span class="ell">{pt().name}</span>
           <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
         </button>
-        <div style={{ flex: 1 }} />
-        <DockBtn which="roll" />
-        <button class="closebtn" title={t(props.docked ? 'b.dk.closeRoll' : 'b.pe.close')} onClick={closeRoll}>×</button>
       </>}>
     <div class="roll">
       <div class="ptools">
@@ -776,7 +776,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <span class="rollhint" title={t('b.pr.keysTip')}>{t('b.pe.rollHint')}</span>
       </div>
     </div>
-    </PatFrame>
+    </PanelFrame>
   );
 }
 

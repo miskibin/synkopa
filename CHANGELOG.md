@@ -4,6 +4,13 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Changed
+- **The Channel Rack and the Piano roll share one window frame.** Each title bar ends with the
+  same buttons in the same order: dock or float, maximize (Piano roll), close. The Piano roll's
+  maximize was only a double-click on its title bar; it now has a button too.
+
 ## 0.9.18 — 2026-11-16
 
 ### Added

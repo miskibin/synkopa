@@ -1,9 +1,8 @@
 // What the Channel Rack and the Piano roll windows share: sizing hooks, the window frame
-// (move, resize, focus, keys that must not reach the playlist), channel and pattern menus.
-import { createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
+// (move, resize and focus live in PanelFrame; here: keys that must not reach the playlist), channel and pattern menus.
+import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 import { t, tName } from '../lib/i18n';
 import type { Channel, LibFile, Note, Pattern } from '../api/types';
-import { clamp } from '../lib/format';
 import { FACTORY_KIT, LIB_SCHEME } from '../lib/factory';
 import { barsText, clearChannel, fillEvery, notesText, rotate, stepsOf } from '../lib/pattern';
 import { libGroup, loadStdLib, stdLibGroups } from '../state/library';
@@ -16,13 +15,10 @@ import {
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved, setRackDock, setRollDock,
 } from '../state/pattern';
-import { Icon } from '../ui/icons';
 import { arrVersion, S } from '../state/store';
 import { openMenu, openRename, say, setU, U, type MenuItem, type PatWin } from '../state/ui';
-import { track } from '../ui/drag';
 import { libGlyph, PICK_GLYPH, synthCategoryGlyph } from '../ui/menuIcons';
 import { theme } from '../ui/theme';
-import { moveWindow } from './FxWindow';
 import { midiExport, midiImport } from '../state/actions';
 
 /** Size of an element, tracked. */
@@ -59,66 +55,30 @@ export function guardKeys(e: KeyboardEvent, own?: (e: KeyboardEvent) => void) {
   else if (!m && !e.altKey && k.length === 1 && 'pbdtce'.includes(k)) e.stopPropagation();
 }
 
-/**
- * A pattern window: frame, title bar (drag to move), bottom-right resize grip. `docked`: the same
- * frame laid out in the main window instead (no move, no grip, never "in front"); it keeps
- * `.win.patwin` so the keyboard rules of the floating window (focus, guarded keys) stay the same.
- */
-export function PatFrame(props: {
-  win: PatWin; key: 'rackWin' | 'rollWin'; z: number; class: string; minW: number; minH: number; docked?: boolean;
-  front: () => void; onKey?: (e: KeyboardEvent) => void; head: JSX.Element; children: JSX.Element;
-  /** Below this height (px) the window hides its status / hint footer (`.pstatus`) to keep room for the editor. */
-  compactH: number;
-  /** Wheel over the title bar (the Channel Rack switches pattern). */
-  onHeadWheel?: (e: WheelEvent) => void;
-  /** Double-click on the empty part of the title bar (the Piano roll maximises / restores). */
-  onHeadDbl?: () => void;
-}) {
-  let root!: HTMLDivElement;
-  const W = () => props.win;
-  // a short window (small screen, both panels docked) drops the hint footer: the rows matter more
-  const size = useSize(() => root);
-  const compact = () => size().h > 0 && size().h < props.compactH;
-  // a move or resize the user makes takes the Piano roll out of full screen (it then stays where they put it)
-  const put = (g: Partial<PatWin>) => {
-    const w = W(); if (Object.entries(g).every(([k, v]) => w[k as keyof PatWin] === v)) return;
-    if (props.key === 'rollWin') rollMoved();
-    setU(props.key, o => o && { ...o, ...g });
+/** A pattern window's place, for `PanelFrame`. A move or resize by the user takes the Piano roll
+ * out of full screen (it then stays where they put it). */
+export function patGeom(key: 'rackWin' | 'rollWin') {
+  return {
+    geom: () => U[key]!,
+    setGeom: (g: Partial<PatWin>) => { if (key === 'rollWin') rollMoved(); setU(key, o => o && { ...o, ...g }); },
   };
-  const resize = (e: PointerEvent) => {
-    if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
-    const sx = e.clientX, sy = e.clientY, o = { ...W() };
-    track(ev => put({ w: clamp(o.w + ev.clientX - sx, props.minW, window.innerWidth - 20), h: clamp(o.h + ev.clientY - sy, props.minH, window.innerHeight - 20) }), null, 'nwse-resize');
-  };
-  return (
-    <div ref={root} tabIndex={0} class={'win patwin ' + props.class} classList={{ docked: !!props.docked, compact: compact() }}
-      style={props.docked ? undefined : { left: W().x + 'px', top: W().y + 'px', width: W().w + 'px', height: W().h + 'px', 'z-index': props.z }}
-      onPointerDown={e => { if (!props.docked) props.front(); const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
-      onKeyDown={e => guardKeys(e, props.onKey)}>
-      <div class="winhd" onPointerDown={e => { if (!props.docked) moveWindow(e, () => W(), (x, y) => put({ x, y })); }} onWheel={e => props.onHeadWheel?.(e)}
-        onDblClick={e => { if (!props.docked && !(e.target as HTMLElement).closest('button, select, input, .numf, .seg')) props.onHeadDbl?.(); }}>{props.head}</div>
-      {props.children}
-      {!props.docked && <div class="resizer" onPointerDown={resize} title={t('b.pe.resize')} />}
-    </div>
-  );
 }
 
 /** Dock-left / dock-bottom glyphs (a frame with the panel's side drawn) and the float glyph (two windows). */
 const DOCK_ICON = { rack: 'M4 5h16v14H4z M10 5v14', roll: 'M4 5h16v14H4z M4 13h16' } as const;
 const FLOAT_ICON = 'M9 9h11v10H9z M5 15H4V5h11v1';
 /**
- * The title-bar button that switches a pattern window between floating and docked (the Channel
- * Rack docks left of the Playlist, the Piano roll under it). The View menu has the same switch.
+ * The dock / float switch of a pattern window's title bar (the Channel Rack docks left of the
+ * Playlist, the Piano roll under it). The View menu has the same switch.
  */
-export function DockBtn(props: { which: 'rack' | 'roll' }) {
-  const docked = () => (props.which === 'rack' ? U.rackDock : U.rollDock);
-  const tip = () => t(docked() ? 'b.dk.float' : props.which === 'rack' ? 'b.dk.dockLeft' : 'b.dk.dockBottom');
-  return (
-    <button class="iconbtn dockbtn" title={tip()} aria-label={tip()} aria-pressed={docked()}
-      onClick={() => (props.which === 'rack' ? setRackDock : setRollDock)(!docked())}>
-      <Icon d={docked() ? FLOAT_ICON : DOCK_ICON[props.which]} size={13} />
-    </button>
-  );
+export function patDock(which: 'rack' | 'roll') {
+  const docked = which === 'rack' ? U.rackDock : U.rollDock;
+  return {
+    docked,
+    toggle: () => (which === 'rack' ? setRackDock : setRollDock)(!docked),
+    tip: t(docked ? 'b.dk.float' : which === 'rack' ? 'b.dk.dockLeft' : 'b.dk.dockBottom'),
+    icon: docked ? FLOAT_ICON : DOCK_ICON[which],
+  };
 }
 
 // ---------------------------------------------------------------- channel menus

@@ -14,7 +14,8 @@ import { Browser } from './Browser';
 import { ChannelRack } from './ChannelRack';
 import { PianoRoll } from './PianoRoll';
 import { Playlist } from './Playlist';
-import { DockBtn, guardKeys, useSize } from './patternShared';
+import { guardKeys, patDock, useSize } from './patternShared';
+import { WinControls } from './PanelFrame';
 
 export function Workspace() {
   let col!: HTMLDivElement, row!: HTMLDivElement;
@@ -71,8 +72,7 @@ function DockEmpty(props: { which: 'rack' | 'roll'; msg: string; action?: { labe
       <div class="winhd">
         <span class="wintitle">{props.which === 'rack' ? 'Channel rack' : 'Piano roll'}</span>
         <div style={{ flex: 1 }} />
-        <DockBtn which={props.which} />
-        <button class="closebtn" title={t(props.which === 'rack' ? 'b.dk.closeRack' : 'b.dk.closeRoll')} onClick={props.which === 'rack' ? closeRack : closeRoll}>×</button>
+        <WinControls dock={patDock(props.which)} close={{ tip: t(props.which === 'rack' ? 'b.dk.closeRack' : 'b.dk.closeRoll'), act: props.which === 'rack' ? closeRack : closeRoll }} />
       </div>
       <div class="dockempty">
         <span>{props.msg}</span>
