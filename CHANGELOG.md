@@ -7,6 +7,13 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **One sample editor with a keyboard, as in FL Studio.** The editor of an audio clip and of a
+  Channel Rack sampler now look and work the same: both end in a piano keyboard. Click a key
+  to hear the sample at that note; right-click a key to make it the root note (the note at
+  which the sample plays at its own pitch). The root key is lit and named, and the root shows
+  above the keyboard. An audio clip's root belongs to its sample (every clip of it shares it),
+  is saved with the project, and a sampler channel made from that sample starts on it. The
+  keyboards of WAVE Keys and plugin channels set their root the same way.
 - **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
   drums into a bus, or send the vocal and the keys to one shared reverb. In the maximized mixer,
   cables under the strips show every send with its level: drag the dot under a strip onto

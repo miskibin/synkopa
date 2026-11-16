@@ -24,6 +24,7 @@ export function applyOp(p: Project, op: Op): void {
         if (c.kind !== 'audio' && (s !== 1 || c.resample)) throw new OpError(`clip ${c.id}: only audio clips can be stretched`);
         const pt = c.pitch ?? 0;
         if (!(Number.isFinite(pt) && Math.abs(pt) <= CLIP_PITCH + 1e-4)) throw new OpError(`clip ${c.id}: pitch must be within ±${CLIP_PITCH} semitones`);
+        if (c.root != null && !(Number.isInteger(c.root) && c.root >= 0 && c.root <= 127)) throw new OpError(`clip ${c.id}: root key must be 0..127`);
         if (c.kind !== 'audio' && pt !== 0) throw new OpError(`clip ${c.id}: only audio clips can be transposed`);
         if (c.insert != null) {
           if (c.kind !== 'audio') throw new OpError(`clip ${c.id}: only audio clips have their own mixer insert`);

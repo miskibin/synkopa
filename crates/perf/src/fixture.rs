@@ -486,6 +486,7 @@ fn new_clip(id: Id, track: u32, start: f64, len: f64, kind: ClipKind, source: Id
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }
 }
 

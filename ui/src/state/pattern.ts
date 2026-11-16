@@ -503,10 +503,12 @@ export function addKeys() {
   selectChannel(c.id);
   say(t('b.st.keysSay'));
 }
-/** A new sampler channel of a project source, at `index` in the rack (default: the end). */
+/** A new sampler channel of a project source, at `index` in the rack (default: the end). Without a `root` it starts at
+ *  the root its audio clips were given in the sample editor (FL: the audio clip channel's root note). */
 export function addSampler(sourceId: Id, root?: number, index?: number) {
   const s = S.project.sources.find(x => x.id === sourceId); if (!s) return;
-  const c = { ...samplerChannel(allocId(), s, root), color: freshColor() };
+  const clipRoot = S.project.clips.find(x => x.kind === 'audio' && x.ref === sourceId && x.root != null)?.root;
+  const c = { ...samplerChannel(allocId(), s, root ?? clipRoot), color: freshColor() };
   commit([chanOp(c, {}, index)], t('b.st.addSampler'));
   selectChannel(c.id);
   say(t('b.st.samplerSay', { name: s.name }));

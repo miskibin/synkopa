@@ -121,9 +121,11 @@ function Body(props: { w: Win; c: Channel }) {
       <Show when={plugin()?.cid} keyed>
         {_cid => <PluginBody id={c().id} plugin={plugin()} instrument />}
       </Show>
-      <div class="chknobs"><ChannelLevelKnobs channel={c()} /><ChannelRootKnob channel={c()} /></div>
-      <Show when={c().kind === 'keys'}><PianoKeys ch={c().id} lo={21} hi={108} /></Show>
-      <Show when={c().kind === 'plugin'}><PianoKeys ch={c().id} lo={36} hi={96} /></Show>
+      <div class="chknobs"><ChannelLevelKnobs channel={c()} /><Show when={c().kind === 'synth'}><ChannelRootKnob channel={c()} /></Show></div>
+      <Show when={c().kind !== 'synth'}>
+        <PianoKeys player={{ ch: c().id }} lo={c().kind === 'keys' ? 21 : 36} hi={c().kind === 'keys' ? 108 : 96} root={c().root}
+          onRoot={key => { commit([chanOp(live(), { root: key })], t('b.cw.rootCh')); say(t('b.pk.rootSay', { name: c().name, note: noteName(key) })); }} />
+      </Show>
     </div>
   );
 }

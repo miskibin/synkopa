@@ -167,6 +167,7 @@ fn unarmed(busy: &[u32], at: f64) -> Project {
             resample: false,
             pitch: 0.0,
             insert: None,
+            root: 60,
         });
     }
     p

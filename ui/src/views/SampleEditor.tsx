@@ -1,7 +1,7 @@
 // One floating sample editor for Playlist audio clips and Channel Rack sampler channels.
 import { createEffect, createMemo, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
 import { be } from '../api/backend';
-import { CLIP_PITCH, SAMPLER, samplerDefault, type AutoTarget, type Channel, type Clip, type Id, type Op, type SamplerState, type Source } from '../api/types';
+import { CLIP_PITCH, SAMPLE_ROOT, SAMPLER, samplerDefault, type AutoTarget, type Channel, type Clip, type Id, type Op, type SamplerState, type Source } from '../api/types';
 import { FIT_BEATS, fitClip, putSoundClips, TOTAL } from '../lib/clipOps';
 import { baseName, clamp, dbg, dbText, panText } from '../lib/format';
 import { t, type TranslationKey } from '../lib/i18n';
@@ -20,9 +20,10 @@ import { addFrameTask, fitCanvas, Layer } from '../ui/frameLoop';
 import { channelIcon, guessIcon, InstIcon } from '../ui/instIcons';
 import { InsertPicker } from '../ui/InsertPicker';
 import { Knob } from '../ui/Knob';
-import { PianoKeys } from '../ui/PianoKeys';
+import { PianoKeys, type KeyPlayer } from '../ui/PianoKeys';
+import { noteName } from '../lib/pitch';
 import { rgba, T, theme } from '../ui/theme';
-import { chanHeardInsert, ChannelLevelKnobs, ChannelRootKnob } from './ChannelWindow';
+import { chanHeardInsert, ChannelLevelKnobs } from './ChannelWindow';
 import { outerZ } from '../state/winOrder';
 import { moveWindow } from './FxWindow';
 import { PitchCorrectButton } from './PitchCorrectButton';
@@ -78,6 +79,8 @@ function EditorFrame(props: {
   insert: () => Id | null | undefined;
   toggle: (key: 'reverse' | 'norm') => void;
   pitch: JSX.Element; level: JSX.Element; fades: JSX.Element; details: JSX.Element;
+  /** The keyboard at the bottom (FL Channel settings): plays the sample; right-click a key sets its root. */
+  keys: { player: KeyPlayer; root: () => number; setRoot: (key: number) => void };
 }) {
   const editor = () => U.editor!;
   const move = (x: number, y: number) => setU('editor', ed => ed && { ...ed, x, y });
@@ -125,6 +128,12 @@ function EditorFrame(props: {
         <div class="smpgrp">{props.fades}</div>
       </div>
       {props.details}
+      <div class="pkhead">
+        <span>{t('b.pk.root')}</span>
+        <b class="mono">{noteName(props.keys.root())}</b>
+        <span class="hint">{t('b.pk.rootHint')}</span>
+      </div>
+      <PianoKeys player={props.keys.player} lo={36} hi={96} root={props.keys.root()} onRoot={props.keys.setRoot} />
       <div class="resizer" onPointerDown={resize} title={t('d.smp.resize')} />
     </div>
   );
@@ -383,6 +392,11 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
         op={v => pitch(semi(), Math.round(v * 200 - 100))} menuTip="d.smp.noAutoPitch" />
     </>}
     level={<>{level('gain')}{level('pan')}</>}
+    keys={{
+      player: { play: (key, vel, on) => on ? be().previewClipKey({ clipId: c().id, key, vel }) : undefined },
+      root: () => c().root ?? SAMPLE_ROOT,
+      setRoot: key => { commit([put({ root: key })], t('d.smp.rootCh')); say(t('b.pk.rootSay', { name: src().name, note: noteName(key) })); },
+    }}
     fades={<FadeKnobs id={id} value={k => c()[k] * 1000} limit={k => Math.max(0, c().len * spb() - c()[k === 'fadeIn' ? 'fadeOut' : 'fadeIn']) * 1000}
       op={(k, v) => put({ [k]: v / 1000 })} title="d.smp.knob.tip" menuTip="a.au.noFade" />}
     details={<>
@@ -507,9 +521,12 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
               defaultPosition={releaseToT(SAMPLER.release.def)} op={v => put({ release: releaseFromT(v) })} />
           </div>
         </div>
-        <div class="smpgrp"><ChannelRootKnob channel={c()} /></div>
       </div>
-      <PianoKeys ch={c().id} lo={36} hi={96} mark={c().root} />
     </>}
+    keys={{
+      player: { ch: c().id },
+      root: () => c().root,
+      setRoot: key => { commit([chanOp(c(), { root: key })], t('b.cw.rootCh')); say(t('b.pk.rootSay', { name: c().name, note: noteName(key) })); },
+    }}
   />;
 }

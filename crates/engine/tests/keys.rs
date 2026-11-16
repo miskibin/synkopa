@@ -63,6 +63,7 @@ fn project(notes: Vec<Note>, keys: KeysState) -> Project {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     p
 }

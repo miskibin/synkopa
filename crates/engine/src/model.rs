@@ -962,6 +962,20 @@ pub struct Clip {
     /// the track's insert. The track still mutes it and scales it with its fader.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub insert: Option<Id>,
+    /// Audio clips: the key at which the sample sounds at its own pitch (FL's root note of an
+    /// audio clip channel, shared by every clip of the sample). The sample editor's keyboard
+    /// plays the sample transposed from here; a sampler channel made from the clip starts here.
+    #[serde(default = "clip_root", skip_serializing_if = "is_clip_root")]
+    pub root: u8,
+}
+
+/// Default `Clip::root`: C5 (MIDI 60), like a new sampler channel.
+pub const CLIP_ROOT: u8 = 60;
+fn clip_root() -> u8 {
+    CLIP_ROOT
+}
+fn is_clip_root(x: &u8) -> bool {
+    *x == CLIP_ROOT
 }
 
 fn is_zero_f32(x: &f32) -> bool {

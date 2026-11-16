@@ -31,7 +31,7 @@ import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib
 import { MockUpdates } from './mockUpdates';
 import { MOCK_LV2 } from './mockPlugins';
 import { fromNormalized, lv2Param } from '../lib/pluginParam';
-import { KEYS_DYNAMICS, KEYS_RELEASE, samplerDefault } from './types';
+import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault } from './types';
 import { newSynthChannel } from '../lib/synth';
 import { candidate, rank, unambiguous } from '../lib/relink';
 
@@ -1168,6 +1168,13 @@ export class MockBackend implements Backend {
     const f = clamp(from, a, b);
     if (f >= b) throw new Error('nothing to play after that point');
     this.preview = { t0: performance.now(), dur: b - f, off: f, rate: 1 };
+  }
+  async previewClipKey(a: { clipId: Id; key: number; vel?: number }) {
+    const c = this.p.clips.find(x => x.id === a.clipId && x.kind === 'audio'); if (!c) throw new Error('no such clip');
+    // like the engine: the region at the sample's own speed, read faster by the distance from the root
+    const st = c.stretch ?? 1, a0 = c.offset * this.spb() / st, b0 = (c.offset + c.len) * this.spb() / st;
+    const rate = 2 ** ((Math.min(127, a.key) - (c.root ?? SAMPLE_ROOT) + (c.pitch ?? 0)) / 12);
+    this.preview = { t0: performance.now(), dur: (b0 - a0) / rate, off: a0, rate };
   }
   async previewFile(path: string) { this.preview = { t0: performance.now(), dur: 0.6 + (hash(path) % 400) / 100, off: 0 }; }
   async previewStop() { this.preview = null; }

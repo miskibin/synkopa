@@ -241,6 +241,7 @@ fn live_keys_play_where_the_song_plays_the_channel_not_through_the_armed_track()
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     p.tracks[5].arm = true;
     let vocal = p.tracks[5].insert;

@@ -706,6 +706,8 @@ pub struct Preview {
     pub fade_in: f64,
     pub fade_out: f64,
     pub start: f64,
+    /// Read speed: 1 = the audio's own pitch; 2 = an octave up (the sample editor's keyboard).
+    pub rate: f64,
 }
 
 // ------------------------------------------------------------------ messages
@@ -1848,7 +1850,7 @@ impl Rt {
             self.last = (out_l[at + n - 1], out_r[at + n - 1]);
         }
         if let Some(pv) = self.preview.as_mut() {
-            let rate = pv.audio.sr as f64 / sr as f64;
+            let rate = pv.rate * pv.audio.sr as f64 / sr as f64;
             for i in 0..n {
                 if pv.pos >= pv.end {
                     break;

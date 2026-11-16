@@ -151,7 +151,7 @@ export function fitClip(c: Clip, beats: number): Clip | null {
  * pan, pitch, normalize, reverse and the mixer insert. Editing one clip's sound edits them all; the region, the
  * fades, the stretch and pitch-editor notes stay the clip's own ("Make unique" splits a clip off).
  */
-export const SHARED_SOUND = ['gain', 'pan', 'pitch', 'norm', 'rev', 'insert'] as const;
+export const SHARED_SOUND = ['gain', 'pan', 'pitch', 'norm', 'rev', 'insert', 'root'] as const;
 type SoundKey = typeof SHARED_SOUND[number];
 
 /** The shared sound of `ref`'s audio clips (from the first one), for a new clip of it; empty when it has none yet. */

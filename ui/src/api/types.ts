@@ -184,6 +184,9 @@ export interface Clip {
   /** Audio clips: the mixer insert this clip plays into, past its track (the editor sets it for every
    *  clip of the sample, like FL's audio clip channel). Absent/null = the track's insert. */
   insert?: Id | null;
+  /** Audio clips: the MIDI key at which the sample sounds at its own pitch (FL's root note; shared by every clip of
+   *  the sample). The sample editor's keyboard plays it transposed from here; absent = `SAMPLE_ROOT` (C5). */
+  root?: number;
 }
 /** Range of `Clip.stretch`. */
 export const STRETCH_MIN = 0.25;

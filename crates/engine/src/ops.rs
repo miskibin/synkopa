@@ -247,6 +247,9 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 if !(c.pitch.is_finite() && c.pitch.abs() <= crate::model::CLIP_PITCH + 1e-4) {
                     return Err(OpError::Invalid(format!("clip {}: pitch must be within ±{} semitones", c.id, crate::model::CLIP_PITCH)));
                 }
+                if c.root > 127 {
+                    return Err(OpError::Invalid(format!("clip {}: root key must be 0..127", c.id)));
+                }
                 if c.kind != ClipKind::Audio && c.pitch != 0.0 {
                     return Err(OpError::Invalid(format!("clip {}: only audio clips can be transposed", c.id)));
                 }

@@ -179,6 +179,7 @@ pub fn sketch_project() -> Project {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: crate::model::CLIP_ROOT,
     };
     p.clips = vec![clip(1, 0, 0.0, 16.0, 1), clip(2, 0, 16.0, 16.0, 1), clip(3, 1, 8.0, 24.0, 2), clip(4, 2, 0.0, 32.0, 3)];
     // Vocal chain: EQ (custom) → comp → reverb, drum bus comp.

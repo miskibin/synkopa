@@ -202,6 +202,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                         resample: false,
                         pitch: 0.0,
                         insert: None,
+                        root: wave_engine::CLIP_ROOT,
                     }],
                 });
             }
@@ -384,6 +385,7 @@ fn placeholder_clip(pattern: Id) -> Clip {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: wave_engine::CLIP_ROOT,
     }
 }
 

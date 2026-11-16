@@ -1176,6 +1176,7 @@ impl Engine {
                     resample: false,
                     pitch: 0.0,
                     insert: None,
+                    root: crate::model::CLIP_ROOT,
                 });
                 clip_ids.push(cid);
             }
@@ -1962,6 +1963,40 @@ impl Engine {
             // a start inside the clip is not its beginning: no fade-in there
             fade_in: if from.is_some_and(|f| f > a + 1e-3) { 0.0 } else { clip.fade_in as f64 },
             fade_out: clip.fade_out as f64,
+            rate: 1.0,
+            audio,
+        };
+        send(&mut c, Cmd::Preview(Some(Box::new(pv))));
+        Ok(())
+    }
+
+    /// Plays an audio clip's sample at MIDI `key`, like a sampler would (the sample editor's
+    /// keyboard, FL's audio clip channel): from the start of the clip's region to its end, read
+    /// faster or slower by the distance from the clip's root key plus its pitch knob. Its own
+    /// speed — the clip's time-stretch does not apply. Not an edit.
+    pub fn preview_clip_key(&self, clip_id: Id, key: u8, vel: f32) -> Result<(), EngineError> {
+        let mut c = self.core.lock();
+        let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
+        if clip.kind != crate::model::ClipKind::Audio {
+            return Err(EngineError::Msg("not an audio clip".into()));
+        }
+        let bpm = c.project.bpm;
+        let audio = c.sources.clip_source_audio(&clip, false, bpm).ok_or(EngineError::Msg("audio not loaded".into()))?;
+        let (a, b) = clip.source_span(bpm);
+        let sr = audio.sr as f64;
+        let end = (b * sr).min(audio.frames as f64);
+        if a * sr >= end {
+            return Err(EngineError::Msg("the clip's region is empty".into()));
+        }
+        let semis = key.min(127) as f64 - clip.root as f64 + clip.pitch as f64;
+        let pv = Preview {
+            pos: a * sr,
+            start: a * sr,
+            end,
+            gain: 10f32.powf(clip.gain / 20.0) * vel.clamp(0.0, 1.0),
+            fade_in: clip.fade_in as f64,
+            fade_out: clip.fade_out as f64,
+            rate: 2f64.powf(semis / 12.0),
             audio,
         };
         send(&mut c, Cmd::Preview(Some(Box::new(pv))));
@@ -1975,7 +2010,10 @@ impl Engine {
         });
         let mut c = self.core.lock();
         let end = audio.frames as f64;
-        send(&mut c, Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0 }))));
+        send(
+            &mut c,
+            Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0, rate: 1.0 }))),
+        );
         Ok(())
     }
 
@@ -1990,7 +2028,10 @@ impl Engine {
         let mut c = self.core.lock();
         let audio = c.sources.get(id).cloned().ok_or(EngineError::Msg("audio not loaded".into()))?;
         let end = audio.frames as f64;
-        send(&mut c, Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0 }))));
+        send(
+            &mut c,
+            Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0, rate: 1.0 }))),
+        );
         Ok(())
     }
 
@@ -3100,6 +3141,7 @@ impl Engine {
             resample: false,
             pitch: 0.0,
             insert: None,
+            root: crate::model::CLIP_ROOT,
         };
         if let Err(e) = self.apply_locked(c, &[Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None) {
             log::error!("could not place the MIDI take: {e}");
@@ -3326,6 +3368,7 @@ impl Engine {
             resample: false,
             pitch: 0.0,
             insert: None,
+            root: crate::model::CLIP_ROOT,
         });
         push_undo(&mut c, before);
         c.revision += 1;

@@ -455,6 +455,14 @@ async fn preview_clip(app: St<'_>, clip_id: u64, from: Option<f64>) -> R<()> {
     tauri::async_runtime::spawn_blocking(move || e.preview_clip(clip_id, from)).await.map_err(es)?.map_err(es)
 }
 
+/// The sample editor's keyboard on an audio clip: its sample at `key` (see `Engine::preview_clip_key`).
+#[tauri::command]
+async fn preview_clip_key(app: St<'_>, clip_id: u64, key: u8, vel: Option<f32>) -> R<()> {
+    let e = app.engine.clone();
+    // the clip's pitch edits may render first: off the IPC thread
+    tauri::async_runtime::spawn_blocking(move || e.preview_clip_key(clip_id, key, vel.unwrap_or(0.8))).await.map_err(es)?.map_err(es)
+}
+
 #[tauri::command]
 async fn preview_file(app: St<'_>, path: String) -> R<()> {
     let e = app.engine.clone();
@@ -1174,6 +1182,7 @@ pub fn run(project_arg: Option<&str>) {
             export_in_place,
             comp_audition,
             preview_clip,
+            preview_clip_key,
             preview_file,
             preview_source,
             preview_stop,

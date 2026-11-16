@@ -395,6 +395,7 @@ fn automation_moves_volume_and_effect_params() {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     });
     let e = Engine::new(p, Arc::new(NoPlugins));
     let out = e.render(0.0, 4.0, 0.0, 48000).unwrap();
@@ -657,6 +658,7 @@ fn an_arrangement_can_run_past_the_old_128_bar_limit() {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     });
     let e = Engine::new(p, Arc::new(NoPlugins));
     let (from, to) = Engine::export_range(&e.project(), false);
@@ -699,6 +701,7 @@ fn a_loop_does_not_play_the_downbeat_after_its_end() {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     // at 44.1 kHz 4 beats are not a whole number of samples: the block that reaches the loop
     // end runs past it by a fraction of a sample
@@ -750,6 +753,7 @@ fn wrapped_mix_and_stem_keep_exactly_one_pass_with_the_echo_at_its_start() {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     for mixer in &mut p.inserts {
         mixer.fx.clear();

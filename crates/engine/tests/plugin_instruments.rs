@@ -120,6 +120,7 @@ fn song(state: Option<&str>, notes: &[(f32, f32, u8)], beats: f64) -> (Project, 
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     (p, id)
 }

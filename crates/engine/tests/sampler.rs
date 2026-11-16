@@ -72,6 +72,7 @@ fn engine(name: &str, set: impl Fn(&mut SamplerState), notes: &[(f32, f32, Optio
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     };
     e.apply(&[Op::PutChannel { channel, index: None }, Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None)
         .unwrap();
@@ -504,6 +505,7 @@ fn a_new_project_does_not_inherit_audio_from_the_previous_one() {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     };
     e.apply(&[Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None).unwrap();
     let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
@@ -531,4 +533,64 @@ fn the_mock_fixture_matches_the_engine() {
     // compare through JSON text: floats written and read back are not bit-identical to f32
     let norm = |v: &serde_json::Value| serde_json::from_str::<serde_json::Value>(&serde_json::to_string(v).unwrap()).unwrap();
     assert!(norm(&have) == norm(&want), "ui/src/api/factory.json is out of date: see this test's comment");
+}
+
+/// The sample editor's keyboard on an audio clip (FL's audio clip channel): a key plays the
+/// clip's sample transposed from the clip's root key, plus its pitch knob; the root is saved
+/// only when it is not the default and an out-of-range one is refused.
+#[test]
+fn an_audio_clip_plays_from_its_keyboard_relative_to_its_root() {
+    let mut p = Project::empty();
+    p.bpm = 120.0;
+    p.inserts[0].fx.clear();
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let (srcs, _) = e.import_audio(&[two_level_wav("cliproot")], None).unwrap();
+    let clip = |root: u8, pitch: f32| Clip {
+        id: 7,
+        track: 0,
+        start: 0.0,
+        len: 2.0,
+        offset: 0.0,
+        kind: ClipKind::Audio,
+        source: srcs[0],
+        muted: false,
+        gain: 0.0,
+        fade_in: 0.0,
+        fade_out: 0.0,
+        pan: 0.0,
+        norm: false,
+        rev: false,
+        tune: None,
+        stretch: 1.0,
+        resample: false,
+        pitch,
+        insert: None,
+        root,
+    };
+    let zero_crossings = |x: &[f32]| x.windows(2).filter(|w| w[0] <= 0.0 && w[1] > 0.0).count() as f64;
+    let hz = |root: u8, pitch: f32, key: u8| {
+        e.apply(&[Op::PutClips { clips: vec![clip(root, pitch)] }], false, None).unwrap();
+        let mut rt = e.create_rt(SR as f32, 256);
+        e.preview_clip_key(7, key, 1.0).unwrap();
+        let (mut left, mut right) = ([0.0; 256], [0.0; 256]);
+        let out: Vec<_> = (0..(SR as usize / 5 / 256))
+            .flat_map(|_| {
+                rt.process(&mut left, &mut right, None);
+                left
+            })
+            .collect();
+        zero_crossings(&out[SR as usize / 100..]) / (out.len() as f64 / SR as f64 - 0.01)
+    };
+    assert!((hz(60, 0.0, 60) - 440.0).abs() < 8.0, "the root key plays the sample as recorded");
+    assert!((hz(60, 0.0, 72) - 880.0).abs() < 12.0, "an octave above the root plays twice as fast");
+    assert!((hz(69, 0.0, 57) - 220.0).abs() < 6.0, "a moved root moves every key");
+    assert!((hz(60, -12.0, 72) - 440.0).abs() < 8.0, "the pitch knob adds to the key");
+
+    let json = serde_json::to_value(clip(60, 0.0)).unwrap();
+    assert!(json.get("root").is_none(), "the default root is not written");
+    let back: Clip = serde_json::from_value(json).unwrap();
+    assert_eq!(back.root, CLIP_ROOT, "a clip saved without a root gets C5");
+    assert_eq!(serde_json::to_value(clip(57, 0.0)).unwrap()["root"], 57);
+    assert!(e.apply(&[Op::PutClips { clips: vec![clip(128, 0.0)] }], false, None).is_err());
+    assert!(e.preview_clip_key(999, 60, 1.0).is_err());
 }

@@ -116,6 +116,9 @@ export interface Backend {
   /** Plays one clip alone. `from` (seconds of the source): from there, the take with its pitch edits at the
    *  source's own speed, to the end of the clip (the pitch editor's Solo); rejects when nothing is left after it. */
   previewClip(clipId: Id, from?: number): Promise<void>;
+  /** The sample editor's keyboard on an audio clip: its sample at MIDI `key`, transposed from the clip's root (plus its
+   *  pitch knob) at the sample's own speed, over the clip's region. `vel` 0..1. Rejects for a missing clip. */
+  previewClipKey(args: { clipId: Id; key: number; vel?: number }): Promise<void>;
   /** Channels whose notes play over an audio clip (pattern clips in the playlist), best fit to the singing first. */
   melodyChannels(clipId: Id): Promise<MelodyChannel[]>;
   /** The notes `channel` plays over the clip as a melody reference (a copy; `span`: seconds of the source). */
@@ -327,6 +330,7 @@ export function tauriBackend(): Backend {
     flattenComp: clipId => invoke('flatten_comp', { clipId }),
     compAudition: (compId, takeId) => invoke('comp_audition', { compId, takeId }),
     previewClip: (clipId, from) => invoke('preview_clip', { clipId, from: from ?? null }),
+    previewClipKey: a => invoke('preview_clip_key', { clipId: a.clipId, key: a.key, vel: a.vel ?? null }),
     melodyChannels: clipId => invoke('melody_channels', { clipId }),
     melodyReference: (clipId, channel, span) => invoke('melody_reference', { clipId, channel, span: span ?? null }),
     previewFile: path => invoke('preview_file', { path }),

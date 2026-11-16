@@ -336,6 +336,7 @@ fn render_song(preset: &str, song: &Song) -> Vec<f32> {
         resample: false,
         pitch: 0.0,
         insert: None,
+        root: 60,
     }];
     Engine::new(p, Arc::new(NoPlugins)).render(0.0, song.beats, 2.5, SR as u32).unwrap()
 }
