@@ -151,6 +151,8 @@ export function Playlist() {
   // The view's size is not here either: `planTile` asks for a full paint only when the tile's size changes.
   // Scrolling is not here: the canvases scroll with the content and redraw only strips (`draw`)
   createEffect(() => { U.snap; U.tool; S.transport.rec; S.project.bpm; peaksVersion(); dirtyGrid = true; });
+  // back from the Mix view: paint everything again (a webview may have dropped the hidden canvases' pixels)
+  createEffect(() => { if (!U.mixView) { dirtyGrid = dirtyFade = dirtyRuler = dirtyOv = true; tile = null; } });
   // a zoom step is handled in `draw`: a full paint, or the tile stretched until the zoom settles
   createEffect(on(() => U.bw, () => { zoomed = true; }, { defer: true }));
   // the loop range is shaded on the overlay: moving it repaints no clip

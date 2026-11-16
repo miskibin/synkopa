@@ -75,7 +75,7 @@ function Rack(props: { z: number; docked?: boolean }) {
 
   createEffect(() => {
     data(); const G = geo(), { w, h } = size(); void fonts.epoch;
-    if (!w || !h) return;
+    if (!w || !h || U.mixView) return; // repainted on the way back from the Mix view
     fitCanvas(cv, w, h); fitCanvas(head, w, h);
     const g = cv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -83,7 +83,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     lastHead = -2;
   });
   createEffect(() => {
-    const mode = graph(); if (!mode) return;
+    const mode = graph(); if (!mode || U.mixView) return;
     data(); const G = geo(), { w, h } = graphSize(), c = selCh();
     if (!w || !h) return;
     fitCanvas(graphCv, w, h);

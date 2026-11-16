@@ -208,7 +208,8 @@ a { color: var(--blue); }
 /* ---------- mixer ---------- */
 /* the area under the toolbar: the arrange layout (Playlist, docked panels, docked mixer) or the Mix view over it */
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
-.workcol.away { content-visibility: hidden; }
+/* visibility, not content-visibility: WebKitGTK (Linux) drops the canvases' pixels of skipped content, and the Playlist and Channel Rack came back blank */
+.workcol.away { visibility: hidden; }
 .mixdock { flex: none; display: flex; flex-direction: column; }
 .mixsplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
 .mixsplit:hover, .mixsplit:focus-visible { background: var(--blue); }

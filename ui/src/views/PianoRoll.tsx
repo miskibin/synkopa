@@ -314,12 +314,14 @@ function Roll(props: { z: number; docked?: boolean }) {
   let rafMain = 0, rafVel = 0;
   createEffect(() => {
     data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
   // the ghost belongs to the stamp tool: gone the moment another tool is picked
   createEffect(() => { if (rollTool() !== 'stamp') setStampGhost(null); });
   createEffect(() => {
     data(); sel(); laneSize(); view(); size(); ch(); pt().len;
+    if (U.mixView) return;
     if (!rafVel) rafVel = requestAnimationFrame(() => { rafVel = 0; untrack(drawVel); });
   });
   onCleanup(() => { cancelAnimationFrame(rafMain); cancelAnimationFrame(rafVel); });
