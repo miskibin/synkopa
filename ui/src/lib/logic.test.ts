@@ -3,7 +3,7 @@ import { encodeFrame, MAGIC, SCOPE_LEN, SPEC_BANDS, TelemetryDecoder } from '../
 import { sketchProject, mockCatalog } from '../api/mockData';
 import { TOTAL_BEATS, type Clip } from '../api/types';
 import { applyAll, OpError } from './applyOps';
-import { clampMove, duplicateSpan, insertTrackOps, moveClips, pasteClips, resizeClip, resizeClips, sliceClip, stretchClip, stretchClips } from './clipOps';
+import { clampMove, duplicateSpan, insertTrackOps, moveClips, pasteClips, placeClipCopy, resizeClip, resizeClips, sliceClip, stretchClip, stretchClips } from './clipOps';
 import { eqCurve } from './eq';
 import { exportRange, exportSeconds, fmtExportLen, songEnd } from './export';
 import { fmtClock, fmtPos, panText, TapTracker, volText } from './format';
@@ -13,6 +13,24 @@ import { t } from './i18n';
 
 const cat = mockCatalog();
 const clip = (o: Partial<Clip>): Clip => ({ id: 1, track: 0, start: 0, len: 4, offset: 0, kind: 'pat', ref: 1, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...o });
+
+describe('playlist drawing from a picked clip', () => {
+  it('places the same two-bar slice of a long sample, preserving its source offset and audio settings', () => {
+    const original = clip({ kind: 'audio', ref: 8, start: 12, len: 8, offset: 40,
+      stretch: 1.5, resample: true, pitch: 2, fadeIn: 0.1, fadeOut: 0.2, rev: true });
+    const copy = placeClipCopy(original, 23, 3, 36);
+    expect(copy).toEqual({ ...original, id: 23, track: 3, start: 36 });
+    expect(original.start).toBe(12);
+    expect(original.offset).toBe(40);
+  });
+
+  it('keeps the complete slice when drawing close to the end of the playlist', () => {
+    const copy = placeClipCopy(clip({ kind: 'audio', len: 8, offset: 64 }), 24, 1, TOTAL_BEATS - 2);
+    expect(copy.start).toBe(TOTAL_BEATS - 8);
+    expect(copy.len).toBe(8);
+    expect(copy.offset).toBe(64);
+  });
+});
 
 describe('snap', () => {
   it('auto picks the smallest unit at least 10 px wide', () => {
