@@ -453,9 +453,9 @@ impl Engine {
         self.skip_silent.store(on, Relaxed);
     }
 
-    /// Threads an offline render may use for the insert chains (1 = single-threaded). The
-    /// default leaves two cores to the rest of the machine, at most 8. The render is identical
-    /// whatever the count.
+    /// Threads the synth instances and insert chains may use, in offline renders and in the
+    /// streams (`create_rt`) made from now on (1 = single-threaded). The default leaves two
+    /// cores to the rest of the machine, at most 8. The output is identical whatever the count.
     pub fn set_render_workers(&self, n: usize) {
         self.render_workers.store(n.max(1), Relaxed);
     }
@@ -495,6 +495,8 @@ impl Engine {
         *self.shared.lock() = shared.clone();
         let mut rt = Rt::new(sample_rate, max_block, cmd_rx, gb_tx, shared, Taps { input: inputs, output: outputs }, rec_tx);
         rt.set_skip_silent(self.skip_silent.load(Relaxed));
+        // synth instances and insert chains spread over several cores while playing too
+        rt.set_workers(self.render_workers.load(Relaxed));
         rt.set_midi_ring(midi_rx);
         *self.midi_fast.tx.lock() = Some(midi_tx);
         let mut c = self.core.lock();

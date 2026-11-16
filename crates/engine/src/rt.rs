@@ -775,8 +775,8 @@ pub struct Rt {
     skip_silent: bool,
     /// Live MIDI events (see `Engine::midi_event`).
     midi: Option<rtrb::Consumer<Cmd>>,
-    /// Worker threads for the insert chains (offline renders only; 0/1 = this thread).
-    workers: usize,
+    /// Worker threads for the synth instances and insert chains (`None` = this thread only).
+    pool: Option<crate::pool::RtPool>,
     /// Instant start (live streams, see [`Rt::set_instant_start`]): the share of a callback
     /// period the audio thread may fill while pre-rolling, `None` = off (offline renders
     /// drop the latency themselves).
@@ -856,7 +856,7 @@ impl Rt {
             pat_range: None,
             skip_silent: true,
             midi: None,
-            workers: 0,
+            pool: None,
             instant: None,
             preroll: 0,
             pre_cost: 0.0,
@@ -904,10 +904,17 @@ impl Rt {
         }
     }
 
-    /// Lets this Rt process insert chains on `n` worker threads. Never for a live stream:
-    /// it spawns threads and allocates. Output is identical to the single-threaded one.
+    /// Lets this Rt spread each block's synth instances and insert chains over `n` threads
+    /// (the audio thread and `n - 1` workers; 0 or 1 = the audio thread only), live and
+    /// offline alike. Spawns threads: call it before the Rt goes to the audio thread. The
+    /// output is identical to the single-threaded one.
     pub fn set_workers(&mut self, n: usize) {
-        self.workers = n;
+        self.pool = (n > 1).then(|| crate::pool::RtPool::new(n - 1));
+    }
+
+    /// Threads besides the audio thread that process this Rt's blocks.
+    pub fn workers(&self) -> usize {
+        self.pool.as_ref().map_or(0, |p| p.workers())
     }
 
     /// The ring live keyboard events arrive on, drained together with the command ring.
@@ -1530,7 +1537,7 @@ impl Rt {
         let pat_ctx = if !self.playing && self.pat_play.is_some() { Some(self.pat_beat) } else { None };
         self.schedule_pattern(n, bps, spb);
         self.voices.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &mut self.click[..n], &self.timeline.chans);
-        self.synths.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, bpm);
+        self.synths.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, bpm, self.pool.as_ref());
         if !self.plugs.is_empty() {
             let ctx = match pat_ctx {
                 Some(b) => ProcessCtx { sample_rate: sr, bpm, beat: b, playing: true },
@@ -1625,25 +1632,25 @@ impl Rt {
         if count > 0 {
             let (enabled, watch) = (self.skip_silent, &self.watch[..self.watch_n]);
             let aligned = ctx.playing || self.instant.is_none();
-            if self.workers > 1 && count > 4 && watch.is_empty() {
-                // offline: the effect chains of the non-master inserts are independent, so
-                // worker threads take them one by one (the sum into the master stays in order)
-                let next = std::sync::atomic::AtomicUsize::new(0);
-                let cells: Vec<std::sync::Mutex<&mut InsertRt>> = g.inserts[1..].iter_mut().map(std::sync::Mutex::new).collect();
+            if let Some(pool) = self.pool.as_ref().filter(|_| count > 2) {
+                // the effect chains of the non-master inserts are independent: the pool's
+                // threads take them one by one (the sum into the master below stays in order).
+                // A chain with a watched effect writes the analysis taps: this thread runs it.
                 let shared = &*self.shared;
-                std::thread::scope(|sc| {
-                    for _ in 0..self.workers.min(cells.len()) {
-                        sc.spawn(|| {
-                            let mut taps = Taps { input: vec![], output: vec![] };
-                            loop {
-                                let j = next.fetch_add(1, Relaxed);
-                                let Some(cell) = cells.get(j) else { break };
-                                let mut ins = cell.lock().unwrap();
-                                process_insert(&mut ins, j + 1, n, &ctx, aligned, enabled, &[], &mut taps, shared);
-                            }
-                        });
+                let watched = |ins: &InsertRt| !watch.is_empty() && ins.fx.iter().any(|s| watch.contains(&s.id));
+                pool.for_each_mut(&mut g.inserts[1..], &|j, ins| {
+                    if !watched(ins) {
+                        let mut no_taps = Taps { input: Vec::new(), output: Vec::new() };
+                        process_insert(ins, j + 1, n, &ctx, aligned, enabled, &[], &mut no_taps, shared);
                     }
                 });
+                if !watch.is_empty() {
+                    for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
+                        if watched(insert) {
+                            process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, shared);
+                        }
+                    }
+                }
             } else {
                 for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
                     process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared);

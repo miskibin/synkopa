@@ -16,6 +16,7 @@ pub mod ops;
 pub mod pitch;
 pub mod plug;
 pub mod poly;
+pub mod pool;
 pub mod processor;
 pub mod reference;
 pub mod rider;

@@ -24,6 +24,13 @@ Rules that keep it fast:
   are built off-thread and swapped in through an `rtrb` ring; the old graph is
   sent back to be dropped off-thread. DSP state (reverb tails, delay lines) is
   carried across a swap by effect id.
+* **Independent work runs on every core** (`crates/engine/src/pool.rs`). Each block, the
+  synth instances render into their own buffers and the non-master insert chains run on a
+  pool of audio worker threads (time-critical priority, created with the stream), the audio
+  thread taking jobs from the same atomic counter; the results are summed in a fixed order,
+  so the output is bit-identical to one thread (`tests/rt_workers.rs`). A dispatch is a few
+  atomics: no allocation, no lock. If no worker wakes in time the audio thread does the work
+  itself. Chains with a watched effect (an open analyser) stay on the audio thread.
 * **Parameter moves do not rebuild anything.** They are a fixed-size message.
 * **The UI never polls JSON at frame rate.** Meters, playhead, recording peaks
   and the analysis of *open* effect windows arrive as one binary frame on a

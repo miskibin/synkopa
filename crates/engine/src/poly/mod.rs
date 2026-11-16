@@ -43,6 +43,9 @@ pub const CHUNK: usize = 32;
 const MAX_EVENTS: usize = 1024;
 /// Synth channels the audio thread can hold.
 pub const MAX_SYNTHS: usize = 64;
+/// The largest block a synth instance renders into its own buffer (an Rt's `max_block` is at
+/// most this); larger blocks fall back to rendering one instance after another.
+const OUT_CAP: usize = 8192;
 /// Steal fade time.
 const STEAL_S: f32 = 0.004;
 /// Fade when the transport restarts.
@@ -177,6 +180,10 @@ pub struct SynthInst {
     quiet: usize,
     idle: bool,
     age: u64,
+    /// Parallel rendering (see [`SynthBank::render`]): this instance's output of the block
+    /// and whether it put any out.
+    out: (Vec<f32>, Vec<f32>),
+    wrote: bool,
 }
 
 impl SynthInst {
@@ -220,6 +227,8 @@ impl SynthInst {
             quiet: 0,
             idle: true,
             age: 0,
+            out: (vec![0.0; OUT_CAP], vec![0.0; OUT_CAP]),
+            wrote: false,
         }
     }
 
@@ -710,8 +719,53 @@ impl SynthBank {
     }
 
     /// Adds every instance's output into where its notes were played (a track buffer or an
-    /// insert input), scaled by its channel's gain and pan.
-    pub fn render(&mut self, n: usize, tracks: &mut [(Vec<f32>, Vec<f32>)], inserts: &mut [InsertRt], chans: &[ChanRt], bpm: f64) {
+    /// insert input), scaled by its channel's gain and pan. With a `pool`, the instances
+    /// render in parallel into their own buffers and are summed here in order: the same
+    /// result as rendering them one after another.
+    pub fn render(
+        &mut self,
+        n: usize,
+        tracks: &mut [(Vec<f32>, Vec<f32>)],
+        inserts: &mut [InsertRt],
+        chans: &[ChanRt],
+        bpm: f64,
+        pool: Option<&crate::pool::RtPool>,
+    ) {
+        if let Some(pool) = pool.filter(|_| self.insts.len() > 1 && n <= OUT_CAP) {
+            pool.for_each_mut(&mut self.insts, &|_, s| {
+                let (g, pan) =
+                    chans.iter().find(|c| c.id == s.chan).map(|c| (if c.on { c.gain } else { 0.0 }, c.pan)).unwrap_or((0.0, 0.0));
+                let (pl, pr) = pan_gains(pan);
+                let (gl, gr) = if s.dest.is_some() { (g * pl, g * pr) } else { (0.0, 0.0) };
+                let mut out = std::mem::take(&mut s.out);
+                let mut wrote = false;
+                s.process(n, bpm, gl, gr, |o, a, b| {
+                    if !wrote {
+                        out.0[..n].fill(0.0);
+                        out.1[..n].fill(0.0);
+                        wrote = true;
+                    }
+                    out.0[o..o + a.len()].copy_from_slice(a);
+                    out.1[o..o + b.len()].copy_from_slice(b);
+                });
+                s.out = out;
+                s.wrote = wrote;
+            });
+            for s in self.insts.iter_mut().filter(|s| s.wrote) {
+                let out: Option<(&mut [f32], &mut [f32])> = match s.dest {
+                    Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| (&mut l[..], &mut r[..])),
+                    Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| (&mut i.l[..], &mut i.r[..])),
+                    _ => None,
+                };
+                if let Some((l, r)) = out {
+                    for i in 0..n {
+                        l[i] += s.out.0[i];
+                        r[i] += s.out.1[i];
+                    }
+                }
+            }
+            return;
+        }
         for s in self.insts.iter_mut() {
             let (g, pan) = chans.iter().find(|c| c.id == s.chan).map(|c| (if c.on { c.gain } else { 0.0 }, c.pan)).unwrap_or((0.0, 0.0));
             let (pl, pr) = pan_gains(pan);
