@@ -6,7 +6,7 @@ import { noteAt, notesText, SCALES, scaleMask, snapStep } from '../../lib/patter
 import { NOTE_NAMES, noteName } from '../../lib/pitch';
 import { CHORD_TYPES, chordName, chordPitches } from '../../lib/transforms';
 import { MAX_STEP } from '../../lib/rollEdit';
-import { velProp, unitOf, grewSay, type RollCtx, type RollMove, type RollPtr, type RollTool } from './types';
+import { velProp, unitOf, grewText, type RollCtx, type RollMove, type RollPtr, type RollTool } from './types';
 
 /** The stamp picker's chord types and inversions (the header selects shown with the tool). */
 export const STAMP_TYPES: { v: string; l: TranslationKey }[] = CHORD_TYPES.map(([id]) => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey }));
@@ -29,12 +29,14 @@ export function stampAt(ctx: RollCtx, e: RollPtr) {
   ctx.setStampGhost(null); // the ghost did its job; the next mousemove re-previews the next cell
   const lenBefore = ctx.pt().len;
   ctx.commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
-  grewSay(ctx, lenBefore);
+  // one status line for both facts: a lone growth notice would be overwritten by the stamp's
+  const grew = grewText(ctx, lenBefore);
+  const label = t('b.pr.stamped', { label: chordName(pitches) });
   // the replacement moves notes around: the selection becomes the fresh chord, so a
   // stale index can never point at an unrelated note (Delete would eat the wrong one)
   ctx.setSel(new Set(stamped.map((_, j) => kept.length + j)));
   stamped.forEach(n => ctx.audition(n.p ?? p.key, n.v ?? 1));
-  ctx.say(t('b.pr.stamped', { label: chordName(pitches) }));
+  ctx.say(grew ? `${label} · ${grew}` : label);
 }
 
 /** The stamp tool's eraser: right-click removes all of the channel's notes at the
@@ -85,7 +87,8 @@ export function stampHover(ctx: RollCtx, m: RollMove) {
     ctx.setHoverChord(pitches ? stampPreview(ctx, m.p.key) : '');
     return;
   }
-  if (!cur || cur.s !== s || cur.len !== ctx.lastLen() || cur.pitches.some((q, i) => q !== pitches[i])) {
+  if (!cur || cur.s !== s || cur.len !== ctx.lastLen() || cur.pitches.length !== pitches.length
+    || cur.pitches.some((q, i) => q !== pitches[i])) {
     ctx.setStampGhost({ s, len: ctx.lastLen(), pitches });
   }
   ctx.setHoverChord(stampPreview(ctx, m.p.key));

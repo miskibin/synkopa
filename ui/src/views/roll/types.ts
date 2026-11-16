@@ -133,11 +133,17 @@ export const velProp = (c: RollCtx) => (c.lastVel() < 0.995 ? { v: c.lastVel() }
 export const unitOf = (c: RollCtx, m: { alt: boolean }) => (m.alt ? 0 : c.snap());
 
 /** The pattern just grew past its end (a stamp or a new note drawn in the room to the right):
- * the loop follows the length, which is easy to miss while it plays — say the new bar count. */
+ * the loop follows the length, which is easy to miss while it plays. Returns the notice text,
+ * '' when nothing grew — the caller decides how it reaches the status line (the stamp combines
+ * it with its own message; a lone say would overwrite one or the other). */
+export const grewText = (c: RollCtx, lenBefore: number) => {
+  if (c.pt().len - lenBefore <= 1e-6) return '';
+  const bars = c.pt().len / 4;
+  return t('b.pr.patGrew', { n: bars >= 10 ? Math.round(bars) : +bars.toFixed(bars < 1 ? 2 : 1) });
+};
+
+/** The draw path's create has no later say to fight with: just say the growth. */
 export const grewSay = (c: RollCtx, lenBefore: number) => {
-  const grew = c.pt().len - lenBefore;
-  if (grew > 1e-6) {
-    const bars = c.pt().len / 4;
-    c.say(t('b.pr.patGrew', { n: bars >= 10 ? Math.round(bars) : +bars.toFixed(bars < 1 ? 2 : 1) }));
-  }
+  const msg = grewText(c, lenBefore);
+  if (msg) c.say(msg);
 };

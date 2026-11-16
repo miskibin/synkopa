@@ -32,21 +32,23 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     gestures: RecGest[]; auditions: { key: number; vel: number }[]; typing: { on: boolean; key: number; vel: number }[];
     switched: number[]; props: number[]; zooms: { s0: number; s1: number; r0: number; r1: number }[];
     pushed: number; popped: number; drags: number; marq: unknown; ghost: unknown; chord: string;
-    propsOpen: boolean;
+    propsOpen: boolean; stampType: string;
   } = {
     says: [], sels: [], commits: [], gestures: [], auditions: [], typing: [],
     switched: [], props: [], zooms: [], pushed: 0, popped: 0, drags: 0, marq: null, ghost: null, chord: '', propsOpen: false,
+    stampType: 'min',
   };
   const pat = { id: 7, name: 'P', color: '#fff', len: 64, notes } as unknown as Pattern;
   // the tools replace the whole notes array per op; the component's store does it at once —
   // the fake does the same so hit tests see each edit, like the real roll does. The length
-  // follows the content the way the engine derives it: last note end rounded up to a bar,
-  // at least one bar.
+  // mirrors the engine's fit_len (model.rs): the last note end in beats, rounded up to a
+  // whole bar, but never below the length the user kept on purpose.
   const live = notes.slice();
   const setNotes = (nts: readonly Note[]) => {
     live.splice(0, live.length, ...nts);
     const end = live.reduce((m: number, n: Note) => Math.max(m, n.step + n.len), 0);
-    pat.len = Math.max(4, Math.ceil(end / 4 - 1e-9) * 4);
+    const content = Math.ceil(end / 16 - 1e-6) * 4;
+    pat.len = Math.max(pat.minLen ?? 4, content);
   };
   let sel = new Set<number>();
   let lastLen = 2, lastVel = 1;
@@ -103,7 +105,7 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     setHoverChord: s => { rec.chord = s; },
     setHoverKey: () => {},
     propsOpen: () => rec.propsOpen, closeProps: () => { rec.propsOpen = false; }, openProps: idx => { rec.props = idx; },
-    stamp: () => ({ type: 'min', inv: 0 }),
+    stamp: () => ({ type: rec.stampType, inv: 0 }),
     keyScale: () => ({ root: 0, scale: 1 }),
     switchChannel: id => rec.switched.push(id),
     zoomTo: (s0, s1, r0, r1) => rec.zooms.push({ s0, s1, r0, r1 }),
@@ -117,7 +119,7 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     bindMods: cb => { modCb = cb; return () => { modCb = null; }; },
     autoScroll: () => ({ move: () => {}, stop: () => {} }),
   };
-  return { ctx, rec, live, drag: () => drag, armDbl: () => { dblArmed = true; }, fireMods: (m: Mods) => modCb?.(m), setLen: (n: number) => { pat.len = n; }, patLen: () => pat.len };
+  return { ctx, rec, live, drag: () => drag, armDbl: () => { dblArmed = true; }, fireMods: (m: Mods) => modCb?.(m), setLen: (n: number) => { pat.len = n; pat.minLen = n; }, patLen: () => pat.len };
 }
 
 // ---- helpers over the fakes ----
@@ -154,9 +156,9 @@ describe('draw tool', () => {
   it('a new note past the end grows the pattern and says so', () => {
     const c = makeCtx([]);
     c.setLen(16);
-    down(c, 0, at(17.4, 60));
-    expect(c.patLen()).toBe(20); // the note ends at step 19 → five bars
-    expect(c.rec.says).toContain('Pattern grew to 5 bars');
+    down(c, 0, at(66.4, 60)); // past the 4-bar pattern: the note ends at step 68 = beat 17
+    expect(c.patLen()).toBe(20); // → five bars
+    expect(c.rec.says.at(-1)).toBe('Pattern grew to 5 bars');
   });
 
   it('a click on a note moves it with its drag; the right edge resizes it', () => {
@@ -265,20 +267,19 @@ describe('stamp tool', () => {
     expect(c.rec.gestures[0].ended).toBe(1);
   });
 
-  it('stamping past the pattern end grows it and says the new bar count', () => {
+  it('stamping past the pattern end grows it and the stamp message carries the notice', () => {
     const c = makeCtx([], 'stamp');
     c.setLen(16);
-    down(c, 0, at(20.4, 60));
-    c.drag();
-    expect(c.patLen()).toBe(24); // the stamp at step 20 ends at step 22 → six bars
-    expect(c.rec.says).toContain('Pattern grew to 6 bars');
+    down(c, 0, at(68.4, 60)); // past the 4-bar pattern: the stamp ends at step 70 = beat 17.5
+    expect(c.patLen()).toBe(20); // → five bars
+    expect(c.rec.says.at(-1)).toBe('Stamped Cm · Pattern grew to 5 bars'); // one status line, both facts
   });
 
   it('a stamp inside the pattern says nothing about growth', () => {
     const c = makeCtx([], 'stamp');
     c.setLen(16);
     down(c, 0, at(4.4, 60));
-    expect(c.rec.says.some(s => s.startsWith('Pattern grew'))).toBe(false);
+    expect(c.rec.says.at(-1)).toBe('Stamped Cm'); // no growth, no notice
   });
 });
 
@@ -403,6 +404,15 @@ describe('hover', () => {
     rollMove(c.ctx, mv(c, at(4.4, 60), { ctrl: true }));
     expect(c.rec.ghost).toEqual({ s: 4, len: 2, pitches: chordPitches(60, 'min', 0) });
     expect(c.rec.chord).toBe('C4 → Cm · in C Major');
+  });
+
+  it('the ghost follows a chord-type change even when the new pitches extend the old', () => {
+    const c = makeCtx([], 'stamp');
+    rollMove(c.ctx, mv(c, at(4.4, 60))); // Cm triad: [60, 63, 67]
+    expect(c.rec.ghost).toEqual({ s: 4, len: 2, pitches: [60, 63, 67] });
+    c.rec.stampType = 'min7'; // extends the triad: [60, 63, 67, 70]
+    rollMove(c.ctx, mv(c, at(4.4, 60)));
+    expect(c.rec.ghost).toEqual({ s: 4, len: 2, pitches: [60, 63, 67, 70] });
   });
 });
 
