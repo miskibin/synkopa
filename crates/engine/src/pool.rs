@@ -221,10 +221,8 @@ fn boost_priority() {
     // class, or a worker preempted mid-job makes the callback wait past its deadline. Without
     // permission (no rtkit, no rtprio limit) they stay at normal priority.
     #[cfg(any(target_os = "linux", target_os = "macos"))]
-    if let Ok(h) = audio_thread_priority::promote_current_thread_to_real_time(512, 48_000) {
-        // the worker keeps the class until it exits
-        std::mem::forget(h);
-    }
+    // the handle only matters for an explicit demotion: the worker keeps the class until it exits
+    let _ = audio_thread_priority::promote_current_thread_to_real_time(512, 48_000);
 }
 
 #[cfg(test)]
