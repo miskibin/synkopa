@@ -104,8 +104,8 @@ function sendItems(m: Insert): MenuItem[] {
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
 /** Height (px) of a strip's meters and fader: the strip keeps it however tall the mixer is. */
 const FADER_H = 140;
-/** The fader's share of a strip in the maximized mixer. */
-const FADER_FULL = '66%';
+/** Effect rows the maximized mixer always has room for (and the "+ effect" row after them). */
+const FX_ROWS_FULL = 5;
 /** One effect row in a strip, its 2 px gap included. */
 const FX_ROW = 20;
 
@@ -115,14 +115,14 @@ const FX_ROW = 20;
  * fit; the last row then says how many more there are (click = the chain beside the strips), or
  * offers to add one when there is room.
  */
-function StripFx(props: { m: Insert }) {
+function StripFx(props: { m: Insert; full: boolean }) {
   let el!: HTMLDivElement;
   const size = useSize(() => el);
   const room = () => Math.floor((size().h + 2) / FX_ROW);
   const fit = () => { const r = room(), n = props.m.fx.length; return n + 1 <= r ? n : Math.max(0, r - 1); };
   const stop = (e: Event) => e.stopPropagation();
   return (
-    <div ref={el} class="sfx">
+    <div ref={el} class="sfx" style={props.full ? { flex: `0 0 ${(FX_ROWS_FULL + 1) * FX_ROW}px` } : undefined}>
       <Show when={room() > 0}>
         <For each={props.m.fx.slice(0, fit())}>{f => (
           <div class="sfxr" classList={{ off: f.bypass, on: U.fxSel === f.id }} title={A.fxName(f) + ' · ' + tr('c.mix.fxRowTip')}
@@ -250,7 +250,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
             <span class="fxdot" /><span class="fxt">{m().fx.length}<span class="fxw"> FX</span></span></button>
         </Show>
       </div>
-      <StripFx m={m()} />
+      <StripFx m={m()} full={props.full} />
       <div class="knobrow">
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
         <div class="pandial" classList={{ auto: isAutomated(panT()) }} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
@@ -282,8 +282,9 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         </Show>
       </div>
       {/* docked, the fader keeps one height (a taller mixer shows effect rows above the knobs instead,
-          StripFx); maximized it takes 2/3 of the strip, for fine moves, and the rows get the rest */}
-      <div style={{ flex: props.full ? `0 1 ${FADER_FULL}` : `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
+          StripFx); maximized, the effect rows have a fixed room (five and "+ effect") and the fader
+          takes all the rest, for fine moves */}
+      <div style={{ flex: props.full ? '1 1 0' : `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
         <div class="meter"><div ref={fl} /></div>
         <div class="meter"><div ref={fr} /></div>
         <div class="fader" classList={{ auto: isAutomated(volT()) }} onPointerDown={faderDown} onWheel={wheel('vol')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.faderTip')}>
