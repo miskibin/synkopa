@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { be } from '../api/backend';
-import type { Channel, ClipKind, Id, Kit, LibFile, LibraryProgress, Source } from '../api/types';
+import type { Channel, ClipKind, Id, Kit, LibFile, LibraryProgress, Pattern, Source } from '../api/types';
 import { clamp, fmtBytes, baseName } from '../lib/format';
 import { t } from '../lib/i18n';
 import { rackSampleDrop } from '../lib/rack';
@@ -13,6 +13,7 @@ import { openMenu, say, setU, U } from '../state/ui';
 import { dblCheck, track } from '../ui/drag';
 import { fitCanvas } from '../ui/frameLoop';
 import { dropClipAt, gridPoint } from './Playlist';
+import { patternPreview } from './playlistDraw';
 import { addSampler, addSamplerFiles, chanById, channels, newPattern, openPattern, replaceWithFile, replaceWithSource, showPatternWindow, type SampleFile } from '../state/pattern';
 import { libGroup, STD_KIT } from '../state/library';
 import { FACTORY_FILES } from '../lib/factory';
@@ -108,6 +109,53 @@ function Thumb(props: { src: Source }) {
   return <canvas ref={cv} style={{ display: 'block', width: '100%', height: '14px' }} />;
 }
 
+const PREVIEW_H = 18;
+/** One scratch canvas draws every preview; the pixels go to an <img>. A canvas element per
+ *  pattern would be a compositor layer each (80+ in a song), and every layer-tree update of the
+ *  page then costs ~10 ms more: a dropped frame while dragging a clip. Images paint into their
+ *  parent's layer. */
+let scratch: HTMLCanvasElement | null = null;
+/**
+ * A pattern's notes in miniature, laid out like its clips in the Playlist (drum channels one
+ * row each, melodic parts by key), one pass across the full width. Empty patterns draw a
+ * faint baseline. Redraws when the notes, the channels or the panel width change.
+ */
+function PatPreview(props: { pat: Pattern; chans: Map<Id, Channel> }) {
+  let el!: HTMLImageElement;
+  const [w, setW] = createSignal(0);
+  onMount(() => {
+    const ro = new ResizeObserver(() => setW(Math.round(el.clientWidth)));
+    ro.observe(el);
+    onCleanup(() => ro.disconnect());
+  });
+  const src = createMemo(() => {
+    const W = w(), p = props.pat;
+    if (!W) return '';
+    const r = patternPreview(p, props.chans, PREVIEW_H); // reads every note: tracks edits
+    const dpr = window.devicePixelRatio || 1;
+    const cv = (scratch ??= document.createElement('canvas'));
+    fitCanvas(cv, W, PREVIEW_H);
+    const g = cv.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = p.color;
+    if (!r.length) {
+      g.globalAlpha = 0.25; g.fillRect(0, PREVIEW_H / 2, W, 1);
+    } else {
+      const k = W / Math.max(p.len, 1e-3);
+      // bar lines, so a 4-bar pattern reads as 4 bars
+      g.globalAlpha = 0.18;
+      for (let b = 4; b < p.len; b += 4) g.fillRect(Math.round(b * k), 0, 1, PREVIEW_H);
+      g.globalAlpha = 0.9;
+      for (let i = 0; i < r.length; i += 4) g.fillRect(r[i] * k, r[i + 1], Math.max(1.5, r[i + 2] * k - 0.5), r[i + 3]);
+    }
+    g.globalAlpha = 1;
+    return cv.toDataURL();
+  });
+  return <img ref={el} class="pprev" src={src() || undefined} alt="" draggable={false} />;
+}
+
 function ProjectTab() {
   const chanMap = createMemo(() => new Map((S.project.channels ?? []).map(c => [c.id, c])));
   const importBtn = async () => {
@@ -126,11 +174,14 @@ function ProjectTab() {
             <div class="pitem" classList={{ on: U.cur?.kind === 'pat' && U.cur.ref === p.id }} title={t('d.br.pat.tip')} style={{ '--c': p.color }}
               onContextMenu={e => { e.preventDefault(); patternItemMenu(p, e.clientX, e.clientY); }}
               onPointerDown={e => pick('pat', p.id, p.name, p.color, e, () => openPattern(p.id))}>
-              <Show when={patternIcon(p, chanMap())} fallback={<span style={{ width: '8px', height: '8px', 'border-radius': '2px', flex: 'none', background: p.color }} />}>
-                {id => <span class="picon" style={{ color: p.color }}><InstIcon id={id()} size={12} /></span>}
-              </Show>
-              <span class="nm">{p.name}</span>
-              <span class="meta">{t('d.br.bars', { n: p.len / 4 })}</span>
+              <div class="prow">
+                <Show when={patternIcon(p, chanMap())} fallback={<span style={{ width: '8px', height: '8px', 'border-radius': '2px', flex: 'none', background: p.color }} />}>
+                  {id => <span class="picon" style={{ color: p.color }}><InstIcon id={id()} size={12} /></span>}
+                </Show>
+                <span class="nm">{p.name}</span>
+                <span class="meta">{t('d.br.bars', { n: p.len / 4 })}</span>
+              </div>
+              <PatPreview pat={p} chans={chanMap()} />
             </div>
           )}
         </For>

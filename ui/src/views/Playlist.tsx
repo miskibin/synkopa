@@ -36,6 +36,10 @@ import { rgba, T, theme } from '../ui/theme';
 
 
 /** Shared geometry, so the browser and OS drops can find a beat/track under the pointer. */
+/** Clip canvases skip a compositor frame when the platform can (Chromium's low-latency canvas):
+ *  a dragged clip shows one display frame sooner. */
+const LOW_LATENCY: CanvasRenderingContext2DSettings = { desynchronized: true };
+
 export const geom = { grid: null as HTMLDivElement | null, scroll: null as HTMLDivElement | null, tops: [0] as number[] };
 
 function trackAtY(y: number): number {
@@ -332,7 +336,7 @@ export function Playlist() {
     if (full || moved || rects!.length) {
       const rec = recActive ? recState : null, v = frameView();
       if (full) fitCanvas(gridCv, t.w, t.h);
-      const g = gridCv.getContext('2d')!;
+      const g = gridCv.getContext('2d', LOW_LATENCY)!;
       if (full) { paintGrid(g, v, t, { x: 0, y: 0, w: t.w, h: t.h }, dpr, rec); tileBw = U.bw; paintedFull = true; }
       else {
         if (moved) {
@@ -359,7 +363,7 @@ export function Playlist() {
     if (dirtyFade) {
       dirtyFade = false;
       fitCanvas(fadeCv, t.w, t.h);
-      const g = fadeCv.getContext('2d')!;
+      const g = fadeCv.getContext('2d', LOW_LATENCY)!;
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, fadeCv.width, fadeCv.height);
       g.setTransform(dpr, 0, 0, dpr, 0, 0);

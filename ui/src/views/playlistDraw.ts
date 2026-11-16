@@ -80,15 +80,15 @@ const rowKey = (n: Note, chans: Map<Id, Channel>, multi: Set<Id>) => (multi.has(
 const patSig = (p: Pattern, chans: Map<Id, Channel>) => { const multi = melodic(p, chans); return p.notes.map(n => rowKey(n, chans, multi) + '@' + n.step + ':' + n.len).join(','); };
 let curChans = new Map<Id, Channel>();
 /** Note rectangles [beat, y, lenBeats, h]* of a pattern clip body, cached by geometry (zoom-independent). */
-function patRects(p: Pattern, sig: string, offset: number, len: number, h: number): Float32Array {
+function patRects(p: Pattern, sig: string, offset: number, len: number, h: number, chans = curChans): Float32Array {
   const key = p.id + '|' + offset + '|' + len + '|' + h + '|' + p.len + '|' + sig;
   let r = patCache.get(key);
   if (r) return r;
   // notes past the pattern end are kept in the project but hidden (and silent)
   const notes = p.notes.filter(n => n.step < p.len * 4 - 1e-4);
-  const order = [...curChans.keys()], multi = melodic(p, curChans);
-  const drums = [...new Set(notes.map(n => rowKey(n, curChans, multi)).filter(k => k[0] === 'c'))].sort((a, b) => order.indexOf(+a.slice(1)) - order.indexOf(+b.slice(1)));
-  const pitches = [...new Set(notes.map(n => rowKey(n, curChans, multi)).filter(k => k[0] === 'p'))].sort((a, b) => +b.slice(1) - +a.slice(1));
+  const order = [...chans.keys()], multi = melodic(p, chans);
+  const drums = [...new Set(notes.map(n => rowKey(n, chans, multi)).filter(k => k[0] === 'c'))].sort((a, b) => order.indexOf(+a.slice(1)) - order.indexOf(+b.slice(1)));
+  const pitches = [...new Set(notes.map(n => rowKey(n, chans, multi)).filter(k => k[0] === 'p'))].sort((a, b) => +b.slice(1) - +a.slice(1));
   const rows = [...drums.reverse(), ...pitches];
   const nr = Math.max(rows.length, 3), rh = Math.max(1.5, Math.min(5, (h - 6) / nr));
   const top = (h - nr * rh) / 2, out: number[] = [];
@@ -96,7 +96,7 @@ function patRects(p: Pattern, sig: string, offset: number, len: number, h: numbe
     for (const n of notes) {
       const b = k * p.len + n.step / 4 - offset;
       if (b < 0 || b >= len) continue;
-      const ri = rows.indexOf(rowKey(n, curChans, multi));
+      const ri = rows.indexOf(rowKey(n, chans, multi));
       out.push(b, top + ri * rh, Math.min(n.len / 4, len - b), Math.max(1, rh - 1));
     }
     if (out.length > 6000) break;
@@ -105,6 +105,15 @@ function patRects(p: Pattern, sig: string, offset: number, len: number, h: numbe
   r = Float32Array.from(out);
   patCache.set(key, r);
   return r;
+}
+
+/**
+ * One pass of a pattern as the Playlist draws it in a clip, for previews outside the Playlist
+ * (the Project tab's pattern list): note rectangles [beat, y, lenBeats, h]* in a box `h` px
+ * tall and `p.len` beats wide. Cached with the clip previews (same key, same invalidation).
+ */
+export function patternPreview(p: Pattern, chans: Map<Id, Channel>, h: number): Float32Array {
+  return patRects(p, patSig(p, chans), 0, p.len, h, chans);
 }
 
 export function drawGrid(g: CanvasRenderingContext2D, v: View, p: Project, rec: null | { track: number; clipStart: number; seconds: number; peaks: Float32Array; nPeaks: number; pass?: number }) {

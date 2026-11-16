@@ -84,9 +84,11 @@ a { color: var(--blue); }
 .btabs > button.on { color: var(--fg-hi); border-bottom-color: var(--blue); }
 /* patterns: coloured blocks (FL's picker panel), drag one onto the playlist */
 .plist { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; }
-.pitem { height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 9px; border-left: 3px solid var(--c); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--c) 16%, var(--bg3)); cursor: grab; color: var(--fg); }
+.pitem { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 5px 10px 5px 9px; border-left: 3px solid var(--c); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--c) 16%, var(--bg3)); cursor: grab; color: var(--fg); }
 .pitem:hover { background: color-mix(in srgb, var(--c) 26%, var(--bg3)); color: var(--fg-hi); }
 .pitem.on { background: color-mix(in srgb, var(--c) 38%, var(--bg3)); color: var(--fg-hi); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent); }
+.pitem .prow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pitem .pprev { display: block; width: 100%; height: 18px; }
 .pitem .nm { flex: 1; font: 500 12px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pitem .meta { font: 500 10px var(--mono); color: var(--fg4); }
 .sitem { display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; cursor: grab; color: var(--fg2); }
@@ -649,13 +651,27 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar .seg > button { height: 22px; }
 .toolbar .tbtn { height: 28px; }
 .winbtns { display: flex; flex: none; align-self: stretch; margin-left: 2px; }
-/* one row at every width: labels turn into icons, then redundant controls drop out */
-@media (max-width: 1560px) { .toolbar .loopText { display: none; } }
-@media (max-width: 1460px) { .toolbar .tapbtn, .toolbar .monbtn, .toolbar .clockbox .tag9 { display: none; } }
-@media (max-width: 1340px) { .toolbar .typoct { display: none; } .toolbar .count { display: none; } }
-@media (max-width: 1200px) { .toolbar { column-gap: 8px; } .toolbar .projName, .toolbar .hinttxt { display: none; } }
-@media (max-width: 1040px) { .toolbar .patselbtn { min-width: 64px; max-width: 96px; } .toolbar .patselnew { display: none; } .toolbar .tools > button:nth-child(n+4), .toolbar .seg > button.metrobtn, .toolbar .typkb { display: none; } .tbmid, .tbright { gap: 5px; } }
-@media (max-width: 900px) { .toolbar .snapsel, .toolbar .tools, .toolbar .clockbox > div { display: none; } }
+/* One row, like FL Studio's bar. As the window narrows, the least needed controls step aside
+   in this order, never half-clipped (perf/toolbar_fit.mjs checks it). Each stays reachable: loop on the
+   timeline, BPM label/TAP in the tempo's right-click menu and keys, transport toggles and
+   panels in the View menu (F5-F9), tools on their keys (T C E), Ask on F1. */
+.toolbar { container: toolbar / inline-size; }
+@container toolbar (max-width: 1740px) { .toolbar .loopText { display: none; } }
+@container toolbar (max-width: 1630px) { .toolbar .clockbox .tag9, .toolbar .typoct { display: none; } }
+@container toolbar (max-width: 1600px) { .toolbar .count, .toolbar .monbtn { display: none; } }
+@container toolbar (max-width: 1520px) { .toolbar .metrobtn, .toolbar .typkb, .toolbar .hinttxt { display: none; } }
+@container toolbar (max-width: 1450px) { .toolbar .panelbtn { display: none; } }
+@container toolbar (max-width: 1300px) { .toolbar .tapbtn, .toolbar .mainvol, .toolbar .projName { display: none; } }
+@container toolbar (max-width: 1230px) {
+  .toolbar .tools > button:nth-child(n+4), .toolbar .patselnew { display: none; }
+  .toolbar .patselbtn { min-width: 80px; max-width: 120px; }
+  .toolbar .snapsel { width: 80px; }
+  .tbmid, .tbright { gap: 5px; }
+}
+@container toolbar (max-width: 1080px) { .toolbar .askbtn { display: none; } .toolbar .clockbox { gap: 6px; padding: 0 7px; } .toolbar .patselbtn { min-width: 64px; max-width: 96px; } }
+@container toolbar (max-width: 1050px) { .toolbar .tools { display: none; } }
+/* (the bar's own columns follow the window: a container query cannot style its container) */
+@media (max-width: 1070px) { .toolbar { grid-template-columns: minmax(170px, 1fr) minmax(0, auto) minmax(max-content, 1fr); column-gap: 10px; } }
 .winbtns > button { width: 46px; border: 0; background: transparent; color: var(--fg2); cursor: default; display: flex; align-items: center; justify-content: center; padding: 0; }
 .winbtns > button:hover { background: var(--line); color: var(--fg-hi); }
 .winbtns > button.close:hover { background: var(--win-close); color: #ffffff; }

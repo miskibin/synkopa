@@ -26,6 +26,24 @@ shown in the app after an update and is published as the release notes (see
   plugins) and LV2 plugins with their own interface (such as x42, ZAM and Dragonfly) now show
   their windows on Linux too, also under Wayland through XWayland. LV2 plugins whose interface
   needs GTK or Qt keep WAVE's parameter list.
+- **Pattern previews in the Project tab.** Each pattern in the list shows its notes in
+  miniature: drum rows and melodic lines laid out like its clips in the Playlist. Its icon
+  comes from the instruments it plays, so the patterns made by *Split by channel* read at a
+  glance.
+- **Playback uses all your CPU cores.** Synths and mixer effect chains are processed in
+  parallel while the song plays, like FL Studio's multithreaded processing. A song the size
+  of an FL demo project takes about a third of the time per audio buffer that it took before,
+  which leaves room against dropouts while you edit. The sound is bit-for-bit the same.
+- **Metronome, count-in, input monitoring and the computer keyboard as piano** are in the
+  View menu too.
+
+### Changed
+- **The toolbar fits any window size.** On a smaller window the least needed controls step
+  aside one by one: the loop readout, the BPM label, count-in and monitoring, the metronome,
+  then the panel buttons. Each is still in the View menu or on its key. Nothing is cut off at
+  any width.
+- **Dragging a clip shows it moving a frame sooner.** The Playlist draws clips with the
+  low-latency canvas where the system supports it.
 
 ### Fixed
 - DISTRHO-based plugins (Vitalium and others) can now talk between their engine and their
