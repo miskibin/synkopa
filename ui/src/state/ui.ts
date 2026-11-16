@@ -48,7 +48,8 @@ export interface Menu { x: number; y: number; items: MenuItem[] }
 
 export interface UiState {
   tool: Tool; snap: number; bw: number;
-  sel: Id[]; cur: { kind: ClipKind; ref: Id; clipId?: Id | null } | null;
+  /** Brush source: a clicked playlist clip paints that exact region; a Browser pick paints the full source. */
+  sel: Id[]; cur: { kind: ClipKind; ref: Id; clipId: Id | null } | null;
   start: number; follow: boolean; alt: boolean;
   /** The docked mixer is collapsed to its thin handle (`mixH`: the height it opens to again). */
   mixMin: boolean; mixH: number; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
