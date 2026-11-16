@@ -34,3 +34,29 @@ describe('floating editor stacking', () => {
     expect(outerZ(U.editor!.z)).toBeGreaterThan(45);
   });
 });
+
+describe('one stack for every floating window', () => {
+  it('the window used last is in front, whatever its kind; F5 tucks them all away', async () => {
+    const { U, setU } = await import('../state/ui');
+    const A = await import('../state/actions');
+    const { topFloating, shownFloating } = await import('../state/winOrder');
+    setU({ zTop: 1, plugs: [], editor: null, pitchEd: null, plugsHidden: false, rackWin: null, rollWin: null });
+    expect(topFloating()).toBeNull();
+    setU({ zTop: 2, plugs: [{ fxId: 7, x: 0, y: 0, w: 400, z: 2 }] });
+    A.openSampleEditor({ kind: 'clip', id: 1 });
+    expect(topFloating()?.kind).toBe('editor'); // just opened
+    const z = U.zTop + 1; setU('zTop', z); setU('plugs', 0, 'z', z); // the effect window is clicked
+    expect(topFloating()).toMatchObject({ kind: 'plug', id: 7 });
+    A.editorFront();
+    expect(topFloating()?.kind).toBe('editor');
+    // F5: the editor steps aside with the effect windows, and opening one brings them back
+    A.playlistFront();
+    expect(U.plugsHidden).toBe(true);
+    expect(shownFloating()).toEqual([]);
+    A.openPitchEditor(-1); // not an audio clip: nothing opens, nothing comes back
+    expect(U.plugsHidden).toBe(true);
+    A.openSampleEditor({ kind: 'clip', id: 1 });
+    expect(U.plugsHidden).toBe(false);
+    expect(shownFloating().map(f => f.kind).sort()).toEqual(['editor', 'plug']);
+  });
+});

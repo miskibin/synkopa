@@ -2,6 +2,7 @@
 // windows, pattern and channel edits, auditions and the pattern loop preview.
 // Every edit is an op (putPattern / putChannel / removeChannel) and one undo step.
 import { createEffect, createRoot, createSignal, on } from 'solid-js';
+import { topFloating } from './winOrder';
 import { t, tName } from '../lib/i18n';
 import { newSynthChannel } from '../lib/synth';
 import { prefs } from './prefs';
@@ -109,11 +110,9 @@ function front(k: WinKey) {
 export const rackFront = () => front('rackWin');
 export const rollFront = () => front('rollWin');
 /** The window is open and visible on top of every other floating window. */
+/** The floating pattern window is the one in front of every floating window (F6 / F7 then hide it). */
 function onTop(k: WinKey) {
-  const w = U[k];
-  if (!w || U.plugsHidden || dockOf(k)) return false;
-  const ok: WinKey = k === 'rackWin' ? 'rollWin' : 'rackWin', other = dockOf(ok) ? null : U[ok];
-  return U.plugs.every(p => p.z < w.z) && (!other || other.z < w.z);
+  return !!U[k] && !dockOf(k) && topFloating()?.kind === (k === 'rackWin' ? 'rack' : 'roll');
 }
 const SEL: Record<WinKey, string> = { rackWin: '.rackwin', rollWin: '.rollwin' };
 /** The pattern window (floating or docked) has the keyboard. */
@@ -232,11 +231,6 @@ export function setRollDock(on: boolean) {
   else if (U.rollWin) { keepOnScreen(); rollFront(); focusSoon('rollWin'); }
 }
 /** Escape: close the top floating pattern window when it is above every effect window (never a docked panel). True when one closed. */
-export function closeTopPatWin(): boolean {
-  if (onTop('rollWin')) { closeRoll(); return true; }
-  if (onTop('rackWin')) { closeRack(); return true; }
-  return false;
-}
 /**
  * Open a pattern from the playlist / browser: make it current and show the Channel Rack. Always
  * the rack: it used to open the Piano roll instead when one channel played the pattern, so the

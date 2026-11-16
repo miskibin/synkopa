@@ -1,5 +1,6 @@
 // Commands shared by the toolbar, keyboard, menus and views.
 import { batch } from 'solid-js';
+import { shownFloating } from './winOrder';
 import { be } from '../api/backend';
 import { t, tName } from '../lib/i18n';
 import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type AnyBuiltinKind, type PluginInfo, type Clip, type Fx, type Id, type Insert, type Op, type RecoveredProject, type Track } from '../api/types';
@@ -12,7 +13,7 @@ import { deletePoints } from '../lib/envEdit';
 import { acceptReply, commit, endWheelGestures, enqueue, inGesture, projectRevision, resync } from './edit';
 import { flushNotebook } from './notebook';
 import { clearPeaks } from './peaks';
-import { modePattern, openRack, patMode, rackFloating, rollFloating, setPatMode, stopPreview, togglePreview } from './pattern';
+import { modePattern, openRack, patMode, setPatMode, stopPreview, togglePreview } from './pattern';
 import { allocId, findFx, insName, plain, S, setTransport } from './store';
 import { say, setU, U, type SampleTarget } from './ui';
 import { notify } from './notice';
@@ -646,7 +647,8 @@ export function stepPreset(fxId: Id, d: number) {
 const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, delay: 760, warp: 820 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
 /** Playlist to the front: floating windows go behind it (they keep their place and state); docked panels stay. */
-export function playlistFront() { if ((U.plugs.length || rackFloating() || rollFloating()) && !U.plugsHidden) setU('plugsHidden', true); }
+/** F5 / a click on the Playlist: every floating window steps aside (effects, pattern windows, the sample, channel and pitch editors). */
+export function playlistFront() { if (shownFloating().length) setU('plugsHidden', true); }
 export function showPlugs() { setU('plugsHidden', false); }
 
 /** The real-time Pitch Correct effect onto insert `insId` (key and scale from the caller, e.g. the pitch editor's). */
@@ -701,7 +703,7 @@ export function openSampleEditor(target: SampleTarget, position?: { x: number; y
   const x = U.editor?.x ?? position?.x ?? (window.innerWidth - w) / 2;
   const y = U.editor?.y ?? position?.y ?? 64;
   const z = U.zTop + 1;
-  setU({ zTop: z, editor: { ...target, x: clamp(x, 0, window.innerWidth - w), y, w, z } });
+  setU({ zTop: z, editor: { ...target, x: clamp(x, 0, window.innerWidth - w), y, w, z }, plugsHidden: false });
 }
 /** The sample editor over the plugin / pattern windows (it is used last). */
 export function editorFront() {
@@ -720,9 +722,9 @@ export function openPitchEditor(id: Id, melody?: { channel: Id; span?: [number, 
   const c = S.project.clips.find(x => x.id === id); if (!c || c.kind !== 'audio') return;
   // already open on this clip: keep its place, only pass the melody on
   const z = U.zTop + 1;
-  if (U.pitchEd?.clipId === id) { setU({ zTop: z }); setU('pitchEd', ed => ed && { ...ed, z, ...(melody ? { melody } : {}) }); return; }
+  if (U.pitchEd?.clipId === id) { setU({ zTop: z, plugsHidden: false }); setU('pitchEd', ed => ed && { ...ed, z, ...(melody ? { melody } : {}) }); return; }
   const w = Math.min(1180, window.innerWidth - 40), h = Math.min(600, window.innerHeight - 90);
-  setU({ zTop: z, pitchEd: { clipId: id, x: Math.max(20, (window.innerWidth - w) / 2), y: Math.max(44, (window.innerHeight - h) / 2 - 20), w, h, z, melody }, sel: [id] });
+  setU({ zTop: z, plugsHidden: false, pitchEd: { clipId: id, x: Math.max(20, (window.innerWidth - w) / 2), y: Math.max(44, (window.innerHeight - h) / 2 - 20), w, h, z, melody }, sel: [id] });
 }
 /** The pitch editor over the plugin / pattern windows (it is used last). */
 export function pitchFront() {

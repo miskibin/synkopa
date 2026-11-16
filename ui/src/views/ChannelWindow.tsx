@@ -69,7 +69,7 @@ export function toggleChannelWindow(id: Id, settings = false) {
   }
   if (U.editor?.kind === 'channel') closeEditor();
   const z = U.zTop + 1;
-  setU('zTop', z);
+  setU({ zTop: z, plugsHidden: false });
   setWin({ id, x: w?.x ?? x, y: w?.y ?? y, w: width, z });
 }
 export function closeChannelWindow() {

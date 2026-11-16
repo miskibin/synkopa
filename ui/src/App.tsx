@@ -41,8 +41,21 @@ import { PianoRoll } from './views/PianoRoll';
 import { renameCurrent } from './views/patternShared';
 import { NotebookHost } from './views/Notebook';
 import { toggleNotebook } from './state/notebook';
-import { clonePattern, closeTopPatWin, nextEmptyPattern, patMode, pickPatternNum, rackFloating, rollFloating, stepPattern, toggleRack, toggleRoll } from './state/pattern';
+import { clonePattern, closeRack, closeRoll, nextEmptyPattern, patMode, pickPatternNum, rackFloating, rollFloating, stepPattern, toggleRack, toggleRoll } from './state/pattern';
+import { topFloating, type Floating } from './state/winOrder';
 import { Help, Toolbar, TOOLS } from './views/Toolbar';
+
+/** Closes one floating window. */
+function closeFloating(f: Floating) {
+  switch (f.kind) {
+    case 'plug': return A.closePlug(f.id!);
+    case 'rack': return closeRack();
+    case 'roll': return closeRoll();
+    case 'editor': return A.closeEditor();
+    case 'chan': return closeChannelWindow();
+    case 'pitch': return A.closePitchEditor();
+  }
+}
 
 /** Stacking rank of a window (effect windows, floating Channel Rack, floating Piano roll) inside the window layer (1 = bottom). */
 function plugRank(z: number) {
@@ -108,19 +121,16 @@ function onKey(e: KeyboardEvent) {
     if (U.settings) return setU('settings', false);
     if (U.exportOpen) return void A.cancelExportOrClose();
     if (U.help) return setU('help', false);
-    if (NB.open && !rackFloating() && !rollFloating() && !U.plugs.length) return closeNotebook();
-    if (chanWin()) return closeChannelWindow();
-    if (U.editor) return A.closeEditor();
+    const top = topFloating();
+    if (NB.open && !top) return closeNotebook();
     if (U.mixView) {
-      // the Mix view: Esc closes the effect window you are working in (last click or keyboard there), else goes back to arrange
+      // the Mix view: Esc closes the window you are working in (last click or keyboard there), else goes back to arrange
       const inWin = lastClickInWin || !!(document.activeElement as HTMLElement | null)?.closest?.('.win');
-      if (inWin && U.plugs.length && !U.plugsHidden) return A.closePlug(A.topPlug()!.fxId);
-      if (inWin && U.pitchEd) return A.closePitchEditor();
+      if (inWin && top) return closeFloating(top);
       return void leaveMixView();
     }
-    if (closeTopPatWin()) return;
-    if (U.plugs.length) return A.closePlug(A.topPlug()!.fxId);
-    if (U.pitchEd) return A.closePitchEditor();
+    // the window in front closes, whichever kind it is (FL: Esc closes the focused window)
+    if (top) return closeFloating(top);
     if (U.compSel) return setU('compSel', null);
     return setU('sel', []);
   }
@@ -266,9 +276,12 @@ export function App() {
         <Mixer />
         <Show when={U.mixView}><MixView /></Show>
       </div>
-      <SampleEditor />
-      <ChannelWindow />
-      <PitchEditor />
+      {/* the editors float outside the window layer (own z order, see outerZ); F5 tucks them away too */}
+      <div class="outerwins" classList={{ hidden: U.plugsHidden }}>
+        <SampleEditor />
+        <ChannelWindow />
+        <PitchEditor />
+      </div>
       <div class="winlayer" classList={{ hidden: U.plugsHidden, mv: U.mixView }}>
         <For each={U.plugs}>{pw => <FxWindow pw={pw} z={plugRank(pw.z)} />}</For>
         <Show when={!U.rackDock}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
