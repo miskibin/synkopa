@@ -30,7 +30,9 @@ Rules that keep it fast:
   thread taking jobs from the same atomic counter; the results are summed in a fixed order,
   so the output is bit-identical to one thread (`tests/rt_workers.rs`). A dispatch is a few
   atomics: no allocation, no lock. If no worker wakes in time the audio thread does the work
-  itself. Chains with a watched effect (an open analyser) stay on the audio thread.
+  itself. Chains with a watched effect (an open analyser) stay on the audio thread. With
+  mixer routing (below) the inserts run level by level: each level on the pool, its sends
+  added into the next level's inputs in a fixed order, the master last.
 * **Parameter moves do not rebuild anything.** They are a fixed-size message.
 * **The UI never polls JSON at frame rate.** Meters, playhead, recording peaks
   and the analysis of *open* effect windows arrive as one binary frame on a
@@ -203,6 +205,18 @@ routes them to the selected insert, Shift+Ctrl+L one per insert from it on, crea
 missing inserts after the last one, named after their channel (`planRoute`; also in a strip's
 right-click menu, disabled with the reason while nothing is selected). It is one `commit` of
 `putInsert` + `putChannel` ops, so one undo step, in the engine and in the mock alike.
+**Mixer routing** (FL's insert routing, `crates/engine/src/routing.rs`, mirrored in
+`ui/src/lib/routing.ts`): an insert's post-fader output goes to the master (`Insert.master`,
+default true) and/or to other inserts through `Insert.sends` [{to, gain 0..2}]. The routing is
+a DAG: `putInsert` refuses a loop, a send to itself or to the master. Rewiring rebuilds the
+graph; a send level is a fast-path `MixState` value, smoothed per block. Delay compensation
+follows the paths: each insert's own input waits for its slowest source, each send and each
+master path has its own delay line (`routing::latency`). Solo follows the routing (a soloed
+bus keeps its sources, a soloed source its way out). In the maximized mixer a cable lane under
+the strips shows every send (`RouteLane`): drag a strip's dot onto another strip to add one,
+drag or wheel a cable's level, right-click it for 100 % / only here / remove; the strip's M
+chip is the output into the master. Docked, a strip's right-click menu has *Send to* and
+*Output to Master*, and the chain header says where the insert goes.
 
 PAT mode (L) loops the current pattern and follows
 it when it changes. The Playlist, the Piano roll and the Pitch editor share one overview bar

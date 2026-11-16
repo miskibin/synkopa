@@ -3,6 +3,7 @@
 // reject the same obviously-invalid batches.
 import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
+import { forgetInsert, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
 import { applyPatternOp, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
 import { applyTransform } from './transforms';
@@ -60,6 +61,8 @@ export function applyOp(p: Project, op: Op): void {
       return;
     }
     case 'putInsert': {
+      const why = routingError(p, op.insert);
+      if (why) throw new OpError(why);
       bump(p, op.insert.id);
       const i = p.inserts.findIndex(m => m.id === op.insert.id);
       if (i >= 0) p.inserts[i] = { ...structuredClone(op.insert), fx: p.inserts[i].fx };
@@ -84,6 +87,7 @@ export function applyOp(p: Project, op: Op): void {
       if (op.id === 0) throw new OpError('the master cannot be removed');
       if (!p.inserts.some(m => m.id === op.id)) throw new OpError(`no insert with id ${op.id}`);
       p.inserts = p.inserts.filter(m => m.id !== op.id);
+      forgetInsert(p, op.id);
       for (const t of p.tracks) if (t.insert === op.id) t.insert = 0;
       // a clip routed there plays through its track again
       for (const c of p.clips) if (c.insert === op.id) c.insert = null;

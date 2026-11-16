@@ -69,7 +69,13 @@ export interface Insert {
   width?: number;
   muted: boolean; solo: boolean;
   fx: Fx[];
+  /** Post-fader sends to other inserts (FL's mixer routing; absent = none). See lib/routing.ts. */
+  sends?: InsertSend[];
+  /** The output also goes to the master (absent = true). False: only where it sends. */
+  master?: boolean;
 }
+/** One send of an insert: the insert it feeds, and the level (linear 0..2). */
+export interface InsertSend { to: Id; gain: number }
 
 /** MIDI key at which a sampler plays its sample unpitched (C5 in FL Studio's naming, C4 here). */
 export const SAMPLE_ROOT = 60;

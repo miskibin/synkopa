@@ -145,6 +145,9 @@ changed something meanwhile — re-read and decide, don't blindly retry.
 ```sh
 wave bpm 140
 wave add-fx --insert 6 --type reverb --preset 3          # → {"fxId":1203,…}
+wave route --from 2 --to 1 --only                        # Hats only into the Drums bus
+wave route --from 6 --to 8 --gain 0.35                   # Vocal also sends to a reverb bus
+wave unroute --from 6 --to 8
 wave set-param --fx 1203 --param mix --value 30
 wave preset --fx 1203 --index 4
 wave import kick.wav loop.wav --track 3 --beat 16
@@ -286,7 +289,9 @@ writes one stereo file per mixer insert that has sound, named after the insert
 **Export → Output: Stems**, select WAV or MP3, then pick the folder.
 
 - A stem is what the insert plays after its own effects, fader, pan and width, **before the
-  master**. The optional `Master` file contains the normal mix with the master's effects.
+  master**. With mixer routing, a bus's stem includes what is routed into it, and a bus fed only
+  by sends still gets a stem; a source's stem is its own output, even if it normally goes only
+  into a bus. The optional `Master` file contains the normal mix with the master's effects.
   Use `--no-master` to leave it out. Nonlinear effects on the master, such as a limiter,
   can make the mix sound different from the sum of the stems.
 - Every bounce uses the same range and effect tail. Use WAV for sample-accurate alignment in

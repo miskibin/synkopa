@@ -943,6 +943,26 @@ select option { background: var(--bg4); color: var(--fg); }
 
 /* mixer: pan + stereo width side by side */
 .strip .knobrow { display: flex; gap: 6px; justify-content: center; }
+/* routing (the maximized mixer, Mixer.tsx RouteLane): the strips' row, the cable lane under it */
+.strips.routed { flex-direction: column; }
+.strips.routed > .striprow { display: flex; flex: 1; min-height: 0; }
+.routelane { flex: none; position: relative; background: var(--bg3); border-top: 1px solid var(--bg0); }
+.routelane svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.routelane .cable.dim { opacity: .35; }
+.routelane .clabel { cursor: ns-resize; }
+.routelane .clabel rect { fill: var(--bg5); stroke-width: 1; }
+.routelane .clabel text { font: 500 10px var(--mono); fill: var(--fg-hi); pointer-events: none; }
+.routelane .clabel:hover rect { fill: var(--bg6); }
+.routelane .rtghost { stroke: var(--blue); }
+.routelane .lanehint { position: absolute; left: 12px; top: 34px; font-size: 11px; color: var(--fg4); pointer-events: none; white-space: nowrap; }
+.strip .rtport { flex: none; height: 18px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.strip .rtdot { width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--fg4); background: var(--bg1); cursor: crosshair; }
+.strip .rtdot:hover, .strip.on .rtdot { border-color: var(--blue); }
+.strip .rtm { height: 14px; min-width: 16px; padding: 0 3px; border: 0; border-radius: 3px; font: 600 9px var(--mono); background: var(--bg6); color: var(--fg5); cursor: pointer; }
+.strip .rtm.on { color: var(--fg-hi); background: color-mix(in srgb, var(--blue) 35%, var(--bg6)); }
+.strip.rt-ok { outline: 2px solid var(--blue); outline-offset: -2px; }
+.strip.rt-no { outline: 2px solid var(--red); outline-offset: -2px; cursor: not-allowed; }
+.strip.rt-to .rtdot { border-color: var(--fg2); }
 /* effect rows in the room a taller mixer leaves (Mixer.tsx StripFx); no room: no gap either */
 .strip .sfx { flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
 .strip .sfx:empty { margin-bottom: -6px; }

@@ -4,6 +4,7 @@ import { batch, createMemo, createRoot, createSignal } from 'solid-js';
 import { $RAW, createStore, produce, reconcile } from 'solid-js/store';
 import type { Catalog, Clip, Fx, Id, Insert, Op, Project, StateDto, TransportDto } from '../api/types';
 import { applyCompOp, compExtent } from '../lib/comp';
+import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
 import { applyPatternOp } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
@@ -201,13 +202,16 @@ function applyInPlace(p: Project, op: Op) {
     case 'putInsert': {
       const m = p.inserts.find(x => x.id === op.insert.id);
       const { fx, ...rest } = op.insert;
-      if (m) Object.assign(m, rest); else p.inserts.push({ ...clone(rest), fx: clone(fx.filter(f => f.type !== 'plugin')) } as Insert);
+      // the engine writes no `sends` / `master` for an unrouted insert: their absence resets them
+      if (m) Object.assign(m, { sends: undefined, master: undefined }, rest); else p.inserts.push({ ...clone(rest), fx: clone(fx.filter(f => f.type !== 'plugin')) } as Insert);
       if (op.insert.id >= p.nextId) p.nextId = op.insert.id + 1;
       return;
     }
     case 'removeInsert':
       p.inserts = p.inserts.filter(m => m.id !== op.id);
+      forgetInsert(p, op.id);
       for (const t of p.tracks) if (t.insert === op.id) t.insert = 0;
+      for (const c of p.clips) if (c.insert === op.id) c.insert = null;
       return;
     case 'putFx': {
       for (const m of p.inserts) {
@@ -280,6 +284,8 @@ export function applyLocal(ops: Op[]) {
 /** Shared by every lane header / mixer strip (each one walked the whole list per update). */
 export const anyTrackSolo = createRoot(() => createMemo(() => S.project.tracks.some(t => t.solo)));
 export const anyInsertSolo = createRoot(() => createMemo(() => S.project.inserts.some(x => x.id !== 0 && x.solo)));
+/** The inserts heard (mute, and solo along the routing: lib/routing.ts). */
+export const heardInserts = createRoot(() => createMemo(() => audibleInserts(S.project)));
 export function findFx(fxId: Id): { m: Insert; f: Fx } | null {
   for (const m of S.project.inserts) { const f = m.fx.find(x => x.id === fxId); if (f) return { m, f }; }
   return null;

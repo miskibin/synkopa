@@ -4,6 +4,22 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
+  drums into a bus, or send the vocal and the keys to one shared reverb. In the maximized mixer,
+  cables under the strips show every send with its level: drag the dot under a strip onto
+  another strip to add one, drag (or scroll) a cable's level to change it, double-click for
+  100 %, right-click to remove it. The **M** under a strip switches its output into the Master;
+  off, it goes only where it sends. Docked, right-click a strip for *Send to* and *Output to
+  Master*. A send that would loop back is refused (the strip turns red). Solo follows the
+  routing: soloing a bus keeps what feeds it. Plugin delay compensation lines up every path,
+  and stems include what is routed into a bus. In the CLI: `wave route` and `wave unroute`.
+- **Effects in the mixer strips.** When the mixer is taller, each strip lists its effects
+  above the knobs (icon, name, on/bypass dot; click to open), as many as fit; the strip
+  itself keeps its size.
+
 ## 0.9.19 — 2026-11-16
 
 ### Added

@@ -40,18 +40,15 @@ fn route_all(e: &Engine, bus: Id, gain: f32) -> Vec<Op> {
     master_fx
         .into_iter()
         .chain(std::iter::once(Op::PutInsert { insert: b }))
-        .chain(e.project().inserts.into_iter().filter_map(|mut m| {
+        .chain(e.project().inserts.into_iter().map(|mut m| {
             if m.id == 0 {
                 // well below the output's safety clipper, so levels compare linearly
-                m.fx.clear();
                 m.vol = 0.25;
-            } else if m.id != bus {
+            } else {
                 m.sends = vec![InsertSend { to: bus, gain }];
                 m.master = false;
-            } else {
-                m.fx.clear();
             }
-            Some(Op::PutInsert { insert: m })
+            Op::PutInsert { insert: m }
         }))
         .collect()
 }

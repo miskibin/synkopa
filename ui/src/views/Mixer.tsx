@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { fitMixH, MIX_HANDLE_H, mixHandleDrag, mixMaxH, mixSplitDrag, SPLIT } from '../lib/layout';
@@ -12,7 +12,7 @@ import * as A from '../state/actions';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { MiniKnob } from '../ui/Knob';
-import { anyInsertSolo, insName, S } from '../state/store';
+import { heardInserts, insName, S } from '../state/store';
 import { tele } from '../state/telemetry';
 import { openMenu, openRename, say, setU, U, type MenuItem } from '../state/ui';
 import { dblCheck, dragCursor, track } from '../ui/drag';
@@ -22,6 +22,8 @@ import { guessIcon, InstIcon, trackIcon } from '../ui/instIcons';
 import { openFxPicker } from './FxPicker';
 import { openFxChains, saveFxChain } from './FxChains';
 import { useSize } from './patternShared';
+import { canSend, sendsOf, toMaster } from '../lib/routing';
+import { pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -79,8 +81,24 @@ function openStripMenu(x: number, y: number, id: Id) {
     { t: 'item', label: tr('c.mix.resetVolPan'), act: () => A.setInsert(id, { vol: VOL_UNITY, pan: 0 }, tr('c.mix.undoReset')) },
     { t: 'sep' },
     ...routeItems(id),
+    ...(id === 0 ? [] : sendItems(m)),
     ...(id === 0 ? [] : [{ t: 'sep' }, { t: 'item', label: tr('c.mix.removeInsert'), danger: true, act: () => A.removeInsert(id) }] as MenuItem[]),
   ], 330);
+}
+
+/** "Send to ▸" (every other insert: checked = sends there, click = add / remove; greyed when it
+ *  would loop, with why) and "Output to Master" (FL's "route to this track only" when off). */
+function sendItems(m: Insert): MenuItem[] {
+  const sends = sendsOf(m);
+  const targets = S.project.inserts.filter(x => x.id !== 0 && x.id !== m.id);
+  return [
+    { t: 'sub', label: tr('c.rt.sendTo'), items: targets.length ? targets.map(x => {
+      const s = sends.find(v => v.to === x.id), why = s ? null : sendBlock(m.id, x.id);
+      return { t: 'item' as const, label: insName(x), checked: !!s, kbd: s ? pct(s.gain) : undefined, disabled: !!why, title: why ?? undefined,
+        act: () => (s ? removeSend(m.id, x.id) : sendTo(m.id, x.id)) };
+    }) : [{ t: 'item', label: tr('c.mix.addInsert'), act: A.addInsert }] },
+    { t: 'item', label: tr('c.rt.toMaster'), checked: toMaster(m), disabled: toMaster(m) && !sends.length, title: tr('c.rt.toMasterTip'), act: () => setToMaster(m.id, !toMaster(m)) },
+  ];
 }
 
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
@@ -128,7 +146,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   let fl!: HTMLDivElement, fr!: HTMLDivElement;
   onMount(() => { meterEls.set(props.m.id, [fl, fr]); hold.delete(props.m.id); });
   onCleanup(() => meterEls.delete(props.m.id));
-  const audible = () => !m().muted && (m().id === 0 || !anyInsertSolo() || m().solo);
+  // solo follows the routing: a soloed bus keeps what feeds it (lib/routing.ts)
+  const audible = () => heardInserts().has(m().id);
   // what plays into this insert: tracks, channels, samples routed to it ('' when nothing is)
   const sources = () => m().id === 0 ? '' : [...new Set([...S.project.tracks.filter(t => t.insert === m().id).map(t => t.name), ...channels().filter(c => c.insert === m().id).map(c => c.name), ...samplesOn(m().id)])].join(', ');
   const route = () => m().id === 0 ? 'OUT' : sources() || '—';
@@ -187,8 +206,29 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   createEffect(() => { label(); icon(); U.mixView; m().fx.length; requestAnimationFrame(measure); });
   onMount(() => { void document.fonts?.ready.then(measure); });
   const rename = (e: MouseEvent) => openRename(e.clientX, e.clientY, m().name, v => A.setInsert(m().id, { name: v }, tr('c.mix.undoName')));
+  // a send being dragged over this strip: would it be taken?
+  const dropHere = () => { const d = routeDrag(); return d && d.over === m().id && d.from !== m().id ? (canSend(S.project, d.from, m().id) ? 'ok' : 'no') : null; };
+  // the selected insert sends here (its targets are marked while its cables are lit)
+  const sendsHere = () => props.full && !!S.project.inserts.find(x => x.id === U.mixSel)?.sends?.some(s => s.to === m().id);
+  const portDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation(); A.selectInsert(m().id);
+    const from = m().id;
+    const at = (ev: PointerEvent) => {
+      const r = laneEl?.getBoundingClientRect(); if (!r) return null;
+      const x = ev.clientX - r.left, y = clamp(ev.clientY - r.top, -24, LANE_H - 4);
+      const over = S.project.inserts[Math.floor(x / stripW())]?.id ?? null;
+      return { from, x, y, over: over === from ? null : over };
+    };
+    setRouteDrag(at(e)); say(tr('c.rt.dragHint'));
+    track(ev => setRouteDrag(at(ev)), ev => {
+      const d = at(ev); setRouteDrag(null);
+      if (d?.over != null && ev.type === 'pointerup') sendTo(from, d.over);
+    }, 'copy');
+  };
   return (
-    <div class="strip" data-ins={m().id} classList={{ on: U.mixSel === m().id, dimmed: !audible() }} onPointerDown={select}>
+    <div class="strip" data-ins={m().id} onPointerDown={select}
+      classList={{ on: U.mixSel === m().id, dimmed: !audible(), 'rt-ok': dropHere() === 'ok', 'rt-no': dropHere() === 'no', 'rt-to': sendsHere() }}>
       <div class="bar" style={{ background: m().color }} />
       {/* one row: the insert's number and name (a default "Insert 7" is just its number), the effect count on the right */}
       <div class="nmrow" title={tName(label().full) + ' — ' + tr('c.mix.nameTip')} onDblClick={rename}>
@@ -252,6 +292,14 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       <Show when={props.full}>
         <span class="db">{volText(shownVol())}</span>
         <span class="route" title={route()}>{route()}</span>
+        {/* routing (the cables below the strips): drag the dot onto another strip = a send; M = into the master */}
+        <div class="rtport">
+          <Show when={m().id !== 0}>
+            <span class="rtdot" title={tr('c.rt.portTip')} onPointerDown={portDown} />
+            <button class="rtm" classList={{ on: toMaster(m()) }} title={tr('c.rt.mTip')} aria-pressed={toMaster(m())} aria-label={tr('c.rt.toMaster')}
+              onPointerDown={stop} onClick={() => setToMaster(m().id, !toMaster(m()))}>M</button>
+          </Show>
+        </div>
       </Show>
     </div>
   );
@@ -376,12 +424,117 @@ function Strips(props: { full: boolean }) {
     if (left < el.scrollLeft || left + STRIP_W > el.scrollLeft + w) el.scrollTo({ left: Math.max(0, left - (w - STRIP_W) / 2), behavior: 'smooth' });
   });
   const near = (i: number) => { const v = view(), m = STRIP_MARGIN * STRIP_W; return (i + 1) * STRIP_W > v.x - m && i * STRIP_W < v.x + v.w + m; };
-  return (
-    <div ref={el} class="strips">
+  const row = () => (
+    <>
       <For each={S.project.inserts}>{(m, i) => <Show when={near(i())} fallback={<div class="strip" />}><Strip m={m} idx={i()} full={props.full} /></Show>}</For>
       <button class="addIns" onClick={A.addInsert} title={tr('c.mix.addInsert')}>+</button>
+    </>
+  );
+  return (
+    <div ref={el} class="strips" classList={{ routed: props.full }}>
+      <Show when={props.full} fallback={row()}>
+        <div class="striprow">{row()}</div>
+        <RouteLane />
+      </Show>
     </div>
   );
+}
+
+// ---- routing cables (the maximized mixer): one per send, from the source strip to the target's
+
+/** Height (px) of the cable lane under the strips. */
+const LANE_H = 86;
+/** A send being dragged from a strip's dot: lane coordinates, and the strip under the pointer. */
+const [routeDrag, setRouteDrag] = createSignal<{ from: Id; x: number; y: number; over: Id | null } | null>(null);
+/** Width (px) of one strip in the maximized mixer, as laid out (measured by the lane). */
+const [stripW, setStripW] = createSignal(112);
+let laneEl: HTMLDivElement | undefined;
+
+function RouteLane() {
+  let el!: HTMLDivElement;
+  onMount(() => {
+    laneEl = el;
+    const measure = () => { const s = el.parentElement?.querySelector<HTMLElement>('.striprow > .strip'); if (s?.offsetWidth) setStripW(s.offsetWidth); };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(el.parentElement!);
+    onCleanup(() => { ro.disconnect(); if (laneEl === el) laneEl = undefined; });
+  });
+  const index = createMemo(() => new Map(S.project.inserts.map((m, i) => [m.id, i])));
+  // keyed "from:to:k" strings: a level change keeps the cable's elements (a drag on its label goes on)
+  const cables = createMemo(() => S.project.inserts.flatMap(m => sendsOf(m).filter(s => index().has(s.to)).map((s, k) => `${m.id}:${s.to}:${k}`)));
+  const cx = (i: number) => i * stripW() + stripW() / 2;
+  // a cable dips lower the farther it goes, and one more step per send of the same strip (no stacking)
+  const geo = (a: number, b: number, k: number) => {
+    const x1 = cx(a), x2 = cx(b), depth = Math.min(LANE_H - 14, 16 + Math.min(44, Math.abs(x2 - x1) * 0.12) + k * 9);
+    return { d: `M${x1} 0 C${x1} ${depth} ${x2} ${depth} ${x2} 0`, mx: (x1 + x2) / 2, my: depth * 0.75 };
+  };
+  const labelDown = (e: PointerEvent, from: Id, to: Id) => {
+    e.stopPropagation(); A.selectInsert(from);
+    if (e.button === 2) { e.preventDefault(); return cableMenu(e.clientX, e.clientY, from, to); }
+    if (e.button !== 0) return;
+    e.preventDefault();
+    if (dblCheck('rt' + from + ':' + to)) { const op = sendGainOp(from, to, 1); if (op) commit([op], tr('c.rt.undoLevel')); return say(levelText(from, to, 1)); }
+    const g = new Gesture(tr('c.rt.undoLevel'));
+    let v = sendsOf(S.project.inserts.find(m => m.id === from)!).find(s => s.to === to)?.gain ?? 1, ly = e.clientY;
+    track(ev => {
+      v = clamp(v + (ly - ev.clientY) / 100 * (ev.shiftKey ? 0.2 : 1), 0, 2); if (Math.abs(v - 1) < 0.03) v = 1; ly = ev.clientY;
+      const op = sendGainOp(from, to, v); if (op) g.update([op]);
+      say(levelText(from, to, v));
+    }, () => g.end(), 'ns-resize');
+  };
+  const labelWheel = (e: WheelEvent, from: Id, to: Id, gain: number) => {
+    const dy = e.deltaY || e.deltaX; if (!dy) return;
+    e.preventDefault(); e.stopPropagation();
+    const v = clamp(Math.round((gain + (dy < 0 ? 1 : -1) * 0.05 * (e.shiftKey ? 0.2 : 1)) * 100) / 100, 0, 2);
+    const op = sendGainOp(from, to, v); if (op) wheelEdit('rt' + from + ':' + to, tr('c.rt.undoLevel'), [op]);
+    say(levelText(from, to, v));
+  };
+  const lit = (from: Id, to: Id) => U.mixSel === from || U.mixSel === to;
+  return (
+    <div ref={el} class="routelane" style={{ height: LANE_H + 'px', width: (S.project.inserts.length * stripW()) + 'px' }}>
+      <svg width={S.project.inserts.length * stripW()} height={LANE_H}>
+        <For each={cables()}>{key => {
+          const [fromId, to, k] = key.split(':').map(Number);
+          const src = () => S.project.inserts[index().get(fromId) ?? 0];
+          const c = {
+            get from() { return src(); }, to, k,
+            get gain() { return sendsOf(src()).find(x => x.to === to)?.gain ?? 1; },
+          };
+          const g = () => geo(index().get(fromId) ?? 0, index().get(to) ?? 0, k);
+          return (
+            <g class="cable" classList={{ dim: !lit(c.from.id, c.to) }}>
+              <path d={g().d} fill="none" stroke={c.from.color} stroke-width={lit(c.from.id, c.to) ? 2.5 : 1.5} stroke-linecap="round" />
+              <g class="clabel" onPointerDown={e => labelDown(e, c.from.id, c.to)} onWheel={e => labelWheel(e, c.from.id, c.to, c.gain)} onContextMenu={e => e.preventDefault()}>
+                <title>{tr('c.rt.cableTip', { a: nameOf(c.from.id), b: nameOf(c.to), v: pct(c.gain) })}</title>
+                <rect x={g().mx - 19} y={g().my - 8} width="38" height="16" rx="3" stroke={c.from.color} />
+                <text x={g().mx} y={g().my + 3.5} text-anchor="middle">{pct(c.gain)}</text>
+              </g>
+            </g>
+          );
+        }}</For>
+        <Show when={routeDrag()}>{d => {
+          const x1 = () => cx(index().get(d().from) ?? 0);
+          return <path class="rtghost" d={`M${x1()} 0 C${x1()} 36 ${d().x} 36 ${d().x} ${d().y}`} fill="none" stroke-width="2" stroke-dasharray="5 4" />;
+        }}</Show>
+      </svg>
+      <Show when={!cables().length && !routeDrag()}><div class="lanehint">{tr('c.rt.laneEmpty')}</div></Show>
+    </div>
+  );
+}
+
+const nameOf = (id: Id) => { const m = S.project.inserts.find(x => x.id === id); return m ? tName(m.name) || 'Insert ' + id : String(id); };
+const levelText = (from: Id, to: Id, v: number) => tr('c.rt.level', { a: nameOf(from), b: nameOf(to), v: pct(v) });
+
+/** Right-click on a cable's level: 100 %, only here (not to the master), remove. */
+function cableMenu(x: number, y: number, from: Id, to: Id) {
+  const m = S.project.inserts.find(v => v.id === from); if (!m) return;
+  openMenu(x, y, [
+    { t: 'title', label: nameOf(from) + ' → ' + nameOf(to) },
+    { t: 'item', label: tr('c.rt.reset100'), act: () => { const op = sendGainOp(from, to, 1); if (op) commit([op], tr('c.rt.undoLevel')); } },
+    { t: 'item', label: tr('c.rt.onlyHere'), checked: !toMaster(m), title: tr('c.rt.toMasterTip'), act: () => setToMaster(from, !toMaster(m)) },
+    { t: 'sep' },
+    { t: 'item', label: tr('c.rt.removeSend'), danger: true, act: () => removeSend(from, to) },
+  ], 220);
 }
 
 /** Drag the effect chain's header onto a mixer strip: every effect of the insert goes there (Ctrl: copies). */
@@ -412,7 +565,7 @@ function FxChain() {
           <div class="hd" classList={{ grab: ins().fx.length > 0 }} title={ins().fx.length ? tr('c.mix.chainDragTip') : ''} onPointerDown={e => chainDown(e, ins())}>
             <span style={{ width: '8px', height: '8px', 'border-radius': '2px', background: ins().color }} />
             <span class="ell" style={{ flex: 1, font: '600 11px var(--sans)', color: 'var(--fg-hi)' }}>{insName(ins())}</span>
-            <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)' }}>{ins().id === 0 ? tr('c.mix.toOutput') : '→ Master'}</span>
+            <span class="mono ell" style={{ 'font-size': '10px', color: 'var(--fg5)', 'max-width': '45%' }} title={routeSummary(ins().id)}>{routeSummary(ins().id)}</span>
             <button class="chainbtn" title={tr('e.fxc.btnTip')} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); openChainMenu(r.left, r.bottom + 4, ins()); }}>{tr('e.fxc.btn')}</button>
           </div>
           <div style={{ flex: 1, 'min-height': 0, overflow: 'auto' }}>
