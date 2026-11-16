@@ -16,8 +16,13 @@ use parking_lot::Mutex;
 #[cfg(windows)]
 use crate::win32 as backend;
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+use crate::x11 as backend;
+
+#[cfg(not(any(windows, target_os = "linux")))]
 use crate::unsupported as backend;
+
+use crate::header::Header;
 
 /// Smallest client area a plugin window may be given. A 1x1 window is a way to
 /// lose the close button, not a window.
@@ -80,6 +85,12 @@ const fn clamp_u32(value: u32, low: u32, high: u32) -> u32 {
 pub struct WindowId(u64);
 
 impl WindowId {
+    /// The id of no window (errors raised before one exists).
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    pub(crate) const fn none() -> Self {
+        Self(0)
+    }
+
     /// The raw counter value, for logs and tests.
     pub const fn get(self) -> u64 {
         self.0
@@ -119,9 +130,23 @@ pub enum WindowError {
     #[error("plugin windows are owned by thread {owner:?}; this call came from {caller:?}")]
     WrongThread { owner: ThreadId, caller: ThreadId },
 
-    /// This platform has no plugin-window backend (everything but Windows).
+    /// This platform has no plugin-window backend (macOS).
     #[error("native plugin windows are not implemented on this platform")]
     Unsupported,
+
+    /// Linux: no X server to open plugin windows on. Plugin editors embed into X11 windows
+    /// only; under Wayland that is XWayland.
+    #[error("plugin windows need an X11 display (XWayland on Wayland): {0}")]
+    NoDisplay(String),
+
+    /// Linux: the UI thread has no event loop installed (see [`crate::event_loop`]), so
+    /// nothing would ever read the window's events.
+    #[error("plugin windows need the UI thread's event loop, and none is installed")]
+    NoEventLoop,
+
+    /// An X11 request on a live window failed.
+    #[error("{what} failed on {id}: {message}")]
+    X11 { id: WindowId, what: &'static str, message: String },
 
     /// `RegisterClassW` failed. Reports `GetLastError`.
     #[error("could not register the plugin window class (win32 error {0})")]
@@ -141,28 +166,84 @@ pub enum WindowError {
     Win32 { id: WindowId, api: &'static str, code: u32 },
 }
 
+/// What a plugin window's header says, and whose it is: what the app hands a plugin host
+/// opening an editor.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Label {
+    /// The channel or effect name.
+    pub title: String,
+    /// Dimmer, after the title: the format and kind ("VST3 instrument").
+    pub subtitle: String,
+    /// Handed to the settings handler when the header's gear is clicked.
+    pub tag: u64,
+}
+
 /// How a window should be created.
 #[derive(Debug, Clone)]
 pub struct WindowOptions {
-    /// Title bar text.
+    /// The header's (and the task bar's) name: the channel or effect the plugin plays as.
     pub title: String,
-    /// Requested client size. Clamped to the service's limits.
+    /// Dimmer text after the title (the format and kind: "VST3 instrument").
+    pub subtitle: String,
+    /// Requested size of the **plugin's area** (below WAVE's header). Clamped to the
+    /// service's limits.
     pub size: WindowSize,
     /// Whether the user may drag the frame. `false` gives a fixed-size window
     /// (no thick frame, no maximise box), which a plugin that cannot resize
     /// requires: otherwise the user drags a frame the editor will not follow.
     pub resizable: bool,
+    /// The owner's id for this window, handed to the settings handler when the header's
+    /// gear is clicked ([`Service::set_settings_handler`]): in WAVE the effect or channel id.
+    pub tag: u64,
 }
 
 impl WindowOptions {
     pub fn new(title: impl Into<String>, size: WindowSize) -> Self {
-        Self { title: title.into(), size, resizable: false }
+        Self { title: title.into(), subtitle: String::new(), size, resizable: false, tag: 0 }
     }
 
     #[must_use]
     pub fn resizable(mut self, resizable: bool) -> Self {
         self.resizable = resizable;
         self
+    }
+
+    #[must_use]
+    pub fn subtitle(mut self, subtitle: impl Into<String>) -> Self {
+        self.subtitle = subtitle.into();
+        self
+    }
+
+    #[must_use]
+    pub fn tag(mut self, tag: u64) -> Self {
+        self.tag = tag;
+        self
+    }
+
+    /// Options for a window showing `label`.
+    pub fn labelled(label: &Label, size: WindowSize) -> Self {
+        Self::new(label.title.clone(), size).subtitle(label.subtitle.clone()).tag(label.tag)
+    }
+
+    pub(crate) fn header(&self) -> Header {
+        Header { title: self.title.clone(), subtitle: self.subtitle.clone(), hover: None, pressed: None }
+    }
+}
+
+/// What the header's gear calls, with the window's tag.
+type SettingsHandler = Rc<dyn Fn(u64)>;
+
+thread_local! {
+    static SETTINGS: std::cell::RefCell<Option<SettingsHandler>> = const { std::cell::RefCell::new(None) };
+}
+
+/// The header's gear was clicked on the window tagged `tag`. UI thread (called by backends).
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
+pub(crate) fn settings_requested(tag: u64) {
+    let handler = SETTINGS.with(|h| h.borrow().clone());
+    match handler {
+        Some(handler) => handler(tag),
+        None => log::debug!("plugin window {tag:#x}: settings asked for, but nobody listens"),
     }
 }
 
@@ -206,6 +287,12 @@ impl Service {
     /// came through another process (a webview), and it would hide behind the app later.
     pub fn set_owner_window(&self, handle: isize) {
         self.owner_window.store(handle, Ordering::Relaxed);
+    }
+
+    /// What a click on a header's gear does: called on the UI thread with the window's
+    /// [`WindowOptions::tag`]. Call on the UI thread.
+    pub fn set_settings_handler(&self, handler: Rc<dyn Fn(u64)>) {
+        SETTINGS.with(|h| *h.borrow_mut() = Some(handler));
     }
 
     /// The thread this service (and every window it opens) belongs to.
@@ -335,10 +422,14 @@ impl Window {
         self.id
     }
 
-    /// The native handle (`HWND`) as an integer, for `IPlugView::attached`.
-    /// Valid only while the window is open, and only on the UI thread.
-    pub const fn native_handle(&self) -> isize {
-        self.hwnd
+    /// The native handle plugins embed into (an `HWND`; an X11 window id on Linux) as an
+    /// integer, for `IPlugView::attached` / LV2's `ui:parent`: the area below WAVE's header.
+    /// Valid only while the window is open, and only on the UI thread (0 otherwise).
+    pub fn native_handle(&self) -> isize {
+        if self.live().is_err() {
+            return 0;
+        }
+        backend::embed_handle(self.hwnd)
     }
 
     /// Whether the window still exists ([`Service::close_all`] may have
@@ -384,6 +475,12 @@ impl Window {
     /// [`WindowError::Unsupported`] means "cannot tell", not "no".
     pub fn has_child_window(&self) -> Result<bool, WindowError> {
         backend::has_child_window(self.live()?)
+    }
+
+    /// The size of the window a plugin embedded (`None` before it did): for UIs that
+    /// create their window at their own size and never say it.
+    pub fn embedded_size(&self) -> Result<Option<WindowSize>, WindowError> {
+        backend::embedded_size(self.live()?)
     }
 
     /// Every event queued since the last drain. Non-blocking.
@@ -451,16 +548,57 @@ impl Drop for Window {
 
 /// State every window procedure needs. Boxed and owned by the native window,
 /// freed when it is destroyed.
-#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
 pub(crate) struct WindowState {
     pub(crate) events: Sender<WindowEvent>,
     pub(crate) ticks: Arc<AtomicU64>,
     pub(crate) min_size: WindowSize,
     pub(crate) tick: std::cell::RefCell<Option<Rc<dyn Fn()>>>,
+    /// WAVE's header above the plugin, with the button under the pointer.
+    pub(crate) header: std::cell::RefCell<Header>,
+    pub(crate) tag: u64,
+    pub(crate) resizable: bool,
+    /// The native child the plugin embeds into (below the header); 0 until created.
+    pub(crate) embed: std::cell::Cell<isize>,
 }
 
-#[cfg_attr(not(windows), allow(dead_code))]
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
 impl WindowState {
+    pub(crate) fn new(options: &WindowOptions, events: Sender<WindowEvent>, ticks: Arc<AtomicU64>) -> Self {
+        Self {
+            events,
+            ticks,
+            // The service's floor, not the editor's initial size: a resizable editor
+            // may be dragged smaller than it opened.
+            min_size: MIN_WINDOW_SIZE,
+            tick: std::cell::RefCell::new(None),
+            header: std::cell::RefCell::new(options.header()),
+            tag: options.tag,
+            resizable: options.resizable,
+            embed: std::cell::Cell::new(0),
+        }
+    }
+
+    /// A click released on a header button (`part`, the one it was pressed on).
+    pub(crate) fn header_click(&self, part: crate::header::Part) {
+        match part {
+            crate::header::Part::Settings => settings_requested(self.tag),
+            crate::header::Part::Close => self.post(WindowEvent::Closed),
+            crate::header::Part::Drag => {}
+        }
+    }
+
+    /// Set the hovered / pressed button; `true` when that changed the picture.
+    pub(crate) fn set_header_state(&self, hover: Option<crate::header::Part>, pressed: Option<crate::header::Part>) -> bool {
+        let keep = |p: Option<crate::header::Part>| p.filter(|p| *p != crate::header::Part::Drag);
+        let mut h = self.header.borrow_mut();
+        let (hover, pressed) = (keep(hover), keep(pressed));
+        let changed = h.hover != hover || h.pressed != pressed;
+        h.hover = hover;
+        h.pressed = pressed;
+        changed
+    }
+
     /// Queue an event for the owner. A dropped receiver is not an error: the
     /// owner may have let go while the window is being torn down.
     pub(crate) fn post(&self, event: WindowEvent) {
@@ -517,7 +655,7 @@ mod tests {
         assert_eq!(service.close_all(), 0);
     }
 
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "linux")))]
     #[test]
     fn without_a_backend_opening_is_unsupported_and_says_so() {
         let service = Service::new();
@@ -583,12 +721,7 @@ mod tests {
     fn tick_handlers_survive_the_window_they_close() {
         // The window procedure's half of the contract, without a window.
         let (sender, receiver) = channel();
-        let state = WindowState {
-            events: sender,
-            ticks: Arc::new(AtomicU64::new(0)),
-            min_size: MIN_WINDOW_SIZE,
-            tick: std::cell::RefCell::new(None),
-        };
+        let state = WindowState::new(&WindowOptions::new("x", WindowSize::new(200, 100)), sender, Arc::new(AtomicU64::new(0)));
         let fired = Rc::new(std::cell::Cell::new(0));
         let seen = Rc::clone(&fired);
         state.run_tick();
@@ -608,5 +741,27 @@ mod tests {
         assert!(!options.resizable);
         assert!(options.clone().resizable(true).resizable);
         assert_eq!(options.title, "Editor");
+        let o = options.subtitle("VST3 instrument").tag(42);
+        assert_eq!((o.subtitle.as_str(), o.tag), ("VST3 instrument", 42));
+    }
+
+    #[test]
+    fn header_buttons_report_settings_with_the_tag_and_close_as_an_event() {
+        use crate::header::Part;
+        let (sender, receiver) = channel();
+        let state =
+            WindowState::new(&WindowOptions::new("Vitalium", WindowSize::new(400, 300)).tag(77), sender, Arc::new(AtomicU64::new(0)));
+        let asked = Rc::new(std::cell::Cell::new(0_u64));
+        let a = Rc::clone(&asked);
+        Service::new().set_settings_handler(Rc::new(move |tag| a.set(tag)));
+        state.header_click(Part::Settings);
+        assert_eq!(asked.get(), 77);
+        state.header_click(Part::Drag);
+        state.header_click(Part::Close);
+        assert_eq!(receiver.try_iter().collect::<Vec<_>>(), vec![WindowEvent::Closed]);
+        assert!(state.set_header_state(Some(Part::Settings), None));
+        assert!(!state.set_header_state(Some(Part::Settings), None), "no change, no repaint");
+        assert!(state.set_header_state(Some(Part::Drag), None), "the drag area is not a hover state");
+        assert_eq!(state.header.borrow().hover, None);
     }
 }

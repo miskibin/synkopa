@@ -165,7 +165,7 @@ fn log_level(ty: u32) -> Option<log::Level> {
     }
 }
 
-unsafe extern "C" fn log_printf(_handle: *mut c_void, ty: u32, fmt: *const c_char) -> c_int {
+pub(crate) unsafe extern "C" fn log_printf(_handle: *mut c_void, ty: u32, fmt: *const c_char) -> c_int {
     let Some(level) = log_level(ty) else { return 0 };
     if fmt.is_null() {
         return 0;
@@ -180,7 +180,7 @@ extern "C" {
     fn vsnprintf(buf: *mut c_char, size: usize, fmt: *const c_char, ap: *mut c_void) -> c_int;
 }
 
-unsafe extern "C" fn log_vprintf(_handle: *mut c_void, ty: u32, fmt: *const c_char, ap: *mut c_void) -> c_int {
+pub(crate) unsafe extern "C" fn log_vprintf(_handle: *mut c_void, ty: u32, fmt: *const c_char, ap: *mut c_void) -> c_int {
     let Some(level) = log_level(ty) else { return 0 };
     if fmt.is_null() {
         return 0;

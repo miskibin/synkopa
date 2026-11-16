@@ -334,6 +334,52 @@ or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused)
   re-creates the instance from the saved state (the engine does that for every hosted plugin
   when the device changes).
 
+### Plugin windows
+
+Opening an external plugin (an effect slot, a plugin channel's name in the Channel Rack, adding
+one) shows **its own interface** at once, FL Studio's wrapper style: a native window
+(`crates/plugin-windows`) whose title bar is WAVE's header (the channel or effect name, the
+format and kind, a gear, a close button; drawn in software with Geist, the app's font) and the
+plugin's window embedded below it. The gear emits `plugin-settings` `{id}`, and the UI opens
+WAVE's window for it (the generic parameter list, level, pan, routing; `ui/src/state/pluginWindows.ts`).
+A second click on the channel closes the plugin window. A plugin with no interface of its own
+(`NO_EDITOR`), one that failed to load, or a session that cannot show plugin windows opens
+WAVE's window instead. Closing WAVE's window leaves the plugin's open.
+
+* **Windows.** A top-level `HWND` without its caption (`WM_NCCALCSIZE`), the header painted
+  with `StretchDIBits` and answering `HTCAPTION` (move, snap) except over its buttons; a
+  resizable plugin keeps the system's side and bottom borders. The plugin attaches to a child
+  "host" window below the header. Tauri's loop dispatches everything (same thread).
+* **Linux (X11; XWayland under Wayland).** WAVE's own connection to the X server (`x11rb`,
+  pure Rust: no libX11, no shared Xlib error handler): an undecorated frame (`_MOTIF_WM_HINTS`)
+  holding the header child, the embed child the plugin attaches to (VST3 `X11EmbedWindowID`,
+  LV2 `ui:parent`) and, for resizable plugins, input-only border strips. Only the header and the
+  strips select pointer events (a frame that did would take an implicit grab and steal drags from
+  plugins that read XInput2). Moves and resizes are handed to the window manager
+  (`_NET_WM_MOVERESIZE`); minimal XEmbed (embedded notify, mapping on `_XEMBED_INFO`, focus).
+  `transient-for` the main window when GTK itself runs on X11. Scale: `Xft.dpi`. No X display
+  (`DISPLAY` unset) makes `app_info.pluginEditors` false with the reason.
+* **The UI thread's loop.** Linux has no global event loop, so the app installs GTK's glib loop
+  (`app/src/plugin_loop.rs`) as `wave_plugin_windows::event_loop` on the main thread. It reads
+  the X connection (a socket watch plus a 16 ms tick that also runs the windows' tick handlers)
+  and serves VST3's `Linux::IRunLoop`: plugin file descriptors and timers, offered through the
+  editor's `IPlugFrame` and through the host context (so a plugin has one without an editor).
+  JUCE-built plugins stop their own message thread once offered a loop, so it is offered only
+  where one is installed (never in the CLI's headless renders); every registration belongs to
+  its instance and is removed at teardown, so the loop never calls into an unloaded library.
+* **VST3 messages.** `IHostApplication::createInstance` makes `IMessage` / `IAttributeList`
+  (`crates/vst3-host/src/message.rs`), the channel between a plugin's processor and controller
+  over the connected `IConnectionPoint`s (DPF plugins such as Vitalium need it).
+* **LV2 interfaces** (`crates/lv2-host/src/ui.rs`). A plugin's first `ui:X11UI` whose required
+  features WAVE provides (`ui:parent`, `ui:resize`, `ui:idleInterface`, `urid:map`/`unmap`,
+  `options:options` with `ui:scaleFactor` and `ui:updateRate`, `log:log`) is loaded from its
+  library (never unloaded). Control-port writes from the UI (protocol 0) set the same per-port
+  value the parameter list and automation set (and mark the state to save); every control port
+  that changed, outputs (meters) included, goes back to the UI at each tick; `idle()` runs every
+  tick. GTK and Qt interfaces are not embedded (they would need their toolkit in WAVE's process;
+  GTK2 cannot share one with GTK3): those plugins keep the parameter list and
+  `editor_unavailable` says why. Atom messages between UI and plugin are not carried yet.
+
 ### Plugin instruments
 
 A channel of kind `plugin` plays a VST3 instrument, like FL Studio's plugin generators: the
@@ -374,7 +420,8 @@ Channel Rack's "+" and "Replace" menus list the scanned instruments (`plugin_sca
   is dropped). The process context carries tempo, position and playing state as for effects.
 * **Parameters, editor, state.** A plugin channel's id works wherever an effect id does:
   `plugin_params`, `plugin_set_param`, `plugin_editor`, and `plugin_state` (its current state,
-  which the Channel Rack's Clone copies). The channel window shows the editor button and the
+  which the Channel Rack's Clone copies). Clicking the channel shows the plugin's own window
+  (see Plugin windows); its gear shows the channel window with the window button and the
   parameter list. Saving stores each live instance's state in `plugin.state` (base64 of the
   component and controller streams, as for effects). Automating an instrument's parameters is
   not supported yet (the parameter menu says so).
@@ -500,7 +547,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `export_cancel` | – | – (abort an in-flight `export_audio` before a file is written) |
 | `plugin_scan` | `{rescan}` | `{plugins: [{format,path,cid,name,vendor,category,unsupported?}], instruments: [...same], unavailable: {[format]: why}}` — effects: VST3 everywhere, LV2 on Linux; `instruments`: VST3 instruments for the Channel Rack; `unsupported`: why that plugin cannot run here; `unavailable.lv2`: no liblilv |
 | `plugin_add` | `{insertId, format?, path?, cid, index?}` | `{fxId, revision}` — a scanned plugin onto an insert (the UI adds with `putFx` instead) |
-| `plugin_editor` | `{fxId, open}` | – (native VST3 window, Windows; LV2 rejects). Here and below `fxId` may also be a plugin channel's id |
+| `plugin_editor` | `{fxId, open, title?, subtitle?}` | – (the plugin's own window under WAVE's header showing `title` / `subtitle`; its gear emits `plugin-settings` `{id}`). Rejects with `NO_EDITOR: …` for a plugin without one, with the reason when none can be shown (no X11 display). Here and below `fxId` may also be a plugin channel's id |
 | `plugin_params` | `{fxId}` | `[{id,name,value,display,def}]`; LV2 adds `{symbol,real,min,max,unit,steps?,toggle,integer,log,options?:[{value,label}]}` |
 | `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
 | `plugin_state` | `{fxId}` | the live instance's current state, base64 (what `PluginRef.state` stores) |
@@ -932,7 +979,7 @@ The app updates itself from GitHub Releases (public repository: no token). See
   `latest.json`), `update_download` (progress on the `update-progress` event, signature
   verified, nothing restarts) and `update_install` (detaches plugin editors, stops audio, runs
   the installer, restarts; on failure audio comes back and the old version keeps running).
-  `app_info` (also `pluginEditors`: VST3 editor windows exist, Windows only), `update_set_auto` and `update_mark_seen` read and write `settings.json`
+  `app_info` (also `pluginEditors`: plugin windows can be shown in this session, and `pluginEditorsWhy` when not), `update_set_auto` and `update_mark_seen` read and write `settings.json`
   (`seenVersion`, `noAutoUpdate`). Views reach them only through `backend.ts`
   (`appInfo`, `updateCheck`, …); `api/mockUpdates.ts` is the browser mock with a fake newer release.
 * `ui/src/state/updateCtl.ts` is the state machine

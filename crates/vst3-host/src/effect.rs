@@ -40,10 +40,10 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use vst3::Steinberg::Vst::{
     AudioBusBuffers, AudioBusBuffers__type0, BusDirections_, BusInfo, Event, Event_::EventTypes_, IAudioProcessor, IAudioProcessorTrait,
-    IComponent, IComponentHandler, IComponentTrait, IConnectionPoint, IConnectionPointTrait, IEditController, IEditControllerTrait,
-    IEventList, IMidiMapping, IMidiMappingTrait, IParameterChanges, MediaTypes_, NoteOffEvent, NoteOnEvent, ParamID, ParameterInfo,
-    ParameterInfo_::ParameterFlags_, ProcessContext, ProcessContext_, ProcessData, ProcessModes_, ProcessSetup, SpeakerArr,
-    SpeakerArrangement, String128, SymbolicSampleSizes_,
+    IComponent, IComponentTrait, IConnectionPoint, IConnectionPointTrait, IEditController, IEditControllerTrait, IEventList, IMidiMapping,
+    IMidiMappingTrait, IParameterChanges, MediaTypes_, NoteOffEvent, NoteOnEvent, ParamID, ParameterInfo, ParameterInfo_::ParameterFlags_,
+    ProcessContext, ProcessContext_, ProcessData, ProcessModes_, ProcessSetup, SpeakerArr, SpeakerArrangement, String128,
+    SymbolicSampleSizes_,
 };
 use vst3::Steinberg::{
     kNotImplemented, kResultOk, kResultTrue, IBStream, IPluginBaseTrait, IPluginFactory3, IPluginFactory3Trait, IPluginFactoryTrait, TUID,
@@ -52,11 +52,9 @@ use vst3::{ComPtr, ComWrapper};
 use wave_engine::{InstEvent, InstMsg, Instrument, ProcessCtx, Processor, MAX_INST_EVENTS};
 
 use crate::editor::EditorSession;
-use crate::host::{
-    host_context_ptr, Counters, EmptyEventList, GuiRequests, HostContext, HostFlags, MemoryStream, NoteEventList, ParamMailbox,
-    ParameterChanges,
-};
+use crate::host::{Context, Counters, EmptyEventList, GuiRequests, HostFlags, MemoryStream, NoteEventList, ParamMailbox, ParameterChanges};
 use crate::module::{utf16_to_string, ClassId, Module};
+use crate::run_loop::RunLoop;
 use crate::scan::{read_classes, PluginInfo};
 use crate::{main_thread, Vst3Error};
 
@@ -192,7 +190,9 @@ pub(crate) struct Instance {
     component_connection: Option<ComPtr<IConnectionPoint>>,
     controller_connection: Option<ComPtr<IConnectionPoint>>,
     component: Option<ComPtr<IComponent>>,
-    context: ComWrapper<HostContext>,
+    context: Context,
+    /// The plugin's run-loop registrations (Linux), removed at teardown.
+    run_loop: Arc<RunLoop>,
     component_initialized: bool,
     controller_initialized: bool,
     single_component: bool,
@@ -240,8 +240,9 @@ impl Instance {
             .find(|class| class.cid == cid)
             .ok_or_else(|| Vst3Error::ClassNotFound { path: path.to_path_buf(), cid: cid.to_hex() })?;
         let name = class.name.clone();
-        let context = HostContext::new(flags);
-        let context_ptr = host_context_ptr(&context);
+        let run_loop = RunLoop::new();
+        let context = Context::new(flags, &run_loop);
+        let context_ptr = context.ptr();
         let factory = module.factory();
 
         // SAFETY (all plugin calls below): every pointer handed over outlives
@@ -267,6 +268,7 @@ impl Instance {
             controller_connection: None,
             component: Some(component),
             context,
+            run_loop,
             component_initialized: false,
             controller_initialized: false,
             single_component: true,
@@ -317,8 +319,9 @@ impl Instance {
                 instance.controller = component.cast::<IEditController>();
             }
             if let Some(controller) = instance.controller.as_ref() {
-                if let Some(handler) = instance.context.as_com_ref::<IComponentHandler>() {
-                    let _ = controller.setComponentHandler(handler.as_ptr());
+                let handler = instance.context.handler();
+                if !handler.is_null() {
+                    let _ = controller.setComponentHandler(handler);
                 }
             }
         }
@@ -646,6 +649,8 @@ impl Drop for Instance {
         drop(self.controller.take());
         drop(self.processor.take());
         drop(self.component.take());
+        // whatever the plugin left registered must not outlive its library
+        self.run_loop.clear();
     }
 }
 
@@ -1107,11 +1112,14 @@ impl Vst3Handle {
     /// requests, user drags, DPI changes, the close button): no per-frame call
     /// is needed.
     ///
+    /// `label` is what WAVE's header above the editor shows, and the tag its gear reports.
+    ///
     /// # Errors
     /// [`Vst3Error::WrongThread`] off the UI thread, [`Vst3Error::NoEditor`]
     /// for a plugin without one, [`Vst3Error::Window`] where the platform has
-    /// no window backend (everything but Windows), and the plugin's refusals.
-    pub fn open_editor(&self, windows: &wave_plugin_windows::Service) -> Result<(), Vst3Error> {
+    /// no window backend (macOS) or no display (Linux without X11/XWayland), and the
+    /// plugin's refusals.
+    pub fn open_editor(&self, windows: &wave_plugin_windows::Service, label: &wave_plugin_windows::Label) -> Result<(), Vst3Error> {
         if !windows.on_owner_thread() || !main_thread::on_main_thread() {
             return Err(Vst3Error::WrongThread);
         }
@@ -1124,7 +1132,7 @@ impl Vst3Handle {
         }
         let controller = instance.controller.clone().ok_or(Vst3Error::NoEditor)?;
         let session = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            EditorSession::open(&controller, windows, &self.shared.info.name, Arc::clone(&self.shared.gui))
+            EditorSession::open(&controller, windows, label, Arc::clone(&self.shared.gui), Arc::clone(&instance.run_loop))
         }))
         .map_err(|_| Vst3Error::Panicked { stage: "opening its editor" })??;
         let weak: Weak<Shared> = Arc::downgrade(&self.shared);

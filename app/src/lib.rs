@@ -13,6 +13,8 @@ mod links;
 mod midi_actions;
 mod models;
 mod pitch_actions;
+#[cfg(target_os = "linux")]
+mod plugin_loop;
 mod plugins;
 mod project_launch;
 mod recovery;
@@ -918,9 +920,12 @@ async fn plugin_add(
     Ok(json!({ "fxId": id, "revision": rev }))
 }
 
+/// Open or close a plugin's own window. `title` / `subtitle`: what WAVE's header above it
+/// says (the UI's names, in its language); the header's gear emits `plugin-settings`.
 #[tauri::command]
-async fn plugin_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool) -> R<()> {
-    app.plugins.editor(&handle, fx_id, open)
+async fn plugin_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool, title: Option<String>, subtitle: Option<String>) -> R<()> {
+    let label = wave_plugin_windows::Label { title: title.unwrap_or_default(), subtitle: subtitle.unwrap_or_default(), tag: fx_id };
+    app.plugins.editor(&handle, fx_id, open, label)
 }
 
 #[tauri::command]
@@ -961,7 +966,7 @@ async fn vst3_add(app: St<'_>, insert_id: u64, path: String, cid: String, index:
 
 #[tauri::command]
 async fn vst3_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool) -> R<()> {
-    app.plugins.editor(&handle, fx_id, open)
+    app.plugins.editor(&handle, fx_id, open, wave_plugin_windows::Label { tag: fx_id, ..Default::default() })
 }
 
 #[tauri::command]
@@ -981,7 +986,8 @@ async fn app_info(app: St<'_>, handle: AppHandle) -> R<updater::AppInfo> {
         version: handle.package_info().version.to_string(),
         seen_version: s.seen_version.clone(),
         auto_update: !s.no_auto_update,
-        plugin_editors: cfg!(windows),
+        plugin_editors: wave_plugin_windows::available().is_ok(),
+        plugin_editors_why: wave_plugin_windows::available().err().map(|e| e.to_string()),
     })
 }
 
@@ -1302,12 +1308,27 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     wave_vst3::set_main_thread_executor(move |job| {
         let _ = mh.run_on_main_thread(job);
     });
+    // Linux: GTK's loop reads the plugin windows' X11 connection and serves the plugins' IRunLoop
+    #[cfg(target_os = "linux")]
+    plugin_loop::install();
     let plugin_windows = wave_plugin_windows::Service::new();
     // plugin editors belong to the main window: they open in front of it and stay there
     #[cfg(windows)]
     if let Some(hwnd) = tapp.get_webview_window("main").and_then(|w| w.hwnd().ok()) {
         plugin_windows.set_owner_window(hwnd.0 as isize);
     }
+    #[cfg(target_os = "linux")]
+    if let Some(xid) = tapp.get_webview_window("main").and_then(|w| plugin_loop::owner_xid(&w)) {
+        plugin_windows.set_owner_window(xid as isize);
+    }
+    // the gear in a plugin window's header: WAVE's own window for that effect or channel
+    let sh = tapp.handle().clone();
+    plugin_windows.set_settings_handler(std::rc::Rc::new(move |id| {
+        if let Some(w) = sh.get_webview_window("main") {
+            let _ = w.set_focus();
+        }
+        let _ = sh.emit("plugin-settings", json!({ "id": id }));
+    }));
     tapp.manage(plugin_windows);
     let _ = events.set(tapp.handle().clone());
     // open the audio device off the UI thread

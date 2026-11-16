@@ -47,3 +47,7 @@ serde_json.workspace = true
 # The editor probe example pumps Win32 messages like the app's event loop.
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+# tests/editor_gui.rs turns a real plugin's knob like a user does
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+x11rb = { version = "0.13", features = ["xtest"] }

@@ -58,7 +58,11 @@ describe('hosted plugins in the mock', () => {
     await be.pluginSetParam(9001, gain.id, 1);
     expect((await be.pluginParams(9001)).find(p => p.id === gain.id)).toMatchObject({ real: 30, value: 1, display: '30.0 dB' });
     await expect(be.pluginSetParam(9001, gain.id, 2)).rejects.toThrow(/0..1/);
-    await expect(be.pluginEditor(9001, true)).rejects.toThrow(/LV2/);
+    // an LV2 plugin with an interface of its own opens it under WAVE's header, like the engine
+    await expect(be.pluginEditor(9001, true, { title: 'Amp', subtitle: 'LV2 · Insert 1' })).resolves.toBeUndefined();
+    expect(be.editorLabel(9001)).toEqual({ title: 'Amp', subtitle: 'LV2 · Insert 1' });
+    await be.pluginEditor(9001, false);
+    expect(be.editorLabel(9001)).toBeUndefined();
     // automation targets are checked against the plugin's parameters
     await be.applyOps([{ op: 'putAutomation', automation: { id: 9100, name: 'Gain', color: '#fff', target: { kind: 'plugin', fxId: 9001, paramId: gain.id }, points: [{ t: 0, v: 0.5 }] } }]);
     await expect(be.applyOps([{ op: 'putAutomation', automation: { id: 9101, name: 'X', color: '#fff', target: { kind: 'plugin', fxId: 9001, paramId: 999 }, points: [] } }]))

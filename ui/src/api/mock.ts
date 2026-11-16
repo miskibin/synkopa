@@ -1443,19 +1443,21 @@ export class MockBackend implements Backend {
     const ch = (this.p.channels ?? []).find(c => c.id === id);
     return ch?.kind === 'plugin' && !this.fxErrors()[id] ? ch.plugin : undefined;
   }
-  /** Like the engine: only a VST3 plugin has an editor window here. */
-  async pluginEditor(fxId: Id, open: boolean) {
+  /** Like the engine: a plugin's own window under WAVE's header (`label`); WAVE Demo Synth has none (plugins.rs `NO_EDITOR`). */
+  async pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }) {
     const pl = this.hosted(fxId);
     if (!pl) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
-    if (open && pl.format === 'lv2') throw new Error('LV2 plugins are edited in WAVE\'s parameter list (their own editor windows are not supported yet)');
-    // WAVE Demo Synth has no window of its own (plugins.rs `NO_EDITOR`)
     if (open && /demo synth/i.test(pl.name)) throw new Error('NO_EDITOR: this plugin has no window of its own; its parameters are listed below');
-    if (open) this.editors.add(fxId); else this.editors.delete(fxId);
+    if (open) this.editors.set(fxId, label ?? { title: '', subtitle: '' }); else this.editors.delete(fxId);
   }
-  private editors = new Set<Id>();
+  private editors = new Map<Id, { title: string; subtitle: string }>();
   async pluginEditorOpen(fxId: Id) { return this.editors.has(fxId); }
+  /** Test hook: the header a plugin window shows (undefined when closed). */
+  editorLabel(fxId: Id) { return this.editors.get(fxId); }
   /** Test hook: the user closed the plugin's window with its X. */
   closeEditorWindow(fxId: Id) { this.editors.delete(fxId); }
+  /** Test hook: the gear in a plugin window's header. */
+  pressEditorSettings(fxId: Id) { this.emit('plugin-settings', { id: fxId }); }
   async pluginState(fxId: Id): Promise<string> {
     if (!this.hosted(fxId)) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
     // the mock's "state" is its parameter values

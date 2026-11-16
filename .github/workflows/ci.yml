@@ -31,6 +31,11 @@ jobs:
       # latency), lsp-plugins-lv2 (many use the worker extension)
       - name: LV2 (lilv and plugins)
         run: sudo apt-get install -y liblilv-0-0 lilv-utils swh-lv2 x42-plugins lsp-plugins-lv2 && lv2ls | wc -l
+      # Plugin windows on Linux: a virtual X server, and plugins with interfaces of their own:
+      # DISTRHO's (dpf-plugins-vst3: Nekobi, the framework Vitalium is built with) for
+      # crates/vst3-host/tests/editor_gui.rs, x42's equaliser (above) for crates/lv2-host/tests/ui_gui.rs
+      - name: Plugin windows (Xvfb, DPF plugins)
+        run: sudo apt-get install -y xvfb dpf-plugins-vst3 && ls /usr/lib/vst3 | head
       # a comma-decimal locale for app's locale_tests (it fails on Linux CI without one)
       - name: Comma-decimal locale (de_DE.UTF-8)
         run: sudo apt-get install -y locales && sudo locale-gen de_DE.UTF-8
@@ -45,10 +50,14 @@ jobs:
       # a real VST3 instrument for crates/vst3-host/tests/instrument.rs
       - name: WAVE Demo Synth
         run: node scripts/build-demo-synth.mjs --debug
-      - run: cargo test --workspace
+      # under a virtual display: the plugin-window tests open real windows and click them
+      - run: xvfb-run -a -s "-screen 0 1600x900x24" cargo test --workspace
         env:
           # the LV2 tests fail instead of skipping when lilv or the plugins above are missing
           WAVE_REQUIRE_LV2: "1"
+          # so do the plugin-window tests without a display or their plugins
+          WAVE_REQUIRE_X11: "1"
+          WAVE_REQUIRE_PLUGIN_GUI: "1"
           WAVE_VST3_TEST_INSTRUMENT: ${{ github.workspace }}/app/resources/plugins/WAVE Demo Synth.vst3
 
   windows:

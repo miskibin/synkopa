@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 wave-engine.workspace = true
 wave-plugin-scan.workspace = true
+wave-plugin-windows = { path = "../plugin-windows" }
 rtrb.workspace = true
 serde.workspace = true
 log.workspace = true
@@ -21,3 +22,7 @@ libc = "0.2"
 
 [dev-dependencies]
 serde_json.workspace = true
+
+# tests/ui_gui.rs turns a real plugin interface's knob like a user does
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+x11rb = { version = "0.13", features = ["xtest"] }

@@ -18,6 +18,18 @@ shown in the app after an update and is published as the release notes (see
   so the chords move as little as possible. The same verbs work headless: `wave notes stamp`,
   `wave notes chord` and `wave notes progression` (with `--degrees "0:5:2:6"` for arbitrary
   chord sequences).
+- **Plugin windows open straight away, with WAVE's header on top.** Click a plugin instrument
+  in the Channel Rack or a plugin effect in the mixer and its own interface opens at once, like
+  in FL Studio: a slim WAVE bar on top shows the name, a gear opens WAVE's settings for it
+  (parameters, volume, pan, routing) and × closes it. Click the instrument again to close it.
+- **Plugin windows on Linux.** VST3 plugins (such as Vitalium and the DISTRHO and ZAM
+  plugins) and LV2 plugins with their own interface (such as x42, ZAM and Dragonfly) now show
+  their windows on Linux too, also under Wayland through XWayland. LV2 plugins whose interface
+  needs GTK or Qt keep WAVE's parameter list.
+
+### Fixed
+- DISTRHO-based plugins (Vitalium and others) can now talk between their engine and their
+  interface: knobs and displays stay in step.
 
 ### Fixed
 - **Browsing big sample folders works again.** In a folder with many groups, opening a group

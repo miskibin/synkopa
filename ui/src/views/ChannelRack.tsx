@@ -453,7 +453,7 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
       <button class="cins" classList={{ auto: c().insert == null }} title={insTitle(c())}
         onPointerDown={e => e.stopPropagation()} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); insertMenu(c(), r.left, r.bottom + 2); }}>{insLabel(c())}</button>
       <button class="cname" classList={{ sel: sel() }}
-        title={t('b.pe.cnameTitle', { name: c().name, kind: chanKindLabel(c()) }) + (S.fxErrors[c().id] ? '\n' + t('c.fx.instNotLoaded', { e: S.fxErrors[c().id] }) : '')}
+        title={t(c().kind === 'plugin' ? 'b.pe.cnameTitlePlugin' : 'b.pe.cnameTitle', { name: c().name, kind: chanKindLabel(c()) }) + (S.fxErrors[c().id] ? '\n' + t('c.fx.instNotLoaded', { e: S.fxErrors[c().id] }) : '')}
         onPointerDown={nameDown}>
         <span class="cicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={11} /></span>
         <span class="ell">{c().name}</span>

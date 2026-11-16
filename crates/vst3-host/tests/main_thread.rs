@@ -55,7 +55,7 @@ fn plugin_work_is_marshalled_to_the_ui_thread() {
     let (mut effect, handle) = wave_vst3::instantiate(&info.path, &info.cid, None, 48_000.0, 64).unwrap();
     let id = handle.params()[0].id;
     handle.set_param(id, 0.5).unwrap();
-    assert!(matches!(handle.open_editor(&windows), Err(Vst3Error::WrongThread)));
+    assert!(matches!(handle.open_editor(&windows, &wave_plugin_windows::Label::default()), Err(Vst3Error::WrongThread)));
     assert!(matches!(handle.close_editor(), Err(Vst3Error::WrongThread)));
 
     // The effect moves to an "audio thread" and processes there.

@@ -48,3 +48,10 @@ tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2.5"
+
+# Plugin windows on Linux: GTK's glib loop runs them and the plugins' IRunLoop; the main
+# window's X11 id keeps them above it (the versions Tauri itself uses).
+[target.'cfg(target_os = "linux")'.dependencies]
+glib = "0.18"
+gtk = "0.18"
+gdkx11 = "0.18"

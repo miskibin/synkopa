@@ -179,7 +179,7 @@ fn hosting_errors_are_typed() {
     let (_effect, handle) = instantiate_effect(&info.path, &info.cid, None, 48_000.0, 64).unwrap();
     assert!(handle.has_editor(), "it has a controller");
     let windows = wave_plugin_windows::Service::new();
-    let err = handle.open_editor(&windows).unwrap_err();
+    let err = handle.open_editor(&windows, &wave_plugin_windows::Label::default()).unwrap_err();
     assert!(matches!(err, Vst3Error::NoEditor | Vst3Error::UnsupportedEditorApi { .. } | Vst3Error::Window(_)), "got {err:?}");
     assert!(!handle.is_editor_open());
     handle.close_editor().unwrap();

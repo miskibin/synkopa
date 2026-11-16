@@ -14,6 +14,8 @@ export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[];
 export interface EventMap {
   state: StateDto;
   'project-open-requested': null;
+  /** The gear in a plugin window's header (WAVE's header above a plugin's own interface): show WAVE's window for that effect or plugin channel. */
+  'plugin-settings': { id: Id };
   'library-progress': LibraryProgress;
   /** WAVE Keys: the piano started loading, is ready, or is not on this computer. */
   'keys-status': KeysStatus;
@@ -186,8 +188,9 @@ export interface Backend {
   exportCancel(): Promise<void>;
   /** Installed effects of every hosted format (VST3; LV2 on Linux). A cold `rescan` is slow. */
   pluginScan(rescan: boolean): Promise<PluginScan>;
-  /** A VST3 plugin's own editor window (Windows); LV2 plugins have none here and reject. */
-  pluginEditor(fxId: Id, open: boolean): Promise<void>;
+  /** A plugin's own window (VST3; LV2 with an X11 interface on Linux) under WAVE's header showing `label`. Rejects with
+   *  `NO_EDITOR: …` when the plugin has no window of its own, and with the reason when none can be shown here. */
+  pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }): Promise<void>;
   /** Whether the plugin's own window is open (it may have been closed with its X). */
   pluginEditorOpen(fxId: Id): Promise<boolean>;
   pluginParams(fxId: Id): Promise<PluginParam[]>;
@@ -362,7 +365,7 @@ export function tauriBackend(): Backend {
     exportStems: opts => invoke('export_stems', { ...opts }),
     exportCancel: () => invoke('export_cancel'),
     pluginScan: rescan => invoke('plugin_scan', { rescan }),
-    pluginEditor: (fxId, open) => invoke('plugin_editor', { fxId, open }),
+    pluginEditor: (fxId, open, label) => invoke('plugin_editor', { fxId, open, title: label?.title, subtitle: label?.subtitle }),
     pluginEditorOpen: fxId => invoke('plugin_editor_open', { fxId }),
     pluginParams: fxId => invoke('plugin_params', { fxId }),
     pluginState: fxId => invoke('plugin_state', { fxId }),

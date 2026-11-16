@@ -1,6 +1,6 @@
 [package]
 name = "wave-plugin-windows"
-description = "WAVE: native top-level windows for VST3 plugin editors, pumped by the app's own UI-thread event loop."
+description = "WAVE: native top-level windows for plugin editors (VST3, LV2) with WAVE's header, pumped by the app's own UI-thread event loop."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
@@ -10,6 +10,8 @@ publish.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
+# The header's text (Geist, bundled in fonts/), rasterised in software on every platform.
+fontdue = "0.9"
 
 # Raw Win32. See the crate docs for why this is not `tao`.
 [target.'cfg(windows)'.dependencies]
@@ -18,5 +20,18 @@ windows-sys = { version = "0.61", features = [
     "Win32_Graphics_Gdi",
     "Win32_System_LibraryLoader",
     "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+# X11 in pure Rust: no libX11 / libxcb at build or run time, and no process-wide Xlib
+# error handler shared with the plugins.
+[target.'cfg(target_os = "linux")'.dependencies]
+x11rb = "0.13"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# tests/x11.rs clicks the header like a user does
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+x11rb = { version = "0.13", features = ["xtest"] }

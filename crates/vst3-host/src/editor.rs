@@ -4,10 +4,11 @@
 //!  createView("editor")                does this plugin draw at all?
 //!  isPlatformTypeSupported(HWND)       will it embed in a Win32 window?
 //!  getSize()                           the size to open the window at
-//!  --- open the window, hidden ---
+//!  --- open the window, hidden (mapped on X11) ---
 //!  setContentScaleFactor(dpi / 96)     only now is the monitor's DPI known
-//!  setFrame(host frame)                BEFORE attached, or the editor cannot resize itself
-//!  attached(HWND, "HWND")              the plugin creates its child window
+//!  setFrame(host frame)                BEFORE attached, or the editor cannot resize itself;
+//!                                      on Linux the frame is also the editor's IRunLoop
+//!  attached(handle, platform type)     the plugin creates its child window
 //!  getSize()                           may have changed with the scale
 //!  --- size the window, show it ---
 //! ```
@@ -25,9 +26,10 @@ use vst3::Steinberg::{
     IPlugViewTrait, ViewRect,
 };
 use vst3::{ComPtr, ComWrapper};
-use wave_plugin_windows::{Service, Window, WindowEvent, WindowOptions, WindowSize};
+use wave_plugin_windows::{Label, Service, Window, WindowEvent, WindowOptions, WindowSize};
 
 use crate::host::{GuiRequests, PlugFrame};
+use crate::run_loop::RunLoop;
 use crate::Vst3Error;
 
 /// Size used when a plugin claims an editor but will not say how big it is.
@@ -81,8 +83,9 @@ impl EditorSession {
     pub(crate) fn open(
         controller: &ComPtr<IEditController>,
         windows: &Service,
-        title: &str,
+        label: &Label,
         requests: Arc<GuiRequests>,
+        run_loop: Arc<RunLoop>,
     ) -> Result<Self, Vst3Error> {
         if !windows.on_owner_thread() {
             return Err(Vst3Error::WrongThread);
@@ -102,10 +105,10 @@ impl EditorSession {
             let size = if size.width == 0 || size.height == 0 { FALLBACK_SIZE } else { size };
             (size, view.canResize() == kResultTrue)
         };
-        let window = windows.open_window(&WindowOptions::new(format!("{title} - WAVE"), initial).resizable(can_resize))?;
+        let window = windows.open_window(&WindowOptions::labelled(label, initial).resizable(can_resize))?;
         let mut session = Self {
             view: Some(view),
-            frame: PlugFrame::new(Arc::clone(&requests)),
+            frame: PlugFrame::new(Arc::clone(&requests), run_loop),
             window,
             requests,
             size: initial,
@@ -133,6 +136,11 @@ impl EditorSession {
             }
             if let Some(frame) = self.frame.as_com_ref::<IPlugFrame>() {
                 let _ = view.setFrame(frame.as_ptr());
+            }
+            // X11: the parent is mapped before the plugin embeds into it (plugins that map
+            // their window at once then show at once; an empty frame lasts one attach)
+            if cfg!(target_os = "linux") {
+                self.window.show()?;
             }
             let result = view.attached(self.window.native_handle() as *mut std::ffi::c_void, PLATFORM_TYPE.0);
             if result != kResultOk {

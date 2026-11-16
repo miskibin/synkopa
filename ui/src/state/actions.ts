@@ -16,6 +16,7 @@ import { modePattern, openRack, patMode, rackFloating, rollFloating, setPatMode,
 import { allocId, findFx, insName, plain, S, setTransport } from './store';
 import { say, setU, U, type SampleTarget } from './ui';
 import { confirmRecover, confirmUnsaved } from '../ui/Confirm';
+import { showPlugin } from './pluginWindows';
 
 // ---------- transport ----------
 /** Recording is on but no track is armed: the engine plays and records nothing. */
@@ -589,7 +590,16 @@ export function addPitchCorrect(insId: Id, ks?: { key: number; scale: number }) 
   const m = S.project.inserts.find(x => x.id === insId);
   say(t('d.pc.added', { name: m ? insName(m) : '' }));
 }
-export function openPlug(fxId: Id) {
+/**
+ * Open an effect. A hosted plugin shows its own window (FL: WAVE's header with a gear above the plugin's
+ * interface); WAVE's window for it comes up when it has none, or from that gear (`settings`).
+ */
+export function openPlug(fxId: Id, settings = false) {
+  if (!settings && findFx(fxId)?.f.type === 'plugin') { void showPlugin(fxId, () => openPlugWindow(fxId)); return; }
+  openPlugWindow(fxId);
+}
+/** WAVE's own window for an effect (for a plugin: its parameters, under the gear). */
+function openPlugWindow(fxId: Id) {
   if (U.plugsHidden) setU('plugsHidden', false);
   const ex = U.plugs.find(p => p.fxId === fxId);
   if (ex) { plugFront(fxId, true); return; }

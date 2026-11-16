@@ -109,6 +109,46 @@ pub struct LV2_Atom {
     pub type_: u32,
 }
 
+// lv2/ui/ui.h
+pub type LV2UI_Handle = *mut c_void;
+pub type LV2UI_Controller = *mut c_void;
+pub type LV2UI_Widget = *mut c_void;
+pub type LV2UI_Write_Function = unsafe extern "C" fn(LV2UI_Controller, u32, u32, u32, *const c_void);
+
+#[repr(C)]
+pub struct LV2UI_Descriptor {
+    pub URI: *const c_char,
+    pub instantiate: Option<
+        unsafe extern "C" fn(
+            *const LV2UI_Descriptor,
+            *const c_char,
+            *const c_char,
+            LV2UI_Write_Function,
+            LV2UI_Controller,
+            *mut LV2UI_Widget,
+            *const *const LV2_Feature,
+        ) -> LV2UI_Handle,
+    >,
+    pub cleanup: Option<unsafe extern "C" fn(LV2UI_Handle)>,
+    pub port_event: Option<unsafe extern "C" fn(LV2UI_Handle, u32, u32, u32, *const c_void)>,
+    pub extension_data: Option<unsafe extern "C" fn(*const c_char) -> *const c_void>,
+}
+
+pub type LV2UI_DescriptorFunction = unsafe extern "C" fn(u32) -> *const LV2UI_Descriptor;
+
+/// `LV2UI_Resize`: both the host feature (the UI asks for a size) and the UI extension
+/// (the host tells the UI its new size).
+#[repr(C)]
+pub struct LV2UI_Resize {
+    pub handle: *mut c_void,
+    pub ui_resize: unsafe extern "C" fn(*mut c_void, c_int, c_int) -> c_int,
+}
+
+#[repr(C)]
+pub struct LV2UI_Idle_Interface {
+    pub idle: unsafe extern "C" fn(LV2UI_Handle) -> c_int,
+}
+
 /// `LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE`.
 pub const STATE_POD_PORTABLE: u32 = 1 | 2;
 
@@ -171,7 +211,31 @@ uris! {
     LOG_ERROR = "http://lv2plug.in/ns/ext/log#Error";
     LOG_WARNING = "http://lv2plug.in/ns/ext/log#Warning";
     LOG_TRACE = "http://lv2plug.in/ns/ext/log#Trace";
+    LV2_CORE_REQUIRED_FEATURE = "http://lv2plug.in/ns/lv2core#requiredFeature";
+    UI_X11 = "http://lv2plug.in/ns/extensions/ui#X11UI";
+    UI_PARENT = "http://lv2plug.in/ns/extensions/ui#parent";
+    UI_RESIZE = "http://lv2plug.in/ns/extensions/ui#resize";
+    UI_IDLE_INTERFACE = "http://lv2plug.in/ns/extensions/ui#idleInterface";
+    UI_NO_USER_RESIZE = "http://lv2plug.in/ns/extensions/ui#noUserResize";
+    UI_FIXED_SIZE = "http://lv2plug.in/ns/extensions/ui#fixedSize";
+    UI_SCALE_FACTOR = "http://lv2plug.in/ns/extensions/ui#scaleFactor";
+    UI_UPDATE_RATE = "http://lv2plug.in/ns/extensions/ui#updateRate";
+    UI_MAKE_RESIDENT = "http://lv2plug.in/ns/extensions/ui#makeResident";
 }
+
+/// Features an X11 UI may require that this host provides.
+pub const SUPPORTED_UI_FEATURES: &[&str] = &[
+    URID_MAP,
+    URID_UNMAP,
+    OPTIONS_OPTIONS,
+    LOG_LOG,
+    UI_PARENT,
+    UI_RESIZE,
+    UI_IDLE_INTERFACE,
+    UI_NO_USER_RESIZE,
+    UI_FIXED_SIZE,
+    UI_MAKE_RESIDENT,
+];
 
 /// Features a plugin may require that this host provides (or, for the plugin-side
 /// declarations among them, that never stop it from running here).

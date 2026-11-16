@@ -82,7 +82,7 @@
 //!   let app2 = app.clone();
 //!   app.run_on_main_thread(move || {
 //!       let windows = app2.state::<wave_plugin_windows::Service>();
-//!       let result = if open { handle.open_editor(&windows) } else { handle.close_editor() };
+//!       let result = if open { handle.open_editor(&windows, &label) } else { handle.close_editor() };
 //!       // report `result` back through a channel if the command should await it
 //!   })?;
 //!   ```
@@ -131,7 +131,9 @@ mod effect;
 mod error;
 mod host;
 mod main_thread;
+mod message;
 mod module;
+mod run_loop;
 mod scan;
 mod state;
 

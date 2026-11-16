@@ -84,11 +84,15 @@ unsafe impl Send for StateTarget {}
 pub(crate) struct Shared {
     info: PluginInfo,
     model: Model,
-    /// Control input values (f32 bits) by port index; other ports' slots are unused.
+    /// Control port values (f32 bits) by port index: inputs as set, outputs as the plugin
+    /// last wrote them (meters, for its own interface); other ports' slots are unused.
     values: Vec<AtomicU32>,
     latency: AtomicU32,
     dirty: AtomicBool,
     target: Mutex<Option<StateTarget>>,
+    /// The plugin's own interface WAVE can embed, or why none (looked up once).
+    ui: std::sync::OnceLock<Result<crate::ui::UiSpec, String>>,
+    ui_open: AtomicBool,
 }
 
 impl Shared {
@@ -108,7 +112,50 @@ impl Shared {
             latency: AtomicU32::new(0),
             dirty: AtomicBool::new(false),
             target: Mutex::new(None),
+            ui: std::sync::OnceLock::new(),
+            ui_open: AtomicBool::new(false),
         }
+    }
+
+    pub(crate) fn uri(&self) -> &str {
+        &self.model.uri
+    }
+
+    pub(crate) fn port_count(&self) -> usize {
+        self.model.ports.len()
+    }
+
+    /// Indices of the control ports (inputs and outputs).
+    pub(crate) fn control_ports(&self) -> impl Iterator<Item = usize> + '_ {
+        self.model
+            .ports
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| matches!(p.kind, PortKind::ControlIn { .. } | PortKind::ControlOut { .. }))
+            .map(|(i, _)| i)
+    }
+
+    pub(crate) fn port_value(&self, port: usize) -> f32 {
+        self.value(port)
+    }
+
+    /// The plugin's interface moved a control input (a plain value, in the port's range).
+    pub(crate) fn set_from_ui(&self, port: u32, v: f32) {
+        if let Some(PortKind::ControlIn { spec, .. }) = self.model.ports.get(port as usize).map(|p| &p.kind) {
+            if v.is_finite() {
+                self.values[port as usize].store(spec.snap(v).to_bits(), Ordering::Relaxed);
+                self.dirty.store(true, Ordering::Release);
+            }
+        }
+    }
+
+    /// The embeddable interface (looked up on first use).
+    pub(crate) fn ui(&self) -> Result<crate::ui::UiSpec, String> {
+        self.ui.get_or_init(|| crate::ui::find(&self.model.uri)).clone()
+    }
+
+    pub(crate) fn set_ui_open(&self, open: bool) {
+        self.ui_open.store(open, Ordering::Release);
     }
 
     fn port_by_symbol(&self, symbol: &str) -> Option<usize> {
@@ -171,6 +218,8 @@ struct Wiring {
     atom_in: Vec<usize>,
     atom_out: Vec<usize>,
     latency_out: Option<usize>,
+    /// Control outputs, published for the plugin's interface (meters).
+    control_out: Vec<usize>,
 }
 
 impl Wiring {
@@ -183,7 +232,12 @@ impl Wiring {
                 PortKind::AudioIn { .. } | PortKind::CvIn => w.silent_in.push(i),
                 PortKind::AudioOut => w.main_out.push(i),
                 PortKind::ControlIn { designation, .. } => w.controls.push((i, *designation)),
-                PortKind::ControlOut { latency: true } if w.latency_out.is_none() => w.latency_out = Some(i),
+                PortKind::ControlOut { latency } => {
+                    if *latency && w.latency_out.is_none() {
+                        w.latency_out = Some(i);
+                    }
+                    w.control_out.push(i);
+                }
                 PortKind::AtomIn => w.atom_in.push(i),
                 PortKind::AtomOut => w.atom_out.push(i),
                 _ => {}
@@ -435,6 +489,9 @@ impl Lv2Effect {
                 r.copy_from_slice(l);
             }
         }
+        for &i in &w.control_out {
+            shared.values[i].store(self.units[0].bufs[i].floats()[0].to_bits(), Ordering::Relaxed);
+        }
         if let Some(i) = w.latency_out {
             let lat = self.units[0].bufs[i].floats()[0];
             let lat = if lat.is_finite() && lat > 0.0 { lat.round().min(u32::MAX as f32) as u32 } else { 0 };
@@ -608,6 +665,34 @@ impl Lv2Handle {
     /// The latency (samples) the plugin's `lv2:reportsLatency` port says now.
     pub fn latency(&self) -> usize {
         self.shared.latency.load(Ordering::Relaxed) as usize
+    }
+
+    /// Whether the plugin has an interface of its own WAVE can embed (an X11 UI whose
+    /// required features WAVE provides). Looks it up once.
+    pub fn has_editor(&self) -> bool {
+        self.editor_unavailable().is_none()
+    }
+
+    /// Why the plugin's own interface cannot be shown, when it cannot.
+    pub fn editor_unavailable(&self) -> Option<String> {
+        self.shared.ui().err()
+    }
+
+    /// Whether its interface window is open (turns `false` when the user closes it).
+    pub fn is_editor_open(&self) -> bool {
+        self.shared.ui_open.load(Ordering::Acquire)
+    }
+
+    /// Open the plugin's interface in a WAVE plugin window under a header showing `label`,
+    /// or bring it forward. **UI thread only** (the window service's).
+    pub fn open_editor(&self, windows: &wave_plugin_windows::Service, label: &wave_plugin_windows::Label) -> Result<(), String> {
+        crate::ui::open(&self.shared, windows, label).map_err(|e| format!("{}: {e}", self.shared.info.name))
+    }
+
+    /// Close the interface (no-op when closed). **UI thread only.**
+    pub fn close_editor(&self) -> Result<(), String> {
+        crate::ui::close(&self.shared);
+        Ok(())
     }
 }
 

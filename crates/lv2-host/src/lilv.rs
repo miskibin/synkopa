@@ -126,7 +126,22 @@ lilv_api! {
     lilv_state_to_string: fn(*mut World, *mut LV2_URID_Map, *mut LV2_URID_Unmap, *const State, *const c_char, *const c_char) -> *mut c_char;
     lilv_state_restore: fn(*const State, *mut Instance, Option<SetPortValue>, *mut c_void, u32, *const *const LV2_Feature);
     lilv_state_free: fn(*mut State);
+    lilv_plugin_get_uis: fn(*const Plugin) -> *mut Uis;
+    lilv_uis_begin: fn(*const Uis) -> *mut Iter;
+    lilv_uis_get: fn(*const Uis, *mut Iter) -> *const Ui;
+    lilv_uis_next: fn(*const Uis, *mut Iter) -> *mut Iter;
+    lilv_uis_is_end: fn(*const Uis, *mut Iter) -> bool;
+    lilv_uis_free: fn(*mut Uis);
+    lilv_ui_get_uri: fn(*const Ui) -> *const Node;
+    lilv_ui_is_a: fn(*const Ui, *const Node) -> bool;
+    lilv_ui_get_bundle_uri: fn(*const Ui) -> *const Node;
+    lilv_ui_get_binary_uri: fn(*const Ui) -> *const Node;
+    lilv_world_load_resource: fn(*mut World, *const Node) -> c_int;
+    lilv_world_find_nodes: fn(*mut World, *const Node, *const Node, *const Node) -> *mut Nodes;
 }
+
+pub type Uis = c_void;
+pub type Ui = c_void;
 
 // SAFETY: plain function pointers into a library that is never unloaded.
 unsafe impl Send for Lilv {}

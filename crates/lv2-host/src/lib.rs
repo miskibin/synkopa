@@ -12,8 +12,14 @@
 //! pub fn scan(rescan: bool) -> Result<Vec<PluginInfo>, String>; // effects, with reasons for unusable ones
 //! pub fn instantiate(uri: &str, state: Option<&[u8]>, sample_rate: f32, max_block: usize)
 //!     -> Result<(Box<dyn wave_engine::Processor>, Lv2Handle), String>;
-//! impl Lv2Handle { info, params, set_param, get_state, take_state_changed, latency }
+//! impl Lv2Handle { info, params, set_param, get_state, take_state_changed, latency,
+//!                   has_editor, editor_unavailable, is_editor_open, open_editor, close_editor }
 //! ```
+//!
+//! # The plugin's own interface
+//!
+//! An X11 UI (`ui:X11UI`) opens in a WAVE plugin window, under WAVE's header (`ui`):
+//! control ports both ways, `ui:resize`, `ui:idleInterface`. GTK/Qt UIs are not embedded.
 //!
 //! # What the host provides
 //!
@@ -58,6 +64,8 @@ mod effect;
 mod instance;
 #[cfg(target_os = "linux")]
 mod lilv;
+#[cfg(target_os = "linux")]
+mod ui;
 #[cfg(target_os = "linux")]
 mod world;
 
@@ -124,6 +132,21 @@ mod unavailable {
             match self.never {}
         }
         pub fn latency(&self) -> usize {
+            match self.never {}
+        }
+        pub fn has_editor(&self) -> bool {
+            match self.never {}
+        }
+        pub fn editor_unavailable(&self) -> Option<String> {
+            match self.never {}
+        }
+        pub fn is_editor_open(&self) -> bool {
+            match self.never {}
+        }
+        pub fn open_editor(&self, _windows: &wave_plugin_windows::Service, _label: &wave_plugin_windows::Label) -> Result<(), String> {
+            match self.never {}
+        }
+        pub fn close_editor(&self) -> Result<(), String> {
             match self.never {}
         }
     }

@@ -20,6 +20,7 @@ import { KeysPanel } from './KeysPanel';
 import { SynthPanel } from './SynthPanel';
 import { S } from '../state/store';
 import { closeEditor, openSampleEditor } from '../state/actions';
+import { togglePlugin } from '../state/pluginWindows';
 
 /** The insert a channel is heard on: its own, else the track of the first playlist clip of a pattern with its
  *  notes (rt.rs `ChanRt::heard`); null when it plays nowhere yet. */
@@ -37,11 +38,17 @@ export function chanWin() {
   return ed?.kind === 'channel' ? { id: ed.id, x: ed.x, y: ed.y, w: ed.w } : win();
 }
 
-/** Open the channel's window, or close it when it is already showing that channel. */
-export function toggleChannelWindow(id: Id) {
+/**
+ * Open the channel's window, or close it when it is already showing that channel. A plugin instrument shows its
+ * own window instead (FL), and a second click closes that; WAVE's window comes from its header's gear
+ * (`settings`), or when the plugin has no window of its own.
+ */
+export function toggleChannelWindow(id: Id, settings = false) {
   const w = win();
   const kind = chanById(id)?.kind;
   if (!kind) return;
+  if (kind === 'plugin' && !settings) { togglePlugin(id, () => toggleChannelWindow(id, true)); return; }
+  if (settings && chanWin()?.id === id) return;
   if (chanWin()?.id === id) { closeChannelWindow(); return; }
   const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : kind === 'plugin' ? 560 : Math.min(620, window.innerWidth - 20);
   // beside the Channel Rack: the floating window, or the docked panel's place on screen

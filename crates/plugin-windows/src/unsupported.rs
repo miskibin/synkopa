@@ -21,6 +21,10 @@ pub(crate) fn create_window(
 
 pub(crate) fn destroy_window(_hwnd: isize) {}
 
+pub(crate) fn embed_handle(_hwnd: isize) -> isize {
+    0
+}
+
 pub(crate) fn show_window(_hwnd: isize) {}
 
 pub(crate) fn request_close(_hwnd: isize) {}
@@ -33,6 +37,10 @@ pub(crate) fn dpi(_hwnd: isize) -> u32 {
 
 /// "Cannot tell" rather than "no".
 pub(crate) fn has_child_window(_hwnd: isize) -> Result<bool, WindowError> {
+    Err(WindowError::Unsupported)
+}
+
+pub(crate) fn embedded_size(_hwnd: isize) -> Result<Option<WindowSize>, WindowError> {
     Err(WindowError::Unsupported)
 }
 

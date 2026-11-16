@@ -14,6 +14,7 @@ import { commit, Gesture, wheelEdit } from '../state/edit';
 import { findFx, insName, plain, S } from '../state/store';
 import { onFxFrame, tele } from '../state/telemetry';
 import { openMenu, say, U, type PlugWin } from '../state/ui';
+import { closeEditor, editorOpen, isNoEditor, knownWithoutEditor, openEditor } from '../state/pluginWindows';
 import { dblCheck, track } from '../ui/drag';
 import { addFrameTask, fitCanvas, fonts } from '../ui/frameLoop';
 import { FXMETA, FxTile } from '../ui/icons';
@@ -652,48 +653,42 @@ const paramTitle = (p: PluginParam) =>
   p.min != null && p.max != null && !p.toggle && !p.options?.length ? `${p.name} (${+p.min.toPrecision(6)} … ${+p.max.toPrecision(6)}${p.unit ? ' ' + p.unit : ''})` : p.name;
 
 /**
- * A hosted plugin's controls: its editor button (VST3 on Windows) and the generic parameter list (every format).
- * `id` is the effect's id, or with `instrument` a plugin-instrument channel's (its parameters cannot be automated yet,
- * and a plugin that did not load leaves the channel silent rather than passing audio through).
+ * A hosted plugin's controls in WAVE's window: the button for its own window and the generic parameter list
+ * (every format). `id` is the effect's id, or with `instrument` a plugin-instrument channel's (its parameters cannot
+ * be automated yet, and a plugin that did not load leaves the channel silent rather than passing audio through).
  */
-/** Plugin classes known to have no window of their own (asked once per session): their button is a note. */
-const NO_EDITOR_CIDS = new Set<string>();
-
 export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boolean }) {
   const [params, setParams] = createSignal<PluginParam[]>([]);
   const [err, setErr] = createSignal<string | null>(null);
-  const [guiOpen, setGuiOpen] = createSignal(false);
   const [guiErr, setGuiErr] = createSignal<string | null>(null);
-  const noEditor = () => !!props.plugin && NO_EDITOR_CIDS.has(props.plugin.cid);
-  const [noEd, setNoEd] = createSignal(noEditor());
-  // the plugin's window can be closed with its own X: the button follows it
-  let poll = 0;
-  createEffect(() => {
-    if (!guiOpen()) return;
-    poll = window.setInterval(() => { be().pluginEditorOpen(props.id).then(o => { if (!o) setGuiOpen(false); }).catch(() => {}); }, 700);
-    onCleanup(() => clearInterval(poll));
-  });
+  const [noEd, setNoEd] = createSignal(knownWithoutEditor(props.plugin));
   const toggleGui = () => {
-    const open = !guiOpen();
     setGuiErr(null);
-    be().pluginEditor(props.id, open).then(() => setGuiOpen(open)).catch(e => {
-      const msg = String(e);
-      if (/NO_EDITOR/.test(msg)) { if (props.plugin) NO_EDITOR_CIDS.add(props.plugin.cid); setNoEd(true); return; }
-      setGuiErr(t('c.fx.guiFail', { e: msg.replace(/^Error:\s*/, '') }));
+    if (editorOpen(props.id)) return void closeEditor(props.id);
+    openEditor(props.id).catch(e => {
+      if (isNoEditor(e)) return setNoEd(true);
+      setGuiErr(t('c.fx.guiFail', { e: String(e).replace(/^Error:\s*/, '') }));
     });
   };
-  // VST3 editor windows exist on Windows only; LV2 editors are not hosted: there the list is the plugin's UI
+  // whether this session can show plugin windows at all (no X11 display on Linux: the list is the plugin's UI)
   const [editors, setEditors] = createSignal(true);
-  const isLv2 = () => props.plugin?.format === 'lv2';
+  const [editorsWhy, setEditorsWhy] = createSignal<string | null>(null);
   const [q, setQ] = createSignal('');
   let refresh = 0;
   const load = () => be().pluginParams(props.id).then(p => { setParams(p); setErr(null); }).catch(e => setErr(String(e)));
   /** Why the engine could not load the plugin (not installed, refused): shown instead of a parameter error. */
   const loadErr = () => S.fxErrors[props.id];
-  onMount(() => { load(); be().appInfo().then(i => setEditors(i.pluginEditors)).catch(() => {}); });
+  onMount(() => { load(); be().appInfo().then(i => { setEditors(i.pluginEditors); setEditorsWhy(i.pluginEditorsWhy ?? null); }).catch(() => {}); });
   // a window opened with the slot is asked before the engine has the instance: ask again once it does
   createEffect(() => { void S.revision; if (err() && !loadErr()) load(); });
-  onCleanup(() => { clearTimeout(refresh); if (guiOpen()) void be().pluginEditor(props.id, false).catch(() => {}); });
+  // knobs turned in the plugin's own window: the list follows while both are open
+  createEffect(() => {
+    if (!editorOpen(props.id)) return;
+    const iv = window.setInterval(load, 1000);
+    onCleanup(() => clearInterval(iv));
+  });
+  // closing WAVE's window leaves the plugin's own window open (FL): its header's gear brings this back
+  onCleanup(() => clearTimeout(refresh));
   const label = () => PLUGIN_FORMAT_LABEL[props.plugin?.format ?? 'vst3'];
   const set = (id: number, v: number) => {
     setParams(ps => ps.map(p => p.id === id ? { ...p, value: v } : p));
@@ -704,9 +699,9 @@ export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boo
   return (
     <div style={{ padding: '12px 14px', display: 'flex', 'flex-direction': 'column', gap: '10px' }}>
       <div class="row" style={{ gap: '8px' }}>
-        <Show when={editors() && !isLv2()} fallback={<span class="note" style={{ flex: 'none' }} title={isLv2() ? t('c.fx.guiNoneLv2') : t('c.fx.guiNone')}>{t('c.fx.guiNoneShort')}</span>}>
+        <Show when={editors()} fallback={<span class="note" style={{ flex: 'none' }} title={editorsWhy() ?? t('c.fx.guiNone')}>{t('c.fx.guiNoneShort')}</span>}>
           <Show when={!noEd()} fallback={<span class="note" style={{ flex: 'none' }} title={t('c.fx.guiNoWindowTip')}>{t('c.fx.guiNoWindow')}</span>}>
-            <button class="smallbtn primary" style={{ height: '26px', padding: '0 12px' }} onClick={toggleGui}>{guiOpen() ? t('c.fx.guiClose') : t('c.fx.guiOpen')}</button>
+            <button class="smallbtn primary" style={{ height: '26px', padding: '0 12px' }} onClick={toggleGui}>{editorOpen(props.id) ? t('c.fx.guiClose') : t('c.fx.guiOpen')}</button>
           </Show>
         </Show>
         <span class="fxp-badge" style={{ flex: 'none' }}>{label()}</span>

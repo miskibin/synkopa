@@ -123,6 +123,14 @@ pub fn register_bundled(resource_dir: Option<std::path::PathBuf>) {
 /// The error of a plugin that has no window of its own (WAVE Demo Synth): the UI matches its prefix.
 pub const NO_EDITOR: &str = "NO_EDITOR: this plugin has no window of its own; its parameters are listed below";
 
+fn vst3_editor_error(e: wave_vst3::Vst3Error) -> String {
+    match e {
+        // the UI recognises this one: it turns the button into a note instead of an error
+        wave_vst3::Vst3Error::NoEditor => NO_EDITOR.to_string(),
+        e => e.to_string(),
+    }
+}
+
 pub struct Plugins {
     handles: Mutex<HashMap<Id, Handle>>,
     known: Mutex<Option<ScanResult>>,
@@ -307,35 +315,34 @@ impl Plugins {
     pub fn editor_open(&self, fx: Id) -> Result<bool, String> {
         Ok(match self.handle(fx)? {
             Handle::Vst3(h) => h.is_editor_open(),
-            Handle::Lv2(_) => false,
+            Handle::Lv2(h) => h.is_editor_open(),
         })
     }
 
-    pub fn editor(&self, app: &tauri::AppHandle, fx: Id, open: bool) -> Result<(), String> {
-        let h = match self.handle(fx)? {
-            Handle::Vst3(h) => h,
-            Handle::Lv2(_) if !open => return Ok(()),
-            Handle::Lv2(_) => {
-                return Err("LV2 plugins are edited in WAVE's parameter list (their own editor windows are not supported yet)".into())
+    /// Open (or bring forward) or close the plugin's own window, under WAVE's header showing
+    /// `label`. The window lives on the UI thread; this waits for it.
+    pub fn editor(&self, app: &tauri::AppHandle, fx: Id, open: bool, label: wave_plugin_windows::Label) -> Result<(), String> {
+        let h = self.handle(fx)?;
+        if open {
+            let has = match &h {
+                Handle::Vst3(h) => h.has_editor(),
+                Handle::Lv2(h) => h.has_editor(),
+            };
+            if !has {
+                return Err(NO_EDITOR.into());
             }
-        };
-        if open && !h.has_editor() {
-            return Err(NO_EDITOR.into());
         }
         let (tx, rx) = std::sync::mpsc::channel();
         let a = app.clone();
         app.run_on_main_thread(move || {
-            let r = if open {
-                let w = a.state::<wave_plugin_windows::Service>();
-                h.open_editor(&w)
-            } else {
-                h.close_editor()
+            let w = a.state::<wave_plugin_windows::Service>();
+            let r = match (&h, open) {
+                (Handle::Vst3(h), true) => h.open_editor(&w, &label).map_err(vst3_editor_error),
+                (Handle::Vst3(h), false) => h.close_editor().map_err(vst3_editor_error),
+                (Handle::Lv2(h), true) => h.open_editor(&w, &label),
+                (Handle::Lv2(h), false) => h.close_editor(),
             };
-            let _ = tx.send(r.map_err(|e| match e {
-                // the UI recognises this one: it turns the button into a note instead of an error
-                wave_vst3::Vst3Error::NoEditor => NO_EDITOR.to_string(),
-                e => e.to_string(),
-            }));
+            let _ = tx.send(r);
         })
         .map_err(|e| e.to_string())?;
         rx.recv().map_err(|e| e.to_string())?

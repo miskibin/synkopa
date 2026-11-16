@@ -16,7 +16,7 @@ import { osDragEnd, osDragOver, osDrop } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
 import { Mixer, MixView } from './views/Mixer';
 import { leaveMixView, toggleMixView } from './state/mixView';
-import { routeSelectedChannels } from './state/pattern';
+import { chanById, routeSelectedChannels } from './state/pattern';
 import { playlistZoom } from './views/Playlist';
 import { Workspace } from './views/PatDock';
 import { SampleEditor } from './views/SampleEditor';
@@ -28,7 +28,7 @@ import { AudioToast } from './views/AudioToast';
 import { Updates } from './views/Updates';
 import { midiStatus, startMidi } from './state/midi';
 import { releaseAll, setTypingOn, typingDown, typingOn, typingUp } from './state/typingKeys';
-import { chanWin, closeChannelWindow } from './views/ChannelWindow';
+import { chanWin, closeChannelWindow, toggleChannelWindow } from './views/ChannelWindow';
 import { channels } from './state/pattern';
 import { MusicDialog } from './views/MusicDialog';
 import { MissingAudio } from './views/MissingAudio';
@@ -199,6 +199,12 @@ const onBlur = () => { if (U.alt) setU('alt', false); releaseAll(); };
 export function App() {
   onMount(() => {
     startMidi();
+    // the gear in a plugin window's header: WAVE's own window for that plugin channel or effect
+    const offSettings = be().on('plugin-settings', ({ id }) => {
+      if (chanById(id)) toggleChannelWindow(id, true);
+      else if (findFx(id)) A.openPlug(id, true);
+    });
+    onCleanup(() => void offSettings.then(off => off()));
     if (isTauri()) {
       void import('@tauri-apps/api/window').then(async ({ getCurrentWindow }) => {
         const w = getCurrentWindow();
