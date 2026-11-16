@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sketchProject, mockCatalog } from '../api/mockData';
 import { CLIP_GAIN_DB, KEYS_RELEASE, VOL_UNITY, type AutoTarget, type CurveShape, type Channel, type Clip, type Project } from '../api/types';
 import { applyAll } from './applyOps';
-import { createAutomationOps, curveAt, denormalize, normalize, autoValueText, parseAutoValue, readTarget, sortPoints, targetKey, targetLabel, valueAt } from './automation';
+import { createAutomationOps, curveAt, denormalize, normalize, autoValueText, parseAutoValue, readTarget, sortPoints, targetKey, targetLabel, trackForAutomation, valueAt } from './automation';
 import { newSynthChannel, synthParam } from './synth';
 import curvesJson from '../../../crates/engine/tests/fixtures/curves.json?raw';
 
@@ -98,6 +98,23 @@ describe('automation of channels, synth and Keys parameters, and audio clips', (
     expect(a.points[0].v).toBeCloseTo(normalize(p, cat, targets[2], def), 9);
     const g = createAutomationOps(p, cat, { kind: 'clipGain', id: 7003 }, 'Loop · Clip volume', '#fff', 0, 16, () => next++);
     expect(applyAll(p, g.ops).automations!.find(x => x.id === g.autoId)!.points[0].v).toBeCloseTo(18 / 36, 9);
+  });
+
+  it('puts the clip on the first track free over its span, a new bottom track when none is', () => {
+    const p = project();
+    let next = 9500;
+    const clip = (track: number, start: number, len: number) => ({ id: next++, track, start, len, offset: 0, kind: 'pat' as const, ref: 1, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+    p.clips = p.clips.filter(c => c.track >= p.tracks.length); // start from an empty playlist
+    // every track is busy from bar 7 on (FL-style arrangement); bars 1-6 are free below track 0
+    p.clips.push(clip(0, 0, 64));
+    for (let t = 1; t < p.tracks.length; t++) p.clips.push(clip(t, 24, 24));
+    expect(trackForAutomation(p, 0, 24)).toBe(p.tracks.length > 1 ? 1 : p.tracks.length);
+    expect(trackForAutomation(p, 20, 8)).toBe(p.tracks.length); // overlaps everything: a new track
+    // an armed track is never picked
+    if (p.tracks.length > 1) { p.tracks[1].arm = true; expect(trackForAutomation(p, 0, 24)).toBe(p.tracks.length > 2 ? 2 : p.tracks.length); }
+    const r = createAutomationOps(p, cat, targets[2], 'x', '#fff', 20, 8, () => next++);
+    expect(r.track).toBe(p.tracks.length);
+    expect(applyAll(p, r.ops).tracks.length).toBe(p.tracks.length + 1);
   });
 
   it('labels each target by what it controls', () => {

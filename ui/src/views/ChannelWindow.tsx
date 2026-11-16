@@ -103,7 +103,7 @@ function Body(props: { w: Win; c: Channel }) {
   const plugin = () => { const x = c(); return x.kind === 'plugin' ? x.plugin : undefined; };
   return (
     <div class="win chanwin" data-channel-window={c().id} style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': outerZ(props.w.z) }}
-      onPointerDown={chanFront}>
+      on:pointerdown={{ capture: true, handleEvent: chanFront }}>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => props.w, setPos)} title={t('b.cw.headTip')}
         onDblClick={e => { if (!(e.target as HTMLElement).closest('button, select, input')) showInsert(chanHeardInsert(c()) ?? 0); }}>
         <span class="chicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={14} /></span>

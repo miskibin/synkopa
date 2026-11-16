@@ -300,9 +300,9 @@ describe('automation', () => {
     const q3 = applyAll(q2, [{ op: 'removeAutomation', id: r.autoId }]);
     expect(q3.clips.some(c => c.kind === 'auto')).toBe(false);
   });
-  it('adds a track when none is empty', () => {
+  it('adds a track when none is free over the clip span', () => {
     const p = sketchProject(cat);
-    p.clips.push(...p.tracks.map((_, i) => ({ id: 5000 + i, track: i, start: 100, len: 4, offset: 0, kind: 'pat' as const, ref: 1, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false })));
+    p.clips.push(...p.tracks.map((_, i) => ({ id: 5000 + i, track: i, start: 8, len: 4, offset: 0, kind: 'pat' as const, ref: 1, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false })));
     let next = 9000;
     const r = createAutomationOps(p, cat, { kind: 'mix', fxId: 903 }, 'Mix', '#fff', 0, 16, () => next++);
     expect(r.track).toBe(p.tracks.length);

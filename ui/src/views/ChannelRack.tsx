@@ -9,13 +9,13 @@ import { unwrap } from 'solid-js/store';
 import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { barsText, cellsBetween, clearChannel, copyChannelNotes, fitCw, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, notesText, rotate, setKeyAt, setStep, setVelAt, stepsOf, type ChannelClip } from '../lib/pattern';
+import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, notesText, rotate, setKeyAt, setStep, setVelAt, stepsOf, type ChannelClip } from '../lib/pattern';
 import { moveIndex, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { commit, Gesture } from '../state/edit';
 import {
-  addBar, RACK_MIN_W, STEP_MAX, STEP_MIN, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
+  addBar, RACK_MIN_W, STEP_W, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
   rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, stepPattern, toggleChanMute, toggleChanSolo,
 } from '../state/pattern';
 import { arrVersion, S } from '../state/store';
@@ -64,8 +64,8 @@ function Rack(props: { z: number; docked?: boolean }) {
   // the pointer (the rest of the run landed in the wrong columns). It refits on release.
   const [hold, setHold] = createSignal<{ cw: number; steps: number } | null>(null);
   const geo = (): RackGeo => {
-    const end = stepsOf(pt()), h = hold(), steps = h ? h.steps : Math.min(TOTAL_BEATS * 4, end + 16), w = size().w;
-    const cw = h ? h.cw : clamp(fitCw(w, steps), STEP_MIN, STEP_MAX);
+    const end = stepsOf(pt()), h = hold(), steps = h ? h.steps : Math.min(TOTAL_BEATS * 4, end + 16);
+    const cw = h ? h.cw : STEP_W;
     return { cw, sx: scroll().x, sy: scroll().y, rh: RACK_ROW, steps, end, rows: chans().length };
   };
   // the grid's own height: the add-channel row below the channels scrolls with them

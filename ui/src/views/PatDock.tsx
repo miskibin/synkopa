@@ -5,7 +5,7 @@
 import { Show, type JSX } from 'solid-js';
 import { t } from '../lib/i18n';
 import { fitDock, PLAYLIST_MIN_H, PLAYLIST_MIN_W, ROLL_DOCK_MIN_H, SPLIT } from '../lib/layout';
-import { channels, closeRack, closeRoll, curPat, newPattern, openRack, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, selChan, STEP_MIN } from '../state/pattern';
+import { channels, closeRack, closeRoll, curPat, newPattern, openRack, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, selChan, STEP_W } from '../state/pattern';
 import { rackDockFitWidth } from '../lib/rack';
 import { stepsOf } from '../lib/pattern';
 import { setU, U } from '../state/ui';
@@ -24,7 +24,7 @@ export function Workspace() {
   // the room beside the browser (and the rack's splitter); the Playlist keeps PLAYLIST_MIN_W of it
   const rackRoom = () => rowSize().w - (U.pickOpen ? U.pickW + SPLIT : 0) - SPLIT;
   // until the user drags the splitter the rack is as wide as the pattern's steps at the compact step width
-  const autoW = () => { const pt = curPat(); return rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: STEP_MIN, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); };
+  const autoW = () => { const pt = curPat(); return rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); };
   const rackW = (want = U.rackDockW || autoW()) => fitDock(want, RACK_MIN_W, rackRoom(), PLAYLIST_MIN_W);
   const rollH = (want = U.rollDockH) => fitDock(want, ROLL_DOCK_MIN_H, colSize().h - SPLIT, PLAYLIST_MIN_H);
   const rackSplit = (e: PointerEvent) => {

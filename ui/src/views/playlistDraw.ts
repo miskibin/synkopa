@@ -3,7 +3,7 @@
 import type { Automation, Channel, Clip, Comp, Id, Note, Pattern, Project, Source, Take, Track } from '../api/types';
 import { keyOf } from '../lib/pattern';
 import { valueAt } from '../lib/automation';
-import { handleAt, HANDLE_MIN_W, type EnvHit } from '../lib/envEdit';
+import { EDGE_INSET, handleAt, HANDLE_MIN_W, type EnvHit } from '../lib/envEdit';
 import type { LaneOverlaps } from '../lib/overlaps';
 import { boundaries, takeEnd, toComp } from '../lib/comp';
 import { mix } from '../lib/color';
@@ -505,7 +505,7 @@ function drawEnvelope(g: CanvasRenderingContext2D, v: View, c: Clip, a: Automati
       const h = handleAt(pts, i); if (!h) continue;
       const hx = X(h.t); if (hx < vis0 - 5 || hx > vis1 + 5) continue;
       const on = hov?.kind === 'handle' && hov.i === i;
-      g.beginPath(); g.arc(hx, Y(h.v), on ? 4 : 3, 0, Math.PI * 2);
+      g.beginPath(); g.arc(hx, Y(h.v), on ? 5 : 3.5, 0, Math.PI * 2);
       g.fillStyle = on ? T.ink : T.clipBase; g.fill();
       g.strokeStyle = on ? T.ink : ink; g.lineWidth = 1.25; g.stroke();
     }
@@ -513,9 +513,10 @@ function drawEnvelope(g: CanvasRenderingContext2D, v: View, c: Clip, a: Automati
   // points: always where there is room for them, bigger on the focused clip
   if (!focus && !sel && cw / Math.max(1, pts.length) <= 8) return;
   pts.forEach((q, i) => {
-    const x = X(q.t); if (x < vis0 - 5 || x > vis1 + 5) return;
+    // a point on the clip's edge sits just inside it, whole (where the Playlist also picks it)
+    const x = Math.min(Math.max(X(q.t), cx + EDGE_INSET), cx + cw - EDGE_INSET); if (x < vis0 - 6 || x > vis1 + 6) return;
     const on = hov?.kind === 'point' && hov.i === i, picked = !!sel?.has(i);
-    g.beginPath(); g.arc(x, Y(q.v), on || picked ? 4.5 : focus ? 3.5 : 2.5, 0, Math.PI * 2);
+    g.beginPath(); g.arc(x, Y(q.v), on || picked ? 5.5 : focus ? 4.5 : 3, 0, Math.PI * 2);
     g.fillStyle = picked ? T.amber : on ? T.ink : ink; g.fill();
     if (focus || picked) { g.strokeStyle = T.clipBase; g.lineWidth = 1.25; g.stroke(); }
   });

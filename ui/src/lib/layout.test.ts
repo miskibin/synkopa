@@ -37,6 +37,11 @@ describe('parseLayout', () => {
   it('keeps the older fields', () => {
     expect(parseLayout(JSON.stringify({ tool: 'paint', pickOpen: false, browserTab: 'library' }))).toEqual({ tool: 'paint', pickOpen: false, browserTab: 'library' });
   });
+  it('opens the old Project browser tab as Patterns', () => {
+    expect(parseLayout(JSON.stringify({ browserTab: 'project' })).browserTab).toBe('patterns');
+    expect(parseLayout(JSON.stringify({ browserTab: 'audio' })).browserTab).toBe('audio');
+    expect(parseLayout(JSON.stringify({ browserTab: 'nope' })).browserTab).toBeUndefined();
+  });
 });
 
 describe('parseGeo', () => {

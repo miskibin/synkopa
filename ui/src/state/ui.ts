@@ -1,5 +1,5 @@
 // UI-only state (not saved, not undone).
-import { createEffect, createRoot } from 'solid-js';
+import { createEffect, createRoot, createSignal } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { t } from '../lib/i18n';
 import type { ClipKind, Id } from '../api/types';
@@ -75,7 +75,7 @@ export interface UiState {
   /** The "Import MIDI" dialog: the file, where a new pattern goes, or the channel a part goes into. */
   midiWin: { path: string; beat?: number; track?: number; into?: { pattern: Id; ch: Id } } | null;
   readout: string;
-  headW: number; pickW: number; pickOpen: boolean; browserTab: 'project' | 'library';
+  headW: number; pickW: number; pickOpen: boolean; browserTab: 'patterns' | 'audio' | 'library';
   ghost: { x: number; y: number; name: string; color: string } | null;
   dragOver: boolean;
   eqSel: Record<number, number>;
@@ -121,6 +121,13 @@ export interface UiState {
   stretchMode: boolean;
 }
 
+/**
+ * A request to bring a Playlist spot into view: the track (index) and beat of something just made
+ * off screen (an automation clip on a new bottom track). `n` makes each request a new value.
+ */
+export const [revealReq, setRevealReq] = createSignal<{ track: number; beat: number; n: number } | null>(null);
+export const revealInPlaylist = (track: number, beat: number) => setRevealReq(r => ({ track, beat, n: (r?.n ?? 0) + 1 }));
+
 export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1, clipId: null },
   start: 0, follow: true, alt: false,
@@ -129,7 +136,7 @@ export const [U, setU] = createStore<UiState>({
   openingProject: false,
   projectZipBusy: false,
   readout: t('d.ui.ready'),
-  headW: 196, pickW: 220, pickOpen: true, browserTab: 'project',
+  headW: 196, pickW: 220, pickOpen: true, browserTab: 'patterns',
   ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, chSel: [], rackWin: null, rollWin: null,
   rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true, mixDock: true, mixWin: { x: 120, y: 140, w: 1100, h: 420, z: 0 },
   rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,

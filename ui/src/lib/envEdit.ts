@@ -13,7 +13,13 @@ export interface EnvGeom {
 }
 
 /** Pointer radius (px) that picks a point, and a tension handle. */
-export const POINT_R = 7, HANDLE_R = 6;
+export const POINT_R = 9, HANDLE_R = 8;
+/** How far (px) a point on a clip's edge is drawn, and picked, inside the clip: a point at the
+ *  envelope's very start or end would otherwise show as half a dot, cut off by the clip's border. */
+export const EDGE_INSET = 5;
+/** `G` with its points kept `EDGE_INSET` px inside [x0, x1] (the clip), as they are drawn. */
+export const insetGeom = <G extends EnvGeom>(G: G, x0: number, x1: number): G =>
+  ({ ...G, X: (t: number) => Math.min(Math.max(G.X(t), x0 + EDGE_INSET), x1 - EDGE_INSET) });
 /** Segments narrower than this (px) show no handle: it would sit on the points. */
 export const HANDLE_MIN_W = 18;
 

@@ -89,7 +89,9 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   onMount(() => { meterEls.set(props.m.id, [fl, fr]); hold.delete(props.m.id); });
   onCleanup(() => meterEls.delete(props.m.id));
   const audible = () => !m().muted && (m().id === 0 || !anyInsertSolo() || m().solo);
-  const route = () => { if (m().id === 0) return 'OUT'; const here = [...S.project.tracks.filter(t => t.insert === m().id).map(t => t.name), ...channels().filter(c => c.insert === m().id).map(c => c.name), ...samplesOn(m().id)]; return here.length ? [...new Set(here)].join(', ') : '—'; };
+  // what plays into this insert: tracks, channels, samples routed to it ('' when nothing is)
+  const sources = () => m().id === 0 ? '' : [...new Set([...S.project.tracks.filter(t => t.insert === m().id).map(t => t.name), ...channels().filter(c => c.insert === m().id).map(c => c.name), ...samplesOn(m().id)])].join(', ');
+  const route = () => m().id === 0 ? 'OUT' : sources() || '—';
   const panT = () => ({ kind: 'insertPan' as const, id: m().id }), volT = () => ({ kind: 'insertVol' as const, id: m().id });
   const shownPan = () => autoDisplay(panT()) ?? m().pan, shownVol = () => autoDisplay(volT()) ?? m().vol;
   const pan = () => { const t = (shownPan() + 1) / 2; return { dash: Math.abs(t - 0.5) * L30 + 'px ' + C30 + 'px', off: -Math.min(t, 0.5) * L30 + 'px', angle: -135 + t * 270 }; };
@@ -150,16 +152,20 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       <div class="bar" style={{ background: m().color }} />
       {/* one row: the insert's number and name (a default "Insert 7" is just its number), the effect count on the right */}
       <div class="nmrow" title={tName(label().full) + ' — ' + tr('c.mix.nameTip')} onDblClick={rename}>
-        <Show when={label().num}><span class="num" classList={{ only: !label().name }}>{label().num}</span></Show>
+        <Show when={label().num}><span class="num" classList={{ only: !label().name && (props.full || !sources()) }}>{label().num}</span></Show>
+        {/* docked, an insert without its own name: what is routed to it, quiet, after the number */}
+        <Show when={!props.full && !label().name && sources()}>
+          <span class="nm src" title={sources()}>{sources()}</span>
+        </Show>
         <Show when={label().name}>
           <span ref={nmEl} class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }}>
             <Show when={!tight() && icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show><span ref={nmText}>{tName(label().name)}</span></span>
         </Show>
         <Show when={m().fx.length}>
-          {/* docked: a dot (the name needs the room); the wider Mix view strips spell out the count */}
+          {/* docked: a dot and the count; the wider Mix view strips spell out "3 FX" */}
           <button class="fxn" classList={{ off: m().fx.every(f => f.bypass) }} onPointerDown={stop} onDblClick={stop} onClick={() => A.toggleInsertFx(m().id)}
             title={tr('c.mix.fxCountTip', { n: m().fx.length }) + ' · ' + tr('c.mix.fxToggleTip')} aria-label={tr('c.mix.fxCountTip', { n: m().fx.length })}>
-            <span class="fxdot" /><span class="fxt">{m().fx.length + ' FX'}</span></button>
+            <span class="fxdot" /><span class="fxt">{m().fx.length}<span class="fxw"> FX</span></span></button>
         </Show>
       </div>
       <div class="knobrow">

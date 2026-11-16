@@ -9,7 +9,7 @@ import { addFrameTask } from '../ui/frameLoop';
 import { commit } from './edit';
 import { allocId, S } from './store';
 import { curBeat } from './telemetry';
-import { openMenu, say, setU, U } from './ui';
+import { openMenu, revealInPlaylist, say, setU, U } from './ui';
 
 const [beatSig, setBeatSig] = createSignal(0);
 type Span = { start: number; end: number; offset: number; points: AutoPoint[] };
@@ -73,6 +73,8 @@ export function automate(target: AutoTarget, color = '#e0a44a', opts?: { current
   const r = createAutomationOps(S.project, S.catalog, target, name, color, start, len, allocId, opts?.current);
   commit(r.ops, tl('a.au.label'));
   setU('sel', [r.clipId]);
+  // the clip lands on the first empty track or a new one at the bottom, often off screen
+  revealInPlaylist(r.track, start);
   say(tl('a.au.created', { name, n: r.track + 1, pos: fmtPos(start) }));
 }
 

@@ -16,7 +16,7 @@ import { peaksVersion } from '../state/peaks';
 import { allocId, anyTrackSolo, arrVersion, clipSrcLen, onArrangementChange, plain, S, srcLenBeats, srcOf } from '../state/store';
 import { curBeat, recState, tele } from '../state/telemetry';
 import { recTarget, recUntil } from '../lib/recTarget';
-import { closeMenu, openMenu, openRename, say, setU, U, type MenuItem } from '../state/ui';
+import { closeMenu, openMenu, openRename, revealReq, say, setU, U, type MenuItem } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { dblCheck, dragCursor, edgeScroller, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
@@ -30,7 +30,7 @@ import { laneOverlaps } from '../lib/overlaps';
 import { damageRects, followScroll, planTile, snapPx, type Rect, type Tile } from './playlistTile';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { autoValueText, parseAutoValue, cyclesOf, stairsOf } from '../lib/automation';
-import { addPoint, deletePoints, dragTension, hitEnv, movePoints, pointsInBox, setShape, type EnvHit } from '../lib/envEdit';
+import { addPoint, deletePoints, dragTension, hitEnv, insetGeom, movePoints, pointsInBox, setShape, type EnvHit } from '../lib/envEdit';
 import { autoById } from '../state/store';
 import { openPattern } from '../state/pattern';
 import { rgba, T, theme } from '../ui/theme';
@@ -94,6 +94,9 @@ function sameDrawnChannel(a: Channel | undefined, b: Channel): boolean {
 
 /** `cb`: a comp region boundary (`bnd` = its index in `boundaries(comp.regions)`). */
 interface Hit { c: Clip; edge: 'l' | 'r' | 'fi' | 'fo' | 'cb' | 'menu' | null; bnd?: number }
+/** Trim zone of a clip's edge (px): this far inside the clip, and this far outside it. Together
+ *  14 px, about what REAPER / Ableton give an edge; 6 px inside alone was hard to hit. */
+const EDGE_IN = 8, EDGE_OUT = 6;
 /** A take lane under a track. `cb` = comp beat under the pointer. */
 interface LaneHit extends TakeRow { ti: number; k: number; take: Take; cb: number }
 
@@ -119,6 +122,16 @@ export function Playlist() {
     const y0 = tops()[i], y1 = y0 + S.project.tracks[i].h, top = scrollEl.scrollTop, vis = scrollEl.clientHeight - 30;
     if (y0 < top || y1 > top + vis) scrollEl.scrollTop = Math.max(0, y0 - 10);
   }, { defer: true }));
+  // something made off screen (an automation clip): scroll its track, and its start, into view
+  // (next frame: a new bottom track has to be laid out before the view can scroll to it)
+  createEffect(on(revealReq, r => requestAnimationFrame(() => {
+    if (!r || !scrollEl || !S.project.tracks[r.track]) return;
+    const y0 = tops()[r.track], y1 = y0 + S.project.tracks[r.track].h, top = scrollEl.scrollTop, vis = scrollEl.clientHeight - 30;
+    if (y0 < top || y1 > top + vis) scrollEl.scrollTop = Math.max(0, y1 - vis + 10);
+    const x = r.beat * U.bw, left = scrollEl.scrollLeft, w = scrollEl.clientWidth - U.headW;
+    if (x < left || x > left + w - 40) scrollEl.scrollLeft = Math.max(0, x - 40);
+    syncScroll();
+  }), { defer: true }));
   const gridW = () => TOTAL * U.bw;
   const gridH = () => tops()[tops().length - 1];
   const cw = () => Math.max(1, Math.min(vw() - U.headW, gridW()));
@@ -534,7 +547,37 @@ export function Playlist() {
       const c = cs[i]; if (c.track !== ti) continue;
       const cx = c.start * bw, cwid = Math.max(3, c.len * bw - 1), cy = t[ti] + 1;
       if (x < cx || x > cx + cwid || y < cy || y > cy + tr.h - 2) continue;
-      let edge: Hit['edge'] = null;
+      return clipHit(c, x, y, cx, cwid, cy, spb);
+    }
+    return null;
+  }
+
+  /**
+   * Empty space just outside a clip's start or end (EDGE_OUT px): that edge, so a trim needs no
+   * pixel aim. Only a trim (and an automation point drawn there) uses it; a click, right-click or
+   * double-click there still lands on empty space.
+   */
+  function nearEdge(x: number, y: number): { c: Clip; edge: 'l' | 'r' } | null {
+    if (!editable()) return null;
+    const ti = trackAtY(y); if (ti < 0) return null;
+    const t = tops(), tr = S.project.tracks[ti], bw = U.bw, cy = t[ti] + 1;
+    if (y < cy || y > cy + tr.h - 2) return null;
+    let best: { c: Clip; edge: 'l' | 'r' } | null = null, bd = EDGE_OUT + 1;
+    for (const c of unwrap(S.project).clips) {
+      if (c.track !== ti) continue;
+      const cx = c.start * bw, cwid = Math.max(3, c.len * bw - 1);
+      const dl = cx - x, dr = x - (cx + cwid);
+      if (dl > 0 && dl < bd) { bd = dl; best = { c, edge: 'l' }; }
+      if (dr > 0 && dr < bd) { bd = dr; best = { c, edge: 'r' }; }
+    }
+    return best;
+  }
+
+  /** What a press inside clip `c` lands on: a fade or comp handle, a trim edge, its menu icon, or its body. */
+  function clipHit(c: Clip, x: number, y: number, cx: number, cwid: number, cy: number, spb: number): Hit {
+    const bw = U.bw;
+    let edge: Hit['edge'] = null;
+    {
       if ((c.kind === 'audio' || c.kind === 'comp') && editable() && cwid > 36 && y - cy >= 15 && y - cy <= 25) {
         const fi = cx + c.fadeIn / spb * bw, fo = cx + cwid - c.fadeOut / spb * bw;
         if (x >= fi - 1 && x <= fi + 8) edge = 'fi';
@@ -550,14 +593,14 @@ export function Playlist() {
           }
         }
       }
-      // narrow clips keep a body to grab: the trim zones shrink, and vanish on a sliver
-      const ez = cwid < 14 ? 0 : Math.min(6, cwid / 4);
+      // narrow clips keep a body to grab: the trim zones shrink, and vanish on a sliver (the
+      // zone outside the clip, EDGE_OUT, still trims it)
+      const ez = cwid < 14 ? 0 : Math.min(EDGE_IN, cwid / 4);
       if (!edge) edge = x - cx < ez ? 'l' : cx + cwid - x < ez ? 'r' : null;
       // the icon in the clip's top-left corner opens its menu (FL), with either button
       if (!edge && cwid >= 36 && x - cx < 20 && y - cy < 15) edge = 'menu';
-      return { c, edge };
     }
-    return null;
+    return { c, edge };
   }
 
   /** The take lane under a grid point, if any. */
@@ -570,7 +613,8 @@ export function Playlist() {
   }
   const hover = (e: PointerEvent) => {
     if (e.buttons) return;
-    const p = pt(e), L = laneHit(p.x, p.y), h = L ? null : hit(p.x, p.y);
+    const p = pt(e), L = laneHit(p.x, p.y), h0 = L ? null : hit(p.x, p.y);
+    const near = L || h0 ? null : nearEdge(p.x, p.y), h: Hit | null = h0 ?? near;
     if (L) { CA.compHover.clipId = L.clip.id; CA.compHover.cb = L.cb; }
     else if (h?.c.kind === 'comp') { CA.compHover.clipId = h.c.id; CA.compHover.cb = toComp(h.c, p.beat); }
     else CA.compHover.clipId = null;
@@ -603,6 +647,15 @@ export function Playlist() {
     if (e.button === 2 && modK) return zoomBoxDrag(e);
     const p = pt(e), h = hit(p.x, p.y), id = h?.c.id ?? null;
     if (h?.c.kind === 'auto' && editable() && (e.button === 0 || e.button === 2) && envDown(e, h.c, p.x, p.y)) return;
+    const near = h || modK || laneHit(p.x, p.y) ? null : nearEdge(p.x, p.y);
+    if (near && (e.button === 0 || e.button === 2)) {
+      // an automation point drawn on the clip's edge reaches past it: the point, not a trim
+      if (near.c.kind === 'auto' && envAt(near.c, p.x, p.y) && envDown(e, near.c, p.x, p.y)) return;
+      if (e.button === 0 && U.tool !== 'erase' && U.tool !== 'mute' && U.tool !== 'slice') {
+        e.preventDefault(); closeMenu();
+        return resizeDrag(e, near.c, near.edge);
+      }
+    }
     if (U.autoSel && (!h || h.c.id !== U.autoSel.clip)) setU('autoSel', null);
     const L = laneHit(p.x, p.y);
     if (L) {
@@ -837,7 +890,11 @@ export function Playlist() {
       dragCursor(null);
       if (g) { g.end(); return; }
       if (h?.edge === 'cb') openBoundaryMenu(sx, sy, h.c, h.bnd!);
-      else openGridMenu(sx, sy, p);
+      else {
+        // a right-click on empty space also drops the selection (its menu acts on no clip)
+        if (!h && U.sel.length) setU('sel', []);
+        openGridMenu(sx, sy, p);
+      }
     });
   }
 
@@ -860,11 +917,13 @@ export function Playlist() {
     const t = tops(), tr = S.project.tracks[c.track], cy = t[c.track] + 1, by = cy + 15, bh = tr.h - 2 - 15, pad = 3;
     return { by, bh, X: (tt: number) => (c.start + tt - c.offset) * U.bw, Y: (v: number) => by + pad + (1 - v) * (bh - 2 * pad), T: (x: number) => x / U.bw - c.start + c.offset, V: (y: number) => clamp(1 - (y - by - pad) / (bh - 2 * pad), 0, 1) };
   };
+  /** `envGeom` with the points where they are drawn: one on the clip's edge just inside it. */
+  const pickGeom = (c: Clip) => insetGeom(envGeom(c), c.start * U.bw, c.start * U.bw + Math.max(3, c.len * U.bw - 1));
   const sameHit = (a: EnvHit | null, b: EnvHit | null) => a === b || (!!a && !!b && a.kind === b.kind && a.i === b.i);
   /** The point or handle of automation clip `c` under (x, y): none on its header or beyond its envelope. */
   const envAt = (c: Clip, x: number, y: number): EnvHit | null => {
     const a = autoById(c.ref); if (!a) return null;
-    const G = envGeom(c); if (y < G.by || G.bh < 14) return null;
+    const G = pickGeom(c); if (y < G.by || G.bh < 14) return null;
     return hitEnv(a.points, G, x, y);
   };
   const putEnv = (a: Automation, points: AutoPoint[]): Op => ({ op: 'putAutomation', automation: { ...plain(a), points } });
@@ -888,7 +947,7 @@ export function Playlist() {
     const G = envGeom(c);
     if (y < G.by || G.bh < 14) return false;
     if (e.button === 0 && (U.tool === 'erase' || U.tool === 'mute' || U.tool === 'slice')) return false;
-    const pts = plain(a.points), hit = hitEnv(pts, G, x, y), modK = e.ctrlKey || e.metaKey;
+    const pts = plain(a.points), hit = hitEnv(pts, pickGeom(c), x, y), modK = e.ctrlKey || e.metaKey;
     e.preventDefault(); closeMenu();
     if (!U.sel.includes(c.id)) setU('sel', [c.id]);
     if (e.button === 2) {

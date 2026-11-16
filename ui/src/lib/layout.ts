@@ -94,7 +94,8 @@ export function parseLayout(raw: string | null): Partial<UiState> {
     // the docked mixer can no longer be closed: a layout saved with it closed opens collapsed
     mixMin: v.mixOpen === false || v.mixMin === true ? true : bool(v.mixMin), mixH: num(v.mixH, 100, 2000),
     headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),
-    browserTab: v.browserTab === 'project' || v.browserTab === 'library' ? v.browserTab : undefined,
+    // 'project' (Patterns and Audio in one tab, before they were split) opens on Patterns
+    browserTab: v.browserTab === 'project' ? 'patterns' : v.browserTab === 'patterns' || v.browserTab === 'audio' || v.browserTab === 'library' ? v.browserTab : undefined,
     rackDock: bool(v.rackDock), rackDockW: v.rackDockW === 0 ? 0 : num(v.rackDockW, 200, 8000),
     rollDock: bool(v.rollDock), rollDockH: num(v.rollDockH, 100, 8000),
     rackFloat: parseGeo(v.rackFloat), rollFloat: parseGeo(v.rollFloat), rollMax: bool(v.rollMax),

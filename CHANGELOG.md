@@ -4,9 +4,29 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.19 — 2026-11-16
+
+### Added
+- **Triplet grids in the Piano roll.** The Grid list has 1/6, 1/12, 1/24 and 1/48 (quarter,
+  eighth, 16th and 32nd triplets) next to the straight values, which now run from a whole bar
+  down to 1/64. Drawing, moving, resizing and Ctrl+Q quantize follow it, and the roll draws its
+  lines. Picking a grid also sets the next drawn note to one grid step (at most a beat).
+- **The Mixer shows what each strip carries.** A docked strip shows its effect count (● 3), and an
+  insert you have not named shows, quietly after its number, what is routed to it ("2 Hats").
 
 ### Changed
+- **The browser has three tabs: Patterns, Audio and Library.** Audio lists your own sounds
+  (imports, recordings, audio with clips in the Playlist); the starter kit samples the Channel
+  Rack plays stay in the rack, so a new project's Audio tab is empty.
+- **Channel Rack steps keep their width.** Resizing the window shows more or fewer steps (the
+  grid scrolls) instead of stretching or squeezing them.
+- **"Automate on the playlist" uses a track that is free where the clip goes**, not only a track
+  empty along the whole song; a new track is added at the bottom only when every track is busy
+  there. The Playlist scrolls to the new clip.
+- **Clip edges and automation points are easier to grab.** A clip's edge trims from a little
+  inside it and from just outside it; automation points are bigger, and the first and last
+  point sit whole inside the clip instead of half cut off by its border.
+- **A right-click on empty Playlist space drops the selection** (the menu still opens).
 - **The Channel Rack and the Piano roll share one window frame.** Each title bar ends with the
   same buttons in the same order: dock or float, maximize (Piano roll), close. The Piano roll's
   maximize was only a double-click on its title bar; it now has a button too.
@@ -20,6 +40,11 @@ shown in the app after an update and is published as the release notes (see
   Studio; floating behind other windows, F9 brings it to the front first. Esc hides it when it
   is the window in front. The View menu has *Dock Mixer at the bottom* and *Maximize mixer*.
   The separate Mix view with its Back button is gone: maximize does the same.
+
+### Fixed
+- A channel's window opened from the Channel Rack (a click on its name) appeared behind the
+  rack, as did the Piano roll opened by a double-click. Every window now comes to the front
+  before what was clicked inside it opens another.
 
 ## 0.9.18 — 2026-11-16
 

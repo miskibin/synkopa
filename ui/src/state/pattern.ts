@@ -28,8 +28,9 @@ import { planRoute, rangeSelect, toggleSelect } from '../lib/mixer';
 export const RACK_LEFT = 212, RACK_HEAD = 34, RACK_ROW = 32;
 /** Frame around the step grid (px): left of the first step and right of the last; above and below the rows. */
 export const RACK_PAD_X = 10, RACK_PAD_Y = 8;
-/** Step button width in the Channel Rack (px): compact like FL's, wider only when the window has room. */
-export const STEP_MIN = 16, STEP_MAX = 24;
+/** Step button width in the Channel Rack (px). Fixed: resizing the window shows more or fewer
+ *  steps (the grid scrolls) instead of stretching or squeezing them. */
+export const STEP_W = 20;
 /** The Channel Rack window's narrowest width (px). */
 export const RACK_MIN_W = 480;
 
@@ -124,7 +125,7 @@ const focusSoon = (k: WinKey) => requestAnimationFrame(() => (document.querySele
  * The Channel Rack's width for a pattern of `steps` steps at window position `x`: the pattern and
  * its greyed extra bar at the comfortable step width, up to ~4 bars and the screen's right edge.
  */
-export const rackWidthFor = (steps: number, x: number) => rackFitWidth(steps, { left: RACK_LEFT, cw: STEP_MAX, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W, room: window.innerWidth - x - 10 });
+export const rackWidthFor = (steps: number, x: number) => rackFitWidth(steps, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W, room: window.innerWidth - x - 10 });
 /** The rack's place and width for `steps` steps: as wide as the pattern needs, sliding left before it would scroll (the screen is the only limit). */
 export const rackPlaceFor = (steps: number, x: number) => fitOnScreen(x, rackWidthFor(steps, 10), window.innerWidth);
 /** F6: open the Channel Rack (or bring it to the front). */

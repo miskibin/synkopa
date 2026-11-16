@@ -98,7 +98,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
         const info = () => presetInfo(S.catalog, fx(), S.project.bpm);
         return (
           <div class="win fxwin" style={{ left: props.pw.x + 'px', top: props.pw.y + 'px', width: props.pw.w + 'px', 'z-index': props.z }} data-fxwin={props.pw.fxId}
-            onPointerDown={() => A.plugFront(props.pw.fxId)}>
+            on:pointerdown={{ capture: true, handleEvent: () => A.plugFront(props.pw.fxId) }}>
             <div class="winhd" onPointerDown={e => moveWindow(e, () => props.pw, setPos)}>
               <button class="pwr" classList={{ off: fx().bypass }} title={fx().bypass ? t('c.fx.bypassOn') : t('c.fx.bypassOff')}
                 onPointerDown={e => { e.stopPropagation(); A.toggleBypass(fx().id); }} />

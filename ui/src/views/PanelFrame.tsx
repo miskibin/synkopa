@@ -76,7 +76,10 @@ export function PanelFrame(props: {
   return (
     <div ref={root} tabIndex={0} class={'win patwin ' + props.class} classList={{ docked: !!props.docked, compact: compact() }}
       style={props.docked ? undefined : { left: props.geom().x + 'px', top: props.geom().y + 'px', width: props.geom().w + 'px', height: props.geom().h + 'px', 'z-index': props.z }}
-      onPointerDown={e => { if (!props.docked) props.front(); const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
+      // to the front in the capture phase, before the contents act on the press: a channel name or a
+      // mini roll opens its window on pointerdown, and raising this one afterwards covered it
+      on:pointerdown={{ capture: true, handleEvent: () => { if (!props.docked) props.front(); } }}
+      onPointerDown={e => { const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
       onKeyDown={e => guardKeys(e, props.onKey)}>
       <div class="winhd" onPointerDown={e => { if (!props.docked) moveWindow(e, () => props.geom(), (x, y) => put({ x, y })); }} onWheel={e => props.onHeadWheel?.(e)}
         onDblClick={e => { if (!props.docked && !(e.target as HTMLElement).closest('button, select, input, .numf, .seg')) props.onHeadDbl?.(); }}>

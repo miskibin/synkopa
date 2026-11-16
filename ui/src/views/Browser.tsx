@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { be } from '../api/backend';
 import type { Channel, ClipKind, Id, Kit, LibFile, LibraryProgress, Pattern, Source } from '../api/types';
@@ -16,7 +16,7 @@ import { dropClipAt, gridPoint } from './Playlist';
 import { patternPreview } from './playlistDraw';
 import { addSampler, addSamplerFiles, chanById, channels, newPattern, openPattern, replaceWithFile, replaceWithSource, showPatternWindow, type SampleFile } from '../state/pattern';
 import { libGroup, STD_KIT } from '../state/library';
-import { FACTORY_FILES } from '../lib/factory';
+import { browserSources, FACTORY_FILES } from '../lib/factory';
 import { flatten, groupFiles, groupOpen, GHEAD_H, matches, ROW_H, searchTerms, stepIndex, windowRange, type FlatItem } from '../lib/libraryView';
 import { noteName } from '../lib/pitch';
 import { libFileGlyph, libGroupGlyph, type MenuGlyph } from '../ui/menuIcons';
@@ -156,16 +156,12 @@ function PatPreview(props: { pat: Pattern; chans: Map<Id, Channel> }) {
   return <img ref={el} class="pprev" src={src() || undefined} alt="" draggable={false} />;
 }
 
-function ProjectTab() {
+function PatternsTab() {
   const chanMap = createMemo(() => new Map((S.project.channels ?? []).map(c => [c.id, c])));
-  const importBtn = async () => {
-    try { const paths = await be().pickAudioFiles(); if (paths) await importFiles(paths); }
-    catch (e) { say(t('d.br.noimport', { err: String(e) })); }
-  };
   return (
     <div class="scroll">
       <div class="bhead">
-        <span>{t('d.br.patterns')}</span>
+        <span>{t('d.br.patCount', { n: S.project.patterns.length })}</span>
         <button class="linkbtn" title={t('d.br.newpat.tip')} onClick={() => { newPattern(); showPatternWindow(); }}>{t('d.br.new')}</button>
       </div>
       <div class="plist">
@@ -186,30 +182,44 @@ function ProjectTab() {
           )}
         </For>
       </div>
-      <div class="bhead top">
-        <span>{t('d.br.audio')}</span>
+    </div>
+  );
+}
+
+function AudioTab() {
+  const list = createMemo(() => browserSources(S.project));
+  const importBtn = async () => {
+    try { const paths = await be().pickAudioFiles(); if (paths) await importFiles(paths); }
+    catch (e) { say(t('d.br.noimport', { err: String(e) })); }
+  };
+  return (
+    <div class="scroll">
+      <div class="bhead">
+        <span>{t('d.br.audioCount', { n: list().length })}</span>
         <button class="linkbtn" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button>
       </div>
-      <div style={{ display: 'flex', 'flex-direction': 'column', padding: '4px 0' }}>
-        <For each={S.project.sources}>
-          {s => (
-            <div class="sitem" classList={{ on: U.cur?.kind === 'audio' && U.cur.ref === s.id, playing: U.previewing && U.previewPath === srcKey(s.id) }} title={t('d.br.src.tip')}
-              onPointerDown={e => {
-                if (e.button === 0 && dblCheck('sitem' + s.id)) { e.preventDefault(); return previewSource(s); }
-                pick('audio', s.id, s.name, s.color, e);
-              }}>
-              <div class="row" style={{ gap: '8px' }}>
-                {/* the icon its clips show in the Playlist (guessed from the name), else a sample's */}
-                <span class="picon" style={{ color: s.color }}><InstIcon id={guessIcon(s.name) ?? 'sample'} size={12} /></span>
-                <span class="ell" style={{ flex: 1, font: '500 12px var(--sans)' }}>{s.name}</span>
-                <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg4)' }}>{s.dur.toFixed(2)}s</span>
+      <Show when={list().length} fallback={<div class="bnote">{t('d.br.audioEmpty')}</div>}>
+        <div style={{ display: 'flex', 'flex-direction': 'column', padding: '4px 0' }}>
+          <For each={list()}>
+            {s => (
+              <div class="sitem" classList={{ on: U.cur?.kind === 'audio' && U.cur.ref === s.id, playing: U.previewing && U.previewPath === srcKey(s.id) }} title={t('d.br.src.tip')}
+                onPointerDown={e => {
+                  if (e.button === 0 && dblCheck('sitem' + s.id)) { e.preventDefault(); return previewSource(s); }
+                  pick('audio', s.id, s.name, s.color, e);
+                }}>
+                <div class="row" style={{ gap: '8px' }}>
+                  {/* the icon its clips show in the Playlist (guessed from the name), else a sample's */}
+                  <span class="picon" style={{ color: s.color }}><InstIcon id={guessIcon(s.name) ?? 'sample'} size={12} /></span>
+                  <span class="ell" style={{ flex: 1, font: '500 12px var(--sans)' }}>{s.name}</span>
+                  <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg4)' }}>{s.dur.toFixed(2)}s</span>
+                </div>
+                <Thumb src={s} />
               </div>
-              <Thumb src={s} />
-            </div>
-          )}
-        </For>
-      </div>
-      <div class="bnote">{t('d.br.dragnote')}</div>
+            )}
+          </For>
+        </div>
+        <div class="bnote">{t('d.br.dragnote')}</div>
+      </Show>
     </div>
   );
 }
@@ -629,6 +639,8 @@ function LibraryTab() {
   );
 }
 
+const BROWSER_TABS = ['patterns', 'audio', 'library'] as const;
+
 export function Browser() {
   const split = (e: PointerEvent) => {
     if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
@@ -639,10 +651,12 @@ export function Browser() {
     <>
       <div class="browser" style={{ width: U.pickW + 'px' }}>
         <div class="btabs">
-          <button classList={{ on: U.browserTab === 'project' }} onClick={() => setU('browserTab', 'project')}>{t('d.br.tab.project')}</button>
-          <button classList={{ on: U.browserTab === 'library' }} onClick={() => setU('browserTab', 'library')}>{t('d.br.tab.library')}</button>
+          <For each={BROWSER_TABS}>{k => <button classList={{ on: U.browserTab === k }} onClick={() => setU('browserTab', k)}>{t(`d.br.tab.${k}`)}</button>}</For>
         </div>
-        <Show when={U.browserTab === 'project'} fallback={<LibraryTab />}><ProjectTab /></Show>
+        <Switch fallback={<LibraryTab />}>
+          <Match when={U.browserTab === 'patterns'}><PatternsTab /></Match>
+          <Match when={U.browserTab === 'audio'}><AudioTab /></Match>
+        </Switch>
       </div>
       <div class="vsplit" onPointerDown={split} onDblClick={() => setU('pickOpen', false)} title={t('d.br.resize')} />
     </>

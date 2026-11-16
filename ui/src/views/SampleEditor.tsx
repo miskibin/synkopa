@@ -95,7 +95,7 @@ function EditorFrame(props: {
   return (
     <div class="win chanwin smpwin" data-editor data-channel-window={props.channelId}
       style={{ left: editor().x + 'px', top: editor().y + 'px', width: editor().w + 'px', 'z-index': outerZ(editor().z) }}
-      onPointerDown={A.editorFront}>
+      on:pointerdown={{ capture: true, handleEvent: () => A.editorFront() }}>
       <div class="winhd" onPointerDown={e => moveWindow(e, editor, move)} title={t('b.cw.headTip')}
         onDblClick={e => { if (!(e.target as HTMLElement).closest('button, select, input')) showInsert(props.insert()); }}>
         <span class="chicon" style={{ color: props.color }}>{props.icon}</span>

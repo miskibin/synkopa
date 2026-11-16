@@ -254,12 +254,22 @@ export function setVelAt(notes: readonly Note[], ch: Id, s: number, v: number): 
 
 // ---------------------------------------------------------------- piano roll
 
-/** Piano-roll snap choices, in steps (16ths). */
-export const ROLL_SNAPS: [string, number][] = [['1/4', 4], ['1/8', 2], ['1/16', 1], ['1/32', 0.5]];
+/**
+ * Piano-roll snap choices, in steps (16ths), named as fractions of a whole note. The triplet
+ * grids split a straight value in three where it splits in two: 1/6 = a quarter-note triplet
+ * (three in the time of two quarters), 1/12 = eighth triplet, 1/24 = 16th triplet, 1/48 = 32nd.
+ */
+export const ROLL_SNAPS: [string, number][] = [
+  ['1/1', 16], ['1/2', 8], ['1/4', 4], ['1/8', 2], ['1/16', 1], ['1/32', 0.5], ['1/64', 0.25],
+];
+export const ROLL_SNAPS_TRIPLET: [string, number][] = [['1/6', 8 / 3], ['1/12', 4 / 3], ['1/24', 2 / 3], ['1/48', 1 / 3]];
+/** The grid's name ('1/16', '1/12'), or undefined when `steps` is not one of the snap choices. */
+export const rollSnapName = (steps: number) => [...ROLL_SNAPS, ...ROLL_SNAPS_TRIPLET].find(x => Math.abs(x[1] - steps) < 1e-4)?.[0];
 /** Round (or floor) `x` steps to the grid; `unit` 0 = free (1/128 resolution). */
 export function snapStep(x: number, unit: number, floor = false): number {
   if (!unit) return Math.round(x * 32) / 32;
-  return (floor ? Math.floor(x / unit + 1e-9) : Math.round(x / unit)) * unit;
+  // rounded to 1e-6: a triplet grid (2/3 step) would otherwise leave float noise in the step
+  return Math.round((floor ? Math.floor(x / unit + 1e-6) : Math.round(x / unit)) * unit * 1e6) / 1e6;
 }
 
 /**

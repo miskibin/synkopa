@@ -219,3 +219,16 @@ describe('mock engine ops (mirror of ops.rs)', () => {
     expect(p.channels!.some(c => c.id === K)).toBe(false);
   });
 });
+
+describe('triplet snap grids', () => {
+  it('snaps to thirds of a beat without float noise', async () => {
+    const { snapStep, rollSnapName, ROLL_SNAPS_TRIPLET } = await import('./pattern');
+    const u = ROLL_SNAPS_TRIPLET.find(x => x[0] === '1/24')![1]; // 16th triplet = 2/3 step
+    expect(snapStep(1.9, u)).toBe(2);
+    expect(snapStep(2.6, u)).toBe(2.666667);
+    expect(snapStep(1.3, u, true)).toBe(0.666667);
+    expect(rollSnapName(4 / 3)).toBe('1/12');
+    expect(rollSnapName(Math.fround(8 / 3))).toBe('1/6'); // as the engine (f32) returns it
+    expect(rollSnapName(3)).toBeUndefined();
+  });
+});

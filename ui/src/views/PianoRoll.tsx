@@ -15,7 +15,7 @@ import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
 import { clamp } from '../lib/format';
-import { duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, SCALES, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
+import { duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, SCALES, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
 import { NOTE_NAMES, noteName } from '../lib/pitch';
 
 /** The project key/scale as a setKey op (the roll header's key selectors commit it). */
@@ -205,7 +205,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = cv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const lit = typingHeld();
-    drawRoll(g, w, h, geo(), layer, { pt: unwrap(pt()), ch: unwrap(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost() });
+    drawRoll(g, w, h, geo(), layer, { pt: unwrap(pt()), ch: unwrap(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), grid: rollSnap(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost() });
   };
   const drawVel = () => {
     const { w, h } = laneSize(); if (!w || !h) return;
@@ -217,7 +217,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafMain = 0, rafVel = 0;
   createEffect(() => {
-    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
     if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
@@ -531,7 +531,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       const idx = s.length ? s : chanNotes().map(x => x.i);
       if (!idx.length) return;
       if (k === 'q') {
-        const grid = ROLL_SNAPS.find(x => x[1] === rollSnap())?.[0] ?? '1/16';
+        const grid = rollSnapName(rollSnap()) ?? '1/16';
         const r = quantizeStarts(notesRaw(), idx, rollSnap());
         if (!r.moved) return say(t('b.pr.onGrid', { grid }));
         commitNotes(r.notes, t('b.pr.quantize'));
@@ -682,8 +682,11 @@ function Roll(props: { z: number; docked?: boolean }) {
         <span class="toolname">{t(TOOLS.find(x => x.id === rollTool())!.label)}</span>
         <div class="vsep" />
         <label class="plab">{t('b.pe.lblGrid')}
-          <select class="sel" title={t('b.pe.snapTitle')} value={String(rollSnap())} onChange={e => { setRollSnap(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
+          <select class="sel" title={t('b.pe.snapTitle')} value={String(rollSnap())} onChange={e => { setRollSnap(+e.currentTarget.value); setLastLen(Math.min(4, rollSnap())); backToRoll(e.currentTarget); }}>
             <For each={ROLL_SNAPS}>{([l, v]) => <option value={String(v)}>{l}</option>}</For>
+            <optgroup label={t('b.pe.snapTriplets')}>
+              <For each={ROLL_SNAPS_TRIPLET}>{([l, v]) => <option value={String(v)}>{l}</option>}</For>
+            </optgroup>
           </select>
         </label>
         <label class="plab">{t('b.pe.lblKey')}
@@ -782,5 +785,5 @@ function Roll(props: { z: number; docked?: boolean }) {
 
 function lastLenText() {
   const l = lastLen();
-  return l >= 4 && l % 4 === 0 ? t(l === 4 ? 'b.pe.beat1' : 'b.pe.beatN', { n: l / 4 }) : l === 1 ? '1/16' : l === 2 ? '1/8' : l === 0.5 ? '1/32' : t('b.pe.stepsN', { n: l });
+  return l >= 4 && l % 4 === 0 ? t(l === 4 ? 'b.pe.beat1' : 'b.pe.beatN', { n: l / 4 }) : rollSnapName(l) ?? t('b.pe.stepsN', { n: +l.toFixed(2) });
 }

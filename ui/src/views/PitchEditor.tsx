@@ -696,7 +696,7 @@ function PitchBody(props: { clipId: number }) {
   void theme; void fonts;
   return (
     <div ref={root} tabIndex={0} class="win pitchwin" style={{ left: E().x + 'px', top: E().y + 'px', width: E().w + 'px', height: E().h + 'px', 'z-index': outerZ(E().z) }}
-      onKeyDown={onKey} onPointerDown={A.pitchFront} data-pitched>
+      onKeyDown={onKey} on:pointerdown={{ capture: true, handleEvent: () => A.pitchFront() }} data-pitched>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => E(), (x, y) => setU('pitchEd', ed => ed && { ...ed, x, y }))}>
         <span class="tile" style={{ width: '20px', height: '20px', background: FXMETA.tune.color + '26', color: FXMETA.tune.color }}><Icon d={FXMETA.tune.icon} size={13} /></span>
         <span class="title">{t('d.pitch.title')}</span>

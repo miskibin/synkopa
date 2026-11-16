@@ -44,3 +44,14 @@ export function addStarterKit(p: Project): Id[] {
     return id;
   });
 }
+
+/**
+ * The sources the browser's Audio tab lists: the user's audio (imports, recordings, edits, and any
+ * sample with a clip in the Playlist). A standard-library sample that only a sampler channel plays
+ * (a new project's starter kit) belongs to the Channel Rack and is left out.
+ */
+export function browserSources(p: Project): Source[] {
+  const onClip = new Set(p.clips.filter(c => c.kind === 'audio').map(c => c.ref));
+  const inRack = new Set((p.channels ?? []).flatMap(c => c.kind === 'sample' ? [c.source] : []));
+  return p.sources.filter(s => !(s.path.startsWith(LIB_SCHEME) && inRack.has(s.id) && !onClip.has(s.id)));
+}

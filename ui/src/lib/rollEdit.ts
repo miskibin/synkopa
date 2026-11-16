@@ -24,7 +24,8 @@ export function quantizeStarts(notes: readonly Note[], idx: readonly number[], u
     const n = notes[i]; if (!n) continue;
     let s = Math.max(0, r6(Math.round(n.step / unit) * unit));
     if (s + n.len > MAX_STEP + 1e-9) s = Math.max(0, r6(Math.floor((MAX_STEP - n.len) / unit + 1e-9) * unit));
-    if (Math.abs(s - n.step) > 1e-6) { out[i] = { ...n, step: s }; moved++; }
+    // 1e-4: the engine keeps steps as f32, so a triplet start read back is off by ~1e-5
+    if (Math.abs(s - n.step) > 1e-4) { out[i] = { ...n, step: s }; moved++; }
   }
   return { notes: out, moved };
 }

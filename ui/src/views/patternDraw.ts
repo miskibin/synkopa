@@ -176,7 +176,7 @@ export interface RollGeo { pps: number; sx: number; sy: number; rowH: number; kw
 export const rollY = (G: RollGeo, key: number) => (127 - key) * G.rowH - G.sy;
 export const rollX = (G: RollGeo, step: number) => G.kw + step * G.pps - G.sx;
 
-function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, root: number, mask: number) {
+function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, root: number, mask: number, grid: number) {
   const k0 = Math.max(0, Math.floor(127 - (G.sy + H) / G.rowH)), k1 = Math.min(127, Math.ceil(127 - G.sy / G.rowH));
   g.fillStyle = T.viz; g.fillRect(0, 0, W, H);
   for (let k = k0; k <= k1; k++) {
@@ -187,12 +187,20 @@ function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, r
     g.fillStyle = (k % 12 === 0) ? T.vizAxis : T.vizGrid;
     g.fillRect(G.kw, Math.round(y + G.rowH) - 0.5, W - G.kw, 1);
   }
-  // vertical lines: 16ths (when there is room), beats, bars
+  // vertical lines: the snap grid's own lines (16ths, triplets, ... when there is room), then
+  // beats and bars over them. A grid of a beat or longer shows 16ths, like 1/16.
   const s0 = Math.max(0, Math.floor(G.sx / G.pps)), s1 = Math.ceil((G.sx + W - G.kw) / G.pps);
-  for (let s = s0; s <= s1; s++) {
-    const bar = s % 16 === 0, beat = s % 4 === 0;
-    if (!beat && G.pps < 7) continue;
-    g.fillStyle = bar ? T.vizAxis : beat ? T.vizGrid2 : T.vizGrid;
+  const u = grid > 0 && grid < 4 ? grid : 1;
+  if (u * G.pps >= 7) {
+    g.fillStyle = T.vizGrid;
+    for (let i = Math.floor(s0 / u); i * u <= s1; i++) {
+      const s = i * u;
+      if (Math.abs(s / 4 - Math.round(s / 4)) < 1e-6) continue;
+      g.fillRect(Math.round(rollX(G, s)) - 0.5, 0, 1, H);
+    }
+  }
+  for (let s = Math.ceil(s0 / 4) * 4; s <= s1; s += 4) {
+    g.fillStyle = s % 16 === 0 ? T.vizAxis : T.vizGrid2;
     g.fillRect(Math.round(rollX(G, s)) - 0.5, 0, 1, H);
   }
   // past the pattern end: drawing there makes the pattern longer
@@ -213,14 +221,16 @@ function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, r
 }
 
 export function drawRoll(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, layer: Layer, o: {
-  pt: Pattern; ch: Channel; chans: Map<Id, Channel>; sel: Set<number>; root: number; mask: number; hoverKey: number | null; lit?: number[]; marquee: { x0: number; y0: number; x1: number; y1: number } | null;
+  pt: Pattern; ch: Channel; chans: Map<Id, Channel>; sel: Set<number>; root: number; mask: number;
+  /** Snap grid in steps: its lines are drawn (triplet grids get triplet lines). */
+  grid: number; hoverKey: number | null; lit?: number[]; marquee: { x0: number; y0: number; x1: number; y1: number } | null;
   /** Ctrl+right-drag: the box the view will zoom to (dashed, no fill: it selects nothing). */
   zoomBox?: { x0: number; y0: number; x1: number; y1: number } | null;
   /** Chord-stamp tool: what a click at this cell would write (ghosted, dashed outline). */
   stampGhost?: { s: number; len: number; pitches: number[] } | null;
 }) {
   g.clearRect(0, 0, W, H);
-  const bg = layer.get(W, H, ['roll', G.pps, G.sx, G.sy, G.rowH, G.kw, G.steps, o.root, o.mask].join('|'), (gg, w, h) => rollBg(gg, w, h, G, o.root, o.mask));
+  const bg = layer.get(W, H, ['roll', G.pps, G.sx, G.sy, G.rowH, G.kw, G.steps, o.root, o.mask, o.grid].join('|'), (gg, w, h) => rollBg(gg, w, h, G, o.root, o.mask, o.grid));
   g.drawImage(bg, 0, 0, W, H);
   g.save();
   g.beginPath(); g.rect(G.kw, 0, W - G.kw, H); g.clip();

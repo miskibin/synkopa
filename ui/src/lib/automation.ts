@@ -184,15 +184,21 @@ export function automatedValue(p: Project, target: AutoTarget, beat: number): nu
 }
 
 /** A track to put a new automation clip on: an empty track (no clips at all), else a new one at the end. */
-export function trackForAutomation(p: Project): { index: number; ops: Op[] } {
-  const used = new Set(p.clips.map(c => c.track));
-  for (let i = 0; i < p.tracks.length; i++) if (!used.has(i) && !p.tracks[i].arm) return { index: i, ops: [] };
-  return { index: p.tracks.length, ops: [] };
+/**
+ * The track an automation clip over beats [start, start + len) goes on: the first one with nothing
+ * in that span (FL's playlist tracks hold any kind of clip; the rest of the track may be in use),
+ * never an armed one; `p.tracks.length` (a new track at the bottom) when every track is busy there.
+ */
+export function trackForAutomation(p: Project, start: number, len: number): number {
+  const end = start + len, busy = new Set<number>();
+  for (const c of p.clips) if (c.start < end - 1e-9 && c.start + c.len > start + 1e-9) busy.add(c.track);
+  for (let i = 0; i < p.tracks.length; i++) if (!busy.has(i) && !p.tracks[i].arm) return i;
+  return p.tracks.length;
 }
 
 /**
  * Ops that create an automation for `target` holding `value` (plain units): the envelope with two
- * points, a clip of `len` beats at `start`, on an empty or new track.
+ * points, a clip of `len` beats at `start`, on a track free over that span or a new one.
  */
 export function createAutomationOps(p: Project, cat: Catalog | null, target: AutoTarget, name: string, color: string, start: number, len: number, alloc: () => Id, current?: number): { ops: Op[]; clipId: Id; autoId: Id; track: number } {
   const cur = target.kind === 'plugin'
@@ -202,7 +208,7 @@ export function createAutomationOps(p: Project, cat: Catalog | null, target: Aut
   const autoId = alloc();
   const auto: Automation = { id: autoId, name, color, target, points: [{ t: 0, v }, { t: len, v }] };
   const ops: Op[] = [{ op: 'putAutomation', automation: auto }];
-  let track = trackForAutomation(p).index;
+  let track = trackForAutomation(p, start, len);
   if (track >= p.tracks.length) {
     const tid = alloc();
     ops.push(...insertTrackOps(structuredClone(p), p.tracks.length, tid));
