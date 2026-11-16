@@ -122,7 +122,10 @@ pub enum TransformVerb {
     },
     /// Harmonize the selected single notes into chords: "diatonic" spells the triad
     /// from the project key/scale, the named types spell by interval from each root.
-    Chord { #[serde(default = "diatonic_harmony")] harmony: String },
+    Chord {
+        #[serde(default = "diatonic_harmony")]
+        harmony: String,
+    },
     /// Generate one diatonic 7th chord per bar on one channel: `template` cycles a
     /// named progression, `chance` walks seeded ±2 degrees, and a non-empty `degrees`
     /// list overrides both. `voice_lead` picks inversions that move the least.
@@ -467,7 +470,12 @@ fn diatonic_stack(scale_id: u32, deg: usize, seventh: bool) -> Vec<u8> {
     let offs = scale_offsets(scale_id);
     let n = offs.len();
     let idx: &[usize] = if seventh { &[0, 2, 4, 6] } else { &[0, 2, 4] };
-    idx.iter().map(|&i| { let k = deg + i; offs[k % n] + 12 * (k / n) as u8 }).collect()
+    idx.iter()
+        .map(|&i| {
+            let k = deg + i;
+            offs[k % n] + 12 * (k / n) as u8
+        })
+        .collect()
 }
 
 /// Expand a progression mode into per-bar scale degrees: a named template cycles, or
@@ -489,11 +497,11 @@ pub fn progression_degrees(mode: &str, bars: usize, seed: u64, scale_degrees: us
     }
 }
 
-    /// Generate one diatonic 7th chord per degree on channel `ch`: chord on beat 1 of
-    /// each bar (16 steps, a bar long on the 16th grid), roots in the C3..B3 window.
-    /// With `voice_lead`, every chord after the first picks the rotation (lift the
-    /// lowest voices an octave) minimizing total movement against the previous voicing
-    /// — the harmony stays, the hands move less.
+/// Generate one diatonic 7th chord per degree on channel `ch`: chord on beat 1 of
+/// each bar (16 steps, a bar long on the 16th grid), roots in the C3..B3 window.
+/// With `voice_lead`, every chord after the first picks the rotation (lift the
+/// lowest voices an octave) minimizing total movement against the previous voicing
+/// — the harmony stays, the hands move less.
 pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degrees: &[usize], voice_lead: bool) {
     // the generator owns its channel: like `euclidean_fill`, its previous notes make
     // way (a selection limits which old notes the verb sees at all)
@@ -518,11 +526,8 @@ pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degree
                 }
                 let mut sorted = cand.clone();
                 sorted.sort_unstable();
-                let cost: u32 = sorted
-                    .iter()
-                    .enumerate()
-                    .map(|(j, &v)| (v as i32 - prev[j.min(prev.len() - 1)] as i32).unsigned_abs())
-                    .sum();
+                let cost: u32 =
+                    sorted.iter().enumerate().map(|(j, &v)| (v as i32 - prev[j.min(prev.len() - 1)] as i32).unsigned_abs()).sum();
                 if best.as_ref().is_none_or(|(bc, _)| cost < *bc) {
                     best = Some((cost, cand));
                 }
@@ -534,7 +539,7 @@ pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degree
         let mut ps = chd.clone();
         ps.sort_unstable();
         for p in ps {
-            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75 });
+            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75, trig: Some(false) });
         }
     }
 }
@@ -582,7 +587,7 @@ pub fn chord(notes: &mut Vec<Note>, key_scale: Option<(u8, u32)>, harmony: &str,
         for v in ivs {
             let p = root + v;
             if !notes.iter().any(|x| x.step == step && x.p == Some(p)) {
-                notes.push(Note { ch: cid, step, len, p: Some(p), v: vel });
+                notes.push(Note { ch: cid, step, len, p: Some(p), v: vel, trig: Some(false) });
             }
         }
     }
@@ -860,12 +865,12 @@ mod tests {
     #[test]
     fn chord_harmonizes_diatonic_triads_and_skips_out_of_scale_roots() {
         // E3 in A natural minor is degree v: E G B
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8 }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) }];
         chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [52, 55, 59]);
         // a chromatic root stays unharmonized — diatonic mode leaves passing notes alone
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8 }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false) }];
         chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
         assert_eq!(notes.len(), 1);
     }
@@ -873,7 +878,7 @@ mod tests {
     #[test]
     fn chord_harmonizes_named_types_by_interval_anywhere() {
         // C#3 + minor 7th = C#m7, spelled by the table whatever the project key is
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8 }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8, trig: Some(false) }];
         chord(notes, Some(a_minor()), "min7", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [49, 52, 56, 59]);
@@ -884,8 +889,8 @@ mod tests {
         // E3 (ch 1) and B3 (ch 2) share step 0; groups are (channel, step), so both are
         // roots — but E's chord must not double the B that is already sounding
         let notes = &mut vec![
-            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8 },
-            Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8 },
+            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) },
+            Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8, trig: Some(false) },
         ];
         chord(notes, Some(a_minor()), "diatonic", &[(1, 60), (2, 60)]);
         // E gains G (B exists → skipped); B (degree ii°) gains D and F
@@ -898,9 +903,9 @@ mod tests {
     #[test]
     fn chord_ignores_steps_that_already_hold_a_chord() {
         let notes = &mut vec![
-            Note { ch: 1, step: 0.0, len: 1.0, p: Some(52), v: 0.8 },
-            Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8 },
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8 },
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(52), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
         ];
         chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
         // step 0 has two notes (not a single root) and stays; step 4 becomes Am (+C, +E)
@@ -914,7 +919,7 @@ mod tests {
     fn chord_resolves_a_missing_pitch_to_the_channel_root() {
         // the root note keeps `p: None` (it still follows the channel root); the added
         // tones are spelled out explicitly
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8 }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8, trig: Some(false) }];
         chord(notes, Some(a_minor()), "maj", &[(1, 60)]);
         assert_eq!(notes[0].p, None);
         let ps: Vec<u8> = notes.iter().skip(1).map(|n| n.p.unwrap()).collect();

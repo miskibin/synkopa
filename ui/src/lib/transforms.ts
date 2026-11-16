@@ -240,7 +240,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
           const p = root + v;
           // a tone any channel already sounds at this step is not doubled
           if (!target.some(x => x.step === n.step && x.p === p)) {
-            target.push({ ch: n.ch, step: n.step, len: n.len ?? 1, p, v: vel });
+            target.push({ ch: n.ch, step: n.step, len: n.len ?? 1, p, v: vel, trig: false });
           }
         }
       }
@@ -289,7 +289,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         }
       }
       chords.forEach((chd, bar) => {
-        [...chd].sort((a, b) => a - b).forEach(p => target.push({ ch, step: bar * 16, len: 16, p, v: 0.75 }));
+        [...chd].sort((a, b) => a - b).forEach(p => target.push({ ch, step: bar * 16, len: 16, p, v: 0.75, trig: false }));
       });
       break;
     }

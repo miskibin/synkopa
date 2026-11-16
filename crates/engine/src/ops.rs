@@ -665,7 +665,10 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         }
                         if template != "chance" && !crate::transform::PROGRESSION_TEMPLATES.iter().any(|(id, _)| id == template) {
                             let known: Vec<&str> = crate::transform::PROGRESSION_TEMPLATES.iter().map(|(id, _)| *id).collect();
-                            return Err(OpError::Invalid(format!("unknown progression template `{template}` ({}, chance)", known.join(", "))));
+                            return Err(OpError::Invalid(format!(
+                                "unknown progression template `{template}` ({}, chance)",
+                                known.join(", ")
+                            )));
                         }
                     } else {
                         // an explicit degree list replaces template and bars; bounded the same
@@ -774,12 +777,8 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 // `chord` changed cardinality: everything unselected stays, the roots
                 // keep their array slots and the appended tones follow the target
                 let selected: std::collections::HashSet<usize> = idx.iter().copied().collect();
-                let mut merged: Vec<Note> = notes
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| !selected.contains(i))
-                    .map(|(_, n)| n.clone())
-                    .collect();
+                let mut merged: Vec<Note> =
+                    notes.iter().enumerate().filter(|(i, _)| !selected.contains(i)).map(|(_, n)| n.clone()).collect();
                 merged.extend(target);
                 merged
             } else {
@@ -1332,7 +1331,7 @@ mod transform_tests {
         set_key_a_minor(&mut p);
         // notes at 0.0 (C#4), 4.3 (E4), 8.0 (C4) on ch 1001; a hit on another channel at 5.0
         let other = p.channels.iter().map(|c| c.id).find(|id| *id != 1001).unwrap();
-        p.patterns[0].notes.push(Note { ch: other, step: 5.0, len: 1.0, p: None, v: 0.8 });
+        p.patterns[0].notes.push(Note { ch: other, step: 5.0, len: 1.0, p: None, v: 0.8, trig: Some(false) });
         // range select pinned to ch 1001, steps 4..9: E4 → Em, C4 → C; the C# (out of
         // scale) is outside the range and the drum hit is on another channel — both stay
         crate::ops::apply_all(
@@ -1384,12 +1383,7 @@ mod transform_tests {
             }],
         )
         .unwrap();
-        let mut ps: Vec<u8> = p.patterns[0]
-            .notes
-            .iter()
-            .filter(|n| n.step == 0.0)
-            .map(|n| n.p.unwrap())
-            .collect();
+        let mut ps: Vec<u8> = p.patterns[0].notes.iter().filter(|n| n.step == 0.0).map(|n| n.p.unwrap()).collect();
         ps.sort_unstable();
         assert_eq!(ps, [61, 64, 68]); // C#m above the first note
     }
@@ -1443,9 +1437,7 @@ mod transform_tests {
     fn progression_verb_validates_bars_templates_and_degrees() {
         let mut p = project_with_notes();
         set_key_a_minor(&mut p);
-        let run = |p: &mut Project, verb| {
-            crate::ops::apply_all(p, &[Op::TransformNotes { pattern: 1, verb, seed: None, select: None }])
-        };
+        let run = |p: &mut Project, verb| crate::ops::apply_all(p, &[Op::TransformNotes { pattern: 1, verb, seed: None, select: None }]);
         let prog = |bars: u32, template: &str, degrees: Vec<u8>| crate::transform::TransformVerb::Progression {
             ch: 1001,
             bars,
@@ -1458,7 +1450,7 @@ mod transform_tests {
         assert!(matches!(run(&mut p, prog(4, "pop", vec![33])), Err(crate::ops::OpError::Invalid(_))));
         assert!(matches!(run(&mut p, prog(4, "pop", (0..33).collect())), Err(crate::ops::OpError::Invalid(_))));
         assert_eq!(p.patterns[0].notes.len(), 3); // nothing applied
-        // the legal degree list works and replaces bars
+                                                  // the legal degree list works and replaces bars
         run(&mut p, prog(4, "pop", vec![0, 5, 2, 6])).unwrap();
         assert_eq!(p.patterns[0].notes.len(), 16);
     }

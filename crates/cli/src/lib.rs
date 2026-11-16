@@ -1036,7 +1036,11 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             )
         }
         "notes" => {
-            let verb = a.pos.get(1).ok_or_else(|| u("notes <humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp> …".into()))?.clone();
+            let verb = a
+                .pos
+                .get(1)
+                .ok_or_else(|| u("notes <humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp> …".into()))?
+                .clone();
             let pattern = a.num("pattern").map_err(u)?.ok_or_else(|| u("missing --pattern".into()))? as u64;
             let f = |k: &str| a.num(k);
             if verb == "stamp" {
@@ -1120,7 +1124,11 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                     json!({"kind": "melody", "ch": f("ch").map_err(u)?.ok_or_else(|| u("missing --ch".into()))? as u64, "bars": f("bars").map_err(u)?.unwrap_or(2.0) as u32, "density": f("density").map_err(u)?.unwrap_or(0.5), "repeat": f("repeat").map_err(u)?.unwrap_or(1.0) as u32}),
                     true,
                 ),
-                other => return Err(u(format!("unknown notes verb `{other}` (humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp)"))),
+                other => {
+                    return Err(u(format!(
+                        "unknown notes verb `{other}` (humanize|quantize|euclid|strum|drums|melody|chord|progression|stamp)"
+                    )))
+                }
             };
             if needs_ch {
                 // a channel id here is the Channel Rack channel: accepted as-is, validated by the engine
