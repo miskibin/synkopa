@@ -304,8 +304,10 @@ happy and refused) through `ops::apply_all` and writes `ui/src/lib/__fixtures__/
 `opsParity.test.ts` replays them through `lib/applyOps.ts` (same resulting project, the
 engine's exact error strings — they are user-visible toasts) and `mockParity.test.ts`
 through the whole `MockBackend` command path, including the undo/revision rule that an
-unchanged batch is not an edit. The four error-string prefixes views and the CLI parse
-(`EXISTS:`, `REVISION_CONFLICT:`, `INVALID_TARGET:`, `NO_EDITOR:`) are named once in
+unchanged batch is not an edit. The four error-string prefixes consumers match on
+— views match `EXISTS:` (FX chains) and `NO_EDITOR:` (plugin windows), `wave watch`
+recognises `REVISION_CONFLICT`, and both adapters throw `INVALID_TARGET:` for a dead
+automation target — are named once in
 `crates/engine/src/errors.rs`, mirrored by `ui/src/api/errors.ts`, and pinned to
 `ui/src/api/__fixtures__/error-prefixes.json` by `app/src/ui_prefixes_tests.rs` ↔
 `errors.test.ts`. Every writer re-derives its file on each run and fails when the file on

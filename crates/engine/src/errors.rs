@@ -2,7 +2,7 @@
 //! start with one of these, and consumers parse the prefix to classify the failure: UI
 //! views (`FxChains.tsx` offers an overwrite menu on `EXISTS:`), the CLI's `e.code`, the
 //! mock backend (`ui/src/api/mock.ts`). The UI mirrors them in `ui/src/api/errors.ts`.
-//! `app/tests/ui_error_prefixes.rs` pins both sides to this module, so a rename or a new
+//! `app/src/ui_prefixes_tests.rs` pins both sides to this module, so a rename or a new
 //! prefix fails CI until both languages agree.
 
 /// A name is taken (`fxChainSave`, `fxChainRename`, `wave apply --force`…).

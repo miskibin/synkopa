@@ -91,7 +91,26 @@ pub fn cases() -> Vec<Case> {
     c.push((
         "main",
         "putClips refuses an unknown reference source",
-        vec![Op::PutClips { clips: vec![Clip { tune: Some(tune_ref(None)), ..good_audio(44) }] }],
+        vec![Op::PutClips {
+            clips: vec![Clip {
+                tune: Some(ClipTune {
+                    notes: vec![],
+                    pencil: vec![],
+                    reference: Some(RefTune {
+                        source: 99,
+                        correction: 0.5,
+                        vibrato: 0.5,
+                        influence: 0.5,
+                        octave: None,
+                        key: 0,
+                        scale: 1,
+                        speed: None,
+                        melody: None,
+                    }),
+                }),
+                ..good_audio(44)
+            }],
+        }],
     ));
     c.push((
         "main",
@@ -143,7 +162,7 @@ pub fn cases() -> Vec<Case> {
     ));
     c.push(("main", "putTrack refuses an unknown insert", vec![Op::PutTrack { track: track(3, "Bass", 9) }]));
     c.push(("main", "removeTrack drops the lane and reindexes the clips", vec![Op::RemoveTrack { id: 1 }]));
-    c.push(("main", "removeTrack refuses the last track", vec![Op::RemoveTrack { id: 1 }]));
+    c.push(("one", "removeTrack refuses the last track", vec![Op::RemoveTrack { id: 1 }]));
     c.push(("one", "removeTrack refuses an unknown track", vec![Op::RemoveTrack { id: 99 }]));
     c.push((
         "main",
@@ -370,7 +389,7 @@ pub fn cases() -> Vec<Case> {
         "removeSource drops clips, sampler channels with their notes, comp takes and references",
         vec![Op::RemoveSource { id: 10 }],
     ));
-    c.push(("main", "removeSource refuses an unknown source", vec![Op::RemoveSource { id: 99 }]));
+    c.push(("main", "removeSource ignores an unknown source", vec![Op::RemoveSource { id: 99 }])); // the engine is a silent no-op
 
     // ---- automation
     c.push((
