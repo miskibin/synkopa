@@ -5,7 +5,8 @@ import { fitMixH, MIX_HANDLE_H, mixHandleDrag, mixMaxH, mixSplitDrag, SPLIT } fr
 import { stripLabel } from '../lib/mixer';
 import { t as tr, tName } from '../lib/i18n';
 import { channels, routeSelectedChannels, selectedChannels } from '../state/pattern';
-import { leaveMixView, revealed } from '../state/mixView';
+import { hideMixer, mixFront, revealed, setMixDock, toggleMixView } from '../state/mixView';
+import { PanelFrame, WinControls } from './PanelFrame';
 import { presetInfo } from '../lib/presets';
 import * as A from '../state/actions';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -383,11 +384,51 @@ function FxChain() {
 /** FL: a right-click on the mixer sends the floating windows behind (like a click on the playlist). */
 const hideWins = (e: PointerEvent) => { if (e.button === 2) A.playlistFront(); };
 
+const MIX_ICON = 'M6 4v16 M12 4v16 M18 4v16 M4 14h4 M10 8h4 M16 12h4';
+const DOCK_BOTTOM_ICON = 'M4 5h16v14H4z M4 13h16';
+const FLOAT_ICON = 'M9 9h11v10H9z M5 15H4V5h11v1';
+/** Height of the Mixer's title bar (px). */
+const MIXHD_H = 28;
+
 /**
- * The docked mixer under the Playlist. No title bar: its splitter sizes it, and dragged below the
- * breakpoint it collapses to a thin handle (click it, Enter, or drag it up to open it again at
- * the height it had). It cannot be closed; F9 is the Mix view. While the Mix view is on, the slot
- * keeps its size (so the Playlist under the Mix view does not move) and builds no strips.
+ * The Mixer's title bar, the same docked, floating or maximized (FL: every window has one):
+ * its name, what Ctrl+L would route, then dock / float, maximize, hide. Double-click = maximize.
+ */
+function MixHead() {
+  const n = () => selectedChannels().length;
+  return (
+    <>
+      <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)' }}><Icon d={MIX_ICON} size={12} /></span>
+      <span class="wintitle">{tr('c.mv.mixer')}</span>
+      <span class="mvhint">{n() ? tr('c.mv.selHint', { n: n() }) : tr('c.mv.noSelHint')}</span>
+    </>
+  );
+}
+function MixControls() {
+  return (
+    <WinControls
+      dock={{ docked: U.mixDock, toggle: () => setMixDock(!U.mixDock), tip: tr(U.mixDock ? 'b.dk.float' : 'c.mv.dockBottom'), icon: U.mixDock ? FLOAT_ICON : DOCK_BOTTOM_ICON }}
+      max={{ on: U.mixView, toggle: toggleMixView }}
+      close={{ tip: tr('c.mv.hideTip'), act: hideMixer }} />
+  );
+}
+/** The title bar of the docked and the maximized Mixer (the floating one gets it from `PanelFrame`). */
+function MixBar() {
+  return (
+    <div class="winhd mixhd" style={{ height: MIXHD_H + 'px' }}
+      onDblClick={e => { if (!(e.target as HTMLElement).closest('button')) toggleMixView(); }}>
+      <MixHead />
+      <div style={{ flex: 1 }} />
+      <MixControls />
+    </div>
+  );
+}
+
+/**
+ * The Mixer docked under the Playlist: its splitter sizes it, its title bar floats, maximizes or
+ * hides it. Hidden (× or F9) or dragged below the breakpoint it collapses to a thin handle (click
+ * it, Enter, or drag it up to open it again at the height it had). While maximized, the slot keeps
+ * its size (so the Playlist under the full view does not move) and builds no strips.
  */
 /** The instrument icon's width in a strip's name, its margin included (px). */
 const ICON_W = 14;
@@ -426,6 +467,8 @@ export function Mixer() {
     if (open) expand(); else collapse();
   };
   return (
+    // floating, the Mixer is a window in the window layer (`MixerWindow`): the dock slot is empty
+    <Show when={U.mixDock}>
     <div class="mixdock" inert={U.mixView} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
       <Show when={!U.mixMin} fallback={
         <div class="mixhandle" style={{ height: MIX_HANDLE_H + 'px' }} role="button" tabIndex={0} aria-expanded="false"
@@ -435,7 +478,8 @@ export function Mixer() {
       }>
         <div class="mixsplit" style={{ height: SPLIT + 'px' }} role="separator" aria-orientation="horizontal" tabIndex={0}
           aria-label={tr('c.mv.splitLabel')} title={tr('c.mv.splitTip')} onPointerDown={split} onKeyDown={key(false)} />
-        <div class="mixer" style={{ height: mixH() + 'px' }}>
+        <MixBar />
+        <div class="mixer" style={{ height: Math.max(60, mixH() - MIXHD_H) + 'px' }}>
           <Show when={!U.mixView}>
             <Strips full={false} />
             <FxChain />
@@ -443,20 +487,30 @@ export function Mixer() {
         </div>
       </Show>
     </div>
+    </Show>
   );
 }
 
-/** F9: the mixer over the whole workspace, with the way back and what Ctrl+L would route. */
+/** The floating Mixer: the same window frame as the Channel Rack and the Piano roll. */
+export function MixerWindow(props: { z: number }) {
+  return (
+    <PanelFrame geom={() => U.mixWin} setGeom={g => setU('mixWin', w => ({ ...w, ...g }))} z={props.z} class="mixwin" minW={480} minH={260}
+      front={mixFront} onHeadDbl={toggleMixView} head={<MixHead />} controls={<MixControls />}>
+      <div class="mixer floating" on:pointerdown={{ capture: true, handleEvent: hideWins }}>
+        <Show when={!U.mixView}>
+          <Strips full={false} />
+          <FxChain />
+        </Show>
+      </div>
+    </PanelFrame>
+  );
+}
+
+/** The Mixer maximized over the whole workspace (its title bar's maximize, or a double-click on it). */
 export function MixView() {
-  const n = () => selectedChannels().length;
   return (
     <div class="mixview" role="region" aria-label={tr('c.mv.title')} on:pointerdown={{ capture: true, handleEvent: hideWins }}>
-      <div class="mvbar">
-        <button class="mvback" onClick={() => leaveMixView()} title={tr('c.mv.backTip')}>
-          <Icon d="M15 18l-6-6 6-6" size={12} sw={2.2} /><span>{tr('c.mv.back')}</span><span class="kbd mono">F9</span>
-        </button>
-        <span class="mvhint">{n() ? tr('c.mv.selHint', { n: n() }) : tr('c.mv.noSelHint')}</span>
-      </div>
+      <MixBar />
       <div class="mixer full">
         <Strips full />
         <FxChain />
@@ -464,3 +518,4 @@ export function MixView() {
     </div>
   );
 }
+

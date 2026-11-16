@@ -60,3 +60,27 @@ describe('one stack for every floating window', () => {
     expect(shownFloating().map(f => f.kind).sort()).toEqual(['editor', 'plug']);
   });
 });
+
+describe('the Mixer is a window like the others', () => {
+  it('F9 shows, brings to front and hides it; floating, it is in the stack', async () => {
+    const { U, setU } = await import('../state/ui');
+    const MV = await import('../state/mixView');
+    const { topFloating } = await import('../state/winOrder');
+    setU({ zTop: 1, plugs: [], editor: null, pitchEd: null, plugsHidden: false, rackWin: null, rollWin: null, mixView: false, mixDock: true, mixMin: false });
+    // docked: F9 hides it to its handle and shows it again; it is never "in front"
+    MV.toggleMixer(); expect(U.mixMin).toBe(true);
+    MV.toggleMixer(); expect(U.mixMin).toBe(false);
+    expect(topFloating()).toBeNull();
+    // floating: it joins the stack in front
+    MV.setMixDock(false);
+    expect(topFloating()?.kind).toBe('mix');
+    // another window comes in front: F9 brings the Mixer back to the front instead of hiding it
+    setU({ zTop: U.zTop + 1, plugs: [{ fxId: 3, x: 0, y: 0, w: 300, z: U.zTop + 1 }] });
+    expect(topFloating()?.kind).toBe('plug');
+    MV.toggleMixer(); expect(U.mixMin).toBe(false); expect(topFloating()?.kind).toBe('mix');
+    MV.toggleMixer(); expect(U.mixMin).toBe(true); expect(topFloating()?.kind).toBe('plug');
+    // maximized: F9 restores it
+    MV.showMixer(); MV.toggleMixView(); expect(U.mixView).toBe(true);
+    MV.toggleMixer(); expect(U.mixView).toBe(false); expect(U.mixMin).toBe(false);
+  });
+});

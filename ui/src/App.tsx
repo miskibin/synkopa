@@ -14,8 +14,8 @@ import { closeMenu, say, setU, U } from './state/ui';
 import { ContextMenu } from './ui/Menu';
 import { osDragEnd, osDragOver, osDrop } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
-import { Mixer, MixView } from './views/Mixer';
-import { leaveMixView, toggleMixView } from './state/mixView';
+import { Mixer, MixerWindow, MixView } from './views/Mixer';
+import { hideMixer, leaveMixView, toggleMixer } from './state/mixView';
 import { chanById, routeSelectedChannels } from './state/pattern';
 import { playlistZoom } from './views/Playlist';
 import { Workspace } from './views/PatDock';
@@ -42,7 +42,7 @@ import { renameCurrent } from './views/patternShared';
 import { NotebookHost } from './views/Notebook';
 import { toggleNotebook } from './state/notebook';
 import { clonePattern, closeRack, closeRoll, nextEmptyPattern, patMode, pickPatternNum, rackFloating, rollFloating, stepPattern, toggleRack, toggleRoll } from './state/pattern';
-import { topFloating, type Floating } from './state/winOrder';
+import { mixFloating, topFloating, type Floating } from './state/winOrder';
 import { Help, Toolbar, TOOLS } from './views/Toolbar';
 
 /** Closes one floating window. */
@@ -51,6 +51,7 @@ function closeFloating(f: Floating) {
     case 'plug': return A.closePlug(f.id!);
     case 'rack': return closeRack();
     case 'roll': return closeRoll();
+    case 'mix': return hideMixer();
     case 'editor': return A.closeEditor();
     case 'chan': return closeChannelWindow();
     case 'pitch': return A.closePitchEditor();
@@ -63,6 +64,7 @@ function plugRank(z: number) {
   for (const p of U.plugs) if (p.z < z) r++;
   if (rackFloating() && U.rackWin!.z < z) r++;
   if (rollFloating() && U.rollWin!.z < z) r++;
+  if (mixFloating() && U.mixWin.z < z) r++;
   return r;
 }
 
@@ -156,7 +158,7 @@ function onKey(e: KeyboardEvent) {
   if (!m && !e.altKey && /^Numpad[1-9]$/.test(e.code)) { e.preventDefault(); return pickPatternNum(+e.code.slice(6)); }
   if (m && e.shiftKey && k === 'c') { e.preventDefault(); return clonePattern(); }
   if (e.key === 'F5') { e.preventDefault(); return U.plugsHidden ? A.showPlugs() : A.playlistFront(); }
-  if (e.key === 'F9') { e.preventDefault(); return toggleMixView(); }
+  if (e.key === 'F9') { e.preventDefault(); return toggleMixer(); }
   // FL: route the selected Channel Rack channels to the selected mixer insert (Shift: one per insert from it on)
   if (m && !e.altKey && e.code === 'KeyL') { e.preventDefault(); return routeSelectedChannels(U.mixSel, e.shiftKey); }
   // FL's export in place (consolidate): the selected clips rendered onto a new track below
@@ -286,6 +288,7 @@ export function App() {
         <For each={U.plugs}>{pw => <FxWindow pw={pw} z={plugRank(pw.z)} />}</For>
         <Show when={!U.rackDock}><ChannelRack z={U.rackWin ? plugRank(U.rackWin.z) : 1} /></Show>
         <Show when={!U.rollDock}><PianoRoll z={U.rollWin ? plugRank(U.rollWin.z) : 1} /></Show>
+        <Show when={mixFloating()}><MixerWindow z={plugRank(U.mixWin.z)} /></Show>
       </div>
       <NotebookHost />
       <Show when={U.ghost}>{g => <div class="ghost" style={{ left: g().x + 'px', top: g().y + 'px', 'box-shadow': `inset 0 0 0 1px ${g().color},0 6px 16px rgba(0,0,0,.45)` }}>{g().name}</div>}</Show>

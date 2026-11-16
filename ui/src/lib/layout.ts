@@ -98,6 +98,7 @@ export function parseLayout(raw: string | null): Partial<UiState> {
     rackDock: bool(v.rackDock), rackDockW: v.rackDockW === 0 ? 0 : num(v.rackDockW, 200, 8000),
     rollDock: bool(v.rollDock), rollDockH: num(v.rollDockH, 100, 8000),
     rackFloat: parseGeo(v.rackFloat), rollFloat: parseGeo(v.rollFloat), rollMax: bool(v.rollMax),
+    mixDock: bool(v.mixDock), mixWin: ((g: Geo | undefined) => g && { ...g, z: 0 })(parseGeo(v.mixFloat)),
   };
   for (const k of Object.keys(p) as (keyof UiState)[]) if (p[k] === undefined) delete p[k];
   return p;

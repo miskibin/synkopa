@@ -97,6 +97,8 @@ export interface UiState {
   rackFloat: Geo | null; rollFloat: Geo | null;
   /** The floating Piano roll fills everything under the toolbar (follows the app window, reopens full screen). */
   rollMax: boolean;
+  /** The Mixer is docked under the Playlist (`mixMin`: hidden to its handle) instead of floating at `mixWin` (`mixMin`: closed). */
+  mixDock: boolean; mixWin: PatWin;
   /** The Channel Rack's graph editor (per-step velocity / key of the selected channel) is shown. */
   rackGraph: 'vel' | 'key' | null;
   /** True while the engine loops a pattern on its own (telemetry `patBeat` ≥ 0). */
@@ -129,7 +131,7 @@ export const [U, setU] = createStore<UiState>({
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'project',
   ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, chSel: [], rackWin: null, rollWin: null,
-  rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true,
+  rackDock: false, rackDockW: RACK_DOCK_W, rollDock: false, rollDockH: ROLL_DOCK_H, rackFloat: null, rollFloat: null, rollMax: true, mixDock: true, mixWin: { x: 120, y: 140, w: 1100, h: 420, z: 0 },
   rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
   playing: false, previewing: false, previewPath: null, stretchMode: false,
 });
@@ -147,7 +149,7 @@ createRoot(() => createEffect(() => {
   const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, mixH: U.mixH, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
     rackDock: U.rackDock, rackDockW: U.rackDockW, rollDock: U.rollDock, rollDockH: U.rollDockH, rollMax: U.rollMax,
     // the floating place: live while the window is open (a restart with it open keeps it), else where it closed
-    rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat });
+    rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat, mixDock: U.mixDock, mixFloat: geo(U.mixWin) });
   try { localStorage.setItem(LAYOUT_KEY, s); } catch { /* private window */ }
 }));
 export const say = (msg: string) => { readoutPristine = false; setU('readout', msg); };

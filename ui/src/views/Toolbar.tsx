@@ -15,7 +15,7 @@ import { S } from '../state/store';
 import { curBeat, tele } from '../state/telemetry';
 import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { checkUpdates, showWhatsNew } from '../state/updates';
-import { toggleMixView } from '../state/mixView';
+import { setMixDock, toggleMixer, toggleMixView } from '../state/mixView';
 import { midiFlash, midiStatus } from '../state/midi';
 import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
@@ -244,7 +244,7 @@ export function Toolbar() {
       <button class="tbtn icon panelbtn" classList={{ on: !!U.rollWin }} onClick={toggleRollShown} title={t('a.tb.rollTip')} aria-label={t('a.mn.roll')} aria-pressed={!!U.rollWin}>
         <Icon d="M3 4h18v16H3z M3 9h18 M3 14h18 M7 6.5h5 M13 11.5h6 M5 16.5h7" size={14} />
       </button>
-      <button class="tbtn icon panelbtn" classList={{ on: U.mixView }} onClick={toggleMixView} title={t(U.mixView ? 'a.tb.mixViewBackTip' : 'a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={U.mixView}>
+      <button class="tbtn icon panelbtn" classList={{ on: !U.mixMin }} onClick={toggleMixer} title={t('a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={!U.mixMin}>
         <Icon d="M5 21v-7M5 10V3M12 21v-9M12 8V3M19 21v-5M19 12V3M2 14h6M9 8h6M16 16h6" size={14} />
       </button>
       <Show when={midiStatus()?.selected}>
@@ -310,12 +310,13 @@ function MenuBar() {
     ]],
     ['a.mn.view', () => [
       { t: 'item', label: t('a.mn.browser'), kbd: 'Alt+F8', checked: U.pickOpen, act: () => setU('pickOpen', !U.pickOpen) },
-      { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: U.mixView, act: toggleMixView },
-      { t: 'item', label: t(U.mixMin ? 'a.mn.mixExpand' : 'a.mn.mixCollapse'), glyph: U.mixMin ? G.expand : G.collapse, disabled: U.mixView, title: t(U.mixView ? 'a.mn.mixDockOff' : 'a.mn.mixDockTip'), act: () => setU('mixMin', !U.mixMin) },
+      { t: 'item', label: t('a.mn.mixer'), kbd: 'F9', checked: !U.mixMin, act: toggleMixer },
+      { t: 'item', label: t('a.mn.mixMax'), checked: U.mixView, title: t('a.mn.mixMaxTip'), act: toggleMixView },
       { t: 'item', label: t('a.mn.rack'), kbd: 'F6', checked: !!U.rackWin, act: toggleRackShown },
       { t: 'item', label: t('a.mn.roll'), kbd: 'F7', checked: !!U.rollWin, act: toggleRollShown },
       { t: 'item', label: t('a.mn.rackDock'), checked: U.rackDock, title: t('a.mn.rackDockTip'), act: () => setRackDock(!U.rackDock) },
       { t: 'item', label: t('a.mn.rollDock'), checked: U.rollDock, title: t('a.mn.rollDockTip'), act: () => setRollDock(!U.rollDock) },
+      { t: 'item', label: t('a.mn.mixDock'), checked: U.mixDock, title: t('a.mn.mixDockTip'), act: () => setMixDock(!U.mixDock) },
       { t: 'item', label: t(U.plugsHidden ? 'a.mn.winsShow' : 'a.mn.winsHide'), glyph: G.windows, kbd: 'F5', disabled: !wins(), act: () => (U.plugsHidden ? A.showPlugs() : A.playlistFront()) },
       { t: 'sep' },
       // the transport toggles the toolbar hides first on a narrow window

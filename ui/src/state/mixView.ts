@@ -8,6 +8,7 @@ import { t } from '../lib/i18n';
 import { restoreArrange, takeArrange, type Arrange } from '../lib/mixer';
 import { insName, S } from './store';
 import { say, setU, U } from './ui';
+import { topFloating } from './winOrder';
 
 let saved: Arrange | null = null, savedPlugs = new Set<number>();
 
@@ -50,7 +51,47 @@ export function showInsert(id: Id | null | undefined) {
   const m = id == null ? undefined : S.project.inserts.find(x => x.id === id);
   if (!m) return;
   setU({ mixSel: m.id, fxSel: m.fx[0]?.id ?? null });
-  if (!U.mixView && U.mixMin) setU('mixMin', false);
+  if (!U.mixView) showMixer();
   setRevealed({ id: m.id, n: (revealed()?.n ?? 0) + 1 });
   say(t('c.mix.shown', { name: insName(m) }));
+}
+
+// ---- the Mixer as a window (FL: F9 shows / hides it; docked or detached like the other windows)
+
+/** Bring the floating Mixer in front of the other floating windows (showing them if F5 tucked them away). */
+export function mixFront() {
+  if (U.mixDock || U.mixMin) return;
+  if (U.plugsHidden) setU('plugsHidden', false);
+  if (U.mixWin.z === U.zTop) return;
+  const z = U.zTop + 1;
+  setU({ zTop: z, mixWin: { ...U.mixWin, z } });
+}
+/** Show the Mixer (docked: open its panel; floating: open the window in front). */
+export function showMixer() {
+  if (U.mixMin) setU('mixMin', false);
+  mixFront();
+}
+/** Hide the Mixer (×, Esc, F9): docked it keeps its thin handle, floating it closes. */
+export function hideMixer() {
+  leaveMixView();
+  setU('mixMin', true);
+  say(t(U.mixDock ? 'c.mv.collapsed' : 'c.mv.hidden'));
+}
+/** Dock the Mixer under the Playlist, or float it as a window (kept on screen). */
+export function setMixDock(dock: boolean) {
+  leaveMixView();
+  if (!dock) {
+    const W = window.innerWidth, H = window.innerHeight, o = U.mixWin;
+    const w = Math.min(o.w, W - 20), h = Math.min(o.h, H - 60);
+    setU('mixWin', { ...o, w, h, x: Math.max(0, Math.min(o.x, W - w)), y: Math.max(44, Math.min(o.y, H - h)) });
+  }
+  setU({ mixDock: dock, mixMin: false });
+  mixFront();
+}
+/** F9 / the toolbar's mixer button: maximized → back; hidden → shown; floating behind → in front; else hidden. */
+export function toggleMixer() {
+  if (leaveMixView()) return;
+  if (U.mixMin) return showMixer();
+  if (!U.mixDock && topFloating()?.kind !== 'mix') return mixFront();
+  hideMixer();
 }
