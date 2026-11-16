@@ -414,17 +414,18 @@ fn chord_suffix(type_id: &str) -> &'static str {
 
 /// Absolute pitches of a chord rooted at `root` (a MIDI note), rotated `inversion`
 /// times: each rotation lifts the lowest voice an octave, clamped to the voicing's
-/// last inversion. Returned ascending. `None` for an unknown type or a root that
-/// pushes the top voice past MIDI 127.
+/// last inversion. Returned ascending. `None` for an unknown type or a voicing that
+/// leaves the MIDI range — checked *after* rotating, since lifting a voice can push
+/// the top past 127 even when the root position fit.
 pub fn chord_pitches(root: u8, type_id: &str, inversion: u32) -> Option<Vec<u8>> {
     let iv = chord_intervals(type_id)?;
-    if root as u16 + *iv.last().unwrap() as u16 > 127 {
-        return None;
-    }
     let mut p: Vec<u8> = iv.iter().map(|&i| root + i).collect();
     for _ in 0..inversion.min(iv.len() as u32 - 1) {
         let lo = p.iter().enumerate().min_by_key(|(_, &v)| v).map(|(i, _)| i).unwrap();
         p[lo] += 12;
+    }
+    if p.iter().any(|&v| v > 127) {
+        return None;
     }
     p.sort_unstable();
     Some(p)
@@ -550,7 +551,15 @@ pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degree
 /// and leaves out-of-scale roots alone — chromatic passing notes stay unharmonized;
 /// named types spell by interval from the root, whatever the key. A `None` pitch
 /// resolves to the channel root, like [`quantize`].
-pub fn chord(notes: &mut Vec<Note>, key_scale: Option<(u8, u32)>, harmony: &str, roots: &[(Id, u8)]) {
+/// Harmonize single notes: every (channel, step) group of `notes` holding exactly one
+/// note gains the tones of `harmony` above it (roots stay; a tone already sounding is
+/// not doubled). Duplication is checked against `all` — the pattern's full note set —
+/// so a tone another channel (or an unselected note) already sounds at that step is
+/// never doubled. `diatonic` spells the triad from the project key/scale and leaves
+/// out-of-scale roots alone — chromatic passing notes stay unharmonized; named types
+/// spell by interval from the root, whatever the key. A `None` pitch resolves to the
+/// channel root, like [`quantize`].
+pub fn chord(notes: &mut Vec<Note>, all: &[Note], key_scale: Option<(u8, u32)>, harmony: &str, roots: &[(Id, u8)]) {
     // group indices by (channel, step) — the same grouping rule as `strum`; processed
     // in key order so the appended tones land deterministically, and indices stay
     // valid because only pushes happen below
@@ -586,7 +595,13 @@ pub fn chord(notes: &mut Vec<Note>, key_scale: Option<(u8, u32)>, harmony: &str,
         };
         for v in ivs {
             let p = root + v;
-            if !notes.iter().any(|x| x.step == step && x.p == Some(p)) {
+            // `notes` covers tones added earlier in this run, `all` the rest of the
+            // pattern (unselected notes, other channels)
+            if !notes
+                .iter()
+                .chain(all.iter())
+                .any(|x| x.step == step && x.p.or_else(|| roots.iter().find(|(id, _)| *id == x.ch).map(|(_, r)| *r)) == Some(p))
+            {
                 notes.push(Note { ch: cid, step, len, p: Some(p), v: vel, trig: Some(false) });
             }
         }
@@ -844,6 +859,8 @@ mod tests {
         assert!(chord_pitches(118, "maj", 0).is_some()); // top voice 125
         assert!(chord_pitches(121, "maj", 0).is_none()); // top voice would be 128
         assert!(chord_pitches(114, "maj9", 0).is_none()); // top voice would be 128
+                                                          // the limit is checked after rotating: lifting the root an octave overflows
+        assert!(chord_pitches(118, "maj", 1).is_none()); // would be [122, 125, 130]
     }
 
     #[test]
@@ -866,12 +883,12 @@ mod tests {
     fn chord_harmonizes_diatonic_triads_and_skips_out_of_scale_roots() {
         // E3 in A natural minor is degree v: E G B
         let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) }];
-        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [52, 55, 59]);
         // a chromatic root stays unharmonized — diatonic mode leaves passing notes alone
         let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false) }];
-        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         assert_eq!(notes.len(), 1);
     }
 
@@ -879,7 +896,7 @@ mod tests {
     fn chord_harmonizes_named_types_by_interval_anywhere() {
         // C#3 + minor 7th = C#m7, spelled by the table whatever the project key is
         let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8, trig: Some(false) }];
-        chord(notes, Some(a_minor()), "min7", &[(1, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "min7", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [49, 52, 56, 59]);
     }
@@ -892,7 +909,7 @@ mod tests {
             Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) },
             Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8, trig: Some(false) },
         ];
-        chord(notes, Some(a_minor()), "diatonic", &[(1, 60), (2, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60), (2, 60)]);
         // E gains G (B exists → skipped); B (degree ii°) gains D and F
         assert_eq!(notes.len(), 5);
         assert_eq!(notes.iter().filter(|n| n.p == Some(59)).count(), 1);
@@ -907,7 +924,7 @@ mod tests {
             Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8, trig: Some(false) },
             Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
         ];
-        chord(notes, Some(a_minor()), "diatonic", &[(1, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         // step 0 has two notes (not a single root) and stays; step 4 becomes Am (+C, +E)
         assert_eq!(notes.len(), 5);
         assert_eq!(notes.iter().filter(|n| n.step == 0.0).count(), 2);
@@ -920,10 +937,23 @@ mod tests {
         // the root note keeps `p: None` (it still follows the channel root); the added
         // tones are spelled out explicitly
         let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8, trig: Some(false) }];
-        chord(notes, Some(a_minor()), "maj", &[(1, 60)]);
+        chord(notes, &notes.clone(), Some(a_minor()), "maj", &[(1, 60)]);
         assert_eq!(notes[0].p, None);
         let ps: Vec<u8> = notes.iter().skip(1).map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [64, 67]);
+    }
+
+    #[test]
+    fn chord_duplicate_detection_resolves_implicit_pitches() {
+        // ch 2 has `p: None` with root 59 (B3) — it sounds B3 without spelling it, so
+        // E3's chord must not add an explicit B3
+        let notes = &mut vec![
+            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) },
+            Note { ch: 2, step: 0.0, len: 2.0, p: None, v: 0.8, trig: Some(false) },
+        ];
+        chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60), (2, 59)]);
+        assert_eq!(notes.len(), 5); // E gains G only; B (implicit) gains D and F
+        assert_eq!(notes.iter().filter(|n| n.p == Some(59)).count(), 0);
     }
 
     #[test]

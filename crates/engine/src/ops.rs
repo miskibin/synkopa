@@ -759,7 +759,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     );
                 }
                 crate::transform::TransformVerb::Chord { harmony } => {
-                    crate::transform::chord(&mut target, ks, harmony, &roots);
+                    crate::transform::chord(&mut target, &notes, ks, harmony, &roots);
                 }
                 crate::transform::TransformVerb::Progression { ch, bars, template, voice_lead, degrees } => {
                     let degs: Vec<usize> = if degrees.is_empty() {
@@ -1356,6 +1356,30 @@ mod transform_tests {
         assert_eq!(notes.iter().filter(|n| n.step == 5.0).count(), 1); // the other-channel hit
         assert_eq!(notes.iter().find(|n| n.step == 5.0).unwrap().p, None); // no tones added on it
         assert_eq!(step_ps(8.0), [60, 64, 67]); // C above C4
+    }
+
+    #[test]
+    fn chord_verb_dedupe_sees_unselected_notes() {
+        let mut p = project_with_notes();
+        set_key_a_minor(&mut p);
+        // E3 selected on ch 1001; B3 (explicit) on another channel at the same step,
+        // OUTSIDE the selection — Em must not double the B that is already sounding
+        let other = p.channels.iter().map(|c| c.id).find(|id| *id != 1001).unwrap();
+        p.patterns[0].notes[1].p = Some(52); // the 4.3 note becomes E3
+        p.patterns[0].notes.push(Note { ch: other, step: 4.3, len: 2.0, p: Some(59), v: 0.8, trig: Some(false) });
+        crate::ops::apply_all(
+            &mut p,
+            &[Op::TransformNotes {
+                pattern: 1,
+                verb: crate::transform::TransformVerb::Chord { harmony: "diatonic".into() },
+                seed: None,
+                select: Some(crate::ops::TransformSelect::Range { from: 4.0, to: 9.0, ch: Some(1001) }),
+            }],
+        )
+        .unwrap();
+        let notes = &p.patterns[0].notes;
+        assert_eq!(notes.len(), 7); // 4 originals + G3 (E3), + E4 and G4 (C4) — no second B3
+        assert_eq!(notes.iter().filter(|n| n.p == Some(59)).count(), 1);
     }
 
     #[test]

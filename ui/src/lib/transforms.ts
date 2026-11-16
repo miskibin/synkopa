@@ -84,13 +84,15 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
  * `null` for an unknown type or a root pushing the top voice past MIDI 127. */
 export function chordPitches(root: number, typeId: string, inversion = 0): number[] | null {
   const t = CHORD_TYPES.find(([id]) => id === typeId);
-  if (!t || !Number.isInteger(root) || root < 0 || root + t[1][t[1].length - 1] > 127) return null;
+  if (!t || !Number.isInteger(root) || root < 0) return null;
   const p = t[1].map(v => root + v);
   for (let k = 0; k < Math.min(inversion, t[1].length - 1); k++) {
     let lo = 0;
     p.forEach((v, i) => { if (v < p[lo]) lo = i; });
     p[lo] += 12;
   }
+  // the limit is checked after rotating: lifting a voice can push the top past 127
+  if (p.some(v => v > 127)) return null;
   return p.sort((a, b) => a - b);
 }
 
@@ -238,8 +240,11 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         const vel = Math.fround(Math.min(1, Math.max(0.05, Math.fround((n.v ?? 1) * 0.9))));
         for (const v of ivs) {
           const p = root + v;
-          // a tone any channel already sounds at this step is not doubled
-          if (!target.some(x => x.step === n.step && x.p === p)) {
+          // a tone already sounding at this step is not doubled — checked against the
+          // full pattern (unselected notes, other channels, implicit channel roots)
+          // and against tones added earlier in this run
+          const sounding = (x: Note) => x.step === n.step && (x.p ?? roots.find(r => r.id === x.ch)?.root) === p;
+          if (!target.some(sounding) && !notes.some(sounding)) {
             target.push({ ch: n.ch, step: n.step, len: n.len ?? 1, p, v: vel, trig: false });
           }
         }
@@ -254,7 +259,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
       const degrees = verb.degrees ?? [];
       if (degrees.length) {
         if (degrees.length > 32) throw new Error('progression degrees: at most 32 entries');
-        if (degrees.some(d => d < 0 || d >= n)) throw new Error(`progression degrees must be 0..${n - 1} in this scale`);
+        if (degrees.some(d => !Number.isInteger(d) || d < 0 || d >= n)) throw new Error(`progression degrees must be whole numbers 0..${n - 1} in this scale`);
       } else {
         const bars = verb.bars ?? 4;
         if (bars < 1 || bars > 32) throw new Error('progression bars must be 1..=32');

@@ -216,6 +216,7 @@ const SWITCHES: &[&str] = &[
     "keys",
     "new",
     "no-master",
+    "no-voice-lead",
     "off",
     "original",
     "play",
@@ -672,9 +673,12 @@ fn parse_root(s: &str) -> Result<u64, String> {
         return if n <= 127 { Ok(n) } else { Err(format!("--root {n} is outside 0..127")) };
     }
     let bad = || format!("--root `{s}` is not a MIDI key or note name (A3, C#4)");
-    let (name, oct) = t.split_at(t.len().checked_sub(1).ok_or_else(bad)?);
-    let oct = oct.trim().parse::<i64>().map_err(|_| bad())?;
-    let (letter, acc): (char, i64) = match name.chars().collect::<Vec<_>>().as_slice() {
+    // char-aware split: the octave is the last character, so a multi-byte accidental
+    // without an octave (`C♭`) errors out instead of splitting inside a character
+    let chars: Vec<char> = t.chars().collect();
+    let (oct_char, name_chars) = chars.split_last().ok_or_else(bad)?;
+    let oct = oct_char.to_digit(10).ok_or_else(bad)? as i64;
+    let (letter, acc): (char, i64) = match name_chars {
         [l] => (*l, 0),
         [l, '#'] => (*l, 1),
         [l, 'b'] | [l, '♭'] => (*l, -1),
@@ -711,6 +715,7 @@ mod root_tests {
         assert!(super::parse_root("H4").is_err());
         assert!(super::parse_root("A").is_err());
         assert!(super::parse_root("128").is_err());
+        assert!(super::parse_root("C♭").is_err()); // multi-byte accidental, no octave
     }
 }
 

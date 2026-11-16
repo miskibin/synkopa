@@ -187,6 +187,9 @@ describe('transformNotes (TS mirror)', () => {
       // a two-note voicing has one inversion; a triad has two
       expect(chordPitches(60, '5', 3)).toEqual([67, 72]);
       expect(chordPitches(60, 'maj', 5)).toEqual([67, 72, 76]);
+      // the MIDI limit holds after rotating: lifting the root overflows (CodeRabbit)
+      expect(chordPitches(118, 'maj', 0)).toEqual([118, 122, 125]);
+      expect(chordPitches(118, 'maj', 1)).toBeNull();
     });
 
     it('naming is bass-first (a root-position C6 is C6, never Am7)', () => {
@@ -247,6 +250,7 @@ describe('transformNotes (TS mirror)', () => {
       run({ kind: 'progression', ch: 1, bars: 33, template: 'pop' });
       run({ kind: 'progression', ch: 1, bars: 4, template: 'nope' });
       run({ kind: 'progression', ch: 1, degrees: [33] });
+      run({ kind: 'progression', ch: 1, degrees: [0.5] }); // fractional degrees are invalid
       run({ kind: 'progression', ch: 1, degrees: [0, 1, 2, 3, 4, 5, 6, 7] }); // degree 7 does not exist here
       run({ kind: 'progression', ch: 1, degrees: Array.from({ length: 33 }, (_, i) => i % 7) }); // > 32 entries
       run({ kind: 'progression', ch: 999, bars: 4, template: 'pop' });
@@ -275,6 +279,30 @@ describe('transformNotes (TS mirror)', () => {
       applyTransform(a, { kind: 'chord', harmony: 'diatonic' }, 0, null, [{ id: 1, root: 60 }, { id: 2, root: 60 }], AMINOR.key, AMINOR.scale, 512);
       expect(a).toHaveLength(5);
       expect(a.filter(n => n.p === 59)).toHaveLength(1);
+    });
+
+    it('chord verb dedupe sees notes outside the selection', () => {
+      // E3 selected; B3 on another channel at the same step, OUTSIDE the selection —
+      // the duplicate check runs against the whole pattern, not just the target
+      const a: Note[] = [
+        { ch: 1, step: 4, len: 2, p: 52, v: 0.8 },
+        { ch: 2, step: 4, len: 2, p: 59, v: 0.8 },
+        { ch: 1, step: 8, len: 2, p: 60, v: 0.8 },
+      ];
+      applyTransform(a, { kind: 'chord', harmony: 'diatonic' }, 0, { kind: 'range', from: 4, to: 9, ch: 1 }, [{ id: 1, root: 60 }, { id: 2, root: 60 }], AMINOR.key, AMINOR.scale, 512);
+      expect(a.filter(n => n.p === 59)).toHaveLength(1);
+      expect(a.filter(n => n.p === 55)).toHaveLength(1); // E3 still gains its G
+    });
+
+    it('chord verb dedupe resolves implicit channel roots', () => {
+      // ch 2 has p: undefined with root 59 (B3) — no explicit B3 may be added
+      const a: Note[] = [
+        { ch: 1, step: 0, len: 2, p: 52, v: 0.8 },
+        { ch: 2, step: 0, len: 2, v: 0.8 },
+      ];
+      applyTransform(a, { kind: 'chord', harmony: 'diatonic' }, 0, null, [{ id: 1, root: 60 }, { id: 2, root: 59 }], AMINOR.key, AMINOR.scale, 512);
+      expect(a.filter(n => n.p === 59)).toHaveLength(0);
+      expect(a).toHaveLength(5);
     });
 
     it('chord verb validates like the engine', () => {

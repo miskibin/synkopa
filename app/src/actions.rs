@@ -1074,9 +1074,10 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     let steps = arg(a, "steps").and_then(Value::as_str);
     let notes = arg(a, "notes");
     let stamp = arg(a, "stamp");
-    if steps.is_some() || notes.is_some() || stamp.is_some() || arg(a, "clear").and_then(Value::as_bool).unwrap_or(false) {
-        let ch =
-            find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --steps / --notes / --stamp / --clear")?)?.id;
+    // stamp is handled below on its own: it replaces only its target step, so it must
+    // not enter the channel-wide replacement path
+    if steps.is_some() || notes.is_some() || arg(a, "clear").and_then(Value::as_bool).unwrap_or(false) {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --steps / --notes / --clear")?)?.id;
         pt.notes.retain(|n| n.ch != ch);
         if let Some(s) = steps {
             let vel = opt_f64(a, "vel").unwrap_or(1.0) as f32;

@@ -208,9 +208,13 @@ function Roll(props: { z: number; docked?: boolean }) {
     const s = snapStep(p.step, unit(e.altKey), true);
     if (s < 0 || s + lastLen() > MAX_STEPS) return;
     const kept = notesRaw().filter(n => !(n.ch === ch().id && n.step === s));
-    const stamped = pitches.map(k => ({ ch: ch().id, step: s, len: lastLen(), p: k, ...velProp() }));
+    // trig:false like a drawn note: a len-1 stamp is a held note, not a step trigger
+    const stamped = pitches.map(k => ({ ch: ch().id, step: s, len: lastLen(), trig: false, p: k, ...velProp() }));
     setStampGhost(null); // the ghost did its job; the next mousemove re-previews the next cell
     commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
+    // the replacement moves notes around: the selection becomes the fresh chord, so a
+    // stale index can never point at an unrelated note (Delete would eat the wrong one)
+    setSel(new Set(stamped.map((_, j) => kept.length + j)));
     stamped.forEach(n => audition(ch().id, n.p ?? p.key, n.v ?? 1));
     say(t('b.pr.stamped', { label: chordName(pitches) }));
   };
@@ -463,7 +467,11 @@ function Roll(props: { z: number; docked?: boolean }) {
     let notes = notesRaw(), n0 = notes.length;
     let lastStep: number | null = null;
     const del = (ev: PointerEvent) => {
-      const s = snapStep(pos(ev).step, unit(ev.altKey), true);
+      const q = pos(ev);
+      // over a note, its own start decides which chord goes (a chord's body reaches
+      // past its start cell); over empty grid, the snapped cell
+      const hit = hitNote(q.step, q.key);
+      const s = hit >= 0 ? notes[hit].step : snapStep(q.step, unit(ev.altKey), true);
       if (s === lastStep) return;
       lastStep = s;
       const before = notes.length;
