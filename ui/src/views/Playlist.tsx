@@ -7,7 +7,7 @@ import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, type Automation, type AutoPoint, t
 import { boundaries, boundaryXfade, moveBoundary, setBoundaryXfade, takeEnd, toComp, toTimeline, unusedTakes, usedBeats, writeRange } from '../lib/comp';
 import * as CA from '../state/comp';
 import { compById, LANE_H, takeRow, type TakeRow } from '../state/comp';
-import { clampMove, moveClips, resizeClip, resizeClips, stretchClip, stretchClips, sharedSound, TOTAL } from '../lib/clipOps';
+import { clampMove, moveClips, placeClipCopy, resizeClip, resizeClips, stretchClip, stretchClips, sharedSound, TOTAL } from '../lib/clipOps';
 import { clamp, fmtPos, volText } from '../lib/format';
 import { snapFloor, snapRes, snapRound } from '../lib/snap';
 import * as A from '../state/actions';
@@ -616,7 +616,7 @@ export function Playlist() {
     if (modK || (tool === 'select' && id == null)) return marqueeDrag(e, p, id);
     if (h) {
       const clip = h.c;
-      if (clip.kind !== 'comp') setU('cur', { kind: clip.kind, ref: clip.ref });
+      if (clip.kind !== 'comp') setU('cur', { kind: clip.kind, ref: clip.ref, clipId: clip.id });
       if (h.edge === 'menu') { if (!U.sel.includes(clip.id)) setU('sel', [clip.id]); return openClipMenu(e.clientX, e.clientY, clip, p); }
       if (h.edge === 'fi' || h.edge === 'fo') return fadeDrag(e, clip, h.edge);
       if (h.edge === 'cb') return boundaryDrag(e, clip, h.bnd!);
@@ -625,9 +625,14 @@ export function Playlist() {
     }
     if (p.track < 0) { setU('sel', []); return; }
     const cur = U.cur; if (!cur || !srcOf({ kind: cur.kind, ref: cur.ref } as Clip)) return;
-    const len = srcLenBeats(cur.kind, cur.ref);
+    // Picking an existing clip chooses that region, not just its underlying source.
+    // The ID is resolved at draw time, so trimming it after the first click is respected.
+    const template = cur.clipId == null ? null : S.project.clips.find(c => c.id === cur.clipId && c.kind === cur.kind && c.ref === cur.ref);
+    const len = template?.len ?? srcLenBeats(cur.kind, cur.ref);
     const start = clamp(snapFloor(p.beat, unit(e.altKey)), 0, TOTAL - Math.min(len, TOTAL));
-    const nc: Clip = { id: allocId(), track: p.track, start, len: Math.min(len, TOTAL - start), offset: 0, kind: cur.kind, ref: cur.ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...(cur.kind === 'audio' ? sharedSound(S.project.clips, cur.ref) : {}) };
+    const nc: Clip = template
+      ? placeClipCopy(plain(template), allocId(), p.track, start)
+      : { id: allocId(), track: p.track, start, len: Math.min(len, TOTAL - start), offset: 0, kind: cur.kind, ref: cur.ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...(cur.kind === 'audio' ? sharedSound(S.project.clips, cur.ref) : {}) };
     const g = new Gesture(tool === 'paint' ? tl('a.pl.paintClips') : tl('a.pl.insertClip'));
     g.update([{ op: 'putClips', clips: [nc] }]);
     setU('sel', [nc.id]);
@@ -838,7 +843,7 @@ export function Playlist() {
       if (a && p.y < envGeom(h.c).by) { setU('autoSel', { clip: h.c.id, idx: a.points.map((_, i) => i) }); say(tl('a.pl.ptsSelected', { n: a.points.length })); }
       return;
     }
-    setU('cur', { kind: h.c.kind, ref: h.c.ref });
+    setU('cur', { kind: h.c.kind, ref: h.c.ref, clipId: h.c.id });
     if (h.c.kind === 'audio') A.openEditor(h.c.id);
     if (h.c.kind === 'pat') openPattern(h.c.ref);
   };
