@@ -19,6 +19,13 @@ export function moveClips(orig: Clip[], d: number, dt: number): Clip[] {
   return orig.map(c => ({ ...c, start: c.start + d, track: c.track + dt }));
 }
 
+/** Place another instance of an existing clip, keeping the exact source region and its
+ * clip-local settings (trim/offset, stretch, fades and pitch edits), not the full file. */
+export function placeClipCopy(source: Clip, id: number, track: number, beat: number): Clip {
+  const len = Math.min(source.len, TOTAL);
+  return { ...source, id, track, start: clamp(beat, 0, TOTAL - len), len };
+}
+
 /** Split `c` at beat `b`; null when `b` is not strictly inside. */
 export function sliceClip(c: Clip, b: number, newId: number): [Clip, Clip] | null {
   if (b <= c.start + 1e-6 || b >= c.start + c.len - 1e-6) return null;
