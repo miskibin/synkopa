@@ -371,7 +371,7 @@ async function makeUniqueAudio(clip: Clip) {
     // queued behind pending edits; then the new state, so the names below are the engine's
     const r = await enqueue(() => be().makeUnique(ids));
     await resync();
-    setU({ sel: ids, cur: { kind: 'audio', ref: r.sourceId } });
+    setU({ sel: ids, cur: { kind: 'audio', ref: r.sourceId, clipId: null } });
     const name = S.project.sources.find(s => s.id === r.sourceId)?.name ?? '';
     say(t('d.act.madeUnique', { name }));
   } catch (e) {
@@ -392,7 +392,7 @@ export async function exportInPlace(clip?: Clip) {
     const r = await enqueue(() => be().exportInPlace(ids));
     if ('cancelled' in r) { say(t('d.act.inPlaceCancelled')); return; }
     await resync();
-    setU({ sel: [r.clipId], cur: { kind: 'audio', ref: r.sourceId } });
+    setU({ sel: [r.clipId], cur: { kind: 'audio', ref: r.sourceId, clipId: null } });
     say(t('d.act.inPlaceDone', { name: S.project.sources.find(s => s.id === r.sourceId)?.name ?? '' }));
   } catch (e) {
     say(t('d.act.inPlaceFail', { err: String(e) }));
