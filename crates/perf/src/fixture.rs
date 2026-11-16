@@ -132,7 +132,249 @@ pub fn specs() -> Vec<Spec> {
 }
 
 pub fn spec(name: &str) -> Option<Spec> {
+    if name == "song" {
+        // `build` makes this one with `build_song`; the counts here only describe it
+        return Some(Spec {
+            name: "song",
+            tracks: SONG_TRACKS,
+            audio_clips: 24,
+            pat_clips: 420,
+            patterns: 82,
+            notes: 0,
+            sources: 40,
+            src_secs: (0.2, 8.0),
+            beats: 512.0,
+            bpm: 128.0,
+            automations: 8,
+            auto_points: 64,
+            comps: 0,
+            tuned_clips: 0,
+            vocal_tracks: 0,
+        });
+    }
     specs().into_iter().find(|s| s.name == name)
+}
+
+const SONG_TRACKS: usize = 40;
+
+/// A produced song at the scale of FL Studio 20's demo "WiseLabs - Nahash" (89 channels,
+/// 82 patterns, ~5,500 notes, ~440 playlist items, ~120 mixer effects, native instruments
+/// only), so a WAVE-vs-FL comparison opens comparable work: 14 synth channels (the built-in
+/// synth, like the demo's Harmor/Sytrus parts), 75 sampler channels (drum and FX one-shots),
+/// 40 mixer inserts with 2-4 effects each, 4 minutes at 128 BPM.
+pub fn build_song(dir: &Path) -> Project {
+    let mut rng = Rng::new(4242);
+    let audio_dir = dir.join("audio");
+    std::fs::create_dir_all(&audio_dir).unwrap();
+    let mut p = Project::routed();
+    p.bpm = 128.0;
+    p.tracks.clear();
+    p.inserts.truncate(1);
+    // no starter kit: only the song's own channels, patterns and sounds
+    p.channels.clear();
+    p.patterns.clear();
+    p.sources.clear();
+    p.clips.clear();
+    let spb = 60.0 / p.bpm;
+    let beats = 512.0;
+
+    // ---- sources: 36 one-shots (drums, hits, risers) and 4 loops for audio clips
+    for i in 0..40 {
+        let (st, secs) = if i < 36 { (2, rng.range(0.2, 1.6)) } else { (1, 8.0) };
+        let sr = if i % 4 == 3 { 44100 } else { 48000 };
+        let path = audio_dir.join(format!("song{i:03}.wav"));
+        if !path.exists() {
+            write_wav(&path, &synth(st, secs, sr, 900 + i as u64), sr).unwrap();
+        }
+        let id = p.alloc_id();
+        p.sources.push(Source {
+            id,
+            name: if i < 36 { format!("Hit {i}") } else { format!("Loop {i}") },
+            color: color(i),
+            path: path.display().to_string(),
+            dur: secs,
+            sr,
+            ch: 2,
+            peak_db: -6.0,
+        });
+    }
+
+    // ---- mixer: 40 inserts, the master with EQ, comp and limiter
+    for fx in [FxKind::Comp, FxKind::Eq] {
+        let id = p.alloc_id();
+        p.inserts[0].fx.insert(0, new_fx(id, fx, p.bpm));
+    }
+    const CHAINS: [&[FxKind]; 6] = [
+        &[FxKind::Eq, FxKind::Comp],
+        &[FxKind::Eq, FxKind::Sat, FxKind::Comp],
+        &[FxKind::Eq, FxKind::Delay, FxKind::Reverb],
+        &[FxKind::Eq, FxKind::Comp, FxKind::Limit],
+        &[FxKind::Eq, FxKind::Chorus, FxKind::Reverb],
+        &[FxKind::Eq, FxKind::Comp, FxKind::Sat, FxKind::Delay],
+    ];
+    let mut inserts = vec![];
+    for t in 0..SONG_TRACKS {
+        let ins_id = p.alloc_id();
+        let fx = CHAINS[t % CHAINS.len()].iter().map(|k| new_fx(p.alloc_id(), *k, p.bpm)).collect();
+        p.inserts.push(Insert {
+            id: ins_id,
+            name: format!("Bus {t}"),
+            color: color(t),
+            vol: VOL_UNITY,
+            pan: ((t % 7) as f32 - 3.0) / 8.0,
+            width: 1.0,
+            muted: false,
+            solo: false,
+            fx,
+        });
+        inserts.push(ins_id);
+        let tid = p.alloc_id();
+        p.tracks.push(Track {
+            id: tid,
+            name: format!("Track {t}"),
+            color: color(t),
+            muted: false,
+            solo: false,
+            arm: false,
+            vol: VOL_UNITY,
+            h: 56.0,
+            insert: ins_id,
+            icon: None,
+        });
+    }
+
+    // ---- channels: 14 synths, 75 samplers, each routed to an insert like a produced song
+    let cat = wave_engine::poly::catalog();
+    let pick = |c: &str| cat.presets.iter().filter(|x| x.category == c).map(|x| x.name).collect::<Vec<_>>();
+    let mut synth_presets: Vec<&str> = ["Bas", "Pad", "Lead", "Pluck", "Klawisze"].iter().flat_map(|c| pick(c)).collect();
+    if synth_presets.is_empty() {
+        synth_presets = cat.presets.iter().map(|x| x.name).collect();
+    }
+    let mut synths = vec![];
+    for k in 0..14 {
+        let id = p.alloc_id();
+        let name = synth_presets[(k * 7) % synth_presets.len()];
+        p.channels.push(Channel {
+            id,
+            name: name.to_string(),
+            color: color(k),
+            src: ChannelSrc::Synth { synth: wave_engine::poly::preset_state(name).unwrap_or_default() },
+            vol: VOL_UNITY * 0.8,
+            pan: 0.0,
+            mute: false,
+            solo: false,
+            insert: Some(inserts[k % SONG_TRACKS]),
+            root: SAMPLE_ROOT,
+        });
+        synths.push(id);
+    }
+    let mut samplers = vec![];
+    for k in 0..75 {
+        let id = p.alloc_id();
+        let sid = p.sources[k % 36].id;
+        p.channels.push(Channel {
+            id,
+            name: format!("Hit {k}"),
+            color: color(k + 3),
+            src: ChannelSrc::Sample { source: sid, sampler: Default::default() },
+            vol: VOL_UNITY,
+            pan: 0.0,
+            mute: false,
+            solo: false,
+            insert: Some(inserts[14 + k % (SONG_TRACKS - 14)]),
+            root: SAMPLE_ROOT,
+        });
+        samplers.push(id);
+    }
+
+    // ---- 82 patterns: 52 drum/FX patterns (steps), 30 synth parts (chords, bass, melodies)
+    let mut drum_pats = vec![];
+    let mut synth_pats = vec![];
+    for i in 0..82 {
+        let id = p.alloc_id();
+        let mut notes = vec![];
+        if i < 52 {
+            // 4 bars of 16ths: 4-6 instruments, ~45 hits
+            let n_ch = 4 + rng.below(3);
+            let base = rng.below(samplers.len());
+            for c in 0..n_ch {
+                let ch = samplers[(base + c * 11) % samplers.len()];
+                let every = [4, 8, 2, 16, 4, 8][c % 6];
+                let mut s = (c % 2) * (every / 2).max(1);
+                while s < 64 {
+                    let mut n = Note::trigger(ch, s as f32, None);
+                    n.v = 0.6 + 0.4 * rng.f() as f32;
+                    notes.push(n);
+                    s += every;
+                }
+            }
+            drum_pats.push(id);
+        } else {
+            // 8 bars: chords (3 voices), bass or a melody, ~95 notes
+            let ch = synths[(i - 52) % synths.len()];
+            let root = 36 + rng.below(24) as u8;
+            let chords = i % 3 == 0;
+            let mut s = 0.0;
+            while s < 128.0 {
+                let len = if chords { 8.0 } else { [1.0, 2.0, 2.0, 4.0][rng.below(4)] };
+                let deg = [0u8, 3, 5, 7, 10, 12][rng.below(6)];
+                if chords {
+                    for v in [0u8, 3, 7] {
+                        notes.push(Note::new(ch, s, len, Some(root + deg + v)));
+                    }
+                } else {
+                    notes.push(Note::new(ch, s, len, Some(root + deg)));
+                }
+                s += len;
+            }
+            synth_pats.push(id);
+        }
+        notes.sort_by(|a, b| a.step.total_cmp(&b.step));
+        let len = if i < 52 { 16.0 } else { 32.0 };
+        p.patterns.push(Pattern { id, name: format!("Pattern {i}"), color: color(i), len, min_len: len, notes, swing: 0.0 });
+    }
+
+    // ---- playlist: ~420 pattern clips in sections, 24 audio loop clips
+    let cid = |p: &mut Project| p.alloc_id();
+    let sections = [(0.0, 64.0, 6), (64.0, 192.0, 18), (192.0, 256.0, 8), (256.0, 448.0, 22), (448.0, 512.0, 6)];
+    let mut placed = 0;
+    for (a, b, layers) in sections {
+        for l in 0..layers {
+            let (pat, plen) =
+                if l % 3 == 2 { (synth_pats[rng.below(synth_pats.len())], 32.0) } else { (drum_pats[rng.below(drum_pats.len())], 16.0) };
+            let track = (l * 3 + placed) % SONG_TRACKS;
+            let mut s = a;
+            while s + plen <= b && placed < 420 {
+                let id = cid(&mut p);
+                p.clips.push(new_clip(id, track as u32, s, plen, ClipKind::Pat, pat));
+                s += plen;
+                placed += 1;
+            }
+        }
+    }
+    for i in 0..24 {
+        let src = &p.sources[36 + i % 4];
+        let len = src.dur / spb;
+        let start = 64.0 + (i as f64 * 16.0) % (beats - 64.0 - len);
+        let sid = src.id;
+        let id = cid(&mut p);
+        p.clips.push(new_clip(id, (SONG_TRACKS - 1 - i % 4) as u32, start, len, ClipKind::Audio, sid));
+    }
+
+    // ---- automation: filter sweeps and fades
+    for i in 0..8 {
+        let id = p.alloc_id();
+        let ins = &p.inserts[1 + (i * 5) % SONG_TRACKS];
+        let target = AutoTarget::InsertVol { id: ins.id };
+        let points: Vec<AutoPoint> = (0..64)
+            .map(|k| AutoPoint::at(64.0 * k as f64 / 63.0, (0.5 + 0.4 * (k as f32 * 0.2 + i as f32).sin()).clamp(0.0, 1.0)))
+            .collect();
+        p.automations.push(Automation { id, name: format!("Sweep {i}"), color: color(i), target, points });
+        let c = cid(&mut p);
+        p.clips.push(new_clip(c, ((i * 5) % SONG_TRACKS) as u32, 64.0 * i as f64, 64.0, ClipKind::Auto, id));
+    }
+    p.loop_range = Some(LoopRange { a: 256.0, b: 320.0 });
+    p
 }
 
 /// Style of source `i`: 0 = voice-like, 1 = pad, 2 = drum loop.
@@ -247,6 +489,9 @@ fn new_clip(id: Id, track: u32, start: f64, len: f64, kind: ClipKind, source: Id
 
 /// Builds the project and writes its audio under `<dir>/audio`.
 pub fn build(spec: &Spec, dir: &Path) -> Project {
+    if spec.name == "song" {
+        return build_song(dir);
+    }
     let mut rng = Rng::new(7 + spec.tracks as u64);
     let audio_dir = dir.join("audio");
     std::fs::create_dir_all(&audio_dir).unwrap();
