@@ -495,6 +495,9 @@ function LibraryTab() {
   const folders = () => lib.folders.filter(f => !searching() || matchCount('f:' + f) > 0);
   const stdShown = () => !searching() || !lib.files[STD] || matchCount(STD) > 0;
   const nothing = () => searching() && !!lib.files[STD] && !stdShown() && !kits().length && !folders().length;
+  // a folder cut off at the walk's cap hides itself from a search whose matches its retained files
+  // don't show — say so, or "no matches" would claim a search the browser never completed
+  const searchTruncated = () => searching() && lib.folders.some(f => lib.trunc['f:' + f] && matchCount('f:' + f) === 0);
   const isOpen = (key: string) => searching() || !!lib.open[key];
   return (
     <>
@@ -512,6 +515,7 @@ function LibraryTab() {
         <div ref={contentEl}>
         <Show when={lib.error}><div class="bnote" style={{ color: 'var(--danger)' }}>{lib.error}</div></Show>
         <Show when={nothing()}><div class="bnote">{t('d.br.nomatch', { q: lib.q.trim() })}</div></Show>
+        <Show when={searchTruncated()}><div class="bnote">{t('d.br.searchtrunc')}</div></Show>
         <Show when={stdShown()}>
           <div class="bhead" title={t('d.br.stdlibDesc')}>
             <span class="ell" style={{ 'text-transform': 'uppercase' }}>{t('d.br.stdlib')}</span>
