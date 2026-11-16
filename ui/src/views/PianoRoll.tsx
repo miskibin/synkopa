@@ -6,30 +6,26 @@
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, untrack } from 'solid-js';
 import { unwrap } from 'solid-js/store';
 import { be } from '../api/backend';
-import { t, type TranslationKey } from '../lib/i18n';
-import { cloneNotes } from '../lib/noteClone';
+import type { Note } from '../api/types';
+import { t } from '../lib/i18n';
 import { zoomAround, type ZRange } from '../lib/zoomBar';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
 import { drawRuler, rulerCursor, rulerDown, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
-import { TOTAL_BEATS, type Note } from '../api/types';
 import { clamp } from '../lib/format';
-import { duplicateRight, keyOf, moveNotes, noteAt, noteWidth, notesText, resizeNotes, ROLL_SNAPS, SCALES, scaleMask, snapStep, stepsOf, transpose, velOf } from '../lib/pattern';
+import { duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, SCALES, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
 import { NOTE_NAMES, noteName } from '../lib/pitch';
-import { CHORD_TYPES, chordName, chordPitches, PROGRESSION_TEMPLATES } from '../lib/transforms';
-import {
-  applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, notesOfKey, nudgeVelocity,
-  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
-} from '../lib/rollEdit';
-import { commit, Gesture, wheelEdit } from '../state/edit';
-import type { TransformSelect, TransformVerb } from '../api/types';
 
 /** The project key/scale as a setKey op (the roll header's key selectors commit it). */
 const setKeyOp = (key: number, scale: number) => ({ op: 'setKey' as const, key, scale });
 import {
-  audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPattern, patFrom, patLoopOf, patMode, patPlayhead, patStartOf, putNotes, rollFront, selChan,
+  applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, nudgeVelocity,
+  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
+} from '../lib/rollEdit';
+import { commit, Gesture, wheelEdit } from '../state/edit';
+import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPattern, patFrom, patLoopOf, patMode, patPlayhead, patStartOf, putNotes, rollFront, selChan,
   selectChannel, setPatLoop, setPatStart, toggleRollMax,
 } from '../state/pattern';
 import { arrVersion, S } from '../state/store';
@@ -44,17 +40,19 @@ import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
 import { DockBtn, PatFrame, patternMenu, useDataVersion, useSize } from './patternShared';
+import { KW, type RollCtx, type RollPtr, type Tool } from './roll/types';
+import { rollDown, rollMove } from './roll/grid';
+import { buildTransformOp, TOOL_META, type ToolId } from './roll/noteTools';
+import { STAMP_INVS, STAMP_TYPES } from './roll/stamp';
 
-const LANE_H = 76, KW = 48;
+const LANE_H = 76;
 /** Steps past the pattern's end the roll lets you scroll to and draw in (the pattern grows). */
 const ROOM = 64;
-const MAX_STEPS = TOTAL_BEATS * 4;
 /** Key height (px): default (about FL's density) and the vertical zoom's limits. */
 const ROW_H = 18, ROW_MIN = 6, ROW_MAX = 40;
 /** Time zoom limits, relative to the fit-the-pattern width. */
 const Z_MIN = 0.5, Z_MAX = 8;
 const ROLL_ICON = 'M4 4h16v16H4z M4 9h16 M4 14h16 M9 4v5 M15 14v6';
-type Tool = 'draw' | 'paint' | 'select' | 'erase' | 'stamp';
 const TOOLS: { id: Tool; key: string; label: Parameters<typeof t>[0]; icon: string; tip: Parameters<typeof t>[0] }[] = [
   { id: 'draw', key: 'p', label: 'b.pe.tool.draw', icon: 'M4 20l4.5-1L19 8.5 15.5 5 5 15.5z M13.5 7l3.5 3.5', tip: 'b.pe.tool.draw.tip' },
   { id: 'paint', key: 'b', label: 'b.pe.tool.paint', icon: 'M18 3l3 3-9 9-3-3z M9 12c-3 0-4 2-4 4s-1 3-2 4c4 0 8-1 8-5', tip: 'b.pe.tool.paint.tip' },
@@ -71,61 +69,12 @@ export function PianoRoll(props: { z: number; docked?: boolean }) {
 const [lastLen, setLastLen] = createSignal(2);
 /** Velocity of the last note touched: new notes take it, like the length (FL). 1 = full, stored as none. */
 const [lastVel, setLastVel] = createSignal(1);
-const velProp = () => (lastVel() < 0.995 ? { v: lastVel() } : {});
 const [rollTool, setRollTool] = createSignal<Tool>('draw');
 /** The stamp picker: chord type and inversion for the stamp tool (a click writes the
  * chord rooted at the clicked key). */
 const [stampType, setStampType] = createSignal('min');
 const [stampInv, setStampInv] = createSignal(0);
 const [rollSnap, setRollSnap] = createSignal(1);
-
-/** The note tools the roll header offers. Each tool declares its own controls: a
- * number, a select or a checkbox per param (the seed field is shared, last). */
-type ToolId = 'humanize' | 'quantize' | 'euclid' | 'strum' | 'drums' | 'melody' | 'chord' | 'progression';
-type ToolField =
-  | { kind: 'num'; label: TranslationKey; def: number }
-  | { kind: 'select'; label: TranslationKey; def: string; options: { v: string; l: TranslationKey }[] }
-  | { kind: 'check'; label: TranslationKey; def: boolean };
-const HARMONY_OPTIONS: { v: string; l: TranslationKey }[] = [
-  { v: 'diatonic', l: 'b.pr.chord.diatonic' },
-  ...['maj', 'min', '7', 'maj7', 'min7'].map(id => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey })),
-];
-const TEMPLATE_OPTIONS: { v: string; l: TranslationKey }[] = [
-  ...PROGRESSION_TEMPLATES.map(([id]) => ({ v: id, l: `b.pr.tpl.${id}` as TranslationKey })),
-  { v: 'chance', l: 'b.pr.tpl.chance' },
-];
-const STAMP_TYPES: { v: string; l: TranslationKey }[] = CHORD_TYPES.map(([id]) => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey }));
-const STAMP_INVS: { v: number; l: TranslationKey }[] = [
-  { v: 0, l: 'b.pr.stamp.inv0' }, { v: 1, l: 'b.pr.stamp.inv1' }, { v: 2, l: 'b.pr.stamp.inv2' }, { v: 3, l: 'b.pr.stamp.inv3' },
-];
-const TOOL_META: Record<ToolId, { label: TranslationKey; fields: ToolField[] }> = {
-  humanize: { label: 'b.pr.tool.humanize', fields: [
-    { kind: 'num', label: 'b.pr.tool.humanizeA', def: 0.3 }, { kind: 'num', label: 'b.pr.tool.humanizeB', def: 0.2 },
-  ] },
-  quantize: { label: 'b.pr.tool.quantize', fields: [
-    { kind: 'num', label: 'b.pr.tool.quantizeA', def: 1 }, { kind: 'num', label: 'b.pr.tool.quantizeB', def: 1 },
-  ] },
-  euclid: { label: 'b.pr.tool.euclid', fields: [
-    { kind: 'num', label: 'b.pr.tool.euclidA', def: 4 }, { kind: 'num', label: 'b.pr.tool.euclidB', def: 16 },
-  ] },
-  strum: { label: 'b.pr.tool.strum', fields: [
-    { kind: 'num', label: 'b.pr.tool.strumA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.strumB', def: 0.05 },
-  ] },
-  drums: { label: 'b.pr.tool.drums', fields: [
-    { kind: 'num', label: 'b.pr.tool.drumsA', def: 4 }, { kind: 'num', label: 'b.pr.tool.drumsB', def: 16 },
-  ] },
-  melody: { label: 'b.pr.tool.melody', fields: [
-    { kind: 'num', label: 'b.pr.tool.melodyA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.melodyB', def: 2 },
-  ] },
-  chord: { label: 'b.pr.tool.chord', fields: [
-    { kind: 'select', label: 'b.pr.tool.chordH', def: 'diatonic', options: HARMONY_OPTIONS },
-  ] },
-  progression: { label: 'b.pr.tool.progression', fields: [
-    { kind: 'select', label: 'b.pr.tool.progTpl', def: 'pop', options: TEMPLATE_OPTIONS },
-    { kind: 'num', label: 'b.pr.tool.progBars', def: 4 },
-    { kind: 'check', label: 'b.pr.tool.progVl', def: true },
-  ] },
-};
 
 /** Key and scale to highlight: the project key (chosen here; also what scale-aware
  * transforms use), else the project's Pitch Correct (a detected key), else C in the
@@ -168,61 +117,15 @@ function Roll(props: { z: number; docked?: boolean }) {
   const setField = (i: number, v: unknown) => setVals(xs => { const c = xs.slice(); c[i] = v; return c; });
   const [toolSeed, setToolSeed] = createSignal('');
   const applyTool = () => {
-    const p = pt();
-    const chan = ch().id;
-    const seed = toolSeed().trim() === '' ? undefined : Math.max(0, Math.floor(+toolSeed() || 0));
-    const id = toolId();
-    const num = (i: number, d: number) => (typeof vals()[i] === 'number' ? (vals()[i] as number) : d);
-    const str = (i: number) => String(vals()[i] ?? '');
-    const verb: TransformVerb = id === 'humanize' ? { kind: 'humanize', timing: num(0, 0.3), velocity: num(1, 0.2) }
-      : id === 'quantize' ? { kind: 'quantize', grid: num(0, 1) || 1, amount: Math.min(1, Math.max(0, num(1, 1))), scaleAware: false }
-      : id === 'euclid' ? { kind: 'euclidFill', ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))), rotate: 0 }
-      : id === 'strum' ? { kind: 'strum', width: num(0, 0.5), ramp: num(1, 0.05) }
-      : id === 'drums' ? { kind: 'euclidDrums', voices: [{ ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))) }], bars: Math.max(1, Math.round(p.len / 4)) }
-      : id === 'melody' ? { kind: 'melody', ch: chan, bars: Math.max(1, Math.round(p.len / 4)), density: Math.min(1, Math.max(0.05, num(0, 0.5))), repeat: Math.max(1, Math.round(num(1, 2))) }
-      : id === 'chord' ? { kind: 'chord', harmony: str(0) }
-      : { kind: 'progression', ch: chan, bars: Math.min(32, Math.max(1, Math.round(num(1, 4)))), template: str(0), voiceLead: vals()[2] !== false, degrees: [] };
-    const op: { op: 'transformNotes'; pattern: number; verb: TransformVerb; seed?: number; select?: TransformSelect } = {
-      op: 'transformNotes', pattern: p.id, verb,
-      ...(seed !== undefined ? { seed } : {}),
-      // scope: the selection, else the channel the roll is showing — never the whole
-      // pattern (a pattern is multi-channel; humanize with Hat shown must not jitter
-      // the kick). Generators replace their whole channel whatever the selection
-      // (the engine ignores a select for them), so they stay unscoped — `chord` is
-      // positional like humanize: scoped to the selection, else the shown channel.
-      ...(id === 'humanize' || id === 'quantize' || id === 'strum' || id === 'chord'
-        ? sel().size > 0
-          ? { select: { kind: 'indices' as const, indices: [...sel()].sort((x, y) => x - y) } }
-          : { select: { kind: 'range' as const, from: 0, to: 1e9, ch: chan } }
-        : {}),
-    };
-    commit([op], t(TOOL_META[id].label));
+    const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, ch().id, sel());
+    commit([op], t(TOOL_META[toolId()].label));
     setSel(new Set<number>());
-    say(t('b.pr.toolApplied', { verb: t(TOOL_META[id].label) }));
-  };
-  /** The stamp tool: one chord per click, the clicked key is the root, snapped to the grid.
-   * Re-stamping a step replaces its chord on the channel (one op per stamp, clean undo). */
-  const stampAt = (p: { step: number; key: number }, e: PointerEvent) => {
-    const pitches = chordPitches(p.key, stampType(), stampInv());
-    if (!pitches) { say(t('b.pr.stampRange')); return; }
-    const s = snapStep(p.step, unit(e.altKey), true);
-    if (s < 0 || s + lastLen() > MAX_STEPS) return;
-    const kept = notesRaw().filter(n => !(n.ch === ch().id && n.step === s));
-    // trig:false like a drawn note: a len-1 stamp is a held note, not a step trigger
-    const stamped = pitches.map(k => ({ ch: ch().id, step: s, len: lastLen(), trig: false, p: k, ...velProp() }));
-    setStampGhost(null); // the ghost did its job; the next mousemove re-previews the next cell
-    commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
-    // the replacement moves notes around: the selection becomes the fresh chord, so a
-    // stale index can never point at an unrelated note (Delete would eat the wrong one)
-    setSel(new Set(stamped.map((_, j) => kept.length + j)));
-    stamped.forEach(n => audition(ch().id, n.p ?? p.key, n.v ?? 1));
-    say(t('b.pr.stamped', { label: chordName(pitches) }));
+    say(t('b.pr.toolApplied', { verb: t(TOOL_META[toolId()].label) }));
   };
   const root = () => pk().root;
   const scaleIdx = () => pk().scale;
   const chansMap = createMemo(() => { arrVersion(); return new Map(unwrap(channels()).map(c => [c.id, c])); });
   const mask = () => scaleMask(scaleIdx());
-  const unit = (alt = false) => (alt ? 0 : rollSnap());
   /** After a pick in a toolbar list the keyboard goes back to the roll (arrows transpose, Delete deletes) instead of staying in the list. */
   const backToRoll = (el: HTMLElement) => el.closest<HTMLElement>('.win')?.focus({ preventScroll: true });
   /** Width of the note grid (px). */
@@ -243,7 +146,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     return { pps: basePps() * view().zoom, sx: view().sx, sy: view().sy, rowH: Math.max(view().rowH, rowMin()), kw: KW, steps };
   };
   /** Steps the view scrolls over: the pattern plus room to draw on (the pattern grows to fit). */
-  const hTotal = () => Math.min(MAX_STEPS, stepsOf(pt()) + ROOM);
+  const hTotal = () => Math.min(MAX_STEP, stepsOf(pt()) + ROOM);
   const maxSxAt = (pps: number) => Math.max(0, hTotal() * pps - gridW());
   const maxSx = () => maxSxAt(geo().pps);
   /** Zoom-out limit: half the fitted width, or further when that is needed to see all the steps the view scrolls over (pattern + room). */
@@ -360,8 +263,6 @@ function Roll(props: { z: number; docked?: boolean }) {
     setViewS({ ...v, sx, sy });
     return true;
   };
-  /** Edge auto-scroll for a drag: `replay` re-runs the drag with the last pointer event after each scroll. */
-  const autoScroll = (replay: (e: PointerEvent) => void, axes?: { x?: boolean; y?: boolean }) => edgeScroller(gridRect, scrollBy, replay, axes);
   /** Middle-button pan (both axes on the grid). */
   const pan = (e: PointerEvent, yToo = true) => panDrag(e, () => ({ x: view().sx, y: view().sy }), (x, y) => {
     const sx = clamp(x, 0, maxSx()), sy = yToo ? clamp(y, 0, maxSyAt(geo().rowH)) : view().sy;
@@ -462,176 +363,6 @@ function Roll(props: { z: number; docked?: boolean }) {
   const edgeHit = (i: number, x: number) => { const n = notesRaw()[i], G = geo(); const width = noteWidth(n, G.pps); return x >= rollX(G, n.step) + width - Math.min(6, width * 0.4); };
   const commitNotes = (notes: Note[], label: string) => commit([putNotes(pt(), notes)], label);
 
-  /** The stamp tool's eraser: right-click removes all of the channel's notes at the
-   * clicked step (the chord is the unit), sweeping with the drag like the eraser does. */
-  function stampEraseDrag(e: PointerEvent) {
-    const g = new Gesture(t('b.pe.gestDelNotes'));
-    let notes = notesRaw(), n0 = notes.length;
-    let lastStep: number | null = null;
-    const del = (ev: PointerEvent) => {
-      const q = pos(ev);
-      // over a note, its own start decides which chord goes (a chord's body reaches
-      // past its start cell); over empty grid, the snapped cell
-      const hit = hitNote(q.step, q.key);
-      const s = hit >= 0 ? notes[hit].step : snapStep(q.step, unit(ev.altKey), true);
-      if (s === lastStep) return;
-      lastStep = s;
-      const before = notes.length;
-      notes = notes.filter(n => !(n.ch === ch().id && n.step === s));
-      if (notes.length !== before) g.update([putNotes(pt(), notes)]);
-    };
-    setSel(new Set<number>());
-    del(e);
-    track(ev => del(ev), () => { g.end(); if (notes.length < n0) say(t('b.pe.deleted', { x: notesText(n0 - notes.length) })); }, 'not-allowed');
-  }
-  function eraseDrag(e: PointerEvent) {
-    const g = new Gesture(t('b.pe.gestDelNotes'));
-    let notes = notesRaw(), n0 = notes.length;
-    const del = (ev: PointerEvent | MouseEvent) => {
-      const q = pos(ev), i = noteAt(notes, ch().id, unwrap(ch()), q.step, q.key, geo().pps);
-      if (i < 0) return;
-      notes = notes.filter((_, k) => k !== i);
-      g.update([putNotes(pt(), notes)]);
-    };
-    setSel(new Set<number>());
-    del(e);
-    track(ev => del(ev), () => { g.end(); if (notes.length < n0) say(t('b.pe.deleted', { x: notesText(n0 - notes.length) })); }, 'not-allowed');
-  }
-  /** Drags notes `idx` (the last one leads). `clone`: Shift+drag — once the pointer really
-   * moves, copies of the notes are made and moved instead (originals stay), one undo step;
-   * released without moving, `clone` (the click) runs instead. */
-  function moveDrag(e: PointerEvent, idx: number[], mode: 'move' | 'resize', g?: Gesture, clone?: () => void) {
-    let orig = notesRaw().slice();
-    const p0 = pos(e), lead = orig[idx[idx.length - 1]] ?? orig[idx[0]];
-    let gest = clone ? null : g ?? new Gesture(mode === 'move' ? t('b.pe.gestMove') : t('b.pe.gestLen'));
-    let lastKey = keyOf(lead, ch()), moved = false;
-    // Axis lock (FL): Shift pressed after the drag started = time only, Ctrl = pitch only. Held
-    // at pointer-down they keep their meaning (clone / select) and lock nothing.
-    const shift0 = e.shiftKey, ctrl0 = e.ctrlKey || e.metaKey;
-    let mods = { shift: shift0, ctrl: ctrl0 }, lastEv: PointerEvent | null = null, lockSaid = '';
-    const run = (ev: PointerEvent) => {
-      lastEv = ev;
-      const q = pos(ev);
-      if (!moved && Math.hypot(q.x - p0.x, q.y - p0.y) < 3) return;
-      if (!moved && clone) {
-        const r = cloneNotes(orig, idx);
-        orig = r.notes; idx = r.idx;
-        gest = new Gesture(t('b.pe.gestClone'));
-        gest.update([putNotes(pt(), orig)]);
-        setSel(new Set(idx)); // after the copies exist: the selection drops indices that do not
-        say(t('b.pe.cloning', { x: notesText(idx.length) }));
-      }
-      moved = true;
-      if (!gest) return;
-      const lockPitch = mode === 'move' && mods.shift && !shift0, lockTime = mode === 'move' && mods.ctrl && !ctrl0;
-      const lock = lockTime ? 'time' : lockPitch ? 'pitch' : '';
-      if (lock && lock !== lockSaid) say(t(lockTime ? 'b.pr.lockTime' : 'b.pr.lockPitch'));
-      lockSaid = lock;
-      const dKey = lockPitch ? 0 : q.key - p0.key;
-      const notes = mode === 'move'
-        ? (lockTime ? transpose(orig, idx, dKey, unwrap(ch())) : moveNotes(orig, idx, q.step - p0.step, dKey, unit(ev.altKey), unwrap(ch())))
-        : resizeNotes(orig, idx, q.step - p0.step, unit(ev.altKey));
-      gest.update([putNotes(pt(), notes)]);
-      const ln = notes[idx[idx.length - 1]];
-      if (ln && !ln.trig) setLastLen(ln.len);
-      if (mode === 'move' && ln && keyOf(ln, ch()) !== lastKey) { lastKey = keyOf(ln, ch()); audition(ch().id, lastKey, ln.v ?? 1); }
-    };
-    const es = autoScroll(run, mode === 'resize' ? { x: true } : undefined);
-    // a modifier pressed or released without moving the mouse applies at once
-    const onMod = (ke: KeyboardEvent) => {
-      const m = { shift: ke.shiftKey, ctrl: ke.ctrlKey || ke.metaKey };
-      if (m.shift === mods.shift && m.ctrl === mods.ctrl) return;
-      mods = m;
-      if (lastEv) run(lastEv);
-    };
-    window.addEventListener('keydown', onMod, true); window.addEventListener('keyup', onMod, true);
-    trackFrame(ev => { mods = { shift: ev.shiftKey, ctrl: ev.ctrlKey || ev.metaKey }; run(ev); if (moved) es.move(ev); }, () => {
-      es.stop();
-      window.removeEventListener('keydown', onMod, true); window.removeEventListener('keyup', onMod, true);
-      gest?.end(); if (!moved) clone?.();
-    }, mode === 'move' ? 'grabbing' : 'ew-resize');
-  }
-  /** Pressing the keyboard plays that key on the channel for as long as it is held (always,
-   * whatever the "hear notes while editing" preference); dragging glides to other keys.
-   * Further right on a key (towards its tip) = harder. */
-  function keyboardDrag(e: PointerEvent) {
-    const id = ch().id;
-    const velAt = (x: number) => Math.round((0.35 + 0.65 * clamp(x / KW, 0, 1)) * 100) / 100;
-    const on = (key: number, vel: number) => be().typingNote({ ch: id, key, vel, on: true }).catch(err => say(t('b.pk.fail', { err: String(err) })));
-    const off = (key: number) => be().typingNote({ ch: id, key, on: false }).catch(() => {});
-    const p = pos(e);
-    let cur = p.key;
-    void on(cur, velAt(p.x)); setHoverKey(cur);
-    track(ev => {
-      const q = pos(ev);
-      if (q.key === cur) return;
-      void off(cur); cur = q.key; void on(cur, velAt(q.x)); setHoverKey(cur);
-    }, () => { void off(cur); setHoverKey(null); }, 'pointer');
-  }
-  function marqueeDrag(e: PointerEvent, add: boolean) {
-    const p0 = pos(e), base = add ? new Set(sel()) : new Set<number>();
-    // the box's anchor in content px: it stays on its notes while the view auto-scrolls
-    const G0 = geo(), ax = p0.x + G0.sx, ay = p0.y + G0.sy;
-    let moved = false;
-    setMarq({ x0: p0.x, y0: p0.y, x1: p0.x, y1: p0.y });
-    const run = (ev: PointerEvent) => {
-      const q = pos(ev), G = geo(), sx = ax - G.sx, sy = ay - G.sy;
-      if (Math.hypot(q.x - p0.x, q.y - p0.y) >= 3) moved = true;
-      setMarq({ x0: sx, y0: sy, x1: q.x, y1: q.y });
-      const [x0, x1] = [Math.min(sx, q.x), Math.max(sx, q.x)], [y0, y1] = [Math.min(sy, q.y), Math.max(sy, q.y)];
-      const s = new Set(base);
-      for (const { n, i } of chanNotes()) {
-        const nx = rollX(G, n.step), nw = noteWidth(n, G.pps), ny = rollY(G, keyOf(n, ch()));
-        if (nx < x1 && nx + nw > x0 && ny < y1 && ny + G.rowH > y0) s.add(i);
-      }
-      setSel(s);
-    };
-    const es = autoScroll(run);
-    trackFrame(ev => { run(ev); if (moved) es.move(ev); }, () => { es.stop(); setMarq(null); say(sel().size ? t('b.pe.selHint', { x: notesText(sel().size) }) : t('b.pe.noSel')); });
-  }
-  function paintDrag(e: PointerEvent, g: Gesture, startNotes: Note[]) {
-    let notes = startNotes;
-    const p0 = pos(e);
-    let lastCell = Math.floor(p0.step / (unit(e.altKey) || 1)), moved = false;
-    const run = (ev: PointerEvent) => {
-      const q = pos(ev), u = unit(ev.altKey) || 1, cell = Math.floor(q.step / u);
-      if (Math.hypot(q.x - p0.x, q.y - p0.y) >= 3) moved = true;
-      if (cell === lastCell || q.step < 0 || q.step + lastLen() > MAX_STEPS) return;
-      lastCell = cell;
-      const s = cell * u;
-      if (notes.some(n => n.ch === ch().id && Math.abs(n.step - s) < 1e-3)) return;
-      notes = [...notes, { ch: ch().id, step: s, len: lastLen(), trig: false, p: q.key, ...velProp() }];
-      g.update([putNotes(pt(), notes)]);
-    };
-    const es = autoScroll(run);
-    track(ev => { run(ev); if (moved) es.move(ev); }, () => { es.stop(); g.end(); }, 'copy');
-  }
-  /** Ctrl+right-drag: a box to zoom the view to (both axes); a Ctrl+right-click without a drag goes back to the previous view. */
-  function zoomBoxDrag(e: PointerEvent) {
-    const p0 = pos(e), G0 = geo(), ax = p0.x + G0.sx, ay = p0.y + G0.sy;
-    let q = p0;
-    track(ev => {
-      q = pos(ev);
-      const G = geo();
-      setZbox({ x0: ax - G.sx, y0: ay - G.sy, x1: Math.max(KW, q.x), y1: q.y });
-    }, () => {
-      setZbox(null);
-      if (Math.hypot(q.x - p0.x, q.y - p0.y) < 4) {
-        const v = viewBack.pop();
-        if (!v) return say(t('b.pr.zoomNoBack'));
-        setViewS(v); say(t('b.pr.zoomBack'));
-        return;
-      }
-      const G = geo();
-      // content units: steps across, rows (keys from the top) down
-      const s0 = (ax - KW) / G.pps, s1 = (Math.max(KW, q.x) + G.sx - KW) / G.pps;
-      const r0 = ay / G.rowH, r1 = (q.y + G.sy) / G.rowH;
-      pushView();
-      applyH(fitRange(Math.max(0, s0), Math.max(0, s1), hLimits()));
-      setV(fitRange(clamp(r0, 0, 128), clamp(r1, 0, 128), vLimits()));
-      say(t('b.pr.zoomBox'));
-    }, 'zoom-in');
-  }
   /** Views to go back to (Ctrl+right-click), newest last. */
   const viewBack: ReturnType<typeof view>[] = [];
   const pushView = () => { viewBack.push({ ...view() }); if (viewBack.length > 32) viewBack.shift(); };
@@ -643,140 +374,58 @@ function Roll(props: { z: number; docked?: boolean }) {
     const bars = hRange().len / 16;
     say(t('b.pr.zoomBars', { n: bars >= 10 ? Math.round(bars) : +bars.toFixed(bars < 1 ? 2 : 1) }));
   };
-  const down = (e: PointerEvent) => {
-    if (propsFor()) setPropsFor(null); // a click elsewhere cancels the properties popover
-    if (pan(e)) { dragging = true; return; }
-    if (e.button !== 0 && e.button !== 2) return;
-    e.preventDefault();
-    dragging = true;
-    const p = pos(e);
-    const m = e.ctrlKey || e.metaKey;
-    if (e.button === 2 && m && p.x >= KW) return zoomBoxDrag(e);
-    // a right-click anywhere in the roll (keyboard, ghost notes, empty grid) drops the selection
-    if (e.button === 2 && sel().size) setSel(new Set<number>());
-    if (p.x < KW) {
-      if (e.button !== 0) return;
-      // Ctrl+click on a key: every note of that pitch (Shift too = add to the selection)
-      if (m) {
-        const ks = notesOfKey(notesRaw(), ch().id, unwrap(ch()), p.key);
-        const s = e.shiftKey ? new Set([...sel(), ...ks]) : new Set(ks);
-        setSel(s);
-        say(ks.length ? t('b.pr.keySel', { key: noteName(p.key), x: notesText(s.size) }) : t('b.pr.keyNone', { key: noteName(p.key) }));
-        return;
-      }
-      keyboardDrag(e); return;
-    }
-    const tool = rollTool();
-    const i = hitNote(p.step, p.key);
-    // double-click a note: its properties (the selection's when it is selected). The first
-    // click's move-drag has not moved anything (it starts after 3 px), so nothing is nudged.
-    // Stamp mode never opens it: there a double-click is just two stamps (re-stamp replaces).
-    if (e.button === 0 && i >= 0 && !m && !e.shiftKey && tool !== 'erase' && tool !== 'stamp' && dblCheck('rn' + i)) {
-      const idx = sel().has(i) ? [...sel()].filter(k => k !== i && notesRaw()[k]?.ch === ch().id).concat(i) : [i];
-      if (!sel().has(i)) setSel(new Set([i]));
-      setPropsFor(idx);
-      return;
-    }
-    // FL: Ctrl+drag selects with any tool; Ctrl+click toggles one note
-    if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
-      if (i < 0) return marqueeDrag(e, e.shiftKey);
-      const s = new Set(sel()); if (s.has(i)) s.delete(i); else s.add(i); setSel(s);
-      say(s.size ? t('b.pe.selCopy', { x: notesText(s.size) }) : t('b.pe.noSel'));
-      return;
-    }
-    if (e.button === 2 && i < 0) {
-      // a ghost note of another channel under the pointer: double right-click edits that channel
-      const gi = ghostAt(p.step, p.key);
-      if (gi >= 0) {
-        if (dblCheck('ghost' + notesRaw()[gi].ch)) { const id = notesRaw()[gi].ch; selectChannel(id); say(t('b.pr.switched', { name: channels().find(c => c.id === id)?.name ?? '' })); }
-        return;
-      }
-    }
-    // the stamp tool: a click writes the chord rooted at the clicked key (right-click still erases, below)
-    if (tool === 'stamp' && e.button === 0 && !m && !e.shiftKey) return stampAt(p, e);
-    // Shift with any tool: drag on empty space adds a box to the roll's marquee or clones (FL)
-    if (e.button === 0 && e.shiftKey) {
-      if (i < 0) return marqueeDrag(e, true);
-      const toggle = () => {
-        const s = new Set(sel()); if (s.has(i)) s.delete(i); else s.add(i); setSel(s);
-        say(s.size ? t('b.pe.selCopy', { x: notesText(s.size) }) : t('b.pe.noSel'));
-      };
-      if (tool === 'erase') return toggle();
-      const idx = sel().has(i) ? [...sel()].filter(k => k !== i && notesRaw()[k]?.ch === ch().id).concat(i) : [i];
-      setLastLen(notesRaw()[i].len); setLastVel(notesRaw()[i].v ?? 1);
-      return moveDrag(e, idx, 'move', undefined, toggle);
-    }
-    // the stamp tool's right button: the chord is the unit, so the whole chord at the
-    // clicked step goes (the plain eraser keeps its per-note sweep on every other tool)
-    if (tool === 'stamp' && e.button === 2) return stampEraseDrag(e);
-    if (e.button === 2 || tool === 'erase') return eraseDrag(e);
-    if (tool === 'select') {
-      if (i < 0) return marqueeDrag(e, false);
-      const idx = sel().has(i) ? [...sel()] : [i];
-      if (!sel().has(i)) setSel(new Set([i]));
-      setLastLen(pt().notes[i].len); setLastVel(pt().notes[i].v ?? 1);
-      return moveDrag(e, idx.filter(k => k !== i).concat(i), 'move');
-    }
-    if (i >= 0) {
-      const n = pt().notes[i];
-      if (!n.trig) setLastLen(n.len);
-      setLastVel(n.v ?? 1);
-      const idx = sel().has(i) ? [...sel()].filter(k => k !== i).concat(i) : [i];
-      if (!sel().has(i)) setSel(new Set([i]));
-      if (edgeHit(i, p.x)) return moveDrag(e, idx, 'resize');
-      audition(ch().id, keyOf(n, ch()), n.v ?? 1);
-      return moveDrag(e, idx, 'move');
-    }
-    // a new note: grid start, last touched length, the row's key
-    const s = snapStep(p.step, unit(e.altKey), true);
-    if (s < 0 || s + lastLen() > MAX_STEPS) return;
-    const n: Note = { ch: ch().id, step: s, len: lastLen(), trig: false, p: p.key, ...velProp() };
-    const notes = [...notesRaw(), n];
-    const g = new Gesture(tool === 'paint' ? t('b.pe.gestPaint') : t('b.pe.gestNew'));
-    g.update([putNotes(pt(), notes)]);
-    setSel(new Set([notes.length - 1]));
-    audition(ch().id, p.key, 1);
-    if (tool === 'paint') return paintDrag(e, g, notes);
-    moveDrag(e, [notes.length - 1], 'move', g);
+  // ---- the pointer tools (roll/): everything below feeds the tool layer's view of this roll,
+  // then the canvas handlers become two thin calls. The tools and gestures themselves never
+  // touch a DOM event — roll/types.ts has the contract, roll/grid.ts the dispatch order.
+  const modsOf = (ev: PointerEvent | KeyboardEvent) => ({ alt: ev.altKey, shift: ev.shiftKey, ctrl: ev.ctrlKey || ev.metaKey });
+  const ctx: RollCtx = {
+    pt: () => pt(), ch: () => unwrap(ch()), notes: notesRaw, chanNotes: () => chanNotes(), chans: chansMap,
+    geo, snap: () => rollSnap(),
+    hit: hitNote, edgeHit, ghostAt,
+    tool: () => rollTool(),
+    sel: () => sel(), setSel,
+    lastLen: () => lastLen(), setLastLen,
+    lastVel: () => lastVel(), setLastVel,
+    commitNotes,
+    notesOp: notes => putNotes(pt(), [...notes]),
+    gest: label => new Gesture(label),
+    audition: (key, vel) => audition(ch().id, key, vel),
+    typingNote: (on, key, vel) => {
+      if (on) be().typingNote({ ch: ch().id, key, vel, on: true }).catch(err => say(t('b.pk.fail', { err: String(err) })));
+      else be().typingNote({ ch: ch().id, key, on: false }).catch(() => {});
+    },
+    say,
+    setMarq, setZoomBox: setZbox, setStampGhost, stampGhost: () => stampGhost(), setHoverChord, setHoverKey,
+    propsOpen: () => !!propsFor(), closeProps: () => setPropsFor(null), openProps: idx => setPropsFor(idx),
+    stamp: () => ({ type: stampType(), inv: stampInv() }),
+    keyScale: () => pk(),
+    switchChannel: id => { selectChannel(id); say(t('b.pr.switched', { name: channels().find(c => c.id === id)?.name ?? '' })); },
+    zoomTo: (s0, s1, r0, r1) => {
+      applyH(fitRange(Math.max(0, s0), Math.max(0, s1), hLimits()));
+      setV(fitRange(clamp(r0, 0, 128), clamp(r1, 0, 128), vLimits()));
+    },
+    pushView, popView: () => viewBack.pop(), applyView: v => setViewS(v),
+    dbl: key => dblCheck(key),
+    pan: e => (e ? pan(e) : false),
+    setDragging: on => { dragging = on; },
+    beginDrag: (o, move, up) => (o.frame ? trackFrame : track)(ev => move({ ...modsOf(ev), p: pos(ev), raw: ev }), ev => up({ ...modsOf(ev), p: pos(ev), raw: ev }), o.cursor),
+    bindMods: cb => {
+      const h = (ke: KeyboardEvent) => cb(modsOf(ke));
+      window.addEventListener('keydown', h, true); window.addEventListener('keyup', h, true);
+      return () => { window.removeEventListener('keydown', h, true); window.removeEventListener('keyup', h, true); };
+    },
+    autoScroll: (replay, axes) => {
+      const es = edgeScroller(gridRect, scrollBy, ev => replay({ ...modsOf(ev), p: pos(ev), raw: ev }), axes);
+      return { move: m => { if (m.raw) es.move(m.raw); }, stop: () => es.stop() };
+    },
   };
-  /** What a stamp click at `key` would write (status-bar preview): the root, the resulting
-   * bass-first name, and whether that root sits in the key the roll header shows — stamping
-   * itself stays key-free (any root is allowed; written notes are concrete). */
-  const stampPreview = (key: number) => {
-    const pitches = chordPitches(key, stampType(), stampInv());
-    if (!pitches) return '';
-    const pc = ((key - root()) % 12 + 12) % 12;
-    const inScale = scaleIdx() !== 0 && (mask() & (1 << pc)) !== 0;
-    const sc = SCALES.find(s => s[1] === scaleIdx());
-    return `${noteName(key)} → ${chordName(pitches)}${inScale ? ' · ' + t('b.pr.stamp.inScale', { key: NOTE_NAMES[root()], scale: sc ? t(sc[0]) : '' }) : ''}`;
-  };
-  const move = (e: PointerEvent) => {
+  const ptrOf = (e: PointerEvent): RollPtr => ({ button: e.button as 0 | 1 | 2, ...modsOf(e), p: pos(e), raw: e });
+  /** Hover: the tool's cursor and its previews (roll/grid.ts), nothing while a drag is open. */
+  const onMove = (e: PointerEvent) => {
     const p = pos(e);
     ptr = { x: p.x, y: p.y };
     if (e.buttons) return;
-    if (p.x < KW) { cv.style.cursor = 'pointer'; setHoverChord(''); return; }
-    const i = hitNote(p.step, p.key), t = rollTool();
-    cv.style.cursor = e.ctrlKey || e.metaKey ? 'crosshair' : t === 'erase' ? 'not-allowed' : t === 'stamp' ? 'copy' : i >= 0 ? (t !== 'select' && edgeHit(i, p.x) ? 'ew-resize' : 'grab') : t === 'select' ? 'crosshair' : 'copy';
-    if (t === 'stamp') {
-      const pitches = chordPitches(p.key, stampType(), stampInv());
-      const s = pitches ? snapStep(p.step, unit(e.altKey), true) : -1;
-      const ok = !!pitches && s >= 0 && s + lastLen() <= MAX_STEPS;
-      const cur = stampGhost();
-      if (!ok) {
-        if (cur) setStampGhost(null);
-        return setHoverChord(pitches ? stampPreview(p.key) : '');
-      }
-      if (!cur || cur.s !== s || cur.len !== lastLen() || cur.pitches.some((q, i) => q !== pitches![i])) {
-        setStampGhost({ s, len: lastLen(), pitches });
-      }
-      return setHoverChord(stampPreview(p.key));
-    }
-    // the chord sounding under the pointer: every note of the channel at that step
-    if (i >= 0) {
-      const s0 = notesRaw()[i].step;
-      const ps = notesRaw().filter(n => n.ch === ch().id && n.step === s0 && n.p != null).map(n => n.p!);
-      setHoverChord(ps.length >= 2 ? chordName(ps) : '');
-    } else setHoverChord('');
+    cv.style.cursor = rollMove(ctx, { ...modsOf(e), p });
   };
   let velAcc = 0;
   /** Alt+wheel on note `i`: its velocity (the selection's when it is selected), 5 % a notch, 1 % with Ctrl; one undo step per wheel burst. */
@@ -1102,7 +751,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         </div>
         <div ref={wrap} class="parea">
           <canvas ref={cv} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', 'touch-action': 'none' }}
-            onPointerDown={down} onPointerMove={move} onPointerLeave={() => { ptr = null; setStampGhost(null); setHoverChord(''); }} onWheel={wheel} onContextMenu={e => e.preventDefault()} />
+            onPointerDown={e => rollDown(ctx, ptrOf(e))} onPointerMove={onMove} onPointerLeave={() => { ptr = null; setStampGhost(null); setHoverChord(''); }} onWheel={wheel} onContextMenu={e => e.preventDefault()} />
           <div ref={phead} class="pphead" />
           <Show when={propsFor()} keyed>{idx => <PropsPop idx={idx} />}</Show>
         </div>
