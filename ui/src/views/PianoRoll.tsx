@@ -420,12 +420,15 @@ function Roll(props: { z: number; docked?: boolean }) {
     },
   };
   const ptrOf = (e: PointerEvent): RollPtr => ({ button: e.button as 0 | 1 | 2, ...modsOf(e), p: pos(e), raw: e });
-  /** Hover: the tool's cursor and its previews (roll/grid.ts), nothing while a drag is open. */
+  /** Hover: the tool's cursor and its previews (roll/grid.ts), nothing while a drag is open.
+   * The cursor is only written when it changes: WebKitGTK can swallow the next click when the
+   * cursor style churns on every mousemove (the "dead first stamp click" report). */
   const onMove = (e: PointerEvent) => {
     const p = pos(e);
     ptr = { x: p.x, y: p.y };
     if (e.buttons) return;
-    cv.style.cursor = rollMove(ctx, { ...modsOf(e), p });
+    const cur = rollMove(ctx, { ...modsOf(e), p });
+    if (cv.style.cursor !== cur) cv.style.cursor = cur;
   };
   let velAcc = 0;
   /** Alt+wheel on note `i`: its velocity (the selection's when it is selected), 5 % a notch, 1 % with Ctrl; one undo step per wheel burst. */
@@ -671,7 +674,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       <div class="ptools">
         <div class="seg tools">
           <For each={TOOLS}>{tl => (
-            <button classList={{ on: rollTool() === tl.id }} title={t(tl.label) + ' (' + tl.key.toUpperCase() + ') — ' + t(tl.tip)} onClick={() => setRollTool(tl.id)}>
+            <button classList={{ on: rollTool() === tl.id }} title={t(tl.label) + ' (' + tl.key.toUpperCase() + ') — ' + t(tl.tip)} onClick={e => { setRollTool(tl.id); backToRoll(e.currentTarget); }}>
               <Icon d={tl.icon} size={14} />
             </button>
           )}</For>

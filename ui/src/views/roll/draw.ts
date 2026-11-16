@@ -5,7 +5,7 @@ import { cloneNotes } from '../../lib/noteClone';
 import { keyOf, moveNotes, notesText, resizeNotes, snapStep, transpose } from '../../lib/pattern';
 import { MAX_STEP } from '../../lib/rollEdit';
 import type { Note } from '../../api/types';
-import { velProp, unitOf, type Mods, type Pt, type RollCtx, type RollGesture, type RollPtr, type RollMove, type RollTool } from './types';
+import { velProp, unitOf, grewSay, type Mods, type Pt, type RollCtx, type RollGesture, type RollPtr, type RollMove, type RollTool } from './types';
 
 /** Drags notes `idx` (the last one leads). `clone`: Shift+drag — once the pointer really
  * moves, copies of the notes are made and moved instead (originals stay), one undo step;
@@ -102,8 +102,10 @@ const noteToolDown = (ctx: RollCtx, e: RollPtr, i: number, paint: boolean) => {
   if (s < 0 || s + ctx.lastLen() > MAX_STEP) return;
   const n: Note = { ch: ctx.ch().id, step: s, len: ctx.lastLen(), trig: false, p: e.p.key, ...velProp(ctx) };
   const notes = [...ctx.notes(), n];
+  const lenBefore = ctx.pt().len;
   const g = ctx.gest(paint ? t('b.pe.gestPaint') : t('b.pe.gestNew'));
   g.update([ctx.notesOp(notes)]);
+  grewSay(ctx, lenBefore);
   ctx.setSel(new Set([notes.length - 1]));
   ctx.audition(e.p.key, 1);
   if (paint) return paintDrag(ctx, e, g, notes);

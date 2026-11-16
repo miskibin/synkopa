@@ -5,6 +5,7 @@
 // dispatch chain and the gestures run in plain vitest like the rest of the UI's logic.
 // `grid.ts` owns the dispatch order; PianoRoll.tsx owns the view, the ruler and the header.
 import type { Channel, Id, Note, Op, Pattern } from '../../api/types';
+import { t } from '../../lib/i18n';
 import type { RollGeo } from '../patternDraw';
 
 /** The five pointer tools of the roll header's P/B/E/D/C strip. */
@@ -130,3 +131,13 @@ export const velProp = (c: RollCtx) => (c.lastVel() < 0.995 ? { v: c.lastVel() }
 
 /** The snap unit the pointer's Alt picks: Alt = free, else the grid snap. */
 export const unitOf = (c: RollCtx, m: { alt: boolean }) => (m.alt ? 0 : c.snap());
+
+/** The pattern just grew past its end (a stamp or a new note drawn in the room to the right):
+ * the loop follows the length, which is easy to miss while it plays — say the new bar count. */
+export const grewSay = (c: RollCtx, lenBefore: number) => {
+  const grew = c.pt().len - lenBefore;
+  if (grew > 1e-6) {
+    const bars = c.pt().len / 4;
+    c.say(t('b.pr.patGrew', { n: bars >= 10 ? Math.round(bars) : +bars.toFixed(bars < 1 ? 2 : 1) }));
+  }
+};

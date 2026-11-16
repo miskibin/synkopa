@@ -6,7 +6,7 @@ import { noteAt, notesText, SCALES, scaleMask, snapStep } from '../../lib/patter
 import { NOTE_NAMES, noteName } from '../../lib/pitch';
 import { CHORD_TYPES, chordName, chordPitches } from '../../lib/transforms';
 import { MAX_STEP } from '../../lib/rollEdit';
-import { velProp, unitOf, type RollCtx, type RollMove, type RollPtr, type RollTool } from './types';
+import { velProp, unitOf, grewSay, type RollCtx, type RollMove, type RollPtr, type RollTool } from './types';
 
 /** The stamp picker's chord types and inversions (the header selects shown with the tool). */
 export const STAMP_TYPES: { v: string; l: TranslationKey }[] = CHORD_TYPES.map(([id]) => ({ v: id, l: `b.pr.chord.${id}` as TranslationKey }));
@@ -27,7 +27,9 @@ export function stampAt(ctx: RollCtx, e: RollPtr) {
   // trig:false like a drawn note: a len-1 stamp is a held note, not a step trigger
   const stamped = pitches.map(k => ({ ch: ctx.ch().id, step: s, len: ctx.lastLen(), trig: false, p: k, ...velProp(ctx) }));
   ctx.setStampGhost(null); // the ghost did its job; the next mousemove re-previews the next cell
+  const lenBefore = ctx.pt().len;
   ctx.commitNotes([...kept, ...stamped], t('b.pr.gestStamp'));
+  grewSay(ctx, lenBefore);
   // the replacement moves notes around: the selection becomes the fresh chord, so a
   // stale index can never point at an unrelated note (Delete would eat the wrong one)
   ctx.setSel(new Set(stamped.map((_, j) => kept.length + j)));

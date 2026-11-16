@@ -39,9 +39,15 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
   };
   const pat = { id: 7, name: 'P', color: '#fff', len: 64, notes } as unknown as Pattern;
   // the tools replace the whole notes array per op; the component's store does it at once —
-  // the fake does the same so hit tests see each edit, like the real roll does
+  // the fake does the same so hit tests see each edit, like the real roll does. The length
+  // follows the content the way the engine derives it: last note end rounded up to a bar,
+  // at least one bar.
   const live = notes.slice();
-  const setNotes = (nts: readonly Note[]) => { live.splice(0, live.length, ...nts); };
+  const setNotes = (nts: readonly Note[]) => {
+    live.splice(0, live.length, ...nts);
+    const end = live.reduce((m: number, n: Note) => Math.max(m, n.step + n.len), 0);
+    pat.len = Math.max(4, Math.ceil(end / 4 - 1e-9) * 4);
+  };
   let sel = new Set<number>();
   let lastLen = 2, lastVel = 1;
   let drag: RecDrag | null = null;
@@ -111,7 +117,7 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     bindMods: cb => { modCb = cb; return () => { modCb = null; }; },
     autoScroll: () => ({ move: () => {}, stop: () => {} }),
   };
-  return { ctx, rec, live, drag: () => drag, armDbl: () => { dblArmed = true; }, fireMods: (m: Mods) => modCb?.(m) };
+  return { ctx, rec, live, drag: () => drag, armDbl: () => { dblArmed = true; }, fireMods: (m: Mods) => modCb?.(m), setLen: (n: number) => { pat.len = n; }, patLen: () => pat.len };
 }
 
 // ---- helpers over the fakes ----
@@ -143,6 +149,14 @@ describe('draw tool', () => {
     const c = makeCtx([]);
     down(c, 0, at(4.4, 60), { alt: true });
     expect(notesOf(c.rec.gestures[0])[0].step).toBeCloseTo(snapStep(4.4, 0, true), 5);
+  });
+
+  it('a new note past the end grows the pattern and says so', () => {
+    const c = makeCtx([]);
+    c.setLen(16);
+    down(c, 0, at(17.4, 60));
+    expect(c.patLen()).toBe(20); // the note ends at step 19 → five bars
+    expect(c.rec.says).toContain('Pattern grew to 5 bars');
   });
 
   it('a click on a note moves it with its drag; the right edge resizes it', () => {
@@ -213,6 +227,22 @@ describe('stamp tool', () => {
     c.drag()?.up(mv(c, at(8.5, 62)));
     expect(c.live.map(n => n.step)).toEqual([]);
     expect(c.rec.gestures[0].ended).toBe(1);
+  });
+
+  it('stamping past the pattern end grows it and says the new bar count', () => {
+    const c = makeCtx([], 'stamp');
+    c.setLen(16);
+    down(c, 0, at(20.4, 60));
+    c.drag();
+    expect(c.patLen()).toBe(24); // the stamp at step 20 ends at step 22 → six bars
+    expect(c.rec.says).toContain('Pattern grew to 6 bars');
+  });
+
+  it('a stamp inside the pattern says nothing about growth', () => {
+    const c = makeCtx([], 'stamp');
+    c.setLen(16);
+    down(c, 0, at(4.4, 60));
+    expect(c.rec.says.some(s => s.startsWith('Pattern grew'))).toBe(false);
   });
 });
 
