@@ -107,8 +107,9 @@ export function rollMove(ctx: RollCtx, m: RollMove): string {
   const p = m.p;
   if (p.x < KW) { ctx.setHoverChord(''); return 'pointer'; }
   const i = ctx.hit(p.step, p.key);
-  if (m.ctrl) return 'crosshair';
   const tool = TOOL_BY_ID[ctx.tool()];
+  // previews run whatever modifiers are held (old move() did): only the cursor switches to
+  // the crosshair, which says the click will select, not stamp
   if (tool.hover) tool.hover(ctx, m, i);
   else if (i >= 0) {
     // the chord sounding under the pointer: every note of the channel at that step
@@ -116,5 +117,5 @@ export function rollMove(ctx: RollCtx, m: RollMove): string {
     const ps = ctx.notes().filter(n => n.ch === ctx.ch().id && n.step === s0 && n.p != null).map(n => n.p!);
     ctx.setHoverChord(ps.length >= 2 ? chordName(ps) : '');
   } else ctx.setHoverChord('');
-  return tool.cursor(ctx, p, m, i);
+  return m.ctrl ? 'crosshair' : tool.cursor(ctx, p, m, i);
 }

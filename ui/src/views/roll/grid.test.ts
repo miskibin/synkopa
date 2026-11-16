@@ -174,6 +174,39 @@ describe('draw tool', () => {
     c2.drag()?.up(mv(c2, at(13, 60)));
     expect(c2.rec.gestures[0].label).toBe('Note length');
   });
+
+  it('the paint tool keeps writing notes cell after cell, once per cell', () => {
+    const c = makeCtx([], 'paint');
+    down(c, 0, at(4.4, 60));
+    expect(c.live.map(n => n.step)).toEqual([4]);
+    c.drag()?.move(mv(c, at(8.4, 60))); // next cell: another note
+    expect(c.live.map(n => n.step)).toEqual([4, 8]);
+    c.drag()?.move(mv(c, at(8.6, 60))); // still cell 8: no duplicate
+    expect(c.live).toHaveLength(2);
+    c.drag()?.up(mv(c, at(8.6, 60)));
+    expect(c.rec.gestures[0].label).toBe('Paint notes');
+    expect(c.rec.gestures[0].ended).toBe(1);
+  });
+
+  it('a modifier pressed mid-drag locks an axis until it changes again (FL)', () => {
+    const c = makeCtx([note(4, 60)]);
+    down(c, 0, at(5, 60));
+    c.drag()?.move(mv(c, at(8, 62))); // free move: snaps to step 7, pitch follows
+    expect(c.live[0]).toMatchObject({ step: 7, p: 62 });
+    // Shift pressed after the drag started: pitch locks, time follows — applied at once
+    // even without a pointer move (the key-only modifier path)
+    c.fireMods({ alt: false, shift: true, ctrl: false });
+    expect(c.rec.says).toContain('Moving in time only (Shift)');
+    c.drag()?.move(mv(c, at(12, 70), { shift: true }));
+    // locked moves recompute from the drag-start position: the pitch returns to it
+    expect(c.live[0]).toMatchObject({ step: 11, p: 60 });
+    // Ctrl instead: time locks to the drag-start step, pitch follows
+    c.drag()?.move(mv(c, at(16, 76), { ctrl: true }));
+    expect(c.live[0]).toMatchObject({ step: 4, p: 76 });
+    expect(c.rec.says).toContain('Moving in pitch only (Ctrl)');
+    c.drag()?.up(mv(c, at(16, 76), { ctrl: true }));
+    expect(c.rec.gestures[0].ended).toBe(1);
+  });
 });
 
 describe('erase', () => {
@@ -220,10 +253,13 @@ describe('stamp tool', () => {
     expect(steps).toContain('3:12:64'); // the other step untouched
   });
 
-  it('right-drag erases whole chords per step', () => {
+  it('right-drag erases whole chords per step, once per step', () => {
     const c = makeCtx([note(4, 60), note(4, 63), note(4, 67), note(8, 62)], 'stamp');
     down(c, 2, at(4.5, 60));
-    c.drag()?.move(mv(c, at(8.5, 62)));
+    c.drag()?.move(mv(c, at(4.9, 62))); // same step as the click: no second update
+    expect(c.rec.gestures[0].opss).toHaveLength(1);
+    c.drag()?.move(mv(c, at(8.5, 62))); // next step: the chord there goes too
+    expect(c.rec.gestures[0].opss).toHaveLength(2);
     c.drag()?.up(mv(c, at(8.5, 62)));
     expect(c.live.map(n => n.step)).toEqual([]);
     expect(c.rec.gestures[0].ended).toBe(1);
@@ -360,6 +396,50 @@ describe('hover', () => {
     expect(c.rec.chord).toBe('Cm');
     rollMove(c.ctx, mv(c, at(13, 64)));
     expect(c.rec.chord).toBe(''); // a single note is no chord
+  });
+
+  it('hover previews keep updating while Ctrl is held; only the cursor is the crosshair', () => {
+    const c = makeCtx([note(4, 60), note(4, 63), note(4, 67)], 'stamp');
+    rollMove(c.ctx, mv(c, at(4.4, 60), { ctrl: true }));
+    expect(c.rec.ghost).toEqual({ s: 4, len: 2, pitches: chordPitches(60, 'min', 0) });
+    expect(c.rec.chord).toBe('C4 → Cm · in C Major');
+  });
+});
+
+describe('select tool', () => {
+  it('a drag on a note moves it with its selection', () => {
+    const c = makeCtx([note(4, 60), note(8, 62)], 'select');
+    down(c, 0, at(5, 60));
+    c.drag()?.move(mv(c, at(8, 60)));
+    expect(c.live[0]).toMatchObject({ step: 7, p: 60 }); // moveNotes snaps the landing
+    expect(c.rec.sels.at(-1)).toEqual([0]);
+    c.drag()?.up(mv(c, at(8, 60)));
+    expect(c.rec.gestures[0].ended).toBe(1);
+  });
+
+  it('empty grid starts the marquee and the box selects the notes it covers', () => {
+    const c = makeCtx([note(4, 60)], 'select');
+    down(c, 0, at(1, 40));
+    expect(c.drag()).toBeTruthy();
+    c.drag()?.move(mv(c, at(15, 70)));
+    c.drag()?.up(mv(c, at(15, 70)));
+    expect(c.rec.sels.at(-1)).toEqual([0]);
+    expect(c.rec.gestures).toHaveLength(0); // a marquee is not an edit
+  });
+});
+
+describe('keyboard lane glide', () => {
+  it('gliding re-triggers the key under the pointer and releases on up', () => {
+    const c = makeCtx([]);
+    down(c, 0, { x: 10, y: (127 - 60) * 18, step: -2.4, key: 60 });
+    c.drag()?.move(mv(c, { x: 20, y: (127 - 64) * 18, step: -2.4, key: 64 }));
+    expect(c.rec.typing).toEqual([
+      { on: true, key: 60, vel: expect.any(Number) },
+      { on: false, key: 60, vel: 0 },
+      { on: true, key: 64, vel: expect.any(Number) },
+    ]);
+    c.drag()?.up(mv(c, { x: 20, y: (127 - 64) * 18, step: -2.4, key: 64 }));
+    expect(c.rec.typing.at(-1)).toEqual({ on: false, key: 64, vel: 0 });
   });
 });
 
