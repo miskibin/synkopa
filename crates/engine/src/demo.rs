@@ -22,6 +22,8 @@ fn base(names: &[&str], ins_names: &[&str]) -> Project {
             muted: false,
             solo: false,
             fx: vec![],
+            sends: vec![],
+            master: true,
         }],
         patterns: vec![],
         sources: vec![],
@@ -46,6 +48,8 @@ fn base(names: &[&str], ins_names: &[&str]) -> Project {
             muted: false,
             solo: false,
             fx: vec![],
+            sends: vec![],
+            master: true,
         });
     }
     for (i, name) in names.iter().enumerate() {

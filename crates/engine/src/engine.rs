@@ -2295,7 +2295,7 @@ impl Engine {
     /// channel sent to it). Like FL Studio's *Split mixer tracks*, unused and muted inserts are left
     /// out; a candidate that still renders silent is dropped by the caller.
     pub fn stem_inserts(project: &Project) -> Vec<(Id, String)> {
-        project
+        let playing: Vec<Id> = project
             .inserts
             .iter()
             .filter(|m| m.id != 0 && !m.muted)
@@ -2306,6 +2306,13 @@ impl Engine {
                 let on_channel = project.channels.iter().any(|c| c.insert == Some(m.id) && !c.mute);
                 on_track || on_channel
             })
+            .map(|m| m.id)
+            .collect();
+        // a bus has nothing of its own: it has a stem when something playing is routed into it
+        project
+            .inserts
+            .iter()
+            .filter(|m| m.id != 0 && !m.muted && playing.iter().any(|&src| crate::routing::reaches(project, src, m.id)))
             .map(|m| (m.id, m.name.clone()))
             .collect()
     }
@@ -3620,6 +3627,10 @@ fn stem_project(mut p: Project, id: Id) -> Project {
     for c in p.channels.iter_mut() {
         c.solo = false;
     }
+    // the inserts routed into this one (its sources, through any number of sends): they stay,
+    // sending only on the way here; this one goes straight to the master; the rest are muted
+    let feeds: Vec<Id> =
+        p.inserts.iter().filter(|m| m.id != 0 && m.id != id && crate::routing::reaches(&p, m.id, id)).map(|m| m.id).collect();
     for m in p.inserts.iter_mut() {
         m.solo = false;
         if m.id == 0 {
@@ -3628,8 +3639,15 @@ fn stem_project(mut p: Project, id: Id) -> Project {
             m.pan = 0.0;
             m.width = 1.0;
             m.muted = false;
+        } else if m.id == id {
+            m.muted = false;
+            m.sends.clear();
+            m.master = true;
+        } else if feeds.contains(&m.id) {
+            m.sends.retain(|s| s.to == id || feeds.contains(&s.to));
+            m.master = false;
         } else {
-            m.muted = m.id != id;
+            m.muted = true;
         }
     }
     p
@@ -3645,23 +3663,20 @@ fn audible_tracks(p: &Project) -> Vec<(f32, bool)> {
 }
 
 fn audible_inserts(p: &Project) -> Vec<(Id, f32, f32, f32, bool)> {
-    let any_solo = p.inserts.iter().any(|m| m.id != 0 && m.solo);
+    // solo follows the routing: a soloed bus keeps what feeds it, a soloed source its way out
+    let heard = crate::routing::audible(p);
     p.inserts
         .iter()
-        .map(|m| {
-            (
-                m.id,
-                fader_gain(m.vol),
-                m.pan.clamp(-1.0, 1.0),
-                if m.width.is_finite() { m.width.clamp(0.0, 2.0) } else { 1.0 },
-                !m.muted && (m.id == 0 || !any_solo || m.solo),
-            )
+        .zip(heard)
+        .map(|(m, heard)| {
+            (m.id, fader_gain(m.vol), m.pan.clamp(-1.0, 1.0), if m.width.is_finite() { m.width.clamp(0.0, 2.0) } else { 1.0 }, heard)
         })
         .collect()
 }
 
-/// Frames between the timeline and the speakers inside the mixer: the slowest non-master
-/// insert (plugin delay compensation delays every insert to match it) plus the master chain.
+/// Frames between the timeline and the speakers inside the mixer: the slowest path through the
+/// inserts to the master (plugin delay compensation lines every path up with it, see
+/// `crate::routing::latency`) plus the master chain.
 /// Built-in effects only: hosted plugins count as 0 here (see [`Engine::playback_latency`]).
 pub fn playback_latency(p: &Project, sr: f32) -> usize {
     playback_latency_with(p, sr, &HashMap::new())
@@ -3669,9 +3684,9 @@ pub fn playback_latency(p: &Project, sr: f32) -> usize {
 
 /// [`playback_latency`] with the latency each hosted plugin reports (`hosted`, by effect id).
 pub(crate) fn playback_latency_with(p: &Project, sr: f32, hosted: &HashMap<Id, usize>) -> usize {
-    let lat = |m: &crate::model::Insert| m.fx.iter().map(|f| fx_latency(f, sr, hosted)).sum::<usize>();
-    let master = p.inserts.first().map(lat).unwrap_or(0);
-    master + p.inserts.iter().skip(1).map(lat).max().unwrap_or(0)
+    let lat: Vec<usize> = p.inserts.iter().map(|m| m.fx.iter().map(|f| fx_latency(f, sr, hosted)).sum()).collect();
+    let routes = crate::routing::latency(p, &crate::routing::order(p), &lat);
+    lat.first().copied().unwrap_or(0) + routes.at_master
 }
 
 /// The delay one effect adds: `catalog::latency` for built-in effects, the reported value
@@ -3713,7 +3728,14 @@ fn drop_empty_track(p: &mut Project, id: Id) -> bool {
 }
 
 fn mix_state(p: &Project) -> MixState {
-    MixState { inserts: audible_inserts(p), tracks: audible_tracks(p), monitor_track: monitor_track(p), chans: audible_channels(p) }
+    let sends = p
+        .inserts
+        .iter()
+        .flat_map(|m| {
+            m.sends.iter().map(move |s| (m.id, s.to, if s.gain.is_finite() { s.gain.clamp(0.0, crate::routing::SEND_MAX) } else { 1.0 }))
+        })
+        .collect();
+    MixState { inserts: audible_inserts(p), sends, tracks: audible_tracks(p), monitor_track: monitor_track(p), chans: audible_channels(p) }
 }
 
 /// (gain, pan, audible) of every channel, in project order. Solo works like the mixer's:
@@ -3867,7 +3889,9 @@ pub(crate) fn build_graph(
         .collect();
     hosted.retain(|id, _| p.find_fx(*id).is_some_and(|(_, f)| f.kind == FxKind::Plugin));
     let lat: Vec<usize> = p.inserts.iter().map(|m| m.fx.iter().map(|f| fx_latency(f, sr, hosted)).sum()).collect();
-    let max_lat = lat.iter().skip(1).copied().max().unwrap_or(0);
+    let order = crate::routing::order(p);
+    let routes = crate::routing::latency(p, &order, &lat);
+    let fed: Vec<bool> = (0..p.inserts.len()).map(|k| order.sends.iter().any(|v| v.iter().any(|s| s.0 == k))).collect();
     let inserts = p
         .inserts
         .iter()
@@ -3883,8 +3907,15 @@ pub(crate) fn build_graph(
                     })
                     .collect();
             let k = p.inserts.iter().position(|x| x.id == id).unwrap_or(0);
-            let comp = if k == 0 { 0 } else { max_lat - lat[k] };
-            InsertRt::new(id, gain, pan, width, on, fx, max_block).with_delay(comp)
+            let sends = order.sends[k].iter().zip(&routes.sends[k]).map(|(&(t, g), &d)| SendRt::new(t, p.inserts[t].id, g, d)).collect();
+            InsertRt::new(id, gain, pan, width, on, fx, max_block).with_delay(routes.master[k]).with_routing(
+                order.level[k],
+                k == 0 || m.master,
+                sends,
+                fed[k],
+                routes.input[k],
+                max_block,
+            )
         })
         .collect();
     let track_state = audible_tracks(p);
@@ -3894,7 +3925,7 @@ pub(crate) fn build_graph(
         .zip(track_state)
         .map(|(t, (gain, on))| TrackRt { insert: p.inserts.iter().position(|m| m.id == t.insert).unwrap_or(0), gain, on })
         .collect();
-    Graph::new(inserts, tracks, monitor_track(p), max_block).with_latency(max_lat, lat.first().copied().unwrap_or(0))
+    Graph::new(inserts, tracks, monitor_track(p), max_block).with_latency(routes.at_master, lat.first().copied().unwrap_or(0))
 }
 
 /// `takes`: loaded audio by source id of every comp take and sampler channel.

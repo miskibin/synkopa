@@ -79,6 +79,8 @@ fn project() -> Project {
             muted: false,
             solo: false,
             fx: vec![],
+            sends: vec![],
+            master: true,
         });
     }
     for k in 1..9 {

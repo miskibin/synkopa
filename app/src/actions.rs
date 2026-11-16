@@ -115,6 +115,57 @@ pub fn add_fx(app: &dyn Host, insert_id: u64, kind: FxKind, preset: Option<usize
     Ok((id, rev))
 }
 
+/// Mixer routing (FL Studio style): insert `from` sends to insert `to` at `gain` (linear,
+/// 0..2; a send that exists gets the new level). `to` = 0 (the master) turns the output into
+/// the master back on. `only`: the output goes only where it sends, no longer to the master
+/// ("route to this track only"). A send that would close a loop is refused.
+pub fn route(app: &dyn Host, from: u64, to: u64, gain: Option<f32>, only: bool, if_revision: Option<u64>) -> R<u64> {
+    let p = app.engine().project();
+    let mut m = p.insert(from).cloned().ok_or(format!("no insert {from}"))?;
+    if from == 0 {
+        return Err("the master is the output: it sends nowhere".into());
+    }
+    if to == 0 {
+        m.master = true;
+    } else {
+        if p.insert(to).is_none() {
+            return Err(format!("no insert {to}"));
+        }
+        match m.sends.iter_mut().find(|s| s.to == to) {
+            Some(s) => s.gain = gain.unwrap_or(s.gain),
+            None => m.sends.push(wave_engine::model::InsertSend { to, gain: gain.unwrap_or(1.0) }),
+        }
+        if only {
+            m.master = false;
+        }
+    }
+    app.engine().apply(&[Op::PutInsert { insert: m }], false, if_revision).map_err(|e| e.to_string())
+}
+
+/// Removes insert `from`'s send to `to`; `to` = 0 stops its output into the master (it then
+/// goes only where it sends, so it must send somewhere).
+pub fn unroute(app: &dyn Host, from: u64, to: u64, if_revision: Option<u64>) -> R<u64> {
+    let p = app.engine().project();
+    let mut m = p.insert(from).cloned().ok_or(format!("no insert {from}"))?;
+    if to == 0 {
+        if m.sends.is_empty() {
+            return Err(format!("insert {from} sends nowhere else: it would fall silent (mute it instead)"));
+        }
+        m.master = false;
+    } else {
+        let n = m.sends.len();
+        m.sends.retain(|s| s.to != to);
+        if m.sends.len() == n {
+            return Err(format!("insert {from} does not send to insert {to}"));
+        }
+        // nothing left to go to: back to the master rather than silence
+        if m.sends.is_empty() {
+            m.master = true;
+        }
+    }
+    app.engine().apply(&[Op::PutInsert { insert: m }], false, if_revision).map_err(|e| e.to_string())
+}
+
 pub fn set_param(app: &dyn Host, fx_id: u64, param: &str, value: f64, if_revision: Option<u64>) -> R<u64> {
     let p = app.engine().project();
     let (m, f) = p.find_fx(fx_id).ok_or(format!("no effect {fx_id}"))?;
@@ -657,6 +708,7 @@ pub fn context(app: &dyn Host, full: bool) -> Value {
         })).collect::<Vec<_>>(),
         "inserts": p.inserts.iter().map(|m| json!({
             "id": m.id, "name": m.name, "volume": db(m.vol), "pan": m.pan, "muted": m.muted, "solo": m.solo,
+            "toMaster": m.master, "sends": m.sends.iter().map(|s| json!({"to": s.to, "gain": s.gain})).collect::<Vec<_>>(),
             "fx": m.fx.iter().map(|f| json!({
                 "id": f.id, "type": f.kind, "name": f.plugin.as_ref().map(|x| x.name.clone()).unwrap_or_else(|| catalog::type_name(f.kind).into()),
                 "bypass": f.bypass, "preset": f.preset.and_then(|i| catalog::presets(f.kind).get(i as usize).map(|p| p.name)),
@@ -678,12 +730,13 @@ pub fn schema() -> Value {
         "units": "time in beats (quarter notes); pattern len in beats (4 = 1 bar, derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
         "patterns": "channels are global (Channel Rack rows, `wave channels`); a pattern note plays channel `ch`; trig = true for a step trigger without sampler note-off; p = MIDI key (absent = the channel's root, the key at which a sampler plays its file unpitched); swing delays notes on odd 16ths by swing × ½ step; the pattern length is derived: the end of the last note rounded up to a bar, at least `minLen` beats (a `len` you send is ignored); when it changes, clips that show exactly one whole pass (offset 0) follow. Easier: `wave pattern --id N --ch C --steps \"x...x...x...x...\"`",
         "ids": "take new ids from context.nextId and count up",
+        "routing": "an insert's output goes to the master (`master`: true, the default) and/or, post-fader, to other inserts through `sends` [{to, gain 0..2 linear}] (a bus, a shared reverb). `master` false = only where it sends. Loops and sends to itself or to the master (id 0) are refused. Easier: `wave route --from 3 --to 1 [--gain 0.5] [--only true]`, `wave unroute --from 3 --to 1`",
         "stretch": "audio clips only: `stretch` 0.25..4 = how many times longer the clip plays its audio (2 = half speed); `offset` and `len` are beats of the stretched audio, so stretching a clip from s0 to s1 multiplies its len and offset by s1/s0. Pitch is kept (rendered in the background; the clip plays resampled until it is ready, see state `stretching`) unless `resample` is true (speed and pitch change together, like a turntable)",
         "ops": {
             "putClips": {"clips": [{"id": 0, "track": 0, "start": 0, "len": 4, "offset": 0, "kind": "pat|audio|auto|comp", "ref": "pattern, source, automation or comp id", "muted": false, "gain": 0, "fadeIn": 0, "fadeOut": 0, "pan": 0, "norm": false, "rev": false, "stretch": 1, "resample": false}]},
             "removeClips": {"ids": [0]},
             "putTrack": {"track": {"id": 0, "name": "", "color": "#4f8ef7", "muted": false, "solo": false, "arm": false, "vol": 0.7937, "h": 56, "insert": 1}},
-            "putInsert": {"insert": {"id": 0, "name": "", "color": "#8b93a1", "vol": 0.7937, "pan": 0, "muted": false, "solo": false, "fx": []}},
+            "putInsert": {"insert": {"id": 0, "name": "", "color": "#8b93a1", "vol": 0.7937, "pan": 0, "muted": false, "solo": false, "fx": [], "sends": [{"to": 2, "gain": 1}], "master": true}},
             "removeInsert": {"id": 0},
             "putFx": {"insertId": 1, "fx": {"id": 0, "type": "comp", "bypass": false, "params": {"thr": -18}}, "index": null},
             "removeFx": {"fxId": 0},
@@ -1350,7 +1403,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1376,6 +1429,11 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             let (id, rev) = add_fx(app, need_u64(a, "insertId")?, kind, arg(a, "preset").and_then(as_index).map(|x| x as usize), None)?;
             Ok(json!({ "fxId": id, "revision": rev }))
         }
+        "route" => {
+            let only = arg(a, "only").map(|v| v.as_bool().ok_or("`only` must be a boolean")).transpose()?.unwrap_or(false);
+            route(app, need_u64(a, "from")?, need_u64(a, "to")?, opt_f64(a, "gain").map(|g| g as f32), only, if_revision).map(ok_rev)
+        }
+        "unroute" => unroute(app, need_u64(a, "from")?, need_u64(a, "to")?, if_revision).map(ok_rev),
         "set_param" => {
             set_param(app, need_u64(a, "fxId")?, need_str(a, "param")?, opt_f64(a, "value").ok_or("`value` is required")?, if_revision)
                 .map(ok_rev)

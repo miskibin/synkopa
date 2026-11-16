@@ -226,6 +226,8 @@ pub fn build_song(dir: &Path) -> Project {
             muted: false,
             solo: false,
             fx,
+            sends: vec![],
+            master: true,
         });
         inserts.push(ins_id);
         let tid = p.alloc_id();
@@ -570,6 +572,8 @@ pub fn build(spec: &Spec, dir: &Path) -> Project {
             muted: false,
             solo: false,
             fx,
+            sends: vec![],
+            master: true,
         });
         p.tracks.push(Track {
             id: tid,

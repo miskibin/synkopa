@@ -182,6 +182,39 @@ mod tests {
     }
 
     #[test]
+    fn route_and_unroute_wire_the_mixer_and_survive_a_save() {
+        let d = tmp("route");
+        let path = d.join("routed.wave");
+        let doc = Files.create("sketch").unwrap();
+        let ins = |doc: &dyn wave_cli::Doc, id: u64| {
+            let ctx = doc.call("context", &json!({}), None).unwrap();
+            ctx["inserts"].as_array().unwrap().iter().find(|m| m["id"] == id).unwrap().clone()
+        };
+        // 2 → 1 only, at -6 dB-ish
+        doc.call("route", &json!({"from": 2, "to": 1, "gain": 0.5, "only": true}), None).unwrap();
+        let m = ins(&*doc, 2);
+        assert_eq!(m["toMaster"], false);
+        assert_eq!(m["sends"], json!([{"to": 1, "gain": 0.5}]));
+        // the way back would loop
+        let err = doc.call("route", &json!({"from": 1, "to": 2}), None).unwrap_err();
+        assert!(err.contains("loop"), "{err}");
+        // a second send, then the master again
+        doc.call("route", &json!({"from": 2, "to": 3}), None).unwrap();
+        doc.call("route", &json!({"from": 2, "to": 0}), None).unwrap();
+        assert_eq!(ins(&*doc, 2)["toMaster"], true);
+        doc.save(&path).unwrap();
+        let (doc, warnings) = Files.open(&path).unwrap();
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ins(&*doc, 2)["sends"].as_array().unwrap().len(), 2);
+        doc.call("unroute", &json!({"from": 2, "to": 1}), None).unwrap();
+        doc.call("unroute", &json!({"from": 2, "to": 3}), None).unwrap();
+        let m = ins(&*doc, 2);
+        assert!(m["sends"].as_array().unwrap().is_empty() && m["toMaster"] == true);
+        assert!(doc.call("unroute", &json!({"from": 2, "to": 0}), None).unwrap_err().contains("silent"));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
     fn pattern_commands_round_trip_triggers_and_sampler_fades() {
         let dir = tmp("steps");
         let path = dir.join("steps.wave");

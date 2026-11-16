@@ -109,6 +109,28 @@ pub struct Insert {
     pub muted: bool,
     pub solo: bool,
     pub fx: Vec<Fx>,
+    /// Post-fader sends to other inserts (FL Studio's mixer routing, see `crate::routing`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sends: Vec<InsertSend>,
+    /// The output also goes to the master (the default). Off: it goes only where it sends
+    /// ("route to this track only").
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub master: bool,
+}
+
+/// One send of an insert: the insert it feeds and the level (linear, 0..=2).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InsertSend {
+    pub to: Id,
+    pub gain: f32,
+}
+
+fn yes() -> bool {
+    true
+}
+fn is_yes(b: &bool) -> bool {
+    *b
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

@@ -20,6 +20,7 @@ pub mod pool;
 pub mod processor;
 pub mod reference;
 pub mod rider;
+pub mod routing;
 pub mod singer;
 pub mod transform;
 

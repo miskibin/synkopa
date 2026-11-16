@@ -231,6 +231,38 @@ pub struct InsertRt {
     /// effects with latency are skipped, its PDC delay runs *before* the chain (on the
     /// playback only, see `Graph::mon`) and the live input goes through undelayed.
     low_lat: bool,
+    /// Routing (see `crate::routing`): processed after every insert sending into it.
+    pub level: usize,
+    /// The output goes into the master (else only where it sends).
+    pub to_master: bool,
+    /// Post-fader sends to other inserts.
+    pub sends: Vec<SendRt>,
+    /// Something sends into this insert: `sl`/`sr` collect it during the block.
+    fed: bool,
+    sl: Vec<f32>,
+    sr: Vec<f32>,
+    /// The insert's own input, delayed to line up with the slowest insert sending into it.
+    in_dly: (Ring, Ring),
+    /// The post-fader output the sends read (only with sends).
+    post_l: Vec<f32>,
+    post_r: Vec<f32>,
+}
+
+/// One send of an insert: the target's index, its level (smoothed across a block) and the
+/// delay that lines it up with the target's other inputs.
+pub struct SendRt {
+    pub to: usize,
+    pub to_id: Id,
+    pub gain: f32,
+    g_cur: f32,
+    dly: (Ring, Ring),
+}
+
+impl SendRt {
+    /// `delay`: frames (allocates; call off the audio thread).
+    pub fn new(to: usize, to_id: Id, gain: f32, delay: usize) -> Self {
+        Self { to, to_id, gain, g_cur: gain, dly: (Ring::new(delay), Ring::new(delay)) }
+    }
 }
 
 impl InsertRt {
@@ -257,6 +289,57 @@ impl InsertRt {
             idle_at: usize::MAX,
             idle: false,
             low_lat: false,
+            level: 0,
+            to_master: true,
+            sends: vec![],
+            fed: false,
+            sl: vec![],
+            sr: vec![],
+            in_dly: (Ring::default(), Ring::default()),
+            post_l: vec![],
+            post_r: vec![],
+        }
+    }
+
+    /// Wires the insert into the routing (allocates; call off the audio thread): its level,
+    /// whether it goes to the master, its sends, whether anything sends into it, and the delay
+    /// of its own input.
+    pub fn with_routing(
+        mut self,
+        level: usize,
+        to_master: bool,
+        sends: Vec<SendRt>,
+        fed: bool,
+        input_delay: usize,
+        max_block: usize,
+    ) -> Self {
+        self.level = level;
+        self.to_master = to_master;
+        if !sends.is_empty() {
+            self.post_l = vec![0.0; max_block];
+            self.post_r = vec![0.0; max_block];
+        }
+        self.sends = sends;
+        self.fed = fed;
+        if fed {
+            self.sl = vec![0.0; max_block];
+            self.sr = vec![0.0; max_block];
+        }
+        self.in_dly = (Ring::new(input_delay), Ring::new(input_delay));
+        self
+    }
+
+    /// Before the chain: the own input delayed to its slowest source, plus what was sent in.
+    fn take_sends(&mut self, n: usize) {
+        self.in_dly.0.run(&mut self.l[..n]);
+        self.in_dly.1.run(&mut self.r[..n]);
+        if self.fed {
+            for i in 0..n {
+                self.l[i] += self.sl[i];
+                self.r[i] += self.sr[i];
+            }
+            self.sl[..n].fill(0.0);
+            self.sr[..n].fill(0.0);
         }
     }
 
@@ -289,12 +372,24 @@ pub struct Graph {
     mon_ins: Option<usize>,
     /// Delays the metronome/count-in click by the playback latency, so it is heard with the music.
     click: Ring,
+    /// The deepest routing level of a non-master insert (`crate::routing::Order::depth`).
+    pub depth: usize,
 }
 
 impl Graph {
     pub fn new(inserts: Vec<InsertRt>, tracks: Vec<TrackRt>, monitor_track: Option<usize>, max_block: usize) -> Self {
         let track_bufs = tracks.iter().map(|_| (vec![0.0; max_block], vec![0.0; max_block])).collect();
-        Self { inserts, tracks, track_bufs, monitor_track, mon: (Ring::default(), Ring::default()), mon_ins: None, click: Ring::default() }
+        let depth = inserts.iter().skip(1).map(|i| i.level).max().unwrap_or(0);
+        Self {
+            inserts,
+            tracks,
+            track_bufs,
+            monitor_track,
+            mon: (Ring::default(), Ring::default()),
+            mon_ins: None,
+            click: Ring::default(),
+            depth,
+        }
     }
 
     /// Allocates the latency lines (call off the audio thread): `pdc` = the delay every
@@ -330,6 +425,9 @@ impl Ring {
     }
     fn clear(&mut self) {
         self.buf.fill(0.0);
+    }
+    fn is_empty(&self) -> bool {
+        self.buf.is_empty()
     }
     /// Takes over what `old` still has to play (see [`carry_line`]).
     fn carry(&mut self, old: &mut Ring) {
@@ -380,6 +478,8 @@ fn carry_pdc(new: &mut InsertRt, old: &mut InsertRt) -> bool {
 /// Fader/pan/mute for everything, sent when only those changed.
 pub struct MixState {
     pub inserts: Vec<(Id, f32, f32, f32, bool)>,
+    /// Send levels: (from insert, to insert, gain).
+    pub sends: Vec<(Id, Id, f32)>,
     pub tracks: Vec<(f32, bool)>,
     pub monitor_track: Option<usize>,
     /// Channel (gain, pan, on), in the timeline's channel order.
@@ -1005,6 +1105,16 @@ impl Rt {
                         if let Some(old) = self.graph.inserts.iter_mut().find(|i| i.id == ins.id) {
                             ins.g_cur = old.g_cur;
                             pdc_carried = carry_pdc(ins, old);
+                            // a send that stays keeps its level ramp and what is in flight in its delay
+                            for s in ins.sends.iter_mut() {
+                                if let Some(o) = old.sends.iter_mut().find(|o| o.to_id == s.to_id) {
+                                    s.g_cur = o.g_cur;
+                                    s.dly.0.carry(&mut o.dly.0);
+                                    s.dly.1.carry(&mut o.dly.1);
+                                }
+                            }
+                            ins.in_dly.0.carry(&mut old.in_dly.0);
+                            ins.in_dly.1.carry(&mut old.in_dly.1);
                         }
                         (ins.quiet, ins.parked) = if carried { (quiet, parked) } else { (usize::MAX / 2, true) };
                         // a parked chain is idle once its PDC line has played out (at once if it is empty)
@@ -1027,6 +1137,13 @@ impl Rt {
                             i.pan = pan;
                             i.width = width;
                             i.on = on;
+                        }
+                    }
+                    for &(from, to, gain) in &m.sends {
+                        if let Some(s) =
+                            self.graph.inserts.iter_mut().find(|i| i.id == from).and_then(|i| i.sends.iter_mut().find(|s| s.to_id == to))
+                        {
+                            s.gain = gain;
                         }
                     }
                     for (t, &(gain, on)) in self.graph.tracks.iter_mut().zip(m.tracks.iter()) {
@@ -1654,33 +1771,44 @@ impl Rt {
         if count > 0 {
             let (enabled, watch) = (self.skip_silent, &self.watch[..self.watch_n]);
             let aligned = ctx.playing || self.instant.is_none();
-            if let Some(pool) = self.pool.as_ref().filter(|_| count > 2) {
-                // the effect chains of the non-master inserts are independent: the pool's
-                // threads take them one by one (the sum into the master below stays in order).
-                // A chain with a watched effect writes the analysis taps: this thread runs it.
-                let shared = &*self.shared;
-                let watched = |ins: &InsertRt| !watch.is_empty() && ins.fx.iter().any(|s| watch.contains(&s.id));
-                pool.for_each_mut(&mut g.inserts[1..], &|j, ins| {
-                    if !watched(ins) {
-                        let mut no_taps = Taps { input: Vec::new(), output: Vec::new() };
-                        process_insert(ins, j + 1, n, &ctx, aligned, enabled, &[], &mut no_taps, shared);
+            // level by level (`crate::routing`): an insert runs once everything sending into it
+            // has; the inserts of one level are independent of each other
+            for lv in 0..=g.depth {
+                for ins in g.inserts.iter_mut().skip(1).filter(|i| i.level == lv) {
+                    ins.take_sends(n);
+                }
+                if let Some(pool) = self.pool.as_ref().filter(|_| count > 2) {
+                    // the pool's threads take this level's chains one by one. A chain with a
+                    // watched effect writes the analysis taps: this thread runs it.
+                    let shared = &*self.shared;
+                    let watched = |ins: &InsertRt| !watch.is_empty() && ins.fx.iter().any(|s| watch.contains(&s.id));
+                    pool.for_each_mut(&mut g.inserts[1..], &|j, ins| {
+                        if ins.level == lv && !watched(ins) {
+                            let mut no_taps = Taps { input: Vec::new(), output: Vec::new() };
+                            process_insert(ins, j + 1, n, &ctx, aligned, enabled, &[], &mut no_taps, shared);
+                        }
+                    });
+                    if !watch.is_empty() {
+                        for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
+                            if insert.level == lv && watched(insert) {
+                                process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, shared);
+                            }
+                        }
                     }
-                });
-                if !watch.is_empty() {
+                } else {
                     for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
-                        if watched(insert) {
-                            process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, shared);
+                        if insert.level == lv {
+                            process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared);
                         }
                     }
                 }
-            } else {
-                for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
-                    process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared);
+                if lv < g.depth {
+                    send_level(&mut g.inserts, lv, n, &mut self.tmp_l, &mut self.tmp_r);
                 }
             }
             let (head, tail) = g.inserts.split_at_mut(1);
             let master = &mut head[0];
-            for ins in tail.iter().filter(|i| !i.idle) {
+            for ins in tail.iter().filter(|i| !i.idle && i.to_master) {
                 for i in 0..n {
                     master.l[i] += ins.l[i];
                     master.r[i] += ins.r[i];
@@ -1921,6 +2049,57 @@ fn play(
     }
 }
 
+/// Adds what the inserts of level `lv` send into their targets' send inputs: the post-fader
+/// output times the send level (ramped across the block), through the send's delay line.
+/// `tl`/`tr`: scratch, at least `n` long. An idle insert sends silence (its delay lines still
+/// play out what they hold).
+fn send_level(inserts: &mut [InsertRt], lv: usize, n: usize, tl: &mut [f32], tr: &mut [f32]) {
+    for a in 1..inserts.len() {
+        if inserts[a].level != lv {
+            continue;
+        }
+        for si in 0..inserts[a].sends.len() {
+            let to = inserts[a].sends[si].to;
+            let Some((src, dst)) = pair_mut(inserts, a, to) else { continue };
+            let idle = src.idle;
+            let s = &mut src.sends[si];
+            if idle && s.dly.0.is_empty() {
+                s.g_cur = s.gain;
+                continue;
+            }
+            let (g0, g1) = (s.g_cur, s.gain);
+            let step = (g1 - g0) / n as f32;
+            for i in 0..n {
+                let g = g0 + step * (i + 1) as f32;
+                (tl[i], tr[i]) = if idle { (0.0, 0.0) } else { (src.post_l[i] * g, src.post_r[i] * g) };
+            }
+            s.g_cur = g1;
+            s.dly.0.run(&mut tl[..n]);
+            s.dly.1.run(&mut tr[..n]);
+            if dst.fed {
+                for i in 0..n {
+                    dst.sl[i] += tl[i];
+                    dst.sr[i] += tr[i];
+                }
+            }
+        }
+    }
+}
+
+/// Two different inserts, mutably.
+fn pair_mut(v: &mut [InsertRt], a: usize, b: usize) -> Option<(&mut InsertRt, &mut InsertRt)> {
+    if a == b || a >= v.len() || b >= v.len() {
+        return None;
+    }
+    if a < b {
+        let (x, y) = v.split_at_mut(b);
+        Some((&mut x[a], &mut y[0]))
+    } else {
+        let (x, y) = v.split_at_mut(a);
+        Some((&mut y[0], &mut x[b]))
+    }
+}
+
 /// One insert's turn in a block: silence gate, effect chain, fader/pan, PDC delay. Leaves the
 /// insert's output in `ins.l`/`ins.r` (or `ins.idle` set: it contributes nothing).
 /// `aligned`: the PDC delay is in the path (see `InsertRt::pdc_on`): while playing, and
@@ -1981,6 +2160,10 @@ fn process_insert(
         }
     }
     ins.g_cur = target;
+    if !ins.sends.is_empty() {
+        ins.post_l[..n].copy_from_slice(&ins.l[..n]);
+        ins.post_r[..n].copy_from_slice(&ins.r[..n]);
+    }
     if !ins.pdc_l.is_empty() && !ins.low_lat && (aligned || ins.pdc_on) {
         let d = ins.pdc_l.len();
         // a stop switches from delayed to direct output: crossfade across this block instead of

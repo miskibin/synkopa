@@ -331,12 +331,21 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             d.mixer = true;
         }
         Op::PutInsert { insert } => {
+            crate::routing::validate(p, insert).map_err(OpError::Invalid)?;
             bump(p, insert.id);
             match p.inserts.iter_mut().find(|x| x.id == insert.id) {
                 Some(x) => {
+                    // where it sends (not how loud) changes the graph; a level is a fast-path value
+                    let rewired = x.master != insert.master
+                        || x.sends.len() != insert.sends.len()
+                        || x.sends.iter().zip(&insert.sends).any(|(a, b)| a.to != b.to);
                     let fx = std::mem::take(&mut x.fx);
                     *x = Insert { fx, ..insert.clone() };
-                    d.params = true;
+                    if rewired {
+                        d.mixer = true;
+                    } else {
+                        d.params = true;
+                    }
                 }
                 None => {
                     let mut m = insert.clone();
@@ -357,6 +366,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 return Err(OpError::Missing { what: "insert", id: *id });
             }
             p.inserts.retain(|m| m.id != *id);
+            crate::routing::forget(p, *id);
             for t in &mut p.tracks {
                 if t.insert == *id {
                     t.insert = 0;

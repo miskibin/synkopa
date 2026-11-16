@@ -130,3 +130,25 @@ fn a_range_and_tail_apply_to_stems_like_to_the_mix() {
     let s = e.render_stem(1, 0.0, 4.0, 1.0, SR, &go()).unwrap();
     assert_eq!(s.len(), e.render(0.0, 4.0, 1.0, SR).unwrap().len());
 }
+
+#[test]
+fn with_routing_a_bus_stem_carries_its_sources_and_a_source_stem_its_own_output() {
+    // everything into one bus (a new insert), nothing straight to the master
+    let mut p = plain_master();
+    let bus = 9000;
+    let mut b = p.inserts[1].clone();
+    (b.id, b.name, b.fx, b.muted, b.solo) = (bus, "Bus".into(), vec![], false, false);
+    for m in p.inserts.iter_mut().skip(1) {
+        m.sends = vec![model::InsertSend { to: bus, gain: 1.0 }];
+        m.master = false;
+    }
+    p.inserts.push(b);
+    let e = engine(p);
+    let ids: Vec<Id> = Engine::stem_inserts(&e.project()).iter().map(|s| s.0).collect();
+    assert!(ids.contains(&bus), "the bus has a stem though nothing plays on it directly: {ids:?}");
+    let mix = e.render(0.0, 8.0, 0.5, SR).unwrap();
+    let bus_stem = stem(&e, bus);
+    assert!((rms(&bus_stem) / rms(&mix) - 1.0).abs() < 0.01, "the bus carries the whole mix: {} vs {}", rms(&bus_stem), rms(&mix));
+    let src = ids.iter().copied().find(|&i| i != bus).unwrap();
+    assert!(rms(&stem(&e, src)) > 1e-4, "a source routed only into the bus still has its own stem");
+}
