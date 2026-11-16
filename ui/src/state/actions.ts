@@ -262,7 +262,7 @@ function afterProjectLoad() {
     const m = S.project.inserts[1] ?? S.project.inserts[0];
     if (m) setU({ mixSel: m.id, fxSel: m.fx[0]?.id ?? null });
     const p = S.project.patterns[0];
-    setU({ cur: p ? { kind: 'pat', ref: p.id } : null, pat: p?.id ?? null, selCh: S.project.channels?.[0]?.id ?? null });
+    setU({ cur: p ? { kind: 'pat', ref: p.id, clipId: null } : null, pat: p?.id ?? null, selCh: S.project.channels?.[0]?.id ?? null });
   });
 }
 
@@ -354,7 +354,7 @@ export function makeUnique(clip: Clip) {
   const count = S.project.patterns.filter(x => x.name.startsWith(baseName)).length;
   const np = { ...plain(p), id: allocId(), name: baseName + ' #' + (count + 1) };
   commit([{ op: 'putPattern', pattern: np }, { op: 'putClips', clips: [{ ...plain(clip), ref: np.id }] }], 'Make unique');
-  setU('cur', { kind: 'pat', ref: np.id });
+  setU('cur', { kind: 'pat', ref: np.id, clipId: null });
   say(t('d.act.newpat', { name: np.name }));
 }
 /**
