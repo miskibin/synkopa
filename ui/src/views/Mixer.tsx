@@ -21,6 +21,7 @@ import { FXMETA, FxTile, Icon, ICONS } from '../ui/icons';
 import { guessIcon, InstIcon, trackIcon } from '../ui/instIcons';
 import { openFxPicker } from './FxPicker';
 import { openFxChains, saveFxChain } from './FxChains';
+import { useSize } from './patternShared';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -83,6 +84,45 @@ function openStripMenu(x: number, y: number, id: Id) {
 }
 
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
+/** Height (px) of a strip's meters and fader: the strip keeps it however tall the mixer is. */
+const FADER_H = 140;
+/** One effect row in a strip, its 2 px gap included. */
+const FX_ROW = 20;
+
+/**
+ * The insert's effects as rows, in the room a taller mixer leaves above the knobs (the strip below
+ * keeps its size): the effect's icon and name (click = open it), a dot (on / bypassed). As many as
+ * fit; the last row then says how many more there are (click = the chain beside the strips), or
+ * offers to add one when there is room.
+ */
+function StripFx(props: { m: Insert }) {
+  let el!: HTMLDivElement;
+  const size = useSize(() => el);
+  const room = () => Math.floor((size().h + 2) / FX_ROW);
+  const fit = () => { const r = room(), n = props.m.fx.length; return n + 1 <= r ? n : Math.max(0, r - 1); };
+  const stop = (e: Event) => e.stopPropagation();
+  return (
+    <div ref={el} class="sfx">
+      <Show when={room() > 0}>
+        <For each={props.m.fx.slice(0, fit())}>{f => (
+          <div class="sfxr" classList={{ off: f.bypass, on: U.fxSel === f.id }} title={A.fxName(f) + ' · ' + tr('c.mix.fxRowTip')}
+            onClick={() => { setU('fxSel', f.id); A.openPlug(f.id); }}>
+            <FxTile type={f.type} size={14} dim={f.bypass} />
+            <span class="ell">{A.fxName(f)}</span>
+            <button class="sfxled" title={f.bypass ? tr('c.fx.bypassOn') : tr('c.fx.bypassOff')} aria-label={f.bypass ? tr('c.fx.bypassOn') : tr('c.fx.bypassOff')}
+              onPointerDown={stop} onClick={e => { e.stopPropagation(); A.toggleBypass(f.id); }} />
+          </div>
+        )}</For>
+        <Show when={props.m.fx.length > fit()} fallback={
+          <div class="sfxr add" title={tr('c.mix.addFxTip')} onClick={e => openFxMenu(e.clientX, e.clientY, props.m.id)}>+ {tr('c.mix.addFxShort')}</div>
+        }>
+          <div class="sfxr more" title={tr('c.mix.fxMoreTip')} onClick={() => A.selectInsert(props.m.id)}>{tr('c.mix.fxMore', { n: props.m.fx.length - fit() })}</div>
+        </Show>
+      </Show>
+    </div>
+  );
+}
+
 function Strip(props: { m: Insert; idx: number; full: boolean }) {
   const m = () => props.m;
   let fl!: HTMLDivElement, fr!: HTMLDivElement;
@@ -168,6 +208,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
             <span class="fxdot" /><span class="fxt">{m().fx.length}<span class="fxw"> FX</span></span></button>
         </Show>
       </div>
+      <StripFx m={m()} />
       <div class="knobrow">
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
         <div class="pandial" classList={{ auto: isAutomated(panT()) }} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
@@ -198,7 +239,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <button class="mini s mute" classList={{ on: m().solo }} title={tr('c.mix.soloTip')} onPointerDown={stop} onClick={e => A.toggleInsertSolo(m().id, e.ctrlKey || e.metaKey)}>S</button>
         </Show>
       </div>
-      <div style={{ flex: 1, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
+      {/* the fader keeps one height: a taller mixer shows effect rows above the knobs instead (StripFx) */}
+      <div style={{ flex: `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
         <div class="meter"><div ref={fl} /></div>
         <div class="meter"><div ref={fr} /></div>
         <div class="fader" classList={{ auto: isAutomated(volT()) }} onPointerDown={faderDown} onWheel={wheel('vol')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.faderTip')}>
