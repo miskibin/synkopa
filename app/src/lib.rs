@@ -93,6 +93,9 @@ impl actions::Host for App {
     fn model_error(&self) -> Option<String> {
         self.model_error.lock().clone()
     }
+    fn set_model_error(&self, e: Option<String>) {
+        *self.model_error.lock() = e;
+    }
     fn wait_keys(&self) -> R<()> {
         keys::wait(self);
         Ok(())

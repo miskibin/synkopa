@@ -135,7 +135,9 @@ PITCH  (Tune to Reference: pull a vocal take onto another performance of the sam
                                            channel plays over the clip in the playlist (taken again each time)
   melody-channels --clip ID                channels playing notes over the clip, best fit to the singing first
   pitch-target --clip ID [--full]          the computed target: score, octave, notes (--full: curves)
-  f0-model                                 pitch detector in use; RMVPE model install state
+  f0-model [--install]                     pitch detector in use; RMVPE model install state
+                                           (--install: downloads ~345 MB after printing its licence note,
+                                           SHA-256 checked, then switches the detector to it)
 
 PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come from `pitch inspect`)
   pitch inspect --clip ID [--full [--from S --to S]] [--all]
@@ -153,6 +155,15 @@ PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come fr
   pitch render --clip ID --out take.wav [--original]   the clip alone with its edits (or without), 32-bit WAV
   tune-file --take u.wav --reference r.wav --out o.wav [--json target.json]
             [--model rmvpe.onnx | --yin] [same options as tune-ref]   headless; needs no running app
+
+AUTO VOCAL  (one call: measure the take, bake the rider into the audio, put the tuned chain on the insert)
+  auto-vocal --clip ID [--style natural|hard] [--beat-clip ID] [--no-bake] [--plan]
+                                           the calibrated chain (tune, rider, fet comp, deess, reverb, limit)
+                                           replaces the insert's effects of the same kinds; the key comes from
+                                           the beat clip or the other tracks. Default renders the rider into
+                                           the clip's audio first (two undo steps, the original source stays);
+                                           --no-bake keeps it live on the insert; --plan only prints the
+                                           plan, read-only (riderBake holds the rider's params)
 
 PLUGINS  (VST3 everywhere, LV2 on Linux)
   plugins [--rescan]                       installed effects of every format and VST3 instruments ({plugins, instruments, unavailable})
@@ -218,12 +229,15 @@ const SWITCHES: &[&str] = &[
     "once",
     "full",
     "help",
+    "install",
     "keys",
     "new",
+    "no-bake",
     "no-master",
     "no-voice-lead",
     "off",
     "original",
+    "plan",
     "play",
     "pretty",
     "remove-unused",
@@ -1246,6 +1260,15 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
         "melody-channels" => {
             send(cx, a, "melody_channels", json!({"clipId": a.num("clip").map_err(u)?.ok_or_else(|| u("missing --clip".into()))? as u64}))
         }
+        "auto-vocal" => {
+            let clip = a.num("clip").map_err(u)?.ok_or_else(|| u("missing --clip".into()))? as u64;
+            let (command, args) = auto_vocal_args(a, clip)?;
+            send(cx, a, command, args)
+        }
+        "f0-model" if a.has("install") => {
+            eprintln!("downloading the RMVPE model (~345 MB); licence: {}", wave_rmvpe::LICENSE_NOTE);
+            send(cx, a, "f0_model_install", json!({}))
+        }
         "f0-model" => send(cx, a, "f0_model", json!({})),
         "pitch" => pitch(cx, a),
         "midi" => midi(cx, a),
@@ -1371,6 +1394,31 @@ fn pitch(cx: &Cx, a: &Args) -> Result<Value, Fail> {
         }
         other => Err(u(format!("unknown pitch verb `{other}` (inspect, compare, suggest, edit, render)"))),
     }
+}
+
+/// The request `auto-vocal` sends: `auto_vocal` — the plan, the rider bake and the chain in
+/// one call — or, with `--plan`, the read-only `auto_vocal_plan`.
+fn auto_vocal_args(a: &Args, clip: u64) -> Result<(&'static str, Value), Fail> {
+    let u = Fail::Usage;
+    if let Some(s) = a.get("style") {
+        if s != "natural" && s != "hard" {
+            return Err(u(format!("--style is natural or hard, not `{s}`")));
+        }
+    }
+    let mut args = json!({ "clipId": clip });
+    if let Some(s) = a.get("style") {
+        args["style"] = json!(s);
+    }
+    if let Some(v) = a.num("beat-clip").map_err(u)? {
+        args["beatClipId"] = json!(v);
+    }
+    if a.has("plan") {
+        // read-only: the plan itself, the rider stage in `riderBake` unless --no-bake
+        args["bakeRider"] = json!(!a.has("no-bake"));
+        return Ok(("auto_vocal_plan", args));
+    }
+    args["noBake"] = json!(a.has("no-bake"));
+    Ok(("auto_vocal", args))
 }
 
 /// The arguments of `pitch_edit`: a whole edit as JSON (`--json`/`--file`: the `edit` of an
@@ -1910,5 +1958,55 @@ mod pitch_args_tests {
         ] {
             assert!(matches!(pitch_edit_args(&args(&bad), 5, json!({ "clipId": 5 })), Err(Fail::Usage(_))), "{bad:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod auto_vocal_args_tests {
+    use super::*;
+
+    fn args(s: &[&str]) -> Args {
+        Args::parse(s.iter().map(|x| x.to_string()).collect())
+    }
+
+    #[test]
+    fn flags_build_the_apply_request() {
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5"]), 5).unwrap();
+        assert_eq!(command, "auto_vocal");
+        assert_eq!(v, json!({ "clipId": 5, "noBake": false }));
+        let (command, v) =
+            auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--style", "hard", "--beat-clip", "3", "--no-bake"]), 5).unwrap();
+        assert_eq!(command, "auto_vocal");
+        assert_eq!(v, json!({ "clipId": 5, "style": "hard", "beatClipId": 3.0, "noBake": true }));
+    }
+
+    #[test]
+    fn plan_is_read_only_and_keeps_the_bake_flag() {
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan"]), 5).unwrap();
+        assert_eq!(command, "auto_vocal_plan");
+        assert_eq!(v, json!({ "clipId": 5, "bakeRider": true }));
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan", "--no-bake"]), 5).unwrap();
+        assert_eq!(command, "auto_vocal_plan");
+        assert_eq!(v, json!({ "clipId": 5, "bakeRider": false }));
+    }
+
+    #[test]
+    fn style_is_validated_here() {
+        let bad = ["auto-vocal", "--clip", "5", "--style", "crunchy"];
+        assert!(matches!(auto_vocal_args(&args(&bad), 5), Err(Fail::Usage(_))), "{bad:?}");
+    }
+
+    #[test]
+    fn the_new_switches_do_not_swallow_the_next_word() {
+        // `--plan --style hard` must not eat `--style`; same for --no-bake and --install
+        let a = args(&["auto-vocal", "--clip", "5", "--plan", "--style", "hard"]);
+        assert!(a.has("plan"));
+        assert_eq!(a.get("style"), Some("hard"));
+        let a = args(&["auto-vocal", "--clip", "5", "--no-bake", "--style", "natural"]);
+        assert!(a.has("no-bake"));
+        assert_eq!(a.get("style"), Some("natural"));
+        let a = args(&["f0-model", "--install", "--session", "1"]);
+        assert!(a.has("install"));
+        assert_eq!(a.get("session"), Some("1"));
     }
 }

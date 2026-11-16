@@ -678,6 +678,16 @@ device), so plain edits and bounces do not pay for them. `crates/cli` owns load 
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs
 `script` files with one load and one save.
 
+**Auto vocal as one session command.** `auto_vocal {clipId, beatClipId?, style?, noBake?}`
+(`synkopa auto-vocal`) is the button's whole journey on the shared path: `auto_vocal_plan`, then
+`bake_rider` unless `noBake` or the clip's source name already ends " (rider)", then the chain
+as `RemoveFx`/`PutFx` ops with the level suggestion folded into the limiter's gain — the same
+composition `ui/src/state/actions.ts` `autoVocal()` does for the click, and the insert must not
+be the master. The entry checks `if_revision` first (a stale guard refuses before the bake);
+the apply's own guard skips the bake's own step. `f0_model_install` is the model download as a
+session request too (same `models::install`/`activate`, no progress events — the CLI prints the
+licence note and result instead). Both work on a file (`NEEDS_APP` does not apply).
+
 **`synkopa watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
 headless `Doc`, as for `--project`), reset to the project as it was when the watch started, runs
 the script lines on it on every save and sends the result to the app with the `set_project`

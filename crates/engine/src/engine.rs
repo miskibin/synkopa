@@ -1687,6 +1687,14 @@ impl Engine {
         Ok(crate::music::MusicAnalysis { tempo: best_tempo.map(|(_, t)| t), key })
     }
 
+    /// The mixer insert the clip is heard on (its own, else its track's); `None` when the
+    /// clip does not exist. What Auto Vocal's chain replaces the effects of.
+    pub fn clip_insert(&self, clip_id: Id) -> Option<Id> {
+        let c = self.core.lock();
+        let clip = c.project.clips.iter().find(|x| x.id == clip_id)?;
+        Some(c.project.clip_insert(clip))
+    }
+
     /// "Auto vocal": measures the vocal clip (what it plays, its region only) and returns
     /// the calibrated insert chain for its track. The key comes from `beat_clip` when given,
     /// else from the project's other audio (tracks not routed to the vocal's insert); the
