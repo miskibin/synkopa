@@ -496,6 +496,8 @@ export interface Kit { id: string; name: string; description: string; bytes: num
 export interface LibraryList { kits: Kit[]; folders: string[] }
 /** `root`: the MIDI key at which the file sounds at its own pitch, when the library knows it; `pitched`: it plays a note there (drums and noises do not). */
 export interface LibFile { name: string; path: string; group: string; root?: number; pitched?: boolean }
+/** A library listing: the files, and whether a bigger folder was cut off at the walk's cap. */
+export interface LibraryFiles { files: LibFile[]; truncated: boolean }
 export interface LibraryProgress { id: string; done: number; total: number; error?: string }
 
 /** `wavBits`: 16 or 24 = signed PCM, 32 = float (default); `dither` (TPDF, ±1 LSB) only for PCM. */

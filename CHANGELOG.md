@@ -19,6 +19,13 @@ shown in the app after an update and is published as the release notes (see
   `wave notes chord` and `wave notes progression` (with `--degrees "0:5:2:6"` for arbitrary
   chord sequences).
 
+### Fixed
+- **Browsing big sample folders works again.** In a folder with many groups, opening a group
+  further down the list could show only a "search to narrow the list" note instead of its
+  files. The library list is now virtualized: it draws only the rows on screen, so any folder
+  browses fully whatever its size, and a folder beyond the 5000-file walk limit says so
+  instead of ending silently.
+
 ## 0.9.17 — 2026-11-15
 
 ### Added

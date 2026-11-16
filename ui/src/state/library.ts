@@ -20,7 +20,7 @@ export function stdLibGroups(): [string, LibFile[]][] {
 /** Loads the list if it is not there yet; a failure is retried on the next call. */
 export function loadStdLib(): Promise<void> {
   if (files().length) return Promise.resolve();
-  return loading ??= be().libraryFiles({ kit: STD_KIT }).then(f => { setFiles(f); }, () => {}).finally(() => { loading = null; });
+  return loading ??= be().libraryFiles({ kit: STD_KIT }).then(r => { setFiles(r.files); }, () => {}).finally(() => { loading = null; });
 }
 
 const GROUPS: Record<string, TranslationKey> = {

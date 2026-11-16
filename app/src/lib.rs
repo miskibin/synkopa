@@ -620,7 +620,7 @@ async fn library_install(app: St<'_>, handle: AppHandle, id: String) -> R<()> {
 }
 
 #[tauri::command]
-async fn library_files(kit: Option<String>, folder: Option<String>) -> R<Vec<library::FileInfo>> {
+async fn library_files(kit: Option<String>, folder: Option<String>) -> R<library::Listing> {
     tauri::async_runtime::spawn_blocking(move || match (kit, folder) {
         (Some(k), _) => library::kit_files(&k),
         (None, Some(f)) => Ok(library::folder_files(&PathBuf::from(f))),

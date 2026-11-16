@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { be } from '../api/backend';
 import type { Channel, ClipKind, Id, Kit, LibFile, LibraryProgress, Source } from '../api/types';
@@ -16,7 +16,7 @@ import { dropClipAt, gridPoint } from './Playlist';
 import { addSampler, addSamplerFiles, chanById, channels, newPattern, openPattern, replaceWithFile, replaceWithSource, showPatternWindow, type SampleFile } from '../state/pattern';
 import { libGroup, STD_KIT } from '../state/library';
 import { FACTORY_FILES } from '../lib/factory';
-import { groupFiles, groupOpen, matches, searchTerms, stepIndex } from '../lib/libraryView';
+import { flatten, groupFiles, groupOpen, GHEAD_H, matches, ROW_H, searchTerms, stepIndex, windowRange, type FlatItem } from '../lib/libraryView';
 import { noteName } from '../lib/pitch';
 import { libFileGlyph, libGroupGlyph, type MenuGlyph } from '../ui/menuIcons';
 import { patternItemMenu } from './patternShared';
@@ -174,7 +174,9 @@ const [lib, setLib] = createStore<{
   kits: Kit[]; folders: string[]; open: Record<string, boolean>; files: Record<string, LibFile[] | undefined>; errs: Record<string, string | undefined>;
   gopen: Record<string, boolean | undefined>; sopen: Record<string, boolean | undefined>; q: string; sel: string | null;
   progress: Record<string, LibraryProgress | undefined>; loaded: boolean; error: string | null;
-}>({ kits: [], folders: [], open: {}, files: {}, errs: {}, gopen: {}, sopen: {}, q: '', sel: null, progress: {}, loaded: false, error: null });
+  /** the list was cut off at the folder walk's cap (the note under the list says so) */
+  trunc: Record<string, boolean | undefined>;
+}>({ kits: [], folders: [], open: {}, files: {}, errs: {}, gopen: {}, sopen: {}, q: '', sel: null, progress: {}, loaded: false, error: null, trunc: {} });
 const terms = createMemo(() => searchTerms(lib.q));
 const searching = () => terms().length > 0;
 const GROUP_COLOR = new Map(FACTORY_FILES.map(f => [f.group, f.color]));
@@ -188,7 +190,10 @@ function ensure(key: string): Promise<void> {
   let p = loading.get(key);
   if (!p) {
     setLib('errs', key, undefined);
-    p = be().libraryFiles(listQuery(key)).then(f => setLib('files', key, f), e => setLib('errs', key, String(e))).finally(() => loading.delete(key));
+    p = be().libraryFiles(listQuery(key)).then(
+      r => { setLib('files', key, r.files); setLib('trunc', key, r.truncated || undefined); },
+      e => setLib('errs', key, String(e)),
+    ).finally(() => loading.delete(key));
     loading.set(key, p);
   }
   return p;
@@ -212,7 +217,19 @@ function setQuery(q: string) {
   if (searching()) loadAll();
 }
 const matchCount = (key: string) => { const tm = terms(); return (lib.files[key] ?? []).reduce((n, f) => n + (matches(f, tm, libGroup) ? 1 : 0), 0); };
-const fileAt = (path: string): LibFile | undefined => { for (const l of Object.values(lib.files)) { const f = l?.find(x => x.path === path); if (f) return f; } };
+/**
+ * The flat row model of every mounted list (`k:<kit>`, `f:<folder>`, the standard library's
+ * key), each list's way to scroll a row into its drawn window, and the walk the keyboard
+ * follows: every drawn file of the library, in row order. `LibraryTab` fills `walk` from
+ * these; a list reports its model through `flats` and nudges `walkTick` when it changes.
+ */
+const flats: Record<string, FlatItem[]> = {};
+const reveals: Record<string, (path: string) => void> = {};
+const [walkTick, bumpWalk] = createSignal(0, { equals: false });
+let walk: { f: LibFile; k: string }[] = [];
+const revealAt = (i: number) => { const r = walk[i]; if (r) reveals[r.k]?.(r.f.path); };
+/** Bumped by the shared scroll container (and on resize): the drawn windows follow the viewport. */
+const [scrollTick, bumpScroll] = createSignal(0, { equals: false });
 
 function startPreview(f: LibFile) {
   setU('previewPath', f.path);
@@ -224,23 +241,24 @@ function previewFile(f: LibFile) {
   startPreview(f);
 }
 
-/** ↑ ↓ walk the rows that are drawn (open groups, the search's matches) and play each; Enter makes a sampler channel. */
+/** ↑ ↓ walk the drawn rows (open groups, the search's matches) and play each; Enter makes a sampler channel. Works past the window: the walk follows the flat models, the lists scroll what is picked. */
 function onListKey(e: KeyboardEvent) {
-  if (e.ctrlKey || e.metaKey || e.altKey || !listEl) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    const rows = [...listEl.querySelectorAll<HTMLElement>('.fitem')];
-    const cur = rows.findIndex(r => r.dataset.path === lib.sel);
+    const cur = walk.findIndex(r => r.f.path === lib.sel);
     e.preventDefault(); e.stopPropagation();
     if (e.key === 'ArrowUp' && cur <= 0) { searchEl?.focus(); return; }
-    const i = stepIndex(rows.length, cur, e.key === 'ArrowDown' ? 1 : -1), f = i >= 0 ? fileAt(rows[i].dataset.path!) : undefined;
-    if (!f) return;
-    setLib('sel', f.path);
-    rows[i].scrollIntoView({ block: 'nearest' });
-    startPreview(f);
+    const i = stepIndex(walk.length, cur, e.key === 'ArrowDown' ? 1 : -1);
+    if (i < 0) return;
+    const r = walk[i];
+    setLib('sel', r.f.path);
+    revealAt(i);
+    startPreview(r.f);
   } else if (e.key === 'Enter' && lib.sel) {
-    const f = fileAt(lib.sel); if (!f) return;
+    const r = walk.find(x => x.f.path === lib.sel);
+    if (!r) return;
     e.preventDefault(); e.stopPropagation();
-    void addSamplerFiles([f]);
+    void addSamplerFiles([r.f]);
   }
 }
 
@@ -358,40 +376,80 @@ function FileRow(props: { f: LibFile; sub: boolean }) {
   );
 }
 
+function GroupHead(props: { k: string; g: { name: string; total: number }; open: boolean }) {
+  const key = () => props.k + '|' + props.g.name;
+  const choices = () => (searching() ? 'sopen' : 'gopen');
+  return (
+    <div class="grow" role="button" aria-expanded={props.open} title={t('d.br.group.tip', { n: props.g.total })} style={{ '--c': GROUP_COLOR.get(props.g.name) ?? 'var(--fg3)' }}
+      onClick={() => setLib(choices(), key(), !props.open)}>
+      <Chev open={props.open} />
+      <span class="gico"><Glyph g={libGroupGlyph(props.g.name)} size={11} /></span>
+      <span class="ell nm">{libGroup(props.g.name)}</span>
+      <span class="cnt">{props.g.total}</span>
+    </div>
+  );
+}
+
 function FileList(props: { k: string }) {
   const all = () => lib.files[props.k];
   const groups = createMemo(() => groupFiles(all() ?? [], terms(), libGroup));
   const choices = () => (searching() ? 'sopen' : 'gopen');
+  // every row of the list with its offset (virtualized: the block is this tall, only the
+  // viewport's rows are built)
+  const flat = createMemo(() => flatten(groups(), g => groupOpen(lib[choices()][props.k + '|' + g], searching(), all()!.length)));
+  const totalH = () => { const f = flat(); return f.length ? f[f.length - 1].y + (f[f.length - 1].kind === 'ghead' ? GHEAD_H : ROW_H) : 0; };
+  let el: HTMLDivElement | undefined;
+  const [win, setWin] = createSignal<{ f: FlatItem[]; i0: number; i1: number } | null>(null, { equals: (a, b) => !!a && !!b && a.f === b.f && a.i0 === b.i0 && a.i1 === b.i1 });
+  /** The rows the browser viewport shows right now; scroll and resize run this again. */
+  const recompute = () => {
+    const f = flat();
+    if (!el || !listEl || !f.length) return setWin(null);
+    scrollTick();
+    // the viewport as a range of the block's own coordinates: its top is `off` above the
+    // block's first row (negative when the list is scrolled deep), so it spans `clientHeight`
+    const off = el.getBoundingClientRect().top - listEl.getBoundingClientRect().top;
+    const [i0, i1] = windowRange(f, -off, listEl.clientHeight - off);
+    setWin({ f, i0, i1 });
+  };
+  createEffect(recompute);
+  onMount(() => {
+    reveals[props.k] = path => {
+      const f = flat(), i = f.findIndex(it => it.kind === 'frow' && it.f?.path === path);
+      if (i < 0 || !el || !listEl) return;
+      const y = el.getBoundingClientRect().top - listEl.getBoundingClientRect().top + listEl.scrollTop + f[i].y;
+      listEl.scrollTop = clamp(y - 48, 0, listEl.scrollHeight - listEl.clientHeight);
+    };
+    onCleanup(() => delete reveals[props.k]);
+  });
+  // the keyboard walk reads the model; a fresh list or a new open/search state rebuilds it
+  createEffect(() => { flats[props.k] = flat(); bumpWalk(1); });
+  onCleanup(() => delete flats[props.k]);
+  const slice = () => { const w = win(); return w ? w.f.slice(w.i0, w.i1 + 1) : []; };
   return (
-    <Show when={all()} fallback={
-      <Show when={lib.errs[props.k]} fallback={<div class="fnote">{t('d.br.loading')}</div>}>
-        {err => <div class="fnote err">{t('d.br.liberr', { err: err() })} <button class="linkbtn" onClick={() => void ensure(props.k)}>{t('d.br.retry')}</button></div>}
-      </Show>
-    }>
-      <For each={groups()} fallback={<div class="fnote">{searching() ? t('d.br.nomatch', { q: lib.q.trim() }) : t('d.br.nofiles')}</div>}>
-        {g => {
-          const key = props.k + '|' + g.name;
-          const open = () => !g.name || groupOpen(lib[choices()][key], searching(), all()!.length);
-          return (
-            <>
-              <Show when={g.name}>
-                <div class="grow" role="button" aria-expanded={open()} title={t('d.br.group.tip', { n: g.total })} style={{ '--c': GROUP_COLOR.get(g.name) ?? 'var(--fg3)' }}
-                  onClick={() => setLib(choices(), key, !open())}>
-                  <Chev open={open()} />
-                  <span class="gico"><Glyph g={libGroupGlyph(g.name)} size={11} /></span>
-                  <span class="ell nm">{libGroup(g.name)}</span>
-                  <span class="cnt">{g.total}</span>
+    <div class="flist" ref={el}>
+      <Show when={all()} fallback={
+        <Show when={lib.errs[props.k]} fallback={<div class="fnote">{t('d.br.loading')}</div>}>
+          {err => <div class="fnote err">{t('d.br.liberr', { err: err() })} <button class="linkbtn" onClick={() => void ensure(props.k)}>{t('d.br.retry')}</button></div>}
+        </Show>
+      }>
+        <Show when={groups().length} fallback={<div class="fnote">{searching() ? t('d.br.nomatch', { q: lib.q.trim() }) : t('d.br.nofiles')}</div>}>
+          <div style={{ position: 'relative', height: totalH() + 'px' }}>
+            <Show when={win()}>
+              {w => (
+                <div style={{ position: 'absolute', top: w().f[w().i0]?.y + 'px', left: 0, right: 0 }}>
+                  <For each={slice()}>
+                    {it => it.kind === 'ghead'
+                      ? <GroupHead k={props.k} g={it.g!} open={!!it.open} />
+                      : <FileRow f={it.f!} sub={!!it.sub} />}
+                  </For>
                 </div>
-              </Show>
-              <Show when={open()}>
-                <For each={g.files}>{f => <FileRow f={f} sub={!!g.name} />}</For>
-                <Show when={g.total > g.files.length}><div class="fnote" classList={{ sub: !!g.name }}>{t('d.br.more', { n: g.total - g.files.length })}</div></Show>
-              </Show>
-            </>
-          );
-        }}
-      </For>
-    </Show>
+              )}
+            </Show>
+          </div>
+          <Show when={lib.trunc[props.k]}><div class="fnote">{t('d.br.truncated')}</div></Show>
+        </Show>
+      </Show>
+    </div>
   );
 }
 
@@ -405,14 +463,29 @@ function LibraryTab() {
       if (p.error) say(t('d.br.instfail', { id: p.id, err: p.error }));
       else if (p.done >= p.total) { setLib('progress', p.id, undefined); void refreshLib(); say(t('d.br.installed', { id: p.id })); }
     }).then(u => { off = u; });
-    onCleanup(() => off?.());
+    const onScroll = () => bumpScroll(1);
+    listEl?.addEventListener('scroll', onScroll, { passive: true });
+    const ro = new ResizeObserver(onScroll);
+    if (listEl) ro.observe(listEl);
+    onCleanup(() => { listEl?.removeEventListener('scroll', onScroll); ro.disconnect(); off?.(); });
+  });
+  // The keyboard walk: every drawn file in row order — the standard library, then the open
+  // kits, then the open folders. `walkTick` covers a list's model changing (load, open, search).
+  createEffect(() => {
+    walkTick();
+    const out: { f: LibFile; k: string }[] = [];
+    const push = (k: string) => { for (const it of flats[k] ?? []) if (it.kind === 'frow' && it.f) out.push({ f: it.f, k }); };
+    if (stdShown()) push(STD);
+    for (const k of kits()) if (k.installed && isOpen('k:' + k.id)) push('k:' + k.id);
+    for (const f of folders()) if (isOpen('f:' + f)) push('f:' + f);
+    walk = out;
   });
   const install = (k: Kit) => {
     setLib('progress', k.id, { id: k.id, done: 0, total: k.bytes });
     be().libraryInstall(k.id).catch(e => { setLib('progress', k.id, undefined); say(t('d.br.insterr', { err: String(e) })); });
   };
   const addFolder = async () => { try { setLib('folders', await be().libraryAddFolder()); if (searching()) loadAll(); } catch (e) { say(String(e)); } };
-  const removeFolder = async (p: string) => { try { setLib('folders', await be().libraryRemoveFolder(p)); setLib('files', 'f:' + p, undefined); } catch (e) { say(String(e)); } };
+  const removeFolder = async (p: string) => { try { setLib('folders', await be().libraryRemoveFolder(p)); setLib('files', 'f:' + p, undefined); setLib('trunc', 'f:' + p, undefined); } catch (e) { say(String(e)); } };
   // browsing: every kit and folder; searching: the installed ones the search found something in
   const kits = () => lib.kits.filter(k => k.id !== STD_KIT && (!searching() || (k.installed && matchCount('k:' + k.id) > 0)));
   const folders = () => lib.folders.filter(f => !searching() || matchCount('f:' + f) > 0);

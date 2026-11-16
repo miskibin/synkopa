@@ -64,6 +64,15 @@ pub struct FileInfo {
     pub pitched: bool,
 }
 
+/// A library listing: the files, and whether a folder bigger than the walk's cap was cut off
+/// (the browser's list says so under the files).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Listing {
+    pub files: Vec<FileInfo>,
+    pub truncated: bool,
+}
+
 fn manifest() -> Manifest {
     serde_json::from_str(MANIFEST).expect("embedded manifest is valid")
 }
@@ -104,19 +113,22 @@ pub fn kits() -> Vec<KitInfo> {
 }
 
 /// The standard library's files, written into the library folder if they are not there yet.
-fn standard_files() -> Result<Vec<FileInfo>, String> {
+fn standard_files() -> Result<Listing, String> {
     let dir =
         wave_engine::factory::install().map_err(|e| format!("could not write the standard library to {}: {e}", library_dir().display()))?;
-    Ok(wave_engine::factory::files()
-        .iter()
-        .map(|f| FileInfo {
-            name: f.name.into(),
-            path: dir.join(f.file).display().to_string(),
-            group: f.group.into(),
-            root: Some(f.root),
-            pitched: f.pitched,
-        })
-        .collect())
+    Ok(Listing {
+        truncated: false,
+        files: wave_engine::factory::files()
+            .iter()
+            .map(|f| FileInfo {
+                name: f.name.into(),
+                path: dir.join(f.file).display().to_string(),
+                group: f.group.into(),
+                root: Some(f.root),
+                pitched: f.pitched,
+            })
+            .collect(),
+    })
 }
 
 /// Downloads every missing file of a kit, verifying checksums. Blocking.
@@ -156,32 +168,44 @@ fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
-pub fn kit_files(id: &str) -> Result<Vec<FileInfo>, String> {
+pub fn kit_files(id: &str) -> Result<Listing, String> {
     if id == wave_engine::factory::KIT {
         return standard_files();
     }
-    let Some(kit) = manifest().instruments.into_iter().find(|k| k.id == id) else { return Ok(vec![]) };
+    let Some(kit) = manifest().instruments.into_iter().find(|k| k.id == id) else { return Ok(Listing { files: vec![], truncated: false }) };
     let dir = kit_dir(id);
-    Ok(kit
-        .samples
-        .iter()
-        .filter(|s| dir.join(&s.file).is_file())
-        .map(|s| {
-            let note = s.note.clone().unwrap_or_default();
-            let group = note.split([',', ' ']).next().filter(|g| !g.is_empty()).unwrap_or(&kit.name).to_string();
-            FileInfo {
-                name: if note.is_empty() { s.file.clone() } else { note },
-                path: dir.join(&s.file).display().to_string(),
-                group,
-                root: None,
-                pitched: false,
-            }
-        })
-        .collect())
+    Ok(Listing {
+        truncated: false,
+        files: kit
+            .samples
+            .iter()
+            .filter(|s| dir.join(&s.file).is_file())
+            .map(|s| {
+                let note = s.note.clone().unwrap_or_default();
+                let group = note.split([',', ' ']).next().filter(|g| !g.is_empty()).unwrap_or(&kit.name).to_string();
+                FileInfo {
+                    name: if note.is_empty() { s.file.clone() } else { note },
+                    path: dir.join(&s.file).display().to_string(),
+                    group,
+                    root: None,
+                    pitched: false,
+                }
+            })
+            .collect(),
+    })
 }
 
-/// Audio files under `root` (recursive, at most 5000), grouped by sub-folder.
-pub fn folder_files(root: &Path) -> Vec<FileInfo> {
+/// Audio files under `root` (recursive), grouped by sub-folder; a folder bigger than the cap
+/// is cut off and `truncated` says so. The walk collects one file past the cap so a folder of
+/// exactly `cap` files is not reported as truncated.
+pub fn folder_files(root: &Path) -> Listing {
+    folder_walk(root, FOLDER_CAP)
+}
+
+/// How many files a folder walk returns at most; the rest is left out (`truncated`).
+const FOLDER_CAP: usize = 5000;
+
+fn folder_walk(root: &Path, cap: usize) -> Listing {
     let mut out = vec![];
     let mut stack = vec![root.to_path_buf()];
     while let Some(d) = stack.pop() {
@@ -206,13 +230,14 @@ pub fn folder_files(root: &Path) -> Vec<FileInfo> {
                     root: None,
                     pitched: false,
                 });
-                if out.len() >= 5000 {
-                    return out;
+                if out.len() > cap {
+                    out.truncate(cap);
+                    return Listing { files: out, truncated: true };
                 }
             }
         }
     }
-    out
+    Listing { files: out, truncated: false }
 }
 
 #[cfg(test)]
@@ -225,5 +250,32 @@ mod tests {
         // the standard library leads the list and needs no download
         assert_eq!(k[0].id, wave_engine::factory::KIT);
         assert!(k[0].installed && k[0].count >= 140);
+    }
+
+    #[test]
+    fn folder_walk_groups_by_subfolder_and_reports_truncation() {
+        let dir = std::env::temp_dir().join(format!("wave-library-walk-{}", std::process::id()));
+        let a = dir.join("Kicks");
+        let b = dir.join("Snares");
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        std::fs::write(dir.join("top.wav"), b"").unwrap();
+        std::fs::write(a.join("kick.wav"), b"").unwrap();
+        std::fs::write(b.join("snare.wav"), b"").unwrap();
+        std::fs::write(dir.join("readme.txt"), b"").unwrap();
+        let all = super::folder_walk(&dir, 10);
+        assert_eq!(all.files.len(), 3);
+        assert!(!all.truncated);
+        assert_eq!(all.files.iter().find(|f| f.group == "Kicks").map(|f| f.name.as_str()), Some("kick"));
+        assert_eq!(all.files.iter().find(|f| f.group == "Snares").map(|f| f.name.as_str()), Some("snare"));
+        // a file at the walk's root is grouped under the folder's own name; non-audio is skipped
+        assert_eq!(all.files.iter().find(|f| f.name == "top").unwrap().group, dir.file_name().unwrap().to_string_lossy());
+        assert!(!all.files.iter().any(|f| f.name.contains("readme")));
+        // cut off at the cap says so; a folder of exactly the cap does not
+        let cut = super::folder_walk(&dir, 2);
+        assert_eq!(cut.files.len(), 2);
+        assert!(cut.truncated);
+        assert!(!super::folder_walk(&dir, 3).truncated);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

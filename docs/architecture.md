@@ -489,7 +489,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `asio_control_panel` | – | – (opens the driver's own panel, Windows only) |
 | `library_list` | – | `{kits:[{id,name,description,bytes,count,installed}], folders:string[]}` |
 | `library_install` | `{id}` | – ; progress as event `library-progress {id,done,total,error?}` |
-| `library_files` | `{kit?}` or `{folder?}` | `[{name, path, group, root?, pitched?}]`; kit `Standard` = the standard library (always installed); `root` = the key a sampler made from the file is rooted at, when the library knows it; `pitched` = the file plays a note there (drums and noises do not) |
+| `library_files` | `{kit?}` or `{folder?}` | `{files: [{name, path, group, root?, pitched?}], truncated}`; kit `Standard` = the standard library (always installed); `root` = the key a sampler made from the file is rooted at, when the library knows it; `pitched` = the file plays a note there (drums and noises do not); `truncated` = the folder was bigger than the walk's 5000-file cap and the list says so |
 | `library_add_folder` / `library_remove_folder` | – (native dialog) / `{path}` | updated `folders` |
 | `project_new` / `project_open` / `project_save` | – / `{path?, ifRevision?}` / `{saveAs?}` | `StateDto` / `{state: StateDto, warnings}` or `{cancelled}` / `{path}` or `{cancelled}`. Open checks the approved revision before replacing the project. A save first keeps the file it replaces as `<name> (backup).wave` |
 | `take_project_open_requests` | – | `string[]`; drains project paths supplied at startup or forwarded to the running Windows instance. The `project-open-requested` event tells the UI to drain again and use its normal guarded open workflow. |

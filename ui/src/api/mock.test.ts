@@ -12,7 +12,7 @@ describe('standard library in the mock', () => {
     const be = new MockBackend();
     const { kits } = await be.libraryList();
     expect(kits[0]).toMatchObject({ id: FACTORY_KIT, installed: true, count: FACTORY_FILES.length });
-    const files = await be.libraryFiles({ kit: FACTORY_KIT });
+    const files = (await be.libraryFiles({ kit: FACTORY_KIT })).files;
     expect(files).toHaveLength(FACTORY_FILES.length);
     expect(files.find(f => f.name === 'Marimba Low')).toMatchObject({ group: 'Tonal', root: 36, path: libPath('marimba-low.flac') });
   });

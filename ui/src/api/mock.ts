@@ -23,7 +23,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibFile, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, RelinkCandidate,
 } from './types';
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
@@ -1263,17 +1263,17 @@ export class MockBackend implements Backend {
   }
   /** The browser preview has no recordings to load: the piano is always "ready" (and silent, like every mock instrument). */
   async keysStatus(): Promise<KeysStatus> { await delay(); return { state: 'ready', error: null, kit: 'salamander-piano', installed: true }; }
-  async libraryFiles(q: { kit?: string; folder?: string }): Promise<LibFile[]> {
+  async libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles> {
     await delay(10);
     // the standard library is listed by its portable paths (the app lists where it is installed; importing either gives `lib:` sources)
-    if (q.kit === FACTORY_KIT) return FACTORY_FILES.map(f => ({ name: f.name, path: libPath(f.file), group: f.group, root: f.root, ...(f.pitched ? { pitched: true } : {}) }));
+    if (q.kit === FACTORY_KIT) return { truncated: false, files: FACTORY_FILES.map(f => ({ name: f.name, path: libPath(f.file), group: f.group, root: f.root, ...(f.pitched ? { pitched: true } : {}) })) };
     const root = q.kit ? 'C:\\WAVE\\Library\\' + q.kit : q.folder ?? '';
     const groups: Record<string, string[]> = q.kit === 'wave-keys'
       ? { Pady: ['Warm Pad C', 'Glass Pad Am', 'Choir Pad F'], Akordy: ['Rhodes Chord 1', 'Rhodes Chord 2', 'Piano Stab'], Pętle: ['Keys Loop 120', 'Pad Loop Am-F'] }
       : q.kit === 'wave-fx' ? { Uplightery: ['Riser 8 bar', 'Riser 4 bar'], Impakty: ['Impact Deep', 'Impact Metal'], Szumy: ['White Sweep', 'Vinyl Crackle'] }
       : q.kit ? { Kick: ['Kick 808', 'Kick Punch', 'Kick Deep'], Snare: ['Snare Tight', 'Snare Room', 'Clap 909'], Hats: ['Hat Closed', 'Hat Open', 'Ride'], Loops: ['Drum Loop 128', 'Perc Loop 128', 'Top Loop'] }
       : { '': ['vox_take1', 'vox_take2', 'guitar_di', 'bass_di', 'fx_loop'] };
-    return Object.entries(groups).flatMap(([group, names]) => names.map(n => ({ name: n + '.wav', path: root + '\\' + (group ? group + '\\' : '') + n + '.wav', group })));
+    return { truncated: false, files: Object.entries(groups).flatMap(([group, names]) => names.map(n => ({ name: n + '.wav', path: root + '\\' + (group ? group + '\\' : '') + n + '.wav', group }))) };
   }
   async libraryAddFolder() { this.folders.push('D:\\Sample packs\\Pack ' + (this.folders.length + 1)); return [...this.folders]; }
   async libraryRemoveFolder(path: string) { this.folders = this.folders.filter(f => f !== path); return [...this.folders]; }

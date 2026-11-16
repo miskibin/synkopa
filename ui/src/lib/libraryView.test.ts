@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LibFile } from '../api/types';
 import { FACTORY_FILES } from './factory';
-import { groupFiles, groupOpen, GROUP_ROWS, LIST_ROWS, matches, OPEN_UP_TO, searchTerms, stepIndex } from './libraryView';
+import { flatten, groupFiles, groupOpen, GHEAD_H, matches, OPEN_UP_TO, ROW_H, searchTerms, stepIndex, windowRange, type LibGroup } from './libraryView';
 import { libFileGlyph, libGlyph, libGroupGlyph } from '../ui/menuIcons';
 import { INST_ICONS } from '../ui/instIcons';
 
@@ -41,15 +41,13 @@ describe('library groups', () => {
     expect(groups.map(g => g.name)).toEqual(['Kicks', 'Snares', 'Claps', 'Hats', 'Cymbals', 'Toms', 'Percussion', 'Tonal', 'Orchestra', 'FX', 'Loops']);
     expect(groups.reduce((n, g) => n + g.total, 0)).toBe(std.length);
   });
-  it('draws a bounded number of rows of a huge folder and says how many there are', () => {
+  it('keeps every file of a huge folder: the list is virtualized, not cut', () => {
     const many = Array.from({ length: 5000 }, (_, i) => f(`hit ${i}`, 'One shots'));
     const [g] = groupFiles(many);
-    expect(g.files.length).toBe(GROUP_ROWS);
+    expect(g.files.length).toBe(5000);
     expect(g.total).toBe(5000);
     const spread = groupFiles(Array.from({ length: 5000 }, (_, i) => f(`hit ${i}`, `Folder ${i % 10}`)));
-    expect(spread.reduce((n, x) => n + x.files.length, 0)).toBe(LIST_ROWS);
-    expect(spread.reduce((n, x) => n + x.total, 0)).toBe(5000);
-    // a search reaches the files past the cap
+    expect(spread.reduce((n, x) => n + x.files.length, 0)).toBe(5000);
     expect(groupFiles(many, searchTerms('hit 4999'))[0].files.map(x => x.name)).toEqual(['hit 4999']);
   });
   it('starts a short list open and a long one closed; a search opens what it found', () => {
@@ -67,6 +65,47 @@ describe('library groups', () => {
     expect(stepIndex(3, 2, 1)).toBe(2);
     expect(stepIndex(3, 0, -1)).toBe(0);
     expect(stepIndex(0, -1, 1)).toBe(-1);
+  });
+});
+
+describe('the drawn row model (virtualized list)', () => {
+  const g = (name: string, n: number): LibGroup => ({ name, files: Array.from({ length: n }, (_, i) => f(`${name} ${i}`, name)), total: n });
+  // Kicks open, Snares closed, Hats open (empty): headers 26px, files 22px
+  const rows = () => flatten([g('Kicks', 3), g('Snares', 2), g('Hats', 0)], name => name !== 'Snares');
+  it('lays out headers and the open groups\' files at fixed offsets', () => {
+    const r = rows();
+    expect(r.map(x => x.kind)).toEqual(['ghead', 'frow', 'frow', 'frow', 'ghead', 'ghead']);
+    expect(r.map(x => x.y)).toEqual([0, GHEAD_H, GHEAD_H + ROW_H, GHEAD_H + 2 * ROW_H, GHEAD_H + 3 * ROW_H, GHEAD_H + 3 * ROW_H + GHEAD_H]);
+    // the block is as tall as its last row, whatever is drawn on screen
+    expect(r[r.length - 1].y + GHEAD_H).toBe(GHEAD_H + 3 * ROW_H + 2 * GHEAD_H);
+  });
+  it('marks grouped rows as indented and keeps the open state', () => {
+    const r = rows();
+    expect(r.filter(x => x.kind === 'frow').every(x => x.sub)).toBe(true);
+    const heads = r.filter(x => x.kind === 'ghead');
+    expect(heads.map(x => x.g!.name)).toEqual(['Kicks', 'Snares', 'Hats']);
+    expect(heads.map(x => x.open)).toEqual([true, false, true]);
+    expect(r.find(x => x.kind === 'frow')!.f!.name).toBe('Kicks 0');
+  });
+  it('draws the rows the viewport shows (overscan included) and nothing past the end', () => {
+    const r = rows();
+    // no overscan: a viewport over the Kicks files, then one spanning into the next header
+    expect(windowRange(r, 30, 80, 0)).toEqual([1, 3]);
+    expect(windowRange(r, 60, 100, 0)).toEqual([2, 4]);
+    // past the end → an empty run
+    expect(windowRange(r, 500, 600, 0)).toEqual([0, -1]);
+    // the whole list below the viewport → an empty run
+    expect(windowRange(r, -500, -400, 0)).toEqual([0, -1]);
+    // the default overscan reaches beyond the viewport on both sides
+    const tall = flatten([g('Long', 200)], () => true);
+    const [i0, i1] = windowRange(tall, 3000, 3100);
+    expect(tall[i0].kind).toBe('frow');
+    expect(i1 - i0 + 1).toBeGreaterThan(Math.ceil(100 / ROW_H));
+  });
+  it('an empty group draws just its header', () => {
+    const r = flatten([g('Empty', 0)], () => true);
+    expect(r).toHaveLength(1);
+    expect(r[0].kind).toBe('ghead');
   });
 });
 
