@@ -48,7 +48,7 @@ export interface Menu { x: number; y: number; items: MenuItem[] }
 
 export interface UiState {
   tool: Tool; snap: number; bw: number;
-  sel: Id[]; cur: { kind: ClipKind; ref: Id } | null;
+  sel: Id[]; cur: { kind: ClipKind; ref: Id; clipId?: Id | null } | null;
   start: number; follow: boolean; alt: boolean;
   /** The docked mixer is collapsed to its thin handle (`mixH`: the height it opens to again). */
   mixMin: boolean; mixH: number; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
@@ -118,7 +118,7 @@ export interface UiState {
 }
 
 export const [U, setU] = createStore<UiState>({
-  tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1 },
+  tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1, clipId: null },
   start: 0, follow: true, alt: false,
   mixMin: false, mixH: 300, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null,
   plugs: [], plugsHidden: false, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
