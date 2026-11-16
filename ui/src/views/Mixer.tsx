@@ -104,6 +104,8 @@ function sendItems(m: Insert): MenuItem[] {
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
 /** Height (px) of a strip's meters and fader: the strip keeps it however tall the mixer is. */
 const FADER_H = 140;
+/** The fader's share of a strip in the maximized mixer. */
+const FADER_FULL = '66%';
 /** One effect row in a strip, its 2 px gap included. */
 const FX_ROW = 20;
 
@@ -279,8 +281,9 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <button class="mini s mute" classList={{ on: m().solo }} title={tr('c.mix.soloTip')} onPointerDown={stop} onClick={e => A.toggleInsertSolo(m().id, e.ctrlKey || e.metaKey)}>S</button>
         </Show>
       </div>
-      {/* the fader keeps one height: a taller mixer shows effect rows above the knobs instead (StripFx) */}
-      <div style={{ flex: `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
+      {/* docked, the fader keeps one height (a taller mixer shows effect rows above the knobs instead,
+          StripFx); maximized it takes 2/3 of the strip, for fine moves, and the rows get the rest */}
+      <div style={{ flex: props.full ? `0 1 ${FADER_FULL}` : `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
         <div class="meter"><div ref={fl} /></div>
         <div class="meter"><div ref={fr} /></div>
         <div class="fader" classList={{ auto: isAutomated(volT()) }} onPointerDown={faderDown} onWheel={wheel('vol')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.faderTip')}>

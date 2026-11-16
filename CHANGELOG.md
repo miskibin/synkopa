@@ -18,7 +18,7 @@ shown in the app after an update and is published as the release notes (see
   and stems include what is routed into a bus. In the CLI: `wave route` and `wave unroute`.
 - **Effects in the mixer strips.** When the mixer is taller, each strip lists its effects
   above the knobs (icon, name, on/bypass dot; click to open), as many as fit; the strip
-  itself keeps its size.
+  itself keeps its size. In the maximized mixer the faders take two thirds of the height.
 
 ## 0.9.19 — 2026-11-16
 
