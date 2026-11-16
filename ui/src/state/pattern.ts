@@ -51,7 +51,7 @@ export function setCurPattern(id: Id, quiet = false) {
   const pt = patById(id); if (!pt) return;
   // keep the selected channel; with none yet, the first one this pattern plays
   const selCh = chanById(U.selCh) ? U.selCh : channels().find(c => pt.notes.some(n => n.ch === c.id))?.id ?? channels()[0]?.id ?? null;
-  setU({ pat: id, selCh, cur: { kind: 'pat', ref: id } });
+  setU({ pat: id, selCh, cur: { kind: 'pat', ref: id, clipId: null } });
   if (!quiet) say(t('b.st.curPat', { n: S.project.patterns.indexOf(pt) + 1, name: pt.name }));
 }
 createRoot(() => {
