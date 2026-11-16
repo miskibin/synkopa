@@ -36,7 +36,7 @@ async function boot() {
   const voc = S.project.inserts.find(m => m.fx.length > 1) ?? S.project.inserts[1] ?? S.project.inserts[0];
   if (voc) setU({ mixSel: voc.id, fxSel: voc.fx[1]?.id ?? voc.fx[0]?.id ?? null });
   const p = S.project.patterns[0];
-  setU('cur', p ? { kind: 'pat', ref: p.id } : S.project.sources[0] ? { kind: 'audio', ref: S.project.sources[0].id } : null);
+  setU('cur', p ? { kind: 'pat', ref: p.id, clipId: null } : S.project.sources[0] ? { kind: 'audio', ref: S.project.sources[0].id, clipId: null } : null);
   setU('playing', S.transport.playing);
   const root = document.getElementById('root')!;
   root.replaceChildren(); // the loading bar from index.html
