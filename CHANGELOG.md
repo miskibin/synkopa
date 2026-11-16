@@ -10,6 +10,10 @@ shown in the app after an update and is published as the release notes (see
 - **The Channel Rack and the Piano roll share one window frame.** Each title bar ends with the
   same buttons in the same order: dock or float, maximize (Piano roll), close. The Piano roll's
   maximize was only a double-click on its title bar; it now has a button too.
+- **Esc closes the window in front**, whichever kind it is. Before, the sample editor and the
+  channel settings closed first even behind a Channel Rack or Piano roll you were working in.
+- **F5 (or a click on the Playlist) tucks away every floating window**, the sample editor, the
+  channel settings and the pitch editor included; F5 again brings them all back.
 
 ## 0.9.18 — 2026-11-16
 
