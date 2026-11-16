@@ -228,8 +228,8 @@ const reveals: Record<string, (path: string) => void> = {};
 const [walkTick, bumpWalk] = createSignal(0, { equals: false });
 let walk: { f: LibFile; k: string }[] = [];
 const revealAt = (i: number) => { const r = walk[i]; if (r) reveals[r.k]?.(r.f.path); };
-/** Bumped by the shared scroll container (and on resize): the drawn windows follow the viewport. */
-const [scrollTick, bumpScroll] = createSignal(0, { equals: false });
+/** Bumped by the shared scroll container, its content resizing (a group or section opening elsewhere, a load finishing), and viewport resize: every drawn window follows. */
+const [layoutTick, bumpLayout] = createSignal(0, { equals: false });
 
 function startPreview(f: LibFile) {
   setU('previewPath', f.path);
@@ -404,7 +404,7 @@ function FileList(props: { k: string }) {
   const recompute = () => {
     const f = flat();
     if (!el || !listEl || !f.length) return setWin(null);
-    scrollTick();
+    layoutTick();
     // the viewport as a range of the block's own coordinates: its top is `off` above the
     // block's first row (negative when the list is scrolled deep), so it spans `clientHeight`
     const off = el.getBoundingClientRect().top - listEl.getBoundingClientRect().top;
@@ -454,6 +454,7 @@ function FileList(props: { k: string }) {
 }
 
 function LibraryTab() {
+  let contentEl: HTMLDivElement | undefined;
   onMount(() => {
     if (!lib.loaded) void refreshLib();
     void ensure(STD);
@@ -463,10 +464,13 @@ function LibraryTab() {
       if (p.error) say(t('d.br.instfail', { id: p.id, err: p.error }));
       else if (p.done >= p.total) { setLib('progress', p.id, undefined); void refreshLib(); say(t('d.br.installed', { id: p.id })); }
     }).then(u => { off = u; });
-    const onScroll = () => bumpScroll(1);
+    const onScroll = () => bumpLayout(1);
     listEl?.addEventListener('scroll', onScroll, { passive: true });
+    // the content is observed too: a group or section opening ABOVE a list shifts it without a
+    // scroll event, and every drawn window has to re-measure when that happens
     const ro = new ResizeObserver(onScroll);
     if (listEl) ro.observe(listEl);
+    if (contentEl) ro.observe(contentEl);
     onCleanup(() => { listEl?.removeEventListener('scroll', onScroll); ro.disconnect(); off?.(); });
   });
   // The keyboard walk: every drawn file in row order — the standard library, then the open
@@ -505,6 +509,7 @@ function LibraryTab() {
         <Show when={lib.q}><button class="xbtn" title={t('d.br.search.clear')} aria-label={t('d.br.search.clear')} onClick={() => { setQuery(''); searchEl?.focus(); }}>×</button></Show>
       </div>
       <div class="scroll" ref={listEl} tabIndex={0} onKeyDown={onListKey}>
+        <div ref={contentEl}>
         <Show when={lib.error}><div class="bnote" style={{ color: 'var(--danger)' }}>{lib.error}</div></Show>
         <Show when={nothing()}><div class="bnote">{t('d.br.nomatch', { q: lib.q.trim() })}</div></Show>
         <Show when={stdShown()}>
@@ -563,6 +568,7 @@ function LibraryTab() {
           </For>
         </Show>
         <div class="bnote">{t('d.br.libnote')}</div>
+        </div>
       </div>
     </>
   );

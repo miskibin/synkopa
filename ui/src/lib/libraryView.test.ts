@@ -107,6 +107,12 @@ describe('the drawn row model (virtualized list)', () => {
     expect(r).toHaveLength(1);
     expect(r[0].kind).toBe('ghead');
   });
+  it('an unnamed group draws its files flat, without a header, always open', () => {
+    const r = flatten([{ name: '', files: [f('take 1'), f('take 2')], total: 2 }], () => false);
+    expect(r.map(x => x.kind)).toEqual(['frow', 'frow']);
+    expect(r[0].sub).toBe(false);
+    expect(r[0].y).toBe(0);
+  });
 });
 
 describe('library icons', () => {

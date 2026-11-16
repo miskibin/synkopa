@@ -63,9 +63,13 @@ export function flatten(groups: readonly LibGroup[], open: (group: string) => bo
   const out: FlatItem[] = [];
   let y = 0;
   for (const g of groups) {
-    const isOpen = open(g.name);
-    out.push({ kind: 'ghead', y, g, open: isOpen });
-    y += GHEAD_H;
+    // an unnamed group (the engine never makes one; the mock's folder files come as one) draws
+    // its files flat: no header to click, always open — as the list did before it was virtualized
+    const isOpen = g.name ? open(g.name) : true;
+    if (g.name) {
+      out.push({ kind: 'ghead', y, g, open: isOpen });
+      y += GHEAD_H;
+    }
     if (isOpen) for (const f of g.files) {
       out.push({ kind: 'frow', y, f, sub: !!g.name });
       y += ROW_H;
