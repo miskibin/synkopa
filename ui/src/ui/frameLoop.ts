@@ -56,6 +56,27 @@ export function fitCanvas(cv: HTMLCanvasElement, W: number, H: number): boolean 
   return true;
 }
 
+let scratch: HTMLCanvasElement | null = null;
+/**
+ * Moves a canvas's pixels by (`dx`, `dy`) device px; what is uncovered becomes transparent.
+ * Goes through a scratch canvas: Chromium's software (non-GPU) canvas clears a canvas drawn onto
+ * itself with `copy` before reading it, which left the playlist blank but for the newly drawn
+ * strips after a scroll. One scratch canvas, sized to the largest canvas shifted (a playlist tile).
+ */
+export function shiftCanvas(cv: HTMLCanvasElement, dx: number, dy: number) {
+  const s = scratch ??= document.createElement('canvas');
+  if (s.width < cv.width || s.height < cv.height) { s.width = Math.max(s.width, cv.width); s.height = Math.max(s.height, cv.height); }
+  const sg = s.getContext('2d')!, g = cv.getContext('2d')!;
+  sg.setTransform(1, 0, 0, 1, 0, 0);
+  sg.globalCompositeOperation = 'copy';
+  sg.drawImage(cv, 0, 0);
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.drawImage(s, 0, 0, cv.width, cv.height, dx, dy, cv.width, cv.height);
+  g.restore();
+}
+
 /** Bumped when web fonts finish loading, so canvases drawn with fallback glyphs redraw. */
 export const fonts = { epoch: 0 };
 if (typeof document !== 'undefined' && document.fonts) {

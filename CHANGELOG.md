@@ -4,6 +4,14 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Fixed
+- **The Playlist no longer goes blank after a scroll.** Scrolling, or dragging a clip past the
+  edge so the view scrolls with it, could leave the Playlist empty but for a strip at its edge
+  (only fades showed) until something else made it redraw. It now always shows every clip and
+  the grid.
+
 ## 0.9.20 — 2026-11-17
 
 ### Added
@@ -158,8 +166,6 @@ shown in the app after an update and is published as the release notes (see
   aside one by one: the loop readout, the BPM label, count-in and monitoring, the metronome,
   then the panel buttons. Each is still in the View menu or on its key. Nothing is cut off at
   any width.
-- **Dragging a clip shows it moving a frame sooner.** The Playlist draws clips with the
-  low-latency canvas where the system supports it.
 - **Recording works like FL Studio: nothing to arm.** Press R and Space: the recording goes to the
   first track that has room from the playhead on, or to a new track when every track is in use
   (undo removes that track with the take). The record button on every track is gone; a track's
