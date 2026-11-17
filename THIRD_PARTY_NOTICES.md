@@ -85,9 +85,7 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `loop-guitar-nylon-148-fmin.ogg`: "guitar [fmin 148 bpm].wav" by skratan on [Freesound](https://freesound.org/s/474961/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `loop-pad-cinematic-110-ebmin.ogg`: "Blade runner pads (Free)" by urmom123543 on [Freesound](https://freesound.org/s/521664/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `loop-flute-eastern-130-cmin.ogg`: "Arabic Flute 04 130BPM" by DYEKHO on [Freesound](https://freesound.org/s/713120/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
-* `loop-synth-cyber-140-dsharpmin.ogg`: "GS_FREE1_140_SYNTH_05_D#.wav" by GhostSyndicate on [Freesound](https://freesound.org/s/396781/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `loop-vox-dark-120-dmin.ogg`: "Drk Vox Loop [120bpm] [D Minor]" by deadrobotmusic on [Freesound](https://freesound.org/s/703686/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
-* `loop-synth-crushed-67-dsharpmin.ogg`: "bouncy-crushed-synth-loop_67bpm_D#_minor" by FuzzLogic on [Freesound](https://freesound.org/s/845563/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 <!-- factory-credits:end -->
 
 ## Salamander Grand Piano (WAVE Keys)

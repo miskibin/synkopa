@@ -195,28 +195,27 @@ pub fn sketch_project() -> Project {
 /// Beats per minute of the 2026 trap demo ("OBSIDIAN 2093").
 pub const DEMO_BPM: f64 = 136.0;
 
-/// The demo project: 40 bars (160 beats) of 2026 dystopian / nocturnal trap in D# minor at 136 BPM.
+/// The demo project: 40 bars (160 beats) of 2026 nocturnal dark trap in D# minor at 136 BPM.
 ///
 /// Built from embedded standard-library samples and built-in instruments/DSP so it opens and
 /// plays identically on every machine without external downloads:
-/// * Clean, un-distorted analog punch kick (`808 Kick Short`) tucked smoothly into a warm
-///   `808 Spin` bassline — anchored on the `D#1` root pedal through the intro, verse, and
-///   opening drops (with brief 1.5-step high `D#4` turnaround flicks), then blooming into
-///   melodic `D#m -> A#m -> B -> G#m` movement on the second half of the hooks and climax;
-/// * Full-beat organic transitions (`Beat Bus`): `Synths Bus`, `808`, and `Drum Bus` sum
-///   through an automated `Half-Speed` + `Hall Reverb` + `24 dB/oct Low-Pass Filter` chain —
-///   sweeping open from a submerged half-time intro, dunking smoothly at section boundaries,
-///   building through a mid-song half-time wash into a 380 ms pre-drop silence cut, and
-///   melting back into dark half-time on the outro;
-/// * Two-act palette: Act I pairs `Vox Dark` and `Pad Cinematic` over swung BNYX/Metro drums,
-///   switching in Act II to mid-scooped `Synth Crushed`, `Synth Cyber`, and wide unison
-///   `2093 Wide Pulse`, plus an armed `Vocal` strip pre-set to D# minor.
+/// * Hard-hitting, clean trap kick (`Trap Kick` sculpted with `+2.5 dB @ 78 Hz` chest punch and
+///   a `2.3 kHz` high-cut removing harsh fizz) snapping in front of a `22 ms`-pocketed `808 Spin`
+///   bassline that stays anchored on `D#1` for 38 of the 40 bars — stepping briefly to `D#4` at
+///   dry phrase endings and lifting to `G#1` (`iv`) for a single bar in Hook B and the Climax;
+/// * Cohesive dark-cinematic sample & post-processed synth world: `Vox Dark` and `Pad Cinematic`
+///   (flipped backwards with `rev: true` in Act II!) are joined by a BBD-chorused, half-reversed
+///   (`Warp` `Reverse — co pół taktu`), dub-delayed `Ghost Bell` and a weeping Mike Dean-style
+///   legato sine-triangle `Analog Glide` lead filtered below `2 kHz` inside the same dark space;
+/// * Full-beat organic transitions (`Beat Bus`): `Synths Bus`, `808`, and `Drum Bus` sum through
+///   automated `Half-Speed` + `Hall Reverb` + `24 dB/oct Low-Pass Filter` curves across the intro,
+///   turnarounds, mid-song `380 ms` silence switch, and underwater outro.
 pub fn demo_project() -> Project {
     const TRACKS: [(&str, &str, &str, &str); 14] = [
         ("Dark Vox", "#9a8cf0", "vocal", "Vox"),
         ("Analog Pad", "#47b8a8", "synth", "Pad"),
-        ("Crushed 2093", "#69c3d6", "sample", "Industrial"),
-        ("Cyber & Pulse", "#5aa9e6", "synth", "Lead"),
+        ("Ghost Bell", "#69c3d6", "synth", "Ghost Bell"),
+        ("Analog Glide", "#5aa9e6", "synth", "Glide Lead"),
         ("808", "#7c8cf8", "bass", "808"),
         ("Kick", "#4f8ef7", "drums", "Kick"),
         ("Clap & Snare", "#d9678f", "drums", "Tops"),
@@ -231,8 +230,8 @@ pub fn demo_project() -> Project {
     const INSERTS: [(&str, &str); 11] = [
         ("Vox", "#9a8cf0"),
         ("Pad", "#47b8a8"),
-        ("Industrial", "#69c3d6"),
-        ("Lead", "#5aa9e6"),
+        ("Ghost Bell", "#69c3d6"),
+        ("Glide Lead", "#5aa9e6"),
         ("Synths Bus", "#b07cf0"),
         ("808", "#7c8cf8"),
         ("Kick", "#4f8ef7"),
@@ -300,26 +299,27 @@ pub fn demo_project() -> Project {
         id
     };
 
-    // Clean, un-distorted analog punch kick (trimmed short so sub clears cleanly into the 808)
-    let ch_kick = add_sample(&mut p, "kick-808-short.flac", "Kick", "Kick", 0.74, 0.0, &|s| {
-        s.end = 0.58;
-        s.fade_out_ms = 28.0;
+    // Hard-knocking trap kick (tightened tail + +3.2 dB @ 95 Hz chest punch + 2.2 kHz beater snap + 3.2 kHz high-cut removing harsh fizz!)
+    let ch_kick = add_sample(&mut p, "kick-trap.flac", "Kick", "Kick", 0.85, 0.0, &|s| {
+        s.end = 0.54;
+        s.fade_out_ms = 24.0;
     });
-    let ch_clap = add_sample(&mut p, "clap-trap-crisp.flac", "Clap", "Tops", 0.75, 0.0, &|_| {});
-    let ch_snare = add_sample(&mut p, "snare-trap.flac", "Snare", "Tops", 0.72, 0.0, &|_| {});
-    let ch_bounce = add_sample(&mut p, "snare-trap-crisp.flac", "Bounce Snare", "Tops", 0.64, -0.16, &|_| {});
-    let ch_rim = add_sample(&mut p, "rimshot-tight.flac", "Rim", "Tops", 0.66, 0.18, &|s| {
+    let ch_clap = add_sample(&mut p, "clap-trap-crisp.flac", "Clap", "Tops", 0.73, 0.0, &|_| {});
+    let ch_snare = add_sample(&mut p, "snare-trap.flac", "Snare", "Tops", 0.70, 0.0, &|_| {});
+    let ch_bounce = add_sample(&mut p, "snare-trap-crisp.flac", "Bounce Snare", "Tops", 0.63, -0.16, &|_| {});
+    let ch_rim = add_sample(&mut p, "rimshot-tight.flac", "Rim", "Tops", 0.65, 0.18, &|s| {
         s.end = 0.24;
         s.fade_out_ms = 22.0;
     });
-    let ch_hat = add_sample(&mut p, "hat-trap-tick.flac", "Hat", "Tops", 0.65, 0.10, &|s| {
+    let ch_hat = add_sample(&mut p, "hat-trap-tick.flac", "Hat", "Tops", 0.64, 0.10, &|s| {
         s.cut = 1;
     });
-    let ch_ohat = add_sample(&mut p, "hat-open-choked.flac", "Open Hat", "Tops", 0.62, -0.18, &|s| {
+    let ch_ohat = add_sample(&mut p, "hat-open-choked.flac", "Open Hat", "Tops", 0.61, -0.18, &|s| {
         s.cut = 1;
     });
+    // 28 ms attack clears the front transient completely so every Kick slams hard in the chest before the 808 blooms
     let ch_808 = add_sample(&mut p, "bass-808-spin.flac", "808 Spin", "808", 0.78, 0.0, &|s| {
-        s.attack = 12.0;
+        s.attack = 28.0;
         s.gate = true;
         s.release = 75.0;
         s.cut = 2;
@@ -347,33 +347,58 @@ pub fn demo_project() -> Project {
         0.66,
         &[("flt_cutoff", 175.0), ("flt_res", 10.0), ("amp_a", 65.0), ("amp_r", 340.0), ("v_glide", 80.0), ("fx_out", -15.5)],
     );
-    let ch_pulse = add_synth(
+
+    // Haunted dark triangle/sine bell with soft attack & tape pitch warble (post-processed through BBD Chorus + Warp Reverse + Dub Delay!)
+    let ch_bell = add_synth(
         &mut p,
-        "Future Chord",
-        "2093 Wide Pulse",
-        "#5aa9e6",
-        "Lead",
-        0.69,
+        "Dzwonek Ciepły",
+        "Ghost Bell",
+        "#69c3d6",
+        "Ghost Bell",
+        0.74,
         &[
-            ("uni_voices", 3.0),
-            ("uni_detune", 34.0),
-            ("uni_width", 100.0),
-            ("flt_cutoff", 1450.0),
-            ("flt_res", 10.0),
-            ("flt_drive", 26.0),
-            ("flt_env", 2.0),
-            ("mod_d", 220.0),
-            ("amp_a", 3.0),
-            ("amp_d", 380.0),
-            ("amp_s", 25.0),
-            ("amp_r", 200.0),
+            ("amp_a", 22.0),
+            ("amp_d", 2200.0),
+            ("amp_r", 1100.0),
+            ("flt_cutoff", 2100.0),
+            ("flt_res", 8.0),
+            ("l1_rate", 0.65),
+            ("m2_src", 2.0),
+            ("m2_dst", 0.0),
+            ("m2_amt", 0.30),
+            ("fx_reverb", 35.0),
+            ("fx_out", 5.5),
+        ],
+    );
+
+    // Mike Dean-style wide analog saw/tri legato Moog lead (warm detuned unison LP24 @ 1350 Hz — velvety depth, zero sine whistle!)
+    let ch_glide = add_synth(
+        &mut p,
+        "Lead Gwizdek",
+        "Analog Glide",
+        "#5aa9e6",
+        "Glide Lead",
+        0.65,
+        &[
+            ("o1_wave", 2.0),
+            ("o1_level", 68.0),
+            ("o2_wave", 1.0),
+            ("o2_level", 40.0),
+            ("o2_coarse", 0.0),
+            ("uni_voices", 2.0),
+            ("uni_detune", 28.0),
+            ("uni_width", 90.0),
+            ("amp_a", 65.0),
+            ("amp_r", 520.0),
+            ("flt_type", 1.0),
+            ("flt_cutoff", 1350.0),
+            ("flt_res", 6.0),
+            ("flt_drive", 22.0),
             ("v_mode", 2.0),
-            ("v_glide", 45.0),
-            ("fx_chorus", 35.0),
-            ("fx_delay", 24.0),
-            ("fx_dtime", 3.0),
-            ("fx_reverb", 22.0),
-            ("fx_out", -6.5),
+            ("v_glide", 145.0),
+            ("fx_chorus", 40.0),
+            ("fx_reverb", 42.0),
+            ("fx_out", -13.5),
         ],
     );
 
@@ -393,7 +418,7 @@ pub fn demo_project() -> Project {
     // Pattern 1: Obsidian Sub — steady D#1 (MIDI 27) drone for Intro & Bridge
     let p_reese = make_pat("Obsidian Sub", "#47b8a8", 4.0, 0.0, vec![held(ch_reese, 0.0, 63.0, 27, 0.80)]);
 
-    // Pattern 2: 808 Root — calm D#1 (MIDI 27) root pedal (Verse B)
+    // Pattern 2: 808 Root — pure D#1 (MIDI 27) root pedal (Verse B & Act II B)
     let p_808_root = make_pat(
         "808 Root",
         "#7c8cf8",
@@ -424,65 +449,28 @@ pub fn demo_project() -> Project {
             held(ch_808, 32.0, 9.5, 27, 0.94),
             held(ch_808, 42.0, 5.5, 27, 0.86),
             held(ch_808, 48.0, 13.5, 27, 0.92),
-            held(ch_808, 62.5, 1.5, 63, 0.70),
+            held(ch_808, 62.5, 1.5, 51, 0.76),
         ],
     );
 
-    // Pattern 4: 808 Melodic — opens up harmonically in Hook B (bars 9-12): D#1->F#1 | A#1->F1 | B1->G#1 | D#1->A#1
-    let p_808_melodic = make_pat(
-        "808 Melodic",
+    // Pattern 4: 808 Subtle Lift — stays on D#1 for Bars 1, 2 & 4, lifting ONLY in Bar 3 to G#1 (iv) and resolving darkly on D#1!
+    let p_808_lift = make_pat(
+        "808 Subtle Lift",
         "#9a8cf0",
-        4.0,
-        0.0,
-        vec![
-            held(ch_808, 0.0, 9.5, 27, 0.94),   // D#1
-            held(ch_808, 10.0, 5.5, 30, 0.86),  // F#1 (m3 lift)
-            held(ch_808, 16.0, 11.5, 34, 0.90), // A#1 (v)
-            held(ch_808, 28.0, 3.5, 29, 0.82),  // F1
-            held(ch_808, 32.0, 9.5, 35, 0.92),  // B1 (bVI cinematic lift)
-            held(ch_808, 42.0, 5.5, 32, 0.86),  // G#1 (iv)
-            held(ch_808, 48.0, 9.5, 27, 0.92),  // D#1
-            held(ch_808, 58.0, 5.5, 34, 0.84),  // A#1
-        ],
-    );
-
-    // Pattern 5: 808 Phrygian — subtle dark Phrygian bII movement in Act II B (bars 29-32)
-    let p_808_phrygian = make_pat(
-        "808 Phrygian",
-        "#69c3d6",
         4.0,
         0.0,
         vec![
             held(ch_808, 0.0, 9.5, 27, 0.94),   // D#1
             held(ch_808, 10.0, 5.5, 27, 0.86),  // D#1
             held(ch_808, 16.0, 11.5, 27, 0.92), // D#1
-            held(ch_808, 28.0, 3.5, 30, 0.84),  // F#1
-            held(ch_808, 32.0, 9.5, 28, 0.92),  // E1 (Phrygian bII tension)
+            held(ch_808, 28.0, 3.5, 27, 0.82),  // D#1
+            held(ch_808, 32.0, 9.5, 32, 0.92),  // G#1 (single 1-bar dark iv lift!)
             held(ch_808, 42.0, 5.5, 32, 0.86),  // G#1
-            held(ch_808, 48.0, 14.5, 27, 0.94), // D#1
+            held(ch_808, 48.0, 14.5, 27, 0.94), // dark, heavy D#1 resolution into Outro
         ],
     );
 
-    // Pattern 6: 808 Climax — full melodic progression crowned with the crisp dry D#4 high flick into the Outro
-    let p_808_climax = make_pat(
-        "808 Climax",
-        "#9a8cf0",
-        4.0,
-        0.0,
-        vec![
-            held(ch_808, 0.0, 9.5, 27, 0.95),   // D#1
-            held(ch_808, 10.0, 5.5, 30, 0.86),  // F#1
-            held(ch_808, 16.0, 11.5, 34, 0.92), // A#1
-            held(ch_808, 28.0, 3.5, 29, 0.82),  // F1
-            held(ch_808, 32.0, 9.5, 35, 0.94),  // B1
-            held(ch_808, 42.0, 5.5, 32, 0.86),  // G#1
-            held(ch_808, 48.0, 9.5, 27, 0.94),  // D#1
-            held(ch_808, 58.0, 4.0, 34, 0.84),  // A#1
-            held(ch_808, 62.5, 1.5, 63, 0.70),  // High D#4 flick!
-        ],
-    );
-
-    // Pattern 7: 808 Verse — ultra-minimal 1-hit-per-bar D#1 sub pillow (Verse A & Outro)
+    // Pattern 5: 808 Verse — ultra-minimal 1-hit-per-bar D#1 sub pillow (Verse A & Outro)
     let p_808_verse = make_pat(
         "808 Verse",
         "#7c8cf8",
@@ -496,16 +484,16 @@ pub fn demo_project() -> Project {
         ],
     );
 
-    // Pattern 8: Kick — clean, gentle chest thump synced to the 808 attacks
+    // Pattern 6: Kick Punch — hard, tight trap knock locked to the 808 downbeats & syncopations
     let p_kick = make_pat(
-        "Kick",
+        "Kick Punch",
         "#4f8ef7",
         2.0,
         0.0,
-        [(0.0, 0.92), (10.0, 0.82), (16.0, 0.90), (28.0, 0.78)].into_iter().map(|(s, v)| trig(ch_kick, s, None, v)).collect(),
+        [(0.0, 1.0), (10.0, 0.92), (16.0, 0.98), (28.0, 0.88)].into_iter().map(|(s, v)| trig(ch_kick, s, None, v)).collect(),
     );
 
-    // Pattern 9: Clap & Bounce (14% BNYX pocket swing)
+    // Pattern 7: Clap & Bounce (14% BNYX pocket swing)
     let p_clap = make_pat("Clap & Bounce", "#d9678f", 2.0, 0.14, {
         let mut v = vec![
             trig(ch_clap, 8.0, None, 0.94),
@@ -524,7 +512,7 @@ pub fn demo_project() -> Project {
         v
     });
 
-    // Pattern 10: Verse Strip (clap + rim pocket)
+    // Pattern 8: Verse Strip (clap + rim pocket)
     let p_clap_sparse = make_pat(
         "Verse Strip",
         "#d9678f",
@@ -539,7 +527,7 @@ pub fn demo_project() -> Project {
         ],
     );
 
-    // Pattern 11: Hats Nocturne (18% swing + deep ghosting)
+    // Pattern 9: Hats Nocturne (18% swing + deep ghosting)
     let p_hats_sparse = make_pat(
         "Hats Nocturne",
         "#e0a44a",
@@ -567,7 +555,7 @@ pub fn demo_project() -> Project {
         .collect(),
     );
 
-    // Pattern 12: Hats 2093 (18% BNYX micro-swing + wide velocity ghosting + pitched rolls)
+    // Pattern 10: Hats 2093 (18% BNYX micro-swing + wide velocity ghosting + pitched rolls)
     let p_hats_2093 = make_pat("Hats 2093", "#e0a44a", 2.0, 0.18, {
         let mut v = vec![
             trig(ch_hat, 0.0, Some(60), 0.84),
@@ -601,23 +589,46 @@ pub fn demo_project() -> Project {
         v
     });
 
-    // Pattern 13: 2093 Wide Pulse — upper-mid stereo call-and-response
-    let p_pulse = make_pat(
-        "2093 Wide Pulse",
-        "#5aa9e6",
-        2.0,
-        0.12,
+    // Pattern 11: Ghost Bell — sparse, aching 4-bar motif processed through BBD Chorus + Warp Half-Bar Reverse + Dub Delay
+    // Strictly voices D#m (A#4, F#4), A#m/G#m (F4, D#5, B4) so it melts into Dark Vox & Analog Pad like a vintage sample!
+    let p_ghost_bell = make_pat(
+        "Ghost Bell",
+        "#69c3d6",
+        4.0,
+        0.0,
         vec![
-            held(ch_pulse, 0.0, 2.0, 63, 0.80),
-            held(ch_pulse, 3.0, 2.0, 75, 0.72),
-            held(ch_pulse, 6.0, 2.0, 64, 0.78),
-            held(ch_pulse, 8.0, 3.0, 63, 0.80),
-            held(ch_pulse, 14.0, 2.0, 70, 0.70),
-            held(ch_pulse, 16.0, 2.0, 63, 0.82),
-            held(ch_pulse, 19.0, 2.0, 75, 0.74),
-            held(ch_pulse, 22.0, 3.0, 70, 0.76),
-            held(ch_pulse, 26.0, 2.0, 66, 0.72),
-            held(ch_pulse, 30.0, 2.0, 64, 0.78),
+            held(ch_bell, 4.0, 6.0, 70, 0.68),  // A#4
+            held(ch_bell, 12.0, 4.0, 66, 0.58), // F#4
+            held(ch_bell, 20.0, 8.0, 65, 0.64), // F4
+            held(ch_bell, 36.0, 6.0, 75, 0.66), // D#5
+            held(ch_bell, 44.0, 4.0, 70, 0.58), // A#4
+            held(ch_bell, 52.0, 8.0, 66, 0.62), // F#4
+        ],
+    );
+
+    // Pattern 12: Analog Glide — slow, weeping 1-bar Mike Dean legato cries in Act II B & Climax
+    let p_glide_act2 = make_pat(
+        "Analog Glide (Rev)",
+        "#5aa9e6",
+        4.0,
+        0.0,
+        vec![
+            held(ch_glide, 2.0, 14.5, 70, 0.74),  // A#4 (over D#m)
+            held(ch_glide, 16.0, 16.5, 71, 0.76), // glides +1 st to B4 (over Reversed Pad G#m/B!)
+            held(ch_glide, 32.0, 16.5, 65, 0.72), // glides down to F4 (over Reversed Pad A#m!)
+            held(ch_glide, 48.0, 14.0, 66, 0.72), // glides to F#4 (over D#m)
+        ],
+    );
+    let p_glide_climax = make_pat(
+        "Analog Glide (Climax)",
+        "#5aa9e6",
+        4.0,
+        0.0,
+        vec![
+            held(ch_glide, 2.0, 14.5, 70, 0.74),  // A#4 (over D#m)
+            held(ch_glide, 16.0, 16.5, 65, 0.72), // glides to F4 (over Forward Pad A#m!)
+            held(ch_glide, 32.0, 16.5, 71, 0.78), // glides up to B4 (over Forward Pad G#m/B!)
+            held(ch_glide, 48.0, 14.0, 66, 0.72), // glides down to F#4 (over D#m)
         ],
     );
 
@@ -626,8 +637,6 @@ pub fn demo_project() -> Project {
     // ---- Melodic audio loops
     let src_vox = crate::factory::source(&mut p, "loop-vox-dark-120-dmin.ogg").expect("dark vox loop");
     let src_pad = crate::factory::source(&mut p, "loop-pad-cinematic-110-ebmin.ogg").expect("cinematic pad loop");
-    let src_crushed = crate::factory::source(&mut p, "loop-synth-crushed-67-dsharpmin.ogg").expect("crushed 2093 loop");
-    let src_cyber = crate::factory::source(&mut p, "loop-synth-cyber-140-dsharpmin.ogg").expect("cyber synth loop");
 
     let mut clips: Vec<Clip> = vec![];
     let put = |clips: &mut Vec<Clip>, kind: ClipKind, track_name: &str, start: f64, len: f64, source: Id| -> usize {
@@ -664,7 +673,8 @@ pub fn demo_project() -> Project {
         (48.0, 16.0, -3.0, 0.0),
         (64.0, 16.0, -2.5, 0.0),
         (80.0, 15.0, -2.0, 0.08),
-        (128.0, 16.0, -3.5, 0.0),
+        (112.0, 16.0, -3.5, 0.0),
+        (128.0, 16.0, -2.5, 0.0),
         (144.0, 8.0, -3.0, 2.4),
     ] {
         let i = put(&mut clips, ClipKind::Audio, "Dark Vox", start, len, src_vox);
@@ -675,51 +685,34 @@ pub fn demo_project() -> Project {
         clips[i].fade_out = if fout > 0.0 { fout } else { 0.06 };
     }
 
-    // 2. Analog Pad (native Ebm = D#m)
-    for &(start, len, gain, fin, fout) in &[
-        (0.0, 16.0, -3.5, 0.35, 0.08),
-        (32.0, 16.0, -5.0, 0.10, 0.08),
-        (80.0, 15.0, -3.5, 0.15, 0.08),
-        (128.0, 16.0, -4.5, 0.12, 0.08),
-        (144.0, 16.0, -3.5, 0.08, 3.8),
+    // 2. Analog Pad — forward in Act I, Bridge, Climax & Outro; REVERSED (`rev: true`) in Act II (96..128) for a seamless dark tape-flip switch!
+    for &(start, len, gain, fin, fout, rev) in &[
+        (0.0, 16.0, -3.5, 0.35, 0.08, false),
+        (32.0, 16.0, -4.5, 0.10, 0.08, false),
+        (80.0, 15.0, -3.5, 0.15, 0.08, false),
+        (96.0, 16.0, -3.0, 0.05, 0.08, true),  // Act II A: Reversed Analog Pad flip!
+        (112.0, 16.0, -4.0, 0.08, 0.08, true), // Act II B: Reversed Analog Pad under Ghost Bell & Glide!
+        (128.0, 16.0, -4.0, 0.10, 0.08, false),
+        (144.0, 16.0, -3.5, 0.08, 3.8, false),
     ] {
         let i = put(&mut clips, ClipKind::Audio, "Analog Pad", start, len, src_pad);
         clips[i].stretch = 0.8088235294117647; // 110 / 136 BPM
         clips[i].gain = gain;
         clips[i].fade_in = fin;
         clips[i].fade_out = fout;
+        clips[i].rev = rev;
     }
 
-    // 3. Crushed 2093 (high-passed at 260 Hz)
-    for &(start, len, gain, fin) in
-        &[(84.0, 11.0, -4.5, 1.2), (96.0, 16.0, -1.5, 0.02), (112.0, 16.0, -1.5, 0.02), (128.0, 16.0, -2.5, 0.02)]
-    {
-        let i = put(&mut clips, ClipKind::Audio, "Crushed 2093", start, len, src_crushed);
-        clips[i].stretch = 0.9852941176470588; // 134 / 136 BPM
-        clips[i].gain = gain;
-        clips[i].fade_in = fin;
-        clips[i].fade_out = 0.05;
-    }
-
-    // 4. Cyber Synth 140 D#m -> 136 BPM
-    for &(start, len, gain) in &[(112.0, 16.0, -5.5), (128.0, 16.0, -6.5)] {
-        let i = put(&mut clips, ClipKind::Audio, "Cyber & Pulse", start, len, src_cyber);
-        clips[i].stretch = 1.0294117647058822; // 140 / 136 BPM
-        clips[i].gain = gain;
-        clips[i].fade_in = 0.05;
-        clips[i].fade_out = 0.08;
-    }
-
-    // 5. Pattern clips
+    // 3. Pattern clips (foreshadowing Ghost Bell subtly in Hook B & Bridge so Act II / Climax feels 100% organic, never tacked-on!)
     for &(trk, pat, spans) in &[
-        ("Cyber & Pulse", p_pulse, &[(104.0, 24.0), (128.0, 16.0)][..]),
+        ("Ghost Bell", p_ghost_bell, &[(32.0, 16.0), (80.0, 15.0), (96.0, 32.0), (128.0, 16.0)][..]),
+        ("Analog Glide", p_glide_act2, &[(112.0, 16.0)][..]),
+        ("Analog Glide", p_glide_climax, &[(128.0, 16.0)][..]),
         ("808", p_reese, &[(0.0, 16.0), (80.0, 15.0)][..]),
         ("808", p_808_turn, &[(16.0, 16.0), (96.0, 16.0)][..]),
-        ("808", p_808_melodic, &[(32.0, 16.0)][..]),
+        ("808", p_808_lift, &[(32.0, 16.0), (128.0, 16.0)][..]),
         ("808", p_808_verse, &[(48.0, 16.0), (144.0, 16.0)][..]),
-        ("808", p_808_root, &[(64.0, 16.0)][..]),
-        ("808", p_808_phrygian, &[(112.0, 16.0)][..]),
-        ("808", p_808_climax, &[(128.0, 16.0)][..]),
+        ("808", p_808_root, &[(64.0, 16.0), (112.0, 16.0)][..]),
         ("Kick", p_kick, &[(16.0, 32.0), (64.0, 16.0), (96.0, 48.0)][..]),
         ("Clap & Snare", p_clap_sparse, &[(0.0, 16.0), (48.0, 16.0), (80.0, 15.0), (144.0, 16.0)][..]),
         ("Clap & Snare", p_clap, &[(16.0, 32.0), (64.0, 16.0), (96.0, 48.0)][..]),
@@ -746,7 +739,7 @@ pub fn demo_project() -> Project {
     // Master: subtle smile EQ -> gentle Tape glue -> punch-preserving Limiter
     let m_eq = make_fx(FxKind::Eq, 8, &[]);
     let m_sat = make_fx(FxKind::Sat, 8, &[("drive", 12.0), ("mix", 35.0)]);
-    let m_lim = make_fx(FxKind::Limit, 1, &[("gain", 2.6), ("ceil", -0.9), ("rel", 35.0), ("look", 1.5)]);
+    let m_lim = make_fx(FxKind::Limit, 1, &[("gain", 3.4), ("ceil", -0.9), ("rel", 35.0), ("look", 1.5)]);
     p.inserts[0].fx = vec![m_eq, m_sat, m_lim];
 
     // Insert 1 (Vox) & Insert 2 (Pad)
@@ -755,54 +748,50 @@ pub fn demo_project() -> Project {
     let pad_eq = make_fx(FxKind::Eq, 4, &[]);
     let pad_chorus = make_fx(FxKind::Chorus, 2, &[("hp", 190.0), ("mix", 30.0)]);
 
-    // Insert 3 (Industrial — Crushed 2093)
-    let mut ind_eq = make_fx(FxKind::Eq, 11, &[]);
-    if let Some(bands) = &mut ind_eq.bands {
-        bands[0].f = 260.0;
-        bands[2] = EqBand {
-            on: true,
-            kind: BandType::Peak,
-            f: 480.0,
-            g: -4.5,
-            q: 1.1,
-            slope: 12,
-            place: Placement::Mid,
-            dynamic: Some(DynBand { range: -3.0, thr: -20.0 }),
-        };
-        bands[5] =
-            EqBand { on: true, kind: BandType::Highshelf, f: 2600.0, g: 2.5, q: 0.71, slope: 12, place: Placement::Side, dynamic: None };
+    // Insert 3 (Ghost Bell — heavy analog post-processing so it sounds like a warped vintage tape sample, NEVER raw MIDI!):
+    // 1. 220 Hz..2.2 kHz dark tape bandpass EQ
+    // 2. Vintage BBD Chorus (`preset 3`)
+    // 3. Warp (`tslot 11` = `Reverse — co pół taktu` at 55% mix!)
+    // 4. Tape Dub Delay (`preset 8`, cutoff 1900 Hz) + Dark Hall Reverb (highcut 3000 Hz)
+    let mut bell_eq = make_fx(FxKind::Eq, 6, &[]);
+    if let Some(bands) = &mut bell_eq.bands {
+        bands[0].f = 220.0;
+        bands[6].f = 2200.0;
     }
-    let ind_chorus = make_fx(FxKind::Chorus, 0, &[("hp", 260.0), ("width", 160.0), ("mix", 24.0)]);
+    let bell_chorus = make_fx(FxKind::Chorus, 3, &[("tone", 4200.0), ("mix", 45.0)]);
+    let bell_warp = make_fx(FxKind::Warp, 0, &[("tslot", 11.0), ("tmix", 55.0), ("vmix", 0.0)]);
+    let bell_dly = make_fx(FxKind::Delay, 8, &[("cutoff", 1900.0), ("mix", 28.0)]);
+    let bell_verb = make_fx(FxKind::Reverb, 2, &[("size", 2.8), ("lo", 260.0), ("hi", 3000.0), ("duck", 3.5), ("mix", 42.0)]);
 
-    // Insert 4 (Lead — Cyber & 2093 Wide Pulse)
-    let mut lead_eq = make_fx(FxKind::Eq, 6, &[]);
-    if let Some(bands) = &mut lead_eq.bands {
-        bands[0].f = 180.0;
-        bands[2] = EqBand { on: true, kind: BandType::Peak, f: 550.0, g: -3.5, q: 1.2, slope: 12, place: Placement::Mid, dynamic: None };
-        bands[4] =
-            EqBand { on: true, kind: BandType::Peak, f: 2100.0, g: -2.5, q: 1.1, slope: 12, place: Placement::Stereo, dynamic: None };
-        bands[6].f = 7800.0;
+    // Insert 4 (Glide Lead — Mike Dean weeping wide analog Moog lead melted into dark hall space, Mid scooped at 1050 Hz!):
+    let mut glide_eq = make_fx(FxKind::Eq, 6, &[]);
+    if let Some(bands) = &mut glide_eq.bands {
+        bands[0].f = 240.0;
+        bands[3] = EqBand { on: true, kind: BandType::Peak, f: 1050.0, g: -3.0, q: 1.1, slope: 12, place: Placement::Mid, dynamic: None };
+        bands[6].f = 2100.0;
     }
-    let lead_dly = make_fx(FxKind::Delay, 2, &[("mix", 24.0), ("cutoff", 4400.0), ("spread", 100.0)]);
+    let glide_chorus = make_fx(FxKind::Chorus, 2, &[("hp", 220.0), ("mix", 45.0)]);
+    let glide_dly = make_fx(FxKind::Delay, 8, &[("cutoff", 1900.0), ("mix", 36.0)]);
+    let glide_verb = make_fx(FxKind::Reverb, 2, &[("size", 3.0), ("lo", 260.0), ("hi", 2900.0), ("duck", 4.5), ("mix", 48.0)]);
 
-    // Insert 5 (Synths Bus): Kick-synced Warp sidechain pocket
+    // Insert 5 (Synths Bus): Deep Kick-synced Warp sidechain pocket so every Kick slams straight through the pads & vocals!
     let mut syn_bus_warp = make_fx(FxKind::Warp, 0, &[("tslot", 8.0), ("vslot", 2.0), ("tmix", 0.0), ("vmix", 0.0)]);
     if let Some(maps) = &mut syn_bus_warp.maps {
         let duck = |t: f64, v: f32, tension: f32| AutoPoint { t, v, tension, shape: CurveShape::Curve };
         maps.vol[2] = WarpSlot {
             name: "Trap Kick Pocket".into(),
             points: vec![
-                duck(0.0, 0.25, 0.0),
-                duck(0.42, 1.0, -0.55),
+                duck(0.0, 0.10, 0.0),
+                duck(0.44, 1.0, -0.55),
                 duck(2.5, 1.0, 0.0),
-                duck(2.5, 0.32, 0.0),
-                duck(2.92, 1.0, -0.55),
+                duck(2.5, 0.16, 0.0),
+                duck(2.94, 1.0, -0.55),
                 duck(4.0, 1.0, 0.0),
             ],
         };
     }
     let warp_fx_id = syn_bus_warp.id;
-    let syn_bus_verb = make_fx(FxKind::Reverb, 2, &[("mix", 12.0), ("duck", 5.0), ("lo", 280.0), ("hi", 6200.0)]);
+    let syn_bus_verb = make_fx(FxKind::Reverb, 2, &[("mix", 12.0), ("duck", 5.0), ("lo", 280.0), ("hi", 6000.0)]);
 
     // Insert 6 (808): Warm, smooth low end with 2000 Hz high-cut
     let mut bass_eq = make_fx(FxKind::Eq, 3, &[]);
@@ -818,14 +807,25 @@ pub fn demo_project() -> Project {
     }
     let bass_sat = make_fx(FxKind::Sat, 5, &[("drive", 22.0), ("lowcut", 110.0), ("thump", 15.0), ("mix", 28.0)]);
 
-    // Insert 7 (Kick): Clean low-cut + 300 Hz boxiness dip — ZERO high-end boost or crunch!
-    let kick_eq = make_fx(FxKind::Eq, 4, &[]);
+    // Insert 7 (Kick): Hard 95 Hz sternum thump + 2.2 kHz crisp beater snap + 3.2 kHz high-cut (100% physical slam, 0% harsh fizz!)
+    let mut kick_eq = make_fx(FxKind::Eq, 0, &[("out", -1.0)]);
+    if let Some(bands) = &mut kick_eq.bands {
+        bands[0] =
+            EqBand { on: true, kind: BandType::Lowcut, f: 28.0, g: 0.0, q: 0.71, slope: 12, place: Placement::Stereo, dynamic: None };
+        bands[1] = EqBand { on: true, kind: BandType::Peak, f: 95.0, g: 3.2, q: 0.9, slope: 12, place: Placement::Stereo, dynamic: None };
+        bands[2] = EqBand { on: true, kind: BandType::Peak, f: 310.0, g: -3.5, q: 1.3, slope: 12, place: Placement::Stereo, dynamic: None };
+        bands[3].on = false;
+        bands[4] = EqBand { on: true, kind: BandType::Peak, f: 2200.0, g: 2.0, q: 1.1, slope: 12, place: Placement::Stereo, dynamic: None };
+        bands[5].on = false;
+        bands[6] =
+            EqBand { on: true, kind: BandType::Highcut, f: 3200.0, g: 0.0, q: 0.71, slope: 12, place: Placement::Stereo, dynamic: None };
+    }
 
-    // Insert 8 (Tops) & Insert 9 (Drum Bus): Clean glue comp + subtle Tape bus glue (no overdrive!)
+    // Insert 8 (Tops) & Insert 9 (Drum Bus): Crisp punch comp + clean Tape bus glue
     let tops_eq = make_fx(FxKind::Eq, 10, &[]);
     let tops_sat = make_fx(FxKind::Sat, 0, &[("drive", 18.0), ("lowcut", 95.0), ("highcut", 14000.0), ("mix", 40.0)]);
-    let bus_comp = make_fx(FxKind::Comp, 2, &[("att", 30.0), ("rel", 90.0), ("ratio", 2.0), ("gain", 0.8)]);
-    let bus_glue = make_fx(FxKind::Sat, 8, &[("drive", 14.0), ("mix", 32.0)]);
+    let bus_comp = make_fx(FxKind::Comp, 2, &[("att", 32.0), ("rel", 80.0), ("ratio", 2.2), ("gain", 1.2)]);
+    let bus_glue = make_fx(FxKind::Sat, 8, &[("drive", 16.0), ("mix", 35.0)]);
 
     // Insert 10 (Beat Bus — Half-Speed + Hall Reverb + 24 dB/oct Low-Pass Filter across the whole beat!)
     let beat_half = make_fx(FxKind::Half, 8, &[("speed", 1.0), ("loop", 3.0), ("smooth", 18.0), ("lo", 120.0), ("mix", 0.0)]);
@@ -863,25 +863,41 @@ pub fn demo_project() -> Project {
     };
 
     configure_ins(&mut p, "Vox", 0.74, 1.20, false, vec![InsertSend { to: id_syn_bus, gain: 1.0 }], vec![vox_eq, vox_verb]);
-    configure_ins(&mut p, "Pad", 0.70, 1.30, false, vec![InsertSend { to: id_syn_bus, gain: 1.0 }], vec![pad_eq, pad_chorus]);
-    configure_ins(&mut p, "Industrial", 0.75, 1.35, false, vec![InsertSend { to: id_syn_bus, gain: 1.0 }], vec![ind_eq, ind_chorus]);
-    configure_ins(&mut p, "Lead", 0.68, 1.40, false, vec![InsertSend { to: id_syn_bus, gain: 1.0 }], vec![lead_eq, lead_dly]);
+    configure_ins(&mut p, "Pad", 0.71, 1.30, false, vec![InsertSend { to: id_syn_bus, gain: 1.0 }], vec![pad_eq, pad_chorus]);
+    configure_ins(
+        &mut p,
+        "Ghost Bell",
+        0.74,
+        1.35,
+        false,
+        vec![InsertSend { to: id_syn_bus, gain: 1.0 }],
+        vec![bell_eq, bell_chorus, bell_warp, bell_dly, bell_verb],
+    );
+    configure_ins(
+        &mut p,
+        "Glide Lead",
+        0.66,
+        1.35,
+        false,
+        vec![InsertSend { to: id_syn_bus, gain: 1.0 }],
+        vec![glide_eq, glide_chorus, glide_dly, glide_verb],
+    );
     configure_ins(
         &mut p,
         "Synths Bus",
-        0.77,
+        0.75,
         1.10,
         false,
         vec![InsertSend { to: id_beat_bus, gain: 1.0 }],
         vec![syn_bus_warp, syn_bus_verb],
     );
 
-    configure_ins(&mut p, "808", 0.73, 0.08, false, vec![InsertSend { to: id_beat_bus, gain: 1.0 }], vec![bass_eq, bass_sat]);
-    configure_ins(&mut p, "Kick", 0.68, 0.0, false, vec![InsertSend { to: id_drum_bus, gain: 1.0 }], vec![kick_eq]);
-    configure_ins(&mut p, "Tops", 0.74, 1.08, false, vec![InsertSend { to: id_drum_bus, gain: 1.0 }], vec![tops_eq, tops_sat]);
-    configure_ins(&mut p, "Drum Bus", 0.77, 1.0, false, vec![InsertSend { to: id_beat_bus, gain: 1.0 }], vec![bus_comp, bus_glue]);
+    configure_ins(&mut p, "808", 0.72, 0.08, false, vec![InsertSend { to: id_beat_bus, gain: 1.0 }], vec![bass_eq, bass_sat]);
+    configure_ins(&mut p, "Kick", 0.81, 0.0, false, vec![InsertSend { to: id_drum_bus, gain: 1.0 }], vec![kick_eq]);
+    configure_ins(&mut p, "Tops", 0.72, 1.08, false, vec![InsertSend { to: id_drum_bus, gain: 1.0 }], vec![tops_eq, tops_sat]);
+    configure_ins(&mut p, "Drum Bus", 0.78, 1.0, false, vec![InsertSend { to: id_beat_bus, gain: 1.0 }], vec![bus_comp, bus_glue]);
 
-    const BEAT_BUS_VOL: f32 = 0.74;
+    const BEAT_BUS_VOL: f32 = 0.70;
     configure_ins(&mut p, "Beat Bus", BEAT_BUS_VOL, 1.0, true, vec![], vec![beat_half, beat_verb, beat_lpf]);
     configure_ins(&mut p, "Vocal", VOL_UNITY, 1.0, true, vec![], vec![voc_tune, voc_eq, voc_fet, voc_deess]);
 
@@ -981,11 +997,11 @@ pub fn demo_project() -> Project {
         target: AutoTarget::Fx { fx_id: warp_fx_id, param: "vmix".into() },
         points: vec![
             AutoPoint::at(0.0, 0.0),
-            hold(16.0, 0.48),
+            hold(16.0, 0.72),
             hold(48.0, 0.0),
-            hold(64.0, 0.38),
+            hold(64.0, 0.55),
             hold(80.0, 0.0),
-            hold(96.0, 0.62),
+            hold(96.0, 0.78),
             hold(144.0, 0.0),
             AutoPoint::at(160.0, 0.0),
         ],
@@ -1006,7 +1022,7 @@ pub fn demo_project() -> Project {
             hold(95.96, 0.0),
             AutoPoint::at(96.0, BEAT_BUS_VOL),
             hold(124.5, BEAT_BUS_VOL),
-            curve(127.4, 0.77, 0.0),
+            curve(127.4, 0.75, 0.0),
             curve(128.0, BEAT_BUS_VOL, 0.0),
             hold(151.0, BEAT_BUS_VOL),
             curve(160.0, 0.0, -0.20),
@@ -1022,11 +1038,11 @@ pub fn demo_project() -> Project {
         start_bar: 1,
         text: concat!(
             "[Intro — Beat in Half-Time + Low-Pass + Reverb]\n\n\n\n\n",
-            "[Act I — Dry Drop: D#1 Pedal -> Melodic 808]\n\n\n\n\n\n\n\n\n",
+            "[Act I — Hard Kick + D#1 808 + Ghost Bell]\n\n\n\n\n\n\n\n\n",
             "[Verse — Minimal D#1 Sub Pocket]\n\n\n\n\n\n\n\n\n",
             "[Bridge — Half-Time + Low-Pass Wash -> Cut]\n\n\n\n\n",
-            "[Act II — 2093 Wide Synth Groove]\n\n\n\n\n\n\n\n\n",
-            "[Climax — Melodic 808 + Utopia x 2093 Hybrid]\n\n\n\n\n",
+            "[Act II — Reversed Pad Flip + Analog Glide]\n\n\n\n\n\n\n\n\n",
+            "[Climax — Full Nocturne Stack]\n\n\n\n\n",
             "[Outro — Underwater Half-Time Fade]"
         )
         .into(),

@@ -1894,16 +1894,6 @@ pub(super) const FILES: &[FactoryFile] = &[
         bytes: include_bytes!("../library/loop-flute-eastern-130-cmin.ogg"),
     },
     FactoryFile {
-        file: "loop-synth-cyber-140-dsharpmin.ogg",
-        name: "Synth Cyber 140 D#m",
-        group: "Loops",
-        root: 60,
-        pitched: false,
-        dur: 6.8571,
-        ch: 2,
-        bytes: include_bytes!("../library/loop-synth-cyber-140-dsharpmin.ogg"),
-    },
-    FactoryFile {
         file: "loop-vox-dark-120-dmin.ogg",
         name: "Vox Dark 120 Dm",
         group: "Loops",
@@ -1912,15 +1902,5 @@ pub(super) const FILES: &[FactoryFile] = &[
         dur: 8.0000,
         ch: 2,
         bytes: include_bytes!("../library/loop-vox-dark-120-dmin.ogg"),
-    },
-    FactoryFile {
-        file: "loop-synth-crushed-67-dsharpmin.ogg",
-        name: "Synth Crushed 67 D#m",
-        group: "Loops",
-        root: 60,
-        pitched: false,
-        dur: 7.1642,
-        ch: 2,
-        bytes: include_bytes!("../library/loop-synth-crushed-67-dsharpmin.ogg"),
     },
 ];

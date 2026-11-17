@@ -79,9 +79,7 @@ FREESOUND = {
     "646403": ("https://cdn.freesound.org/previews/646/646403_9839964-hq.mp3", "harrisonlace", "808_dalmation_C.wav"),
     "347136": ("https://cdn.freesound.org/previews/347/347136_369949-hq.mp3", "NovaSoundTechnology", "Custom Mini Lex Trap Snare - Nova Sound"),
     "647745": ("https://cdn.freesound.org/previews/647/647745_9839964-hq.mp3", "harrisonlace", "clap_caviar.wav"),
-    "396781": ("https://cdn.freesound.org/previews/396/396781_7557428-hq.mp3", "GhostSyndicate", "GS_FREE1_140_SYNTH_05_D#.wav"),
     "703686": ("https://cdn.freesound.org/previews/703/703686_11532701-hq.mp3", "deadrobotmusic", "Drk Vox Loop [120bpm] [D Minor]"),
-    "845563": ("https://cdn.freesound.org/previews/845/845563_18467492-hq.mp3", "FuzzLogic", "bouncy-crushed-synth-loop_67bpm_D#_minor"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -350,9 +348,7 @@ PICKS = [
     ("loop-guitar-nylon-148-fmin.ogg", "Guitar Nylon 148 Fm", "Loops", "fs:474961", 0, 60, loop(148, 8)),
     ("loop-pad-cinematic-110-ebmin.ogg", "Pad Cinematic 110 Ebm", "Loops", "fs:521664", 0, 60, loop(110, 4)),
     ("loop-flute-eastern-130-cmin.ogg", "Flute Eastern 130 Cm", "Loops", "fs:713120", 0, 60, loop(130, 8)),
-    ("loop-synth-cyber-140-dsharpmin.ogg", "Synth Cyber 140 D#m", "Loops", "fs:396781", 0, 60, loop(140, 4)),
     ("loop-vox-dark-120-dmin.ogg", "Vox Dark 120 Dm", "Loops", "fs:703686", 0, 60, loop(120, 4)),
-    ("loop-synth-crushed-67-dsharpmin.ogg", "Synth Crushed 67 D#m", "Loops", "fs:845563", 0, 60, loop(67, 2)),
 ]
 
 
