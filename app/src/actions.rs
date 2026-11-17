@@ -1667,7 +1667,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             // after half of the job is done
             if let Some(r) = if_revision {
                 if e.revision() != r {
-                    return Err(format!("REVISION_CONFLICT: project is at revision {}, not {r}", e.revision()));
+                    return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
                 }
             }
             let insert = e.clip_insert(cid).ok_or("no such clip")?;

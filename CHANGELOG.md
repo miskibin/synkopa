@@ -4,6 +4,18 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Auto vocal from the command line.** `synkopa auto-vocal --clip N` measures a vocal take and puts
+  the tuned chain on its mixer insert in one call — the same chain the app's Auto vocal button
+  builds (pitch correction, vocal rider rendered into the audio, compressors, de-esser, reverb,
+  limiter), with `--style hard` for rap tuning, `--beat-clip` to take key and level from the
+  beat, and `--plan` to only print the proposal. It works without the app open
+  (`synkopa -p song.synkopa …`), so scripts and agents can tune vocals too. `synkopa f0-model --install`
+  downloads the RMVPE pitch model (after printing its licence note) and switches the pitch
+  detector to it.
+
 ## 0.9.22 — 2026-11-17
 
 ### Added
@@ -186,14 +198,6 @@ shown in the app after an update and is published as the release notes (see
   so the chords move as little as possible. The same verbs work headless: `wave notes stamp`,
   `wave notes chord` and `wave notes progression` (with `--degrees "0:5:2:6"` for arbitrary
   chord sequences).
-- **Auto vocal from the command line.** `synkopa auto-vocal --clip N` measures a vocal take and puts
-  the tuned chain on its mixer insert in one call — the same chain the app's Auto vocal button
-  builds (pitch correction, vocal rider rendered into the audio, compressors, de-esser, reverb,
-  limiter), with `--style hard` for rap tuning, `--beat-clip` to take key and level from the
-  beat, and `--plan` to only print the proposal. It works without the app open
-  (`synkopa -p song.synkopa …`), so scripts and agents can tune vocals too. `synkopa f0-model --install`
-  downloads the RMVPE pitch model (after printing its licence note) and switches the pitch
-  detector to it.
 - **Plugin windows open straight away, with WAVE's header on top.** Click a plugin instrument
   in the Channel Rack or a plugin effect in the mixer and its own interface opens at once, like
   in FL Studio: a slim WAVE bar on top shows the name, a gear opens WAVE's settings for it
