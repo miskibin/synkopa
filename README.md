@@ -71,7 +71,7 @@ pluck, written through the `wave` command):
   </tr>
 </table>
 
-All 14 plugin windows are on the [website](https://miskibin.github.io/wave-DAW/#plugins).
+A selection of instrument and effect windows is on the [website](https://miskibin.github.io/wave-DAW/#plugins).
 
 **An AI agent can work in the project you have open.** WAVE installs a `wave` command that
 talks to the running app. The agent reads the song as JSON, writes notes and sets knobs on
@@ -119,10 +119,10 @@ than twenty-five years behind it and wins on breadth.
 | Audio recording | Included, with takes and comping | Producer edition or higher |
 | Vocal pitch editing | Included | NewTone and Pitcher come with the higher editions |
 | Working with an AI agent | The agent edits the open project and measures its own renders | No command line into the open project |
-| Built-in instruments and effects | 14 | More than a hundred across the editions |
+| Built-in instruments and effects | Wavetable synth, sampled grand, sampler and 16 effects | More than a hundred across the editions |
 | Third-party plugins | VST3 instruments and effects; LV2 effects on Linux; supported native plugin windows on Windows and Linux | VST instruments and effects, and more formats |
 | Platforms | Windows and Linux | Windows and macOS |
-| Maturity | Version 0.9, one developer, expect rough edges | Since 1998, large community, tutorials, sample packs |
+| Maturity | Version 0.9, growing with open-source contributors; expect rough edges | Since 1998, large community, tutorials, sample packs |
 
 FL Studio details as of November 2026; see Image-Line's edition comparison for current
 prices. FL Studio is a trademark of Image-Line, and WAVE is not affiliated with it.
@@ -132,8 +132,8 @@ view or clip launcher, so if you write by launching clips, it does not replace L
 
 ## Where it stands
 
-Version 0.9, built by one person with AI agents. It covers a complete beat and a vocal
-session. What it does not do yet:
+Version 0.9, developed openly with community contributors and AI-assisted coding. It covers
+a complete beat and a vocal session. What it does not do yet:
 
 - no LV2 instruments or CLAP support yet (VST3 instruments and effects are supported); some
   Linux plugin interfaces still use WAVE's parameter list when their native toolkit cannot be hosted;
@@ -244,6 +244,8 @@ cargo run -p wave-engine --example bench --release   # callback load, heavy mixe
 ```
 
 ## Credits
+
+Special thanks to [@rebizu](https://github.com/rebizu) for architectural reviews, engine/mock parity tests, the Piano Roll tool refactor and ongoing plugin UX work. Thanks to everyone contributing code, reviews and bug reports. See the [contributors](https://github.com/miskibin/wave-DAW/graphs/contributors).
 
 Third-party components and sample credits are in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
