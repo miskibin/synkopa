@@ -4,7 +4,7 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.22 — 2026-11-17
 
 ### Added
 - **One sample editor with a keyboard, as in FL Studio.** The editor of an audio clip and of a
