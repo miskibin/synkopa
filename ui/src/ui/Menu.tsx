@@ -30,8 +30,8 @@ function MenuList(props: { items: MenuItem[]; x: number; y: number; sub?: boolea
   const [open, setOpen] = createSignal<{ i: number; x: number; y: number } | null>(null);
   let el!: HTMLDivElement;
   const [pos, setPos] = createSignal({ x: props.x, y: props.y });
+  // the opener's height is only an estimate: measure, so a tall menu opened low keeps its bottom rows on screen
   onMount(() => {
-    if (!props.sub) return;
     const r = el.getBoundingClientRect();
     setPos({ x: props.x, y: Math.max(4, Math.min(props.y, window.innerHeight - r.height - 4)) });
   });

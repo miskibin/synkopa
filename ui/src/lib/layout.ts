@@ -14,12 +14,12 @@ export const PLAYLIST_MIN_W = 320, PLAYLIST_MIN_H = 140;
 
 /**
  * The docked mixer alone in its strip: dragging the strip's splitter below `MIX_COLLAPSE_AT`
- * collapses it to a thin handle (`MIX_HANDLE_H`) and keeps the size it had for when it opens
+ * collapses it to its title bar (`MIX_HANDLE_H`) and keeps the size it had for when it opens
  * again; between the breakpoint and `MIX_MIN_H` it stays at its minimum. Dragging the collapsed
  * handle toward the Playlist by `MIX_OPEN_DRAG` opens it under the pointer. The sizes are the
  * mixer's thickness: its height at the bottom, its width on a side edge (`min` there).
  */
-export const MIX_MIN_H = 170, MIX_COLLAPSE_AT = 110, MIX_HANDLE_H = 6, MIX_OPEN_DRAG = 24;
+export const MIX_MIN_H = 170, MIX_COLLAPSE_AT = 110, MIX_HANDLE_H = 28, MIX_OPEN_DRAG = 24;
 /** A wanted docked size clamped to what fits (whole px). */
 export function fitMixH(h: number, max: number, min = MIX_MIN_H): number {
   return Math.round(Math.min(Math.max(h, min), Math.max(min, max)));

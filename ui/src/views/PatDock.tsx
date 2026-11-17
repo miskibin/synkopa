@@ -16,7 +16,7 @@ import { guides, openDockMenu, paneDock, paneHeadDown, paneOpen } from '../state
 import { track } from '../ui/drag';
 import { Browser } from './Browser';
 import { ChannelRack } from './ChannelRack';
-import { MixDockPane } from './Mixer';
+import { MixCollapsedHead, MixDockPane } from './Mixer';
 import { PianoRoll } from './PianoRoll';
 import { Playlist } from './Playlist';
 import { guardKeys, useSize } from './patternShared';
@@ -130,7 +130,7 @@ export function Workspace() {
       <Show when={!v().handle} fallback={
         <div class="mixhandle" classList={{ vert: side(v().edge) }} style={side(v().edge) ? { width: MIX_HANDLE_H + 'px' } : { height: MIX_HANDLE_H + 'px' }}
           role="button" tabIndex={0} aria-expanded="false" aria-label={t('c.mv.handleLabel')} title={t('c.mv.handleTip')} onPointerDown={e => handleDown(v())(e)} onKeyDown={handleKey}>
-          <span class="grip" />
+          <MixCollapsedHead vert={side(v().edge)} />
         </div>
       }>
         {(() => {

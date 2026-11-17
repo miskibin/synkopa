@@ -194,14 +194,14 @@ else the window stays floating. The title bar's dock button floats a panel or do
 it was (`U.dockHome`); its right-click menu and View → Window layout dock it to an edge without
 dragging, and *Reset window layout* restores the first-launch layout. Rows are keyed by strings,
 so opening, closing or resizing one panel never rebuilds the others. The docked Mixer alone in a
-strip collapses to a thin handle (below); sharing a strip it simply leaves while hidden; on a side
+strip collapses to its title bar (below); sharing a strip it simply leaves while hidden; on a side
 edge its effect chain goes under the strips. Dock layout, sizes, homes and the floating places
 are per user in `localStorage` (`wave.layout`, validated by `parseLayout`; a layout from before
 #90 — `rackDock` / `rollDock` / `mixDock` — is translated), never in the project.
 
 **The mixer: docked, and the Mix view (F9).** The docked mixer (`views/Mixer.tsx` `MixDockPane`)
 is a strip like the other panels (at the bottom by default). Alone in its strip, its splitter
-dragged below 110 px collapses it to a 6 px handle (`U.mixMin`; click, Enter / Space or drag the
+dragged below 110 px collapses it to its 28 px title bar (a turned-title column on a side edge) (`U.mixMin`; click, Enter / Space or drag the
 handle toward the Playlist to open it again at `U.paneSize.mix`, which the collapse keeps). It
 cannot be closed; a layout saved with the old closed or minimised mixer opens collapsed
 (`parseLayout`). The collapse math is pure (`lib/layout.ts` `fitMixH`, `mixSplitDrag`,

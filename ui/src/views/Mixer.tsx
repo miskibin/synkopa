@@ -630,6 +630,25 @@ function MixBar(props: { docked?: boolean }) {
   );
 }
 
+/**
+ * What the hidden docked Mixer leaves in its strip: its title bar (on a side edge, a narrow column
+ * with the title turned), so it stays findable. The strip's handle (`PatDock.tsx`) makes it a button:
+ * click to open, drag toward the Playlist to open it at a size.
+ */
+export function MixCollapsedHead(props: { vert: boolean }) {
+  return (
+    <>
+      <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)', flex: 'none' }}><Icon d={MIX_ICON} size={12} /></span>
+      <span class="wintitle">{tr('c.mv.mixer')}</span>
+      <Show when={!props.vert}>
+        <span class="mvhint">{tr('c.mv.handleHint')}</span>
+        <div style={{ flex: 1 }} />
+        <span class="mixopen" aria-hidden="true"><Icon d="M6 15l6-6 6 6" size={13} /></span>
+      </Show>
+    </>
+  );
+}
+
 /** The instrument icon's width in a strip's name, its margin included (px). */
 const ICON_W = 14;
 
