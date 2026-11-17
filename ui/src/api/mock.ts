@@ -14,7 +14,8 @@ import { FACTORY_FILES, FACTORY_KIT, factoryFile, LIB_SCHEME, libPath } from '..
 const MOCK_REVERB_MIX = 37.2;
 import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_REVISION_CONFLICT } from './errors';
 import { projectEq } from '../lib/projectEq';
-import { applyAll } from '../lib/applyOps';
+import { applyAll, stripClipDefaults } from '../lib/applyOps';
+import { stripPatternDefaults } from '../lib/pattern';
 import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
@@ -115,7 +116,7 @@ export class MockBackend implements Backend {
     : null;
   private cat: Catalog = mockCatalog();
   // perf harness hook: perf/ui_bench.mjs injects a generated long project here (see perf/README)
-  private p: Project = (typeof window !== 'undefined' && (window as unknown as { __waveFixture?: Project }).__waveFixture) || sketchProject(this.cat);
+  private p: Project = this.adoptFixture();
   private revision = 1;
   private savedRev = 1;
   private path: string | null = null;
@@ -159,9 +160,34 @@ export class MockBackend implements Backend {
   private midiPorts: MidiDevice[] = [{ id: 'mock-keys', name: 'Mock Keystation 61' }, { id: 'mock-pads', name: 'Mock Pad Controller' }];
   private midi: MidiStatus = { connected: null, selected: null, error: null, lastNote: null, noteCount: 0, target: null };
 
+  private clock: ReturnType<typeof setInterval>;
   constructor() {
-    setInterval(() => this.tick(), 1000 / 60);
+    this.clock = setInterval(() => this.tick(), 1000 / 60);
     (window as unknown as { __waveMock: MockBackend }).__waveMock = this;
+  }
+
+  /** Stops the frame clock (tests call this so intervals do not outlive a case). */
+  dispose() { clearInterval(this.clock); }
+
+  /** The engine never writes a field at its serde default, so its state JSON never carries
+   * one; an injected fixture may. Normalize once at the door — the engine compares structs,
+   * where "missing" and "default value" are not two states, and the no-op check below must
+   * see what the engine sees. */
+  private adoptFixture(): Project {
+    const f = typeof window !== 'undefined' && (window as unknown as { __waveFixture?: Project }).__waveFixture;
+    if (!f) return sketchProject(this.cat);
+    const p = structuredClone(f);
+    for (const c of p.clips) stripClipDefaults(c);
+    for (const pt of p.patterns) stripPatternDefaults(pt);
+    for (const a of p.automations ?? []) {
+      for (const q of a.points) {
+        if (!q.tension) delete (q as { tension?: number }).tension;
+        if (q.shape === 'curve') delete (q as { shape?: unknown }).shape;
+      }
+    }
+    // old projects may lack `key`; the engine writes it as null (no skip on the field)
+    if (p.key === undefined) p.key = null;
+    return p;
   }
 
   // ---------- state ----------

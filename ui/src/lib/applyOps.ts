@@ -14,6 +14,13 @@ export class OpError extends Error {}
 
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
+/** Drops the fields the engine's serde omits on write (stretch 1, not resampled, no pitch). */
+export function stripClipDefaults(c: Clip): void {
+  if (c.stretch === 1) delete c.stretch;
+  if (c.resample === false) delete c.resample;
+  if (c.pitch === 0) delete c.pitch;
+}
+
 export function applyOp(p: Project, op: Op): void {
   switch (op.op) {
     case 'putClips': {
@@ -44,10 +51,7 @@ export function applyOp(p: Project, op: Op): void {
       for (const c of op.clips) {
         bump(p, c.id);
         const nc = structuredClone(c);
-        // the engine writes the defaults out (stretch 1, not resampled)
-        if (nc.stretch === 1) delete nc.stretch;
-        if (nc.resample === false) delete nc.resample;
-        if (nc.pitch === 0) delete nc.pitch;
+        stripClipDefaults(nc);
         const i = p.clips.findIndex(x => x.id === c.id);
         if (i >= 0) p.clips[i] = nc; else p.clips.push(nc);
       }

@@ -70,6 +70,13 @@ export class PatternOpError extends Error {}
 
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
+/** Drops the fields the engine's serde omits on write: swing only when non-zero, a note's
+ * `v` only when it is not exactly 1 (`skip_serializing_if`). */
+export function stripPatternDefaults(pt: Pattern): void {
+  if (!pt.swing) delete pt.swing;
+  for (const n of pt.notes) if (n.v === 1) delete n.v;
+}
+
 /** Project.migrate: derived pattern lengths, the starter kit when the Channel Rack is empty. */
 export function migrateProject(p: Project) {
   for (const pt of p.patterns) fitLen(pt);
@@ -107,8 +114,7 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, adopt: <T ex
         if (!n.ch) fail('every note needs `ch`');
       }
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
-      if (!pt.swing) delete pt.swing;
-      for (const n of pt.notes) if (n.v === 1) delete n.v;
+      stripPatternDefaults(pt);
       fitLen(pt);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);

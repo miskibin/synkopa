@@ -299,7 +299,7 @@ table and the empty project, for the in-browser mock) is generated from the engi
 
 **Parity by fixtures.** The browser mock is a second implementation of the engine's edit
 layer, so what the engine computes is written to files the UI replays instead of trusting
-comments. `crates/engine/tests/ui_ops_fixture.rs` runs 107 canonical op batches (every op,
+comments. `crates/engine/tests/ui_ops_fixture.rs` runs 108 canonical op batches (every op,
 happy and refused) through `ops::apply_all` and writes `ui/src/lib/__fixtures__/ops.json`;
 `opsParity.test.ts` replays them through `lib/applyOps.ts` (same resulting project, the
 engine's exact error strings — they are user-visible toasts) and `mockParity.test.ts`

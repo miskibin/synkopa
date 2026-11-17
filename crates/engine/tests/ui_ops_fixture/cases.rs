@@ -445,6 +445,16 @@ pub fn cases() -> Vec<Case> {
     ));
     c.push((
         "main",
+        "euclidFill at full velocity writes no velocities",
+        vec![Op::TransformNotes {
+            pattern: 20,
+            verb: TransformVerb::EuclidFill { ch: 30, k: 4, n: 8, rotate: 0, vel: 1.0 },
+            seed: None,
+            select: None,
+        }],
+    ));
+    c.push((
+        "main",
         "melody generates in the project's key and scale",
         vec![Op::TransformNotes {
             pattern: 20,

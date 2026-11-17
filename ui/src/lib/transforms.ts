@@ -331,8 +331,10 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
       let hits = 0;
       onsets.forEach((on, i) => {
         if (on) {
-          // every fourth emitted onset accents, whatever rotation does to the slots
-          target.push({ ch: verb.ch, step: Math.fround(i * slot), len: Math.fround(Math.min(1, Math.max(0.25, slot))), trig: true, ...(hits++ % 4 === 0 ? {} : { v: verb.vel ?? 0.7 }) }); // every fourth accents to full, written like the engine (v omitted at 1)
+          // every fourth emitted onset accents to full; like the engine's serde, `v` is
+          // written only when it is not exactly 1 (so vel 1 = no `v` at all)
+          const vel = verb.vel ?? 0.7;
+          target.push({ ch: verb.ch, step: Math.fround(i * slot), len: Math.fround(Math.min(1, Math.max(0.25, slot))), trig: true, ...(hits++ % 4 === 0 || vel === 1 ? {} : { v: vel }) });
         }
       });
       break;
