@@ -33,6 +33,32 @@ describe('What\'s new', () => {
     expect(store.get('wave.mock.seen')).toBe(MOCK_START);
   });
 
+  it('offers the demo project on the first start of a fresh install only', async () => {
+    const { a, store } = api();
+    const first = make(a).c; await first.init();
+    expect(first.state.welcome).toBe(false); // not before the launch's own project had its turn
+    first.offerWelcome(true);
+    expect(first.state.welcome).toBe(true);
+    first.closeWelcome();
+    first.offerWelcome(true);
+    expect(first.state.welcome).toBe(false); // asked once
+    const second = make(a).c; await second.init(); second.offerWelcome(true);
+    expect(second.state.welcome).toBe(false); // the next start
+    store.set('wave.mock.version', '0.9.3');
+    const updated = make(a).c; await updated.init(); updated.offerWelcome(true);
+    expect(updated.state.welcome).toBe(false); // an update is not a first start
+    expect(updated.state.news).not.toBeNull();
+  });
+
+  it('does not offer the demo project when the first start opened a project file', async () => {
+    const { c } = make(api().a);
+    await c.init();
+    c.offerWelcome(false);
+    expect(c.state.welcome).toBe(false);
+    c.offerWelcome(true);
+    expect(c.state.welcome).toBe(false);
+  });
+
   it('opens once after an update, with every version since the last one seen', async () => {
     const { a, store } = api();
     store.set('wave.mock.version', '0.9.3'); store.set('wave.mock.seen', '0.9.0');

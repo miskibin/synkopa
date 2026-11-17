@@ -5,6 +5,7 @@
 // It never restarts by itself: `install` runs only from a click, after the unsaved-changes question.
 // The "What's new" dialog is separate from the update: it shows once per new version, from the bundled
 // CHANGELOG, and covers every version since the last one whose notes were shown.
+// The very first start of a fresh install (never after an update) offers the demo project instead.
 import type { AppInfo, UpdateInfo, UpdateProgress } from '../api/types';
 import { releaseOf, releasesSince, type Release } from '../lib/changelog';
 
@@ -37,9 +38,11 @@ export interface UpdState {
   dialog: boolean;
   /** The What's new dialog's releases (null = closed). */
   news: Release[] | null;
+  /** The first-start question "open the demo project?" is open. */
+  welcome: boolean;
 }
 
-export const EMPTY_UPD: UpdState = { current: '', autoUpdate: true, phase: 'idle', info: null, done: 0, total: 0, error: null, upToDateAt: null, dialog: false, news: null };
+export const EMPTY_UPD: UpdState = { current: '', autoUpdate: true, phase: 'idle', info: null, done: 0, total: 0, error: null, upToDateAt: null, dialog: false, news: null, welcome: false };
 
 export interface UpdateHooks {
   /** Asks about unsaved changes before the restart; false = the user cancelled. */
@@ -55,6 +58,8 @@ export class UpdateController {
   private off: (() => void) | null = null;
   /** The release notes to mark as seen when the What's new dialog closes. */
   private pendingSeen: string | null = null;
+  /** This start is the first one of a fresh install (no version was ever recorded as seen). */
+  private fresh = false;
 
   constructor(private api: UpdatesApi, private log: Release[], private hooks: UpdateHooks, private onChange: (s: UpdState) => void) {}
 
@@ -66,13 +71,24 @@ export class UpdateController {
       const info = await this.api.appInfo();
       this.set({ current: info.version, autoUpdate: info.autoUpdate });
       this.off = await this.api.on('update-progress', p => { if (this.state.phase === 'downloading') this.set({ done: p.done, total: p.total }); });
-      if (info.seenVersion == null) await this.api.updateMarkSeen(info.version); // fresh install: nothing is "new"
+      if (info.seenVersion == null) { this.fresh = true; await this.api.updateMarkSeen(info.version); } // fresh install: nothing is "new"
       else if (info.seenVersion !== info.version) {
         const news = releasesSince(this.log, info.seenVersion, info.version);
         if (news.length) { this.pendingSeen = info.version; this.set({ news }); } else await this.api.updateMarkSeen(info.version); // no notes, or a downgrade
       }
     } catch (e) { console.warn('updates: init failed', e); }
   }
+
+  /**
+   * Once per installation: asks whether to open the demo project. `untouched` is false when this
+   * start already has the user's own work on screen (a project opened from a file, a recovery),
+   * which the question must not interrupt; it is then not asked later either.
+   */
+  offerWelcome(untouched: boolean) {
+    if (this.fresh && untouched) this.set({ welcome: true });
+    this.fresh = false;
+  }
+  closeWelcome() { this.set({ welcome: false }); }
 
   dispose() { this.off?.(); this.off = null; }
 

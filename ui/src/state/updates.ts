@@ -33,4 +33,6 @@ export const closeUpdateDialog = () => ctl?.closeDialog();
 export const setAutoUpdate = (on: boolean) => ctl?.setAuto(on);
 export const showWhatsNew = () => ctl?.showNotes();
 export const closeWhatsNew = () => ctl?.closeNews();
+export const offerWelcome = (untouched: boolean) => ctl?.offerWelcome(untouched);
+export const closeWelcome = () => ctl?.closeWelcome();
 export const openReleasePage = (version?: string | null) => ctl?.openReleasePage(version);

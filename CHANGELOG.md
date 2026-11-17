@@ -23,6 +23,9 @@ shown in the app after an update and is published as the release notes (see
   Dragging a point or turning a knob switches the envelope on. With it on, a note fades over
   the release from its note-off: a key let go or the end of a Piano Roll note. Off, the sample
   plays as recorded. A Channel Rack step still has no note-off and holds the sustain.
+- **The first start offers the demo project.** A fresh install asks once whether to open
+  OBSIDIAN 2093 or start empty. It does not ask after an update, or when WAVE was started by
+  opening a project file.
 
 ### Changed
 - **The sampler's One-shot / Gate switch is now the Envelope switch.** Envelope off plays the
@@ -30,6 +33,9 @@ shown in the app after an update and is published as the release notes (see
   belong to the envelope. Envelope on works like Gate, and a sized Piano Roll note now fades over
   the release from its end instead of stopping there. Projects keep their sound: a sampler that
   was in Gate mode or had an attack or a sustain below 100 % opens with its envelope on.
+- **The demo song OBSIDIAN 2093 has a reworked arrangement and mix**: extra vocal and pad
+  layers, an 808 cymbal, a new 808 turnaround, a Warp move on the dark vocal and tighter filter
+  and reverb transitions.
 
 ## 0.9.21 — 2026-11-17
 

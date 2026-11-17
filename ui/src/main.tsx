@@ -14,7 +14,7 @@ import { watchAudio } from './state/audioWatch';
 import { App } from './App';
 import { initTheme } from './ui/theme';
 import { initPrefs } from './state/prefs';
-import { initUpdates } from './state/updates';
+import { initUpdates, offerWelcome } from './state/updates';
 import { t } from './lib/i18n';
 import { loadStdLib } from './state/library';
 import { offerRecovery, projectOpen } from './state/actions';
@@ -46,7 +46,7 @@ async function boot() {
   render(() => <App />, root);
   // nothing on the playlist yet: start on the Channel Rack, where a beat begins (FL)
   if (!S.project.clips.length && S.project.patterns.length) openRack();
-  void initUpdates(); // version, "What's new" after an update, the first automatic check
+  const updatesReady = initUpdates(); // version, "What's new" after an update, the first automatic check
   let offerStartupRecovery = true;
   let projectOpens = Promise.resolve();
   const openRequestedProjects = () => {
@@ -63,6 +63,8 @@ async function boot() {
   };
   await be.on('project-open-requested', openRequestedProjects);
   openRequestedProjects(); // also catch launches received while the webview was starting
+  // the first start of a fresh install offers the demo project, unless it began with the user's own file
+  void Promise.all([updatesReady, projectOpens]).then(() => offerWelcome(!S.path && !S.dirty));
 }
 
 boot().catch(e => {

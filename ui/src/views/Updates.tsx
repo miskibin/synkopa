@@ -3,7 +3,8 @@ import { createMemo, For, Match, Show, Switch } from 'solid-js';
 import { lang, t } from '../lib/i18n';
 import { parseNotes, type Block, type Inline } from '../lib/changelog';
 import type { Release } from '../lib/changelog';
-import { checkUpdates, closeUpdateDialog, closeWhatsNew, installUpdate, openReleasePage, openUpdateDialog, setAutoUpdate, showWhatsNew, startUpdate, upd } from '../state/updates';
+import { projectNew } from '../state/actions';
+import { checkUpdates, closeUpdateDialog, closeWelcome, closeWhatsNew, installUpdate, openReleasePage, openUpdateDialog, setAutoUpdate, showWhatsNew, startUpdate, upd } from '../state/updates';
 
 const mb = (n: number) => (n / 1e6).toFixed(n >= 1e8 ? 0 : 1);
 
@@ -58,7 +59,7 @@ function ReleaseLink(p: { version: string | null }) {
 }
 
 export function Updates() {
-  return <><UpdateDialog /><WhatsNewDialog /></>;
+  return <><UpdateDialog /><WhatsNewDialog /><WelcomeDialog /></>;
 }
 
 function UpdateDialog() {
@@ -160,5 +161,27 @@ export function UpdatesSettings(p: { OnOff: (a: { on: () => boolean; set: (v: bo
         </div>
       </div>
     </>
+  );
+}
+
+/** The first start of a fresh install: start on the demo song or on the empty project that is already open. */
+function WelcomeDialog() {
+  const openDemo = () => { closeWelcome(); void projectNew(true); };
+  return (
+    <Show when={upd().welcome}>
+      <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => closeWelcome()}>
+        <div class="dialog upddlg" role="dialog" aria-modal="true" aria-label={t('d.welcome.title')} onPointerDown={e => e.stopPropagation()}
+          onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') closeWelcome(); }}>
+          <div class="hd"><span>{t('d.welcome.title')}</span><button aria-label={t('d.upd.btn.close')} onClick={() => closeWelcome()}>×</button></div>
+          <div class="updmsg">{t('d.welcome.body')}</div>
+          <div class="updmsg muted">{t('d.welcome.later')}</div>
+          <div class="updfoot">
+            <div style={{ flex: 1 }} />
+            <button class="smallbtn" onClick={() => closeWelcome()}>{t('d.welcome.empty')}</button>
+            <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={openDemo}>{t('d.welcome.demo')}</button>
+          </div>
+        </div>
+      </div>
+    </Show>
   );
 }

@@ -1,0 +1,8390 @@
+{
+ "automations": [
+  {
+   "color": "#69c3d6",
+   "id": 1027,
+   "name": "Beat Low-Pass Filter",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 0.47999998927116394
+    },
+    {
+     "t": 4.0,
+     "v": 0.5400000214576721
+    },
+    {
+     "t": 14.5,
+     "v": 0.7799999713897705
+    },
+    {
+     "t": 16.0,
+     "tension": 1.0,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 44.0,
+     "v": 1.0
+    },
+    {
+     "t": 48.0,
+     "tension": 0.41999998688697815,
+     "v": 0.42424124479293823
+    },
+    {
+     "t": 48.0,
+     "tension": 0.25,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 79.6,
+     "v": 1.0
+    },
+    {
+     "t": 81.5,
+     "tension": 0.30000001192092896,
+     "v": 0.5199999809265137
+    },
+    {
+     "t": 87.0,
+     "v": 0.4650000035762787
+    },
+    {
+     "t": 95.0,
+     "tension": 0.15000000596046448,
+     "v": 0.6200000047683716
+    },
+    {
+     "shape": "hold",
+     "t": 95.6,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 124.0,
+     "v": 1.0
+    },
+    {
+     "t": 127.4,
+     "tension": 0.4000000059604645,
+     "v": 0.5600000023841858
+    },
+    {
+     "t": 128.1,
+     "tension": 0.25,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 143.6,
+     "v": 1.0
+    },
+    {
+     "t": 144.8,
+     "tension": 0.25,
+     "v": 0.6200000047683716
+    },
+    {
+     "t": 160.0,
+     "v": 0.3199999928474426
+    }
+   ],
+   "target": {
+    "fxId": 930,
+    "kind": "fx",
+    "param": "band:6:f"
+   }
+  },
+  {
+   "color": "#b07cf0",
+   "id": 1028,
+   "name": "Beat Half-Speed",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 12.0,
+     "v": 1.0
+    },
+    {
+     "t": 15.8,
+     "tension": 1.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 80.0,
+     "v": 0.0
+    },
+    {
+     "t": 80.6,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 95.5,
+     "v": 1.0
+    },
+    {
+     "shape": "hold",
+     "t": 95.8,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 125.0,
+     "v": 0.0
+    },
+    {
+     "t": 125.8,
+     "v": 0.8500000238418579
+    },
+    {
+     "t": 127.9,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 143.8,
+     "v": 0.0
+    },
+    {
+     "t": 144.5,
+     "v": 1.0
+    },
+    {
+     "t": 160.0,
+     "v": 1.0
+    }
+   ],
+   "target": {
+    "fxId": 928,
+    "kind": "fx",
+    "param": "mix"
+   }
+  },
+  {
+   "color": "#47b8a8",
+   "id": 1029,
+   "name": "Beat Reverb Wash",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 0.3199999928474426
+    },
+    {
+     "t": 14.5,
+     "v": 0.23999999463558197
+    },
+    {
+     "t": 16.6,
+     "tension": 1.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 44.0,
+     "v": 0.0
+    },
+    {
+     "t": 47.6,
+     "tension": 0.20000000298023224,
+     "v": 0.25999999046325684
+    },
+    {
+     "t": 48.6,
+     "tension": -1.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 80.0,
+     "v": 0.0
+    },
+    {
+     "t": 81.0,
+     "v": 0.23999999463558197
+    },
+    {
+     "t": 94.8,
+     "tension": 0.20000000298023224,
+     "v": 0.4000000059604645
+    },
+    {
+     "shape": "hold",
+     "t": 95.7,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 124.5,
+     "v": 0.0
+    },
+    {
+     "t": 127.5,
+     "tension": 0.20000000298023224,
+     "v": 0.23999999463558197
+    },
+    {
+     "t": 128.5,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 143.8,
+     "v": 0.0
+    },
+    {
+     "t": 144.8,
+     "v": 0.3799999952316284
+    },
+    {
+     "t": 160.0,
+     "v": 0.44999998807907104
+    }
+   ],
+   "target": {
+    "fxId": 929,
+    "kind": "fx",
+    "param": "mix"
+   }
+  },
+  {
+   "color": "#e0a44a",
+   "id": 1030,
+   "name": "Synths Kick Pocket",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 16.0,
+     "v": 0.7200000286102295
+    },
+    {
+     "shape": "hold",
+     "t": 48.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 64.0,
+     "v": 0.550000011920929
+    },
+    {
+     "shape": "hold",
+     "t": 80.0,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 96.0,
+     "v": 0.7799999713897705
+    },
+    {
+     "shape": "hold",
+     "t": 144.0,
+     "v": 0.0
+    },
+    {
+     "t": 160.0,
+     "v": 0.0
+    }
+   ],
+   "target": {
+    "fxId": 918,
+    "kind": "fx",
+    "param": "vmix"
+   }
+  },
+  {
+   "color": "#5aa9e6",
+   "id": 1031,
+   "name": "Glide Moog Cutoff",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 0.5849999785423279
+    },
+    {
+     "t": 24.0,
+     "tension": 0.15000000596046448,
+     "v": 0.6380000114440918
+    },
+    {
+     "shape": "double",
+     "t": 32.0,
+     "v": 0.5950000286102295
+    }
+   ],
+   "target": {
+    "chanId": 1024,
+    "kind": "synth",
+    "param": "flt_cutoff"
+   }
+  },
+  {
+   "color": "#d9678f",
+   "id": 1032,
+   "name": "Switch Cut & Outro Fade",
+   "points": [
+    {
+     "t": 0.0,
+     "v": 0.699999988079071
+    },
+    {
+     "shape": "hold",
+     "t": 94.82,
+     "v": 0.699999988079071
+    },
+    {
+     "t": 94.98,
+     "v": 0.0
+    },
+    {
+     "shape": "hold",
+     "t": 95.96,
+     "v": 0.0
+    },
+    {
+     "t": 96.0,
+     "v": 0.699999988079071
+    },
+    {
+     "shape": "hold",
+     "t": 124.5,
+     "v": 0.699999988079071
+    },
+    {
+     "t": 127.4,
+     "v": 0.75
+    },
+    {
+     "t": 128.0,
+     "v": 0.699999988079071
+    },
+    {
+     "shape": "hold",
+     "t": 151.0,
+     "v": 0.699999988079071
+    },
+    {
+     "shape": "double",
+     "t": 160.0,
+     "v": 0.0
+    }
+   ],
+   "target": {
+    "id": 11,
+    "kind": "insertVol"
+   }
+  },
+  {
+   "color": "#3fd0c9",
+   "id": 1862,
+   "name": "Vox · Warp · Mix",
+   "points": [
+    {
+     "t": 2.0,
+     "v": 0.0
+    },
+    {
+     "t": 2.0,
+     "v": 1.0
+    },
+    {
+     "t": 4.0,
+     "v": 1.0
+    },
+    {
+     "t": 4.0,
+     "v": 0.0
+    }
+   ],
+   "target": {
+    "fxId": 1861,
+    "kind": "mix"
+   }
+  }
+ ],
+ "bpm": 136.0,
+ "channels": [
+  {
+   "color": "#4f8ef7",
+   "id": 1001,
+   "insert": 7,
+   "kind": "sample",
+   "mute": false,
+   "name": "Kick",
+   "pan": 0.0,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 0.5400000214576721,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 24.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1000,
+   "vol": 0.8500000238418579
+  },
+  {
+   "color": "#d9678f",
+   "id": 1003,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Clap Crisp",
+   "pan": 0.0,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1002,
+   "vol": 0.699999988079071
+  },
+  {
+   "color": "#d9678f",
+   "id": 1005,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Clap Body",
+   "pan": 0.0,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 0.6499999761581421,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 42.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1004,
+   "vol": 0.6700000166893005
+  },
+  {
+   "color": "#d9678f",
+   "id": 1007,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Wide Clap",
+   "pan": 0.05999999865889549,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 0.550000011920929,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 55.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": -1,
+    "start": 0.009999999776482582,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1006,
+   "vol": 0.6399999856948853
+  },
+  {
+   "color": "#d9678f",
+   "id": 1009,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Snare",
+   "pan": -0.03999999910593033,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1008,
+   "vol": 0.6800000071525574
+  },
+  {
+   "color": "#d9678f",
+   "id": 1011,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Rev Clap",
+   "pan": -0.14000000059604645,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 0.9599999785423279,
+    "fadeInMs": 35.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": true,
+    "semi": 0,
+    "start": 0.44999998807907104,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1010,
+   "vol": 0.5199999809265137
+  },
+  {
+   "color": "#d9678f",
+   "id": 1013,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Bounce Snare",
+   "pan": -0.1599999964237213,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1012,
+   "vol": 0.6299999952316284
+  },
+  {
+   "color": "#d9678f",
+   "id": 1015,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Rim",
+   "pan": 0.18000000715255737,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 0,
+    "decay": 0.0,
+    "end": 0.23999999463558197,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 22.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1014,
+   "vol": 0.6499999761581421
+  },
+  {
+   "color": "#e0a44a",
+   "id": 1017,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Hat",
+   "pan": 0.10000000149011612,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 1,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1016,
+   "vol": 0.6399999856948853
+  },
+  {
+   "color": "#e0a44a",
+   "id": 1019,
+   "insert": 8,
+   "kind": "sample",
+   "mute": false,
+   "name": "Open Hat",
+   "pan": -0.18000000715255737,
+   "root": 60,
+   "sampler": {
+    "attack": 0.0,
+    "cut": 1,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": false,
+    "norm": false,
+    "release": 20.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1018,
+   "vol": 0.6100000143051147
+  },
+  {
+   "color": "#7c8cf8",
+   "id": 1021,
+   "insert": 6,
+   "kind": "sample",
+   "mute": false,
+   "name": "808 Spin",
+   "pan": 0.0,
+   "root": 24,
+   "sampler": {
+    "attack": 28.0,
+    "cut": 2,
+    "decay": 0.0,
+    "end": 1.0,
+    "fadeInMs": 0.0,
+    "fadeOutMs": 0.0,
+    "fine": 0.0,
+    "gate": true,
+    "norm": false,
+    "release": 75.0,
+    "reverse": false,
+    "semi": 0,
+    "start": 0.0,
+    "sustain": 1.0
+   },
+   "solo": false,
+   "source": 1020,
+   "vol": 0.7799999713897705
+  },
+  {
+   "color": "#7c8cf8",
+   "id": 1022,
+   "insert": 2,
+   "kind": "synth",
+   "mute": false,
+   "name": "Obsidian Sub",
+   "pan": 0.0,
+   "root": 60,
+   "solo": false,
+   "synth": {
+    "params": {
+     "amp_a": 65.0,
+     "amp_d": 300.0,
+     "amp_r": 340.0,
+     "amp_s": 100.0,
+     "flt_cutoff": 175.0,
+     "flt_drive": 55.0,
+     "flt_env": 0.0,
+     "flt_key": 0.0,
+     "flt_res": 10.0,
+     "flt_type": 1.0,
+     "fx_chorus": 15.0,
+     "fx_delay": 0.0,
+     "fx_dfb": 35.0,
+     "fx_drive": 30.0,
+     "fx_dtime": 3.0,
+     "fx_out": -15.5,
+     "fx_reverb": 0.0,
+     "fx_rsize": 1.8,
+     "l1_rate": 0.25,
+     "l1_sync": 0.0,
+     "l1_wave": 0.0,
+     "l2_rate": 0.5,
+     "l2_sync": 0.0,
+     "l2_wave": 0.0,
+     "m1_amt": 10.0,
+     "m1_dst": 7.0,
+     "m1_src": 2.0,
+     "m2_amt": 0.0,
+     "m2_dst": 0.0,
+     "m2_src": 0.0,
+     "m3_amt": 0.0,
+     "m3_dst": 3.0,
+     "m3_src": 0.0,
+     "m4_amt": 0.0,
+     "m4_dst": 9.0,
+     "m4_src": 0.0,
+     "mod_a": 1.0,
+     "mod_d": 300.0,
+     "mod_r": 200.0,
+     "mod_s": 0.0,
+     "noise_color": 0.0,
+     "noise_level": 0.0,
+     "o1_coarse": 0.0,
+     "o1_level": 70.0,
+     "o1_shape": 0.0,
+     "o1_wave": 2.0,
+     "o2_coarse": 0.0,
+     "o2_fine": -17.0,
+     "o2_level": 70.0,
+     "o2_shape": 0.0,
+     "o2_wave": 2.0,
+     "sub_level": 35.0,
+     "sub_oct": 0.0,
+     "uni_detune": 38.0,
+     "uni_voices": 2.0,
+     "uni_width": 70.0,
+     "v_glide": 80.0,
+     "v_mode": 2.0
+    },
+    "preset": "Reese Szeroki"
+   },
+   "vol": 0.6600000262260437
+  },
+  {
+   "color": "#69c3d6",
+   "id": 1023,
+   "insert": 3,
+   "kind": "synth",
+   "mute": false,
+   "name": "Ghost Bell",
+   "pan": 0.0,
+   "root": 60,
+   "solo": false,
+   "synth": {
+    "params": {
+     "amp_a": 22.0,
+     "amp_d": 2200.0,
+     "amp_r": 1100.0,
+     "amp_s": 0.0,
+     "flt_cutoff": 2100.0,
+     "flt_drive": 0.0,
+     "flt_env": 1.0,
+     "flt_key": 0.0,
+     "flt_res": 8.0,
+     "flt_type": 1.0,
+     "fx_chorus": 22.0,
+     "fx_delay": 0.0,
+     "fx_dfb": 35.0,
+     "fx_drive": 0.0,
+     "fx_dtime": 3.0,
+     "fx_out": 5.5,
+     "fx_reverb": 35.0,
+     "fx_rsize": 2.6,
+     "l1_rate": 0.65,
+     "l1_sync": 0.0,
+     "l1_wave": 0.0,
+     "l2_rate": 0.5,
+     "l2_sync": 0.0,
+     "l2_wave": 0.0,
+     "m1_amt": 12.0,
+     "m1_dst": 6.0,
+     "m1_src": 1.0,
+     "m2_amt": 0.3,
+     "m2_dst": 0.0,
+     "m2_src": 2.0,
+     "m3_amt": 0.0,
+     "m3_dst": 3.0,
+     "m3_src": 0.0,
+     "m4_amt": 0.0,
+     "m4_dst": 9.0,
+     "m4_src": 0.0,
+     "mod_a": 1.0,
+     "mod_d": 350.0,
+     "mod_r": 200.0,
+     "mod_s": 0.0,
+     "noise_color": 0.0,
+     "noise_level": 0.0,
+     "o1_coarse": 0.0,
+     "o1_level": 75.0,
+     "o1_shape": 20.0,
+     "o1_wave": 1.0,
+     "o2_coarse": 12.0,
+     "o2_fine": 7.0,
+     "o2_level": 35.0,
+     "o2_shape": 0.0,
+     "o2_wave": 0.0,
+     "sub_level": 18.0,
+     "sub_oct": 0.0,
+     "uni_detune": 25.0,
+     "uni_voices": 0.0,
+     "uni_width": 70.0,
+     "v_glide": 0.0,
+     "v_mode": 0.0
+    },
+    "preset": "Dzwonek Ciepły"
+   },
+   "vol": 0.7400000095367432
+  },
+  {
+   "color": "#5aa9e6",
+   "id": 1024,
+   "insert": 4,
+   "kind": "synth",
+   "mute": false,
+   "name": "Analog Glide",
+   "pan": 0.0,
+   "root": 60,
+   "solo": false,
+   "synth": {
+    "params": {
+     "amp_a": 65.0,
+     "amp_d": 300.0,
+     "amp_r": 520.0,
+     "amp_s": 100.0,
+     "flt_cutoff": 1350.0,
+     "flt_drive": 22.0,
+     "flt_env": 0.0,
+     "flt_key": 0.0,
+     "flt_res": 6.0,
+     "flt_type": 1.0,
+     "fx_chorus": 40.0,
+     "fx_delay": 15.0,
+     "fx_dfb": 35.0,
+     "fx_drive": 0.0,
+     "fx_dtime": 4.0,
+     "fx_out": -13.5,
+     "fx_reverb": 42.0,
+     "fx_rsize": 2.4,
+     "l1_rate": 5.2,
+     "l1_sync": 0.0,
+     "l1_wave": 0.0,
+     "l2_rate": 0.5,
+     "l2_sync": 0.0,
+     "l2_wave": 0.0,
+     "m1_amt": 0.313,
+     "m1_dst": 0.0,
+     "m1_src": 2.0,
+     "m2_amt": 0.833,
+     "m2_dst": 0.0,
+     "m2_src": 8.0,
+     "m3_amt": 0.0,
+     "m3_dst": 3.0,
+     "m3_src": 0.0,
+     "m4_amt": 0.0,
+     "m4_dst": 9.0,
+     "m4_src": 0.0,
+     "mod_a": 1.0,
+     "mod_d": 300.0,
+     "mod_r": 200.0,
+     "mod_s": 0.0,
+     "noise_color": 0.0,
+     "noise_level": 0.0,
+     "o1_coarse": 0.0,
+     "o1_level": 68.0,
+     "o1_shape": 0.0,
+     "o1_wave": 2.0,
+     "o2_coarse": 0.0,
+     "o2_fine": 0.0,
+     "o2_level": 40.0,
+     "o2_shape": 0.0,
+     "o2_wave": 1.0,
+     "sub_level": 0.0,
+     "sub_oct": 0.0,
+     "uni_detune": 28.0,
+     "uni_voices": 2.0,
+     "uni_width": 90.0,
+     "v_glide": 145.0,
+     "v_mode": 2.0
+    },
+    "preset": "Lead Gwizdek"
+   },
+   "vol": 0.6499999761581421
+  }
+ ],
+ "clips": [
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -2.0,
+   "id": 1,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 0.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -2.5,
+   "id": 2,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 16.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -2.5,
+   "id": 3,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 32.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -3.0,
+   "id": 4,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 48.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -2.5,
+   "id": 5,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 64.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.07999999821186066,
+   "gain": -2.0,
+   "id": 6,
+   "kind": "audio",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 80.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -3.5,
+   "id": 7,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 112.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.03999999910593033,
+   "fadeOut": 0.05999999865889549,
+   "gain": -2.5,
+   "id": 8,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": -11.0,
+   "ref": 1873,
+   "rev": false,
+   "start": 128.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.3499999940395355,
+   "fadeOut": 2.4000000953674316,
+   "gain": -3.0,
+   "id": 9,
+   "kind": "audio",
+   "len": 8.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": 1.0,
+   "ref": 1025,
+   "rev": false,
+   "start": 144.0,
+   "stretch": 0.8823529411764706,
+   "track": 0
+  },
+  {
+   "fadeIn": 0.3499999940395355,
+   "fadeOut": 0.07999999821186066,
+   "gain": -3.5,
+   "id": 10,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": false,
+   "start": 0.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.10000000149011612,
+   "fadeOut": 0.07999999821186066,
+   "gain": -4.5,
+   "id": 11,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": false,
+   "start": 32.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.15000000596046448,
+   "fadeOut": 0.07999999821186066,
+   "gain": -3.5,
+   "id": 12,
+   "kind": "audio",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": false,
+   "start": 80.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.05000000074505806,
+   "fadeOut": 0.07999999821186066,
+   "gain": -3.0,
+   "id": 13,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": true,
+   "start": 96.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.07999999821186066,
+   "fadeOut": 0.07999999821186066,
+   "gain": -4.0,
+   "id": 14,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": true,
+   "start": 112.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.10000000149011612,
+   "fadeOut": 0.07999999821186066,
+   "gain": 0.36363768577575684,
+   "id": 15,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1876,
+   "rev": false,
+   "start": 128.0,
+   "stretch": 0.8088235294117647,
+   "track": 3
+  },
+  {
+   "fadeIn": 0.07999999821186066,
+   "fadeOut": 3.799999952316284,
+   "gain": -3.5,
+   "id": 16,
+   "kind": "audio",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1026,
+   "rev": false,
+   "start": 144.0,
+   "stretch": 0.8088235294117647,
+   "track": 2
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 17,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 11,
+   "rev": false,
+   "start": 32.0,
+   "track": 4
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 18,
+   "kind": "pat",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 11,
+   "rev": false,
+   "start": 80.0,
+   "track": 4
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 19,
+   "kind": "pat",
+   "len": 32.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 11,
+   "rev": false,
+   "start": 96.0,
+   "track": 4
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 20,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 11,
+   "rev": false,
+   "start": 128.0,
+   "track": 4
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 21,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 12,
+   "rev": false,
+   "start": 112.0,
+   "track": 5
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 22,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 13,
+   "rev": false,
+   "start": 128.0,
+   "track": 5
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 23,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1,
+   "rev": false,
+   "start": 0.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 24,
+   "kind": "pat",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1,
+   "rev": false,
+   "start": 80.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 25,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 3,
+   "rev": false,
+   "start": 16.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 26,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 3,
+   "rev": false,
+   "start": 96.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 27,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1872,
+   "rev": false,
+   "start": 32.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 28,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 4,
+   "rev": false,
+   "start": 128.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 29,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 5,
+   "rev": false,
+   "start": 48.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 30,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 5,
+   "rev": false,
+   "start": 144.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 31,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 2,
+   "rev": false,
+   "start": 64.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 32,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 2,
+   "rev": false,
+   "start": 112.0,
+   "track": 6
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 33,
+   "kind": "pat",
+   "len": 32.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 6,
+   "rev": false,
+   "start": 16.0,
+   "track": 7
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 34,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 6,
+   "rev": false,
+   "start": 64.0,
+   "track": 7
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 35,
+   "kind": "pat",
+   "len": 48.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 6,
+   "rev": false,
+   "start": 96.0,
+   "track": 7
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 36,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 8,
+   "rev": false,
+   "start": 0.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 37,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 8,
+   "rev": false,
+   "start": 48.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 38,
+   "kind": "pat",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 8,
+   "rev": false,
+   "start": 80.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 39,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 8,
+   "rev": false,
+   "start": 144.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 40,
+   "kind": "pat",
+   "len": 32.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 7,
+   "rev": false,
+   "start": 16.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 41,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 7,
+   "rev": false,
+   "start": 64.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 42,
+   "kind": "pat",
+   "len": 48.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 7,
+   "rev": false,
+   "start": 96.0,
+   "track": 8
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 43,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 9,
+   "rev": false,
+   "start": 0.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 44,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 9,
+   "rev": false,
+   "start": 64.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 45,
+   "kind": "pat",
+   "len": 15.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 9,
+   "rev": false,
+   "start": 80.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 46,
+   "kind": "pat",
+   "len": 16.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 9,
+   "rev": false,
+   "start": 144.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 47,
+   "kind": "pat",
+   "len": 32.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 10,
+   "rev": false,
+   "start": 16.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 48,
+   "kind": "pat",
+   "len": 48.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 10,
+   "rev": false,
+   "start": 96.0,
+   "track": 9
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 49,
+   "kind": "auto",
+   "len": 160.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1027,
+   "rev": false,
+   "start": 0.0,
+   "track": 10
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 50,
+   "kind": "auto",
+   "len": 160.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1028,
+   "rev": false,
+   "start": 0.0,
+   "track": 11
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 51,
+   "kind": "auto",
+   "len": 160.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1029,
+   "rev": false,
+   "start": 0.0,
+   "track": 12
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 52,
+   "kind": "auto",
+   "len": 160.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1030,
+   "rev": false,
+   "start": 0.0,
+   "track": 13
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 53,
+   "kind": "auto",
+   "len": 32.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1031,
+   "rev": false,
+   "start": 112.0,
+   "track": 14
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 54,
+   "kind": "auto",
+   "len": 160.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "ref": 1032,
+   "rev": false,
+   "start": 0.0,
+   "track": 15
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": 0.0,
+   "id": 1863,
+   "kind": "auto",
+   "len": 51.5,
+   "muted": false,
+   "norm": false,
+   "offset": -44.0,
+   "pan": 0.0,
+   "ref": 1862,
+   "rev": false,
+   "start": 0.0,
+   "track": 5
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": -7.483637809753418,
+   "id": 1866,
+   "insert": 1868,
+   "kind": "audio",
+   "len": 8.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": -4.0,
+   "ref": 1865,
+   "rev": true,
+   "start": 8.0,
+   "stretch": 1.529625658,
+   "track": 4
+  },
+  {
+   "fadeIn": 0.0,
+   "fadeOut": 0.0,
+   "gain": -7.483637809753418,
+   "id": 1875,
+   "insert": 1868,
+   "kind": "audio",
+   "len": 8.0,
+   "muted": false,
+   "norm": false,
+   "offset": 0.0,
+   "pan": 0.0,
+   "pitch": -4.0,
+   "ref": 1865,
+   "rev": true,
+   "start": 120.0,
+   "stretch": 1.529625658,
+   "track": 1
+  }
+ ],
+ "comps": [],
+ "inserts": [
+  {
+   "color": "#d5dae2",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 30.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 80.0,
+       "g": 1.5,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": -0.5,
+       "on": true,
+       "place": "stereo",
+       "q": 0.6,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 10000.0,
+       "g": 1.5,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 901,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 8,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 902,
+     "mix": 1.0,
+     "params": {
+      "auto": 1.0,
+      "drive": 12.0,
+      "highcut": 18000.0,
+      "hq": 0.0,
+      "lowcut": 10.0,
+      "mix": 35.0,
+      "out": 0.0,
+      "punish": 0.0,
+      "steep": 0.0,
+      "style": 0.0,
+      "thump": 0.0,
+      "tone": 0.0
+     },
+     "preset": 8,
+     "type": "sat"
+    },
+    {
+     "bypass": false,
+     "id": 903,
+     "mix": 1.0,
+     "params": {
+      "auto": 1.0,
+      "ceil": -0.9,
+      "gain": 3.4,
+      "link": 100.0,
+      "look": 1.5,
+      "out": 0.0,
+      "rel": 35.0
+     },
+     "preset": 1,
+     "type": "limit"
+    }
+   ],
+   "id": 0,
+   "muted": false,
+   "name": "Master",
+   "pan": 0.0,
+   "solo": false,
+   "vol": 0.7936999797821045,
+   "width": 1.0
+  },
+  {
+   "color": "#9a8cf0",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 150.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 904,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 11,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 905,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 4.5,
+      "early": 50.0,
+      "hi": 7000.0,
+      "lo": 300.0,
+      "mix": 20.0,
+      "mod": 50.0,
+      "pre": 25.0,
+      "size": 1.0,
+      "space": 0.0,
+      "tone": 0.0,
+      "width": 100.0
+     },
+     "preset": 0,
+     "type": "reverb"
+    },
+    {
+     "bypass": false,
+     "id": 1861,
+     "maps": {
+      "time": [
+       {
+        "name": "Bez zmian",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Half-time — cały takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co ćwierćnutę",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Stutter — 1. ćwierćnuta ×4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.625
+         },
+         {
+          "t": 4.0,
+          "v": 0.625
+         }
+        ]
+       },
+       {
+        "name": "Stutter 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/16 na końcu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.90625
+         },
+         {
+          "t": 4.0,
+          "v": 0.90625
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/32 — pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.765625
+         },
+         {
+          "t": 4.0,
+          "v": 0.765625
+         }
+        ]
+       },
+       {
+        "name": "Tape stop — druga połowa",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 4.0,
+          "tension": -1.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Tape start — początek",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 2.0,
+          "tension": 1.0,
+          "v": 0.840844988822937
+         },
+         {
+          "t": 4.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Reverse — każda ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.75
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Reverse — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.5
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.5
+         }
+        ]
+       },
+       {
+        "name": "Scratch",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Kwinta w dół (2/3)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.8333330154418945
+         }
+        ]
+       },
+       {
+        "name": "Dogonienie ×2 — ostatnia ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Reverse — poprzedni takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       }
+      ],
+      "vol": [
+       {
+        "name": "Pełna głośność",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/4 — delikatny",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.5
+         },
+         {
+          "t": 0.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.5
+         },
+         {
+          "t": 1.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.5
+         },
+         {
+          "t": 2.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.5
+         },
+         {
+          "t": 3.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": 1.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Trance gate 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.25,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/4 — pół na pół",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade in (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.4000000059604645,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade out (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "tension": -0.4000000059604645,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ćwierćnucie",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ósemce",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Tylko offbeaty",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Tremolo 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 0.30000001192092896
+         }
+        ]
+       },
+       {
+        "name": "Swell co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "tension": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.5,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Pełna głośność (wolny slot)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       }
+      ]
+     },
+     "mix": 0.0,
+     "params": {
+      "att": 0.0,
+      "attack": 1.0,
+      "click": 1.0,
+      "dc": 1.0,
+      "hold": 0.0,
+      "oneshot": 0.0,
+      "pos": 0.0,
+      "rel": 0.0,
+      "tmix": 100.0,
+      "tns": 0.0,
+      "trig": 0.0,
+      "tslot": 0.0,
+      "vmix": 100.0,
+      "vslot": 4.0
+     },
+     "preset": 0,
+     "type": "warp"
+    }
+   ],
+   "id": 1,
+   "master": false,
+   "muted": false,
+   "name": "Vox",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 5
+    },
+    {
+     "gain": 0.1599999964237213,
+     "to": 10
+    }
+   ],
+   "solo": false,
+   "vol": 0.7400000095367432,
+   "width": 1.2000000476837158
+  },
+  {
+   "color": "#47b8a8",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 60.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "dynamic": {
+        "range": -3.5,
+        "thr": -22.0
+       },
+       "f": 185.0,
+       "g": -2.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.3,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 300.0,
+       "g": -4.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.5,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 906,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 4,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 907,
+     "mix": 1.0,
+     "params": {
+      "center": 900.0,
+      "depth": 80.0,
+      "div": 5.0,
+      "fb": 40.0,
+      "mix": 20.0,
+      "rate": 0.4,
+      "stages": 3.0,
+      "stereo": 90.0,
+      "sync": 1.0
+     },
+     "preset": 7,
+     "type": "phaser"
+    },
+    {
+     "bypass": false,
+     "id": 908,
+     "mix": 1.0,
+     "params": {
+      "delay": 14.0,
+      "depth": 55.0,
+      "div": 4.0,
+      "fb": 0.0,
+      "hp": 190.0,
+      "mix": 28.0,
+      "mode": 1.0,
+      "rate": 0.5,
+      "sync": 0.0,
+      "tone": 16000.0,
+      "width": 180.0
+     },
+     "preset": 2,
+     "type": "chorus"
+    }
+   ],
+   "id": 2,
+   "master": false,
+   "muted": false,
+   "name": "Pad",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 5
+    }
+   ],
+   "solo": false,
+   "vol": 0.7099999785423279,
+   "width": 1.2999999523162842
+  },
+  {
+   "color": "#69c3d6",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 220.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 2200.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 909,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 6,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 910,
+     "mix": 1.0,
+     "params": {
+      "delay": 5.0,
+      "depth": 70.0,
+      "div": 4.0,
+      "fb": 0.0,
+      "hp": 80.0,
+      "mix": 45.0,
+      "mode": 0.0,
+      "rate": 0.5,
+      "sync": 0.0,
+      "tone": 4200.0,
+      "width": 160.0
+     },
+     "preset": 3,
+     "type": "chorus"
+    },
+    {
+     "bypass": false,
+     "id": 911,
+     "maps": {
+      "time": [
+       {
+        "name": "Bez zmian",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Half-time — cały takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co ćwierćnutę",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Stutter — 1. ćwierćnuta ×4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.625
+         },
+         {
+          "t": 4.0,
+          "v": 0.625
+         }
+        ]
+       },
+       {
+        "name": "Stutter 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/16 na końcu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.90625
+         },
+         {
+          "t": 4.0,
+          "v": 0.90625
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/32 — pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.765625
+         },
+         {
+          "t": 4.0,
+          "v": 0.765625
+         }
+        ]
+       },
+       {
+        "name": "Tape stop — druga połowa",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 4.0,
+          "tension": -1.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Tape start — początek",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 2.0,
+          "tension": 1.0,
+          "v": 0.840844988822937
+         },
+         {
+          "t": 4.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Reverse — każda ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.75
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Reverse — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.5
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.5
+         }
+        ]
+       },
+       {
+        "name": "Scratch",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Kwinta w dół (2/3)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.8333330154418945
+         }
+        ]
+       },
+       {
+        "name": "Dogonienie ×2 — ostatnia ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Reverse — poprzedni takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       }
+      ],
+      "vol": [
+       {
+        "name": "Pełna głośność",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/4 — delikatny",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.5
+         },
+         {
+          "t": 0.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.5
+         },
+         {
+          "t": 1.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.5
+         },
+         {
+          "t": 2.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.5
+         },
+         {
+          "t": 3.5,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": 1.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Trance gate 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.25,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/4 — pół na pół",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade in (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.4000000059604645,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade out (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "tension": -0.4000000059604645,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ćwierćnucie",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ósemce",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Tylko offbeaty",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Tremolo 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 0.30000001192092896
+         }
+        ]
+       },
+       {
+        "name": "Swell co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "tension": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.5,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Pełna głośność (wolny slot)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       }
+      ]
+     },
+     "mix": 1.0,
+     "params": {
+      "att": 0.0,
+      "attack": 1.0,
+      "click": 1.0,
+      "dc": 1.0,
+      "hold": 0.0,
+      "oneshot": 0.0,
+      "pos": 0.0,
+      "rel": 0.0,
+      "tmix": 55.0,
+      "tns": 0.0,
+      "trig": 0.0,
+      "tslot": 11.0,
+      "vmix": 0.0,
+      "vslot": 0.0
+     },
+     "preset": 0,
+     "type": "warp"
+    },
+    {
+     "bypass": false,
+     "id": 912,
+     "mix": 1.0,
+     "params": {
+      "beats": 0.75,
+      "bits": 24.0,
+      "cutoff": 1900.0,
+      "diff": 0.0,
+      "dist": 1.0,
+      "dry": 0.0,
+      "dspread": 50.0,
+      "fb": 40.0,
+      "ftype": 1.0,
+      "input": 100.0,
+      "keep": 0.0,
+      "knee": 50.0,
+      "level": 0.0,
+      "mcut": 0.0,
+      "mix": 28.0,
+      "model": 1.0,
+      "mtime": 0.0,
+      "offset": 0.0,
+      "pan": -60.0,
+      "rate": 0.5,
+      "res": 0.0,
+      "smooth": 40.0,
+      "spread": 100.0,
+      "srate": 48000.0,
+      "sym": 0.0,
+      "sync": 0.0,
+      "time": 375.0,
+      "tone": 25.0
+     },
+     "preset": 8,
+     "type": "delay"
+    },
+    {
+     "bypass": false,
+     "id": 913,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 3.5,
+      "early": 50.0,
+      "hi": 3000.0,
+      "lo": 260.0,
+      "mix": 42.0,
+      "mod": 50.0,
+      "pre": 35.0,
+      "size": 2.8,
+      "space": 2.0,
+      "tone": -20.0,
+      "width": 100.0
+     },
+     "preset": 2,
+     "type": "reverb"
+    }
+   ],
+   "id": 3,
+   "master": false,
+   "muted": false,
+   "name": "Ghost Bell",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 5
+    },
+    {
+     "gain": 0.20000000298023224,
+     "to": 10
+    }
+   ],
+   "solo": false,
+   "vol": 0.7400000095367432,
+   "width": 1.350000023841858
+  },
+  {
+   "color": "#5aa9e6",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 240.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1050.0,
+       "g": -3.0,
+       "on": true,
+       "place": "mid",
+       "q": 1.1,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 2400.0,
+       "g": 2.0,
+       "on": true,
+       "place": "side",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 2200.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 914,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 6,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 915,
+     "mix": 1.0,
+     "params": {
+      "delay": 14.0,
+      "depth": 55.0,
+      "div": 4.0,
+      "fb": 0.0,
+      "hp": 220.0,
+      "mix": 45.0,
+      "mode": 1.0,
+      "rate": 0.5,
+      "sync": 0.0,
+      "tone": 16000.0,
+      "width": 180.0
+     },
+     "preset": 2,
+     "type": "chorus"
+    },
+    {
+     "bypass": false,
+     "id": 916,
+     "mix": 1.0,
+     "params": {
+      "beats": 0.75,
+      "bits": 24.0,
+      "cutoff": 1900.0,
+      "diff": 0.0,
+      "dist": 1.0,
+      "dry": 0.0,
+      "dspread": 50.0,
+      "fb": 40.0,
+      "ftype": 1.0,
+      "input": 100.0,
+      "keep": 0.0,
+      "knee": 50.0,
+      "level": 0.0,
+      "mcut": 0.0,
+      "mix": 36.0,
+      "model": 1.0,
+      "mtime": 0.0,
+      "offset": 0.0,
+      "pan": -60.0,
+      "rate": 0.5,
+      "res": 0.0,
+      "smooth": 40.0,
+      "spread": 100.0,
+      "srate": 48000.0,
+      "sym": 0.0,
+      "sync": 0.0,
+      "time": 375.0,
+      "tone": 25.0
+     },
+     "preset": 8,
+     "type": "delay"
+    },
+    {
+     "bypass": false,
+     "id": 917,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 4.5,
+      "early": 50.0,
+      "hi": 2900.0,
+      "lo": 260.0,
+      "mix": 48.0,
+      "mod": 50.0,
+      "pre": 35.0,
+      "size": 3.0,
+      "space": 2.0,
+      "tone": -20.0,
+      "width": 100.0
+     },
+     "preset": 2,
+     "type": "reverb"
+    }
+   ],
+   "id": 4,
+   "master": false,
+   "muted": false,
+   "name": "Glide Lead",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 5
+    }
+   ],
+   "solo": false,
+   "vol": 0.6600000262260437,
+   "width": 1.350000023841858
+  },
+  {
+   "color": "#b07cf0",
+   "fx": [
+    {
+     "bypass": false,
+     "id": 918,
+     "maps": {
+      "time": [
+       {
+        "name": "Bez zmian",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Half-time — cały takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Half-time — co ćwierćnutę",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Stutter — 1. ćwierćnuta ×4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.875
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 0.625
+         },
+         {
+          "t": 4.0,
+          "v": 0.625
+         }
+        ]
+       },
+       {
+        "name": "Stutter 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 0.9375
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 0.9375
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 0.9375
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 4.0,
+          "v": 0.9375
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/16 na końcu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.96875
+         },
+         {
+          "t": 3.5,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.9375
+         },
+         {
+          "t": 3.75,
+          "v": 0.90625
+         },
+         {
+          "t": 4.0,
+          "v": 0.90625
+         }
+        ]
+       },
+       {
+        "name": "Rolka 1/32 — pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 1.0
+         },
+         {
+          "t": 2.125,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.984375
+         },
+         {
+          "t": 2.25,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.96875
+         },
+         {
+          "t": 2.375,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.953125
+         },
+         {
+          "t": 2.5,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.9375
+         },
+         {
+          "t": 2.625,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.921875
+         },
+         {
+          "t": 2.75,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.90625
+         },
+         {
+          "t": 2.875,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.890625
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.875
+         },
+         {
+          "t": 3.125,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.859375
+         },
+         {
+          "t": 3.25,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.84375
+         },
+         {
+          "t": 3.375,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.828125
+         },
+         {
+          "t": 3.5,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.8125
+         },
+         {
+          "t": 3.625,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.796875
+         },
+         {
+          "t": 3.75,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.78125
+         },
+         {
+          "t": 3.875,
+          "v": 0.765625
+         },
+         {
+          "t": 4.0,
+          "v": 0.765625
+         }
+        ]
+       },
+       {
+        "name": "Tape stop — druga połowa",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 4.0,
+          "tension": -1.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Tape start — początek",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "halfSine",
+          "t": 2.0,
+          "tension": 1.0,
+          "v": 0.840844988822937
+         },
+         {
+          "t": 4.0,
+          "v": 0.840844988822937
+         }
+        ]
+       },
+       {
+        "name": "Reverse — każda ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.75
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.75
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.75
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.75
+         }
+        ]
+       },
+       {
+        "name": "Reverse — co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.5
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.5
+         }
+        ]
+       },
+       {
+        "name": "Scratch",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 0.875
+         }
+        ]
+       },
+       {
+        "name": "Kwinta w dół (2/3)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.8333330154418945
+         }
+        ]
+       },
+       {
+        "name": "Dogonienie ×2 — ostatnia ćwierćnuta",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.875
+         },
+         {
+          "t": 3.0,
+          "v": 0.875
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Reverse — poprzedni takt",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       }
+      ],
+      "vol": [
+       {
+        "name": "Pełna głośność",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/4",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.55,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Trap Kick Pocket",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.10000000149011612
+         },
+         {
+          "t": 0.44,
+          "tension": -0.550000011920929,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.1599999964237213
+         },
+         {
+          "t": 2.94,
+          "tension": -0.550000011920929,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Sidechain 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 0.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 1.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 2.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.3,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.15000000596046448
+         },
+         {
+          "t": 3.8,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": 1.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Trance gate 1/16",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 0.25,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 0.0
+         },
+         {
+          "t": 0.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 0.0
+         },
+         {
+          "t": 1.25,
+          "v": 1.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 1.0
+         },
+         {
+          "t": 1.75,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 1.0
+         },
+         {
+          "t": 2.25,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 0.0
+         },
+         {
+          "t": 3.25,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 1.0
+         },
+         {
+          "t": 3.75,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Bramka 1/4 — pół na pół",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "shape": "pulse",
+          "t": 4.0,
+          "tension": -0.6000000238418579,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade in (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.4000000059604645,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Fade out (takt)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "tension": -0.4000000059604645,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ćwierćnucie",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Cisza na ostatniej ósemce",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "v": 0.0
+         }
+        ]
+       },
+       {
+        "name": "Tylko offbeaty",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 0.0
+         },
+         {
+          "t": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 1.0
+         },
+         {
+          "t": 1.0,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 0.0
+         },
+         {
+          "t": 1.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 0.0
+         },
+         {
+          "t": 2.5,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 1.0
+         },
+         {
+          "t": 3.0,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 0.0
+         },
+         {
+          "t": 3.5,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Tremolo 1/8",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "shape": "wave",
+          "t": 4.0,
+          "tension": -0.06666699796915054,
+          "v": 0.30000001192092896
+         }
+        ]
+       },
+       {
+        "name": "Swell co pół taktu",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 0.0
+         },
+         {
+          "t": 2.0,
+          "tension": 0.5,
+          "v": 1.0
+         },
+         {
+          "t": 2.0,
+          "v": 0.0
+         },
+         {
+          "t": 4.0,
+          "tension": 0.5,
+          "v": 1.0
+         }
+        ]
+       },
+       {
+        "name": "Pełna głośność (wolny slot)",
+        "points": [
+         {
+          "t": 0.0,
+          "v": 1.0
+         },
+         {
+          "t": 4.0,
+          "v": 1.0
+         }
+        ]
+       }
+      ]
+     },
+     "mix": 1.0,
+     "params": {
+      "att": 0.0,
+      "attack": 1.0,
+      "click": 1.0,
+      "dc": 1.0,
+      "hold": 0.0,
+      "oneshot": 0.0,
+      "pos": 0.0,
+      "rel": 0.0,
+      "tmix": 0.0,
+      "tns": 0.0,
+      "trig": 0.0,
+      "tslot": 8.0,
+      "vmix": 0.0,
+      "vslot": 2.0
+     },
+     "preset": 0,
+     "type": "warp"
+    },
+    {
+     "bypass": false,
+     "id": 919,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 5.0,
+      "early": 50.0,
+      "hi": 6000.0,
+      "lo": 280.0,
+      "mix": 12.0,
+      "mod": 50.0,
+      "pre": 35.0,
+      "size": 2.0,
+      "space": 2.0,
+      "tone": -20.0,
+      "width": 100.0
+     },
+     "preset": 2,
+     "type": "reverb"
+    }
+   ],
+   "id": 5,
+   "master": false,
+   "muted": false,
+   "name": "Synths Bus",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 11
+    }
+   ],
+   "solo": false,
+   "vol": 0.75,
+   "width": 1.100000023841858
+  },
+  {
+   "color": "#7c8cf8",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 26.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 44.0,
+       "g": 2.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 210.0,
+       "g": -4.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 2000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 920,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 3,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 921,
+     "mix": 1.0,
+     "params": {
+      "auto": 1.0,
+      "drive": 22.0,
+      "highcut": 20000.0,
+      "hq": 0.0,
+      "lowcut": 110.0,
+      "mix": 28.0,
+      "out": 0.0,
+      "punish": 0.0,
+      "steep": 0.0,
+      "style": 2.0,
+      "thump": 15.0,
+      "tone": -20.0
+     },
+     "preset": 5,
+     "type": "sat"
+    }
+   ],
+   "id": 6,
+   "master": false,
+   "muted": false,
+   "name": "808",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 11
+    }
+   ],
+   "solo": false,
+   "vol": 0.7200000286102295,
+   "width": 0.07999999821186066
+  },
+  {
+   "color": "#4f8ef7",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 28.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 95.0,
+       "g": 3.2,
+       "on": true,
+       "place": "stereo",
+       "q": 0.9,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 310.0,
+       "g": -3.5,
+       "on": true,
+       "place": "stereo",
+       "q": 1.3,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 2200.0,
+       "g": 2.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.1,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 3200.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 922,
+     "mix": 1.0,
+     "params": {
+      "out": -1.0
+     },
+     "preset": 0,
+     "type": "eq"
+    }
+   ],
+   "id": 7,
+   "master": false,
+   "muted": false,
+   "name": "Kick",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 9
+    }
+   ],
+   "solo": false,
+   "vol": 0.8100000023841858,
+   "width": 0.0
+  },
+  {
+   "color": "#e0a44a",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 80.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 24,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 923,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 10,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 924,
+     "mix": 1.0,
+     "params": {
+      "auto": 1.0,
+      "drive": 18.0,
+      "highcut": 14000.0,
+      "hq": 0.0,
+      "lowcut": 95.0,
+      "mix": 40.0,
+      "out": 0.0,
+      "punish": 0.0,
+      "steep": 0.0,
+      "style": 0.0,
+      "thump": 0.0,
+      "tone": 0.0
+     },
+     "preset": 0,
+     "type": "sat"
+    }
+   ],
+   "id": 8,
+   "master": false,
+   "muted": false,
+   "name": "Tops",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 9
+    },
+    {
+     "gain": 0.1599999964237213,
+     "to": 10
+    }
+   ],
+   "solo": false,
+   "vol": 0.7099999785423279,
+   "width": 1.100000023841858
+  },
+  {
+   "color": "#d9678f",
+   "fx": [
+    {
+     "bypass": false,
+     "id": 925,
+     "mix": 1.0,
+     "params": {
+      "att": 32.0,
+      "det": 0.0,
+      "gain": 1.2,
+      "ratio": 2.2,
+      "rel": 80.0,
+      "thr": -14.0
+     },
+     "preset": 2,
+     "type": "comp"
+    },
+    {
+     "bypass": false,
+     "id": 926,
+     "mix": 1.0,
+     "params": {
+      "auto": 1.0,
+      "drive": 16.0,
+      "highcut": 18000.0,
+      "hq": 0.0,
+      "lowcut": 10.0,
+      "mix": 35.0,
+      "out": 0.0,
+      "punish": 0.0,
+      "steep": 0.0,
+      "style": 0.0,
+      "thump": 0.0,
+      "tone": 0.0
+     },
+     "preset": 8,
+     "type": "sat"
+    }
+   ],
+   "id": 9,
+   "master": false,
+   "muted": false,
+   "name": "Drum Bus",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 11
+    }
+   ],
+   "solo": false,
+   "vol": 0.7799999713897705,
+   "width": 1.0
+  },
+  {
+   "color": "#47b8a8",
+   "fx": [
+    {
+     "bypass": false,
+     "id": 927,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.9,
+      "duck": 0.0,
+      "early": 50.0,
+      "hi": 4800.0,
+      "lo": 280.0,
+      "mix": 100.0,
+      "mod": 50.0,
+      "pre": 20.0,
+      "size": 2.5,
+      "space": 2.0,
+      "tone": -10.0,
+      "width": 100.0
+     },
+     "preset": 6,
+     "type": "reverb"
+    }
+   ],
+   "id": 10,
+   "master": false,
+   "muted": false,
+   "name": "Space",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 1.0,
+     "to": 11
+    }
+   ],
+   "solo": false,
+   "vol": 0.6600000262260437,
+   "width": 1.350000023841858
+  },
+  {
+   "color": "#69c3d6",
+   "fx": [
+    {
+     "bypass": false,
+     "id": 928,
+     "mix": 1.0,
+     "params": {
+      "hi": 20000.0,
+      "lo": 120.0,
+      "loop": 3.0,
+      "mix": 0.0,
+      "smooth": 18.0,
+      "solo": 0.0,
+      "speed": 1.0
+     },
+     "preset": 8,
+     "type": "half"
+    },
+    {
+     "bypass": false,
+     "id": 929,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 1.5,
+      "early": 50.0,
+      "hi": 5200.0,
+      "lo": 220.0,
+      "mix": 0.0,
+      "mod": 50.0,
+      "pre": 18.0,
+      "size": 2.6,
+      "space": 2.0,
+      "tone": -20.0,
+      "width": 100.0
+     },
+     "preset": 2,
+     "type": "reverb"
+    },
+    {
+     "bands": [
+      {
+       "f": 30.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 9000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 20000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.82,
+       "slope": 24,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 930,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 0,
+     "type": "eq"
+    }
+   ],
+   "id": 11,
+   "muted": false,
+   "name": "Beat Bus",
+   "pan": 0.0,
+   "solo": false,
+   "vol": 0.699999988079071,
+   "width": 1.0
+  },
+  {
+   "color": "#5fbf8a",
+   "fx": [
+    {
+     "bypass": true,
+     "id": 931,
+     "mix": 1.0,
+     "params": {
+      "learn": 0.0,
+      "listen": 0.0,
+      "reduction": 8.0,
+      "sens": 35.0,
+      "smooth": 50.0
+     },
+     "preset": 0,
+     "type": "denoise"
+    },
+    {
+     "bypass": false,
+     "id": 932,
+     "mix": 1.0,
+     "params": {
+      "amount": 50.0,
+      "auto": 1.0,
+      "down": 6.0,
+      "floor": -70.0,
+      "gate": -60.0,
+      "look": 2.0,
+      "out": 0.0,
+      "phrase": 20.0,
+      "speed": 1.0,
+      "target": -24.0,
+      "up": 5.0
+     },
+     "preset": 1,
+     "type": "rider"
+    },
+    {
+     "bypass": false,
+     "id": 933,
+     "mix": 1.0,
+     "params": {
+      "flex": 10.0,
+      "formant": 0.0,
+      "humanize": 15.0,
+      "key": 3.0,
+      "retune": 12.0,
+      "scale": 2.0,
+      "transpose": 0.0,
+      "vibrato": 30.0,
+      "voice": 0.0
+     },
+     "preset": 2,
+     "type": "tune"
+    },
+    {
+     "bands": [
+      {
+       "f": 100.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 300.0,
+       "g": -2.5,
+       "on": true,
+       "place": "stereo",
+       "q": 1.2,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 3500.0,
+       "g": 3.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.9,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 10000.0,
+       "g": 2.5,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 934,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 1,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 935,
+     "mix": 1.0,
+     "params": {
+      "attack": 200.0,
+      "input": 12.0,
+      "mix": 100.0,
+      "output": -4.0,
+      "ratio": 1.0,
+      "release": 150.0
+     },
+     "preset": 1,
+     "type": "fet"
+    },
+    {
+     "bypass": false,
+     "id": 936,
+     "mix": 1.0,
+     "params": {
+      "detect": 0.0,
+      "freq": 6000.0,
+      "listen": 0.0,
+      "look": 5.0,
+      "mode": 0.0,
+      "range": 8.0,
+      "thr": -32.0
+     },
+     "preset": 0,
+     "type": "deess"
+    }
+   ],
+   "id": 12,
+   "muted": false,
+   "name": "Vocal",
+   "pan": 0.0,
+   "sends": [
+    {
+     "gain": 0.18000000715255737,
+     "to": 10
+    }
+   ],
+   "solo": false,
+   "vol": 0.7936999797821045,
+   "width": 1.0
+  },
+  {
+   "color": "#8b93a1",
+   "fx": [
+    {
+     "bands": [
+      {
+       "f": 30.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowcut"
+      },
+      {
+       "f": 90.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "lowshelf"
+      },
+      {
+       "f": 250.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 1000.0,
+       "g": 0.0,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 4893.261635968545,
+       "g": -4.23,
+       "on": true,
+       "place": "stereo",
+       "q": 1.0,
+       "slope": 12,
+       "type": "peak"
+      },
+      {
+       "f": 11004.259293523026,
+       "g": -22.43,
+       "on": true,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highshelf"
+      },
+      {
+       "f": 18000.0,
+       "g": 0.0,
+       "on": false,
+       "place": "stereo",
+       "q": 0.71,
+       "slope": 12,
+       "type": "highcut"
+      }
+     ],
+     "bypass": false,
+     "id": 1871,
+     "mix": 1.0,
+     "params": {
+      "out": 0.0
+     },
+     "preset": 0,
+     "type": "eq"
+    },
+    {
+     "bypass": false,
+     "id": 1869,
+     "mix": 1.0,
+     "params": {
+      "beats": 1.0,
+      "bits": 24.0,
+      "cutoff": 6000.0,
+      "diff": 0.0,
+      "dist": 1.0,
+      "dry": 100.0,
+      "dspread": 50.0,
+      "fb": 45.0,
+      "ftype": 1.0,
+      "input": 100.0,
+      "keep": 0.0,
+      "knee": 50.0,
+      "level": 0.0,
+      "mcut": 0.0,
+      "mix": 57.57574462890626,
+      "model": 2.0,
+      "mtime": 0.0,
+      "offset": 0.0,
+      "pan": -70.0,
+      "rate": 0.5,
+      "res": 0.0,
+      "smooth": 40.0,
+      "spread": 100.0,
+      "srate": 48000.0,
+      "sym": 0.0,
+      "sync": 0.0,
+      "time": 375.0,
+      "tone": 0.0
+     },
+     "preset": 3,
+     "type": "delay"
+    },
+    {
+     "bypass": false,
+     "id": 1870,
+     "mix": 1.0,
+     "params": {
+      "bass": 0.8,
+      "duck": 3.0,
+      "early": 50.0,
+      "hi": 7000.0,
+      "lo": 300.0,
+      "mix": 49.424194335937514,
+      "mod": 50.0,
+      "pre": 25.0,
+      "size": 4.484601488352364,
+      "space": 0.0,
+      "tone": 0.0,
+      "width": 100.0
+     },
+     "preset": 0,
+     "type": "reverb"
+    }
+   ],
+   "id": 1868,
+   "muted": false,
+   "name": "Insert 13",
+   "pan": 0.0,
+   "solo": false,
+   "vol": 0.7936999797821045,
+   "width": 1.0
+  }
+ ],
+ "key": 3,
+ "loop": null,
+ "nextId": 1878,
+ "notebook": {
+  "pages": [
+   {
+    "id": 1033,
+    "name": "Producer Tour",
+    "startBar": 1,
+    "text": "[Intro — Full Beat on Beat Bus: Half-Speed + Hall Reverb + Low-Pass Sweep]\nSubmerged full-beat intro (~550 Hz LPF + 100% Half-Speed)\nAnalog Pad (Dynamic EQ + 2-bar Stereo Phaser + Chorus)\nDark Vox (+1 st pitch-preserving stretch: 120 -> 136 BPM)\nLow-Pass sweeps wide open into the dry drop\n[Act I — Hard Sternum Kick + D#1 808 + 4-Layer Flam Clap]\nKick (95 Hz punch + 28 ms 808 pocket) + Warp sidechain ducking\nBackbeat: pre-flammed Wide Clap + Clap Body + Crisp + Snare + Rev Clap\nHats 2093: 18% BNYX swing + cut-group choked Open Hat + triplet rolls\nWoody D#3 turnaround flick on the last 16th\nGhost Bell enters (BBD Chorus + Warp 1/2-bar Reverse + Tape Dub Delay)\nParallel Space send bus adds shared 3D hall bloom\n808 Subtle Lift steps to G#1 (iv) for one bar\nBeat Bus Low-Pass + Reverb dunk melts Hook into Verse\n[Verse — Minimal D#1 Sub Pillow & Open Vocal Pocket]\nBare 1-hit-per-bar D#1 808 + 3-layer Clap & Rimshot\nVocal insert (Ins 12) armed in D#m: Denoiser -> Rider -> Tune -> EQ -> FET -> De-ess\n\n\nSwung Nocturne Hats & Kick re-enter for Verse B\n\n\n\n[Beat Switch — Half-Time Cathedral Wash -> 380 ms Silence Cut]\nEntire Beat Bus drops into 100% Half-Speed + swelling Hall Reverb\n\nLow-Pass creeps upward (500 Hz -> 1.45 kHz) building tension\n380 ms digital-zero silence vacuum wipes all tails before Beat 1\n[Act II — Reversed Analog Pad Flip + Weeping Moog Lead]\nAnalog Pad flipped backwards (Clip rev: true) over D#1 808\n\n\nWoody D#3 808 turnaround inflection\nAnalog Glide enters: unison saw Moog portamento + automated cutoff\n\n\nHalf-Speed + Low-Pass slingshot (+1 dB makeup) into Climax\n[Climax — Forward Pad + Dark Vox + Ghost Bell + Analog Glide]\nAll harmonic layers unite; Kick/Snare slice through via Warp pocket\n\nBar 35 G#1 bass lift -> dark D#1 resolution\n\n[Outro — Underwater Half-Time Fade]\nBeat Bus submerges back into Half-Speed + Reverb\n\nLow-Pass closes to 180 Hz with S-curve fade to silence\n"
+   },
+   {
+    "id": 1034,
+    "name": "Vocal Pad (D#m)",
+    "startBar": 13,
+    "text": "[Verse — 136 BPM · D# minor (Ins 12 armed with live Pitch Correct)]\nmidnight chrome on the windowpane\nlow tide hummin' through the heavy rain\nkeep the circle quiet, keep the vision plain\nevery shadow movin' in a slower lane\n[Verse B — Drums In]\nstep out clean when the filter breaks\ncold neon glow on the silver lakes\nno false moves, yeah we know the stakes\nlet the sub talk back till the ceiling shakes"
+   }
+  ]
+ },
+ "patterns": [
+  {
+   "color": "#47b8a8",
+   "id": 1,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "Obsidian Sub",
+   "notes": [
+    {
+     "ch": 1022,
+     "len": 63.0,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.800000011920929
+    }
+   ]
+  },
+  {
+   "color": "#7c8cf8",
+   "id": 2,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "808 Root",
+   "notes": [
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 10.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 11.5,
+     "p": 27,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 3.5,
+     "p": 27,
+     "step": 28.0,
+     "trig": false,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 42.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 14.5,
+     "p": 27,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    }
+   ]
+  },
+  {
+   "color": "#7c8cf8",
+   "id": 3,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "808 High Flick",
+   "notes": [
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 10.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 11.5,
+     "p": 27,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 3.5,
+     "p": 27,
+     "step": 28.0,
+     "trig": false,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 42.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 13.5,
+     "p": 27,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 1.5,
+     "p": 51,
+     "step": 62.5,
+     "trig": false,
+     "v": 0.7599999904632568
+    }
+   ]
+  },
+  {
+   "color": "#9a8cf0",
+   "id": 4,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "808 Subtle Lift",
+   "notes": [
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 10.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 11.5,
+     "p": 27,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 3.5,
+     "p": 27,
+     "step": 28.0,
+     "trig": false,
+     "v": 0.8199999928474426
+    },
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 32,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 32,
+     "step": 42.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 14.5,
+     "p": 27,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    }
+   ]
+  },
+  {
+   "color": "#7c8cf8",
+   "id": 5,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "808 Verse",
+   "notes": [
+    {
+     "ch": 1021,
+     "len": 12.0,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.8999999761581421
+    },
+    {
+     "ch": 1021,
+     "len": 12.0,
+     "p": 27,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.8799999952316284
+    },
+    {
+     "ch": 1021,
+     "len": 12.0,
+     "p": 27,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.8999999761581421
+    },
+    {
+     "ch": 1021,
+     "len": 12.0,
+     "p": 27,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.8799999952316284
+    }
+   ]
+  },
+  {
+   "color": "#4f8ef7",
+   "id": 6,
+   "len": 8.0,
+   "minLen": 8.0,
+   "name": "Kick Punch",
+   "notes": [
+    {
+     "ch": 1001,
+     "len": 1.0,
+     "step": 0.0,
+     "trig": true
+    },
+    {
+     "ch": 1001,
+     "len": 1.0,
+     "step": 10.0,
+     "trig": true,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1001,
+     "len": 1.0,
+     "step": 16.0,
+     "trig": true,
+     "v": 0.9800000190734863
+    },
+    {
+     "ch": 1001,
+     "len": 1.0,
+     "step": 28.0,
+     "trig": true,
+     "v": 0.8799999952316284
+    }
+   ]
+  },
+  {
+   "color": "#d9678f",
+   "id": 7,
+   "len": 8.0,
+   "minLen": 8.0,
+   "name": "Clap & Bounce",
+   "notes": [
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 3.0,
+     "trig": true,
+     "v": 0.5799999833106995
+    },
+    {
+     "ch": 1007,
+     "len": 1.0,
+     "step": 7.940000057220459,
+     "trig": true,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1003,
+     "len": 1.0,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.8999999761581421
+    },
+    {
+     "ch": 1005,
+     "len": 1.0,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.8399999737739563
+    },
+    {
+     "ch": 1009,
+     "len": 1.0,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.7599999904632568
+    },
+    {
+     "ch": 1013,
+     "len": 1.0,
+     "step": 11.0,
+     "trig": true,
+     "v": 0.5400000214576721
+    },
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 14.0,
+     "trig": true,
+     "v": 0.6800000071525574
+    },
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 19.0,
+     "trig": true,
+     "v": 0.5400000214576721
+    },
+    {
+     "ch": 1011,
+     "len": 2.0,
+     "p": 60,
+     "step": 22.0,
+     "trig": false,
+     "v": 0.6800000071525574
+    },
+    {
+     "ch": 1007,
+     "len": 1.0,
+     "step": 23.940000534057617,
+     "trig": true,
+     "v": 0.8399999737739563
+    },
+    {
+     "ch": 1003,
+     "len": 1.0,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1005,
+     "len": 1.0,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1009,
+     "len": 1.0,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1013,
+     "len": 1.0,
+     "step": 27.0,
+     "trig": true,
+     "v": 0.6000000238418579
+    },
+    {
+     "ch": 1013,
+     "len": 1.0,
+     "step": 29.5,
+     "trig": true,
+     "v": 0.4399999976158142
+    },
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 30.0,
+     "trig": true,
+     "v": 0.699999988079071
+    }
+   ],
+   "swing": 0.14000000059604645
+  },
+  {
+   "color": "#d9678f",
+   "id": 8,
+   "len": 8.0,
+   "minLen": 8.0,
+   "name": "Verse Strip",
+   "notes": [
+    {
+     "ch": 1007,
+     "len": 1.0,
+     "step": 7.940000057220459,
+     "trig": true,
+     "v": 0.7200000286102295
+    },
+    {
+     "ch": 1003,
+     "len": 1.0,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1005,
+     "len": 1.0,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 14.0,
+     "trig": true,
+     "v": 0.6200000047683716
+    },
+    {
+     "ch": 1007,
+     "len": 1.0,
+     "step": 23.940000534057617,
+     "trig": true,
+     "v": 0.7599999904632568
+    },
+    {
+     "ch": 1003,
+     "len": 1.0,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.8799999952316284
+    },
+    {
+     "ch": 1005,
+     "len": 1.0,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.8199999928474426
+    },
+    {
+     "ch": 1015,
+     "len": 1.0,
+     "step": 27.0,
+     "trig": true,
+     "v": 0.5400000214576721
+    },
+    {
+     "ch": 1013,
+     "len": 1.0,
+     "step": 30.0,
+     "trig": true,
+     "v": 0.5799999833106995
+    }
+   ],
+   "swing": 0.1599999964237213
+  },
+  {
+   "color": "#e0a44a",
+   "id": 9,
+   "len": 8.0,
+   "minLen": 8.0,
+   "name": "Hats Nocturne",
+   "notes": [
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 0.0,
+     "trig": true,
+     "v": 0.699999988079071
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 2.0,
+     "trig": true,
+     "v": 0.36000001430511475
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 4.0,
+     "trig": true,
+     "v": 0.6200000047683716
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 6.0,
+     "trig": true,
+     "v": 0.4000000059604645
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 10.0,
+     "trig": true,
+     "v": 0.5199999809265137
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 12.0,
+     "trig": true,
+     "v": 0.6600000262260437
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 14.0,
+     "trig": true,
+     "v": 0.36000001430511475
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 15.0,
+     "trig": true,
+     "v": 0.2800000011920929
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 16.0,
+     "trig": true,
+     "v": 0.7200000286102295
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 18.0,
+     "trig": true,
+     "v": 0.3799999952316284
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 20.0,
+     "trig": true,
+     "v": 0.6000000238418579
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 22.0,
+     "trig": true,
+     "v": 0.41999998688697815
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 26.0,
+     "trig": true,
+     "v": 0.5
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 28.0,
+     "trig": true,
+     "v": 0.6399999856948853
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "step": 30.0,
+     "trig": true,
+     "v": 0.3799999952316284
+    }
+   ],
+   "swing": 0.18000000715255737
+  },
+  {
+   "color": "#e0a44a",
+   "id": 10,
+   "len": 12.0,
+   "minLen": 8.0,
+   "name": "Hats 2093",
+   "notes": [
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 0.0,
+     "trig": true,
+     "v": 0.8399999737739563
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 1.0,
+     "trig": true,
+     "v": 0.2800000011920929
+    },
+    {
+     "ch": 1019,
+     "len": 1.0,
+     "step": 2.0,
+     "trig": true,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 4.0,
+     "trig": true,
+     "v": 0.7599999904632568
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 61,
+     "step": 6.0,
+     "trig": true,
+     "v": 0.2800000011920929
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 6.5,
+     "trig": true,
+     "v": 0.41999998688697815
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 59,
+     "step": 7.0,
+     "trig": true,
+     "v": 0.5799999833106995
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 58,
+     "step": 7.5,
+     "trig": true,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 8.0,
+     "trig": true,
+     "v": 0.8199999928474426
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 10.0,
+     "trig": true,
+     "v": 0.47999998927116394
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 59,
+     "step": 11.0,
+     "trig": true,
+     "v": 0.25999999046325684
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 12.0,
+     "trig": true,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 58,
+     "step": 13.0,
+     "trig": true,
+     "v": 0.3199999928474426
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 14.0,
+     "trig": true,
+     "v": 0.6000000238418579
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 16.0,
+     "trig": true,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 17.0,
+     "trig": true,
+     "v": 0.2800000011920929
+    },
+    {
+     "ch": 1019,
+     "len": 1.0,
+     "step": 18.0,
+     "trig": true,
+     "v": 0.7200000286102295
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 20.0,
+     "trig": true,
+     "v": 0.7599999904632568
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 22.0,
+     "trig": true,
+     "v": 0.5
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 62,
+     "step": 23.0,
+     "trig": true,
+     "v": 0.3199999928474426
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 24.0,
+     "trig": true,
+     "v": 0.800000011920929
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 26.0,
+     "trig": true,
+     "v": 0.5199999809265137
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 60,
+     "step": 28.0,
+     "trig": true,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 59,
+     "step": 30.0,
+     "trig": true,
+     "v": 0.6800000071525574
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 57,
+     "step": 30.66699981689453,
+     "trig": true,
+     "v": 0.46000000834465027
+    },
+    {
+     "ch": 1017,
+     "len": 1.0,
+     "p": 54,
+     "step": 31.33300018310547,
+     "trig": true,
+     "v": 0.30000001192092896
+    }
+   ],
+   "swing": 0.18000000715255737
+  },
+  {
+   "color": "#69c3d6",
+   "id": 11,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "Ghost Bell",
+   "notes": [
+    {
+     "ch": 1023,
+     "len": 6.0,
+     "p": 70,
+     "step": 4.0,
+     "trig": false,
+     "v": 0.6800000071525574
+    },
+    {
+     "ch": 1023,
+     "len": 4.0,
+     "p": 66,
+     "step": 12.0,
+     "trig": false,
+     "v": 0.5799999833106995
+    },
+    {
+     "ch": 1023,
+     "len": 8.0,
+     "p": 65,
+     "step": 20.0,
+     "trig": false,
+     "v": 0.6399999856948853
+    },
+    {
+     "ch": 1023,
+     "len": 6.0,
+     "p": 75,
+     "step": 36.0,
+     "trig": false,
+     "v": 0.6600000262260437
+    },
+    {
+     "ch": 1023,
+     "len": 4.0,
+     "p": 70,
+     "step": 44.0,
+     "trig": false,
+     "v": 0.5799999833106995
+    },
+    {
+     "ch": 1023,
+     "len": 8.0,
+     "p": 66,
+     "step": 52.0,
+     "trig": false,
+     "v": 0.6200000047683716
+    }
+   ]
+  },
+  {
+   "color": "#5aa9e6",
+   "id": 12,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "Analog Glide (Rev)",
+   "notes": [
+    {
+     "ch": 1024,
+     "len": 14.5,
+     "p": 70,
+     "step": 2.0,
+     "trig": false,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1024,
+     "len": 16.5,
+     "p": 71,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.7599999904632568
+    },
+    {
+     "ch": 1024,
+     "len": 16.5,
+     "p": 65,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.7200000286102295
+    },
+    {
+     "ch": 1024,
+     "len": 14.0,
+     "p": 66,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.7200000286102295
+    }
+   ]
+  },
+  {
+   "color": "#5aa9e6",
+   "id": 13,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "Analog Glide (Climax)",
+   "notes": [
+    {
+     "ch": 1024,
+     "len": 14.5,
+     "p": 70,
+     "step": 2.0,
+     "trig": false,
+     "v": 0.7400000095367432
+    },
+    {
+     "ch": 1024,
+     "len": 16.5,
+     "p": 65,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.7200000286102295
+    },
+    {
+     "ch": 1024,
+     "len": 16.5,
+     "p": 71,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.7799999713897705
+    },
+    {
+     "ch": 1024,
+     "len": 14.0,
+     "p": 66,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.7200000286102295
+    }
+   ]
+  },
+  {
+   "color": "#9a8cf0",
+   "id": 1872,
+   "len": 16.0,
+   "minLen": 16.0,
+   "name": "808 Subtle Lift #2",
+   "notes": [
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 27,
+     "step": 0.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 27,
+     "step": 10.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 11.5,
+     "p": 27,
+     "step": 16.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 3.5,
+     "p": 27,
+     "step": 28.0,
+     "trig": false,
+     "v": 0.8199999928474426
+    },
+    {
+     "ch": 1021,
+     "len": 9.5,
+     "p": 32,
+     "step": 32.0,
+     "trig": false,
+     "v": 0.9200000166893005
+    },
+    {
+     "ch": 1021,
+     "len": 5.5,
+     "p": 32,
+     "step": 42.0,
+     "trig": false,
+     "v": 0.8600000143051147
+    },
+    {
+     "ch": 1021,
+     "len": 9.0,
+     "p": 27,
+     "step": 48.0,
+     "trig": false,
+     "v": 0.9399999976158142
+    },
+    {
+     "ch": 1021,
+     "len": 2.0,
+     "p": 39,
+     "step": 58.0,
+     "trig": false
+    },
+    {
+     "ch": 1021,
+     "len": 1.0,
+     "p": 27,
+     "step": 60.0,
+     "trig": false
+    },
+    {
+     "ch": 1021,
+     "len": 2.0,
+     "p": 32,
+     "step": 62.0,
+     "trig": false
+    }
+   ]
+  }
+ ],
+ "scale": 2,
+ "sources": [
+  {
+   "ch": 2,
+   "color": "#4f8ef7",
+   "dur": 0.3828,
+   "id": 1000,
+   "name": "Trap Kick",
+   "path": "lib:Standard/kick-trap.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 0.1843,
+   "id": 1002,
+   "name": "Trap Clap Crisp",
+   "path": "lib:Standard/clap-trap-crisp.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 0.3266,
+   "id": 1004,
+   "name": "Clap Snare",
+   "path": "lib:Standard/clap-snare.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 0.4402,
+   "id": 1006,
+   "name": "Group Clap",
+   "path": "lib:Standard/clap-group.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 0.1642,
+   "id": 1008,
+   "name": "Trap Snare",
+   "path": "lib:Standard/snare-trap.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 1,
+   "color": "#d9678f",
+   "dur": 1.0,
+   "id": 1010,
+   "name": "808 Clap",
+   "path": "lib:Standard/clap-808.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 0.4003,
+   "id": 1012,
+   "name": "Trap Snare Crisp",
+   "path": "lib:Standard/snare-trap-crisp.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#d9678f",
+   "dur": 1.0729,
+   "id": 1014,
+   "name": "Rimshot Tight",
+   "path": "lib:Standard/rimshot-tight.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 1,
+   "color": "#e0a44a",
+   "dur": 0.2962,
+   "id": 1016,
+   "name": "Trap Hat Tick",
+   "path": "lib:Standard/hat-trap-tick.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 1,
+   "color": "#e0a44a",
+   "dur": 0.271,
+   "id": 1018,
+   "name": "Open Hat Choked",
+   "path": "lib:Standard/hat-open-choked.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#7c8cf8",
+   "dur": 1.705,
+   "id": 1020,
+   "name": "808 Bass Spin",
+   "path": "lib:Standard/bass-808-spin.flac",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#47b8a8",
+   "dur": 8.0,
+   "id": 1025,
+   "name": "Vox Dark 120 Dm",
+   "path": "lib:Standard/loop-vox-dark-120-dmin.ogg",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#47b8a8",
+   "dur": 8.7273,
+   "id": 1026,
+   "name": "Pad Cinematic 110 Ebm",
+   "path": "lib:Standard/loop-pad-cinematic-110-ebmin.ogg",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 1,
+   "color": "#e0a44a",
+   "dur": 2.3073696145124716,
+   "id": 1865,
+   "name": "808 Cymbal",
+   "path": "lib:Standard/cymbal-808.flac",
+   "peakDb": -1.0001518726348877,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#47b8a8",
+   "dur": 8.0,
+   "id": 1873,
+   "name": "Vox Dark 120 Dm #2",
+   "path": "lib:Standard/loop-vox-dark-120-dmin.ogg",
+   "peakDb": -1.0,
+   "sr": 44100
+  },
+  {
+   "ch": 2,
+   "color": "#47b8a8",
+   "dur": 8.7273,
+   "id": 1876,
+   "name": "Pad Cinematic 110 Ebm #2",
+   "path": "lib:Standard/loop-pad-cinematic-110-ebmin.ogg",
+   "peakDb": -1.0,
+   "sr": 44100
+  }
+ ],
+ "tracks": [
+  {
+   "arm": false,
+   "color": "#9a8cf0",
+   "h": 50.0,
+   "icon": "vocal",
+   "id": 1,
+   "insert": 1,
+   "muted": false,
+   "name": "Dark Vox",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#47b8a8",
+   "h": 50.0,
+   "icon": "vocal",
+   "id": 1874,
+   "insert": 1,
+   "muted": false,
+   "name": "Vox Dark 120 Dm #2",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#47b8a8",
+   "h": 50.0,
+   "icon": "synth",
+   "id": 2,
+   "insert": 2,
+   "muted": false,
+   "name": "Analog Pad",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#47b8a8",
+   "h": 50.0,
+   "icon": "synth",
+   "id": 1877,
+   "insert": 2,
+   "muted": false,
+   "name": "Pad Cinematic 110 Ebm #2",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#69c3d6",
+   "h": 50.0,
+   "icon": "synth",
+   "id": 3,
+   "insert": 3,
+   "muted": false,
+   "name": "Ghost Bell",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#5aa9e6",
+   "h": 50.0,
+   "icon": "synth",
+   "id": 4,
+   "insert": 4,
+   "muted": false,
+   "name": "Analog Glide",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#7c8cf8",
+   "h": 50.0,
+   "icon": "bass",
+   "id": 5,
+   "insert": 6,
+   "muted": false,
+   "name": "808",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#4f8ef7",
+   "h": 50.0,
+   "icon": "drums",
+   "id": 6,
+   "insert": 7,
+   "muted": false,
+   "name": "Kick",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#d9678f",
+   "h": 50.0,
+   "icon": "drums",
+   "id": 7,
+   "insert": 8,
+   "muted": false,
+   "name": "Clap & Snare",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#e0a44a",
+   "h": 50.0,
+   "icon": "drums",
+   "id": 8,
+   "insert": 8,
+   "muted": false,
+   "name": "Hats",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#69c3d6",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 9,
+   "insert": 11,
+   "muted": false,
+   "name": "Beat Low-Pass",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#b07cf0",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 10,
+   "insert": 11,
+   "muted": false,
+   "name": "Beat Half-Time",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#47b8a8",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 11,
+   "insert": 11,
+   "muted": false,
+   "name": "Beat Reverb",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#e0a44a",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 12,
+   "insert": 5,
+   "muted": false,
+   "name": "Sidechain Pump",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#5aa9e6",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 13,
+   "insert": 4,
+   "muted": false,
+   "name": "Glide Filter",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": false,
+   "color": "#d9678f",
+   "h": 50.0,
+   "icon": "bus",
+   "id": 14,
+   "insert": 11,
+   "muted": false,
+   "name": "Switch & Fade",
+   "solo": false,
+   "vol": 0.7936999797821045
+  },
+  {
+   "arm": true,
+   "color": "#5fbf8a",
+   "h": 50.0,
+   "icon": "vocal",
+   "id": 15,
+   "insert": 12,
+   "muted": false,
+   "name": "Vocal",
+   "solo": false,
+   "vol": 0.7936999797821045
+  }
+ ],
+ "version": 2
+}
