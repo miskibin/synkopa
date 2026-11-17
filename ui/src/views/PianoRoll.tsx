@@ -39,8 +39,9 @@ import { noteClip, setNoteClip } from '../state/noteClipboard';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
-import { patDock, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
+import { patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
 import { PanelFrame, WinControls } from './PanelFrame';
+import { paneDock } from '../state/docking';
 import { KW, type RollCtx, type RollPtr, type Tool } from './roll/types';
 import { rollDown, rollMove } from './roll/grid';
 import { buildTransformOp, TOOL_META, type ToolId } from './roll/noteTools';
@@ -656,8 +657,8 @@ function Roll(props: { z: number; docked?: boolean }) {
     );
   }
   return (
-    <PanelFrame {...patGeom('rollWin')} z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
-      controls={<WinControls dock={patDock('roll')} max={props.docked ? undefined : { on: U.rollMax, toggle: toggleRollMax }}
+    <PanelFrame {...patGeom('rollWin')} z={props.z} class="rollwin" minW={560} minH={300} compactH={380} docked={props.docked} dockId="roll" front={rollFront} onKey={onKey} onHeadDbl={toggleRollMax}
+      controls={<WinControls dock={paneDock('roll')} max={props.docked ? undefined : { on: U.rollMax, toggle: toggleRollMax }}
         close={{ tip: t(props.docked ? 'b.dk.closeRoll' : 'b.pe.close'), act: closeRoll }} />}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: ch().color + '2e', color: ch().color }}><Icon d={ROLL_ICON} size={12} /></span>

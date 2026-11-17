@@ -310,6 +310,11 @@ impl Inst {
         }
     }
 
+    /// The plugin's own handle (`instance-access`: what a UI that needs it is given).
+    pub fn handle(&self) -> LV2_Handle {
+        self.handle
+    }
+
     /// The raw lilv instance (state save/restore).
     pub fn raw(&self) -> *mut lilv::Instance {
         self.raw

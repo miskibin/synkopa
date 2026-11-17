@@ -5,6 +5,7 @@ import { createEffect, createRoot, createSignal, on } from 'solid-js';
 import { topFloating } from './winOrder';
 import { t, tName } from '../lib/i18n';
 import { newSynthChannel } from '../lib/synth';
+import { nextChannelColor } from '../lib/color';
 import { prefs } from './prefs';
 import { be } from '../api/backend';
 import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
@@ -19,7 +20,7 @@ import { unwrap } from 'solid-js/store';
 import { allocId, plain, plainNotes, S } from './store';
 import { curBeat, tele } from './telemetry';
 import { loopSpan, type BeatRange } from '../lib/patLoop';
-import { say, setU, U } from './ui';
+import { docked, say, setU, U } from './ui';
 import { markPlayCmd } from './telemetry';
 import { leaveMixView } from './mixView';
 import { planRoute, rangeSelect, toggleSelect } from '../lib/mixer';
@@ -96,10 +97,10 @@ export function nextEmptyPattern() {
 // ---------------------------------------------------------------- windows
 
 type WinKey = 'rackWin' | 'rollWin';
-const dockOf = (k: WinKey) => (k === 'rackWin' ? U.rackDock : U.rollDock);
+const dockOf = (k: WinKey) => docked(k === 'rackWin' ? 'rack' : 'roll');
 /** The Channel Rack / Piano roll is open as a floating window (not docked): it counts among the window layer's windows. */
-export const rackFloating = () => !!U.rackWin && !U.rackDock;
-export const rollFloating = () => !!U.rollWin && !U.rollDock;
+export const rackFloating = () => !!U.rackWin && !docked('rack');
+export const rollFloating = () => !!U.rollWin && !docked('roll');
 /** Bring a pattern window to the front of the window layer (showing the layer if it was tucked away). A docked panel has no front. */
 function front(k: WinKey) {
   const w = U[k]; if (!w || dockOf(k)) return;
@@ -132,7 +133,7 @@ export const rackPlaceFor = (steps: number, x: number) => fitOnScreen(x, rackWid
 export function openRack() {
   leaveMixView(); // the pattern windows live in the arrange layout
   if (!S.project.patterns.length) { say(t('b.st.noPatterns')); return; }
-  if (U.rackDock) focusSoon('rackWin');
+  if (docked('rack')) focusSoon('rackWin');
   if (U.rackWin) { rackFront(); return; }
   const pt = curPat()!, rows = Math.max(4, channels().length + 1);
   const w = rackWidthFor(stepsOf(pt), 30);
@@ -146,7 +147,7 @@ export function openRack() {
   // as wide as when it was closed if that is wider (patterns browsed before), like FL
   const fit = rackPlaceFor(stepsOf(pt), x), pl = g && g.w > fit.w ? fitOnScreen(x, g.w, window.innerWidth) : fit;
   // a docked rack keeps the floating place for when it floats again; opening it docked does not show the window layer
-  setU({ zTop: z, rackWin: { x: pl.x, y, w: pl.w, h, z }, ...(U.rackDock ? {} : { plugsHidden: false }) });
+  setU({ zTop: z, rackWin: { x: pl.x, y, w: pl.w, h, z }, ...(docked('rack') ? {} : { plugsHidden: false }) });
 }
 /** Close the Channel Rack; it reopens where it was (`rackFloat`: kept across restarts). */
 export function closeRack() { const w = U.rackWin; if (w) setU('rackFloat', { x: w.x, y: w.y, w: w.w, h: w.h }); setU('rackWin', null); }
@@ -157,20 +158,16 @@ function dockKey(k: WinKey, open: () => void, close: () => void) {
 }
 export function toggleRack() {
   if (leaveMixView()) return openRack(); // F6 in the Mix view: back to arrange, rack shown
-  if (U.rackDock) return dockKey('rackWin', openRack, closeRack);
+  if (docked('rack')) return dockKey('rackWin', openRack, closeRack);
   if (onTop('rackWin')) closeRack(); else openRack();
 }
 /** View menu: show / hide the Channel Rack (the check mark is whether it is open). */
-export function toggleRackShown() { if (leaveMixView()) return openRack(); if (U.rackDock) { if (U.rackWin) closeRack(); else openRack(); } else toggleRack(); }
-/** Dock the Channel Rack left of the Playlist (showing it), or float it as a window again. */
-export function setRackDock(on: boolean) {
-  leaveMixView();
-  if (U.rackDock === on) { if (on && !U.rackWin) openRack(); return; }
-  setU('rackDock', on);
-  say(t(on ? 'b.dk.rackDocked' : 'b.dk.rackFloats'));
-  // after the message: opening can say why it cannot (no pattern, no channel)
-  if (on) openRack();
-  else if (U.rackWin) { keepOnScreen(); rackFront(); focusSoon('rackWin'); }
+export function toggleRackShown() { if (leaveMixView()) return openRack(); if (docked('rack')) { if (U.rackWin) closeRack(); else openRack(); } else toggleRack(); }
+/** A pattern panel that was docked floats again: kept on screen, in front, with the keyboard. */
+export function patWinFloated(which: 'rack' | 'roll') {
+  const k: WinKey = which === 'rack' ? 'rackWin' : 'rollWin';
+  if (!U[k]) return;
+  keepOnScreen(); front(k); focusSoon(k);
 }
 
 /** F7: open the Piano roll on `ch` (default: the selected channel), or bring it to the front. */
@@ -184,7 +181,7 @@ export function openRoll(ch?: Id) {
   if (U.rollWin) { rollFront(); return; }
   const z = U.zTop + 1, g = U.rollFloat, W = window.innerWidth, H = window.innerHeight;
   // docked: the floating place is only kept for later, the window layer stays as it is
-  const shown = U.rollDock ? {} : { plugsHidden: false };
+  const shown = docked('roll') ? {} : { plugsHidden: false };
   // full screen by default, like FL's piano roll (a melody needs the room; the Channel Rack stays
   // one F6 away). A window the user made smaller reopens where they left it.
   if (g && !U.rollMax) {
@@ -203,7 +200,7 @@ function fullArea() {
 let rollRestore: { x: number; y: number; w: number; h: number } | null = null;
 /** Double-click on the floating Piano roll's title bar: go back to the size before, or fill the screen again. Docked, it has no such size. */
 export function toggleRollMax() {
-  const w = U.rollWin; if (!w || U.rollDock) return;
+  const w = U.rollWin; if (!w || docked('roll')) return;
   if (!U.rollMax) { rollRestore = { x: w.x, y: w.y, w: w.w, h: w.h }; setU('rollMax', true); setU('rollWin', v => v && { ...v, ...fullArea() }); return; }
   const W = window.innerWidth, H = window.innerHeight;
   const b = rollRestore ?? { w: clamp(Math.round(W * 0.62), 640, W - 40), h: clamp(Math.round(H * 0.58), 360, H - 100), x: Math.round(W * 0.19), y: 96 };
@@ -216,21 +213,11 @@ export function rollMoved() { if (U.rollMax) setU('rollMax', false); }
 export function closeRoll() { const w = U.rollWin; if (w) setU('rollFloat', { x: w.x, y: w.y, w: w.w, h: w.h }); setU('rollWin', null); }
 export function toggleRoll() {
   if (leaveMixView()) return openRoll();
-  if (U.rollDock) return dockKey('rollWin', () => openRoll(), closeRoll);
+  if (docked('roll')) return dockKey('rollWin', () => openRoll(), closeRoll);
   if (onTop('rollWin')) closeRoll(); else openRoll();
 }
 /** View menu: show / hide the Piano roll (the check mark is whether it is open). */
-export function toggleRollShown() { if (leaveMixView()) return openRoll(); if (U.rollDock) { if (U.rollWin) closeRoll(); else openRoll(); } else toggleRoll(); }
-/** Dock the Piano roll under the Playlist (showing it), or float it as a window again. */
-export function setRollDock(on: boolean) {
-  leaveMixView();
-  if (U.rollDock === on) { if (on && !U.rollWin) openRoll(); return; }
-  setU('rollDock', on);
-  say(t(on ? 'b.dk.rollDocked' : 'b.dk.rollFloats'));
-  // after the message: opening can say why it cannot (no pattern, no channel)
-  if (on) openRoll();
-  else if (U.rollWin) { keepOnScreen(); rollFront(); focusSoon('rollWin'); }
-}
+export function toggleRollShown() { if (leaveMixView()) return openRoll(); if (docked('roll')) { if (U.rollWin) closeRoll(); else openRoll(); } else toggleRoll(); }
 /** Escape: close the top floating pattern window when it is above every effect window (never a docked panel). True when one closed. */
 /**
  * Open a pattern from the playlist / browser: make it current and show the Channel Rack. Always
@@ -413,11 +400,13 @@ export function toggleChanSolo(c: Channel) { setChannel(c, c.solo ? { solo: fals
 /** A new channel of the built-in synth playing factory preset `name` (or the blank patch). */
 export function addSynth(name: string | null) {
   const cat = S.catalog?.synth; if (!cat) { say(t('b.st.synthNA')); return; }
-  const c = newSynthChannel(cat, allocId(), name);
+  const c = newSynthChannel(cat, allocId(), name, freshColor());
   commit([chanOp(c)], t('b.st.addSynth'));
   selectChannel(c.id);
   say(t('b.st.synthSay', { name: name ? tName(name) : t('b.st.emptySound') }));
 }
+/** A new channel's colour: one the rack uses least, so its steps and notes stand apart. */
+const freshColor = () => nextChannelColor(channels().map(c => c.color));
 const keysChannel = (id: Id): Channel => ({ id, name: 'WAVE Keys', color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
 /** `root`: the key at which the file plays at its own pitch (a library file may know it). */
 const samplerChannel = (id: Id, s: { id: Id; name: string; color: string }, root: number = SAMPLE_ROOT): Channel => ({ id, name: s.name, color: s.color, kind: 'sample', source: s.id, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root });
@@ -438,7 +427,7 @@ export type InstrumentPick =
   | { kind: 'plugin'; plugin: PluginInfo };
 function makeChannel(id: Id, pick: InstrumentPick): Channel | null {
   switch (pick.kind) {
-    case 'synth': { const cat = S.catalog?.synth; if (!cat) { say(t('b.st.synthNA')); return null; } return newSynthChannel(cat, id, pick.preset); }
+    case 'synth': { const cat = S.catalog?.synth; if (!cat) { say(t('b.st.synthNA')); return null; } return newSynthChannel(cat, id, pick.preset, freshColor()); }
     case 'keys': return keysChannel(id);
     case 'sample': { const src = S.project.sources.find(x => x.id === pick.source); return src ? samplerChannel(id, src, pick.root) : null; }
     case 'plugin': return pluginChannel(id, pick.plugin);
@@ -488,14 +477,14 @@ export function replaceWithSource(c: Channel, id: Id, root?: number) {
 
 /** A new channel playing a scanned VST3 instrument (the engine loads it; a failure shows on the channel). */
 export function addPlugin(p: PluginInfo) {
-  const c = pluginChannel(allocId(), p);
+  const c = { ...pluginChannel(allocId(), p), color: freshColor() };
   commit([chanOp(c)], t('b.st.addPlugin'));
   selectChannel(c.id);
   say(t('b.st.pluginSay', { name: p.name }));
 }
 /** A new WAVE Keys channel: the sampled grand piano. */
 export function addKeys() {
-  const c = keysChannel(allocId());
+  const c = { ...keysChannel(allocId()), color: freshColor() };
   commit([chanOp(c)], t('b.st.addKeys'));
   selectChannel(c.id);
   say(t('b.st.keysSay'));
@@ -503,7 +492,7 @@ export function addKeys() {
 /** A new sampler channel of a project source, at `index` in the rack (default: the end). */
 export function addSampler(sourceId: Id, root?: number, index?: number) {
   const s = S.project.sources.find(x => x.id === sourceId); if (!s) return;
-  const c = samplerChannel(allocId(), s, root);
+  const c = { ...samplerChannel(allocId(), s, root), color: freshColor() };
   commit([chanOp(c, {}, index)], t('b.st.addSampler'));
   selectChannel(c.id);
   say(t('b.st.samplerSay', { name: s.name }));
@@ -638,7 +627,7 @@ export const playStep = (pt: Pattern) => { const b = patPlayhead(pt); return b <
 // below the window's edge), and both pattern windows stay reachable when the app window shrinks.
 createRoot(() => {
   createEffect(on(() => channels().length, (n, prev) => {
-    const w = U.rackWin; if (!w || U.rackDock || prev == null || n <= prev) return;
+    const w = U.rackWin; if (!w || docked('rack') || prev == null || n <= prev) return;
     const need = RACK_HEAD + (n + 1) * RACK_ROW + 12 + 2 * RACK_PAD_Y;
     if (need > w.h) setU('rackWin', 'h', Math.min(need, Math.max(220, window.innerHeight - w.y - 20)));
   }));

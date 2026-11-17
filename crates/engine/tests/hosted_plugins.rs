@@ -198,3 +198,81 @@ fn a_hosted_plugins_reported_latency_is_compensated_like_a_built_in_one() {
     assert_eq!(e.playback_latency(), 0);
     let _ = std::fs::remove_dir_all(&d);
 }
+
+/// Refuses plugins until `allow` is set (WAVE's safety check refusing one, then "Load anyway").
+struct Gate {
+    allow: std::sync::atomic::AtomicBool,
+    vetted: Mutex<Vec<String>>,
+}
+
+struct Pass;
+impl Processor for Pass {
+    fn prepare(&mut self, _sample_rate: f32, _max_block: usize) {}
+    fn process(&mut self, _l: &mut [f32], _r: &mut [f32], _ctx: &ProcessCtx) {}
+}
+
+impl PluginFactory for Gate {
+    fn create(&self, _fx_id: Id, p: &PluginRef, _sr: f32, _max_block: usize, _live: bool) -> Result<Box<dyn Processor>, String> {
+        if self.allow.load(Relaxed) {
+            Ok(Box::new(Pass))
+        } else {
+            Err(format!("{}: UNSAFE_PLUGIN: it crashed in WAVE's safety check", p.name))
+        }
+    }
+    fn vet(&self, plugins: &[(&PluginRef, bool)]) {
+        self.vetted.lock().unwrap().extend(plugins.iter().map(|(p, _)| p.cid.clone()));
+    }
+}
+
+#[test]
+fn a_refused_plugin_loads_when_tried_again_and_new_plugins_are_vetted_first() {
+    let gate = Arc::new(Gate { allow: false.into(), vetted: Mutex::new(vec![]) });
+    let e = Engine::new(Project::empty(), gate.clone());
+    let _rt = e.create_rt(SR as f32, BLOCK);
+    let ins = e.project().inserts[1].id;
+    e.apply(&[Op::PutFx { insert_id: ins, fx: plugin_fx(7100, "lv2", "urn:test:crashy", None), index: None }], false, None).unwrap();
+    assert_eq!(*gate.vetted.lock().unwrap(), vec!["urn:test:crashy".to_string()], "vetted before the edit");
+    assert!(e.state().fx_errors.get(&7100).is_some_and(|m| m.contains("UNSAFE_PLUGIN")));
+    let rev = e.revision();
+    // nothing changed: trying again keeps the error
+    e.retry_plugins();
+    assert!(e.state().fx_errors.contains_key(&7100));
+    gate.allow.store(true, Relaxed);
+    e.retry_plugins();
+    assert!(e.state().fx_errors.is_empty(), "{:?}", e.state().fx_errors);
+    assert_eq!(e.revision(), rev, "trying again is not an edit");
+}
+
+/// Writes NaN and infinity, like a broken plugin (ZamEQ2 on a quiet sine).
+struct Nan;
+impl Processor for Nan {
+    fn prepare(&mut self, _sample_rate: f32, _max_block: usize) {}
+    fn process(&mut self, l: &mut [f32], r: &mut [f32], _ctx: &ProcessCtx) {
+        for (i, (a, b)) in l.iter_mut().zip(r.iter_mut()).enumerate() {
+            *a = if i % 2 == 0 { f32::NAN } else { *a };
+            *b = f32::INFINITY;
+        }
+    }
+}
+struct NanFactory;
+impl PluginFactory for NanFactory {
+    fn create(&self, _fx_id: Id, _p: &PluginRef, _sr: f32, _max_block: usize, _live: bool) -> Result<Box<dyn Processor>, String> {
+        Ok(Box::new(Nan))
+    }
+}
+
+#[test]
+fn an_effect_that_outputs_nan_does_not_poison_the_mix() {
+    let e = Engine::new(Project::empty(), Arc::new(NanFactory));
+    e.set_silence_skip(false);
+    // first on the master, before its limiter; an EQ after it (a filter keeps a NaN forever)
+    e.apply(&[Op::PutFx { insert_id: 0, fx: plugin_fx(7200, "lv2", "urn:test:nan", None), index: Some(0) }], false, None).unwrap();
+    e.apply(&[Op::PutFx { insert_id: 0, fx: catalog::new_fx(7201, FxKind::Eq, 120.0), index: Some(1) }], false, None).unwrap();
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    let (mut l, mut r) = (vec![0.0f32; BLOCK], vec![0.0f32; BLOCK]);
+    e.play(0.0);
+    for _ in 0..50 {
+        rt.process(&mut l, &mut r, None);
+        assert!(l.iter().chain(r.iter()).all(|x| x.is_finite()), "the output stays finite");
+    }
+}

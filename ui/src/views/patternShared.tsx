@@ -13,7 +13,7 @@ import { pickInsert, type InsertChoice } from '../ui/InsertPicker';
 import {
   addBar, addKeys, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, chanOp, channels, clonePattern, cloneChannel, curPat, deleteChannel,
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
-  rollMoved, setRackDock, setRollDock,
+  rollMoved,
 } from '../state/pattern';
 import { arrVersion, S } from '../state/store';
 import { openMenu, openRename, say, setU, U, type MenuItem, type PatWin } from '../state/ui';
@@ -61,23 +61,6 @@ export function patGeom(key: 'rackWin' | 'rollWin') {
   return {
     geom: () => U[key]!,
     setGeom: (g: Partial<PatWin>) => { if (key === 'rollWin') rollMoved(); setU(key, o => o && { ...o, ...g }); },
-  };
-}
-
-/** Dock-left / dock-bottom glyphs (a frame with the panel's side drawn) and the float glyph (two windows). */
-const DOCK_ICON = { rack: 'M4 5h16v14H4z M10 5v14', roll: 'M4 5h16v14H4z M4 13h16' } as const;
-const FLOAT_ICON = 'M9 9h11v10H9z M5 15H4V5h11v1';
-/**
- * The dock / float switch of a pattern window's title bar (the Channel Rack docks left of the
- * Playlist, the Piano roll under it). The View menu has the same switch.
- */
-export function patDock(which: 'rack' | 'roll') {
-  const docked = which === 'rack' ? U.rackDock : U.rollDock;
-  return {
-    docked,
-    toggle: () => (which === 'rack' ? setRackDock : setRollDock)(!docked),
-    tip: t(docked ? 'b.dk.float' : which === 'rack' ? 'b.dk.dockLeft' : 'b.dk.dockBottom'),
-    icon: docked ? FLOAT_ICON : DOCK_ICON[which],
   };
 }
 

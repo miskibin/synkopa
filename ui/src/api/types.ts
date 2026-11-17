@@ -610,6 +610,8 @@ export interface PluginInfo { format: PluginFormat; path: string; cid: string; n
  * machine (LV2 without liblilv). `instruments` is absent from an older backend.
  */
 export interface PluginScan { plugins: PluginInfo[]; instruments?: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
+/** A plugin that was loaded when the last session ended without exiting: one of these may be why WAVE died. */
+export interface PluginCrashSuspect { format: string; cid: string; name: string; path: string }
 /**
  * One parameter of a hosted plugin. `value`/`def` are normalized 0..1 (what `pluginSetParam` and automation take),
  * `display` the plugin's text for the value. LV2 adds the port's own range and kind: `real` within `min..max` in
@@ -623,3 +625,12 @@ export interface PluginParam {
 }
 
 export interface CliStatus { installed: boolean; command: string; path: string | null; note?: string | null }
+
+/** Marks an `fxErrors` entry of a plugin WAVE's safety check refused (it crashed or hung in a worker process): the UI offers "Load anyway". */
+export const UNSAFE_PLUGIN = 'UNSAFE_PLUGIN: ';
+/** The plugin was refused by the safety check: the sentence without the marker, else null. */
+export function unsafeReason(err: string | undefined): string | null {
+  if (!err) return null;
+  const i = err.indexOf(UNSAFE_PLUGIN);
+  return i < 0 ? null : (err.slice(0, i) + err.slice(i + UNSAFE_PLUGIN.length)).trim();
+}

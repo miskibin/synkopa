@@ -62,6 +62,8 @@ x11rb::atom_manager! {
         _NET_WM_PID,
         _NET_WM_MOVERESIZE,
         _NET_ACTIVE_WINDOW,
+        _NET_WM_STATE,
+        _NET_WM_STATE_ABOVE,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_NORMAL,
         _MOTIF_WM_HINTS,
@@ -459,6 +461,33 @@ pub(crate) fn show_window(frame: isize) {
     });
 }
 
+/// Pin (`pinned`) or unpin the window on top of the app's: the window manager's "above"
+/// state, changed the EWMH way (a client message to the root; a window manager that
+/// refuses it simply leaves the stacking as it was). The header's pin follows.
+pub(crate) fn set_always_on_top(frame: isize, pinned: bool) {
+    with_win(frame, |c, w| {
+        w.state.set_pinned_state(pinned);
+        send_above(c, w.frame, pinned);
+        paint(c, w);
+    });
+}
+
+/// The click's half: apply what the header's pin now says.
+fn apply_pin(c: &Rc<Conn>, w: &Rc<Win>) {
+    let pinned = w.state.pinned();
+    send_above(c, w.frame, pinned);
+    paint(c, w);
+}
+
+/// Ask the window manager to keep (`set`) or stop keeping the frame above other windows
+/// (`_NET_WM_STATE`, source: application, `_NET_WM_STATE_ABOVE`).
+fn send_above(c: &Conn, frame: XWindow, set: bool) {
+    let action = u32::from(set); // 0 = remove, 1 = add
+    let msg = ClientMessageEvent::new(32, frame, c.atoms._NET_WM_STATE, [action, c.atoms._NET_WM_STATE_ABOVE, 0, 0, 0]);
+    let _ = c.conn.send_event(false, c.root, EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY, msg);
+    let _ = c.conn.flush();
+}
+
 pub(crate) fn request_close(frame: isize) {
     let Some(state_ok) = with_win(frame, |_, w| Rc::clone(w)) else { return };
     state_ok.state.post(WindowEvent::Closed);
@@ -714,6 +743,9 @@ fn dispatch(c: &Rc<Conn>, event: Event) {
             set_header(c, &w, now, None);
             if let Some(part) = pressed.filter(|p| Some(*p) == now) {
                 w.state.header_click(part);
+                if part == Part::Pin {
+                    apply_pin(c, &w);
+                }
             }
         }
         Event::MotionNotify(e) => {

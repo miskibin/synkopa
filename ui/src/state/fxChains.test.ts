@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ERR_EXISTS } from '../api/errors';
 import type { MockBackend } from '../api/mock';
 import type { Fx, Insert } from '../api/types';
 
@@ -84,11 +85,11 @@ describe('FX chain presets', () => {
   it('keeps presets across projects, and handles names, overwrite, rename and delete', async () => {
     const { src } = pick();
     await mock.fxChainSave(src.id, 'Drum Bus');
-    await expect(mock.fxChainSave(src.id, 'drum bus')).rejects.toThrow(/^EXISTS:/);
+    await expect(mock.fxChainSave(src.id, 'drum bus')).rejects.toThrow(new RegExp('^' + ERR_EXISTS));
     await mock.fxChainSave(src.id, 'drum bus', true);
     for (const bad of ['', '  ', 'a/b', 'why?', 'dot.', '.x', 'x'.repeat(81)]) await expect(mock.fxChainSave(src.id, bad)).rejects.toThrow();
     await mock.fxChainSave(src.id, 'Alpha');
-    await expect(mock.fxChainRename('alpha', 'DRUM BUS')).rejects.toThrow(/^EXISTS:/);
+    await expect(mock.fxChainRename('alpha', 'DRUM BUS')).rejects.toThrow(new RegExp('^' + ERR_EXISTS));
     await mock.fxChainRename('alpha', 'Zeta');
     expect((await mock.fxChains()).presets.map(p => p.name)).toEqual(['drum bus', 'Zeta']);
 

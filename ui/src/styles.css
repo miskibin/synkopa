@@ -77,6 +77,11 @@ a { color: var(--blue); }
 .browser .scroll { flex: 1; min-height: 0; overflow: auto; }
 .bhead { height: 28px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid var(--bg0); font: 600 10px var(--sans); letter-spacing: .12em; color: var(--fg4); }
 .bhead.top { border-top: 1px solid var(--bg0); }
+/* a Library section header toggles its whole section (a search opens the sections it matched) */
+.bhead.tog { gap: 6px; cursor: pointer; }
+.bhead.tog > .ell { flex: 1; min-width: 0; }
+.bhead.tog:hover { color: var(--fg2); }
+.bhead.tog:hover .chev { color: var(--fg-hi); }
 .linkbtn { font: 500 11px var(--sans); letter-spacing: 0; color: var(--blue); cursor: pointer; background: none; border: 0; padding: 0; }
 .linkbtn:hover { color: var(--blue-hi); }
 .btabs { height: 30px; flex: none; display: flex; border-bottom: 1px solid var(--bg0); background: var(--bg5); }
@@ -212,14 +217,18 @@ a { color: var(--blue); }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 /* visibility, not content-visibility: WebKitGTK (Linux) drops the canvases' pixels of skipped content, and the Playlist and Channel Rack came back blank */
 .workcol.away { visibility: hidden; }
-.mixdock { flex: none; display: flex; flex-direction: column; }
-.mixsplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
-.mixsplit:hover, .mixsplit:focus-visible { background: var(--blue); }
-/* the collapsed docked mixer: a thin full-width handle with a grip */
+.mixdock { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.mixer.docked { flex: 1; min-height: 0; }
+.mixer.docked.side { flex-direction: column; }
+.mixer.docked.side .strips { min-height: 240px; }
+.mixer.docked.side .fxchain { width: auto; flex: 0 1 36%; min-height: 120px; max-height: 320px; border-left: 0; border-top: 1px solid var(--bg0); }
+/* the collapsed docked mixer: a thin handle with a grip along its edge (`.vert` on a side edge) */
 .mixhandle { flex: none; display: flex; align-items: center; justify-content: center; cursor: row-resize; background: var(--bg5); border-top: 1px solid var(--bg0); outline: none; }
 .mixhandle .grip { width: 40px; height: 2px; border-radius: 1px; background: var(--fg5); }
 .mixhandle:hover, .mixhandle:focus-visible { background: var(--blue); }
 .mixhandle:hover .grip, .mixhandle:focus-visible .grip { background: var(--on-accent, #fff); }
+.mixhandle.vert { cursor: col-resize; border-top: 0; border-left: 1px solid var(--bg0); }
+.mixhandle.vert .grip { width: 2px; height: 40px; }
 .mixview { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--mixer-bg); }
 .mixhd { flex: none; }
 .mixhd .mvhint, .mixwin .mvhint { margin-left: 10px; }
@@ -508,13 +517,28 @@ select option { background: var(--bg4); color: var(--fg); }
 .patwin .wintitle { font: 600 11px var(--sans); color: var(--fg2); letter-spacing: .02em; white-space: nowrap; }
 .patwin .iconbtn.on { background: var(--on-bg); color: var(--blue-hi); }
 .patwin .dockbtn { width: 24px; height: 22px; }
-/* docked pattern panels: the work area is a column (row: browser, rack, playlist; then the roll) */
+/* docked panels (#90): the work area is a column — a row (browser, left strips, playlist, right
+   strips) then the bottom strips. A strip holds one panel or several sharing it (stacked on a side,
+   side by side at the bottom); each panel's `flex` is its share. */
 .workcol { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .workrow { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-.dockpane { flex: none; display: flex; min-width: 0; min-height: 0; overflow: hidden; }
-.docksplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); }
+.dockstrip { flex: none; display: flex; align-items: stretch; min-width: 0; min-height: 0; overflow: hidden; }
+.dockstrip.stack { flex-direction: column; }
+.dockpane { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+.docksplit { height: 5px; flex: none; cursor: row-resize; background: var(--bg0); outline: none; }
+.docksplit:hover, .docksplit:focus-visible, .vsplit:focus-visible { background: var(--blue); outline: none; }
+.panesplit { flex: none; background: var(--bg0); }
+.panesplit.h { height: 5px; cursor: row-resize; }
+.panesplit.v { width: 5px; cursor: col-resize; }
+.panesplit:hover { background: var(--blue); }
+/* the dock guides while a title bar is dragged: over every window, never in the way of the pointer */
+.dockguides { position: fixed; inset: 0; z-index: 49; pointer-events: none; }
+.dockguide { position: absolute; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+  background: var(--bg7); color: var(--fg2); border: 1px solid var(--line3); box-shadow: 0 4px 14px var(--shadow); }
+.dockguide.hot { background: var(--blue); color: var(--on-accent, #fff); border-color: var(--blue-hi); }
+.dockpreview { position: absolute; background: color-mix(in srgb, var(--blue) 22%, transparent); border: 2px solid var(--blue); border-radius: 3px; }
 .win.docked { position: relative; flex: 1; min-width: 0; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
-.win.docked > .winhd { cursor: default; }
+.win.docked > .winhd, .mixdock > .mixhd { cursor: grab; }
 /* which docked panel has the keyboard (F6 / F7 hide it only then; otherwise they give it the keyboard) */
 .win.docked:focus-within > .winhd { box-shadow: inset 0 2px 0 var(--blue); }
 .win.docked:focus-within > .winhd .wintitle { color: var(--fg-hi); }
@@ -828,25 +852,72 @@ select option { background: var(--bg4); color: var(--fg); }
 .cname .cicon { margin-right: 4px; }
 .strip .micon { margin-right: 3px; vertical-align: -1px; }
 
-/* settings dialog: tabs on the left */
-.dialog.setdlg { width: min(660px, 94vw); height: min(560px, 90vh); display: flex; flex-direction: column; }
-.setdlg .setbody { flex: 1; min-height: 0; display: flex; gap: 14px; }
-.setdlg .settabs { flex: none; width: 112px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); padding-right: 10px; }
-.setdlg .settabs button { text-align: left; background: none; border: 0; color: var(--fg3); padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
-.setdlg .settabs button:hover { background: var(--bg6); color: var(--fg); }
+/* settings dialog (views/Settings): a tab sidebar with coloured icon tiles, then a pane of cards */
+.dialog.setdlg { width: min(920px, 95vw); height: min(680px, 92vh); max-height: none; padding: 0; display: flex; overflow: hidden; border-radius: 12px; }
+.setdlg .settabs { flex: none; width: 200px; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; background: var(--bg3); border-right: 1px solid var(--line); overflow-y: auto; }
+.setdlg .settitle { display: flex; align-items: center; gap: 8px; padding: 2px 8px 14px; font: 600 14px var(--sans); color: var(--fg-hi); }
+.setdlg .settabs button { display: flex; align-items: center; gap: 10px; text-align: left; background: none; border: 0; color: var(--fg2); padding: 6px 8px; border-radius: 7px; cursor: pointer; font: 500 12.5px var(--sans); }
+.setdlg .settabs button:hover { background: var(--bg6); color: var(--fg-hi); }
 .setdlg .settabs button.on { background: var(--sel-bg); color: var(--fg-hi); }
-.setdlg .setpane { flex: 1; min-width: 0; overflow-y: auto; padding-right: 4px; }
-.setdlg .setfoot { margin-top: 18px; display: flex; justify-content: flex-end; }
-.themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-.themecard { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg3); cursor: pointer; color: var(--fg2); font-size: 11.5px; }
-.themecard:hover { border-color: var(--line3); color: var(--fg); }
+.setdlg .settabs button:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
+.setdlg .settile { flex: none; width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+.setdlg .settile.big { width: 38px; height: 38px; border-radius: 10px; }
+.setdlg .settile.plain { width: 18px; height: 18px; }
+.setdlg .setmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.setdlg .setph { flex: none; display: flex; align-items: center; gap: 12px; padding: 16px 18px 14px 22px; border-bottom: 1px solid var(--line); }
+.setdlg .setphtx { flex: 1; min-width: 0; }
+.setdlg .setph h2 { margin: 0; font: 600 16px var(--sans); color: var(--fg-hi); }
+.setdlg .setph p { margin: 2px 0 0; font: 12px var(--sans); color: var(--fg4); }
+.setdlg .setx { flex: none; width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--fg3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.setdlg .setx:hover { background: var(--line); color: var(--fg-hi); }
+.setdlg .setpane { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 22px 22px; }
+.setdlg .setpane > .form:first-child { margin-top: 18px; }
+.setdlg .sechd { margin: 18px 0 8px; padding: 0 2px; border: 0; font: 600 10.5px var(--sans); letter-spacing: .09em; color: var(--fg4); text-transform: uppercase; }
+/* each .form is a card; rows are label | control, separated by hairlines */
+.setdlg .setpane .form { grid-template-columns: minmax(170px, 40%) minmax(0, 1fr); gap: 0; padding: 2px 16px; background: var(--bg4); border: 1px solid var(--line); border-radius: 10px; }
+.setdlg .setpane .form > * { padding: 11px 0; min-width: 0; }
+.setdlg .setpane .form > :nth-child(odd) { padding-right: 18px; }
+.setdlg .setpane .form > :nth-child(n+3) { border-top: 1px solid var(--line); }
+.setdlg .setpane .form > label, .setdlg .setpane .form .lab > span { font: 500 12.5px var(--sans); color: var(--fg); }
+.setdlg .setpane .form .lab { display: flex; flex-direction: column; gap: 3px; }
+.setdlg .setpane .form .lab small { font: 11px/1.4 var(--sans); color: var(--fg4); }
+.setdlg .setpane .form .ctl { display: flex; align-items: center; }
+.setdlg .setpane .form .sel { height: 30px; max-width: 360px; background: var(--bg1); border-color: var(--line2); border-radius: 6px; font-size: 12px; padding: 0 8px; }
+.setdlg .setpane .form .sel:hover:not(:disabled) { border-color: var(--line3); }
+.setdlg .setpane .form .sel:focus { outline: none; border-color: var(--blue); }
+.setdlg .setpane .form .sel:disabled { opacity: .55; cursor: default; }
+.setdlg .setpane .form .note { font-size: 11.5px; }
+.setdlg .setpane .seg2 > button { height: 26px; padding: 0 10px; font-size: 11px; }
+.setdlg .setpane .smallbtn { height: 26px; padding: 0 10px; border-radius: 5px; }
+.setdlg .setfoot { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+/* theme gallery */
+.setdlg .themegroup { display: flex; flex-direction: column; gap: 8px; }
+.setdlg .tglab { font: 500 11.5px var(--sans); color: var(--fg3); margin-top: 4px; }
+.themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.themecard { display: flex; flex-direction: column; gap: 7px; padding: 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg4); cursor: pointer; color: var(--fg2); font: 500 12px var(--sans); transition: border-color .12s, transform .12s; }
+.themecard:hover { border-color: var(--line3); color: var(--fg-hi); }
 .themecard.on { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); color: var(--fg-hi); }
-.themecard .sw { height: 44px; border-radius: 5px; display: flex; align-items: flex-end; gap: 4px; padding: 6px; border: 1px solid rgba(127,127,127,.25); }
-.themecard .sw span:first-child { flex: 1; height: 16px; border-radius: 3px; }
-.themecard .sw span:last-child { width: 16px; height: 16px; border-radius: 50%; }
-.themecard .sw.sys { background: linear-gradient(135deg, #111419 50%, #f6f7f9 50%); }
-.themecard .sw.sys span { background: transparent !important; }
-.themecard .nm { text-align: left; }
+.themecard .tprev { display: flex; flex-direction: column; height: 70px; border-radius: 6px; overflow: hidden; border: 1px solid; }
+.themecard .tbar { flex: none; height: 11px; display: flex; align-items: center; gap: 3px; padding: 0 5px; }
+.themecard .tbar i { width: 9px; height: 4px; border-radius: 2px; }
+.themecard .tbar i:first-child { width: 14px; }
+.themecard .tbody { flex: 1; display: flex; min-height: 0; }
+.themecard .tside { width: 26%; display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; }
+.themecard .tside i { height: 3px; border-radius: 2px; opacity: .8; }
+.themecard .tside i:nth-child(2) { width: 70%; }
+.themecard .tlanes { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: space-evenly; padding: 3px 0; }
+.themecard .tlanes i { position: relative; display: block; height: 11px; border-radius: 3px; }
+.themecard .tlanes b { position: absolute; top: 0; bottom: 0; left: 58%; width: 1.5px; opacity: .9; }
+.themecard .nm { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px 1px; text-align: left; }
+.themecard .nm svg { flex: none; color: var(--blue); }
+.themesys { display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg4); cursor: pointer; text-align: left; color: var(--fg2); }
+.themesys:hover { border-color: var(--line3); }
+.themesys.on { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.themesys .sw { flex: none; width: 44px; height: 30px; border-radius: 6px; border: 1px solid rgba(127,127,127,.35); background: linear-gradient(135deg, #111419 50%, #f6f7f9 50%); }
+.themesys .systx { flex: 1; min-width: 0; }
+.themesys b { display: block; font: 600 12.5px var(--sans); color: var(--fg-hi); }
+.themesys small { display: block; margin-top: 2px; font: 11px var(--sans); color: var(--fg4); }
+@media (max-width: 640px) { .setdlg .settabs { width: 64px; } .setdlg .settabs button span:last-child, .setdlg .settitle { display: none; } .setdlg .setpane .form { grid-template-columns: 1fr; } .setdlg .setpane .form > :nth-child(n+2) { border-top: 0; } }
 
 /* channel settings window (views/ChannelWindow) */
 .chanwin .chicon { display: inline-flex; margin-right: 2px; }
@@ -1170,3 +1241,8 @@ select option { background: var(--bg4); color: var(--fg); }
 /* an effect (or a whole chain) dragged over a mixer strip: where it lands */
 .strip[data-fx-drop] { outline: 2px solid var(--blue); outline-offset: -2px; background: color-mix(in srgb, var(--blue) 10%, transparent); }
 .fxchain .hd.grab { cursor: grab; }
+
+/* a plugin WAVE's safety check refused: why, and the way to load it anyway */
+.unsafe { display: flex; align-items: flex-start; gap: 10px; }
+.unsafe > .note { flex: 1; min-width: 0; }
+.unsafe > button { flex: none; }

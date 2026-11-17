@@ -259,7 +259,8 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
       const degrees = verb.degrees ?? [];
       if (degrees.length) {
         if (degrees.length > 32) throw new Error('progression degrees: at most 32 entries');
-        if (degrees.some(d => !Number.isInteger(d) || d < 0 || d >= n)) throw new Error(`progression degrees must be whole numbers 0..${n - 1} in this scale`);
+        const bad = degrees.find(d => !Number.isInteger(d) || d < 0 || d >= n);
+        if (bad != null) throw new Error(`progression degrees must be 0..${n - 1} in this scale (got ${bad})`);
       } else {
         const bars = verb.bars ?? 4;
         if (bars < 1 || bars > 32) throw new Error('progression bars must be 1..=32');
@@ -330,8 +331,10 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
       let hits = 0;
       onsets.forEach((on, i) => {
         if (on) {
-          // every fourth emitted onset accents, whatever rotation does to the slots
-          target.push({ ch: verb.ch, step: Math.fround(i * slot), len: Math.fround(Math.min(1, Math.max(0.25, slot))), trig: true, v: hits++ % 4 === 0 ? 1 : verb.vel ?? 0.7 });
+          // every fourth emitted onset accents to full; like the engine's serde, `v` is
+          // written only when it is not exactly 1 (so vel 1 = no `v` at all)
+          const vel = verb.vel ?? 0.7;
+          target.push({ ch: verb.ch, step: Math.fround(i * slot), len: Math.fround(Math.min(1, Math.max(0.25, slot))), trig: true, ...(hits++ % 4 === 0 || vel === 1 ? {} : { v: vel }) });
         }
       });
       break;

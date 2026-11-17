@@ -31,6 +31,7 @@ pub mod analysis;
 pub mod denoise;
 pub mod dsp;
 pub mod engine;
+pub mod errors;
 pub mod keys;
 pub mod midi_file;
 pub mod pitch_api;

@@ -2,13 +2,20 @@
 
 ## Product Standard
 
-WAVE Studio is a professional creative tool, not a demo. Solve the musician's
+WAVE  is a professional creative tool, not a demo. Solve the musician's
 actual workflow problem rather than merely satisfying the literal surface of a
 ticket. A smaller, complete feature is better than a broad but shallow one.
 
 Do not ship placeholders, dead or misleading controls, disconnected mock UI, or
 happy-path-only behavior. Every visible element must earn the space it consumes
 and help the user understand or operate the product.
+
+## Claiming an Issue
+
+Before starting work on a GitHub issue, check its comments and the open pull requests for
+someone already on it. If nobody is, leave a short comment on the issue saying you are
+working on it (and what part, if only part), so two people or agents do not build the same
+change in parallel.
 
 ## Substantial Changes Require Research
 
@@ -18,13 +25,12 @@ dependency, or material UX, architecture, or performance decision.
 
 Before implementing a substantial change:
 
-1. Inspect the current implementation, relevant specs, tests, and architectural
-   constraints. Trace the complete path the change would affect.
-2. Research how strong products solve the underlying problem today.
-3. Decide on the recommended direction and acceptance criteria, then implement
+
+1. Research how strong products solve the underlying problem today.
+2. Decide on the recommended direction and acceptance criteria, then implement
    it autonomously. Do not stop to ask for approval of a direction the research
    settles.
-4. Ask the user (with the question tool) only when a genuinely hard decision
+3. Ask the user (with the question tool) only when a genuinely hard decision
    remains after research: the options trade off things only the user can
    weigh, or the choice is costly to reverse.
 
@@ -74,6 +80,8 @@ it. Prefer current primary sources and verify version-sensitive claims.
 
 Unless the user asks for a permanent artifact, keep the research summary and
 source links in chat rather than adding a research document to the repository.
+
+by default we want to use fl studio like behaviors usually - if possible you can inspect fl studio on computer yourself. 
 
 ## Product and UX Reasoning
 
@@ -138,7 +146,7 @@ documentation.
 ## Commits and Pull Requests
 
 Describe the change itself: what changed for the user, why, and how it was
-verified.
+verified. If applicable - add screenshots before / after to the mr description
 
 ## Verification and Definition of Done
 
@@ -155,11 +163,5 @@ pnpm --dir ui build
 
 A change is done only when the approved workflow works end to end with realistic
 data, relevant edge cases are handled, performance remains appropriate, and no
-placeholder or integration gap remains.
+placeholder or integration gap remains.  
 
-In the final report, state:
-
-- what the research changed or confirmed;
-- what was implemented;
-- what was tested or measured and with which commands;
-- any approved limitation, deviation, or follow-up that remains.

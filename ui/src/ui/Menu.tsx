@@ -7,7 +7,8 @@ import { S } from '../state/store';
 import { commit } from '../state/edit';
 import { clamp, dbText } from '../lib/format';
 import { t } from '../lib/i18n';
-import { Icon, TC } from './icons';
+import { Icon } from './icons';
+import { SWATCHES } from '../lib/color';
 import { INST_ICONS, InstIcon } from './instIcons';
 
 /** The one context menu (items are built by whoever opens it). */
@@ -78,7 +79,7 @@ function MenuList(props: { items: MenuItem[]; x: number; y: number; sub?: boolea
                   <Match when={it.t === 'swatches' && it}>
                     {i => (
                       <div class="swatches">
-                        <For each={TC}>{c => <button title={t('d.ui.color')} style={{ background: c, 'box-shadow': c === i().current ? '0 0 0 2px var(--fg-hi)' : 'none' }} onClick={() => { i().pick(c); closeMenu(); }} />}</For>
+                        <For each={SWATCHES}>{c => <button title={t('d.ui.color')} style={{ background: c, 'box-shadow': c === i().current ? '0 0 0 2px var(--fg-hi)' : 'none' }} onClick={() => { i().pick(c); closeMenu(); }} />}</For>
                       </div>
                     )}
                   </Match>

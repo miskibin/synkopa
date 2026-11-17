@@ -4,7 +4,7 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.20 — 2026-11-17
 
 ### Added
 - **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
@@ -19,6 +19,61 @@ shown in the app after an update and is published as the release notes (see
 - **Effects in the mixer strips.** When the mixer is taller, each strip lists its effects
   above the knobs (icon, name, on/bypass dot; click to open), as many as fit; the strip
   itself keeps its size. In the maximized mixer there is always room for five effects, and the faders take the rest of the height.
+- **Arrange the windows the way you work.** The Channel rack, the Piano roll and the Mixer can
+  each dock to the left, the right or the bottom of the main window, or float. Drag a window's
+  title bar and dock guides appear (as in Visual Studio): drop it on an edge, beside the
+  Playlist, or on another docked panel's guide to put the two side by side or one above the
+  other. Drag a docked panel's title bar to pull it off. Right-click a title bar, or use
+  View → Window layout, to dock it without dragging. Every splitter resizes, the Playlist always
+  keeps room, and the layout is remembered. View → Window layout → Reset puts it back.
+- **Three new themes**: *Dim*, a mid-grey dark theme, and *Fog* (cool) and *Sand* (warm), two
+  mid-grey light themes for when white is too bright.
+- **Pin a plugin's window on top.** A plugin editor's header has a pin next to the gear: click
+  it and the window stays in front of WAVE's, so an instrument you are playing stays in sight
+  while you click in the arrangement. The choice is remembered per plugin, and the pin lights
+  up while it holds.
+- **When WAVE died, the suspects are named.** If the last session ended without exiting (a
+  plugin crashed it, or the machine did), the next start lists the plugins that were loaded
+  and offers, per plugin, to keep it out of future scans. A normal exit clears the list on its
+  own.
+- **A plugin that crashes no longer takes WAVE down when you load it.** The first time you use a
+  plugin, WAVE tries it in a separate, throw-away process: it creates it, plays sound (or notes)
+  through it, saves and restores its settings and closes it. If that test process crashes or
+  hangs, the plugin is not loaded into WAVE: its slot says why, and **Load anyway** loads it if
+  you want to take the risk. Plugins that pass load straight away from then on (an updated
+  plugin is tried again).
+- **Zoom much further into the Playlist**, down to single 16ths spread across the screen, for
+  detailed drum and edit work. The automatic snap follows down to 1/16 of a beat, and the snap
+  menu has 1/8 and 1/16 beat.
+
+### Fixed
+- **Linux: WAVE starts on Ubuntu 22.04 and Debian 12 again.** The packages and the AppImage
+  needed a newer system library than those systems have, and quit at once there.
+- **Linux: plugin windows stay in front of WAVE.** Under Wayland, clicking anywhere in WAVE sent
+  plugin windows (Vitalium, Surge XT, …) behind it. WAVE now runs through XWayland there, as
+  other Linux DAWs do, so plugin windows stay above it (`WAVE_WAYLAND=1` keeps native Wayland).
+- **Linux: LV2 plugins built with JUCE show their own window** (Surge XT, Dexed and others
+  needed the `instance-access` feature; they showed only WAVE's parameter list).
+- **Mono VST3 effects load.** Effects with a mono input or output (most ZAM plugins, several
+  DISTRHO ones) were refused as "not a stereo effect"; they now take the sum of both sides and
+  play on both.
+- **A plugin that outputs garbage cannot ruin the mix.** An effect that produces invalid samples
+  (NaN or infinity, as ZamEQ2 does) is silenced instead of breaking every effect after it and the
+  master.
+
+### Changed
+- **The Library's sections collapse.** Standard library, Kits to download and Folders each get
+  a chevron: click the heading to fold it away and leave your own folders in sight. A search
+  still looks everywhere, and what you folded stays folded after a restart.
+
+- **Redesigned Settings.** A bigger window with an icon sidebar (General, Look, Audio, MIDI and
+  a new Updates tab), settings grouped into cards, and each option's explanation shown under its
+  name instead of hidden in a tooltip. Themes are shown as small previews of the app, grouped
+  into dark and light.
+- **New channels get their own colour.** Each channel you add takes the next colour from a
+  wider palette (blue, amber, green, pink, violet …), so its steps and piano-roll notes stand
+  apart from the other channels' instead of all being the same purple. The colour menu offers
+  the new colours too.
 
 ## 0.9.19 — 2026-11-16
 

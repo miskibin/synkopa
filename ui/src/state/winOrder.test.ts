@@ -66,13 +66,14 @@ describe('the Mixer is a window like the others', () => {
     const { U, setU } = await import('../state/ui');
     const MV = await import('../state/mixView');
     const { topFloating } = await import('../state/winOrder');
-    setU({ zTop: 1, plugs: [], editor: null, pitchEd: null, plugsHidden: false, rackWin: null, rollWin: null, mixView: false, mixDock: true, mixMin: false });
+    setU({ zTop: 1, plugs: [], editor: null, pitchEd: null, plugsHidden: false, rackWin: null, rollWin: null, mixView: false, dock: { left: [], right: [], bottom: [[{ id: 'mix', share: 1 }]] }, mixMin: false });
     // docked: F9 hides it to its handle and shows it again; it is never "in front"
     MV.toggleMixer(); expect(U.mixMin).toBe(true);
     MV.toggleMixer(); expect(U.mixMin).toBe(false);
     expect(topFloating()).toBeNull();
     // floating: it joins the stack in front
-    MV.setMixDock(false);
+    const D = await import('../state/docking');
+    D.floatPane('mix');
     expect(topFloating()?.kind).toBe('mix');
     // another window comes in front: F9 brings the Mixer back to the front instead of hiding it
     setU({ zTop: U.zTop + 1, plugs: [{ fxId: 3, x: 0, y: 0, w: 300, z: U.zTop + 1 }] });

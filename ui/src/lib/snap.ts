@@ -2,11 +2,13 @@ import { t } from './i18n';
 
 // Grid snapping. `snap` is the select value: -1 = auto, 0 = off, otherwise beats.
 export const SNAPS: [string, number][] = [
-  ['Snap: auto', -1], ['Snap: off', 0], ['Snap: 1/4 beat', 0.25], ['Snap: 1/3 beat', 1 / 3],
+  ['Snap: auto', -1], ['Snap: off', 0], ['Snap: 1/16 beat', 1 / 16], ['Snap: 1/8 beat', 0.125], ['Snap: 1/4 beat', 0.25], ['Snap: 1/3 beat', 1 / 3],
   ['Snap: 1/2 beat', 0.5], ['Snap: beat', 1], ['Snap: bar', 4],
 ];
 
 export function snapName(u: number): string {
+  if (u === 1 / 16) return '1/16 beat';
+  if (u === 0.125) return '1/8 beat';
   if (u === 0.25) return '1/4 beat';
   if (Math.abs(u - 1 / 3) < 1e-6) return '1/3 beat';
   if (u === 0.5) return '1/2 beat';
@@ -16,9 +18,9 @@ export function snapName(u: number): string {
   return t('a.snap.offName');
 }
 
-/** Smallest of [¼, ½, 1, 2, 4] beats whose on-screen width is at least 10 px. */
+/** Smallest of [1/16, 1/8, ¼, ½, 1, 2, 4] beats whose on-screen width is at least 10 px. */
 export function autoSnap(pxPerBeat: number): number {
-  return [0.25, 0.5, 1, 2, 4].find(u => u * pxPerBeat >= 10) ?? 4;
+  return [1 / 16, 0.125, 0.25, 0.5, 1, 2, 4].find(u => u * pxPerBeat >= 10) ?? 4;
 }
 
 export function snapRes(snap: number, pxPerBeat: number): number {

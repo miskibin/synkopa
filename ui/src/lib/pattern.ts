@@ -70,6 +70,13 @@ export class PatternOpError extends Error {}
 
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
+/** Drops the fields the engine's serde omits on write: swing only when non-zero, a note's
+ * `v` only when it is not exactly 1 (`skip_serializing_if`). */
+export function stripPatternDefaults(pt: Pattern): void {
+  if (!pt.swing) delete pt.swing;
+  for (const n of pt.notes) if (n.v === 1) delete n.v;
+}
+
 /** Project.migrate: derived pattern lengths, the starter kit when the Channel Rack is empty. */
 export function migrateProject(p: Project) {
   for (const pt of p.patterns) fitLen(pt);
@@ -102,12 +109,12 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, adopt: <T ex
         if (!(n.step >= 0 && n.len > 0 && isFinite(n.step) && isFinite(n.len))) fail(`pattern ${pt.id}: a note has an invalid step/len`);
         if ((n.step + n.len) > TOTAL_BEATS * 4) fail(`pattern ${pt.id}: notes must end within ${TOTAL_BEATS} beats`);
         if (n.v != null && !(n.v >= 0 && n.v <= 1)) fail('note velocity `v` must be 0..1');
+        if (n.p != null && !(n.p >= 0 && n.p <= 127)) fail('note key `p` must be 0..127');
         if (n.trig != null && typeof n.trig !== 'boolean') fail('note `trig` must be a boolean');
         if (!n.ch) fail('every note needs `ch`');
       }
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
-      if (!pt.swing) delete pt.swing;
-      for (const n of pt.notes) if (n.v === 1) delete n.v;
+      stripPatternDefaults(pt);
       fitLen(pt);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);
@@ -122,6 +129,7 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, adopt: <T ex
       const c = structuredClone(op.channel);
       if (!(c.vol >= 0 && c.vol <= 1)) fail('channel vol is a fader position 0..1');
       if (!(c.pan >= -1 && c.pan <= 1)) fail('channel pan must be -1..1');
+      if (c.root > 127) fail('channel root must be 0..127');
       if (c.kind === 'sample') {
         if (!p.sources.some(s => s.id === c.source)) fail(`no source with id ${c.source}`);
         const e = samplerError(c.sampler); if (e) fail(e);

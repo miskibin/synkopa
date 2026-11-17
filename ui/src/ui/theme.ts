@@ -139,10 +139,62 @@ const SLATE: ThemeDef = {
   },
 };
 
+/** A mid-grey dark theme (Ableton's "Mid Dark" idea): surfaces around 20–30 % lightness, for
+ *  bright rooms and for eyes that tire of near-black. Text stays near white so contrast holds. */
+function midDarkTheme(id: string, name: string, h: number, s: number, accent: [string, string]): ThemeDef {
+  const L = (l: number) => hsl(h, s, l), F = (l: number) => hsl(h, Math.min(s, 8), l);
+  const t: Tokens = {
+    ...DARK,
+    bg0: L(12.5), bg1: L(16.5), bg2: L(20.5), bg3: L(22), bg4: L(23.5), bg5: L(24.5), bg6: L(28), bg7: L(31.5),
+    line: L(34), line2: L(38.5), line3: L(43),
+    fg: F(89), fgHi: F(98), fg2: F(83), fg3: F(76), fg4: F(68), fg5: F(60), fg6: F(51),
+    blue: accent[0], blueHi: accent[1], green: '#6fcf98', amber: '#ebb35c', red: '#f06b7a', onBg: hsl(218, 26, 38),
+    viz: L(15), vizPanel: L(18), vizGrid: L(23.5), vizGrid2: L(28), vizAxis: L(38.5), vizLabel: F(60),
+    ink: F(98), pre: F(76), post: accent[1], playhead: '#ffffff', onFill: L(12.5),
+    grid: L(20.5), gridBar: L(38), gridBeat: L(27), laneAlt: L(22), rulerBg: L(22), rulerText: F(68), clipBody: L(18),
+    shade: 'rgba(0,0,0,.4)', keyW: F(87), keyB: L(22), keyWText: L(12.5), keyBText: F(98), onBand: L(12.5),
+    clipBase: L(18), clipBodyPct: 24, clipHeadPct: 54, clipHeadSelPct: 80, clipText: F(98), clipTextSel: L(12.5),
+    laneArm: hsl(335, 12, 25), gridShade: 'rgba(255,255,255,.03)',
+  };
+  const css: Css = {
+    '--sel-bg': hsl(218, 14, 37), '--sel-bg2': hsl(218, 12, 32), '--sel-ring': hsl(218, 20, 59), '--drag-bg': hsl(218, 14, 42),
+    '--mixer-bg': L(18), '--dialog-bg': L(25), '--on-accent': L(12.5), '--on-warm': L(12.5), '--danger': '#ff8592',
+    '--arm-bg': hsl(335, 14, 26), '--playhead': '#ffffff', '--knob-track': L(38.5), '--knob-cap': L(43), '--knob-ptr': '#ffffff',
+    '--fader-cap': F(87), '--shadow': 'rgba(0,0,0,.45)', '--shadow2': 'rgba(0,0,0,.32)', '--viz': t.viz, '--win-close': '#c42b1c', '--on-band': L(12.5),
+  };
+  return { id, name, light: false, t, css, swatch: [t.bg2, t.bg6, accent[0]] };
+}
+
+/** A mid-grey light theme (Ableton's "Mid Light"): surfaces around 75–85 %, no glaring white,
+ *  text and accents darkened so labels keep ≥ 4.5:1 against the panels. */
+function midLightTheme(id: string, name: string, h: number, s: number, accent: [string, string]): ThemeDef {
+  const L = (l: number) => hsl(h, s, l), F = (l: number) => hsl(h, Math.min(s, 14), l);
+  const t: Tokens = {
+    ...LIGHT,
+    bg0: L(70), bg1: L(78.5), bg2: L(82), bg3: L(80.5), bg4: L(83.5), bg5: L(76.5), bg6: L(74), bg7: L(88),
+    line: L(70), line2: L(66), line3: L(62),
+    fg: F(14), fgHi: F(4), fg2: F(20), fg3: F(26), fg4: F(32), fg5: F(40), fg6: F(48),
+    blue: accent[0], blueHi: accent[1], green: '#16784d', amber: '#8f5c08', red: '#b3243a', onBg: hsl(h, 30, 70),
+    viz: L(85), vizPanel: L(81.5), vizGrid: L(78.5), vizGrid2: L(73), vizAxis: L(64), vizLabel: F(40),
+    ink: F(6), pre: F(32), post: accent[0], playhead: F(4), onFill: '#ffffff',
+    grid: L(82), gridBar: L(63), gridBeat: L(73.5), laneAlt: L(79.5), rulerBg: L(78.5), rulerText: F(26), clipBody: L(88),
+    shade: 'rgba(200,205,212,.6)', keyW: L(94), keyWText: F(10), tint: 1.5,
+    clipBase: L(88), clipBodyPct: 22, clipHeadPct: 66, clipText: F(4), laneArm: hsl(340, 14, 80), gridShade: 'rgba(0,0,0,.035)',
+  };
+  const css: Css = {
+    '--sel-bg': hsl(h, 30, 74), '--sel-bg2': hsl(h, 26, 77), '--sel-ring': hsl(218, 40, 57), '--drag-bg': hsl(h, 32, 70),
+    '--mixer-bg': L(75), '--dialog-bg': L(84), '--on-accent': '#ffffff', '--on-warm': '#ffffff', '--danger': '#a81c33',
+    '--arm-bg': hsl(340, 16, 80), '--playhead': F(4), '--knob-track': L(66), '--knob-cap': L(91), '--knob-ptr': F(10),
+    '--fader-cap': L(94), '--shadow': 'rgba(20,28,40,.28)', '--shadow2': 'rgba(20,28,40,.3)', '--viz': t.viz,
+  };
+  return { id, name, light: true, t, css, swatch: [t.bg2, t.bg6, accent[0]] };
+}
+
 /** Every theme the settings offer. Ids are saved on this computer, never rename them. */
 export const THEMES: ThemeDef[] = [
   { id: 'dark', name: 'Grafit', light: false, t: DARK, css: {}, swatch: [DARK.bg2, DARK.bg6, DARK.blue] },
   SLATE,
+  midDarkTheme('dim', 'Przyciemniony', 220, 5, ['#6fa3ff', '#b0ccff']),
   darkTheme('midnight', 'Północ', 220, 34, ['#5b8cff', '#9db8ff'], { lift: 1 }),
   darkTheme('violet', 'Fiolet', 265, 22, ['#a07cf6', '#c6b0ff'], { lift: 1 }),
   darkTheme('forest', 'Las', 155, 16, ['#3fbf8a', '#86e0b8'], { warm: ['#5cc98f', '#e0a44a', '#e05263'] }),
@@ -152,11 +204,14 @@ export const THEMES: ThemeDef[] = [
   { id: 'light', name: 'Jasny', light: true, t: LIGHT, css: {}, swatch: [LIGHT.bg2, LIGHT.bg6, LIGHT.blue] },
   lightTheme('paper', 'Papier', 38, 30, ['#c2651b', '#a9530f']),
   lightTheme('sky', 'Błękit', 210, 35, ['#1f6fe0', '#1858b8']),
+  midLightTheme('fog', 'Mgła', 215, 10, ['#1d55c4', '#1747a8']),
+  midLightTheme('sand', 'Piasek', 36, 16, ['#a4480c', '#8a3b08']),
 ];
 
 const THEME_NAME_KEYS: Record<string, TranslationKey> = {
   dark: 'd.theme.dark', slate: 'd.theme.slate', midnight: 'd.theme.midnight', violet: 'd.theme.violet', forest: 'd.theme.forest', studio: 'd.theme.studio',
   rose: 'd.theme.rose', oled: 'd.theme.oled', light: 'd.theme.light', paper: 'd.theme.paper', sky: 'd.theme.sky',
+  dim: 'd.theme.dim', fog: 'd.theme.fog', sand: 'd.theme.sand',
 };
 /** Display name of a theme in the current language (the Polish `name` stays as the data). */
 export function themeName(th: ThemeDef): string { const k = THEME_NAME_KEYS[th.id]; return k ? t(k) : th.name; }

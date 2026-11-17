@@ -221,6 +221,7 @@ uris! {
     UI_SCALE_FACTOR = "http://lv2plug.in/ns/extensions/ui#scaleFactor";
     UI_UPDATE_RATE = "http://lv2plug.in/ns/extensions/ui#updateRate";
     UI_MAKE_RESIDENT = "http://lv2plug.in/ns/extensions/ui#makeResident";
+    INSTANCE_ACCESS = "http://lv2plug.in/ns/ext/instance-access";
 }
 
 /// Features an X11 UI may require that this host provides.
@@ -235,6 +236,7 @@ pub const SUPPORTED_UI_FEATURES: &[&str] = &[
     UI_NO_USER_RESIZE,
     UI_FIXED_SIZE,
     UI_MAKE_RESIDENT,
+    INSTANCE_ACCESS,
 ];
 
 /// Features a plugin may require that this host provides (or, for the plugin-side

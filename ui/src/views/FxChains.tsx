@@ -4,6 +4,7 @@
 // name, colour or routing. The list is searchable; rename (F2) and delete (Del) work in place.
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
 import { be } from '../api/backend';
+import { ERR_EXISTS } from '../api/errors';
 import type { FxChainPreset, Id } from '../api/types';
 import { t } from '../lib/i18n';
 import { enqueue, resync } from '../state/edit';
@@ -24,7 +25,7 @@ export function saveFxChain(insId: Id, x: number, y: number) {
       say(t('e.fxc.saved', { name: r.name, n: r.effects }));
     } catch (e) {
       const msg = errText(e);
-      if (msg.startsWith('EXISTS:')) {
+      if (msg.startsWith(ERR_EXISTS)) {
         openMenu(x, y, [
           { t: 'title', label: t('e.fxc.exists', { name: name.trim() }) },
           { t: 'item', label: t('e.fxc.overwrite'), danger: true, act: () => void save(name, true) },
@@ -104,7 +105,7 @@ function FxChainLoader(props: { insId: Id; x: number; y: number }) {
       const r = await be().fxChainRename(from, to);
       await refresh();
       setSel(Math.max(0, shown().findIndex(p => p.name === r.name)));
-    } catch (e) { setErr(errText(e).replace(/^EXISTS: /, '')); }
+    } catch (e) { setErr(errText(e).replace(new RegExp('^' + ERR_EXISTS + ' '), '')); }
     search?.focus();
   };
   const remove = async (name: string) => {

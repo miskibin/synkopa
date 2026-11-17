@@ -15,10 +15,13 @@ mod models;
 mod pitch_actions;
 #[cfg(target_os = "linux")]
 mod plugin_loop;
+pub mod plugin_probe;
 mod plugins;
 mod project_launch;
 mod recovery;
 mod settings;
+#[cfg(test)]
+mod ui_prefixes_tests;
 mod updater;
 #[cfg(test)]
 mod watch_tests;
@@ -932,16 +935,45 @@ async fn plugin_add(
 }
 
 /// Open or close a plugin's own window. `title` / `subtitle`: what WAVE's header above it
-/// says (the UI's names, in its language); the header's gear emits `plugin-settings`.
+/// says (the UI's names, in its language); `pinned`: kept on top of the app. The header's
+/// gear emits `plugin-settings`, its pin `plugin-pin`.
 #[tauri::command]
-async fn plugin_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool, title: Option<String>, subtitle: Option<String>) -> R<()> {
+async fn plugin_editor(
+    app: St<'_>,
+    handle: AppHandle,
+    fx_id: u64,
+    open: bool,
+    title: Option<String>,
+    subtitle: Option<String>,
+    pinned: Option<bool>,
+) -> R<()> {
     let label = wave_plugin_windows::Label { title: title.unwrap_or_default(), subtitle: subtitle.unwrap_or_default(), tag: fx_id };
-    app.plugins.editor(&handle, fx_id, open, label)
+    app.plugins.editor(&handle, fx_id, open, label, pinned.unwrap_or(false))
+}
+
+/// "Load anyway": the effect or plugin channel `fx_id` loads although WAVE's safety check
+/// refused it (see `plugin_probe`).
+#[tauri::command]
+async fn plugin_load_anyway(app: St<'_>, fx_id: u64) -> R<()> {
+    actions::plugin_load_anyway(&**app, fx_id)
 }
 
 #[tauri::command]
 async fn plugin_editor_open(app: St<'_>, fx_id: u64) -> R<bool> {
     app.plugins.editor_open(fx_id)
+}
+
+/// The plugins that were loaded when the last session ended without exiting: the UI asks
+/// once at start, and offers to keep them out of future scans.
+#[tauri::command]
+async fn plugin_crash_suspects(app: St<'_>) -> R<Vec<plugins::CrashSuspect>> {
+    Ok(app.plugins.crash_suspects())
+}
+
+/// Keep a plugin's module out of future scans (the follow-up to `plugin_crash_suspects`).
+#[tauri::command]
+async fn plugin_block(app: St<'_>, format: String, path: String) -> R<()> {
+    app.plugins.block(&format, &path)
 }
 
 #[tauri::command]
@@ -977,7 +1009,7 @@ async fn vst3_add(app: St<'_>, insert_id: u64, path: String, cid: String, index:
 
 #[tauri::command]
 async fn vst3_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool) -> R<()> {
-    app.plugins.editor(&handle, fx_id, open, wave_plugin_windows::Label { tag: fx_id, ..Default::default() })
+    app.plugins.editor(&handle, fx_id, open, wave_plugin_windows::Label { tag: fx_id, ..Default::default() }, false)
 }
 
 #[tauri::command]
@@ -1088,6 +1120,8 @@ fn shutdown(h: &AppHandle, app: &App) {
     app.audio.stop();
     // a normal exit: the user already answered the unsaved-changes question
     app.recovery.close();
+    // nothing is suspect when WAVE left the front door
+    app.plugins.clean_exit();
 }
 
 /// Keeps `LC_NUMERIC` in the C locale. `gtk_init` runs `setlocale(LC_ALL, "")`,
@@ -1108,6 +1142,9 @@ pub fn ensure_c_numeric_locale() {
 }
 
 pub fn run(project_arg: Option<&str>) {
+    // plugin windows are X11: keep them above WAVE's window under Wayland too
+    #[cfg(target_os = "linux")]
+    plugin_loop::prefer_x11();
     let boot = boot::Boot::new();
     boot.mark("run() entered");
     let setup_boot = boot.clone();
@@ -1212,6 +1249,9 @@ pub fn run(project_arg: Option<&str>) {
             plugin_add,
             plugin_editor,
             plugin_editor_open,
+            plugin_crash_suspects,
+            plugin_block,
+            plugin_load_anyway,
             plugin_params,
             plugin_state,
             plugin_set_param,
@@ -1339,6 +1379,11 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
             let _ = w.set_focus();
         }
         let _ = sh.emit("plugin-settings", json!({ "id": id }));
+    }));
+    // the pin in a plugin window's header: the UI keeps the per-plugin choice for next time
+    let ph = tapp.handle().clone();
+    plugin_windows.set_pinned_handler(std::rc::Rc::new(move |id, pinned| {
+        let _ = ph.emit("plugin-pin", json!({ "id": id, "pinned": pinned }));
     }));
     tapp.manage(plugin_windows);
     let _ = events.set(tapp.handle().clone());

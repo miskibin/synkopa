@@ -149,6 +149,9 @@ mod unavailable {
         pub fn close_editor(&self) -> Result<(), String> {
             match self.never {}
         }
+        pub fn set_editor_pinned(&self, _pinned: bool) {
+            match self.never {}
+        }
     }
 
     pub fn status() -> Result<(), String> {

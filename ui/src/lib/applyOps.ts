@@ -1,7 +1,8 @@
 // A TS port of crates/engine/src/ops.rs `apply` — used by the in-browser mock backend.
-// The real engine is the source of truth; this only has to agree on the happy path and
-// reject the same obviously-invalid batches.
-import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
+// Parity with the engine is enforced by fixtures, not by discipline: ops.json
+// (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
+// error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
+import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { forgetInsert, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
@@ -12,6 +13,13 @@ import { applyTuneEdit } from './pitch';
 export class OpError extends Error {}
 
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
+
+/** Drops the fields the engine's serde omits on write (stretch 1, not resampled, no pitch). */
+export function stripClipDefaults(c: Clip): void {
+  if (c.stretch === 1) delete c.stretch;
+  if (c.resample === false) delete c.resample;
+  if (c.pitch === 0) delete c.pitch;
+}
 
 export function applyOp(p: Project, op: Op): void {
   switch (op.op) {
@@ -43,10 +51,7 @@ export function applyOp(p: Project, op: Op): void {
       for (const c of op.clips) {
         bump(p, c.id);
         const nc = structuredClone(c);
-        // the engine writes the defaults out (stretch 1, not resampled)
-        if (nc.stretch === 1) delete nc.stretch;
-        if (nc.resample === false) delete nc.resample;
-        if (nc.pitch === 0) delete nc.pitch;
+        stripClipDefaults(nc);
         const i = p.clips.findIndex(x => x.id === c.id);
         if (i >= 0) p.clips[i] = nc; else p.clips.push(nc);
       }
@@ -76,7 +81,7 @@ export function applyOp(p: Project, op: Op): void {
     }
     case 'removeTrack': {
       const idx = p.tracks.findIndex(t => t.id === op.id);
-      if (idx < 0) throw new Error('no track ' + op.id);
+      if (idx < 0) throw new OpError(`no track with id ${op.id}`);
       if (p.tracks.length === 1) throw new Error('the last track cannot be removed');
       p.tracks.splice(idx, 1);
       p.clips = p.clips.filter(c => c.track !== idx);
@@ -90,13 +95,15 @@ export function applyOp(p: Project, op: Op): void {
       forgetInsert(p, op.id);
       for (const t of p.tracks) if (t.insert === op.id) t.insert = 0;
       // a clip routed there plays through its track again
-      for (const c of p.clips) if (c.insert === op.id) c.insert = null;
+      for (const c of p.clips) if (c.insert === op.id) delete (c as Partial<Clip>).insert; // the engine omits it (`skip_serializing_if`)
       return;
     }
     case 'putFx': {
       const fx = op.fx;
       if (fx.type === 'eq' && (!fx.bands || fx.bands.length > MAX_BANDS)) throw new OpError(`an EQ has 0..${MAX_BANDS} bands`);
       if (fx.type === 'plugin' && !fx.plugin) throw new OpError('a plugin slot needs `plugin`');
+      if (fx.type === 'warp' && !fx.maps) throw new OpError('a Warp needs `maps` (see fx_catalog().warp for the factory slots)');
+      if (fx.type !== 'warp' && fx.maps) throw new OpError('only a Warp has `maps`');
       for (const [k, v] of Object.entries(fx.params)) if (!isFinite(v)) throw new OpError(`parameter ${k} is not a number`);
       for (const m of p.inserts) {
         const j = m.fx.findIndex(f => f.id === fx.id);
@@ -142,7 +149,7 @@ export function applyOp(p: Project, op: Op): void {
       applyPatternOp(p, op, true);
       p.sources = p.sources.filter(s => s.id !== op.id);
       p.clips = p.clips.filter(c => !(c.kind === 'audio' && c.ref === op.id));
-      for (const c of p.clips) if (c.tune?.reference && !c.tune.reference.melody && c.tune.reference.source === op.id) c.tune.reference = null;
+      for (const c of p.clips) if (c.tune?.reference && !c.tune.reference.melody && c.tune.reference.source === op.id) delete c.tune.reference; // the engine omits it
       applyCompOp(p, op);
       return;
     case 'putComp':
@@ -198,12 +205,18 @@ export function applyOp(p: Project, op: Op): void {
       if (c.kind !== 'audio') throw new OpError(`clip ${op.clip}: only audio clips have pitch edits`);
       let next: ClipTune | null;
       try { next = applyTuneEdit(c.tune, op.edit); } catch (e) { throw new OpError(`clip ${op.clip}: ${(e as Error).message}`); }
-      if (next) c.tune = next; else delete c.tune;
+      if (next) {
+        // as the engine writes it: `pencil` only when not empty, a note's `speed` only when set
+        const t: ClipTune = { notes: next.notes.map(n => { const { speed, ...rest } = n; return speed == null ? rest : { ...rest, speed }; }) };
+        if (next.pencil?.length) t.pencil = next.pencil;
+        if (next.reference) t.reference = next.reference;
+        c.tune = t;
+      } else delete c.tune;
       return;
     }
     case 'setKey':
       if (op.key != null && (!Number.isInteger(op.key) || op.key < 0 || op.key > 11)) throw new OpError('key must be 0..11 (0 = C)');
-      if (!Number.isInteger(op.scale ?? 1) || (op.scale ?? 1) < 0 || (op.scale ?? 1) > 4) throw new OpError('scale must be 0..4');
+      if (!Number.isInteger(op.scale ?? 1) || (op.scale ?? 1) < 0 || (op.scale ?? 1) > 4) throw new OpError('scale must be 0..4 (see pitch::scale_mask)');
       p.key = op.key;
       p.scale = op.scale ?? 1;
       return;

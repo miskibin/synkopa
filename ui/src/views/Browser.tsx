@@ -240,6 +240,9 @@ const [lib, setLib] = createStore<{
 }>({ kits: [], folders: [], open: {}, files: {}, errs: {}, gopen: {}, sopen: {}, q: '', sel: null, progress: {}, loaded: false, error: null, trunc: {} });
 const terms = createMemo(() => searchTerms(lib.q));
 const searching = () => terms().length > 0;
+/** Whole sections (STANDARD LIBRARY, KITS, FOLDERS) the user closed; in U so it survives a restart. A search opens everything it matched, like the groups inside a list. */
+const secOpen = (s: 'std' | 'kits' | 'folders') => searching() || !U.browserSec[s];
+const toggleSec = (s: 'std' | 'kits' | 'folders') => { if (!searching()) setU('browserSec', s, U.browserSec[s] ? undefined : true); };
 const GROUP_COLOR = new Map(FACTORY_FILES.map(f => [f.group, f.color]));
 let listEl: HTMLDivElement | undefined, searchEl: HTMLInputElement | undefined;
 
@@ -578,14 +581,21 @@ function LibraryTab() {
         <Show when={nothing()}><div class="bnote">{t('d.br.nomatch', { q: lib.q.trim() })}</div></Show>
         <Show when={searchTruncated()}><div class="bnote">{t('d.br.searchtrunc')}</div></Show>
         <Show when={stdShown()}>
-          <div class="bhead" title={t('d.br.stdlibDesc')}>
+          <div class="bhead tog" role="button" aria-expanded={secOpen('std')} title={t('d.br.sec.tip')} onClick={() => toggleSec('std')}>
+            <Chev open={secOpen('std')} />
             <span class="ell" style={{ 'text-transform': 'uppercase' }}>{t('d.br.stdlib')}</span>
             <Show when={lib.files[STD]}>{f => <span class="hmeta">{searching() ? `${matchCount(STD)} / ${f().length}` : f().length}</span>}</Show>
           </div>
-          <div class="flist"><FileList k={STD} /></div>
+          <Show when={secOpen('std')}>
+            <div class="flist"><FileList k={STD} /></div>
+          </Show>
         </Show>
         <Show when={kits().length}>
-          <div class="bhead top">{t('d.br.kits')}</div>
+          <div class="bhead top tog" role="button" aria-expanded={secOpen('kits')} title={t('d.br.sec.tip')} onClick={() => toggleSec('kits')}>
+            <Chev open={secOpen('kits')} />
+            <span class="ell">{t('d.br.kits')}</span>
+          </div>
+          <Show when={secOpen('kits')}>
           <For each={kits()}>
             {k => {
               const prog = () => lib.progress[k.id], key = 'k:' + k.id;
@@ -613,12 +623,15 @@ function LibraryTab() {
               );
             }}
           </For>
+          </Show>
         </Show>
         <Show when={!searching() || folders().length}>
-          <div class="bhead top">
-            <span>{t('d.br.folders')}</span>
-            <button class="linkbtn" onClick={addFolder} title={t('d.br.addfolder.tip')}>{t('d.br.add')}</button>
+          <div class="bhead top tog" role="button" aria-expanded={secOpen('folders')} title={t('d.br.sec.tip')} onClick={() => toggleSec('folders')}>
+            <Chev open={secOpen('folders')} />
+            <span class="ell">{t('d.br.folders')}</span>
+            <button class="linkbtn" onClick={e => { e.stopPropagation(); void addFolder(); }} title={t('d.br.addfolder.tip')}>{t('d.br.add')}</button>
           </div>
+          <Show when={secOpen('folders')}>
           <For each={folders()} fallback={<div class="bnote">{t('d.br.addown')}</div>}>
             {f => (
               <>
@@ -631,6 +644,7 @@ function LibraryTab() {
               </>
             )}
           </For>
+          </Show>
         </Show>
         <div class="bnote">{t('d.br.libnote')}</div>
         </div>

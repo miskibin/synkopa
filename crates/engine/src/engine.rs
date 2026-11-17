@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analysis::Analyzer;
 use crate::catalog::param_block;
+use crate::errors::{ERR_INVALID_TARGET, ERR_REVISION_CONFLICT};
 use crate::midi::{self, MidiMsg, MidiRecorder};
 use crate::model::*;
 use crate::ops::{self, Dirty, Op};
@@ -40,6 +41,11 @@ pub trait PluginFactory: Send + Sync {
     ) -> Result<Box<dyn crate::processor::Instrument>, String> {
         Err(format!("{} cannot be loaded: this build has no plugin host", plugin.name))
     }
+    /// Prepare everything about these plugins that may be slow and needs no instance (WAVE's
+    /// safety check of a plugin used for the first time), so the `create` calls the engine
+    /// makes under its lock are quick. Called without the engine lock, before an edit or a
+    /// project load that adds them; `instrument` per plugin. Default: nothing.
+    fn vet(&self, _plugins: &[(&PluginRef, bool)]) {}
     /// The effect left the project (or the engine is rebuilding everything).
     fn release(&self, _fx_id: Id) {}
     /// Current opaque state of a live instance (base64), for saving.
@@ -666,7 +672,28 @@ impl Engine {
     /// Applies a batch. `transient` edits (inside a gesture) do not create undo steps.
     /// With `if_revision`, fails if the project changed since that revision.
     pub fn apply(&self, ops: &[Op], transient: bool, if_revision: Option<u64>) -> Result<u64, EngineError> {
+        let added: Vec<(&PluginRef, bool)> = ops
+            .iter()
+            .filter_map(|op| match op {
+                Op::PutFx { fx, .. } => fx.plugin.as_ref().map(|p| (p, false)),
+                Op::PutChannel { channel, .. } => channel.plugin().map(|p| (p, true)),
+                _ => None,
+            })
+            .collect();
+        if !added.is_empty() {
+            self.factory.vet(&added);
+        }
         self.apply_locked(self.core.lock(), ops, transient, if_revision)
+    }
+
+    /// [`PluginFactory::vet`] for every hosted plugin of `p` (outside the lock).
+    fn vet_project(&self, p: &Project) {
+        let fx = p.inserts.iter().flat_map(|m| m.fx.iter()).filter_map(|f| f.plugin.as_ref().map(|p| (p, false)));
+        let inst = p.channels.iter().filter_map(|c| c.plugin().map(|p| (p, true)));
+        let all: Vec<(&PluginRef, bool)> = fx.chain(inst).collect();
+        if !all.is_empty() {
+            self.factory.vet(&all);
+        }
     }
 
     fn apply_locked(
@@ -678,7 +705,7 @@ impl Engine {
     ) -> Result<u64, EngineError> {
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let before = c.project.clone();
@@ -689,7 +716,9 @@ impl Engine {
                 if let AutoTarget::Plugin { fx_id, param_id } = &automation.target {
                     let in_project = c.project.find_fx(*fx_id).is_some_and(|(_, f)| f.kind == FxKind::Plugin);
                     if !in_project || !self.factory.has_plugin_param(*fx_id, *param_id) {
-                        return Err(EngineError::Msg(format!("effect {fx_id} has no plugin parameter {param_id} to automate")));
+                        return Err(EngineError::Msg(format!(
+                            "{ERR_INVALID_TARGET} effect {fx_id} has no plugin parameter {param_id} to automate"
+                        )));
                     }
                 }
             }
@@ -768,6 +797,7 @@ impl Engine {
         if project.inserts.first().map(|m| m.id) != Some(0) {
             return Err(EngineError::Msg("the project has no master insert".into()));
         }
+        self.vet_project(&project);
         let have =
             |c: &Core, s: &Source| c.sources.get(s.id).is_some() && c.project.sources.iter().any(|o| o.id == s.id && o.path == s.path);
         let todo: Vec<(Id, String)> = {
@@ -779,7 +809,7 @@ impl Engine {
         let mut c = self.core.lock();
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         if c.take.is_some() || self.midi_take.lock().rec.is_some() {
@@ -1321,7 +1351,7 @@ impl Engine {
         let mut c = self.core.lock();
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let before = c.project.clone();
@@ -2091,6 +2121,7 @@ impl Engine {
     // ------------------------------------------------------------ project files
 
     pub fn new_project(&self, project: Project) {
+        self.vet_project(&project);
         let mut c = self.core.lock();
         if c.take.is_some() {
             return;
@@ -2176,7 +2207,7 @@ impl Engine {
         }
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         let origin = c.path.clone();
@@ -2230,13 +2261,14 @@ impl Engine {
         if p.inserts.first().map(|m| m.id) != Some(0) {
             return Err(EngineError::Msg("the project has no master insert".into()));
         }
+        self.vet_project(&p);
         let mut c = self.core.lock();
         if c.take.is_some() || self.midi_take.lock().rec.is_some() {
             return Err(EngineError::Msg("recording: stop it first".into()));
         }
         if let Some(r) = if_revision {
             if r != c.revision {
-                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
         send(&mut c, Cmd::Stop);
@@ -2693,6 +2725,25 @@ impl Engine {
             self.sync(&mut c, Dirty { mixer: true, ..Default::default() });
         }
         changed
+    }
+
+    /// Tries every hosted plugin that did not load once more (an effect or a plugin
+    /// instrument with an `fx_errors` entry): after the user chose to load one that WAVE's
+    /// safety check refused, or installed what was missing. Running instances are kept.
+    pub fn retry_plugins(&self) {
+        let mut c = self.core.lock();
+        let failed: Vec<Id> = c.fx_errors.keys().copied().collect();
+        if failed.is_empty() {
+            return;
+        }
+        for id in failed {
+            // an instrument channel is made again by `sync_plugs`; an effect by the graph build,
+            // which makes only the slots it does not already hold (a failed one is held empty)
+            c.plugs.remove(&id);
+            c.live_fx.remove(&id);
+        }
+        self.sync(&mut c, Dirty { mixer: true, ..Default::default() });
+        self.changed(c);
     }
 
     /// Frames between the timeline and the speakers inside the mixer of the running audio

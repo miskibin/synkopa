@@ -5653,10 +5653,12 @@ dependencies = [
  "wave-engine",
  "wave-lv2",
  "wave-midi-in",
+ "wave-plugin-scan",
  "wave-plugin-windows",
  "wave-rmvpe",
  "wave-session",
  "wave-vst3",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
