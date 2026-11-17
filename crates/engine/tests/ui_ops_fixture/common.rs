@@ -109,6 +109,8 @@ pub fn base() -> Project {
                 muted: false,
                 solo: false,
                 fx: vec![fx(900, FxKind::Limit)],
+                sends: vec![],
+                master: true,
             },
             Insert {
                 id: 1,
@@ -120,6 +122,8 @@ pub fn base() -> Project {
                 muted: false,
                 solo: false,
                 fx: vec![delay_fx(902, &[("fb", 0.3)]), eq_fx(901, vec![eq_band(100.0, 3.0), eq_band(8000.0, -2.0)])],
+                sends: vec![],
+                master: true,
             },
             Insert {
                 id: 2,
@@ -131,6 +135,8 @@ pub fn base() -> Project {
                 muted: false,
                 solo: false,
                 fx: vec![plugin_fx(903, "C:\\Program Files\\Common Files\\VST3\\Serum.vst3")],
+                sends: vec![],
+                master: true,
             },
         ],
         patterns: vec![

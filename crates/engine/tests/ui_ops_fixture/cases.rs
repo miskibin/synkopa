@@ -182,6 +182,8 @@ pub fn cases() -> Vec<Case> {
                         muted: false,
                         solo: false,
                         fx: vec![],
+                        sends: vec![],
+                        master: true,
                     }
                 },
             },
@@ -196,6 +198,8 @@ pub fn cases() -> Vec<Case> {
                     muted: false,
                     solo: false,
                     fx: vec![delay_fx(950, &[("fb", 0.4)]), plugin_fx(951, "C:\\VST\\Serum.vst3")],
+                    sends: vec![],
+                    master: true,
                 },
             },
         ],
