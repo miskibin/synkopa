@@ -356,7 +356,8 @@ async fn auto_vocal_plan(
 #[tauri::command]
 async fn bake_rider(app: St<'_>, clip_id: u64, params: std::collections::BTreeMap<String, f64>) -> R<Value> {
     let e = app.engine.clone();
-    let (source, clip) = tauri::async_runtime::spawn_blocking(move || e.bake_rider(clip_id, &params)).await.map_err(es)?.map_err(es)?;
+    let (source, clip) =
+        tauri::async_runtime::spawn_blocking(move || e.bake_rider(clip_id, &params, None)).await.map_err(es)?.map_err(es)?;
     Ok(json!({ "sourceId": source, "clipId": clip }))
 }
 

@@ -22,7 +22,7 @@ fn no_model() {
     static ONCE: Once = Once::new();
     let p = std::env::temp_dir().join("wave-no-such-model.onnx");
     ONCE.call_once(|| {
-        std::fs::write(&p, b"junk bytes, not a model").ok();
+        std::fs::write(&p, b"junk bytes, not a model").expect("write the junk model fixture");
         std::env::set_var("WAVE_RMVPE_MODEL", &p);
     });
 }

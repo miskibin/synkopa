@@ -1765,8 +1765,14 @@ impl Engine {
     /// source stays in the project. One undo step. `params` are Rider params (catalog ids;
     /// missing ones take the catalog defaults), e.g. an auto-vocal plan's `rider_bake`.
     /// Returns (new source id, clip id). Slow (the whole region is rendered): call it off
-    /// the UI thread.
-    pub fn bake_rider(&self, clip_id: Id, params: &std::collections::BTreeMap<String, f64>) -> Result<(Id, Id), EngineError> {
+    /// the UI thread. `if_revision` is checked under the commit lock, so a project that
+    /// moved on while the rider was rendering refuses the bake before anything is written.
+    pub fn bake_rider(
+        &self,
+        clip_id: Id,
+        params: &std::collections::BTreeMap<String, f64>,
+        if_revision: Option<u64>,
+    ) -> Result<(Id, Id), EngineError> {
         let (clip, audio, bpm, src_name, color) = {
             let mut c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
@@ -1809,6 +1815,11 @@ impl Engine {
         let (stretch, resample) = if rate != 1.0 { (clip.stretch, clip.resample) } else { (1.0, false) };
 
         let mut c = self.core.lock();
+        if let Some(r) = if_revision {
+            if c.revision != r {
+                return Err(EngineError::Msg(format!("REVISION_CONFLICT: project is at revision {}, not {r}", c.revision)));
+            }
+        }
         let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
         if now.as_ref() != Some(&clip) || c.project.bpm != bpm {
             return Err(EngineError::Msg("the clip changed while the rider was rendering; try again".into()));

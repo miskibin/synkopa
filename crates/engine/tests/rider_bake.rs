@@ -121,7 +121,8 @@ fn baked_clip_plays_what_the_live_rider_did_and_undo_restores_it() {
         assert!(rms(&live) > 0.01, "the live render is silent");
 
         let n_src = e.project().sources.len();
-        let (baked_src, baked_clip) = e.bake_rider(clip, &params).unwrap();
+        let rev = e.revision();
+        let (baked_src, baked_clip) = e.bake_rider(clip, &params, Some(rev)).unwrap();
         assert_eq!(baked_clip, clip);
         e.apply(&[Op::RemoveFx { fx_id: 9000 }], false, None).unwrap();
         let p = e.project();
@@ -148,7 +149,29 @@ fn baked_clip_plays_what_the_live_rider_did_and_undo_restores_it() {
         assert!(worst(&live, &again).1 < 1e-6, "undo restores the live sound");
         e.apply(&[Op::RemoveFx { fx_id: 9000 }], false, None).unwrap();
     }
-    assert!(e.bake_rider(424242, &rider_params(0.0)).is_err());
+    assert!(e.bake_rider(424242, &rider_params(0.0), None).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// A project that moved on while the rider was rendering refuses the bake under the commit
+/// lock: no source is written and the clip stays where it was (the `auto_vocal` caller's
+/// guard works mid-render, not only at entry).
+#[test]
+fn a_stale_revision_refuses_the_bake_and_changes_nothing() {
+    let (e, clip, _src, dir) = vocal_engine("stale", 9.0);
+    let rev = e.revision();
+    // an unrelated edit advances the project while "the render is running"
+    let bpm = e.project().bpm;
+    let fx = new_fx(9500, FxKind::Eq, bpm);
+    let ins = insert_of(&e.project(), 0);
+    e.apply(&[Op::PutFx { insert_id: ins, fx, index: None }], false, None).unwrap();
+    let n_src = e.project().sources.len();
+    let before = e.project().clips.iter().find(|c| c.id == clip).cloned().unwrap();
+    let err = e.bake_rider(clip, &rider_params(0.0), Some(rev)).unwrap_err();
+    assert!(err.to_string().contains("REVISION_CONFLICT"), "{err}");
+    let p = e.project();
+    assert_eq!(p.sources.len(), n_src, "no source was written");
+    assert_eq!(p.clips.iter().find(|c| c.id == clip), Some(&before), "the clip is untouched");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -189,7 +212,7 @@ fn live_vs_baked(
     for k in 0..live.len() {
         e.apply(&[Op::RemoveFx { fx_id: 9100 + k as Id }], false, None).unwrap();
     }
-    e.bake_rider(clip, rider).unwrap();
+    e.bake_rider(clip, rider, None).unwrap();
     put_chain(e, rest, 9200);
     let pdc = wave_engine::engine::playback_latency(&e.project(), SR as f32);
     assert!(pdc < SR as usize / 10, "the baked plan adds only the short look-aheads ({pdc} frames)");

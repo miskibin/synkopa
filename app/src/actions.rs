@@ -1658,7 +1658,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
                 Some(v) => serde_json::from_value(v.clone()).map_err(|er| format!("BAD_ARGS: params: {er}"))?,
                 None => Default::default(),
             };
-            let (source, clip) = e.bake_rider(cid, &params).map_err(|x| x.to_string())?;
+            let (source, clip) = e.bake_rider(cid, &params, if_revision).map_err(|x| x.to_string())?;
             Ok(json!({ "clipId": clip, "sourceId": source, "revision": e.revision() }))
         }
         "auto_vocal" => {
@@ -1684,13 +1684,19 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             // delay); a clip that was baked before is not baked twice (same guard as the app)
             let mut baked = None;
             if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, cid)) {
-                let (s, c) = e.bake_rider(cid, &rb.params).map_err(|x| x.to_string())?;
+                // the engine checks the guard under the commit lock: a project that moved on
+                // while the rider rendered refuses the bake before a source is written
+                let (s, c) = e.bake_rider(cid, &rb.params, if_revision).map_err(|x| x.to_string())?;
                 baked = Some(json!({ "sourceId": s, "clipId": c }));
             }
+            // the stage ids come from the snapshot below, so the apply is guarded on the
+            // revision read just before it even when the caller gave no guard: a concurrent
+            // edit then conflicts instead of silently overwriting one of those ids
+            let base = e.revision();
             let (ops, fx_ids) = chain_ops(e, insert, &plan);
             // our own bake moved the project one step past the caller's guard; a foreign change
             // still conflicts (the entry check above refuses before anything is done)
-            let guard = if_revision.map(|r| r + u64::from(baked.is_some()));
+            let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
             e.apply(&ops, false, guard).map_err(|x| x.to_string())?;
             Ok(json!({
                 "revision": e.revision(), "clipId": cid, "insertId": insert, "style": plan.style,

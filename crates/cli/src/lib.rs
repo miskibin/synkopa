@@ -1261,8 +1261,7 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             send(cx, a, "melody_channels", json!({"clipId": a.num("clip").map_err(u)?.ok_or_else(|| u("missing --clip".into()))? as u64}))
         }
         "auto-vocal" => {
-            let clip = a.num("clip").map_err(u)?.ok_or_else(|| u("missing --clip".into()))? as u64;
-            let (command, args) = auto_vocal_args(a, clip)?;
+            let (command, args) = auto_vocal_args(a)?;
             send(cx, a, command, args)
         }
         "f0-model" if a.has("install") => {
@@ -1397,20 +1396,29 @@ fn pitch(cx: &Cx, a: &Args) -> Result<Value, Fail> {
 }
 
 /// The request `auto-vocal` sends: `auto_vocal` — the plan, the rider bake and the chain in
-/// one call — or, with `--plan`, the read-only `auto_vocal_plan`.
-fn auto_vocal_args(a: &Args, clip: u64) -> Result<(&'static str, Value), Fail> {
+/// one call — or, with `--plan`, the read-only `auto_vocal_plan`. Ids are parsed as whole
+/// numbers (`a.num` would truncate `--clip 5.9` to clip 5), and a value flag with no value
+/// (`--style --no-bake`) is a usage error, not a silently dropped option.
+fn auto_vocal_args(a: &Args) -> Result<(&'static str, Value), Fail> {
     let u = Fail::Usage;
+    let clip: u64 =
+        a.get("clip").ok_or_else(|| u("missing --clip".into()))?.parse().map_err(|_| u("--clip must be a whole number".into()))?;
+    let mut args = json!({ "clipId": clip });
+    if a.has("style") && a.get("style").is_none() {
+        return Err(u("--style needs a value: natural or hard".into()));
+    }
     if let Some(s) = a.get("style") {
         if s != "natural" && s != "hard" {
             return Err(u(format!("--style is natural or hard, not `{s}`")));
         }
-    }
-    let mut args = json!({ "clipId": clip });
-    if let Some(s) = a.get("style") {
         args["style"] = json!(s);
     }
-    if let Some(v) = a.num("beat-clip").map_err(u)? {
-        args["beatClipId"] = json!(v);
+    if a.has("beat-clip") && a.get("beat-clip").is_none() {
+        return Err(u("--beat-clip needs a value".into()));
+    }
+    if let Some(v) = a.get("beat-clip") {
+        let beat: u64 = v.parse().map_err(|_| u("--beat-clip must be a whole number".into()))?;
+        args["beatClipId"] = json!(beat);
     }
     if a.has("plan") {
         // read-only: the plan itself, the rider stage in `riderBake` unless --no-bake
@@ -1971,21 +1979,21 @@ mod auto_vocal_args_tests {
 
     #[test]
     fn flags_build_the_apply_request() {
-        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5"]), 5).unwrap();
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5"])).unwrap();
         assert_eq!(command, "auto_vocal");
         assert_eq!(v, json!({ "clipId": 5, "noBake": false }));
         let (command, v) =
-            auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--style", "hard", "--beat-clip", "3", "--no-bake"]), 5).unwrap();
+            auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--style", "hard", "--beat-clip", "3", "--no-bake"])).unwrap();
         assert_eq!(command, "auto_vocal");
-        assert_eq!(v, json!({ "clipId": 5, "style": "hard", "beatClipId": 3.0, "noBake": true }));
+        assert_eq!(v, json!({ "clipId": 5, "style": "hard", "beatClipId": 3, "noBake": true }));
     }
 
     #[test]
     fn plan_is_read_only_and_keeps_the_bake_flag() {
-        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan"]), 5).unwrap();
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan"])).unwrap();
         assert_eq!(command, "auto_vocal_plan");
         assert_eq!(v, json!({ "clipId": 5, "bakeRider": true }));
-        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan", "--no-bake"]), 5).unwrap();
+        let (command, v) = auto_vocal_args(&args(&["auto-vocal", "--clip", "5", "--plan", "--no-bake"])).unwrap();
         assert_eq!(command, "auto_vocal_plan");
         assert_eq!(v, json!({ "clipId": 5, "bakeRider": false }));
     }
@@ -1993,7 +2001,34 @@ mod auto_vocal_args_tests {
     #[test]
     fn style_is_validated_here() {
         let bad = ["auto-vocal", "--clip", "5", "--style", "crunchy"];
-        assert!(matches!(auto_vocal_args(&args(&bad), 5), Err(Fail::Usage(_))), "{bad:?}");
+        assert!(matches!(auto_vocal_args(&args(&bad)), Err(Fail::Usage(_))), "{bad:?}");
+    }
+
+    #[test]
+    fn ids_are_whole_numbers_not_truncated_or_saturated() {
+        for bad in [
+            vec!["auto-vocal", "--clip", "5.9"], // would silently select clip 5
+            vec!["auto-vocal", "--clip", "-3"],  // would saturate to clip 0
+            vec!["auto-vocal", "--clip", "nan"],
+            vec!["auto-vocal", "--clip", "5", "--beat-clip", "3.9"],
+        ] {
+            assert!(matches!(auto_vocal_args(&args(&bad)), Err(Fail::Usage(_))), "{bad:?}");
+        }
+        assert!(
+            matches!(auto_vocal_args(&args(&["auto-vocal", "--style", "hard"])), Err(Fail::Usage(_))),
+            "no --clip at all is a usage error"
+        );
+    }
+
+    #[test]
+    fn a_value_flag_with_no_value_is_an_error_not_a_default() {
+        // `--style --no-bake`: the parser records style as present with no value, and the
+        // request must refuse instead of quietly using the default style
+        for bad in
+            [vec!["auto-vocal", "--clip", "5", "--style", "--no-bake"], vec!["auto-vocal", "--clip", "5", "--beat-clip", "--no-bake"]]
+        {
+            assert!(matches!(auto_vocal_args(&args(&bad)), Err(Fail::Usage(_))), "{bad:?}");
+        }
     }
 
     #[test]
