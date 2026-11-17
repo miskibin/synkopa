@@ -25,10 +25,10 @@ jobs:
           - os: windows-latest
             features: asio
             bundles: nsis
-          # the oldest Ubuntu LTS still supported: a binary only runs where the glibc and libstdc++
-          # are at least as new as the build system's (24.04's need glibc 2.38, so Ubuntu 22.04,
-          # Debian 12 and the AppImage catalog's test system could not start WAVE)
-          - os: ubuntu-22.04
+          # 24.04, not 22.04: the prebuilt ONNX Runtime `ort` links (the pitch model) is built with
+          # glibc 2.38 / GCC 13 and does not link on 22.04. So the Linux packages need glibc 2.38
+          # (Ubuntu 22.04 and Debian 12 cannot run them) until ONNX Runtime is loaded at run time.
+          - os: ubuntu-24.04
             features: ""
             bundles: deb,rpm,appimage
     runs-on: ${{ matrix.os }}
@@ -63,16 +63,6 @@ jobs:
         run: |
           node scripts/changelog-section.mjs > release-notes.md
           { echo 'notes<<NOTES_EOF'; cat release-notes.md; echo 'NOTES_EOF'; } >> "$GITHUB_OUTPUT"
-      # fail before publishing anything that would not start on the oldest supported systems
-      - name: Linux binaries run on glibc 2.35 (Ubuntu 22.04, Debian 12)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          cargo build --release -p wave-app
-          need=$(objdump -T target/release/wave-app | grep -o 'GLIBC_[0-9.]*' | sort -V -u | tail -1)
-          echo "wave-app needs $need"
-          newest=$(printf '%s\n%s\n' "$need" GLIBC_2.35 | sort -V | tail -1)
-          [ "$newest" = "GLIBC_2.35" ] || { echo "::error::wave-app needs $need, newer than Ubuntu 22.04's glibc 2.35"; exit 1; }
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
