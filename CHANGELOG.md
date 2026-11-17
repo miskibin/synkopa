@@ -4,7 +4,13 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.21 — 2026-11-17
+
+### Added
+- **A new demo song: OBSIDIAN 2093**, a 40-bar modern trap track (136 BPM, D# minor) with a
+  punchy kick, a warm 808, melodic hooks and filter sweeps automated on a bus. Open it from
+  File → Open demo project, or pick it in Settings → General. Six new free (CC0) sounds come
+  with it in the standard library: an 808 spin, a crisp trap clap and snare, and three loops.
 
 ### Fixed
 - **Linux: WAVE starts on Ubuntu 22.04 and Debian 12.** The packages and the AppImage needed a
