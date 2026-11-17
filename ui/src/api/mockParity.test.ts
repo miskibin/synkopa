@@ -4,7 +4,7 @@
 // semantics (the engine skips undo/revision/state events for an unchanged batch).
 // The mock builds its initial project from `window.__waveFixture` (the perf harness hook);
 // node has no window, so it is stubbed per test.
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import fixture from '../lib/__fixtures__/ops.json';
 import { close } from '../lib/closeCompare';
 import { projectEq, type Json } from '../lib/projectEq';
@@ -19,9 +19,10 @@ beforeAll(() => {
   vi.stubGlobal('window', {});
 });
 
-// each backend runs a 60 Hz frame clock; stop them so ~110 intervals do not outlive the suite
+// each backend runs a 60 Hz frame clock; release it as soon as its case ends so neither
+// the timers nor the project states accumulate across the suite
 const created: MockBackend[] = [];
-afterAll(() => {
+afterEach(() => {
   for (const be of created.splice(0)) be.dispose();
 });
 
