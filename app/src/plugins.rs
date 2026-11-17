@@ -486,7 +486,7 @@ mod tests {
             path: "/vst3/Vitalium.vst3".into(),
         };
         // the "crashed" session left Vitalium in the marker
-        write_marker_at(&marker, &[vitalium.clone()]);
+        write_marker_at(&marker, std::slice::from_ref(&vitalium));
         let plugins = Plugins::open(Some(marker.clone()));
         assert_eq!(plugins.crash_suspects(), vec![vitalium.clone()]);
         // this session starts clean: the marker no longer names anybody
