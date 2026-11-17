@@ -210,6 +210,11 @@ checksummed, cached in `target/keys-src`) and prepares it in `app/resources/keys
 the app plays, 16-bit FLAC, about 23 MB) so `tauri build` ships it. It needs `cargo`. Without it the app offers to
 download the piano the first time you add the instrument.
 
+**ONNX Runtime on Linux:** the pitch model's runtime is loaded when needed, so a Linux build
+ships it beside the app: `node scripts/fetch-onnxruntime.mjs` puts Microsoft's library (checksummed)
+into `app/resources/ort` before `tauri build` (or point `ORT_DYLIB_PATH` at a `libonnxruntime.so`
+1.20 or newer). Without it WAVE uses its built-in YIN pitch detector.
+
 ## The `wave` command line
 
 It works as soon as the app has run once (open a new terminal). To let an agent such as

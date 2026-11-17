@@ -7,6 +7,9 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Fixed
+- **Linux: WAVE starts on Ubuntu 22.04 and Debian 12.** The packages and the AppImage needed a
+  newer system library than those systems have and quit at once; they now run on any
+  distribution from Ubuntu 22.04 on.
 - **The Playlist no longer goes blank after a scroll.** Scrolling, or dragging a clip past the
   edge so the view scrolls with it, could leave the Playlist empty but for a strip at its edge
   (only fades showed) until something else made it redraw. It now always shows every clip and
@@ -55,8 +58,6 @@ shown in the app after an update and is published as the release notes (see
   menu has 1/8 and 1/16 beat.
 
 ### Fixed
-- **Linux: WAVE starts on Ubuntu 22.04 and Debian 12 again.** The packages and the AppImage
-  needed a newer system library than those systems have, and quit at once there.
 - **Linux: plugin windows stay in front of WAVE.** Under Wayland, clicking anywhere in WAVE sent
   plugin windows (Vitalium, Surge XT, …) behind it. WAVE now runs through XWayland there, as
   other Linux DAWs do, so plugin windows stay above it (`WAVE_WAYLAND=1` keeps native Wayland).

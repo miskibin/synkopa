@@ -15,6 +15,27 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # the release builds Linux on the oldest supported Ubuntu LTS, so the packages start on
+  # Ubuntu 22.04 / Debian 12 (glibc 2.35): a new dependency that needs a newer glibc fails here,
+  # not at release time
+  linux-old-glibc:
+    name: Linux — builds on Ubuntu 22.04 and needs at most glibc 2.35
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libjack-jackd2-dev libdbus-1-dev libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
+      - name: Build
+        run: cargo build --release -p wave-app
+      - name: glibc 2.35 at most
+        run: |
+          need=$(objdump -T target/release/wave-app | grep -o 'GLIBC_[0-9.]*' | sort -V -u | tail -1)
+          echo "wave-app needs $need"
+          newest=$(printf '%s\n%s\n' "$need" GLIBC_2.35 | sort -V | tail -1)
+          [ "$newest" = "GLIBC_2.35" ] || { echo "::error::wave-app needs $need, newer than Ubuntu 22.04's glibc 2.35"; exit 1; }
+
   linux:
     name: Linux — format, lints, engine tests, UI tests
     runs-on: ubuntu-24.04
