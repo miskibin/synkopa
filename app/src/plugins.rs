@@ -323,6 +323,17 @@ impl Plugins {
         self.crash_suspects.lock().clear();
     }
 
+    /// WAVE is exiting normally: the live marker is emptied (the plugins still loaded are not
+    /// crash suspects at the next start), and a plugin loaded anyway that WAVE survived is
+    /// trusted for good even when its trial had not run out.
+    pub fn clean_exit(&self) {
+        self.clear_crash_suspects();
+        let mut live = self.live.lock();
+        live.clear();
+        self.write_live(&live);
+        self.safety.survived_all();
+    }
+
     /// Keep a plugin's module out of future scans (the user asked, after a crash).
     pub fn block(&self, format: &str, path: &str) -> Result<(), String> {
         let file = wave_plugin_scan::data_file(&format!("{format}-blocklist.txt")).ok_or("WAVE has no data folder for the block list")?;
@@ -550,6 +561,10 @@ mod tests {
         plugins.live_loaded(7, &p);
         assert_eq!(read_marker_at(&marker), vec![vitalium.clone()]);
         plugins.live_released(7);
+        assert_eq!(read_marker_at(&marker), vec![]);
+        // a normal exit with a plugin still loaded leaves no suspect for the next start
+        plugins.live_loaded(8, &p);
+        plugins.clean_exit();
         assert_eq!(read_marker_at(&marker), vec![]);
         // a refused load (the factory's error path) never entered the marker
         std::fs::remove_dir_all(&dir).ok();

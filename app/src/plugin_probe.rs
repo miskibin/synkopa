@@ -113,6 +113,10 @@ pub struct Safety {
     /// (a project opening with the same plugin on five inserts checks it once).
     running: Mutex<std::collections::HashSet<String>>,
     done: parking_lot::Condvar,
+    /// Plugins that would not even be created in a check, this session (by key and file
+    /// fingerprint): not checked again on every graph rebuild. Not saved: a missing file or
+    /// library may be installed before the next start.
+    refused: Mutex<HashMap<String, Option<Fingerprint>>>,
 }
 
 impl Safety {
@@ -124,7 +128,14 @@ impl Safety {
     pub fn with(file: Option<PathBuf>, spawn: WorkerSpawn) -> Self {
         let known: HashMap<String, Entry> =
             file.as_deref().and_then(|f| std::fs::read(f).ok()).and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
-        let s = Self { file, spawn, known: Mutex::new(known), running: Mutex::new(Default::default()), done: parking_lot::Condvar::new() };
+        let s = Self {
+            file,
+            spawn,
+            known: Mutex::new(known),
+            running: Mutex::new(Default::default()),
+            done: parking_lot::Condvar::new(),
+            refused: Mutex::new(HashMap::new()),
+        };
         // a plugin loaded anyway that did not see its trial through took WAVE down with it
         let died: Vec<(String, Entry)> = s
             .known
@@ -179,6 +190,9 @@ impl Safety {
         if let Some(v) = self.verdict(req) {
             return refusal(&v);
         }
+        if self.refused.lock().get(&req.key()).is_some_and(|fp| *fp == req.fingerprint()) {
+            return Ok(());
+        }
         {
             let mut running = self.running.lock();
             while running.contains(&req.key()) {
@@ -207,6 +221,7 @@ impl Safety {
             // remembered (a missing file or dependency may be fixed)
             Some(WorkerOutcome::Refused(why)) => {
                 log::info!("plugin check {}: refused to load ({why})", req.cid);
+                self.refused.lock().insert(req.key(), req.fingerprint());
                 return Ok(());
             }
             Some(WorkerOutcome::Crashed(why)) => Verdict::Crashed { why },
@@ -226,6 +241,22 @@ impl Safety {
             std::thread::sleep(PROVISIONAL);
             me.survived(&req);
         });
+    }
+
+    /// WAVE exits normally: every trial this process runs ended well.
+    pub fn survived_all(&self) {
+        let me = std::process::id();
+        let mine: Vec<(String, Entry)> = self
+            .known
+            .lock()
+            .iter()
+            .filter(|(_, e)| e.verdict == Verdict::Trying { pid: me })
+            .map(|(k, e)| (k.clone(), Entry { fp: e.fp, verdict: Verdict::Trusted }))
+            .collect();
+        for (k, e) in mine {
+            self.known.lock().insert(k.clone(), e.clone());
+            self.save(&k, &e);
+        }
     }
 
     /// The trial is over and WAVE is still here: the plugin is trusted for good.
@@ -509,7 +540,11 @@ mod tests {
         let next = Safety::with(Some(file.clone()), child(PASS));
         let e = next.check(&r).unwrap_err();
         assert!(e.contains("crashed WAVE when it was loaded anyway"), "{e}");
-        assert!(Safety::with(Some(file), child(PASS)).check(&r).is_err(), "kept as crashed");
+        assert!(Safety::with(Some(file.clone()), child(PASS)).check(&r).is_err(), "kept as crashed");
+        // a trial in a WAVE that then exits normally is trusted
+        s.trust(&r);
+        s.survived_all();
+        assert_eq!(Safety::with(Some(file), child(PASS)).verdict(&r), Some(Verdict::Trusted));
     }
 
     #[test]
@@ -550,8 +585,19 @@ mod tests {
         let plugin = dir.join("p.lv2");
         std::fs::write(&plugin, b"x").unwrap();
         let r = req(&plugin);
-        let s = Safety::with(None, child(REFUSE));
+        let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = Arc::clone(&runs);
+        let spawn = WorkerSpawn::Custom(Arc::new(move |f, m| {
+            counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            match child(REFUSE) {
+                WorkerSpawn::Custom(make) => make(f, m),
+                _ => unreachable!(),
+            }
+        }));
+        let s = Safety::with(None, spawn);
         assert!(s.check(&r).is_ok());
+        assert!(s.check(&r).is_ok());
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1, "a refusal is not checked again this session");
         assert_eq!(s.verdict(&r), None);
         let none = Safety::with(None, WorkerSpawn::InProcess);
         assert!(none.check(&r).is_ok(), "no worker: nothing to isolate with");

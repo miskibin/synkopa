@@ -266,6 +266,13 @@ impl UiSession {
         let scale = window.dpi().unwrap_or(96) as f32 / 96.0;
         let controller = Box::new(Controller { shared: Arc::downgrade(shared), resize: Cell::new(None) });
         let controller_ptr = std::ptr::from_ref(&*controller).cast_mut().cast::<c_void>();
+        let plugin_uri = match CString::new(shared.uri()) {
+            Ok(u) => u,
+            Err(_) => {
+                let _ = window.close();
+                return Err("bad plugin URI".to_owned());
+            }
+        };
         let instance = shared.lend_instance();
         if spec.needs_instance && instance.is_none() {
             let _ = window.close();
@@ -273,7 +280,7 @@ impl UiSession {
         }
         // from here a failure gives the instance back (`return_instance` frees nothing that runs)
         let features = Features::new(window.native_handle() as *mut c_void, controller_ptr, scale, instance);
-        let plugin_uri = CString::new(shared.uri()).map_err(|_| "bad plugin URI".to_owned())?;
+
         let mut widget: LV2UI_Widget = std::ptr::null_mut();
         // SAFETY: every pointer outlives the UI (owned by the session built below, or the
         // static library); a panic cannot unwind out of C, so the call is caught.

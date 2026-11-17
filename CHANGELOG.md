@@ -4,7 +4,7 @@ What changed in each release of WAVE. The newest version comes first; its sectio
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.20 — 2026-11-17
 
 ### Added
 - **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
@@ -47,6 +47,8 @@ shown in the app after an update and is published as the release notes (see
   menu has 1/8 and 1/16 beat.
 
 ### Fixed
+- **Linux: WAVE starts on Ubuntu 22.04 and Debian 12 again.** The packages and the AppImage
+  needed a newer system library than those systems have, and quit at once there.
 - **Linux: plugin windows stay in front of WAVE.** Under Wayland, clicking anywhere in WAVE sent
   plugin windows (Vitalium, Surge XT, …) behind it. WAVE now runs through XWayland there, as
   other Linux DAWs do, so plugin windows stay above it (`WAVE_WAYLAND=1` keeps native Wayland).

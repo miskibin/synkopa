@@ -71,9 +71,8 @@ jobs:
           cargo build --release -p wave-app
           need=$(objdump -T target/release/wave-app | grep -o 'GLIBC_[0-9.]*' | sort -V -u | tail -1)
           echo "wave-app needs $need"
-          [ "$(printf '%s
-GLIBC_2.35
-' "$need" | sort -V | tail -1)" = "GLIBC_2.35" ] || { echo "::error::wave-app needs $need, newer than Ubuntu 22.04's glibc 2.35"; exit 1; }
+          newest=$(printf '%s\n%s\n' "$need" GLIBC_2.35 | sort -V | tail -1)
+          [ "$newest" = "GLIBC_2.35" ] || { echo "::error::wave-app needs $need, newer than Ubuntu 22.04's glibc 2.35"; exit 1; }
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

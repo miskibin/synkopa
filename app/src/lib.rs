@@ -1121,7 +1121,7 @@ fn shutdown(h: &AppHandle, app: &App) {
     // a normal exit: the user already answered the unsaved-changes question
     app.recovery.close();
     // nothing is suspect when WAVE left the front door
-    app.plugins.clear_crash_suspects();
+    app.plugins.clean_exit();
 }
 
 /// Keeps `LC_NUMERIC` in the C locale. `gtk_init` runs `setlocale(LC_ALL, "")`,
