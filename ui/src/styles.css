@@ -933,7 +933,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .chanwin .smptog:hover { background: var(--line); color: var(--fg); }
 .chanwin .smptog.on { background: var(--on-bg); border-color: transparent; color: var(--blue-hi); }
 .chanwin .smptog:focus-visible, .chanwin .smpmode > button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.chanwin .smpcut { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 11px; color: var(--fg4); }
+.chanwin .smpcut { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--fg4); }
 .chanwin .smpcut .sel { min-width: 64px; }
 .chanwin .smpknobs { display: flex; align-items: flex-end; gap: 22px; padding: 14px 14px 0; flex-wrap: wrap; }
 .chanwin .smpgrp { display: flex; align-items: flex-end; gap: 14px; }
@@ -949,6 +949,25 @@ select option { background: var(--bg4); color: var(--fg); }
 .smpwave [data-sample-handle="fadeOut"] { margin-left: -10px; border-radius: 0 0 0 4px; }
 .smpwave .smppreview { position: absolute; inset: 0 auto 0 0; width: 1px; background: var(--playhead); opacity: 0; pointer-events: none; }
 .smpwin .pkeys { margin-bottom: 0; }
+/* the sampler's Sample | Envelope pages and its volume envelope graph (FL's SMP and INS pages) */
+.smpwin .smptabs { align-self: flex-start; margin: 10px 12px 0; }
+.smpwin .smptabs > button { width: auto; padding: 0 12px; font: 500 11px var(--sans); display: inline-flex; align-items: center; gap: 6px; }
+.smpwin .smptabs > button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.smpwin .envdot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--fg4); }
+.smpwin .envdot.lit { background: var(--blue-hi); border-color: var(--blue-hi); }
+.smpwin .envhint { font-size: 10.5px; color: var(--fg4); min-width: 0; }
+.smpwin .envbends { padding-top: 8px; }
+.smpwin .envgraph { position: relative; height: 112px; flex: none; margin: 10px 12px 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--viz); }
+.envgraph svg { display: block; }
+.envgraph .envfill { fill-opacity: .16; stroke: none; }
+.envgraph .envline { fill: none; stroke-width: 1.75; stroke-linejoin: round; }
+.envgraph.off .envfill, .envgraph.off .envline { opacity: .35; }
+.envgraph .envoff { stroke: var(--fg4); stroke-dasharray: 3 3; }
+.envgraph .envofftext { fill: var(--fg4); font: 10px var(--sans); }
+.envgraph .envpt { fill: var(--fg-hi); stroke: var(--viz); stroke-width: 1.5; cursor: ew-resize; }
+.envgraph .envpt.sus { cursor: move; }
+.envgraph .envbend { fill: var(--viz); stroke: var(--fg-hi); stroke-width: 1.5; cursor: ns-resize; }
+.envgraph .envpt:hover, .envgraph .envbend:hover { stroke: var(--blue-hi); }
 .smpwin .smpstat { margin-left: auto; font-size: 10.5px; color: var(--fg4); }
 .smpwin .smpstat.bad { color: var(--red); }
 .smpwin .smpfit .seg > button { width: auto; padding: 0 9px; font: 500 11px var(--sans); }

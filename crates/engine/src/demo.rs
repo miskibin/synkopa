@@ -109,7 +109,7 @@ pub fn sketch_project() -> Project {
     for c in p.channels.iter_mut().filter(|c| c.id == bass) {
         c.name = "Bass".into();
         if let ChannelSrc::Sample { sampler, .. } = &mut c.src {
-            sampler.gate = true;
+            sampler.env = true;
         }
     }
     let n = |c: Id, step: f32, len: f32, key: Option<u8>| Note::new(c, step, len, key);

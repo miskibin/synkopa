@@ -1,11 +1,11 @@
 // One floating sample editor for Playlist audio clips and Channel Rack sampler channels.
-import { createEffect, createMemo, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
 import { be } from '../api/backend';
 import { CLIP_PITCH, SAMPLE_ROOT, SAMPLER, samplerDefault, type AutoTarget, type Channel, type Clip, type Id, type Op, type SamplerState, type Source } from '../api/types';
 import { FIT_BEATS, fitClip, putSoundClips, TOTAL } from '../lib/clipOps';
 import { baseName, clamp, dbg, dbText, panText } from '../lib/format';
 import { t, type TranslationKey } from '../lib/i18n';
-import { attackFromT, attackToT, decayFromT, decayToT, envelopePoints, msText, releaseFromT, releaseToT } from '../lib/sampler';
+import { envelopeGraph, msText, STAGES, TENSION_KEY, type Bent, type Stage } from '../lib/sampler';
 import * as A from '../state/actions';
 import { autoDisplay, controlMenu, isAutomated, paramMenu } from '../state/automation';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -63,7 +63,6 @@ interface WaveProps {
   normalized: () => boolean;
   reversed: () => boolean;
   gain?: () => number;
-  envelope?: () => [number, number][];
   region: () => WaveRegion;
   preview: () => void;
   previewPosition?: () => number | null;
@@ -79,6 +78,8 @@ function EditorFrame(props: {
   insert: () => Id | null | undefined;
   toggle: (key: 'reverse' | 'norm') => void;
   pitch: JSX.Element; level: JSX.Element; fades: JSX.Element; details: JSX.Element;
+  /** A sampler's volume envelope: a second page, behind Sample | Envelope tabs (FL's SMP and INS pages). */
+  envelope?: { on: () => boolean; page: () => JSX.Element };
   /** The keyboard at the bottom (FL Channel settings): plays the sample; right-click a key sets its root. */
   keys: { player: KeyPlayer; root: () => number; setRoot: (key: number) => void };
 }) {
@@ -110,24 +111,35 @@ function EditorFrame(props: {
           disabled={!props.wave.source()}>{props.channelId == null && U.previewing ? '■' : '▶'}</button>
         <button class="closebtn" aria-label={t('d.smp.close')} title={t('d.smp.close')} onClick={A.closeEditor}>×</button>
       </div>
-      <SampleWave {...props.wave} />
-      <div class="chsrc">
-        <span class="ell" title={props.wave.source()?.path ?? ''}>{baseName(props.wave.source()?.path ?? '') || t('b.cw.noFile')}</span>
-        <span class="mono">{props.fileInfo}</span>
-        {props.fileAction}
-      </div>
-      <div class="smprow">
-        <button class="smptog" aria-pressed={props.wave.reversed()} classList={{ on: props.wave.reversed() }}
-          title={t('b.sm.reverseTitle')} onClick={() => props.toggle('reverse')}>{t('b.sm.reverse')}</button>
-        <button class="smptog" aria-pressed={props.wave.normalized()} classList={{ on: props.wave.normalized() }}
-          title={t('b.sm.normTitle')} onClick={() => props.toggle('norm')}>{t('b.sm.norm')}</button>
-      </div>
-      <div class="smpknobs">
-        <div class="smpgrp">{props.pitch}</div>
-        <div class="smpgrp">{props.level}</div>
-        <div class="smpgrp">{props.fades}</div>
-      </div>
-      {props.details}
+      <Show when={props.envelope}>{env => (
+        <div class="seg smptabs" role="tablist" aria-label={t('b.sm.tabs')}>
+          <button role="tab" aria-selected={!envPage()} classList={{ on: !envPage() }} onClick={() => setEnvPage(false)}>{t('b.sm.tabSample')}</button>
+          <button role="tab" aria-selected={envPage()} classList={{ on: envPage() }} onClick={() => setEnvPage(true)}
+            title={t(env().on() ? 'b.sm.tabEnvOn' : 'b.sm.tabEnvOff')}>
+            {t('b.sm.tabEnv')}<i class="envdot" classList={{ lit: env().on() }} />
+          </button>
+        </div>
+      )}</Show>
+      <Show when={props.envelope && envPage()} fallback={<>
+        <SampleWave {...props.wave} />
+        <div class="chsrc">
+          <span class="ell" title={props.wave.source()?.path ?? ''}>{baseName(props.wave.source()?.path ?? '') || t('b.cw.noFile')}</span>
+          <span class="mono">{props.fileInfo}</span>
+          {props.fileAction}
+        </div>
+        <div class="smprow">
+          <button class="smptog" aria-pressed={props.wave.reversed()} classList={{ on: props.wave.reversed() }}
+            title={t('b.sm.reverseTitle')} onClick={() => props.toggle('reverse')}>{t('b.sm.reverse')}</button>
+          <button class="smptog" aria-pressed={props.wave.normalized()} classList={{ on: props.wave.normalized() }}
+            title={t('b.sm.normTitle')} onClick={() => props.toggle('norm')}>{t('b.sm.norm')}</button>
+        </div>
+        <div class="smpknobs">
+          <div class="smpgrp">{props.pitch}</div>
+          <div class="smpgrp">{props.level}</div>
+          <div class="smpgrp">{props.fades}</div>
+        </div>
+        {props.details}
+      </>}>{props.envelope!.page()}</Show>
       <div class="pkhead">
         <span>{t('b.pk.root')}</span>
         <b class="mono">{noteName(props.keys.root())}</b>
@@ -150,7 +162,7 @@ function SampleWave(props: WaveProps) {
 
   createEffect(() => {
     props.source(); props.color(); props.normalized(); props.reversed(); props.gain?.();
-    props.region(); props.envelope?.(); peaksVersion();
+    props.region(); peaksVersion();
     dirty = true;
   });
   onMount(() => {
@@ -204,15 +216,6 @@ function SampleWave(props: WaveProps) {
     g.stroke();
     g.fillStyle = rgba(T.viz, 0.78); g.fillRect(0, 0, a, h); g.fillRect(b, 0, w - b, h);
 
-    const envelope = props.envelope?.();
-    if (envelope?.length && b - a > 2) {
-      g.strokeStyle = T.fgHi; g.globalAlpha = 0.75; g.lineWidth = 1.25; g.beginPath();
-      envelope.forEach(([u, v], i) => {
-        const x = a + u * (b - a), y = 4 + (1 - v) * (h - 8);
-        if (i) g.lineTo(x, y); else g.moveTo(x, y);
-      });
-      g.stroke(); g.globalAlpha = 1;
-    }
     g.fillStyle = T.fgHi;
     g.fillRect(Math.round(a), 0, 1, h); g.fillRect(Math.round(a), 0, 6, 6);
     g.fillRect(Math.round(b) - 1, 0, 1, h); g.fillRect(Math.round(b) - 6, h - 6, 6, 6);
@@ -471,7 +474,6 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
     wave={{
       source: src, color: () => c().color, normalized: () => s().norm, reversed: () => s().reverse, region,
       preview: () => { if (src()) audition(c().id, c().root, 0.9, true); }, title: 'b.sm.waveTitle', drag, reset,
-      envelope: () => envelopePoints(s(), duration() * (s().end - s().start) / 2 ** ((s().semi + s().fine / 100) / 12)),
     }}
     fileInfo={<Show when={src()}>{file => (file().dur * (s().end - s().start)).toFixed(2) + ' s · ' + fileFormat(file())}</Show>}
     fileAction={<button class="smallbtn" onClick={() => void replaceWithFile(c())} title={t('b.cw.changeSampleTitle')}>{t('b.cw.changeSampleBtn')}</button>}
@@ -490,12 +492,6 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
     fades={<FadeKnobs id={id} value={fadeValue} limit={fadeLimit} op={(k, v) => put({ [fadeKey[k]]: v })} title="b.sm.fadeTip" />}
     details={<>
       <div class="smprow">
-        <div class="seg smpmode" role="radiogroup" aria-label={t('b.sm.mode')}>
-          <button role="radio" aria-checked={!s().gate} classList={{ on: !s().gate }} title={t('b.sm.oneshotTitle')}
-            onClick={() => s().gate && set({ gate: false }, 'b.sm.mode', t('b.sm.oneshot'))}>{t('b.sm.oneshot')}</button>
-          <button role="radio" aria-checked={s().gate} classList={{ on: s().gate }} title={t('b.sm.gateTitle')}
-            onClick={() => !s().gate && set({ gate: true }, 'b.sm.mode', t('b.sm.gate'))}>{t('b.sm.gate')}</button>
-        </div>
         <label class="smpcut" title={t('b.sm.cutTitle')}>
           <span>{t('b.sm.cut')}</span>
           <select class="sel" value={String(s().cut)} onChange={e => {
@@ -507,26 +503,132 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
           </select>
         </label>
       </div>
-      <div class="smpknobs">
-        <div class="smpgrp">
-          <SampleKnob id={id + 'attack'} label="b.sm.attack" title="b.sm.attackTitle" position={() => attackToT(s().attack)}
-            display={() => msText(s().attack)} defaultPosition={0} op={v => put({ attack: attackFromT(v) })} />
-          <SampleKnob id={id + 'decay'} label="b.sm.decay" title="b.sm.decayTitle" position={() => decayToT(s().decay)}
-            display={() => msText(s().decay)} defaultPosition={0} op={v => put({ decay: decayFromT(v) })} />
-          <SampleKnob id={id + 'sustain'} label="b.sm.sustain" title="b.sm.sustainTitle" position={() => s().sustain}
-            display={() => Math.round(s().sustain * 100) + ' %'} defaultPosition={1} op={v => put({ sustain: Math.round(v * 100) / 100 })} />
-          <div classList={{ smpdim: !s().gate }}>
-            <SampleKnob id={id + 'release'} label="b.sm.release" title={s().gate ? 'b.sm.releaseTitle' : 'b.sm.releaseOff'}
-              position={() => releaseToT(s().release)} display={() => msText(s().release)}
-              defaultPosition={releaseToT(SAMPLER.release.def)} op={v => put({ release: releaseFromT(v) })} />
-          </div>
-        </div>
-      </div>
     </>}
+    envelope={{ on: () => s().env, page: () => <EnvelopePanel id={id} name={() => c().name} color={() => c().color} s={s} put={put} /> }}
     keys={{
       player: { ch: c().id },
       root: () => c().root,
       setRoot: key => { commit([chanOp(c(), { root: key })], t('b.cw.rootCh')); say(t('b.pk.rootSay', { name: c().name, note: noteName(key) })); },
     }}
   />;
+}
+
+/** Which page of a sampler's editor is open: the sample, or its volume envelope (FL's SMP and INS pages). */
+const [envPage, setEnvPage] = createSignal(false);
+
+const STAGE_LABELS = {
+  delay: ['b.sm.delay', 'b.sm.delayTitle'], attack: ['b.sm.attack', 'b.sm.attackTitle'], hold: ['b.sm.hold', 'b.sm.holdTitle'],
+  decay: ['b.sm.decay', 'b.sm.decayTitle'], release: ['b.sm.release', 'b.sm.releaseTitle'],
+} as const satisfies Record<Stage, [TranslationKey, TranslationKey]>;
+const BEND_LABELS = { attack: 'b.sm.attackTension', decay: 'b.sm.decayTension', release: 'b.sm.releaseTension' } as const satisfies Record<Bent, TranslationKey>;
+const stageDefault = (stage: Stage) => stage === 'release' ? SAMPLER.release.def : 0;
+const tensionText = (k: number) => k ? (k > 0 ? '+' : '') + Math.round(k * 100) + ' %' : '0';
+const GRAPH_H = 112, GRAPH_PAD = 7;
+
+/**
+ * The sampler's volume envelope page (FL Studio's Channel settings ▸ Volume): the Envelope switch, a
+ * DAHDSR graph whose points and curves drag, and the same values on knobs. Any edit switches the
+ * envelope on, so a control never changes something that is not heard.
+ */
+function EnvelopePanel(props: { id: string; name: () => string; color: () => string; s: () => SamplerState; put: (patch: Partial<SamplerState>) => Op }) {
+  const s = props.s;
+  const edit = (patch: Partial<SamplerState>) => props.put({ ...patch, env: true });
+  let box!: HTMLDivElement;
+  const [width, setWidth] = createSignal(0);
+  onMount(() => {
+    const observer = new ResizeObserver(() => setWidth(box.clientWidth));
+    observer.observe(box);
+    setWidth(box.clientWidth);
+    onCleanup(() => observer.disconnect());
+  });
+  const graph = createMemo(() => envelopeGraph(s(), Math.max(60, width()), GRAPH_H, GRAPH_PAD));
+  const range = GRAPH_H - 2 * GRAPH_PAD;
+  const stageText = (stage: Stage) => msText(s()[stage]);
+
+  const toggle = () => {
+    const on = !s().env;
+    commit([props.put({ env: on })], t('b.sm.env'));
+    say(props.name() + ' · ' + t(on ? 'b.sm.envOn' : 'b.sm.envOff'));
+  };
+  /** Drags a stage's point: sideways is its time (on its knob's scale); the decay point also moves the sustain ↕. */
+  const dragPoint = (e: PointerEvent, stage: Stage) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const scale = STAGES.find(x => x.key === stage)!, start = scale.toT(s()[stage]), sustain = s().sustain;
+    const sx = e.clientX, sy = e.clientY, travel = graph().travel, label = t(STAGE_LABELS[stage][0]);
+    const gesture = new Gesture(label);
+    track(ev => {
+      const patch: Partial<SamplerState> = { [stage]: scale.fromT(start + (ev.clientX - sx) / travel) };
+      let status = label + ' ' + msText(patch[stage]!);
+      if (stage === 'decay') {
+        patch.sustain = Math.round(clamp(sustain - (ev.clientY - sy) / range, 0, 1) * 100) / 100;
+        status += ' · ' + t('b.sm.sustain') + ' ' + Math.round(patch.sustain * 100) + ' %';
+      }
+      gesture.update([edit(patch)]); say(status);
+    }, () => gesture.end(), stage === 'decay' ? 'move' : 'ew-resize');
+  };
+  /** Drags a curve's dot ↕: up bows the segment up, down bows it down. */
+  const dragBend = (e: PointerEvent, stage: Bent) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const key = TENSION_KEY[stage], start = s()[key], sy = e.clientY, label = t(BEND_LABELS[stage]);
+    const gesture = new Gesture(label);
+    track(ev => {
+      const k = Math.round(clamp(start - (ev.clientY - sy) / (range / 2), -1, 1) * 100) / 100;
+      gesture.update([edit({ [key]: k })]); say(label + ' ' + tensionText(k));
+    }, () => gesture.end(), 'ns-resize');
+  };
+  const resetStage = (stage: Stage) => {
+    const patch: Partial<SamplerState> = { [stage]: stageDefault(stage), ...(stage === 'decay' ? { sustain: 1 } : {}) };
+    commit([edit(patch)], t(STAGE_LABELS[stage][0]));
+  };
+
+  const stageKnob = (stage: Stage) => {
+    const scale = STAGES.find(x => x.key === stage)!;
+    return <SampleKnob id={props.id + stage} label={STAGE_LABELS[stage][0]} title={STAGE_LABELS[stage][1]} position={() => scale.toT(s()[stage])}
+      display={() => stageText(stage)} defaultPosition={scale.toT(stageDefault(stage))} op={v => edit({ [stage]: scale.fromT(v) })} />;
+  };
+  const bendKnob = (stage: Bent) => {
+    const key = TENSION_KEY[stage];
+    return <SampleKnob id={props.id + key} label={BEND_LABELS[stage]} title="b.sm.tensionTitle" position={() => (s()[key] + 1) / 2}
+      display={() => tensionText(s()[key])} defaultPosition={0.5} zero={0.5} op={v => edit({ [key]: Math.round((v * 2 - 1) * 100) / 100 })} />;
+  };
+
+  return <>
+    <div class="smprow">
+      <button class="smptog" aria-pressed={s().env} classList={{ on: s().env }} title={t('b.sm.envTitle')} onClick={toggle}>{t('b.sm.env')}</button>
+      <span class="envhint">{t(s().env ? 'b.sm.envOnHint' : 'b.sm.envOffHint')}</span>
+    </div>
+    <div ref={box} class="envgraph" classList={{ off: !s().env }} title={t('b.sm.graphTitle')}>
+      <svg width={width()} height={GRAPH_H} aria-hidden="true">
+        <line class="envoff" x1={graph().noteOff} x2={graph().noteOff} y1={2} y2={GRAPH_H - 2} />
+        <text class="envofftext" x={graph().noteOff - 4} y={GRAPH_H - 6} text-anchor="end">{t('b.sm.noteOff')}</text>
+        <path class="envfill" d={graph().path + ` L${GRAPH_PAD},${GRAPH_H - GRAPH_PAD} Z`} style={{ fill: props.color() }} />
+        <path class="envline" d={graph().path} style={{ stroke: props.color() }} />
+        <For each={graph().bends}>{b => (
+          <circle class="envbend" cx={b.x} cy={b.y} r={4} onPointerDown={e => dragBend(e, b.stage)}
+            onDblClick={() => commit([edit({ [TENSION_KEY[b.stage]]: 0 })], t(BEND_LABELS[b.stage]))}>
+            <title>{t(BEND_LABELS[b.stage]) + ' ' + tensionText(s()[TENSION_KEY[b.stage]]) + ' · ' + t('b.sm.bendTip')}</title>
+          </circle>
+        )}</For>
+        <For each={STAGES.map(x => x.key)}>{stage => (
+          <rect class="envpt" classList={{ sus: stage === 'decay' }} x={graph().points[stage].x - 5} y={graph().points[stage].y - 5} width={10} height={10} rx={2}
+            onPointerDown={e => dragPoint(e, stage)} onDblClick={() => resetStage(stage)}>
+            <title>{t(STAGE_LABELS[stage][0]) + ' ' + stageText(stage) + (stage === 'decay' ? ' · ' + t('b.sm.sustain') + ' ' + Math.round(s().sustain * 100) + ' %' : '') + ' · ' + t(stage === 'decay' ? 'b.sm.decayPointTip' : 'b.sm.pointTip')}</title>
+          </rect>
+        )}</For>
+      </svg>
+    </div>
+    <div class="smpknobs">
+      <div class="smpgrp">
+        {stageKnob('delay')}{stageKnob('attack')}{stageKnob('hold')}{stageKnob('decay')}
+        <SampleKnob id={props.id + 'sustain'} label="b.sm.sustain" title="b.sm.sustainTitle" position={() => s().sustain}
+          display={() => Math.round(s().sustain * 100) + ' %'} defaultPosition={1} op={v => edit({ sustain: Math.round(v * 100) / 100 })} />
+        {stageKnob('release')}
+      </div>
+    </div>
+    <div class="smpknobs envbends">
+      <div class="smpgrp">{bendKnob('attack')}{bendKnob('decay')}{bendKnob('release')}</div>
+    </div>
+  </>;
 }

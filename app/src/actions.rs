@@ -742,7 +742,7 @@ pub fn schema() -> Value {
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
             "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
-            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, gate (false = one-shot), attack, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), cut (0 = none, 1..8)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60}, "index": null},
+            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
             "putSource": {"source": "rename/recolour an existing source"},
@@ -987,15 +987,21 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
                     "norm" => sampler.norm = on,
                     "semi" => sampler.semi = value.round().clamp(-128.0, 127.0) as i8,
                     "fine" => sampler.fine = v,
-                    "gate" => sampler.gate = on,
+                    // `gate`: the envelope switch's name in older scripts
+                    "env" | "gate" => sampler.env = on,
+                    "delay" => sampler.delay = v,
                     "attack" => sampler.attack = v,
+                    "hold" => sampler.hold = v,
                     "decay" => sampler.decay = v,
                     "sustain" => sampler.sustain = v,
                     "release" => sampler.release = v,
+                    "attackTension" => sampler.attack_tension = v,
+                    "decayTension" => sampler.decay_tension = v,
+                    "releaseTension" => sampler.release_tension = v,
                     "fadeInMs" => sampler.fade_in_ms = v,
                     "fadeOutMs" => sampler.fade_out_ms = v,
                     "cut" => sampler.cut = value.round().clamp(0.0, 255.0) as u8,
-                    _ => return Err(format!("the sampler has no parameter `{param}` (start, end: 0..1; reverse, norm, gate: 0 or 1; semi, fine; attack, decay, release, fadeInMs, fadeOutMs in ms; sustain 0..1; cut 0..8)")),
+                    _ => return Err(format!("the sampler has no parameter `{param}` (start, end: 0..1; reverse, norm, env: 0 or 1; semi, fine; delay, attack, hold, decay, release, fadeInMs, fadeOutMs in ms; sustain 0..1; attackTension, decayTension, releaseTension -1..1; cut 0..8)")),
                 }
             }
         }

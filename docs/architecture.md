@@ -55,8 +55,9 @@ project looks like:
                "fx":[{"id":900,"type":"limit","bypass":false,"preset":0,"params":{"gain":0,"ceil":-0.3}}]}],
   "channels":[{"id":1001,"name":"Kick","color":"#4f8ef7","kind":"sample","source":1000,"vol":0.7937,"pan":0,
                "mute":false,"solo":false,"insert":null,"root":60,
-               "sampler":{"start":0,"end":1,"reverse":false,"norm":false,"semi":0,"fine":0,"gate":false,
-                          "attack":0,"decay":0,"sustain":1,"release":20,"cut":0}}],
+               "sampler":{"start":0,"end":1,"reverse":false,"norm":false,"semi":0,"fine":0,"env":false,
+                          "delay":0,"attack":0,"hold":0,"decay":0,"sustain":1,"release":20,
+                          "attackTension":0,"decayTension":0,"releaseTension":0,"cut":0}}],
   "patterns":[{"id":1,"name":"Beat","color":"#4f8ef7","len":4,"minLen":4,"swing":0.5,
                "notes":[{"ch":1001,"step":0,"len":1},{"ch":1001,"step":6,"len":1,"p":55,"v":0.8}]}],
   "sources": [{"id":1000,"name":"808 Kick Short","color":"#4f8ef7","path":"lib:Standard/kick-808-short.flac","dur":0.378,"sr":44100,"ch":1,"peakDb":-1},
@@ -118,24 +119,37 @@ the kit and its mixer routing in every pattern.
 * `channel.sampler` (kind `sample`; every field has a default, so older files load):
   `start`/`end` = the part of the file that plays, fractions 0..1; `reverse`; `norm` (peak to
   −0.3 dBFS, from the source's `peakDb`); `semi` −24..24 and `fine` −100..100 cents on top of
-  the note; `gate` selects **one-shot** or a `release` (1..5000 ms) after note-off for
-  live keys, auditions and legacy events; `attack`
-  0..2000 ms and `decay` 0..5000 ms to the `sustain` level 0..1 (0 = the decay is the whole
-  sound); `cut` 0 = none, 1..8 = a **cut group**: a new note silences every sounding sampler
+  the note. `env` switches the **volume envelope** (FL Studio's Channel settings ▸ Volume).
+  Off, the sample plays as recorded: live keys, auditions and legacy notes ring to its end and
+  sized notes stop at theirs (declicked). On, each note is shaped by `delay` 0..5000 ms of
+  silence, `attack` 0..2000 ms up to full, `hold` 0..5000 ms at full, `decay` 0..5000 ms to the
+  `sustain` level 0..1 (0 = the decay is the whole sound), and fades to silence over `release`
+  1..5000 ms from its note-off: a key let go, the end of a sized note or a legacy note, the end
+  of an audition. A step trigger has no note-off, so it holds the sustain. The note-off starts
+  the release from whatever level the envelope had, so an early note-off never jumps.
+  `attackTension`, `decayTension` and `releaseTension` −1..1 bend those segments (0 = straight,
+  positive bows up): progress `x/(x + g(1−x))` with `g = 8^∓tension`, so ±1 reaches 8/9 or 1/9
+  half way. The voice computes the level from its own time and its note-off time, so the
+  envelope needs no per-voice state beyond the cut level. `cut` 0 = none, 1..8 = a **cut group**: a new note silences every sounding sampler
   note of the group's channels, its own included, when it starts (a closed hat cutting the
   open one). The shared sample editor's Fade In and Fade Out handles and knobs set
   `fadeInMs` and `fadeOutMs` (0–5000 source ms). They apply at the audible edges of the
-  selected part, swap sides with Reverse, and are independent of Attack and Release.
+  selected part, swap sides with Reverse, and are independent of the envelope: a fade
+  shapes the sample itself (in source time, heard on every note), the envelope shapes each
+  note (in note time, from its note-on and note-off). The editor keeps them on separate pages.
   Each fade is bounded by the region, overlapping fades multiply, and pitch changes the
   audible duration together with the rest of the sample. The automatic 1.5 ms declick
   at trimmed or reversed edges still applies. Both fade settings default to zero.
-  `putChannel` refuses values out of range (`SamplerState::check`).
+  `putChannel` refuses values out of range (`SamplerState::check`). Files written before
+  `env` existed had `gate` (one-shot or a release after note-off) and always applied attack,
+  decay and sustain: `Project::from_json` opens a gated or shaped sampler (attack > 0 or
+  sustain < 1) with its envelope on and an untouched one-shot with it off.
 * `note`: `step`/`len` in 16ths, `p` MIDI key (absent = the channel's `root`), `v` velocity
   0..1 = linear gain (absent = 1). A Channel Rack step has `trig: true`. It occupies one grid
-  cell and plays a sampler without a note-off, even in Gate mode. Synth and WAVE Keys
+  cell and plays a sampler without a note-off, even with its envelope on. Synth and WAVE Keys
   continue to use the grid duration. A sampler note with `trig: false` ends as soon as its
-  set duration or the sample runs out. A short fade just before the note boundary prevents
-  clicks. The Piano Roll shows triggers as short marks. Drag their resize grip or use
+  set duration or the sample runs out; with the envelope on its end starts the release
+  instead. Without it, a short fade just before the note boundary prevents clicks. The Piano Roll shows triggers as short marks. Drag their resize grip or use
   **Convert to held note** in note properties to give them a duration.
   Notes without `trig` keep their original playback and Rack layout. Resizing a legacy note
   in Piano Roll makes it a held note. Replacing a legacy step in the Rack makes it a trigger.
@@ -281,7 +295,7 @@ table and the empty project, for the in-browser mock) is generated from the engi
 **Old files.** Files from before the standard library name synthesised instruments:
 `{"kind":"inst","inst":"kick"}` channels, or `inst` on notes before channels existed.
 `Project::from_json` (used by `open`) turns each into a sampler of the closest library sample
-(the bass in gate mode); they do not sound the same as before. A project without channels
+(the bass with its envelope on); they do not sound the same as before. A project without channels
 gets the starter kit.
 
 **Real time.** Channels are resolved off-thread into a table in the timeline (`ChanRt`:

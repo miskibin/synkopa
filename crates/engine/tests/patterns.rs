@@ -146,8 +146,8 @@ fn files_with_the_old_synthesised_instruments_open_as_samplers() {
     let notes: Vec<&Note> = p.patterns.iter().flat_map(|pt| &pt.notes).collect();
     assert_eq!(notes.len(), 23);
     assert!(notes.iter().all(|n| p.channel(n.ch).is_some()));
-    // the bass held its notes: it is the one gated sampler
-    let gated: Vec<bool> = p.channels.iter().map(|c| matches!(c.src, ChannelSrc::Sample { sampler, .. } if sampler.gate)).collect();
+    // the bass held its notes: it is the one sampler with its envelope on
+    let gated: Vec<bool> = p.channels.iter().map(|c| matches!(c.src, ChannelSrc::Sample { sampler, .. } if sampler.env)).collect();
     assert_eq!(gated.iter().filter(|g| **g).count(), 1);
     assert!(rms(&e.render(0.0, 32.0, 0.0, SR).unwrap()) > 0.01);
     // a file with `"kind":"inst"` channels (after channels, before the standard library)

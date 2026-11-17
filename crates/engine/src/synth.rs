@@ -10,8 +10,9 @@ use crate::rt::{ChanRt, InsertRt};
 
 pub const MAX_VOICES: usize = 96;
 
-/// How a scheduled note ends. Sampler triggers ring out; explicit held sampler notes
-/// have an upper bound, while auditions and legacy notes use the channel's release mode.
+/// How a scheduled note ends. Sampler triggers have no note-off; explicit held sampler notes
+/// stop at their end (envelope off) or release from it (envelope on), while auditions and
+/// legacy notes ring out (envelope off) or release (envelope on).
 #[derive(Clone, Copy)]
 pub enum NoteEnd {
     Natural,
@@ -31,7 +32,7 @@ impl NoteEnd {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum VoiceKind {
     /// The sample of the voice's channel, pitched by the note and shaped by the channel's
-    /// sampler settings (part of the file, direction, envelope, one-shot or gate).
+    /// sampler settings (part of the file, direction, fades, volume envelope).
     Sample,
     /// WAVE Keys: a recording of the channel's piano, picked by key and velocity; it rings
     /// for the note's length, then fades over the channel's release time.
@@ -153,8 +154,8 @@ pub fn pan_gains(pan: f32) -> (f32, f32) {
     (if pan > 0.0 { 1.0 - pan } else { 1.0 }, if pan < 0.0 { 1.0 + pan } else { 1.0 })
 }
 
-/// Ends a held voice: its release (the channel's release time) starts now. A one-shot
-/// sample ignores it and rings out.
+/// Ends a held voice: its release (the channel's release time) starts now. A sampler with its
+/// envelope off ignores it and rings out.
 fn release(v: &mut Voice) {
     v.held = false;
     v.sus = false;
@@ -417,8 +418,26 @@ impl VoicePool {
                     continue;
                 };
                 let (lo, hi) = region(m.start, m.end, a.frames);
-                let (att, dec) = (m.attack * sr, m.decay * sr);
-                let rel = fall(m.release, sr);
+                let (del, att, hold, dec, rel) = (m.delay * sr, m.attack * sr, m.hold * sr, m.decay * sr, m.release * sr);
+                // the envelope's level `t` samples into the note, before its note-off
+                let held = |t: f32| -> f32 {
+                    let t = t - del;
+                    if t < 0.0 {
+                        0.0
+                    } else if t < att {
+                        curve(t / att, m.attack_bend)
+                    } else if t < att + hold {
+                        1.0
+                    } else if t < att + hold + dec {
+                        1.0 - (1.0 - m.sustain) * curve((t - att - hold) / dec, m.decay_bend)
+                    } else {
+                        m.sustain
+                    }
+                };
+                let shaped = del + att + hold + dec;
+                // a note-off (`len`) starts the release from wherever the envelope was
+                let released = m.env && v.len != u32::MAX;
+                let from = if released { held(v.len as f32) } else { 0.0 };
                 let cut = fall(CUT_SECONDS, sr);
                 // a trimmed or reversed part starts and ends inside the waveform: fade its edges
                 let edge = EDGE_SECONDS * sr;
@@ -430,26 +449,31 @@ impl VoicePool {
                 let fade_out = (m.fade_out * a.sr as f64).min(span);
                 let in_scale = if fade_in > 0.0 { fade_in.recip() } else { 0.0 };
                 let out_scale = if fade_out > 0.0 { fade_out.recip() } else { 0.0 };
+                // without the envelope a sized note stops at its end (declicked); with it, it releases
+                let stops = v.timed && !m.env;
                 for i in start..n {
-                    if (v.timed && v.t >= v.len) || v.pos < lo || v.pos >= hi {
+                    if (stops && v.t >= v.len) || v.pos < lo || v.pos >= hi {
                         v.alive = false;
                         break;
                     }
                     let t = v.t as f32;
-                    let shape = if t < att {
-                        t / att
-                    } else if t < att + dec {
-                        1.0 - (1.0 - m.sustain) * (t - att) / dec
+                    let shape = if !m.env {
+                        1.0
+                    } else if released && v.t >= v.len {
+                        let x = (t - v.len as f32) / rel.max(1.0);
+                        if x >= 1.0 {
+                            v.alive = false;
+                            break;
+                        }
+                        from * (1.0 - curve(x, m.release_bend))
                     } else {
-                        m.sustain
+                        held(t)
                     };
                     if v.t >= v.cut_at {
                         v.env *= cut;
-                    } else if m.gate && v.t >= v.len {
-                        v.env *= rel;
                     }
-                    // decayed to nothing, released or cut: the voice is over
-                    if v.env < 1e-4 || (m.sustain <= 0.0 && t >= att + dec) {
+                    // decayed to nothing or cut: the voice is over
+                    if v.env < 1e-4 || (m.env && m.sustain <= 0.0 && t >= shaped) {
                         v.alive = false;
                         break;
                     }
@@ -466,7 +490,7 @@ impl VoicePool {
                         1.0
                     };
                     fade *= edge_start.min(fade_start);
-                    let note_end = if v.timed { ((v.len - v.t) as f32 * note_edge).min(1.0) } else { 1.0 };
+                    let note_end = if stops { ((v.len - v.t) as f32 * note_edge).min(1.0) } else { 1.0 };
                     fade *= edge_end.min(fade_end).min(note_end);
                     let (x, y) = a.sample(v.pos);
                     let (gl, gr) = side(i);
@@ -503,6 +527,20 @@ impl VoicePool {
             }
         }
     }
+}
+
+/// The bend factor of an envelope tension −1..1 for [`curve`]: 1 is straight, 1/8..8 the extremes.
+#[inline]
+pub fn bend(tension: f32) -> f32 {
+    8f32.powf(tension.clamp(-1.0, 1.0))
+}
+
+/// A segment's progress 0..1 at `x` 0..1 of its time, bent by `g` (1 = straight, below 1 rises
+/// early, above 1 rises late). One division, so it is cheap per sample.
+#[inline]
+pub fn curve(x: f32, g: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    x / (x + g * (1.0 - x))
 }
 
 /// Per-sample factor that falls 60 dB in `seconds`.

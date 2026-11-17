@@ -107,15 +107,27 @@ export interface KeysStatus { state: 'idle' | 'missing' | 'loading' | 'ready' | 
  */
 export interface SamplerState {
   start: number; end: number; reverse: boolean; norm: boolean; semi: number; fine: number;
-  gate: boolean; attack: number; decay: number; sustain: number; release: number; cut: number;
+  /**
+   * The volume envelope (FL Studio's Channel settings ▸ Volume): `env` switches it on. Off, the sample plays as
+   * recorded. On, notes are shaped by delay → attack → hold → decay to `sustain` (0..1) and fade over `release`
+   * from their note-off; times in ms, tensions −1..1 bend the attack, decay and release (0 = straight).
+   */
+  env: boolean; delay: number; attack: number; hold: number; decay: number; sustain: number; release: number;
+  attackTension: number; decayTension: number; releaseTension: number;
+  cut: number;
   fadeInMs?: number; fadeOutMs?: number;
 }
 export const SAMPLER = {
   semi: { min: -24, max: 24 }, fine: { min: -100, max: 100 },
-  attack: { min: 0, max: 2000 }, decay: { min: 0, max: 5000 }, release: { min: 1, max: 5000, def: 20 },
+  delay: { min: 0, max: 5000 }, attack: { min: 0, max: 2000 }, hold: { min: 0, max: 5000 }, decay: { min: 0, max: 5000 },
+  release: { min: 1, max: 5000, def: 20 },
   fadeMaxMs: 5000, cutGroups: 8, minSpan: 0.001,
 } as const;
-export const samplerDefault = (): SamplerState => ({ start: 0, end: 1, reverse: false, norm: false, semi: 0, fine: 0, gate: false, attack: 0, decay: 0, sustain: 1, release: SAMPLER.release.def, cut: 0, fadeInMs: 0, fadeOutMs: 0 });
+export const samplerDefault = (): SamplerState => ({
+  start: 0, end: 1, reverse: false, norm: false, semi: 0, fine: 0,
+  env: false, delay: 0, attack: 0, hold: 0, decay: 0, sustain: 1, release: SAMPLER.release.def,
+  attackTension: 0, decayTension: 0, releaseTension: 0, cut: 0, fadeInMs: 0, fadeOutMs: 0,
+});
 /**
  * What a channel plays: a sample of a project source (the sampler), the built-in synth, WAVE Keys, or a hosted
  * VST3 instrument (`plugin`; its sound, parameters and editor are the plugin's, `state` is saved with the project).

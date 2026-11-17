@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Project } from '../api/types';
+import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Project, type SamplerState } from '../api/types';
 import { applyAll } from './applyOps';
 import {
+  migrateSamplerEnvelope,
   BEAT_GAP, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
   rotate, samplerError, setKeyAt, setStep, setVelAt, snapStep, swingOffset, transpose,
 } from './pattern';
@@ -181,13 +182,25 @@ describe('mock engine ops (mirror of ops.rs)', () => {
     expect(again).toEqual(p);
     expect(() => applyAll(p, [{ op: 'putPattern', pattern: { id: 5, name: 'x', color: '#fff', len: 4, notes: [{ ch: 77, step: 0, len: 1 }] } }])).toThrow();
   });
+  it('opens samplers from before the envelope switch like the engine', () => {
+    const old = (patch: object) => { const s = { ...samplerDefault(), ...patch } as SamplerState & { gate?: boolean }; delete (s as Partial<SamplerState>).env; migrateSamplerEnvelope(s); return s; };
+    // gated, or one-shot with a shape it always played: on; an untouched one-shot: off
+    expect(old({ gate: true }).env).toBe(true);
+    expect(old({ gate: false, attack: 30 }).env).toBe(true);
+    expect(old({ decay: 100, sustain: 0.2 }).env).toBe(true);
+    expect(old({ gate: false, decay: 100 })).toEqual({ ...samplerDefault(), decay: 100 });
+    // a sampler that has the switch keeps it, and the new stages get their defaults
+    const now = { ...samplerDefault(), attack: 30 } as Partial<SamplerState>;
+    delete now.hold; migrateSamplerEnvelope(now as SamplerState);
+    expect(now).toEqual({ ...samplerDefault(), attack: 30 });
+  });
   it('checks sampler settings like the engine', () => {
     const p = base(), kick = p.channels![0];
     const put = (patch: Partial<ReturnType<typeof samplerDefault>>) => applyAll(p, [{ op: 'putChannel', channel: { ...kick, sampler: { ...samplerDefault(), ...patch } } as Channel }]);
     expect(samplerError(samplerDefault())).toBeNull();
-    const ok = put({ start: 0.25, end: 0.75, reverse: true, semi: -12, fine: 50, gate: true, attack: 5, decay: 200, sustain: 0.5, release: 300, cut: 8 });
+    const ok = put({ start: 0.25, end: 0.75, reverse: true, semi: -12, fine: 50, env: true, delay: 10, attack: 5, hold: 30, decay: 200, sustain: 0.5, release: 300, attackTension: 0.5, decayTension: -1, releaseTension: 1, cut: 8 });
     expect(ok.channels![0]).toMatchObject({ kind: 'sample', sampler: { start: 0.25, cut: 8 } });
-    for (const bad of [{ start: 0.5, end: 0.5 }, { end: 1.2 }, { start: NaN }, { semi: 25 }, { semi: 1.5 }, { fine: -101 }, { attack: -1 }, { decay: 5001 }, { sustain: 1.1 }, { release: 0 }, { cut: 9 }, { cut: -1 }])
+    for (const bad of [{ start: 0.5, end: 0.5 }, { end: 1.2 }, { start: NaN }, { semi: 25 }, { semi: 1.5 }, { fine: -101 }, { attack: -1 }, { decay: 5001 }, { sustain: 1.1 }, { release: 0 }, { delay: 5001 }, { hold: -1 }, { attackTension: 1.01 }, { releaseTension: NaN }, { cut: 9 }, { cut: -1 }])
       expect(() => put(bad), JSON.stringify(bad)).toThrow();
     // a sampler needs its source
     expect(() => applyAll(p, [{ op: 'putChannel', channel: { ...kick, source: 4242 } as Channel }])).toThrow();

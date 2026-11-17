@@ -14,6 +14,15 @@ shown in the app after an update and is published as the release notes (see
   above the keyboard. An audio clip's root belongs to its sample (every clip of it shares it),
   is saved with the project, and a sampler channel made from that sample starts on it. The
   keyboards of WAVE Keys and plugin channels set their root the same way.
+- **A sampler's volume envelope, as in FL Studio.** A sampler's editor has two pages: Sample
+  (the waveform, its part, pitch, level and the sample's own fades) and Envelope, the FL
+  Channel settings ▸ Volume page. Switch the envelope on and every note gets delay, attack,
+  hold, decay, sustain and release, drawn as a graph: drag a point sideways to change its time,
+  the sustain point up and down for the level, and the dot in a curve up or down to bend the
+  attack, decay or release. The same values are on knobs, and each drag is one undo step.
+  Dragging a point or turning a knob switches the envelope on. With it on, a note fades over
+  the release from its note-off: a key let go or the end of a Piano Roll note. Off, the sample
+  plays as recorded. A Channel Rack step still has no note-off and holds the sustain.
 - **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
   drums into a bus, or send the vocal and the keys to one shared reverb. In the maximized mixer,
   cables under the strips show every send with its level: drag the dot under a strip onto
@@ -30,6 +39,11 @@ shown in the app after an update and is published as the release notes (see
   mid-grey light themes for when white is too bright.
 
 ### Changed
+- **The sampler's One-shot / Gate switch is now the Envelope switch.** Envelope off plays the
+  sample as recorded, as One-shot did, and no longer applies attack, decay and sustain: those
+  belong to the envelope. Envelope on works like Gate, and a sized Piano Roll note now fades over
+  the release from its end instead of stopping there. Projects keep their sound: a sampler that
+  was in Gate mode or had an attack or a sustain below 100 % opens with its envelope on.
 - **Redesigned Settings.** A bigger window with an icon sidebar (General, Look, Audio, MIDI and
   a new Updates tab), settings grouped into cards, and each option's explanation shown under its
   name instead of hidden in a tooltip. Themes are shown as small previews of the app, grouped

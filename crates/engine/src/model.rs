@@ -388,20 +388,35 @@ pub struct SamplerState {
     pub semi: i8,
     #[serde(default)]
     pub fine: f32,
-    /// For live keys, auditions and legacy notes: one-shot plays the whole sample,
-    /// Gate fades it over `release` after note-off. Explicit held notes end at their length.
+    /// The volume envelope switch (FL Studio's Channel settings ▸ Volume ▸ Envelope). Off, the
+    /// sample plays as recorded: live keys, auditions and legacy notes ring to its end, sized
+    /// notes stop at theirs. On, every note is shaped by the DAHDSR envelope below and fades over
+    /// `release` from its note-off (a step trigger has none, so it holds the sustain level).
     #[serde(default)]
-    pub gate: bool,
-    /// Volume envelope: `attack` and `decay` in ms, `sustain` 0..1 (the level after the
-    /// decay; 0 makes the decay the whole sound), `release` in ms (gate mode).
+    pub env: bool,
+    /// Envelope stage times in ms: `delay` (silence before the attack), `attack` (0 → full),
+    /// `hold` (at full), `decay` (full → `sustain`), `release` (→ silence after note-off).
+    /// `sustain` 0..1 is the level held until note-off (0 makes the decay the whole sound).
+    #[serde(default)]
+    pub delay: f32,
     #[serde(default)]
     pub attack: f32,
+    #[serde(default)]
+    pub hold: f32,
     #[serde(default)]
     pub decay: f32,
     #[serde(default = "one")]
     pub sustain: f32,
     #[serde(default = "sampler_release")]
     pub release: f32,
+    /// Curve of the attack, decay and release, −1..1: 0 is a straight line, positive bows the
+    /// segment up (a fast attack, a slow decay), negative bows it down.
+    #[serde(default, rename = "attackTension")]
+    pub attack_tension: f32,
+    #[serde(default, rename = "decayTension")]
+    pub decay_tension: f32,
+    #[serde(default, rename = "releaseTension")]
+    pub release_tension: f32,
     /// Cut group 1..8 (0 = none): a new note silences every sounding note of the channels in
     /// the same group, itself included. A closed hat that cuts the open one.
     #[serde(default)]
@@ -420,7 +435,9 @@ fn sampler_release() -> f32 {
 impl SamplerState {
     pub const SEMI: (i8, i8) = (-24, 24);
     pub const FINE: (f32, f32) = (-100.0, 100.0);
+    pub const DELAY_MS: (f32, f32) = (0.0, 5000.0);
     pub const ATTACK_MS: (f32, f32) = (0.0, 2000.0);
+    pub const HOLD_MS: (f32, f32) = (0.0, 5000.0);
     pub const DECAY_MS: (f32, f32) = (0.0, 5000.0);
     pub const RELEASE_MS: (f32, f32) = (1.0, 5000.0);
     pub const FADE_MS: (f32, f32) = (0.0, 5000.0);
@@ -438,12 +455,17 @@ impl SamplerState {
         if !(Self::SEMI.0..=Self::SEMI.1).contains(&self.semi) || !within(self.fine, Self::FINE) {
             return Err("sampler pitch is -24..24 semitones and -100..100 cents".into());
         }
-        if !within(self.attack, Self::ATTACK_MS)
+        if !within(self.delay, Self::DELAY_MS)
+            || !within(self.attack, Self::ATTACK_MS)
+            || !within(self.hold, Self::HOLD_MS)
             || !within(self.decay, Self::DECAY_MS)
             || !within(self.sustain, (0.0, 1.0))
             || !within(self.release, Self::RELEASE_MS)
         {
-            return Err("sampler envelope: attack 0..2000 ms, decay 0..5000 ms, sustain 0..1, release 1..5000 ms".into());
+            return Err("sampler envelope: delay 0..5000 ms, attack 0..2000 ms, hold 0..5000 ms, decay 0..5000 ms, sustain 0..1, release 1..5000 ms".into());
+        }
+        if ![self.attack_tension, self.decay_tension, self.release_tension].iter().all(|&k| within(k, (-1.0, 1.0))) {
+            return Err("sampler envelope tensions are -1..1".into());
         }
         if !within(self.fade_in_ms, Self::FADE_MS) || !within(self.fade_out_ms, Self::FADE_MS) {
             return Err("sampler fades must be 0..5000 ms".into());
@@ -452,6 +474,24 @@ impl SamplerState {
             return Err("sampler cut group is 0 (none) or 1..8".into());
         }
         Ok(())
+    }
+}
+
+/// Files from before the volume-envelope switch (`env`) had a `gate` mode and always applied
+/// attack, decay and sustain. A sampler that was gated or shaped opens with its envelope on, so
+/// the shape keeps sounding; an untouched one-shot opens with it off and plays as before.
+fn migrate_sampler_envelopes(v: &mut serde_json::Value) {
+    use serde_json::Value;
+    for c in v.get_mut("channels").and_then(Value::as_array_mut).into_iter().flatten() {
+        let Some(s) = c.get_mut("sampler").and_then(Value::as_object_mut) else { continue };
+        if s.contains_key("env") {
+            continue;
+        }
+        let num = |k: &str, d: f64| s.get(k).and_then(Value::as_f64).unwrap_or(d);
+        let shaped = num("attack", 0.0) > 0.0 || num("sustain", 1.0) < 1.0;
+        let gate = s.get("gate").and_then(Value::as_bool).unwrap_or(false);
+        s.remove("gate");
+        s.insert("env".into(), Value::Bool(gate || shaped));
     }
 }
 
@@ -464,11 +504,16 @@ impl Default for SamplerState {
             norm: false,
             semi: 0,
             fine: 0.0,
-            gate: false,
+            env: false,
+            delay: 0.0,
             attack: 0.0,
+            hold: 0.0,
             decay: 0.0,
             sustain: 1.0,
             release: Self::RELEASE_DEFAULT,
+            attack_tension: 0.0,
+            decay_tension: 0.0,
+            release_tension: 0.0,
             cut: 0,
             fade_in_ms: 0.0,
             fade_out_ms: 0.0,
@@ -1375,6 +1420,7 @@ impl Project {
         use serde_json::{json, Value};
         const LEGACY: [(&str, &str); 4] =
             [("kick", "kick-808-short.flac"), ("clap", "clap-808.flac"), ("hat", "hat-808-closed.flac"), ("bass", "bass-808-short.flac")];
+        migrate_sampler_envelopes(&mut v);
         let file_of = |inst: &Value| LEGACY.iter().find(|(k, _)| inst.as_str() == Some(k)).map(|(_, f)| *f);
         // (channel index or None for "notes of this instrument", file)
         let mut chans: Vec<(usize, &str)> = vec![];
@@ -1430,7 +1476,7 @@ impl Project {
             let (source, f) = (crate::factory::source(&mut p, file), crate::factory::file(file));
             if let (Some(source), Some(f), Some(c)) = (source, f, p.channels.get_mut(i)) {
                 // the synthesised bass held its note; the drums rang out
-                let sampler = SamplerState { gate: file == LEGACY[3].1, ..Default::default() };
+                let sampler = SamplerState { env: file == LEGACY[3].1, ..Default::default() };
                 c.src = ChannelSrc::Sample { source, sampler };
                 c.root = f.root;
             }
@@ -1438,7 +1484,7 @@ impl Project {
         let ids: Vec<Id> = loose.iter().map(|f| p.factory_channel(f).unwrap_or(0)).collect();
         for (id, file) in ids.iter().zip(&loose) {
             if let Some(ChannelSrc::Sample { sampler, .. }) = p.channels.iter_mut().find(|c| c.id == *id).map(|c| &mut c.src) {
-                sampler.gate = *file == LEGACY[3].1;
+                sampler.env = *file == LEGACY[3].1;
             }
         }
         for (pt, flags) in p.patterns.iter_mut().zip(legacy_notes) {

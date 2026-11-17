@@ -5,7 +5,7 @@
 // (absent = the channel's root); `v` velocity 0..1 (absent = 1).
 import { t, type TranslationKey } from './i18n';
 import { migrateSatParams } from './saturator';
-import { KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState } from '../api/types';
+import { KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState } from '../api/types';
 import { addStarterKit } from './factory';
 import { SYNTH_CATALOG } from '../api/synthCatalog';
 import { synthError } from './synth';
@@ -20,7 +20,10 @@ export function samplerError(s: SamplerState | undefined): string | null {
   const within = (v: number, lo: number, hi: number) => Number.isFinite(v) && v >= lo && v <= hi;
   if (!(within(s.start, 0, 1) && within(s.end, 0, 1) && s.end - s.start >= SAMPLER.minSpan - 1e-6)) return 'sampler start and end are fractions 0..1 of the file, start before end';
   if (!(Number.isInteger(s.semi) && within(s.semi, SAMPLER.semi.min, SAMPLER.semi.max) && within(s.fine, SAMPLER.fine.min, SAMPLER.fine.max))) return 'sampler pitch is -24..24 semitones and -100..100 cents';
-  if (!(within(s.attack, SAMPLER.attack.min, SAMPLER.attack.max) && within(s.decay, SAMPLER.decay.min, SAMPLER.decay.max) && within(s.sustain, 0, 1) && within(s.release, SAMPLER.release.min, SAMPLER.release.max))) return 'sampler envelope: attack 0..2000 ms, decay 0..5000 ms, sustain 0..1, release 1..5000 ms';
+  if (!(within(s.delay, SAMPLER.delay.min, SAMPLER.delay.max) && within(s.attack, SAMPLER.attack.min, SAMPLER.attack.max) && within(s.hold, SAMPLER.hold.min, SAMPLER.hold.max)
+    && within(s.decay, SAMPLER.decay.min, SAMPLER.decay.max) && within(s.sustain, 0, 1) && within(s.release, SAMPLER.release.min, SAMPLER.release.max)))
+    return 'sampler envelope: delay 0..5000 ms, attack 0..2000 ms, hold 0..5000 ms, decay 0..5000 ms, sustain 0..1, release 1..5000 ms';
+  if (![s.attackTension, s.decayTension, s.releaseTension].every(k => within(k, -1, 1))) return 'sampler envelope tensions are -1..1';
   if (!(within(s.fadeInMs ?? 0, 0, SAMPLER.fadeMaxMs) && within(s.fadeOutMs ?? 0, 0, SAMPLER.fadeMaxMs))) return 'sampler fades must be 0..5000 ms';
   if (!(Number.isInteger(s.cut) && within(s.cut, 0, SAMPLER.cutGroups))) return 'sampler cut group is 0 (none) or 1..8';
   return null;
@@ -71,9 +74,21 @@ export class PatternOpError extends Error {}
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
 /** Project.migrate: derived pattern lengths, the starter kit when the Channel Rack is empty. */
+/**
+ * A sampler saved before the volume-envelope switch (engine `migrate_sampler_envelopes`): it had a `gate` mode
+ * and always applied attack, decay and sustain, so a gated or shaped one opens with its envelope on.
+ */
+export function migrateSamplerEnvelope(s: SamplerState & { gate?: boolean }) {
+  if (typeof s.env !== 'boolean') s.env = !!s.gate || (s.attack ?? 0) > 0 || (s.sustain ?? 1) < 1;
+  delete s.gate;
+  const d = samplerDefault();
+  for (const k of ['delay', 'hold', 'attackTension', 'decayTension', 'releaseTension'] as const) s[k] ??= d[k];
+}
+
 export function migrateProject(p: Project) {
   for (const pt of p.patterns) fitLen(pt);
   if (!p.channels?.length) addStarterKit(p);
+  for (const c of p.channels ?? []) if (c.kind === 'sample' && c.sampler) migrateSamplerEnvelope(c.sampler);
   // saturator parameters from before the character saturator
   for (const ins of p.inserts) for (const fx of ins.fx) if (fx.type === 'sat' && migrateSatParams(fx.params)) fx.preset = null;
 }

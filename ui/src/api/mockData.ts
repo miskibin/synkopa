@@ -293,7 +293,7 @@ export function sketchProject(cat: Catalog): Project {
   const bass = factoryChannel(p, 'bass-808.flac')!;
   const b = p.channels!.find(c => c.id === bass)!;
   b.name = 'Bass';
-  if (b.kind === 'sample') b.sampler.gate = true;
+  if (b.kind === 'sample') b.sampler.env = true;
   const note = (ch: number, step: number, len: number, key?: number): Note => ({ ch, step, len, p: key, trig: false });
   p.patterns = [
     { id: 1, name: 'Beat', color: '#4f8ef7', len: 4,
