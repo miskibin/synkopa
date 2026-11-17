@@ -1,4 +1,4 @@
-# Contributing to WAVE
+# Contributing to Synkopa
 
 Thanks for helping. Pull requests are welcome.
 
@@ -30,5 +30,5 @@ pnpm --dir ui build
 
 ## License
 
-WAVE is licensed under [AGPL-3.0-only](LICENSE). By opening a pull request, you agree that your
+Synkopa is licensed under [AGPL-3.0-only](LICENSE). By opening a pull request, you agree that your
 contribution is licensed under the same terms.

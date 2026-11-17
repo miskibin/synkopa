@@ -1,6 +1,6 @@
 //! The sacrificial process that opens one VST3 module.
 //!
-//! The WAVE app binary can do this job itself (its `main` calls
+//! The Synkopa app binary can do this job itself (its `main` calls
 //! `wave_vst3::run_scan_worker_if_requested()`), so shipping this is optional;
 //! it exists because it starts in milliseconds rather than loading a webview,
 //! and because it is what the integration tests spawn. When it sits next to the
@@ -15,7 +15,7 @@ fn main() -> std::process::ExitCode {
         return std::process::ExitCode::SUCCESS;
     }
     eprintln!(
-        "{}: WAVE's VST3 scan worker. WAVE starts it with {}=vst3 and {}=<module> in its \
+        "{}: Synkopa's VST3 scan worker. Synkopa starts it with {}=vst3 and {}=<module> in its \
          environment; it opens that one module, prints what is inside and exits. There is \
          nothing to run here by hand.",
         env!("CARGO_BIN_NAME"),

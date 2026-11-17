@@ -1,4 +1,4 @@
-# Releasing WAVE
+# Releasing Synkopa
 
 A release is one commit; the workflow does the rest. Installed copies find it by themselves
 (Settings → General → Updates, or the button beside the menus) and show its notes.
@@ -22,7 +22,7 @@ A release is one commit; the workflow does the rest. Installed copies find it by
 * A `.sig` beside each (the updater's signature) and `latest.json`.
 
 The bundle list is `bundles` in the matrix of `.github/workflows/release.yml`. Every installer
-carries the WAVE Keys piano, which `scripts/fetch-keys.mjs` cuts to what the app plays before
+carries the Synkopa Keys piano, which `scripts/fetch-keys.mjs` cuts to what the app plays before
 the build (138 MB of downloads become about 23 MB; see `docs/keys.md`). The AppImage is the
 largest because it also carries its own WebKit and GTK.
 

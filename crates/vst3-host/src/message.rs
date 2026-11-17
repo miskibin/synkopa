@@ -1,7 +1,7 @@
 //! `IMessage` and `IAttributeList`: what `IHostApplication::createInstance` makes.
 //!
 //! A VST3 plugin whose processor and controller are separate objects talks between them
-//! with messages over `IConnectionPoint` (which WAVE already connects), but the message
+//! with messages over `IConnectionPoint` (which Synkopa already connects), but the message
 //! objects come from the host. A host that cannot make them silently cuts that channel:
 //! DPF-built plugins (Vitalium, the DISTRHO and ZAM ones) then assert and their interface
 //! hears less from the processor. These are plain property bags.

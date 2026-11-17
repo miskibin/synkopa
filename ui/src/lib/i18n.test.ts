@@ -14,7 +14,7 @@ describe('localization', () => {
   });
   it('defaults to English and interpolates values', () => {
     expect(lang()).toBe('en');
-    expect(t('startup.failed', { error: 'test' })).toBe('WAVE: failed to start UI\ntest');
+    expect(t('startup.failed', { error: 'test' })).toBe('Synkopa: failed to start UI\ntest');
   });
   it('passes unknown names through', () => {
     expect(tName('User preset')).toBe('User preset');

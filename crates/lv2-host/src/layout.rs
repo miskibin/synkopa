@@ -1,6 +1,6 @@
 //! How a plugin's audio ports meet a stereo insert slot.
 
-/// The wiring of a WAVE stereo insert to a plugin's main audio ports. Side-chain inputs
+/// The wiring of a Synkopa stereo insert to a plugin's main audio ports. Side-chain inputs
 /// and CV inputs are fed silence; extra outputs are written to a scratch sink.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {

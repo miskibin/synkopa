@@ -119,7 +119,7 @@ unsafe fn malloc_copy(s: &CStr) -> *mut c_char {
     }
 }
 
-/// `state:mapPath` both ways: WAVE keeps absolute paths (collecting a plugin's files
+/// `state:mapPath` both ways: Synkopa keeps absolute paths (collecting a plugin's files
 /// into the project is not done yet).
 unsafe extern "C" fn path_copy(_handle: *mut c_void, path: *const c_char) -> *mut c_char {
     if path.is_null() {

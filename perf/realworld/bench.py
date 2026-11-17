@@ -1,4 +1,4 @@
-"""WAVE vs FL Studio: real-world task timings on this machine.
+"""Synkopa vs FL Studio: real-world task timings on this machine.
 
     python perf/realworld/bench.py --app wave|fl --tasks startup,open,roll,fx,drag,dropouts [--runs 5]
 
@@ -253,7 +253,7 @@ def ensure_song_open(app: App):
         if w.w >= 1900:
             break
         if app.image == "wave-app.exe":
-            # WAVE draws its own title bar: its maximize button (SW_MAXIMIZE does not stick)
+            # Synkopa draws its own title bar: its maximize button (SW_MAXIMIZE does not stick)
             rw.click(w.rect[2] - 70, w.rect[1] + 27)
         else:
             rw.maximize(w.hwnd)

@@ -1,4 +1,4 @@
-//! A real VST3 editor on Linux, end to end: WAVE's window under a real X server (CI: Xvfb),
+//! A real VST3 editor on Linux, end to end: Synkopa's window under a real X server (CI: Xvfb),
 //! the plugin's `IRunLoop` served by the installed loop, and a user's mouse (XTEST) turning
 //! a knob that reaches the plugin's parameter. Uses DISTRHO's Nekobi (Debian/Ubuntu
 //! `dpf-plugins-vst3`, the framework Vitalium is built with) or `WAVE_VST3_GUI_PLUGIN`.
@@ -75,7 +75,7 @@ fn a_dpf_editor_opens_under_waves_header_runs_on_the_loop_and_its_knobs_reach_th
                 .and_then(|c| c.reply().ok())
                 .is_some_and(|r| r.value.starts_with(b"wave-plugin"))
         })
-        .expect("WAVE's plugin window is on the screen");
+        .expect("Synkopa's plugin window is on the screen");
     let g = x.get_geometry(frame).unwrap().reply().unwrap();
     assert!(g.height > wave_plugin_windows::header::HEIGHT as u16, "the plugin area is below the header");
     let before = handle.params();

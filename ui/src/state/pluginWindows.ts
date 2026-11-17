@@ -1,7 +1,7 @@
 // A hosted plugin's own window (FL Studio's wrapper): opening an external instrument or effect
-// shows the plugin's interface at once, in a native window under WAVE's header (name, a gear,
-// close). The gear opens WAVE's window for it (parameters, level, routing). A plugin with no
-// interface of its own, or a session that cannot show one (no X11 display), opens WAVE's window
+// shows the plugin's interface at once, in a native window under Synkopa's header (name, a gear,
+// close). The gear opens Synkopa's window for it (parameters, level, routing). A plugin with no
+// interface of its own, or a session that cannot show one (no X11 display), opens Synkopa's window
 // instead, as before.
 import { createSignal } from 'solid-js';
 import { be } from '../api/backend';
@@ -20,7 +20,7 @@ const noEditorCids = new Set<string>();
 export const knownWithoutEditor = (ref?: PluginRef) => !!ref && noEditorCids.has(ref.cid);
 
 const [open, setOpen] = createSignal<ReadonlySet<Id>>(new Set());
-/** Whether WAVE shows the plugin's own window for this effect or channel now. */
+/** Whether Synkopa shows the plugin's own window for this effect or channel now. */
 export const editorOpen = (id: Id) => open().has(id);
 
 let editors: Promise<boolean> | null = null;
@@ -38,7 +38,7 @@ export function pluginOf(id: Id): { ref: PluginRef; instrument: boolean } | null
   return c?.kind === 'plugin' ? { ref: c.plugin, instrument: true } : null;
 }
 
-/** What WAVE's header above the plugin says: the channel or effect, and the format and kind. */
+/** What Synkopa's header above the plugin says: the channel or effect, and the format and kind. */
 export function pluginLabel(id: Id): { title: string; subtitle: string } {
   const p = pluginOf(id);
   if (!p) return { title: '', subtitle: '' };
@@ -105,7 +105,7 @@ const pause = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /**
  * Open an external plugin the FL way: its own window, else (no window of its own, none can be
- * shown here, or it failed to load) WAVE's window through `fallback`.
+ * shown here, or it failed to load) Synkopa's window through `fallback`.
  */
 export async function showPlugin(id: Id, fallback: () => void): Promise<void> {
   const p = pluginOf(id);

@@ -5,7 +5,7 @@
 //!
 //! Every index in an edit names a note of the **base** segmentation — the notes as they were
 //! before this op (or `init` when the clip has none yet) — whatever order the edits are listed
-//! in, so a batch reads like the `wave pitch inspect` it was planned from. The parts apply in a
+//! in, so a batch reads like the `synkopa pitch inspect` it was planned from. The parts apply in a
 //! fixed order: `clear`, `reset`, `notes`, `split`, `merge`, `erasePencil`, `pencil`.
 //! `base`, when given, is the fingerprint of that segmentation ([`fingerprint`]): if the notes
 //! changed since it was read (another edit, a re-analysis with another detector), the op is

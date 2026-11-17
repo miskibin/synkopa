@@ -1,6 +1,6 @@
 [package]
 name = "wave-app"
-description = "WAVE: the desktop app (Tauri shell around the engine)."
+description = "Synkopa: the desktop app (Tauri shell around the engine)."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

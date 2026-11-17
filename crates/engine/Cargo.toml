@@ -1,6 +1,6 @@
 [package]
 name = "wave-engine"
-description = "WAVE engine: project model, ops and undo, sequencer, instruments, built-in effects, mixer graph, recording, offline render and analysis."
+description = "Synkopa engine: project model, ops and undo, sequencer, instruments, built-in effects, mixer graph, recording, offline render and analysis."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

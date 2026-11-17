@@ -1,5 +1,5 @@
 // Channel settings window (FL "Channel settings"): click a Channel Rack name to see what makes
-// the sound — the synth, WAVE Keys or a hosted VST3 instrument (its editor and parameters) — plus level,
+// the sound — the synth, Synkopa Keys or a hosted VST3 instrument (its editor and parameters) — plus level,
 // pan, root key, mixer routing and a keyboard to play it.
 import { createEffect, Show } from 'solid-js';
 import { VOL_UNITY, type AutoTarget, type Channel, type Id } from '../api/types';
@@ -45,7 +45,7 @@ export function chanWin() {
 
 /**
  * Open the channel's window, or close it when it is already showing that channel. A plugin instrument shows its
- * own window instead (FL), and a second click closes that; WAVE's window comes from its header's gear
+ * own window instead (FL), and a second click closes that; Synkopa's window comes from its header's gear
  * (`settings`), or when the plugin has no window of its own.
  */
 export function toggleChannelWindow(id: Id, settings = false) {

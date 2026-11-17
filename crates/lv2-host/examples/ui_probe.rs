@@ -3,7 +3,7 @@
 //! `cargo run -p wave-lv2 --example ui_probe -- <name or URI substring> [seconds]`
 //!
 //! Hosts the first installed LV2 effect whose name or URI contains the substring, opens its
-//! interface through WAVE's window service under a small poll loop (the app installs glib's),
+//! interface through Synkopa's window service under a small poll loop (the app installs glib's),
 //! runs audio through it, and prints whether the interface is open and what it set.
 
 #[cfg(target_os = "linux")]

@@ -31,7 +31,7 @@ pub const MODEL_BYTES: u64 = 361_688_443;
 pub const LICENSE_URL: &str = "https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/%E4%BD%BF%E7%94%A8%E9%9C%80%E9%81%B5%E5%AE%88%E7%9A%84%E5%8D%8F%E8%AE%AE-LICENSE.txt";
 pub const LICENSE_NOTE: &str = "RMVPE weights from the RVC project (lj1995/VoiceConversionWebUI). The RVC code is MIT and the RMVPE \
 reference code Apache-2.0, but the weights' licence file restricts use to research. Downloading is your decision; \
-without the model WAVE uses its built-in YIN detector.";
+without the model Synkopa uses its built-in YIN detector.";
 
 /// Where the downloaded model lives (`WAVE_RMVPE_MODEL` overrides it).
 pub fn model_path() -> PathBuf {
@@ -43,7 +43,7 @@ pub fn model_path() -> PathBuf {
 }
 
 /// The ONNX Runtime library on Linux (`ort` loads it at run time): `ORT_DYLIB_PATH`, else the
-/// one the installers bundle (`ort/` among the app's resources: `/usr/lib/WAVE/ort` in the
+/// one the installers bundle (`ort/` among the app's resources: `/usr/lib/Synkopa/ort` in the
 /// packages and the AppImage, beside the binary in a portable folder), else, in a debug
 /// build, `app/resources/ort` after `node scripts/fetch-onnxruntime.mjs`.
 #[cfg(target_os = "linux")]
@@ -54,7 +54,7 @@ pub fn ort_library() -> Option<PathBuf> {
     }
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    let mut c = vec![dir.join("ort").join(LIB), dir.join("..").join("lib").join("WAVE").join("ort").join(LIB)];
+    let mut c = vec![dir.join("ort").join(LIB), dir.join("..").join("lib").join("Synkopa").join("ort").join(LIB)];
     if cfg!(debug_assertions) {
         c.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/resources/ort").join(LIB));
     }
@@ -63,7 +63,7 @@ pub fn ort_library() -> Option<PathBuf> {
 
 #[cfg(target_os = "linux")]
 fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
-    let lib = ort_library().ok_or("ONNX Runtime is not installed with this build of WAVE (libonnxruntime.so.1)")?;
+    let lib = ort_library().ok_or("ONNX Runtime is not installed with this build of Synkopa (libonnxruntime.so.1)")?;
     ort::init_from(&lib).map_err(|e| format!("{}: {e}", lib.display()))
 }
 

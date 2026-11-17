@@ -1,7 +1,7 @@
 name: Linux smoke test
 
 # Installs the Linux packages of a published release on clean systems and checks that the app
-# really starts: the window appears, the audio engine opens an ALSA device, the `wave` command
+# really starts: the window appears, the audio engine opens an ALSA device, the `synkopa` command
 # line talks to the running app and bounces audio. Run by hand (Actions → Linux smoke test).
 
 on:
@@ -60,7 +60,7 @@ jobs:
             if kill -0 \$PID 2>/dev/null; then echo "RESULT app: alive after 30 s"; else echo "RESULT app: DIED"; fi
             echo "--- windows"; xdotool search --onlyvisible --name . getwindowname %@ 2>/dev/null | sort -u
             import -window root shot.png || true
-            WAVE=\$(command -v wave || echo \$HOME/.local/bin/wave)
+            WAVE=\$(command -v synkopa || echo \$HOME/.local/bin/synkopa)
             echo "--- cli: \$WAVE"; ls -la \$HOME/.local/bin 2>/dev/null
             "\$WAVE" status && echo "RESULT cli status: ok" || echo "RESULT cli status: FAILED"
             "\$WAVE" context --pretty | head -40
@@ -119,7 +119,7 @@ jobs:
       - name: Every library the binaries need is there
         run: |
           set -x
-          for b in /usr/bin/wave-app /usr/bin/wave; do
+          for b in /usr/bin/wave-app /usr/bin/synkopa /usr/bin/wave; do
             [ -e "$b" ] || continue
             ldd "$b" > ldd.txt 2>&1 || true
             cat ldd.txt | grep -E "not found|GLIBC" && { echo "RESULT $b: MISSING LIBRARIES"; exit 1; } || echo "RESULT $b: libraries ok"

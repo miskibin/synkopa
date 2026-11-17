@@ -18,14 +18,14 @@ describe('encodeComponent', () => {
 describe('askPrompt', () => {
   it('names the version, the repository, the view and the question', () => {
     const p = askPrompt('  jak dodać kanał?  ', { version: '0.4.0', view: 'Mixer' });
-    expect(p).toContain('WAVE Studio 0.4.0');
+    expect(p).toContain('Synkopa 0.4.0');
     expect(p).toContain('https://github.com/miskibin/wave-DAW');
-    expect(p).toContain('Open in WAVE right now: Mixer.');
+    expect(p).toContain('Open in Synkopa right now: Mixer.');
     expect(p.endsWith('Question: jak dodać kanał?')).toBe(true);
   });
   it('leaves out what it does not know', () => {
     const p = askPrompt('x', { version: null, view: null });
-    expect(p).toContain('I use WAVE Studio, ');
+    expect(p).toContain('I use Synkopa, ');
     expect(p).not.toContain('right now');
   });
 });

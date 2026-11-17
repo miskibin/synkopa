@@ -102,7 +102,7 @@ fn a_plugin_window_hosts_a_child_and_its_header_buttons_work() {
     click(x0 + w - 15, y0 + 14);
     assert!(until(&lp, || window.drain_events().contains(&WindowEvent::Closed)), "the close button asks the owner to close");
 
-    // a press in the plugin's area is the plugin's: no implicit grab by WAVE's frame
+    // a press in the plugin's area is the plugin's: no implicit grab by Synkopa's frame
     click(x0 + 50, y0 + header::HEIGHT as i16 + 50);
     let got = Instant::now() + Duration::from_secs(2);
     let mut pressed = false;

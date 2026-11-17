@@ -41,7 +41,7 @@ pub trait PluginFactory: Send + Sync {
     ) -> Result<Box<dyn crate::processor::Instrument>, String> {
         Err(format!("{} cannot be loaded: this build has no plugin host", plugin.name))
     }
-    /// Prepare everything about these plugins that may be slow and needs no instance (WAVE's
+    /// Prepare everything about these plugins that may be slow and needs no instance (Synkopa's
     /// safety check of a plugin used for the first time), so the `create` calls the engine
     /// makes under its lock are quick. Called without the engine lock, before an edit or a
     /// project load that adds them; `instrument` per plugin. Default: nothing.
@@ -330,7 +330,7 @@ struct Core {
     /// `fx_errors`), with the plugin it hosts. A failed one is retried when its plugin changes
     /// or the audio device is rebuilt, not on every edit.
     plugs: HashMap<Id, PluginRef>,
-    /// The WAVE Keys piano, once the app has loaded it.
+    /// The Synkopa Keys piano, once the app has loaded it.
     keys: Option<Arc<crate::keys::KeysBank>>,
 }
 
@@ -784,7 +784,7 @@ impl Engine {
     }
 
     /// Replaces the whole project with `project` as one undo step, without stopping the
-    /// transport (`wave watch`: a script's result, made on a copy, applied in one go). Audio
+    /// transport (`synkopa watch`: a script's result, made on a copy, applied in one go). Audio
     /// already loaded for a source of the same id and file is kept; a new source's file is
     /// decoded first, outside the lock (a file that does not decode makes the source missing,
     /// as on open). Hosted plugins of the same class keep their running instance and sound;
@@ -2140,7 +2140,7 @@ impl Engine {
         Ok(())
     }
 
-    // ------------------------------------------------------------ WAVE Keys
+    // ------------------------------------------------------------ Synkopa Keys
 
     /// Hands the engine the loaded piano (or takes it away). Keys channels are silent
     /// without it; with it they play at once, also notes that are sounding.
@@ -2154,7 +2154,7 @@ impl Engine {
         self.core.lock().keys.is_some()
     }
 
-    /// True when the project has a WAVE Keys channel.
+    /// True when the project has a Synkopa Keys channel.
     pub fn uses_keys(&self) -> bool {
         self.core.lock().project.channels.iter().any(|c| matches!(c.src, ChannelSrc::Keys { .. }))
     }
@@ -2277,8 +2277,8 @@ impl Engine {
     /// Checks the expected revision after decoding, before replacing the current project.
     pub fn open_at_revision(&self, path: &Path, if_revision: Option<u64>) -> Result<Vec<String>, EngineError> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("not a WAVE project: {e}"))?;
-        let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a WAVE project: {e}"))?;
+        let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("not a Synkopa project: {e}"))?;
+        let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a Synkopa project: {e}"))?;
         p.migrate();
         let dir = path.parent().unwrap_or(Path::new("."));
         let mut warnings = vec![];
@@ -2769,7 +2769,7 @@ impl Engine {
     }
 
     /// Tries every hosted plugin that did not load once more (an effect or a plugin
-    /// instrument with an `fx_errors` entry): after the user chose to load one that WAVE's
+    /// instrument with an `fx_errors` entry): after the user chose to load one that Synkopa's
     /// safety check refused, or installed what was missing. Running instances are kept.
     pub fn retry_plugins(&self) {
         let mut c = self.core.lock();
@@ -3635,11 +3635,14 @@ fn watch_cmd(ids: &[Id]) -> Cmd {
     Cmd::Watch { ids: a, n: ids.len().min(WATCH_SLOTS) as u8 }
 }
 
-/// `Song.wave` -> `Song (backup).wave`: the previous save, kept next to the project.
+/// `Song.synkopa` -> `Song (backup).synkopa`: the previous save, kept next to the project.
+/// The backup keeps the project's own extension, so a `.wave` project from before the rename
+/// gets a `.wave` backup.
 /// It is an ordinary project file, so File > Open shows and opens it.
 pub fn backup_path(path: &Path) -> PathBuf {
     let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    path.with_file_name(format!("{stem} (backup).wave"))
+    let ext = path.extension().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "synkopa".into());
+    path.with_file_name(format!("{stem} (backup).{ext}"))
 }
 
 pub(crate) fn project_document(p: &Project) -> serde_json::Value {

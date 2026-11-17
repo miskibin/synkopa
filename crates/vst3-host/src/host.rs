@@ -1,4 +1,4 @@
-//! The COM objects WAVE implements *for* a VST3 plugin.
+//! The COM objects Synkopa implements *for* a VST3 plugin.
 //!
 //! | object | given to | why it cannot be null |
 //! | --- | --- | --- |
@@ -34,7 +34,7 @@ use crate::module::write_utf16;
 use crate::run_loop::RunLoop;
 
 /// Host identity handed to every plugin.
-pub(crate) const HOST_NAME: &str = "WAVE";
+pub(crate) const HOST_NAME: &str = "Synkopa";
 
 /// Largest state blob accepted from, or handed to, a plugin. Guards against a
 /// plugin that streams without end.
@@ -44,7 +44,7 @@ pub const MAX_STATE_BYTES: usize = 64 * 1024 * 1024;
 /// the mailbox for the next block, never dropped.
 pub(crate) const MAX_CHANGES_PER_BLOCK: usize = 64;
 
-/// Points one queue holds. Input queues use one (WAVE sends no ramps); output
+/// Points one queue holds. Input queues use one (Synkopa sends no ramps); output
 /// queues take what the plugin writes, up to this.
 const POINTS_PER_QUEUE: usize = 16;
 
@@ -191,7 +191,7 @@ pub(crate) struct HostFlags {
 ///
 /// `createInstance` makes `IMessage`s and `IAttributeList`s ([`crate::message`]), so
 /// a dual-component plugin's processor and controller can talk over the
-/// `IConnectionPoint`s WAVE connects.
+/// `IConnectionPoint`s Synkopa connects.
 ///
 /// `RUN_LOOP`: whether it also answers `Linux::IRunLoop` (see [`crate::run_loop`]). Only
 /// where the UI thread really runs a loop: a plugin that is offered one stops its own
@@ -577,7 +577,7 @@ impl IParameterChangesTrait for ParameterChanges {
 // IEventList
 // ---------------------------------------------------------------------------
 
-/// An input event list that is always empty: WAVE hosts effects and sends
+/// An input event list that is always empty: Synkopa hosts effects and sends
 /// them no events, but a plugin with an event bus may not check for null.
 pub(crate) struct EmptyEventList;
 

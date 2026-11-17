@@ -1,4 +1,4 @@
-// WAVE Keys: the sampled grand piano's page in the channel window. Two knobs (how long a
+// Synkopa Keys: the sampled grand piano's page in the channel window. Two knobs (how long a
 // released note rings, how much the velocity changes the level) and the state of the
 // recordings: shipped with the app, or downloaded once into the sample library.
 import { createSignal, onCleanup, onMount, Show } from 'solid-js';
@@ -79,7 +79,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
       <div class="keyshd">
         <span class="big" style={{ color: props.c.color }}><InstIcon id="piano" size={34} /></span>
         <div class="keysinfo">
-          <div class="nm">WAVE KEYS</div>
+          <div class="nm">SYNKOPA KEYS</div>
           <div class="note">{t('b.kp.desc')}</div>
         </div>
       </div>

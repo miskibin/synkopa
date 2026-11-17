@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 
 use parking_lot::Mutex;
 
-/// Where WAVE keeps the small persistent files a scan needs, or `None` when this
+/// Where Synkopa keeps the small persistent files a scan needs, or `None` when this
 /// platform will not say.
 ///
 /// `%LOCALAPPDATA%\WAVE\` on Windows, `$XDG_DATA_HOME`/`~/.local/share/wave`
@@ -47,7 +47,7 @@ pub fn data_dir() -> Option<PathBuf> {
     Some(root?.join("WAVE"))
 }
 
-/// Full path of one of WAVE's scan side files, or `None` -- see [`data_dir`].
+/// Full path of one of Synkopa's scan side files, or `None` -- see [`data_dir`].
 pub fn data_file(file_name: &str) -> Option<PathBuf> {
     Some(data_dir()?.join(file_name))
 }
@@ -64,7 +64,7 @@ pub struct BlockList {
 }
 
 impl BlockList {
-    /// Load the block list named `file_name` from WAVE's data directory.
+    /// Load the block list named `file_name` from Synkopa's data directory.
     ///
     /// Never fails: a missing, unreadable or malformed file yields an empty list,
     /// because a broken block list must not stop a DAW from starting.
@@ -141,9 +141,9 @@ impl BlockList {
             return;
         };
         let mut text = String::from(
-            "# Plugin modules WAVE will not open again: each one hung or took its\n\
+            "# Plugin modules Synkopa will not open again: each one hung or took its\n\
              # scan process down, which on Windows almost always means a licensing\n\
-             # dialog. Delete a line (or this file) to make WAVE try it again.\n",
+             # dialog. Delete a line (or this file) to make Synkopa try it again.\n",
         );
         for path in self.blocked.lock().iter() {
             text.push_str(&path.display().to_string());

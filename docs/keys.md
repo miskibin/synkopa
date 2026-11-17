@@ -1,7 +1,7 @@
-# WAVE Keys
+# Synkopa Keys
 
 A sampled grand piano as a Channel Rack channel (`kind: "keys"`). Add it from the Channel
-Rack's **+** menu (*WAVE Keys — fortepian*) or with `wave channels --keys`; it is played from
+Rack's **+** menu (*Synkopa Keys — fortepian*) or with `synkopa channels --keys`; it is played from
 the piano roll, the typing keyboard and a MIDI keyboard (with the sustain pedal) like every
 other pitched channel.
 
@@ -14,9 +14,9 @@ optional. Projects without a Keys channel load unchanged.
 | Dynamika (`dynamics`) | 0 – 100 %, default 100 % | how much the velocity changes the level; the timbre always follows the velocity |
 
 ```sh
-wave channels --keys
-wave channels --ch "WAVE Keys" --param release --value 600
-wave channels --ch "WAVE Keys" --param dynamics --value 70
+synkopa channels --keys
+synkopa channels --ch "Synkopa Keys" --param release --value 600
+synkopa channels --ch "Synkopa Keys" --param dynamics --value 70
 ```
 
 The Keys window (click the channel's name) has a keyboard you can click (a key sounds while held): lower on a key is a
@@ -55,7 +55,7 @@ Where the app finds them, in this order:
 
 Nothing is loaded until a project has a Keys channel. Then the files are decoded on a few
 threads (about a second) into memory, about 280 MB, and stay there. Until that ends the
-channel is silent and the window says so; an offline bounce (`wave render`, Eksport) waits
+channel is silent and the window says so; an offline bounce (`synkopa render`, Eksport) waits
 for it instead of rendering a silent piano.
 
 ## How a note plays (`crates/engine/src/keys.rs`, voices in `synth.rs`)

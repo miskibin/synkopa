@@ -1,6 +1,6 @@
 [package]
 name = "wave-midi-in"
-description = "WAVE MIDI keyboard input: port enumeration, one selected device, hot-plug tolerant, feeding the engine."
+description = "Synkopa MIDI keyboard input: port enumeration, one selected device, hot-plug tolerant, feeding the engine."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

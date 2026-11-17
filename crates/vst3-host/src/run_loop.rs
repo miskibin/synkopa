@@ -9,7 +9,7 @@
 //! never turned leaves the plugin frozen and silent (the bug Nota had on Linux).
 //!
 //! [`RunLoop`] maps the registrations onto the event loop the application installed on its
-//! UI thread ([`wave_plugin_windows::event_loop`]; glib in WAVE). Registering anywhere
+//! UI thread ([`wave_plugin_windows::event_loop`]; glib in Synkopa). Registering anywhere
 //! else (another thread, or a process with no loop) is refused, and the host context only
 //! *offers* the interface at all where a loop is installed. Every registration is tied to
 //! the plugin instance and removed when it is torn down, whatever the plugin forgot, so the

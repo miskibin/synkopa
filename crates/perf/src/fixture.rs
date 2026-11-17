@@ -159,7 +159,7 @@ const SONG_TRACKS: usize = 40;
 
 /// A produced song at the scale of FL Studio 20's demo "WiseLabs - Nahash" (89 channels,
 /// 82 patterns, ~5,500 notes, ~440 playlist items, ~120 mixer effects, native instruments
-/// only), so a WAVE-vs-FL comparison opens comparable work: 14 synth channels (the built-in
+/// only), so a Synkopa-vs-FL comparison opens comparable work: 14 synth channels (the built-in
 /// synth, like the demo's Harmor/Sytrus parts), 75 sampler channels (drum and FX one-shots),
 /// 40 mixer inserts with 2-4 effects each, 4 minutes at 128 BPM.
 pub fn build_song(dir: &Path) -> Project {

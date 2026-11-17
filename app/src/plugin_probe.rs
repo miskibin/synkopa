@@ -1,22 +1,22 @@
-//! The plugin safety check: a plugin is tried in a throw-away process before WAVE first loads
+//! The plugin safety check: a plugin is tried in a throw-away process before Synkopa first loads
 //! it into its own.
 //!
-//! A hosted plugin runs inside WAVE, so a plugin that crashes takes the whole app (and the
+//! A hosted plugin runs inside Synkopa, so a plugin that crashes takes the whole app (and the
 //! unsaved song) down with it. Most such crashes are not subtle: the plugin dies the first
 //! time it is created, run, asked for its state or freed (Calf Vinyl on Ubuntu 24.04 dies
-//! in lilv's own `lv2bench` too). So the first time a plugin is about to be loaded, WAVE
+//! in lilv's own `lv2bench` too). So the first time a plugin is about to be loaded, Synkopa
 //! starts itself as a worker (the scan worker's protocol, `wave_plugin_scan::worker`)
 //! that does exactly those things with it -- create, run a test signal (notes, for an
 //! instrument) at several block sizes, save its state, create a second instance from that
 //! state, run it, free both -- and reports back. A worker that crashes or hangs costs
-//! nothing but the worker; the plugin is then not loaded into WAVE, and its slot says why,
+//! nothing but the worker; the plugin is then not loaded into Synkopa, and its slot says why,
 //! with a way to load it anyway.
 //!
-//! The verdict is kept per plugin in `plugin-safety.json` (WAVE's data folder) with the
+//! The verdict is kept per plugin in `plugin-safety.json` (Synkopa's data folder) with the
 //! fingerprint (length + modification time) of the plugin's file, so it is checked again
 //! only when the plugin is updated. A plugin that passed, or that the user chose to trust,
 //! loads straight away. This is not a sandbox: a plugin that crashes later (in its editor,
-//! or on one parameter value) still takes WAVE down; the autosave and recovery cover that.
+//! or on one parameter value) still takes Synkopa down; the autosave and recovery cover that.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -88,14 +88,14 @@ pub enum Verdict {
     Hung,
     /// The user chose to load it anyway.
     Trusted,
-    /// The user chose to load it anyway a moment ago, in WAVE process `pid`: it becomes
-    /// `Trusted` once it has run for [`PROVISIONAL`]. Still `Trying` when another WAVE starts
-    /// and that process is gone means WAVE did not survive it: it is then `Crashed` again,
+    /// The user chose to load it anyway a moment ago, in Synkopa process `pid`: it becomes
+    /// `Trusted` once it has run for [`PROVISIONAL`]. Still `Trying` when another Synkopa starts
+    /// and that process is gone means Synkopa did not survive it: it is then `Crashed` again,
     /// so a recovered project does not crash on it once more.
     Trying { pid: u32 },
 }
 
-/// How long a plugin loaded anyway must keep WAVE alive before it is trusted for good.
+/// How long a plugin loaded anyway must keep Synkopa alive before it is trusted for good.
 const PROVISIONAL: Duration = Duration::from_secs(20);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,7 +120,7 @@ pub struct Safety {
 }
 
 impl Safety {
-    /// The user's verdicts, checks in a WAVE worker process.
+    /// The user's verdicts, checks in a Synkopa worker process.
     pub fn load() -> Self {
         Self::with(wave_plugin_scan::data_file(FILE), WorkerSpawn::Auto)
     }
@@ -136,7 +136,7 @@ impl Safety {
             done: parking_lot::Condvar::new(),
             refused: Mutex::new(HashMap::new()),
         };
-        // a plugin loaded anyway that did not see its trial through took WAVE down with it
+        // a plugin loaded anyway that did not see its trial through took Synkopa down with it
         let died: Vec<(String, Entry)> = s
             .known
             .lock()
@@ -145,14 +145,14 @@ impl Safety {
             .map(|(k, e)| (k.clone(), Entry { fp: e.fp, verdict: Verdict::Crashed { why: DIED_IN_WAVE.into() } }))
             .collect();
         for (k, e) in died {
-            log::warn!("plugin {k}: WAVE closed while it was being loaded anyway; it is not loaded again");
+            log::warn!("plugin {k}: Synkopa closed while it was being loaded anyway; it is not loaded again");
             s.known.lock().insert(k.clone(), e.clone());
             s.save(&k, &e);
         }
         s
     }
 
-    /// Write `key`'s entry to the file, keeping what other WAVE processes (another window,
+    /// Write `key`'s entry to the file, keeping what other Synkopa processes (another window,
     /// the CLI) wrote there since this one read it.
     fn save(&self, key: &str, entry: &Entry) {
         let Some(f) = &self.file else { return };
@@ -182,7 +182,7 @@ impl Safety {
         self.save(&req.key(), &entry);
     }
 
-    /// `Ok` when the plugin may be loaded into WAVE: it passed (now or before), the user
+    /// `Ok` when the plugin may be loaded into Synkopa: it passed (now or before), the user
     /// trusts it, or it cannot be checked here (no worker; the plugin refused to load in
     /// the check too, which loading it here will say again). `Err` with the sentence its
     /// slot shows, starting with [`UNSAFE`], when it crashed or hung.
@@ -233,7 +233,7 @@ impl Safety {
     }
 
     /// Load it from now on, whatever the check said ("Load anyway"): provisionally, until it
-    /// has kept WAVE alive for [`PROVISIONAL`] (see [`Verdict::Trying`]).
+    /// has kept Synkopa alive for [`PROVISIONAL`] (see [`Verdict::Trying`]).
     pub fn trust(self: &std::sync::Arc<Self>, req: &Request) {
         self.remember(req, Verdict::Trying { pid: std::process::id() });
         let (me, req) = (std::sync::Arc::clone(self), req.clone());
@@ -243,7 +243,7 @@ impl Safety {
         });
     }
 
-    /// WAVE exits normally: every trial this process runs ended well.
+    /// Synkopa exits normally: every trial this process runs ended well.
     pub fn survived_all(&self) {
         let me = std::process::id();
         let mine: Vec<(String, Entry)> = self
@@ -259,7 +259,7 @@ impl Safety {
         }
     }
 
-    /// The trial is over and WAVE is still here: the plugin is trusted for good.
+    /// The trial is over and Synkopa is still here: the plugin is trusted for good.
     fn survived(&self, req: &Request) {
         if matches!(self.verdict(req), Some(Verdict::Trying { .. })) {
             self.remember(req, Verdict::Trusted);
@@ -322,22 +322,22 @@ fn process_alive(pid: u32) -> bool {
     }
 }
 
-/// The reason kept for a plugin that WAVE did not survive after it was loaded anyway.
+/// The reason kept for a plugin that Synkopa did not survive after it was loaded anyway.
 const DIED_IN_WAVE: &str = "WAVE closed while it was loaded anyway";
 
 fn refusal(v: &Verdict) -> Result<(), String> {
     match v {
         Verdict::Passed | Verdict::Trusted | Verdict::Trying { .. } => Ok(()),
         Verdict::Crashed { why } if why == DIED_IN_WAVE => Err(format!(
-            "{UNSAFE}it crashed WAVE when it was loaded anyway, so it is not loaded again.              Update the plugin, or load it anyway once more at your own risk."
+            "{UNSAFE}it crashed Synkopa when it was loaded anyway, so it is not loaded again.              Update the plugin, or load it anyway once more at your own risk."
         )),
         Verdict::Crashed { why } => Err(format!(
-            "{UNSAFE}it crashed in WAVE's safety check ({}), so it was not loaded: loaded here it would close WAVE. \
+            "{UNSAFE}it crashed in Synkopa's safety check ({}), so it was not loaded: loaded here it would close Synkopa. \
              Update the plugin, or load it anyway at your own risk.",
             how_it_died(why)
         )),
         Verdict::Hung => Err(format!(
-            "{UNSAFE}it did not finish loading within {} s in WAVE's safety check (it may be waiting for a licence \
+            "{UNSAFE}it did not finish loading within {} s in Synkopa's safety check (it may be waiting for a licence \
              window), so it was not loaded. Load it anyway if you expect it to take that long.",
             TIMEOUT.as_secs()
         )),
@@ -398,7 +398,7 @@ pub fn exercise(req: &Request) -> Result<(), String> {
                 let (p, h) = wave_vst3::instantiate(&req.path, &req.cid, state, SR, BLOCK).map_err(|e| e.to_string())?;
                 Ok((p, Box::new(move || h.get_state().map_err(|e| e.to_string()))))
             }
-            f => Err(format!("WAVE does not host `{f}` plugins")),
+            f => Err(format!("Synkopa does not host `{f}` plugins")),
         }
     };
     let (mut a, state_a) = make(None)?;
@@ -512,7 +512,7 @@ mod tests {
         assert!(again.check(&r).is_ok(), "load anyway");
         assert_eq!(again.verdict(&r), Some(Verdict::Trying { pid: std::process::id() }), "on trial until it has run a while");
         let other = Safety::with(Some(file.clone()), child(PASS));
-        assert!(other.check(&r).is_ok(), "another WAVE starting meanwhile does not end this one's trial");
+        assert!(other.check(&r).is_ok(), "another Synkopa starting meanwhile does not end this one's trial");
         again.survived(&r);
         assert_eq!(Safety::with(Some(file), child(CRASH)).verdict(&r), Some(Verdict::Trusted));
     }
@@ -528,7 +528,7 @@ mod tests {
         assert!(s.check(&r).is_err());
         s.trust(&r);
         assert!(s.check(&r).is_ok());
-        // WAVE dies before the trial ends (a process that has exited stands for it)
+        // Synkopa dies before the trial ends (a process that has exited stands for it)
         let dead = {
             let mut c = std::process::Command::new(std::env::current_exe().unwrap());
             let mut child = c.arg("--list").stdout(std::process::Stdio::null()).spawn().unwrap();
@@ -539,9 +539,9 @@ mod tests {
         s.remember(&r, Verdict::Trying { pid: dead });
         let next = Safety::with(Some(file.clone()), child(PASS));
         let e = next.check(&r).unwrap_err();
-        assert!(e.contains("crashed WAVE when it was loaded anyway"), "{e}");
+        assert!(e.contains("crashed Synkopa when it was loaded anyway"), "{e}");
         assert!(Safety::with(Some(file.clone()), child(PASS)).check(&r).is_err(), "kept as crashed");
-        // a trial in a WAVE that then exits normally is trusted
+        // a trial in a Synkopa that then exits normally is trusted
         s.trust(&r);
         s.survived_all();
         assert_eq!(Safety::with(Some(file), child(PASS)).verdict(&r), Some(Verdict::Trusted));

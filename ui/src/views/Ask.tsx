@@ -1,4 +1,4 @@
-// "Ask AI": a question about WAVE goes to an AI assistant that reads WAVE's open-source code.
+// "Ask AI": a question about Synkopa goes to an AI assistant that reads Synkopa's open-source code.
 // ChatGPT gets the whole prompt in its link; DeepWiki's links take no question, so the question
 // is copied and the user pastes it there (as with a ChatGPT question too long for a link).
 import { createSignal, For, Show } from 'solid-js';
@@ -35,7 +35,7 @@ function setService(s: AskService) {
   try { localStorage.setItem(SERVICE_KEY, s); } catch { /* private window */ }
 }
 
-/** What the user is looking at, in English for the prompt (names as WAVE's menus show them). */
+/** What the user is looking at, in English for the prompt (names as Synkopa's menus show them). */
 function currentView(): string {
   const parts = [U.mixView ? 'Mix view (F9)' : 'Playlist'];
   if (U.rackWin || rackFloating()) parts.push('Channel rack');

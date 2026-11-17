@@ -543,12 +543,12 @@ mod tests {
         assert!(c_string_to_string(&broken).starts_with('A'));
 
         let mut buffer = [0_u16; 128];
-        write_utf16("WAVE", &mut buffer);
-        assert_eq!(utf16_to_string(&buffer), "WAVE");
+        write_utf16("Synkopa", &mut buffer);
+        assert_eq!(utf16_to_string(&buffer), "Synkopa");
         let mut small = [0xffff_u16; 4];
-        write_utf16("WAVE Studio", &mut small);
+        write_utf16("Synkopa Studio", &mut small);
         assert_eq!(small[3], 0, "truncation must still leave a NUL");
-        assert_eq!(utf16_to_string(&small), "WAV");
+        assert_eq!(utf16_to_string(&small), "Syn");
         write_utf16("anything", &mut []);
     }
 }

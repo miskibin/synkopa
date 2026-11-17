@@ -2,8 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockBackend } from '../api/mock';
 import type { PluginInfo } from '../api/types';
 
-// FL's plugin wrapper: opening an external plugin shows its own window under WAVE's header; the header's
-// gear (or a plugin without a window) brings WAVE's window. The header's pin is remembered per plugin.
+// FL's plugin wrapper: opening an external plugin shows its own window under Synkopa's header; the header's
+// gear (or a plugin without a window) brings Synkopa's window. The header's pin is remembered per plugin.
 vi.mock('../ui/Confirm', () => ({ confirmUnsaved: async () => 'discard', confirmRecover: async () => 'later' }));
 const localStorageMap = new Map<string, string>();
 beforeAll(() => {
@@ -42,7 +42,7 @@ const vst3 = (name: string): PluginInfo => ({ format: 'vst3', path: `/vst3/${nam
 const insert = () => store.S.project.inserts.find(m => m.id !== 0)!;
 
 describe('plugin windows (FL wrapper)', () => {
-  it('adding a plugin effect shows its own window under a header naming it and its insert, not WAVE\'s window', async () => {
+  it('adding a plugin effect shows its own window under a header naming it and its insert, not Synkopa\'s window', async () => {
     const m = insert();
     expect(A.addPlugin(m.id, vst3('Vitalium'))).toBe(true);
     await sync();
@@ -51,7 +51,7 @@ describe('plugin windows (FL wrapper)', () => {
     expect(mock.editorLabel(fx.id)).toEqual({ title: 'Vitalium', subtitle: `VST3 · ${store.insName(m)}` });
     expect(pw.editorOpen(fx.id)).toBe(true);
     expect(ui.U.plugs.some(p => p.fxId === fx.id)).toBe(false);
-    // the gear: WAVE's window for it, the plugin's own stays open
+    // the gear: Synkopa's window for it, the plugin's own stays open
     A.openPlug(fx.id, true);
     expect(ui.U.plugs.some(p => p.fxId === fx.id)).toBe(true);
     expect(pw.editorOpen(fx.id)).toBe(true);
@@ -72,7 +72,7 @@ describe('plugin windows (FL wrapper)', () => {
     await vi.waitFor(() => expect(pw.editorOpen(id)).toBe(false), { timeout: 2000 });
   });
 
-  it('a plugin with no window of its own opens WAVE\'s window, and is remembered', async () => {
+  it('a plugin with no window of its own opens Synkopa\'s window, and is remembered', async () => {
     const m = insert();
     A.addPlugin(m.id, vst3('WAVE Demo Synth'));
     await sync();

@@ -908,7 +908,7 @@ impl Vst3Effect {
     }
 }
 
-/// The transport as VST3 sees it. Only what WAVE actually knows is marked valid: a plugin
+/// The transport as VST3 sees it. Only what Synkopa actually knows is marked valid: a plugin
 /// syncing to a field the host left at zero is worse off than one told nothing.
 fn process_context(sample_rate: f64, continuous_samples: i64, ctx: &ProcessCtx, offset: usize) -> ProcessContext {
     // SAFETY: a plain aggregate of scalars; all-zero is a valid value.
@@ -1123,7 +1123,7 @@ impl Vst3Handle {
     /// requests, user drags, DPI changes, the close button): no per-frame call
     /// is needed.
     ///
-    /// `label` is what WAVE's header above the editor shows, and the tag its gear reports.
+    /// `label` is what Synkopa's header above the editor shows, and the tag its gear reports.
     ///
     /// # Errors
     /// [`Vst3Error::WrongThread`] off the UI thread, [`Vst3Error::NoEditor`]

@@ -103,16 +103,16 @@ pub struct ScanResult {
     pub unavailable: HashMap<String, String>,
 }
 
-/// Tells the VST3 scan where the plugins that ship with WAVE are (`plugins/` among the app's
-/// resources: WAVE Demo Synth). `resource_dir`: the app's, when a Tauri app runs; otherwise
-/// (the CLI on a file) next to the executable, or the Linux packages' `/usr/lib/WAVE`.
+/// Tells the VST3 scan where the plugins that ship with Synkopa are (`plugins/` among the app's
+/// resources: Synkopa Demo Synth). `resource_dir`: the app's, when a Tauri app runs; otherwise
+/// (the CLI on a file) next to the executable, or the Linux packages' `/usr/lib/Synkopa`.
 pub fn register_bundled(resource_dir: Option<std::path::PathBuf>) {
     let dirs: Vec<std::path::PathBuf> = match resource_dir {
         Some(dir) => vec![dir],
         None => std::env::current_exe()
             .ok()
             .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf))
-            .map(|dir| vec![dir.clone(), dir.join("..").join("lib").join("WAVE")])
+            .map(|dir| vec![dir.clone(), dir.join("..").join("lib").join("Synkopa")])
             .unwrap_or_default(),
     };
     for dir in dirs {
@@ -120,7 +120,7 @@ pub fn register_bundled(resource_dir: Option<std::path::PathBuf>) {
     }
 }
 
-/// The error of a plugin that has no window of its own (WAVE Demo Synth): the UI matches its
+/// The error of a plugin that has no window of its own (Synkopa Demo Synth): the UI matches its
 /// prefix (`wave_engine::errors::ERR_NO_EDITOR`, pinned by `src/ui_prefixes_tests.rs`).
 pub const NO_EDITOR: &str = "NO_EDITOR: this plugin has no window of its own; its parameters are listed below";
 
@@ -140,14 +140,14 @@ pub struct Plugins {
     /// Plugins still live when the last session ended: the suspects of a crash (a session
     /// that exits normally leaves the marker file empty).
     crash_suspects: Mutex<Vec<CrashSuspect>>,
-    /// The safety check every plugin passes before it is first loaded into WAVE.
+    /// The safety check every plugin passes before it is first loaded into Synkopa.
     safety: Arc<crate::plugin_probe::Safety>,
-    /// Where the live marker file is (`None`: nowhere — a machine without WAVE's data
+    /// Where the live marker file is (`None`: nowhere — a machine without Synkopa's data
     /// folder, and every test).
     marker: Option<std::path::PathBuf>,
 }
 
-/// A plugin to ask the user about: it was loaded when WAVE last died without exiting.
+/// A plugin to ask the user about: it was loaded when Synkopa last died without exiting.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CrashSuspect {
@@ -192,7 +192,7 @@ impl PluginFactory for Factory {
                     wave_vst3::instantiate(&path, &p.cid, state.as_deref(), sr, max_block).map_err(|e| format!("{}: {e}", p.name))?;
                 (proc, Handle::Vst3(h))
             }
-            other => return Err(format!("{}: WAVE does not host `{other}` plugins", p.name)),
+            other => return Err(format!("{}: Synkopa does not host `{other}` plugins", p.name)),
         };
         if live {
             self.0.handles.lock().insert(fx_id, handle);
@@ -284,7 +284,7 @@ impl Plugins {
     }
 
     /// A plugin loaded for real: it goes into the live marker, so a crash while it is
-    /// loaded points here the next time WAVE starts.
+    /// loaded points here the next time Synkopa starts.
     fn live_loaded(&self, id: Id, p: &PluginRef) {
         let path = match p.format.as_str() {
             PluginRef::VST3 => self.vst3_path(p),
@@ -323,8 +323,8 @@ impl Plugins {
         self.crash_suspects.lock().clear();
     }
 
-    /// WAVE is exiting normally: the live marker is emptied (the plugins still loaded are not
-    /// crash suspects at the next start), and a plugin loaded anyway that WAVE survived is
+    /// Synkopa is exiting normally: the live marker is emptied (the plugins still loaded are not
+    /// crash suspects at the next start), and a plugin loaded anyway that Synkopa survived is
     /// trusted for good even when its trial had not run out.
     pub fn clean_exit(&self) {
         self.clear_crash_suspects();
@@ -336,7 +336,8 @@ impl Plugins {
 
     /// Keep a plugin's module out of future scans (the user asked, after a crash).
     pub fn block(&self, format: &str, path: &str) -> Result<(), String> {
-        let file = wave_plugin_scan::data_file(&format!("{format}-blocklist.txt")).ok_or("WAVE has no data folder for the block list")?;
+        let file =
+            wave_plugin_scan::data_file(&format!("{format}-blocklist.txt")).ok_or("Synkopa has no data folder for the block list")?;
         wave_plugin_scan::BlockList::with_file(file).block(std::path::Path::new(path));
         Ok(())
     }
@@ -346,7 +347,7 @@ impl Plugins {
     }
 
     /// The safety check for `p` (cached; the first time, the plugin is tried in a worker
-    /// process): `Err` when loading it would likely bring WAVE down.
+    /// process): `Err` when loading it would likely bring Synkopa down.
     fn safe(&self, p: &PluginRef, instrument: bool) -> Result<(), String> {
         self.safety.check(&self.request(p, instrument))
     }
@@ -428,7 +429,7 @@ impl Plugins {
     }
 
     /// Where to load a project's VST3 from: its saved path, or, when nothing is there any
-    /// more, the installed plugin with the same class id. A plugin that comes with WAVE moves
+    /// more, the installed plugin with the same class id. A plugin that comes with Synkopa moves
     /// with the installation (another user or computer, a new AppImage mount on every start),
     /// and a project must not lose it for that.
     fn vst3_path(&self, p: &PluginRef) -> String {
@@ -476,7 +477,7 @@ impl Plugins {
         })
     }
 
-    /// Open (or bring forward) or close the plugin's own window, under WAVE's header showing
+    /// Open (or bring forward) or close the plugin's own window, under Synkopa's header showing
     /// `label`, pinned on top of the app when `pinned`. The window lives on the UI thread; this
     /// waits for it.
     pub fn editor(

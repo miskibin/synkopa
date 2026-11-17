@@ -2,7 +2,7 @@
 """Downloads a representative GTSinger subset for `tune-bench gtsinger` (stdlib only).
 
 GTSinger (Zhang et al., NeurIPS 2024; https://huggingface.co/datasets/GTSinger/GTSinger) is CC BY-NC-SA 4.0:
-benchmarking is fine, the audio must not be committed or redistributed with WAVE. Read the licence first.
+benchmarking is fine, the audio must not be committed or redistributed with Synkopa. Read the licence first.
 
 What is fetched (English part, .wav + .json annotation per segment):
   * for each singer and technique in TECHNIQUES, up to --songs songs and --segments segment indices that exist in

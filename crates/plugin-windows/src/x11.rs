@@ -1,6 +1,6 @@
 //! The X11 backend (Linux; XWayland under Wayland).
 //!
-//! WAVE opens its **own** connection to the X server (`x11rb`, pure Rust: no libX11 at
+//! Synkopa opens its **own** connection to the X server (`x11rb`, pure Rust: no libX11 at
 //! build or run time, and no process-wide Xlib error handler to fight the plugins over),
 //! creates the windows there, and reads the connection from the UI thread's installed event
 //! loop ([`crate::event_loop`]): a watch on its socket plus a 16 ms tick, which also runs the
@@ -9,7 +9,7 @@
 //!
 //! # Layout
 //! A top-level *frame* without WM decorations (`_MOTIF_WM_HINTS`), holding:
-//! - a *header* child (WAVE's title bar). Pressing on its free part hands the move to the
+//! - a *header* child (Synkopa's title bar). Pressing on its free part hands the move to the
 //!   window manager (`_NET_WM_MOVERESIZE`, so snapping and multi-monitor moves behave
 //!   natively);
 //! - an *embed* child below it, the plugin's parent (VST3 `X11EmbedWindowID`, LV2
@@ -410,7 +410,7 @@ fn make_window(
     let _ = x.change_property32(PropMode::REPLACE, frame, a.WM_PROTOCOLS, AtomEnum::ATOM, &[a.WM_DELETE_WINDOW]);
     let _ = x.change_property32(PropMode::REPLACE, frame, a._NET_WM_PID, AtomEnum::CARDINAL, &[std::process::id()]);
     let _ = x.change_property32(PropMode::REPLACE, frame, a._NET_WM_WINDOW_TYPE, AtomEnum::ATOM, &[a._NET_WM_WINDOW_TYPE_NORMAL]);
-    // no WM decorations: WAVE's header is the title bar (flags = decorations, decorations = none)
+    // no WM decorations: Synkopa's header is the title bar (flags = decorations, decorations = none)
     let _ = x.change_property32(PropMode::REPLACE, frame, a._MOTIF_WM_HINTS, a._MOTIF_WM_HINTS, &[2, 0, 0, 0, 0]);
     if owner > 0 {
         // above the app window and minimised with it (an X11 session's GTK window only)

@@ -1,4 +1,4 @@
-// Prepares the WAVE Keys piano for the installer, in app/resources/keys.
+// Prepares the Synkopa Keys piano for the installer, in app/resources/keys.
 // 1. Downloads the original recordings (24-bit, 138 MB) into target/keys-src, each checked
 //    against the SHA-256 pinned in assets-manifest.json; files already there are reused.
 // 2. Runs `wave-keys-prep`, which cuts them to the 9 s the engine plays and stores 16-bit
@@ -46,7 +46,7 @@ const queue = [...kit.samples];
 await Promise.all(Array.from({ length: 6 }, async () => {
   for (let s; (s = queue.shift()); ) if (await fetchOne(s)) got++;
 }));
-console.log(`WAVE Keys: ${kit.samples.length} originals in ${src} (${got} downloaded)`);
+console.log(`Synkopa Keys: ${kit.samples.length} originals in ${src} (${got} downloaded)`);
 
 // only what the manifest names goes into the installer
 const wanted = new Set(kit.samples.map(s => s.file));
@@ -60,4 +60,4 @@ if (prep.status !== 0) throw new Error(`wave-keys-prep failed (exit ${prep.statu
 await writeFile(join(out, 'ATTRIBUTION.txt'), `${kit.attribution}
 Changes: each recording is cut to 9 seconds with a fade-out and stored as 16-bit FLAC.
 `);
-console.log(`WAVE Keys: ready in ${out}`);
+console.log(`Synkopa Keys: ready in ${out}`);

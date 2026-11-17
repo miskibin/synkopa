@@ -1,7 +1,7 @@
-# WAVE v2 — architecture and engine ⇄ UI contract
+# Synkopa v2 — architecture and engine ⇄ UI contract
 
 ```
- ┌──────────── ui/ (SolidJS + canvas) ────────────┐        ┌──── wave (CLI) ────┐
+ ┌──────────── ui/ (SolidJS + canvas) ────────────┐        ┌──── synkopa (CLI) ─┐
  │ playlist · mixer · FX windows · library · ...  │        │ context/apply/undo │
  └───────▲───────────────┬────────────────────────┘        └────────▲───────────┘
    events│ "state"       │ invoke(...)          binary Channel       │ local socket
@@ -107,7 +107,7 @@ the kit and its mixer routing in every pattern.
 
 * `channel.kind`: `sample` (the sampler: plays project source `source`; the note's key
   repitches it, `root` = the key at which the file plays at its own pitch, default 60 = C5 in
-  FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (WAVE
+  FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (Synkopa
   Keys, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
   parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)) or `plugin` (a hosted VST3
   instrument, `plugin: PluginRef`; see [Plugin instruments](#plugin-instruments)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
@@ -146,7 +146,7 @@ the kit and its mixer routing in every pattern.
   sustain < 1) with its envelope on and an untouched one-shot with it off.
 * `note`: `step`/`len` in 16ths, `p` MIDI key (absent = the channel's `root`), `v` velocity
   0..1 = linear gain (absent = 1). A Channel Rack step has `trig: true`. It occupies one grid
-  cell and plays a sampler without a note-off, even with its envelope on. Synth and WAVE Keys
+  cell and plays a sampler without a note-off, even with its envelope on. Synth and Synkopa Keys
   continue to use the grid duration. A sampler note with `trig: false` ends as soon as its
   set duration or the sample runs out; with the envelope on its end starts the release
   instead. Without it, a short fade just before the note boundary prevents clicks. The Piano Roll shows triggers as short marks. Drag their resize grip or use
@@ -165,7 +165,7 @@ the kit and its mixer routing in every pattern.
   delayed by `swing × ½` step. 100 % puts the off-beat 16th at 75 % of its 8th (MPC 75 %),
   ~67 % is close to triplet feel; 0 is straight. Even 16ths and off-grid notes never move.
   Swing is applied when the timeline is built (schedule time), never written into the notes.
-* **Chord tools** (piano roll Tools strip + `wave notes chord|progression|stamp`): the chord
+* **Chord tools** (piano roll Tools strip + `synkopa notes chord|progression|stamp`): the chord
   theory lives in one place per language — `transform.rs`'s tables (`CHORD_TYPES`,
   `PROGRESSION_TEMPLATES`) and helpers (`chord_pitches`, `chord_name`, `progression`),
   mirrored by `ui/src/lib/transforms.ts`, with golden tests pinning both sides to identical
@@ -320,7 +320,7 @@ happy and refused) through `ops::apply_all` and writes `ui/src/lib/__fixtures__/
 engine's exact error strings — they are user-visible toasts) and `mockParity.test.ts`
 through the whole `MockBackend` command path, including the undo/revision rule that an
 unchanged batch is not an edit. The four error-string prefixes consumers match on
-— views match `EXISTS:` (FX chains) and `NO_EDITOR:` (plugin windows), `wave watch`
+— views match `EXISTS:` (FX chains) and `NO_EDITOR:` (plugin windows), `synkopa watch`
 recognises `REVISION_CONFLICT`, and both adapters throw `INVALID_TARGET:` for a dead
 automation target — are named once in
 `crates/engine/src/errors.rs`, mirrored by `ui/src/api/errors.ts`, and pinned to
@@ -387,11 +387,11 @@ or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused)
   asks live plugins again twice a second (`PluginFactory::latency`; VST3 only when the plugin
   sent `kLatencyChanged`) and rebuilds the graph, keeping running instances, when one changed.
 * **LV2 host** (`crates/lv2-host`, Linux only; elsewhere every call says LV2 is hosted on Linux).
-  liblilv is opened with `dlopen` on first use (`liblilv-0.so.0`), never linked: WAVE builds
+  liblilv is opened with `dlopen` on first use (`liblilv-0.so.0`), never linked: Synkopa builds
   and starts without it and the scan reports why LV2 is unavailable. The scan reads Turtle only
   (no plugin code runs, so no child process is needed); it lists plugins with audio in and out,
   leaves out instruments and analysers, and gives the reason for plugins that require a feature
-  or option WAVE does not provide. Bundles named in `lv2-blocklist.txt` in WAVE's data folder
+  or option Synkopa does not provide. Bundles named in `lv2-blocklist.txt` in Synkopa's data folder
   are skipped. Provided: `urid:map`/`unmap`, `options:options` (sample rate, min/max/nominal
   block), `buf-size:boundedBlockLength`, `worker:schedule`, `state:mapPath`/`makePath`/
   `freePath`, `log:log`. Inputs and outputs always have separate buffers (so
@@ -407,42 +407,42 @@ or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused)
   when the device changes).
 * **VST3 bus shapes.** The main buses are asked for stereo; a plugin that keeps a mono bus is
   wired like LV2's: a mono input is fed the sum of both sides, a mono output plays on both.
-* **The safety check** (`app/src/plugin_probe.rs`). Plugins run inside WAVE, so a plugin that
-  crashes closes WAVE. Before a plugin (effect or instrument) is first loaded, the app starts
+* **The safety check** (`app/src/plugin_probe.rs`). Plugins run inside Synkopa, so a plugin that
+  crashes closes Synkopa. Before a plugin (effect or instrument) is first loaded, the app starts
   itself as a worker (the scan worker's protocol, `WAVE_SCAN_WORKER=plugin-check`, the request
   as JSON) that creates it, runs a test signal (notes for an instrument) at block sizes from 1
   to 512, saves its state, creates a second instance from that state, runs it and frees both.
   A worker that crashes or does not answer within 45 s means the plugin is not loaded: the
   factory returns an error starting `UNSAFE_PLUGIN: ` (the slot shows it in `fx_errors`) and the
   UI offers **Load anyway** (`plugin_load_anyway {fxId}`: the verdict becomes "trying" and
-  `Engine::retry_plugins` loads every slot that failed; after 20 s with WAVE still running it is
-  "trusted", while a "trying" found at the next start means WAVE died with it, so it is refused
+  `Engine::retry_plugins` loads every slot that failed; after 20 s with Synkopa still running it is
+  "trusted", while a "trying" found at the next start means Synkopa died with it, so it is refused
   again and a recovered project does not crash on it a second time). The engine asks the
   factory to `vet` the plugins an edit or a project load brings, before it takes its lock, so
   the checks (up to four at once) never hold up other edits. Verdicts are kept per plugin with the
-  plugin file's length and time in `plugin-safety.json` (WAVE's data folder), so an updated
+  plugin file's length and time in `plugin-safety.json` (Synkopa's data folder), so an updated
   plugin is checked again. A plugin that refused to load in the check, or a build without a
   worker, loads as before. This catches crashes on creation, processing, state and teardown
   (Calf Vinyl on Ubuntu 24.04 crashes there, in lilv's `lv2bench` too); it is not a sandbox: a
-  crash later (in its editor, at one parameter value) still closes WAVE.
+  crash later (in its editor, at one parameter value) still closes Synkopa.
 
 ### Plugin windows
 
 Opening an external plugin (an effect slot, a plugin channel's name in the Channel Rack, adding
 one) shows **its own interface** at once, FL Studio's wrapper style: a native window
-(`crates/plugin-windows`) whose title bar is WAVE's header (the channel or effect name, the
+(`crates/plugin-windows`) whose title bar is Synkopa's header (the channel or effect name, the
 format and kind, a gear, a close button; drawn in software with Geist, the app's font) and the
 plugin's window embedded below it. The gear emits `plugin-settings` `{id}`, and the UI opens
-WAVE's window for it (the generic parameter list, level, pan, routing; `ui/src/state/pluginWindows.ts`).
+Synkopa's window for it (the generic parameter list, level, pan, routing; `ui/src/state/pluginWindows.ts`).
 A second click on the channel closes the plugin window. A plugin with no interface of its own
 (`NO_EDITOR`), one that failed to load, or a session that cannot show plugin windows opens
-WAVE's window instead. Closing WAVE's window leaves the plugin's open.
+Synkopa's window instead. Closing Synkopa's window leaves the plugin's open.
 
 * **Windows.** A top-level `HWND` without its caption (`WM_NCCALCSIZE`), the header painted
   with `StretchDIBits` and answering `HTCAPTION` (move, snap) except over its buttons; a
   resizable plugin keeps the system's side and bottom borders. The plugin attaches to a child
   "host" window below the header. Tauri's loop dispatches everything (same thread).
-* **Linux (X11; XWayland under Wayland).** WAVE's own connection to the X server (`x11rb`,
+* **Linux (X11; XWayland under Wayland).** Synkopa's own connection to the X server (`x11rb`,
   pure Rust: no libX11, no shared Xlib error handler): an undecorated frame (`_MOTIF_WM_HINTS`)
   holding the header child, the embed child the plugin attaches to (VST3 `X11EmbedWindowID`,
   LV2 `ui:parent`) and, for resizable plugins, input-only border strips. Only the header and the
@@ -452,7 +452,7 @@ WAVE's window instead. Closing WAVE's window leaves the plugin's open.
   `transient-for` the main window when GTK itself runs on X11, so they stay above it. That is
   why, in a Wayland session with XWayland, the app runs its own window through XWayland too
   (`GDK_BACKEND=x11`, set at start by `plugin_loop::prefer_x11`, as Bitwig, REAPER and Ardour run):
-  an X11 window cannot stay above a native Wayland window, and every click on WAVE sent the
+  an X11 window cannot stay above a native Wayland window, and every click on Synkopa sent the
   plugin windows behind it. `WAVE_WAYLAND=1`, or a `GDK_BACKEND` the user set, keeps native
   Wayland. The header's pin keeps a window above every other application's too
   (`_NET_WM_STATE_ABOVE`; `HWND_TOPMOST` on Windows). Scale: `Xft.dpi`. No X display
@@ -469,13 +469,13 @@ WAVE's window instead. Closing WAVE's window leaves the plugin's open.
   (`crates/vst3-host/src/message.rs`), the channel between a plugin's processor and controller
   over the connected `IConnectionPoint`s (DPF plugins such as Vitalium need it).
 * **LV2 interfaces** (`crates/lv2-host/src/ui.rs`). A plugin's first `ui:X11UI` whose required
-  features WAVE provides (`ui:parent`, `ui:resize`, `ui:idleInterface`, `urid:map`/`unmap`,
+  features Synkopa provides (`ui:parent`, `ui:resize`, `ui:idleInterface`, `urid:map`/`unmap`,
   `options:options` with `ui:scaleFactor` and `ui:updateRate`, `log:log`, `instance-access`) is
   loaded from its
   library (never unloaded). Control-port writes from the UI (protocol 0) set the same per-port
   value the parameter list and automation set (and mark the state to save); every control port
   that changed, outputs (meters) included, goes back to the UI at each tick; `idle()` runs every
-  tick. GTK and Qt interfaces are not embedded (they would need their toolkit in WAVE's process;
+  tick. GTK and Qt interfaces are not embedded (they would need their toolkit in Synkopa's process;
   GTK2 cannot share one with GTK3): those plugins keep the parameter list and
   `editor_unavailable` says why. Atom messages between UI and plugin are not carried yet.
   `instance-access` (JUCE-built LV2 interfaces require it: Surge XT, Dexed, …) hands the UI the
@@ -533,23 +533,23 @@ Channel Rack's "+" and "Replace" menus list the scanned instruments (`plugin_sca
   activated in VST3's `kOffline` processing mode and fed the same events; the live instance is
   not touched. One that does not load renders silent (logged). Plugin latency of an instrument
   is reported by the plugin but not compensated yet.
-* **CLI.** `wave channels --plugin NAME|CID` adds a scanned instrument; `channels` lists a
+* **CLI.** `synkopa channels --plugin NAME|CID` adds a scanned instrument; `channels` lists a
   plugin channel with kind `plugin` and its plugin.
 
-* **WAVE Demo Synth** (`crates/demo-synth`) ships with the app: a small VST3 instrument of
-  WAVE's own (saw, square or triangle, resonant low-pass opened by the mod wheel, ADSR, 16
-  voices; no editor window, so WAVE's parameter list is its UI; CC 1, CC 64 and pitch bend
+* **Synkopa Demo Synth** (`crates/demo-synth`) ships with the app: a small VST3 instrument of
+  Synkopa's own (saw, square or triangle, resonant low-pass opened by the mod wheel, ADSR, 16
+  voices; no editor window, so Synkopa's parameter list is its UI; CC 1, CC 64 and pitch bend
   through `IMidiMapping`). `node scripts/build-demo-synth.mjs` builds it into
   `app/resources/plugins/WAVE Demo Synth.vst3`, which the installer ships as the resource
   `plugins/`. The app registers that folder (`wave_vst3::add_bundled_dir`, from
   `plugins::register_bundled`: the Tauri resource dir, or for the CLI on a file the
-  executable's folder and the Linux packages' `/usr/lib/WAVE`); the scan opens its modules
+  executable's folder and the Linux packages' `/usr/lib/Synkopa`); the scan opens its modules
   even without a rescan (only when new or changed, in a child process as always), so the
   instrument is listed on first start.
 
 Test seams: `crates/engine/tests/plugin_instruments.rs` (a stand-in factory: format, instances,
 timing, live keys, state, missing plugins), `crates/vst3-host/tests/instrument.rs` (a real
-instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle; CI builds WAVE Demo Synth and runs
+instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle; CI builds Synkopa Demo Synth and runs
 it on Windows and Linux), `crates/demo-synth` (its DSP: pitch, release, note ids, pedal, bend,
 wheel, voice stealing, state).
 
@@ -619,7 +619,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `relink_sources` | `{args: {items: [{sourceId, path}]}}` | `{relinked: [{sourceId, path, error, lengthDiffers}]}` — decodes the files, then points the sources at them as one undo step (undo/redo also swap the decoded audio back; `SourceStore::relink`/`reconcile`). A file that does not decode leaves its source unchanged; none decoding is an error. `lib:` sources are refused |
 | `relink_search` | `{args: {folder}}` | `{search: {relinked, candidates: {[sourceId]: [{path, exactName, sharedFolders}]}, notFound, scanned, truncated}}` — walks the folder (≤ 250 000 entries, depth 24, no hidden or linked folders) for the missing sources' file names (`crates/engine/src/relink.rs`); relinks each one whose only best match has the remembered length, returns the rest ranked |
 | `midi` | `{cmd: "midi_inspect", args: {path}}` | `{bpm, tempoChanges, warnings, end, parts: [{index, track, channel (1–16), name, program, gmName, drums, notes, becomes}]}` — a standard MIDI file (format 0/1, `crates/engine/src/midi_file.rs`); `becomes` = `{kind:"drums", drums}` / `{kind:"keys"}` / `{kind:"synth", preset}` |
-| `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or WAVE Keys) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
+| `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or Synkopa Keys) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
 | `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + 4/4, one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
 | `fx_chain` | `{cmd: "fx_chains", args: {}}` | `{dir, presets: [{name, effects: [{type, name}], plugins, error?}]}` — FX chain presets in the user's library (`app/src/fx_chains.rs`): one `<name>.wavechain` JSON file each in `%LOCALAPPDATA%\WAVE\FX Chains` |
 | `fx_chain` | `{cmd: "fx_chain_save", args: {insert, name, overwrite?}}` | `{name, effects}` — the insert's effects in order (parameters, EQ bands, dry/wet, bypass, Warp maps, VST3 state); never its volume, pan, name, colour or routing; an existing name fails with `EXISTS:` |
@@ -642,16 +642,16 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `library_install` | `{id}` | – ; progress as event `library-progress {id,done,total,error?}` |
 | `library_files` | `{kit?}` or `{folder?}` | `{files: [{name, path, group, root?, pitched?}], truncated}`; kit `Standard` = the standard library (always installed); `root` = the key a sampler made from the file is rooted at, when the library knows it; `pitched` = the file plays a note there (drums and noises do not); `truncated` = the folder was bigger than the walk's 5000-file cap and the list says so |
 | `library_add_folder` / `library_remove_folder` | – (native dialog) / `{path}` | updated `folders` |
-| `project_new` / `project_open` / `project_save` | `{demo?}` (`true` = the demo project) / `{path?, ifRevision?}` / `{saveAs?}` | `StateDto` / `{state: StateDto, warnings}` or `{cancelled}` / `{path}` or `{cancelled}`. Open checks the approved revision before replacing the project. A save first keeps the file it replaces as `<name> (backup).wave` |
+| `project_new` / `project_open` / `project_save` | `{demo?}` (`true` = the demo project) / `{path?, ifRevision?}` / `{saveAs?}` | `StateDto` / `{state: StateDto, warnings}` or `{cancelled}` / `{path}` or `{cancelled}`. Open checks the approved revision before replacing the project. A save first keeps the file it replaces as `<name> (backup).synkopa` |
 | `take_project_open_requests` | – | `string[]`; drains project paths supplied at startup or forwarded to the running Windows instance. The `project-open-requested` event tells the UI to drain again and use its normal guarded open workflow. |
-| `recovery_write` | – | `bool`; the autosave tick for a project with no file: writes its crash-recovery copy (`<data>/WAVE/Recovery/<session>.wave`), or removes it once the project has a file or nothing unsaved |
+| `recovery_write` | – | `bool`; the autosave tick for a project with no file: writes its crash-recovery copy (`<data>/WAVE/Recovery/<session>.synkopa`), or removes it once the project has a file or nothing unsaved |
 | `recovery_list` / `recovery_restore` / `recovery_discard` | – / `{id}` / `{id}` | `[{id, savedMs}]` newest first (copies of sessions that did not exit normally) / `{state, warnings}` (opened as an unsaved project) / – |
 | `export_audio` | `{useLoop, tail, sampleRate, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{out, fromBeat, toBeat, tail, stats}` or `{cancelled:true}`; native save dialog; stereo WAV (32-bit float by default, or 16/24-bit PCM) or MP3; emits `export-progress` |
 | `export_stems` | `{useLoop, tail, sampleRate, includeMaster, format?, mp3Kbps?, wavBits?, dither?, wrapTail?}` | `{dir, fromBeat, toBeat, tail, format, files, skipped}` or `{cancelled:true}`; native folder dialog; one WAV or MP3 per insert with sound, optional master mix; emits `export-progress` |
 | `export_cancel` | – | – (abort an in-flight `export_audio` before a file is written) |
 | `plugin_scan` | `{rescan}` | `{plugins: [{format,path,cid,name,vendor,category,unsupported?}], instruments: [...same], unavailable: {[format]: why}}` — effects: VST3 everywhere, LV2 on Linux; `instruments`: VST3 instruments for the Channel Rack; `unsupported`: why that plugin cannot run here; `unavailable.lv2`: no liblilv |
 | `plugin_add` | `{insertId, format?, path?, cid, index?}` | `{fxId, revision}` — a scanned plugin onto an insert (the UI adds with `putFx` instead) |
-| `plugin_editor` | `{fxId, open, title?, subtitle?}` | – (the plugin's own window under WAVE's header showing `title` / `subtitle`; its gear emits `plugin-settings` `{id}`). Rejects with `NO_EDITOR: …` for a plugin without one, with the reason when none can be shown (no X11 display). Here and below `fxId` may also be a plugin channel's id |
+| `plugin_editor` | `{fxId, open, title?, subtitle?}` | – (the plugin's own window under Synkopa's header showing `title` / `subtitle`; its gear emits `plugin-settings` `{id}`). Rejects with `NO_EDITOR: …` for a plugin without one, with the reason when none can be shown (no X11 display). Here and below `fxId` may also be a plugin channel's id |
 | `plugin_params` | `{fxId}` | `[{id,name,value,display,def}]`; LV2 adds `{symbol,real,min,max,unit,steps?,toggle,integer,log,options?:[{value,label}]}` |
 | `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
 | `plugin_load_anyway` | `{fxId}` | – (an effect or plugin channel the safety check refused, its `fx_errors` entry containing `UNSAFE_PLUGIN: `, loads from now on; every plugin that failed to load is tried again) |
@@ -659,7 +659,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `vst3_scan` / `vst3_add` / `vst3_editor` / `vst3_params` / `vst3_set_param` | as before | older names: the same, with `vst3_scan` listing only VST3 effects as a plain array |
 | `cli_status` | – | `{installed, command, path, note?}` |
 
-**CLI on a file (`wave --project FILE`).** The same binary (`WAVE --cli`) runs
+**CLI on a file (`synkopa --project FILE`).** The same binary (`Synkopa --cli`) runs
 `actions::control` in-process on an engine of its own (`app/src/headless.rs`), against the
 `actions::Host` trait that `App` also implements: no window, no audio device, no MIDI, no
 session socket. Commands in `actions::LIVE_ONLY` (transport, auditions, undo/redo, open) are
@@ -669,7 +669,7 @@ device), so plain edits and bounces do not pay for them. `crates/cli` owns load 
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs
 `script` files with one load and one save.
 
-**`wave watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
+**`synkopa watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
 headless `Doc`, as for `--project`), reset to the project as it was when the watch started, runs
 the script lines on it on every save and sends the result to the app with the `set_project`
 action: `Engine::set_project` decodes only the sources whose id/file are new (outside the lock),
@@ -812,11 +812,11 @@ Projects without `comps` open unchanged (`#[serde(default)]`).
   never overwrites an existing one (`Take 2 1234 (2).wav`).
 * **Saving and crash recovery** (`Engine::save`, `app/src/recovery.rs`). A save
   writes a temp file and renames it over the project, after copying the file it
-  replaces to `<name> (backup).wave` (an ordinary project, so File > Open opens
+  replaces to `<name> (backup).synkopa` (an ordinary project, so File > Open opens
   it). The autosave timer (Settings, default 2 min) saves a project that has a
   file; one that was never saved goes to `Engine::save_copy` in the Recovery
   folder instead (recordings stay in the scratch folder, so the copy finds them).
-  Each running WAVE holds an exclusive lock on its own `<session>.lock`; a copy
+  Each running Synkopa holds an exclusive lock on its own `<session>.lock`; a copy
   whose lock nobody holds belongs to a session that crashed or was killed, and
   the UI offers it at the next start (`Engine::open_recovered`: no path, dirty),
   also when that start opened a project from File Explorer (after it opens; the
@@ -874,7 +874,7 @@ Projects without `comps` open unchanged (`#[serde(default)]`).
   shows in its status line. A callback that *blocks* is not reopened, because
   dropping a stream whose callback is stuck can hang the thread that drops it.
   On Windows, the audio thread also checks the Focusrite USB Plug and Play device
-  before ASIO opens and while that interface is active. If it disappears, WAVE
+  before ASIO opens and while that interface is active. If it disappears, Synkopa
   finishes the take, stops monitoring and offers the default WASAPI output.
 * **Input jitter buffer** (`crates/audio-io/src/jitter.rs`). The input stream
   opens and closes on its own (`AudioIo::set_input` hands the output callback
@@ -951,7 +951,7 @@ Projects without `comps` open unchanged (`#[serde(default)]`).
 ```
 
 Text that belongs to the song, so it is **project data**, not UI state: saved with the
-project, undone, visible to the CLI (`wave context` lists the pages, `--full` has the
+project, undone, visible to the CLI (`synkopa context` lists the pages, `--full` has the
 text, `putNotebook` through `apply`). It never touches the audio graph (the op returns an
 empty `Dirty`). Old files without `notebook` open with no pages (`#[serde(default)]`).
 
@@ -1007,12 +1007,12 @@ note-level accuracy (mir_eval's COnP / COnPOff on held-out singers) are in
 resets, splits and merges notes and draws pitch, addressed by note index in the clip's current
 segmentation (`init` = the analysis' notes when the clip has none yet; `base` = a fingerprint of
 the segmentation the indices were read from, refused as `STALE_NOTES` when it changed). The pitch
-editor sends it for every note edit (its drags and macros included) and `wave pitch edit` builds
+editor sends it for every note edit (its drags and macros included) and `synkopa pitch edit` builds
 the same op, so the two cannot drift apart; `ui/src/lib/pitch.ts` `applyTuneEdit` is the browser
 mock's port, checked against a fixture the engine writes. Tune to Reference settings are still a
 `putClips` of the clip's `tune.reference`.
 
-**Pitch for agents** (`crates/engine/src/pitch_api.rs`, `app/src/pitch_actions.rs`, `wave pitch …`):
+**Pitch for agents** (`crates/engine/src/pitch_api.rs`, `app/src/pitch_actions.rs`, `synkopa pitch …`):
 read-only measurement — per-note statistics (sung pitch, cents, kind stable/vibrato/glide/short/
 unsure, confidence, stability), a comparison with another performance (Tune to Reference's
 alignment with a looser timing tolerance for another singer's phrasing, any interval, note
@@ -1125,7 +1125,7 @@ The app updates itself from GitHub Releases (public repository: no token). See
 * **What's new** reads the `CHANGELOG.md` bundled into the UI (`lib/changelog.ts`) and opens
   once at the first start of a new version, for every version since `seenVersion`. A fresh
   install shows nothing; it can be reopened from Settings → General → Updates.
-* The updater is app-shell behaviour, not a project action, so it has no `wave` CLI command.
+* The updater is app-shell behaviour, not a project action, so it has no `synkopa` CLI command.
 
 ### Audio clips share their sample's sound; per-sample routing
 

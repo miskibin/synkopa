@@ -1,4 +1,4 @@
-//! Automation of Channel Rack channels, synth and WAVE Keys parameters, and audio clips.
+//! Automation of Channel Rack channels, synth and Synkopa Keys parameters, and audio clips.
 
 use std::sync::Arc;
 

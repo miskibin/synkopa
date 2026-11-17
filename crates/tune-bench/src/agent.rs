@@ -1,7 +1,7 @@
 //! The agent workflow, end to end, on real recordings: analyse the take, optionally compare it
 //! with a reference, let the conservative planner (`pitch_api::suggest`) decide, apply its edit
 //! with the `editTune` op's own code (`tune_edit::apply`) and render with the pitch editor's
-//! renderer — the same functions `wave pitch inspect|compare|suggest|edit|render` run. The
+//! renderer — the same functions `synkopa pitch inspect|compare|suggest|edit|render` run. The
 //! rendered audio is analysed again and scored against independent truth where a dataset has
 //! it. Existing Tune to Reference runs on the same cases for comparison.
 

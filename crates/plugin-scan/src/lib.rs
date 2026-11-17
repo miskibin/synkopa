@@ -1,7 +1,7 @@
 //! `wave-plugin-scan` -- finding out what is inside a plugin without betting the
 //! DAW on it.
 //!
-//! Both of WAVE's plugin hosts have the same problem and it is not a format
+//! Both of Synkopa's plugin hosts have the same problem and it is not a format
 //! problem: reading a module's plugin list means running a stranger's code in
 //! your process. `wave-plugin-host-clap` and `wave-plugin-host-vst3` differ in
 //! every detail of *how* they read a module and in none of the details of what to
@@ -414,7 +414,7 @@ fn timeout_message(timeout: Duration) -> String {
 /// a plugin browser.
 fn in_process_hang_message() -> String {
     "did not answer within the deadline and there was no scan worker to contain it, so it is \
-     holding this process's loader lock: nothing after it can be opened until WAVE restarts."
+     holding this process's loader lock: nothing after it can be opened until Synkopa restarts."
         .to_owned()
 }
 

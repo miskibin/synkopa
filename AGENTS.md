@@ -2,7 +2,7 @@
 
 ## Product Standard
 
-WAVE  is a professional creative tool, not a demo. Solve the musician's
+Synkopa  is a professional creative tool, not a demo. Solve the musician's
 actual workflow problem rather than merely satisfying the literal surface of a
 ticket. A smaller, complete feature is better than a broad but shallow one.
 
@@ -53,7 +53,7 @@ comparing workflows, architecture, or performance. Nota's docs are at
 https://nota-daw.github.io/nota-docs/.
 
 - Use it to learn what the project does and how, not to copy code. Do not paste
-  or port Nota source into WAVE without an explicit licensing decision from the
+  or port Nota source into Synkopa without an explicit licensing decision from the
   user, because AGPL-3.0 would bind the result.
 - Treat it as one input. Follow the Research Standard: compare it with the other
   products and sources, and mark which claims are sourced and which are inferred.
@@ -76,7 +76,7 @@ it. Prefer current primary sources and verify version-sensitive claims.
 - Distinguish sourced evidence, inference, and subjective product preference.
   Where evidence conflicts or is weak, say so.
 - Do not cargo-cult a competitor. Extract the user need, then design the best
-  fit for WAVE Studio's architecture, constraints, and audience.
+  fit for Synkopa's architecture, constraints, and audience.
 
 Unless the user asks for a permanent artifact, keep the research summary and
 source links in chat rather than adding a research document to the repository.
@@ -105,7 +105,7 @@ Respect the boundaries described in `docs/architecture.md`. The Rust engine
 owns the project and undo; the UI changes it only through ops (`apply_ops`) and
 reads it from `state` events. Views do not call Tauri directly: they go through
 `ui/src/api/backend.ts`, which has a matching in-browser mock (`ui/src/api/mock.ts`)
-that must keep behaving like the engine. The GUI and the `wave` CLI share one
+that must keep behaving like the engine. The GUI and the `synkopa` CLI share one
 implementation of every action (`app/src/actions.rs`). Extend existing
 components and patterns instead of creating parallel implementations.
 

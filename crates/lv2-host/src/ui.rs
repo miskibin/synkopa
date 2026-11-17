@@ -1,10 +1,10 @@
-//! An LV2 plugin's own interface (`ui:X11UI`) in a WAVE plugin window (Linux).
+//! An LV2 plugin's own interface (`ui:X11UI`) in a Synkopa plugin window (Linux).
 //!
 //! The UI is a separate library (`lv2ui_descriptor`) that draws into a window it creates
-//! inside the parent it is given (`ui:parent`: the area under WAVE's header). It talks to
+//! inside the parent it is given (`ui:parent`: the area under Synkopa's header). It talks to
 //! the plugin only through the host:
 //!
-//! - **UI -> plugin**: `write_function` with a control port's new value (protocol 0); WAVE
+//! - **UI -> plugin**: `write_function` with a control port's new value (protocol 0); Synkopa
 //!   stores it in the same per-port atomic the parameter list and automation write, so the
 //!   audio thread takes it at its next block and the project's saved state follows.
 //! - **plugin -> UI**: `port_event` with every control port (inputs and outputs: meters)
@@ -12,9 +12,9 @@
 //! - **size**: `ui:resize` both ways (the UI asks for a size; a resizable UI is told the
 //!   size the user dragged to), `ui:idleInterface` called every tick.
 //!
-//! Only X11 UIs are embedded. GTK and Qt UIs would need their toolkit inside WAVE's process
+//! Only X11 UIs are embedded. GTK and Qt UIs would need their toolkit inside Synkopa's process
 //! (suil wraps them, and GTK2 cannot share a process with GTK3 at all); such plugins keep
-//! WAVE's parameter list, and `has_editor` says why. A UI that requires `instance-access`
+//! Synkopa's parameter list, and `has_editor` says why. A UI that requires `instance-access`
 //! (JUCE builds them) is handed the running instance; see `Shared::retire` for how the
 //! instance outlives it. Atom messages (`patch:Set`, files,
 //! scopes) between UI and plugin are not carried yet: a UI that edits through them shows
@@ -38,7 +38,7 @@ const FALLBACK: WindowSize = WindowSize { width: 480, height: 320 };
 /// `ui:updateRate` told to UIs: the window tick.
 const UPDATE_RATE: f32 = 60.0;
 
-/// The UI WAVE would open for a plugin.
+/// The UI Synkopa would open for a plugin.
 #[derive(Debug, Clone)]
 pub(crate) struct UiSpec {
     uri: CString,
@@ -76,7 +76,7 @@ pub(crate) fn find(plugin_uri: &str) -> Result<UiSpec, String> {
             (l.lilv_world_load_resource)(world.ptr, uri_node);
             let needs = take_strings(l, (l.lilv_world_find_nodes)(world.ptr, uri_node, required, std::ptr::null()));
             if let Some(missing) = needs.iter().find(|f| !SUPPORTED_UI_FEATURES.iter().any(|s| plain(s) == f.as_str())) {
-                why = format!("its interface needs {}, which WAVE does not provide", short_name(missing));
+                why = format!("its interface needs {}, which Synkopa does not provide", short_name(missing));
                 continue;
             }
             let binary = node_path(l, (l.lilv_ui_get_binary_uri)(ui));

@@ -41,7 +41,7 @@ beforeEach(async () => {
 describe('opening a project', () => {
   it('loads the state the open command replies with', async () => {
     await A.projectOpen();
-    expect(store.S.path).toContain('Demo.wave');
+    expect(store.S.path).toContain('Demo.synkopa');
     expect(store.S.project.clips.length).toBeGreaterThan(0);
     expect(store.S.dirty).toBe(false);
   });
@@ -210,7 +210,7 @@ describe('saving a project', () => {
   });
   it('saves and returns true when a path is chosen', async () => {
     expect(await A.projectSave(false)).toBe(true);
-    expect(store.S.path).toMatch(/\.wave$/);
+    expect(store.S.path).toMatch(/\.synkopa$/);
   });
 });
 
@@ -251,7 +251,7 @@ describe('crash recovery of a project that was never saved', () => {
   it('offers the copy after a launch that opened a file, naming that project', async () => {
     await crashWithUnsavedWork();
     const opened = 'C:\\Muzyka\\Opened.wave';
-    await A.projectOpen(opened); // the Explorer double-click that started WAVE
+    await A.projectOpen(opened); // the Explorer double-click that started Synkopa
     recAnswer = 'later';
     await A.offerRecovery();
     expect(recAsked).toBe(1);

@@ -1,6 +1,6 @@
 //! liblilv, opened at run time.
 //!
-//! WAVE does not link liblilv: a distribution without it (or an AppImage on a system
+//! Synkopa does not link liblilv: a distribution without it (or an AppImage on a system
 //! without it) still starts, and LV2 is reported as unavailable with the reason. The
 //! declarations follow `lilv/lilv.h` (lilv 0.24, the API every current distribution
 //! ships); only the functions this host calls are bound. All calls into lilv go through
@@ -174,7 +174,7 @@ pub fn lilv() -> Result<&'static Lilv, String> {
         };
         Err(format!(
             "LV2 is unavailable: the lilv library ({}) is not installed. Install it with your package manager \
-             (Debian/Ubuntu: liblilv-0-0, Fedora: lilv-libs, Arch: lilv) and restart WAVE. ({why})",
+             (Debian/Ubuntu: liblilv-0-0, Fedora: lilv-libs, Arch: lilv) and restart Synkopa. ({why})",
             LIB_NAMES[0]
         ))
     })

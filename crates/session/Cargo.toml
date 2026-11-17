@@ -1,6 +1,6 @@
 [package]
 name = "wave-session"
-description = "WAVE live-session protocol: the local socket the CLI uses to read and edit the open project."
+description = "Synkopa live-session protocol: the local socket the CLI uses to read and edit the open project."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

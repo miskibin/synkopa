@@ -186,7 +186,7 @@ fn every_installed_effect_processes_the_test_signal_and_round_trips_its_state() 
     let Some(list) = effects() else { return };
     let budget = Instant::now() + Duration::from_secs(240);
     let (mut ran, mut failed_to_load, mut with_latency, mut with_worker) = (0, vec![], 0, 0);
-    // plugins that crash lilv's own reference host too (`lv2bench`), so in-process here; WAVE
+    // plugins that crash lilv's own reference host too (`lv2bench`), so in-process here; Synkopa
     // itself meets them in its safety check's worker process (app/src/plugin_probe.rs).
     // `WAVE_LV2_TEST_SKIP` adds URIs (comma-separated) for a machine's own broken plugins.
     let extra = std::env::var("WAVE_LV2_TEST_SKIP").unwrap_or_default();

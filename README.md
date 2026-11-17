@@ -1,5 +1,5 @@
 <p align="center"><img src="app/icons/128x128@2x.png" width="96" alt=""></p>
-<h1 align="center">WAVE</h1>
+<h1 align="center">Synkopa</h1>
 <p align="center">
   A free, open-source DAW that works the FL Studio way: patterns, Channel Rack, piano roll, playlist.<br>
   Audio recording and vocal tuning are included, and an AI agent can edit the project you have open.
@@ -16,15 +16,15 @@
   <a href="https://deepwiki.com/miskibin/wave-DAW"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
-[![WAVE: playlist, automation and the mixer. Click for the video.](site/img/hero.png)](https://www.youtube.com/watch?v=wtuHDyIQpYk)
+[![Synkopa: playlist, automation and the mixer. Click for the video.](site/img/hero.png)](https://www.youtube.com/watch?v=wtuHDyIQpYk)
 
-WAVE is a desktop music production program (a DAW) for Windows and Linux. It is free, the
+Synkopa is a desktop music production program (a DAW) for Windows and Linux. It is free, the
 source is open, and it is made for one job: making a beat and recording
 a vocal over it, the way you would in FL Studio.
 
 ## Note from developer (This part is not AI SLOP)
 
-![From the first FL Studio in 2010 to WAVE in 2026](site/img/journey.svg)
+![From the first FL Studio in 2010 to Synkopa in 2026](site/img/journey.svg)
 
 - **2010:** I downloaded FL Studio for the first time and started making music.
 - **2015:** I started music school: cello, guitar and piano (graduated in 2019).
@@ -32,17 +32,17 @@ a vocal over it, the way you would in FL Studio.
 - Along the way I tried almost every genre (EDM, lo-fi, classical, my own pop songs), often with real instruments in my beats. I also run a YouTube channel and master the voice for it myself.
 - **2022:** I joined Nokia, where I work on noise cancellation for telecom radios. That is a lot of DSP math, so I understand how sound works under the hood.
 
-WAVE started as a fun experiment. I wanted a modern DAW where every instrument and effect
+Synkopa started as a fun experiment. I wanted a modern DAW where every instrument and effect
 feels like part of the same application: they share the same controls and visualizations, a
 new feature reaches the whole app at once, and you don't juggle a dozen different interfaces.
 Yes, it is vibe-coded with Claude Fable, but I know what the code is doing.
 
 There are already excellent open-source DAWs, and I'm not trying to replace them. I just
-wanted a different workflow, and ended up using WAVE more than FL Studio itself.
+wanted a different workflow, and ended up using Synkopa more than FL Studio itself.
 
-## Why WAVE
+## Why Synkopa
 
-**If you know FL Studio, you already know WAVE.** Patterns on a free playlist, a Channel Rack
+**If you know FL Studio, you already know Synkopa.** Patterns on a free playlist, a Channel Rack
 with a step sequencer, a piano roll per channel. The gestures are the same too: right-click
 deletes, middle-button drag pans, Ctrl+Q quantizes, Alt+wheel changes velocity. A beat plays
 on the first press of Space.
@@ -55,7 +55,7 @@ the one free build.
 **Every effect draws what it does to your audio.** The picture above the knobs comes from the
 signal passing through, so you see the gain reduction or the added harmonics instead of
 guessing. These were recorded in the app while a beat plays (drums, an 808, the piano and a
-pluck, written through the `wave` command):
+pluck, written through the `synkopa` command):
 
 <table>
   <tr>
@@ -73,17 +73,17 @@ pluck, written through the `wave` command):
 
 A selection of instrument and effect windows is on the [website](https://miskibin.github.io/wave-DAW/#plugins).
 
-**An AI agent can work in the project you have open.** WAVE installs a `wave` command that
+**An AI agent can work in the project you have open.** Synkopa installs a `synkopa` command that
 talks to the running app. The agent reads the song as JSON, writes notes and sets knobs on
 your screen, then bounces offline and reads back peak, level and clipping, because it cannot
 hear. Every command is one step in your undo history, so Ctrl+Z removes whatever you do not
 like. [This trap beat](https://miskibin.github.io/wave-DAW/#listen) was made that way.
 
 ```sh
-wave context --pretty                     # tracks, inserts, patterns, channels
-wave pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"
-wave add-fx --insert 6 --type reverb --preset 3
-wave render --out check.wav --to 16       # offline bounce + level statistics
+synkopa context --pretty                     # tracks, inserts, patterns, channels
+synkopa pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"
+synkopa add-fx --insert 6 --type reverb --preset 3
+synkopa render --out check.wav --to 16       # offline bounce + level statistics
 ```
 
 **The engine is written for the audio thread first.** The callback never allocates, locks or
@@ -98,21 +98,21 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 | --- | --- |
 | **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
-| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [WAVE Keys](docs/keys.md), a sampled concert grand; a sampler with a built-in drum and tonal library plus downloadable CC0 kits |
+| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a built-in drum and tonal library plus downloadable CC0 kits |
 | **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser; presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
-| **Plugins and audio** | VST3 effects and instruments; LV2 effects on Linux; native plugin editor windows on Windows and Linux where supported, otherwise WAVE's parameter list; isolated scanning (plugin processing still runs inside WAVE), plugin latency compensation; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
+| **Plugins and audio** | VST3 effects and instruments; LV2 effects on Linux; native plugin editor windows on Windows and Linux where supported, otherwise Synkopa's parameter list; isolated scanning (plugin processing still runs inside Synkopa), plugin latency compensation; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
 | **Export** | Offline bounce of a song or loop to 16-/24-bit PCM or 32-bit float WAV, or MP3; mix and stem export; MIDI import/export |
 | **Portable projects** | File → Export project as ZIP packages the current arrangement, samples and recordings for sharing |
 | **Language** | English and Polish |
 
-## WAVE and FL Studio, honestly
+## Synkopa and FL Studio, honestly
 
-WAVE borrows FL Studio's way of working, so that is the fair comparison. FL Studio has more
+Synkopa borrows FL Studio's way of working, so that is the fair comparison. FL Studio has more
 than twenty-five years behind it and wins on breadth.
 
-| | WAVE 0.9 | FL Studio |
+| | Synkopa 0.9 | FL Studio |
 | --- | --- | --- |
 | Price | Free | About $99 to $450 depending on the edition |
 | Source code | Open | Closed |
@@ -125,9 +125,9 @@ than twenty-five years behind it and wins on breadth.
 | Maturity | Version 0.9, growing with open-source contributors; expect rough edges | Since 1998, large community, tutorials, sample packs |
 
 FL Studio details as of November 2026; see Image-Line's edition comparison for current
-prices. FL Studio is a trademark of Image-Line, and WAVE is not affiliated with it.
+prices. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.
 
-**Coming from Ableton Live?** The arrangement side will feel familiar. WAVE has no Session
+**Coming from Ableton Live?** The arrangement side will feel familiar. Synkopa has no Session
 view or clip launcher, so if you write by launching clips, it does not replace Live yet.
 
 ## Where it stands
@@ -136,10 +136,10 @@ Version 0.9, developed openly with community contributors and AI-assisted coding
 a complete beat and a vocal session. What it does not do yet:
 
 - no LV2 instruments or CLAP support yet (VST3 instruments and effects are supported); some
-  Linux plugin interfaces still use WAVE's parameter list when their native toolkit cannot be hosted;
+  Linux plugin interfaces still use Synkopa's parameter list when their native toolkit cannot be hosted;
 - LV2 needs the lilv library (`liblilv-0-0` on Debian/Ubuntu, `lilv-libs` on Fedora): the
   `.deb` and `.rpm` packages install it; with the AppImage, LV2 works when the system has it and
-  WAVE says what to install when it does not. An LV2 plugin that needs a host feature WAVE does
+  Synkopa says what to install when it does not. An LV2 plugin that needs a host feature Synkopa does
   not provide (for example a fixed block size) is listed with the reason and cannot be added;
 - no macOS build;
 - no Session view or clip launching;
@@ -160,7 +160,7 @@ FL Studio's own plugins and `.flp` projects are not supported.
 **Does it run on a Mac?** No. Windows and Linux (deb, rpm, AppImage) only.
 
 **Do I need an AI agent to use it?** No. It is a normal DAW with a mouse and a keyboard. The
-`wave` command is there if you want an agent, or your own script, to work in the project.
+`synkopa` command is there if you want an agent, or your own script, to work in the project.
 
 **Was it written by AI?** Mostly, yes, directed by a musician who works with DSP for a living;
 see the note above. The engine has tests for clicks, aliasing and loudness that run on every
@@ -169,20 +169,20 @@ change, and a benchmark that counts allocations in the audio callback.
 ## Install
 
 Download the installer from the [latest release](https://github.com/miskibin/wave-DAW/releases/latest).
-The Windows build includes ASIO support (Settings → Audio → ASIO) and the WAVE Keys piano.
+The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Keys piano.
 If a Focusrite USB interface is disconnected, use **Switch to WASAPI** in the audio notification
 or in Settings → Audio to resume playback through the default Windows output. Connect the
-interface and choose ASIO again to go back. With Focusrite USB ASIO installed, WAVE waits for
+interface and choose ASIO again to go back. With Focusrite USB ASIO installed, Synkopa waits for
 Windows to detect the interface before opening any ASIO driver, since ASIO discovery can probe it.
-On Windows, double-click a `.wave` project in File Explorer to open it in WAVE.
-If WAVE is already running, its window comes to the front and prompts you about any unsaved changes before switching projects.
+On Windows, double-click a `.synkopa` project in File Explorer to open it in Synkopa.
+If Synkopa is already running, its window comes to the front and prompts you about any unsaved changes before switching projects.
 Linux packages are attached to the same release.
 
 To share an editable project, choose **File → Export project as ZIP**. Unzip the whole archive
-and open the `.wave` file inside it. Keep the `Audio` folder beside the project. The ZIP includes
-the project's samples and recorded takes. WAVE looks for third-party plugins at the locations
+and open the `.synkopa` file inside it. Keep the `Audio` folder beside the project. The ZIP includes
+the project's samples and recorded takes. Synkopa looks for third-party plugins at the locations
 stored in the project (LV2 plugins by their URI), and files a plugin itself loads (an impulse
-response, a sample) are not collected into the ZIP. WAVE Keys uses its bundled or separately
+response, a sample) are not collected into the ZIP. Synkopa Keys uses its bundled or separately
 installed piano library.
 
 ## Build from source
@@ -205,7 +205,7 @@ the Steinberg SDK by itself.
 cd app; cargo tauri build --features asio
 ```
 
-**WAVE Keys in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
+**Synkopa Keys in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
 checksummed, cached in `target/keys-src`) and prepares it in `app/resources/keys` (cut to what
 the app plays, 16-bit FLAC, about 23 MB) so `tauri build` ships it. It needs `cargo`. Without it the app offers to
 download the piano the first time you add the instrument.
@@ -213,17 +213,17 @@ download the piano the first time you add the instrument.
 **ONNX Runtime on Linux:** the pitch model's runtime is loaded when needed, so a Linux build
 ships it beside the app: `node scripts/fetch-onnxruntime.mjs` puts Microsoft's library (checksummed)
 into `app/resources/ort` before `tauri build` (or point `ORT_DYLIB_PATH` at a `libonnxruntime.so`
-1.20 or newer). Without it WAVE uses its built-in YIN pitch detector.
+1.20 or newer). Without it Synkopa uses its built-in YIN pitch detector.
 
-## The `wave` command line
+## The `synkopa` command line
 
 It works as soon as the app has run once (open a new terminal). To let an agent such as
-Claude Code work on your song, start it in any folder and tell it to run `wave context`.
+Claude Code work on your song, start it in any folder and tell it to run `synkopa context`.
 Full reference: [`docs/cli.md`](docs/cli.md).
 
 ```sh
-wave channels --keys                      # add the WAVE Keys piano
-wave undo                                 # or press Ctrl+Z in the app
+synkopa channels --keys                      # add the Synkopa Keys piano
+synkopa undo                                 # or press Ctrl+Z in the app
 ```
 
 ## Layout

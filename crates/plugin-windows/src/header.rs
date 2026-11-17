@@ -1,5 +1,5 @@
-//! WAVE's header above a plugin's own interface (FL Studio's wrapper bar): the window's name,
-//! a gear that opens WAVE's settings for the plugin, and a close button. The OS frame is
+//! Synkopa's header above a plugin's own interface (FL Studio's wrapper bar): the window's name,
+//! a gear that opens Synkopa's settings for the plugin, and a close button. The OS frame is
 //! off; the header is the title bar (drag it to move the window).
 //!
 //! Drawn in software into a `0x00RRGGBB` pixel buffer, identical on every platform: Win32
@@ -16,7 +16,7 @@ const BUTTON_W: f32 = 30.0;
 const TEXT_PX: f32 = 12.0;
 const PAD: f32 = 10.0;
 
-// WAVE's dark theme (ui/src/styles.css)
+// Synkopa's dark theme (ui/src/styles.css)
 const BG: u32 = 0x171b21; // --bg5
 const RULE: u32 = 0x0a0c0f; // --bg0
 const FG: u32 = 0xd5dae2; // --fg
@@ -32,7 +32,7 @@ const ACCENT: u32 = 0x4f8ef7; // --blue
 pub enum Part {
     /// Moves the window.
     Drag,
-    /// Opens WAVE's settings for this plugin.
+    /// Opens Synkopa's settings for this plugin.
     Settings,
     /// Pins the window on top of the app's (a plugin the user tweaks while the
     /// arrangement plays stays in sight).

@@ -204,7 +204,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         throw new Error(`chord harmony must be one of ${HARMONY_TYPES.join(', ')} (the other chord types are stamp-only)`);
       }
       if (harmony === 'diatonic' && (key == null || (scale ?? 1) === 0)) {
-        throw new Error('chord diatonic needs a project key and scale (`wave key A minor`)');
+        throw new Error('chord diatonic needs a project key and scale (`synkopa key A minor`)');
       }
       const groups = new Map<string, number[]>();
       target.forEach((n, i) => {
@@ -254,7 +254,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
     case 'progression': {
       const ch = verb.ch;
       if (!chanOk(ch)) throw new Error(`no channel with id ${ch}`);
-      if (key == null || (scale ?? 1) === 0) throw new Error('progression needs a project key and scale (`wave key A minor`)');
+      if (key == null || (scale ?? 1) === 0) throw new Error('progression needs a project key and scale (`synkopa key A minor`)');
       const n = scaleOffsets(scale ?? 1).length;
       const degrees = verb.degrees ?? [];
       if (degrees.length) {

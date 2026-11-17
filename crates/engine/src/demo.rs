@@ -3,7 +3,7 @@
 //! the small fixed song tests and benchmarks build on (`sketch_project`).
 //!
 //! The demo is a project made in the program itself and kept as `demo_project.json`. To change
-//! it, edit it in WAVE, save it, and run `python scripts/update-demo.py <file.wave>`.
+//! it, edit it in Synkopa, save it, and run `python scripts/update-demo.py <file.synkopa>`.
 
 use crate::catalog::{load_preset, new_fx};
 use crate::model::*;
@@ -200,7 +200,7 @@ pub fn sketch_project() -> Project {
 pub const DEMO_BPM: f64 = 136.0;
 
 /// The demo project: 40 bars (160 beats) of dark trap in D# minor at 136 BPM, arranged and mixed
-/// in WAVE itself (`demo_project.json`, see the module comment).
+/// in Synkopa itself (`demo_project.json`, see the module comment).
 ///
 /// Every sample is a standard-library file (`lib:Standard/…`) and every instrument and effect
 /// is built in, so it opens and plays the same on every computer without a download: layered

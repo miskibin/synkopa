@@ -1,6 +1,6 @@
 # Changelog
 
-What changed in each release of WAVE. The newest version comes first; its section is
+What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest version comes first; its section is
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
@@ -13,7 +13,7 @@ shown in the app after an update and is published as the release notes (see
   which the sample plays at its own pitch). The root key is lit and named, and the root shows
   above the keyboard. An audio clip's root belongs to its sample (every clip of it shares it),
   is saved with the project, and a sampler channel made from that sample starts on it. The
-  keyboards of WAVE Keys and plugin channels set their root the same way.
+  keyboards of Synkopa Keys and plugin channels set their root the same way.
 - **A sampler's volume envelope, as in FL Studio.** A sampler's editor has two pages: Sample
   (the waveform, its part, pitch, level and the sample's own fades) and Envelope, the FL
   Channel settings ▸ Volume page. Switch the envelope on and every note gets delay, attack,
@@ -24,10 +24,17 @@ shown in the app after an update and is published as the release notes (see
   the release from its note-off: a key let go or the end of a Piano Roll note. Off, the sample
   plays as recorded. A Channel Rack step still has no note-off and holds the sustain.
 - **The first start offers the demo project.** A fresh install asks once whether to open
-  OBSIDIAN 2093 or start empty. It does not ask after an update, or when WAVE was started by
+  OBSIDIAN 2093 or start empty. It does not ask after an update, or when Synkopa was started by
   opening a project file.
 
 ### Changed
+- **WAVE is now called Synkopa**, with a new logo. Nothing of yours moves: settings, the library,
+  recordings and presets stay where they are, and the update replaces the WAVE install (its
+  shortcuts become Synkopa shortcuts).
+- **Projects are saved as `.synkopa`.** Every `.wave` project still opens, by double-click too, and
+  keeps its name until you save it under a new one.
+- **The command line is `synkopa`.** The old `wave` command keeps working, so existing scripts
+  need no change.
 - **The sampler's One-shot / Gate switch is now the Envelope switch.** Envelope off plays the
   sample as recorded, as One-shot did, and no longer applies attack, decay and sustain: those
   belong to the envelope. Envelope on works like Gate, and a sized Piano Roll note now fades over

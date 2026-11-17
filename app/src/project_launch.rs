@@ -6,7 +6,8 @@ use std::path::{Component, Path, PathBuf};
 /// the UI compares it with the open project's path to avoid reopening it.
 pub fn project_path(arg: &str, cwd: Option<&Path>) -> Option<String> {
     let path = Path::new(arg);
-    if arg.starts_with('-') || !path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("wave")) {
+    if arg.starts_with('-') || !path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("synkopa") || ext.eq_ignore_ascii_case("wave"))
+    {
         return None;
     }
     let absolute = if path.is_absolute() { path.to_path_buf() } else { cwd?.join(path) };

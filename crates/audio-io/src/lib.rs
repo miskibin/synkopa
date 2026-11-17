@@ -1,4 +1,4 @@
-//! Audio devices for WAVE.
+//! Audio devices for Synkopa.
 //!
 //! One thread owns the cpal streams (they are not `Send` on every platform);
 //! the app talks to it through [`AudioIo`]. The output callback owns the
@@ -139,7 +139,7 @@ fn pick_host(want: &str) -> (cpal::Host, Option<String>) {
             }
         }
         let note = if want == "asio" && !asio_compiled() {
-            "This WAVE build has no ASIO host. Using the system audio instead — install a release build with ASIO.".to_string()
+            "This Synkopa build has no ASIO host. Using the system audio instead — install a release build with ASIO.".to_string()
         } else {
             format!("Audio host \"{want}\" is not available here; using {}.", cpal::default_host().id().name())
         };

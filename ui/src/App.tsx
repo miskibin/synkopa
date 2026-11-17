@@ -214,7 +214,7 @@ const onBlur = () => { if (U.alt) setU('alt', false); releaseAll(); };
 export function App() {
   onMount(() => {
     startMidi();
-    // the gear in a plugin window's header: WAVE's own window for that plugin channel or effect
+    // the gear in a plugin window's header: Synkopa's own window for that plugin channel or effect
     const offSettings = be().on('plugin-settings', ({ id }) => {
       if (chanById(id)) toggleChannelWindow(id, true);
       else if (findFx(id)) A.openPlug(id, true);
@@ -272,7 +272,7 @@ export function App() {
     if (U.musicWin?.clipId != null && !S.project.clips.some(c => c.id === U.musicWin!.clipId)) setU('musicWin', null);
     if (U.musicWin?.fxId != null && !findFx(U.musicWin!.fxId)) setU('musicWin', null);
   });
-  createEffect(() => { be().setTitle((S.path ? baseName(S.path) : tl('a.tb.untitled')) + (S.dirty ? ' •' : '') + ' — WAVE'); });
+  createEffect(() => { be().setTitle((S.path ? baseName(S.path) : tl('a.tb.untitled')) + (S.dirty ? ' •' : '') + ' — Synkopa'); });
 
   return (
     <>

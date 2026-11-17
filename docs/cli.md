@@ -1,4 +1,4 @@
-# `wave` — the command line
+# `synkopa` — the command line
 
 The CLI works in two ways, with the same commands:
 
@@ -7,30 +7,34 @@ The CLI works in two ways, with the same commands:
   file is loaded, the command runs, and the file is saved back if the command changed it.
   See [Project files without the app](#project-files-without-the-app).
 
-There is nothing to install: on start the app puts a `wave` launcher on your PATH
+The old `wave` command still works as an alias.
+
+There is nothing to install: on start the app puts a `synkopa` launcher on your PATH
 (`%LOCALAPPDATA%\Microsoft\WindowsApps\wave.cmd` on Windows, `~/.local/bin/wave` elsewhere).
 Settings → CLI shows where it went. Open a new terminal after the first start and run:
 
 ```sh
-wave status
-wave context --pretty
+synkopa status
+synkopa context --pretty
 ```
 
 stdout is only JSON (`--pretty` to indent), with numbers rounded to at most four decimal places
 (0.47, not 0.4699999988); messages go to stderr. Exit codes:
-`0` ok, `1` bad usage, `2` WAVE not running / unreachable, `3` refused, as
+`0` ok, `1` bad usage, `2` Synkopa not running / unreachable, `3` refused, as
 `CODE: message` (`BAD_OPS`, `REVISION_CONFLICT`, `NEEDS_APP`, `FILE_OPEN` …).
 
 ## Project files without the app
 
+Projects saved as `.wave` by earlier versions still open.
+
 ```sh
-wave new song.wave --template demo                  # or --template empty (default) / sketch; --force replaces a file
-wave -p song.wave context                           # any read: nothing is written
-wave -p song.wave pattern --id 1 --ch kick --steps "x... x... x... x..."   # saved back to song.wave
-wave -p song.wave render --out song.wav             # or --stems --out stems/
-wave -p song.wave export-project --out song.zip      # without saving changes to song.wave
-wave -p song.wave bpm 150 --save-as song-150.wave   # song.wave stays as it was
-wave -p song.wave apply --file ops.json --dry-run   # try it: the reply has dryRun.changed, nothing is saved
+synkopa new song.synkopa --template demo                  # or --template empty (default) / sketch; --force replaces a file
+synkopa -p song.synkopa context                           # any read: nothing is written
+synkopa -p song.synkopa pattern --id 1 --ch kick --steps "x... x... x... x..."   # saved back to song.synkopa
+synkopa -p song.synkopa render --out song.wav             # or --stems --out stems/
+synkopa -p song.synkopa export-project --out song.zip      # without saving changes to song.synkopa
+synkopa -p song.synkopa bpm 150 --save-as song-150.synkopa   # song.synkopa stays as it was
+synkopa -p song.synkopa apply --file ops.json --dry-run   # try it: the reply has dryRun.changed, nothing is saved
 ```
 
 Every reply on a file has `saved`: the path written, or `null`. Audio that could not be loaded
@@ -40,14 +44,14 @@ missing sources play silence, as in the app).
 - **What is refused.** `play`, `stop`, `pattern --play`, `comp --audition`, `undo`, `redo` and
   `open` answer `NEEDS_APP`: they need the audio device or the app's undo history, which a file
   does not have. Listen by rendering; try edits with `--dry-run` or `--save-as`.
-- **A file the app has open.** An edit to a file that a running WAVE has open is refused with
+- **A file the app has open.** An edit to a file that a running Synkopa has open is refused with
   `FILE_OPEN`: the app keeps its own copy and would overwrite the edit on its next save. Edit it
   in the app (drop `--project`), close it there, or pass `--force`. Reading and rendering it are
   fine.
 - **Saving.** The save works as it does in the app: a `(backup)` copy of the previous file, and
   recordings moved next to the project. `save` saves even an unchanged file; `save --path` is
   the same as `--save-as`.
-- **What is the same.** Renders and stems are the same bounce as the app's export (the WAVE Keys
+- **What is the same.** Renders and stems are the same bounce as the app's export (the Synkopa Keys
   piano is loaded, or the command fails with `KEYS_MISSING` instead of rendering silence;
   pitch-edited clips use the installed RMVPE model as the app does). VST3 effects load from the
   scan cache, LV2 effects (Linux) from the installed bundles. `plugin-params` and `plugin-set`
@@ -55,16 +59,16 @@ missing sources play silence, as in the app).
 
 ### Share an editable project
 
-Run `wave export-project --out song.zip` to package the current project in the running app,
-including unsaved edits. Use `-p song.wave` to package a saved file. Unzip the archive and open
-the `.wave` project with its adjacent `Audio` folder. Plugin settings travel in the project.
+Run `synkopa export-project --out song.zip` to package the current project in the running app,
+including unsaved edits. Use `-p song.synkopa` to package a saved file. Unzip the archive and open
+the `.synkopa` project with its adjacent `Audio` folder. Plugin settings travel in the project.
 Install the plugins separately at the locations stored in the project. A missing audio source
 fails the export and any existing output ZIP is preserved.
 
 ### Scripts: many commands, one load
 
 ```sh
-wave -p song.wave script edits.txt      # or `script -` to read stdin
+synkopa -p song.synkopa script edits.txt      # or `script -` to read stdin
 ```
 
 ```text
@@ -81,44 +85,44 @@ ZIP exports write their own output when their line runs. For ZIP export, omit `-
 The reply lists each line's result. Without `--project`, a script runs against the running app line
 by line: lines before a failing one stay applied, each as its own undo step. Options of the whole
 run (`--project`, `--session`, `--save-as`, `--dry-run`, `--force`, `--pretty`) go before
-`script`, not on its lines; a leading `wave` on a line is ignored. Relative paths in a line are
+`script`, not on its lines; a leading `synkopa` on a line is ignored. Relative paths in a line are
 relative to the current folder.
 
-### Live coding: `wave watch`
+### Live coding: `synkopa watch`
 
 ```sh
-wave watch song.txt                                    # the running app: every save replaces the song
-wave -p song.wave watch song.txt --render preview.wav  # no app: every save bounces preview.wav
+synkopa watch song.txt                                    # the running app: every save replaces the song
+synkopa -p song.synkopa watch song.txt --render preview.wav  # no app: every save bounces preview.wav
 ```
 
 ```text
-# song.txt — the song, as `wave script` lines
+# song.txt — the song, as `synkopa script` lines
 bpm 128
 pattern --id 1 --ch kick --steps "x... x... x... x..."
 pattern --id 1 --ch hat  --steps "..x. ..x. ..x. ..x5"
 add-fx --insert 3 --type reverb --preset 2
 ```
 
-Start the loop in WAVE (or `wave play`), open the file in your editor (or let an agent write it)
+Start the loop in Synkopa (or `synkopa play`), open the file in your editor (or let an agent write it)
 and save: the song changes while the loop plays. The file is the song, as a buffer in Sonic Pi
 or Strudel: each save runs the whole file again on a copy of the project *as it was when the
 watch started*, and the result replaces the open project. Delete a line and its effect is gone;
 a line that adds something (an effect, a channel) adds it once, not once per save.
 
-- **One undo step per save** ("wave watch: song.txt"); a save that changes nothing adds none.
+- **One undo step per save** ("synkopa watch: song.txt"); a save that changes nothing adds none.
   The transport is not stopped, effects keep their tails, plugin instruments keep their sound.
 - **A failing line changes nothing**: the open project stays as the last good save, and the
   error names the line. Transport and undo commands (`play`, `undo` …) do not belong in the
   file: they answer `NEEDS_APP` there.
-- **An edit in the app is not overwritten.** After you change the project in WAVE (or with
-  another `wave` command), the next save is refused with `REVISION_CONFLICT`. Restart `wave watch`
+- **An edit in the app is not overwritten.** After you change the project in Synkopa (or with
+  another `synkopa` command), the next save is refused with `REVISION_CONFLICT`. Restart `synkopa watch`
   to build on the project as it is now, or pass `--force` to let the file win (what it replaces
   stays one undo away).
 - **Output**: one JSON line per save on stdout: `{"event":"applied","lines":4,"revision":57,
   "changed":true}` (plus `render` with `--render`) or `{"event":"failed","error":"line 3 …"}`.
   `--once` runs the file once, prints that line and exits. Ctrl+C stops watching.
 - **With `-p FILE`** the copy is the file's project: it is never saved (bounce with `--render`,
-  or save the result with `wave -p song.wave script song.txt`).
+  or save the result with `synkopa -p song.synkopa script song.txt`).
 
 The file is checked every 150 ms and read once it holds still, so an editor that writes in
 steps is read once.
@@ -127,14 +131,14 @@ steps is read once.
 
 | command | what you get |
 | --- | --- |
-| `wave status` | transport, revision, file, audio device, CLI path |
-| `wave context` | summary: tracks (index, insert, volume, clip count), inserts with effects and parameters, patterns, channels, sources, `nextId` |
-| `wave channels` | the Channel Rack: id, name, `sample` (+ source and sampler settings)/`synth` (+ preset)/`keys`, volume, pan, mute/solo, mixer insert (`null` = the clip's track), root key, note count |
-| `wave pattern [--id N]` | a pattern as one step string per channel (`x` full velocity, `1`–`9` = 10–90 %, `.` empty, a space every beat) plus `notes` for melodic rows, bars, minimum bars, swing % |
-| `wave context --full` | the whole project JSON (every clip, note, parameter) |
-| `wave catalog` | effect types, parameter ids/ranges/units, presets, command list |
-| `wave schema` | every op `apply` accepts, with units and an example |
-| `wave analyze [--clip ID] [--exclude-fx ID]` | detect tempo (BPM, ½×/2× candidates) and musical key (top 3 candidates, 12-note chroma, tuning offset) |
+| `synkopa status` | transport, revision, file, audio device, CLI path |
+| `synkopa context` | summary: tracks (index, insert, volume, clip count), inserts with effects and parameters, patterns, channels, sources, `nextId` |
+| `synkopa channels` | the Channel Rack: id, name, `sample` (+ source and sampler settings)/`synth` (+ preset)/`keys`, volume, pan, mute/solo, mixer insert (`null` = the clip's track), root key, note count |
+| `synkopa pattern [--id N]` | a pattern as one step string per channel (`x` full velocity, `1`–`9` = 10–90 %, `.` empty, a space every beat) plus `notes` for melodic rows, bars, minimum bars, swing % |
+| `synkopa context --full` | the whole project JSON (every clip, note, parameter) |
+| `synkopa catalog` | effect types, parameter ids/ranges/units, presets, command list |
+| `synkopa schema` | every op `apply` accepts, with units and an example |
+| `synkopa analyze [--clip ID] [--exclude-fx ID]` | detect tempo (BPM, ½×/2× candidates) and musical key (top 3 candidates, 12-note chroma, tuning offset) |
 
 ## Editing
 
@@ -143,28 +147,28 @@ last read) and the edit is refused with `REVISION_CONFLICT` if the musician
 changed something meanwhile — re-read and decide, don't blindly retry.
 
 ```sh
-wave bpm 140
-wave add-fx --insert 6 --type reverb --preset 3          # → {"fxId":1203,…}
-wave route --from 2 --to 1 --only                        # Hats only into the Drums bus
-wave route --from 6 --to 8 --gain 0.35                   # Vocal also sends to a reverb bus
-wave unroute --from 6 --to 8
-wave set-param --fx 1203 --param mix --value 30
-wave preset --fx 1203 --index 4
-wave import kick.wav loop.wav --track 3 --beat 16
-wave missing                                          # sources whose audio file is missing (they play silence)
-wave relink --folder D:/Backup/Samples                # find them there by name; relinks unambiguous matches of the same length
-wave relink --source 1010 --path D:/new/pad.wav       # point one source at another file (one undo step)
-wave midi inspect song.mid                             # parts, channels, instruments, what each becomes
-wave midi import song.mid --parts 0,2 --tempo --beat 16   # a new pattern on the Playlist (one undo step)
-wave midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one part into a channel
-wave midi export --out song.mid [--pattern 3]         # the song or one pattern, with tempo
-wave make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
-wave export-in-place --clip 5012,5013                 # render them (with mixer effects) to one clip on a new track below
-wave apply --file edit.json --label "Busier hats"
-wave undo
+synkopa bpm 140
+synkopa add-fx --insert 6 --type reverb --preset 3          # → {"fxId":1203,…}
+synkopa route --from 2 --to 1 --only                        # Hats only into the Drums bus
+synkopa route --from 6 --to 8 --gain 0.35                   # Vocal also sends to a reverb bus
+synkopa unroute --from 6 --to 8
+synkopa set-param --fx 1203 --param mix --value 30
+synkopa preset --fx 1203 --index 4
+synkopa import kick.wav loop.wav --track 3 --beat 16
+synkopa missing                                          # sources whose audio file is missing (they play silence)
+synkopa relink --folder D:/Backup/Samples                # find them there by name; relinks unambiguous matches of the same length
+synkopa relink --source 1010 --path D:/new/pad.wav       # point one source at another file (one undo step)
+synkopa midi inspect song.mid                             # parts, channels, instruments, what each becomes
+synkopa midi import song.mid --parts 0,2 --tempo --beat 16   # a new pattern on the Playlist (one undo step)
+synkopa midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one part into a channel
+synkopa midi export --out song.mid [--pattern 3]         # the song or one pattern, with tempo
+synkopa make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
+synkopa export-in-place --clip 5012,5013                 # render them (with mixer effects) to one clip on a new track below
+synkopa apply --file edit.json --label "Busier hats"
+synkopa undo
 ```
 
-`edit.json` is an array of ops (see `wave schema`), applied atomically:
+`edit.json` is an array of ops (see `synkopa schema`), applied atomically:
 
 ```json
 [
@@ -174,7 +178,7 @@ wave undo
 ]
 ```
 
-Every note names its channel with `ch` (see `wave channels`).
+Every note names its channel with `ch` (see `synkopa channels`).
 
 Units: playlist time in **beats**; pattern `step`/`len` in **sixteenths**;
 fades in seconds; track/insert `vol` is a fader position (0.7937 = 0 dB);
@@ -190,32 +194,32 @@ purpose (a crash every second bar). Swing 0–100 % (delays every odd 16th by up
 step). Each edit is one undo step.
 
 ```sh
-wave channels                                     # ids, kinds, routing
-wave channels --add snare-studio                  # a sampler of a standard-library sample (file or display name, or the start of one: "kick")
-wave channels --ch "Studio Snare" --param cut --value 1   # one sampler setting: start, end, reverse, norm, semi, fine, env, delay, attack, hold, decay, sustain, release, attackTension, decayTension, releaseTension, fadeInMs, fadeOutMs, cut
-wave channels --ch "Studio Snare" --param fadeOutMs --value 80   # fadeInMs and fadeOutMs in source milliseconds
-wave channels --sample 1001                       # a sampler channel playing source 1001
-wave channels --synth "808 Czysty"                # a synth channel with a factory preset ("" = blank patch)
-wave channels --ch 1005 --preset "Pad Ciepły"     # load a synth preset (ids/names in `wave catalog` → effects.synth)
-wave channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
-wave channels --keys                              # WAVE Keys: the sampled grand piano (see docs/keys.md)
-wave channels --ch "WAVE Keys" --param release --value 600   # its knobs: release (ms), dynamics (%)
-wave channels --plugin serum                      # a scanned VST3 instrument (name, start of one, or class id; `wave plugins --rescan` first)
-wave plugin-params --fx 1007                      # its parameters: a plugin channel's id works wherever an effect id does
-wave channels --remove 1004                       # (or a name) — also removes its notes
-wave pattern --id 2                               # step strings per channel
-wave pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"     # replace the hat's notes
-wave pattern --id 2 --ch kick --steps "x... x... x... x..." --vel 0.9
-wave pattern --id 3 --ch bass --notes '[{"step":0,"len":3,"p":33},{"step":4,"len":2,"p":40,"v":0.8}]'
-wave pattern --id 2 --ch hat --clear
-wave pattern --id 2 --bars 2 --swing 55 --name "Hats B"
-wave pattern --new --name Fill --bars 1           # → its id in the reply
-wave pattern --id 2 --play                        # loop it on its own (stops the song); --stop
-wave pattern --id 2 --play --from 4 --loop 4:8    # from beat 4, looping beats 4–8 of it
+synkopa channels                                     # ids, kinds, routing
+synkopa channels --add snare-studio                  # a sampler of a standard-library sample (file or display name, or the start of one: "kick")
+synkopa channels --ch "Studio Snare" --param cut --value 1   # one sampler setting: start, end, reverse, norm, semi, fine, env, delay, attack, hold, decay, sustain, release, attackTension, decayTension, releaseTension, fadeInMs, fadeOutMs, cut
+synkopa channels --ch "Studio Snare" --param fadeOutMs --value 80   # fadeInMs and fadeOutMs in source milliseconds
+synkopa channels --sample 1001                       # a sampler channel playing source 1001
+synkopa channels --synth "808 Czysty"                # a synth channel with a factory preset ("" = blank patch)
+synkopa channels --ch 1005 --preset "Pad Ciepły"     # load a synth preset (ids/names in `synkopa catalog` → effects.synth)
+synkopa channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
+synkopa channels --keys                              # Synkopa Keys: the sampled grand piano (see docs/keys.md)
+synkopa channels --ch "Synkopa Keys" --param release --value 600   # its knobs: release (ms), dynamics (%)
+synkopa channels --plugin serum                      # a scanned VST3 instrument (name, start of one, or class id; `synkopa plugins --rescan` first)
+synkopa plugin-params --fx 1007                      # its parameters: a plugin channel's id works wherever an effect id does
+synkopa channels --remove 1004                       # (or a name) — also removes its notes
+synkopa pattern --id 2                               # step strings per channel
+synkopa pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"     # replace the hat's notes
+synkopa pattern --id 2 --ch kick --steps "x... x... x... x..." --vel 0.9
+synkopa pattern --id 3 --ch bass --notes '[{"step":0,"len":3,"p":33},{"step":4,"len":2,"p":40,"v":0.8}]'
+synkopa pattern --id 2 --ch hat --clear
+synkopa pattern --id 2 --bars 2 --swing 55 --name "Hats B"
+synkopa pattern --new --name Fill --bars 1           # → its id in the reply
+synkopa pattern --id 2 --play                        # loop it on its own (stops the song); --stop
+synkopa pattern --id 2 --play --from 4 --loop 4:8    # from beat 4, looping beats 4–8 of it
 ```
 
 `--ch` takes a channel id or name (`kick`, `Hats 2` …). With `apply`, the ops are
-`putPattern` / `putChannel` / `removeChannel` (see `wave schema`). When a pattern's
+`putPattern` / `putChannel` / `removeChannel` (see `synkopa schema`). When a pattern's
 length changes (notes added past its end or removed, `--bars`), clips that show exactly one
 whole pass of it follow; clips sized on purpose keep their length.
 
@@ -231,33 +235,33 @@ an existing clip, has a comp clip. Times here are **timeline beats**,
 crossfades **milliseconds**; add `--clip ID` when a track has several comps.
 
 ```sh
-wave takes --track 5                       # takes, comp regions, crossfades
-wave comp --track 5 --set '[{"take":2001,"from":32,"to":36},{"take":2002,"from":36,"to":40,"xfadeMs":20}]'
-wave comp --track 5 --take 2003            # one whole take
-wave comp --track 5 --xfade 10             # default crossfade at region boundaries
-wave comp --track 5 --remove-unused        # drop takes the comp does not play
-wave comp --track 5 --audition 2002        # hear one take instead of the comp (`off` to stop; not an edit)
-wave comp --track 5 --flatten              # render to one audio clip, takes removed (undo brings them back)
+synkopa takes --track 5                       # takes, comp regions, crossfades
+synkopa comp --track 5 --set '[{"take":2001,"from":32,"to":36},{"take":2002,"from":36,"to":40,"xfadeMs":20}]'
+synkopa comp --track 5 --take 2003            # one whole take
+synkopa comp --track 5 --xfade 10             # default crossfade at region boundaries
+synkopa comp --track 5 --remove-unused        # drop takes the comp does not play
+synkopa comp --track 5 --audition 2002        # hear one take instead of the comp (`off` to stop; not an edit)
+synkopa comp --track 5 --flatten              # render to one audio clip, takes removed (undo brings them back)
 ```
 
 Each edit is one undo step. Through `apply`, the ops are `putComp` /
-`removeComp` with comp-beat times and crossfades in seconds (see `wave schema`).
+`removeComp` with comp-beat times and crossfades in seconds (see `synkopa schema`).
 
 ## Lyrics (the notebook)
 
-`wave context` lists the notebook pages (`id`, `name`, `startBar`, `lines`);
-`wave context --full` includes their text. Each line of a page is one bar from
+`synkopa context` lists the notebook pages (`id`, `name`, `startBar`, `lines`);
+`synkopa context --full` includes their text. Each line of a page is one bar from
 `startBar`, `[…]` lines are headers. Write them with one op that replaces every
 page (one undo step):
 
 ```sh
-wave apply --json '[{"op":"putNotebook","notebook":{"pages":[{"id":3000,"name":"Refren","startBar":17,"text":"[Refren]\nto jest nasz czas\nnasza noc"}]}}]'
+synkopa apply --json '[{"op":"putNotebook","notebook":{"pages":[{"id":3000,"name":"Refren","startBar":17,"text":"[Refren]\nto jest nasz czas\nnasza noc"}]}}]'
 ```
 
 ## Listening without speakers
 
 ```sh
-wave render --out bounce.wav --from 0 --to 32
+synkopa render --out bounce.wav --from 0 --to 32
 ```
 
 renders offline (independent of the audio device, so it works while the
@@ -277,11 +281,11 @@ and stems.
 ### Stems
 
 ```sh
-wave render --stems --out stems/ --from 0 --to 32     # a folder, created if needed
-wave render --stems --out stems/ --no-master          # without Master.wav
-wave render --stems --out stems/ --wav-bits 24 --dither
-wave render --out cd.wav --wav-bits 16 --dither --rate 44100
-wave render --stems --out stems/ --format mp3 --kbps 192
+synkopa render --stems --out stems/ --from 0 --to 32     # a folder, created if needed
+synkopa render --stems --out stems/ --no-master          # without Master.wav
+synkopa render --stems --out stems/ --wav-bits 24 --dither
+synkopa render --out cd.wav --wav-bits 16 --dither --rate 44100
+synkopa render --stems --out stems/ --format mp3 --kbps 192
 ```
 
 writes one stereo file per mixer insert that has sound, named after the insert
@@ -315,12 +319,12 @@ Where the alignment is not trusted (another song, a different part) the take
 is left as sung.
 
 ```sh
-wave tune-ref --clip 412 --reference 7                       # source 7 = the guide vocal
-wave tune-ref --clip 412 --reference 7 --correction 80 --vibrato 100 --influence 100 --octave auto
-wave pitch-target --clip 412            # score, octave, the reference's notes, low-confidence stretches
-wave pitch-target --clip 412 --full     # plus every curve (source, reference, target, confidence)
-wave tune-ref --clip 412 --off          # back to manual pitch edits
-wave f0-model                           # which pitch detector runs (RMVPE or YIN) and its install state
+synkopa tune-ref --clip 412 --reference 7                       # source 7 = the guide vocal
+synkopa tune-ref --clip 412 --reference 7 --correction 80 --vibrato 100 --influence 100 --octave auto
+synkopa pitch-target --clip 412            # score, octave, the reference's notes, low-confidence stretches
+synkopa pitch-target --clip 412 --full     # plus every curve (source, reference, target, confidence)
+synkopa tune-ref --clip 412 --off          # back to manual pitch edits
+synkopa f0-model                           # which pitch detector runs (RMVPE or YIN) and its install state
 ```
 
 A melody you played in the piano roll can be the reference instead: the notes a
@@ -330,8 +334,8 @@ keeps its own timing; the octave nearest the voice is used unless `--octave`
 says otherwise; stretches nothing is played under stay as sung.
 
 ```sh
-wave melody-channels --clip 412         # [{channel, name, notes, fit}] — fit = share of the singing it matches
-wave tune-ref --clip 412 --melody 1003 --speed 40      # follow the Piano channel, 40 ms to reach each note
+synkopa melody-channels --clip 412         # [{channel, name, notes, fit}] — fit = share of the singing it matches
+synkopa tune-ref --clip 412 --melody 1003 --speed 40      # follow the Piano channel, 40 ms to reach each note
 ```
 
 `--speed` is the retune speed in ms: how long the voice takes to reach each
@@ -345,12 +349,12 @@ edits on the clip still apply on top.
 Without a running app, a whole file:
 
 ```sh
-wave tune-file --take take.wav --reference guide.wav --out tuned.wav --json target.json
+synkopa tune-file --take take.wav --reference guide.wav --out tuned.wav --json target.json
 ```
 
 uses the installed RMVPE model, or `--model rmvpe.onnx`, or `--yin`.
 
-**Pitch detector.** WAVE detects pitch with YIN out of the box. The RMVPE
+**Pitch detector.** Synkopa detects pitch with YIN out of the box. The RMVPE
 model (362 MB, from the RVC project; read its licence first) is better on
 real voices: Pitch Editor → *Pobierz RMVPE* downloads it after showing the
 licence, checks its SHA-256 and switches to it. `WAVE_RMVPE_MODEL=path`
@@ -383,13 +387,13 @@ project like any manual edit. Tune to Reference (`tune-ref`) is unchanged and in
 both can be used on one clip (note edits apply on top of a reference).
 
 ```sh
-wave pitch inspect --clip 412                     # notes, tuning, range; `base` fingerprint
-wave pitch inspect --clip 412 --full --from 10 --to 14   # plus 5 ms frame curves for 4 s
-wave pitch compare --clip 412 --source 7          # read-only: against another singer's take
-wave pitch suggest --clip 412 --source 7          # a proposal with a reason per note; changes nothing
-wave pitch edit --clip 412 --base 9d0cbbba3b9fc299 --note 3 --cents -25
-wave pitch edit --clip 412 --file edit.json       # several notes at once; also a `pitch suggest` result or its `op`
-wave pitch render --clip 412 --out take.wav       # the clip alone with its edits (--original: without)
+synkopa pitch inspect --clip 412                     # notes, tuning, range; `base` fingerprint
+synkopa pitch inspect --clip 412 --full --from 10 --to 14   # plus 5 ms frame curves for 4 s
+synkopa pitch compare --clip 412 --source 7          # read-only: against another singer's take
+synkopa pitch suggest --clip 412 --source 7          # a proposal with a reason per note; changes nothing
+synkopa pitch edit --clip 412 --base 9d0cbbba3b9fc299 --note 3 --cents -25
+synkopa pitch edit --clip 412 --file edit.json       # several notes at once; also a `pitch suggest` result or its `op`
+synkopa pitch render --clip 412 --out take.wav       # the clip alone with its edits (--original: without)
 ```
 
 Times are **seconds of the clip's source**; pitch is **MIDI** (60 = C4, fractional), changes in
@@ -453,7 +457,7 @@ itself in tune is what a deliberate variation looks like, so it is kept; without
 the nearest note of the key (`--key C --scale minor`, or the project's key) or the nearest
 semitone, unless the take is near the middle between two notes. Within `--min-cents` (15) a note
 is left alone. `--strength 50` goes half the way; `--tuning 8` puts the grid at A = 442 Hz (use the
-backing track's `wave analyze` tuning offset). The result's `op` is a ready `editTune` op.
+backing track's `synkopa analyze` tuning offset). The result's `op` is a ready `editTune` op.
 
 ### `pitch edit`
 
@@ -483,10 +487,10 @@ Your recording is clip 412; the original singer (another key, range and phrasing
 the instrumental is clip 300.
 
 ```sh
-wave analyze --clip 300                                # key and tuning offset of the backing
-wave pitch inspect --clip 412 > take.json              # what you sang: kinds, cents, tuning, range
-wave pitch compare --clip 412 --source 7 > cmp.json    # related? interval? which notes match?
-wave pitch suggest --clip 412 --source 7 --key A --scale minor --max-cents 60 > plan.json
+synkopa analyze --clip 300                                # key and tuning offset of the backing
+synkopa pitch inspect --clip 412 > take.json              # what you sang: kinds, cents, tuning, range
+synkopa pitch compare --clip 412 --source 7 > cmp.json    # related? interval? which notes match?
+synkopa pitch suggest --clip 412 --source 7 --key A --scale minor --max-cents 60 > plan.json
 ```
 
 Then decide, note by note: accept the plan's edits that make sense, drop the ones that touch a
@@ -495,10 +499,10 @@ apply them as one edit:
 
 ```sh
 jq 'del(.op.edit.notes[] | select(.i == 21))' plan.json > edit.json   # e.g. drop note 21's change
-wave pitch edit --clip 412 --file edit.json --if-revision "$(jq .revision plan.json)" --max-cents 80
-wave pitch render --clip 412 --out after.wav && wave pitch render --clip 412 --out before.wav --original
-wave pitch inspect --clip 412                          # `out` per note: did it land?
-wave pitch edit --clip 412 --reset 7                   # put back a note that sounds worse; or `wave undo`
+synkopa pitch edit --clip 412 --file edit.json --if-revision "$(jq .revision plan.json)" --max-cents 80
+synkopa pitch render --clip 412 --out after.wav && synkopa pitch render --clip 412 --out before.wav --original
+synkopa pitch inspect --clip 412                          # `out` per note: did it land?
+synkopa pitch edit --clip 412 --reset 7                   # put back a note that sounds worse; or `synkopa undo`
 ```
 
 What the defaults protect: a different note, an ornament the reference has and you do not (or
@@ -509,11 +513,11 @@ off; low-level `pitch edit` always lets you override the plan.
 ## FX chain presets
 
 ```sh
-wave fxchain list
-wave fxchain save "Vocal chain" --insert 3            # --force replaces a preset of that name
-wave fxchain load "Vocal chain" --insert 5 --mode replace
-wave fxchain rename "Vocal chain" --to "Lead vocal"
-wave fxchain delete "Lead vocal"
+synkopa fxchain list
+synkopa fxchain save "Vocal chain" --insert 3            # --force replaces a preset of that name
+synkopa fxchain load "Vocal chain" --insert 5 --mode replace
+synkopa fxchain rename "Vocal chain" --to "Lead vocal"
+synkopa fxchain delete "Lead vocal"
 ```
 
 saves a mixer insert's effects, in order and with their settings and VST3 state, to your
@@ -526,18 +530,18 @@ right-click menu.
 ## Plugins
 
 ```sh
-wave plugins                    # installed effects: VST3 (cached scan), LV2 on Linux; VST3 instruments under `instruments`; --rescan
+synkopa plugins                    # installed effects: VST3 (cached scan), LV2 on Linux; VST3 instruments under `instruments`; --rescan
                                 # {plugins:[{format,path,cid,name,vendor,category,unsupported?}],
                                 #  unavailable:{lv2:"why"}}
-wave plugin-add --insert 2 --path "C:\…\Pro-Q 3.vst3" --cid 72C4DB…            # VST3
-wave plugin-add --insert 2 --format lv2 --cid http://gareus.org/oss/lv2/dpl#stereo   # LV2: the URI
-wave plugin-params --fx 1210 --query freq
+synkopa plugin-add --insert 2 --path "C:\…\Pro-Q 3.vst3" --cid 72C4DB…            # VST3
+synkopa plugin-add --insert 2 --format lv2 --cid http://gareus.org/oss/lv2/dpl#stereo   # LV2: the URI
+synkopa plugin-params --fx 1210 --query freq
                 # VST3: {id,name,value,display,def}; LV2 also {symbol,real,min,max,unit,
                 # steps,toggle,integer,log,options}: id is the control port index
-wave plugin-set --fx 1210 --id 42 --value 0.3   # normalised 0..1 (LV2: over the port's range)
-wave plugin-load-anyway --fx 1210               # load a plugin WAVE's safety check refused (it crashed or hung in a test process)
+synkopa plugin-set --fx 1210 --id 42 --value 0.3   # normalised 0..1 (LV2: over the port's range)
+synkopa plugin-load-anyway --fx 1210               # load a plugin Synkopa's safety check refused (it crashed or hung in a test process)
                 # vst3, vst3-add, vst3-params, vst3-set: the older names, VST3 only
-wave auto-add --fx 1210 --param 42 --points "0:0.2,8:0.8" --name "Reverb decay"
+synkopa auto-add --fx 1210 --param 42 --points "0:0.2,8:0.8" --name "Reverb decay"
                 # automate a hosted plugin parameter: an envelope plus the
                 # playlist clip that plays it; ids come from context.nextId
 ```
@@ -549,20 +553,20 @@ pattern produces identical notes, so agents can generate variants, render each a
 a favourite.
 
 ```sh
-wave notes humanize --pattern 1 --timing 0.3 --velocity 0.2
-wave notes quantize --pattern 1 --grid 1 --amount 1 --scale      # --scale: into the project key
-wave notes euclid --pattern 1 --ch 1001 --k 5 --n 16 --rotate 2  # E(k,n) fill for one channel
-wave notes strum --pattern 1 --width 0.5 --ramp 0.05
-wave notes drums --pattern 2 --bars 2 --seed 42 --voice "1001:4:16:0" --voice "1002:2:16:8"
-wave notes melody --pattern 3 --ch 1003 --bars 2 --seed 7 --density 0.5
-wave notes chord --pattern 3 --type diatonic                      # harmonize single notes (A3 → Am)
-wave notes chord --pattern 3 --select "0:16" --type min7          # spelled by interval, any key
-wave notes progression --pattern 4 --ch 1003 --bars 4 --template minloop --seed 7
-wave notes progression --pattern 4 --ch 1003 --degrees "0:5:2:6" --no-voice-lead
-wave notes stamp --pattern 3 --ch 1003 --step 0 --root A3 --type min7 --inv 1
-wave notes humanize --pattern 1 --select "0:16"                  # limit to a step range
-wave key A minor                                                  # project key for --scale / diatonic spelling
-wave key --off
+synkopa notes humanize --pattern 1 --timing 0.3 --velocity 0.2
+synkopa notes quantize --pattern 1 --grid 1 --amount 1 --scale      # --scale: into the project key
+synkopa notes euclid --pattern 1 --ch 1001 --k 5 --n 16 --rotate 2  # E(k,n) fill for one channel
+synkopa notes strum --pattern 1 --width 0.5 --ramp 0.05
+synkopa notes drums --pattern 2 --bars 2 --seed 42 --voice "1001:4:16:0" --voice "1002:2:16:8"
+synkopa notes melody --pattern 3 --ch 1003 --bars 2 --seed 7 --density 0.5
+synkopa notes chord --pattern 3 --type diatonic                      # harmonize single notes (A3 → Am)
+synkopa notes chord --pattern 3 --select "0:16" --type min7          # spelled by interval, any key
+synkopa notes progression --pattern 4 --ch 1003 --bars 4 --template minloop --seed 7
+synkopa notes progression --pattern 4 --ch 1003 --degrees "0:5:2:6" --no-voice-lead
+synkopa notes stamp --pattern 3 --ch 1003 --step 0 --root A3 --type min7 --inv 1
+synkopa notes humanize --pattern 1 --select "0:16"                  # limit to a step range
+synkopa key A minor                                                  # project key for --scale / diatonic spelling
+synkopa key --off
 ```
 
 Chord tools: `stamp` writes one chord (18 types, optional inversion; `--root` takes a MIDI
@@ -576,4 +580,4 @@ per bar (`--degrees "d:d:d"` replaces the template with an arbitrary degree list
 
 ## Several apps open
 
-`wave sessions` lists them; pass `--session ID` (a prefix is enough).
+`synkopa sessions` lists them; pass `--session ID` (a prefix is enough).

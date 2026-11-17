@@ -97,7 +97,7 @@ segment shape, and for time maps a musical speed for the segment (×1, ×½, −
 reverse ×1; slope = 2^(n/12) − 1). Right-click a slot: copy, paste, clear, restore factory,
 automate. Hovering a time map shows the speed there ("×0.50 · −12.0 st", "stopped",
 "reverse ×1.00"). Edits are `putFx` ops (a drag is one undo step), so the CLI edits maps the same
-way (`wave apply` with a `putFx` carrying `maps`).
+way (`synkopa apply` with a `putFx` carrying `maps`).
 
 ## Not yet
 

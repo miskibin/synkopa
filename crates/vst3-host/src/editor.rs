@@ -1,4 +1,4 @@
-//! A VST3 plugin's editor in a native WAVE window. UI thread only.
+//! A VST3 plugin's editor in a native Synkopa window. UI thread only.
 //!
 //! ```text
 //!  createView("editor")                does this plugin draw at all?

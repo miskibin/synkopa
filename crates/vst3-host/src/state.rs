@@ -1,4 +1,4 @@
-//! The state blob WAVE stores for a VST3 effect.
+//! The state blob Synkopa stores for a VST3 effect.
 //!
 //! A complete VST3 preset is two streams: the component's (`IComponent::
 //! getState`, what the processor needs) and the controller's

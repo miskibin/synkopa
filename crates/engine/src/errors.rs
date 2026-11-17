@@ -5,7 +5,7 @@
 //! `app/src/ui_prefixes_tests.rs` pins both sides to this module, so a rename or a new
 //! prefix fails CI until both languages agree.
 
-/// A name is taken (`fxChainSave`, `fxChainRename`, `wave apply --force`…).
+/// A name is taken (`fxChainSave`, `fxChainRename`, `synkopa apply --force`…).
 pub const ERR_EXISTS: &str = "EXISTS:";
 /// The caller's `if_revision` no longer matches (`Engine::apply`, `watch`, session edits).
 pub const ERR_REVISION_CONFLICT: &str = "REVISION_CONFLICT:";

@@ -212,7 +212,7 @@ function PitchBody(props: { clipId: number }) {
   const showEdited = () => !!tune() || !!activeTarget();
   const mask = () => scaleMask(scale());
   const putTune = (t: ClipTune | null): Op => ({ op: 'putClips', clips: [{ ...plain(c()), tune: t } as Clip] });
-  /** Note edits go to the engine as `editTune` (the op `wave pitch edit` sends too): indices are the notes shown, and
+  /** Note edits go to the engine as `editTune` (the op `synkopa pitch edit` sends too): indices are the notes shown, and
    *  a clip without notes of its own starts from the analysis' segmentation (`init`). */
   const editOp = (e: TuneEdit): Op => ({ op: 'editTune', clip: c().id, edit: tune()?.notes.length ? e : { init: tuneOrInit().notes.map(n => [n.start, n.end] as [number, number]), ...e } });
 

@@ -1,4 +1,4 @@
-//! `wave-lv2` -- LV2 plugins as stereo insert effects for the WAVE engine (Linux).
+//! `wave-lv2` -- LV2 plugins as stereo insert effects for the Synkopa engine (Linux).
 //!
 //! A hosted LV2 plugin is split like a hosted VST3 one:
 //!
@@ -18,7 +18,7 @@
 //!
 //! # The plugin's own interface
 //!
-//! An X11 UI (`ui:X11UI`) opens in a WAVE plugin window, under WAVE's header (`ui`):
+//! An X11 UI (`ui:X11UI`) opens in a Synkopa plugin window, under Synkopa's header (`ui`):
 //! control ports both ways, `ui:resize`, `ui:idleInterface`. GTK/Qt UIs are not embedded.
 //!
 //! # What the host provides
@@ -46,7 +46,7 @@
 //!
 //! # Platforms and liblilv
 //!
-//! Linux only. liblilv is opened at run time (`liblilv-0.so.0`), never linked, so WAVE
+//! Linux only. liblilv is opened at run time (`liblilv-0.so.0`), never linked, so Synkopa
 //! builds and starts without it and [`status`] says what to install. Elsewhere every
 //! entry point reports that LV2 is hosted on Linux.
 

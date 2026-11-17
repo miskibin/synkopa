@@ -1,4 +1,4 @@
-//! `wave watch FILE`: live coding. The script FILE (the same lines as `wave script`) describes
+//! `synkopa watch FILE`: live coding. The script FILE (the same lines as `synkopa script`) describes
 //! the song: on every save it is run on a copy of the project as it was when the watch started,
 //! and the result replaces the open project as one undo step, while the loop keeps playing. So
 //! the file always says what the song is (delete a line and its effect is gone), as in Sonic Pi
@@ -70,11 +70,11 @@ pub(super) fn watch(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> 
             }
             let path = abs(p);
             if !path.is_file() {
-                return Err(u(format!("{p} does not exist (create it with `wave new {p}`)")));
+                return Err(u(format!("{p} does not exist (create it with `synkopa new {p}`)")));
             }
             let (doc, warnings) = files.open(&path).map_err(|e| Fail::App(format!("OPEN_FAILED: {e}")))?;
             for w in &warnings {
-                eprintln!("wave: warning: {w}");
+                eprintln!("synkopa: warning: {w}");
             }
             let base = full(&*doc)?;
             (doc, base, Target::File)
@@ -82,7 +82,7 @@ pub(super) fn watch(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> 
         None => {
             let ep = session(a)?;
             let rep = ws::call(&ep, "context", json!({ "full": true }), None, None)
-                .map_err(|e| Fail::Conn(format!("could not reach WAVE: {e}")))?;
+                .map_err(|e| Fail::Conn(format!("could not reach Synkopa: {e}")))?;
             if !rep.ok {
                 let e = rep.error.unwrap_or_else(|| ws::ErrorBody::new("ERROR", "unknown error"));
                 return Err(Fail::App(format!("{}: {}", e.code, e.message)));
@@ -98,14 +98,14 @@ pub(super) fn watch(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> 
         let ev = w.run_once()?;
         return Ok(ev);
     }
-    eprintln!("wave: watching {} (Ctrl+C stops; every save replaces the song)", w.file.display());
+    eprintln!("synkopa: watching {} (Ctrl+C stops; every save replaces the song)", w.file.display());
     let mut applied: Option<Stamp> = None;
     let mut told_missing = false;
     loop {
         match stamp(&w.file) {
             None => {
                 if !told_missing {
-                    eprintln!("wave: waiting for {} to exist", w.file.display());
+                    eprintln!("synkopa: waiting for {} to exist", w.file.display());
                     told_missing = true;
                 }
             }
@@ -120,7 +120,7 @@ pub(super) fn watch(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> 
                             let m = match e {
                                 Fail::Usage(m) | Fail::Conn(m) | Fail::App(m) => m,
                             };
-                            eprintln!("wave: {m}");
+                            eprintln!("synkopa: {m}");
                             json!({ "event": "failed", "file": w.file.display().to_string(), "error": m })
                         }
                     };
@@ -163,15 +163,15 @@ impl Watch {
         let mut ev = json!({ "event": "applied", "file": self.file.display().to_string(), "lines": results.len() });
         if let Target::App { ep, rev } = &mut self.target {
             let project = full(&*self.scratch)?;
-            let label = format!("wave watch: {}", self.file.file_name().unwrap_or_default().to_string_lossy());
+            let label = format!("synkopa watch: {}", self.file.file_name().unwrap_or_default().to_string_lossy());
             let guard = if self.force { None } else { Some(*rev) };
             let rep = ws::call(ep, "set_project", json!({ "project": project }), guard, Some(label))
-                .map_err(|e| Fail::Conn(format!("could not reach WAVE: {e}")))?;
+                .map_err(|e| Fail::Conn(format!("could not reach Synkopa: {e}")))?;
             if !rep.ok {
                 let e = rep.error.unwrap_or_else(|| ws::ErrorBody::new("ERROR", "unknown error"));
                 if e.code == "REVISION_CONFLICT" {
                     return Err(Fail::App(format!(
-                        "{ERR_REVISION_CONFLICT} the project changed in WAVE since the watch last applied {} (an edit in the app or another command); the file was not applied, so that edit is kept. Restart `wave watch` to build on the project as it is now, or add --force to let the file replace it (the replaced state stays one undo away)",
+                        "{ERR_REVISION_CONFLICT} the project changed in Synkopa since the watch last applied {} (an edit in the app or another command); the file was not applied, so that edit is kept. Restart `synkopa watch` to build on the project as it is now, or add --force to let the file replace it (the replaced state stays one undo away)",
                         self.file.display()
                     )));
                 }

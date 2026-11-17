@@ -2,8 +2,8 @@
 //!
 //! A plugin editor (VST3, LV2) paints with its own toolkit into a native window handle
 //! (`HWND` on Windows, an X11 window on Linux). That cannot be composited into the Tauri
-//! webview, so every editor gets its **own floating native window**: WAVE's header on top
-//! (the name, a gear that opens WAVE's own settings for the plugin, a close button -- FL
+//! webview, so every editor gets its **own floating native window**: Synkopa's header on top
+//! (the name, a gear that opens Synkopa's own settings for the plugin, a close button -- FL
 //! Studio's wrapper; [`header`]) and the plugin's interface embedded below it. The header
 //! is the title bar: the OS frame is off.
 //!
@@ -15,9 +15,9 @@
 //! made here, and the child window the plugin creates inside them, are pumped by Tauri's
 //! own loop with no integration at all -- *provided they are created on that thread*.
 //!
-//! **Linux.** X11 has no per-thread queue: WAVE opens its own connection to the X server
+//! **Linux.** X11 has no per-thread queue: Synkopa opens its own connection to the X server
 //! (pure Rust, `x11rb`; the plugin opens another) and reads it from the UI thread's event
-//! loop, which the application installs ([`event_loop::install`]; in WAVE, GTK's glib
+//! loop, which the application installs ([`event_loop::install`]; in Synkopa, GTK's glib
 //! loop). The same loop runs the timers and file descriptors plugins register.
 //!
 //! Every call that touches a window checks the calling thread and returns

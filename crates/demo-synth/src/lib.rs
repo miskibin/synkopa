@@ -1,6 +1,6 @@
-//! WAVE Demo Synth: a small polyphonic VST3 instrument that ships with WAVE.
+//! Synkopa Demo Synth: a small polyphonic VST3 instrument that ships with Synkopa.
 //!
-//! It is what a new user can load from the Channel Rack's plugin list to hear WAVE host a
+//! It is what a new user can load from the Channel Rack's plugin list to hear Synkopa host a
 //! real VST3 instrument, and the plugin the host's end-to-end tests run against
 //! (`crates/vst3-host/tests/instrument.rs`). The sound is in [`dsp`]; this file is the VST3
 //! glue, after the `vst3` crate's `gain` example: a processor (`IComponent` +
@@ -29,8 +29,8 @@ use vst3::Steinberg::Vst::*;
 use vst3::Steinberg::*;
 use vst3::{uid, Class, ComRef, ComWrapper};
 
-pub const PLUGIN_NAME: &str = "WAVE Demo Synth";
-pub const VENDOR: &str = "WAVE";
+pub const PLUGIN_NAME: &str = "Synkopa Demo Synth";
+pub const VENDOR: &str = "Synkopa";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const SUBCATEGORIES: &str = "Instrument|Synth";
 

@@ -1,6 +1,6 @@
 [package]
 name = "wave-lv2"
-description = "WAVE: LV2 effects as wave_engine::Processor insert effects on Linux (liblilv loaded at run time)."
+description = "Synkopa: LV2 effects as wave_engine::Processor insert effects on Linux (liblilv loaded at run time)."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
@@ -16,7 +16,7 @@ log.workspace = true
 parking_lot.workspace = true
 
 # liblilv-0.so.0 is opened with `dlopen` when LV2 is first used, not linked: a system
-# without it still builds and runs WAVE, with LV2 reported as unavailable.
+# without it still builds and runs Synkopa, with LV2 reported as unavailable.
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 

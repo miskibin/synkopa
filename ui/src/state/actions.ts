@@ -263,7 +263,7 @@ export async function midiImport(opts: { path?: string; beat?: number; track?: n
 /** Writes the song (pattern clips as placed on the Playlist) or one pattern as a .mid file. */
 export async function midiExport(pattern?: Id) {
   const pat = pattern != null ? S.project.patterns.find(p => p.id === pattern) : undefined;
-  const base = (pat?.name ?? (S.path?.split(/[\\/]/).pop()?.replace(/\.wave$/i, '') || 'WAVE')).replace(/[<>:"/\\|?*]+/g, '_');
+  const base = (pat?.name ?? (S.path?.split(/[\\/]/).pop()?.replace(/\.(synkopa|wave)$/i, '') || 'Synkopa')).replace(/[<>:"/\\|?*]+/g, '_');
   try {
     const out = await be().pickMidiSave(base + '.mid');
     if (!out) return;
@@ -302,7 +302,7 @@ export async function recoveryTick() {
   try { await enqueue(() => be().recoveryWrite()); } catch (e) { console.warn('[wave] recovery copy:', e); }
 }
 /**
- * Startup: offer back the unsaved projects a WAVE that crashed or was killed left behind,
+ * Startup: offer back the unsaved projects a Synkopa that crashed or was killed left behind,
  * newest first. "Not now" keeps them for the next start; one restore ends the round.
  * Also runs after a launch that opened a file (Explorer double-click): the question names
  * that project, and its unsaved edits go through the usual Save / Discard / Cancel.
@@ -673,14 +673,14 @@ export function addPitchCorrect(insId: Id, ks?: { key: number; scale: number }) 
   say(t('d.pc.added', { name: m ? insName(m) : '' }));
 }
 /**
- * Open an effect. A hosted plugin shows its own window (FL: WAVE's header with a gear above the plugin's
- * interface); WAVE's window for it comes up when it has none, or from that gear (`settings`).
+ * Open an effect. A hosted plugin shows its own window (FL: Synkopa's header with a gear above the plugin's
+ * interface); Synkopa's window for it comes up when it has none, or from that gear (`settings`).
  */
 export function openPlug(fxId: Id, settings = false) {
   if (!settings && findFx(fxId)?.f.type === 'plugin') { void showPlugin(fxId, () => openPlugWindow(fxId)); return; }
   openPlugWindow(fxId);
 }
-/** WAVE's own window for an effect (for a plugin: its parameters, under the gear). */
+/** Synkopa's own window for an effect (for a plugin: its parameters, under the gear). */
 function openPlugWindow(fxId: Id) {
   if (U.plugsHidden) setU('plugsHidden', false);
   const ex = U.plugs.find(p => p.fxId === fxId);

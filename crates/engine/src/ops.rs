@@ -662,7 +662,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         )));
                     }
                     if harmony == "diatonic" && (p.key.is_none() || p.scale == 0) {
-                        return Err(OpError::Invalid("chord diatonic needs a project key and scale (`wave key A minor`)".into()));
+                        return Err(OpError::Invalid("chord diatonic needs a project key and scale (`synkopa key A minor`)".into()));
                     }
                 }
                 crate::transform::TransformVerb::Progression { ch, bars, template, degrees, .. } => {
@@ -670,7 +670,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         return Err(OpError::Missing { what: "channel", id: *ch });
                     }
                     if p.key.is_none() || p.scale == 0 {
-                        return Err(OpError::Invalid("progression needs a project key and scale (`wave key A minor`)".into()));
+                        return Err(OpError::Invalid("progression needs a project key and scale (`synkopa key A minor`)".into()));
                     }
                     if degrees.is_empty() {
                         if !(1..=MAX_BARS).contains(bars) {

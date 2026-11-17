@@ -18,7 +18,7 @@ export type RecoverAnswer = 'restore' | 'discard' | 'later';
 const [askRec, setAskRec] = createSignal<{ savedMs: number; openPath: string | null; done: (a: RecoverAnswer) => void } | null>(null);
 
 /**
- * "WAVE closed unexpectedly…": restore the project, delete it, or keep it for the next start.
+ * "Synkopa closed unexpectedly…": restore the project, delete it, or keep it for the next start.
  * `openPath`: the project file open now (e.g. the one just opened from Explorer), which a
  * restore replaces in this window; the question says so.
  */

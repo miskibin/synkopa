@@ -6,7 +6,7 @@
 //! runs the module's entry point, then its initialiser runs. That code can crash
 //! the process outright -- a segfault, a stack overflow, an `abort()` -- and no
 //! amount of `catch_unwind` sees any of it. Measured on the development machine,
-//! the *first* scan of a fresh install killed WAVE before the block list had a
+//! the *first* scan of a fresh install killed Synkopa before the block list had a
 //! chance to learn which module did it, so the next launch did exactly the same
 //! thing.
 //!
@@ -15,7 +15,7 @@
 //! from any thread blocks behind it forever. One wedged plugin does not cost one
 //! plugin, it costs every module after it.
 //!
-//! Both problems have the same answer: open the module in a process WAVE is
+//! Both problems have the same answer: open the module in a process Synkopa is
 //! willing to lose. A poisoned loader lock dies with the child, and so does an
 //! access violation.
 //!
@@ -40,7 +40,7 @@
 //! Three decisions are load-bearing:
 //!
 //! - **The request travels in the environment, not in `argv`.** The worker is
-//!   normally the WAVE binary itself, which has its own command line to parse
+//!   normally the Synkopa binary itself, which has its own command line to parse
 //!   (Tauri, the debug-capture flags); an environment variable cannot collide
 //!   with any of it, and cannot be confused with a file a user dropped on the
 //!   icon.
@@ -296,7 +296,7 @@ fn spawn_worker(program: &Path, format: &str, module: &Path) -> std::io::Result<
         .env(MODULE_ENV, module)
         // A worker inherits nothing it could be confused by, and writes nowhere
         // the parent is not reading: a plugin's stderr chatter goes to the void
-        // rather than into WAVE's console.
+        // rather than into Synkopa's console.
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -321,7 +321,7 @@ pub fn resolve_worker(format: &str) -> Option<PathBuf> {
     }
     // Cargo puts test binaries in `target/<profile>/deps/` and examples in
     // `target/<profile>/examples/`, one level below the dedicated workers.
-    // Restricted to those two names so an installed WAVE never goes looking
+    // Restricted to those two names so an installed Synkopa never goes looking
     // outside its own directory for something to execute.
     if dir.file_name().is_some_and(|leaf| leaf == "deps" || leaf == "examples") {
         if let Some(parent) = dir.parent() {

@@ -1,4 +1,4 @@
-"""Prints the WAVE vs FL Studio table from perf/results/realworld-{wave,fl}.json (Markdown)."""
+"""Prints the Synkopa vs FL Studio table from perf/results/realworld-{wave,fl}.json (Markdown)."""
 
 import json
 import sys
@@ -50,7 +50,7 @@ def main():
     if W.get("dropouts") or F.get("dropouts"):
         d = lambda x: "–" if not x.get("dropouts") else f"{x['dropouts']['dropouts']} in {x['dropouts']['seconds'] / 60:.0f} min"
         rows.append(row("Audio dropouts during 10 min of editing", d(W), d(F)))
-    print("| Real-world task | WAVE | FL Studio |\n|---|---:|---:|")
+    print("| Real-world task | Synkopa | FL Studio |\n|---|---:|---:|")
     print("\n".join(rows))
 
 

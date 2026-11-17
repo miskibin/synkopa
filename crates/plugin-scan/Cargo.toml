@@ -1,6 +1,6 @@
 [package]
 name = "wave-plugin-scan"
-description = "WAVE plugin scanning: the out-of-process worker protocol, the metadata cache and the block list shared by the CLAP and VST3 hosts."
+description = "Synkopa plugin scanning: the out-of-process worker protocol, the metadata cache and the block list shared by the CLAP and VST3 hosts."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

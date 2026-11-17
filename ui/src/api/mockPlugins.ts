@@ -1,9 +1,9 @@
 // LV2 effects the in-browser mock "has installed", shaped like what the engine's lilv scan reads:
 // control ports with real ranges, units, toggles, integers, log ranges and enumerations, plus one
-// plugin that cannot run in WAVE (and says why), so every branch of the plugin UI can be exercised.
+// plugin that cannot run in Synkopa (and says why), so every branch of the plugin UI can be exercised.
 import type { PortSpec } from '../lib/pluginParam';
 
-/** `crashes`: it fails WAVE's safety check (the engine refuses to load it until the user loads it anyway). */
+/** `crashes`: it fails Synkopa's safety check (the engine refuses to load it until the user loads it anyway). */
 export interface MockLv2 { name: string; vendor: string; category: string; bundle: string; unsupported?: string; crashes?: boolean; ports: PortSpec[] }
 
 const DB = 'dB', HZ = 'Hz', MS = 'ms';
@@ -36,7 +36,7 @@ export const MOCK_LV2: Record<string, MockLv2> = {
   },
   'urn:example:lv2:fixed-block-gate': {
     name: 'Fixed-Block Gate', vendor: 'Example', category: 'Gate', bundle: 'fixed-gate.lv2',
-    unsupported: 'it needs host features WAVE does not provide: fixedBlockLength',
+    unsupported: 'it needs host features Synkopa does not provide: fixedBlockLength',
     ports: [],
   },
   'urn:example:lv2:crashy-vinyl': {

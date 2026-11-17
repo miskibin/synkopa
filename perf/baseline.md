@@ -1,4 +1,4 @@
-# WAVE performance summary
+# Synkopa performance summary
 
 Run 2026-11-09T11:05:53.761Z on 12th Gen Intel(R) Core(TM) i5-12400F (12 threads, 32 GiB). Sizes: small,medium,large; UI fixture: large.
 

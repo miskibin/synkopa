@@ -1,6 +1,6 @@
 """Real-world timings of a desktop DAW, measured from outside the app (Windows).
 
-Everything here treats the app as a black box, so WAVE and FL Studio are measured by the
+Everything here treats the app as a black box, so Synkopa and FL Studio are measured by the
 same code: input goes in through SendInput, the result is read off the screen with DXGI
 Desktop Duplication (a new frame arrives whenever the desktop changes, so a change is
 timestamped to within a millisecond plus the display's composition), and the sound comes

@@ -1,6 +1,6 @@
 [package]
 name = "wave-demo-synth"
-description = "WAVE Demo Synth: a small polyphonic VST3 instrument shipped with WAVE, and the real plugin its hosting tests run against."
+description = "Synkopa Demo Synth: a small polyphonic VST3 instrument shipped with Synkopa, and the real plugin its hosting tests run against."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

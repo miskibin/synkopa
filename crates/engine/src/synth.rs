@@ -34,7 +34,7 @@ pub enum VoiceKind {
     /// The sample of the voice's channel, pitched by the note and shaped by the channel's
     /// sampler settings (part of the file, direction, fades, volume envelope).
     Sample,
-    /// WAVE Keys: a recording of the channel's piano, picked by key and velocity; it rings
+    /// Synkopa Keys: a recording of the channel's piano, picked by key and velocity; it rings
     /// for the note's length, then fades over the channel's release time.
     Keys,
     /// A synth channel: its notes go to the channel's `poly::SynthInst`, not this pool.
@@ -124,7 +124,7 @@ impl Voice {
     }
 }
 
-/// Output level of WAVE Keys against its recordings (−12 dB). The Salamander bank is
+/// Output level of Synkopa Keys against its recordings (−12 dB). The Salamander bank is
 /// levelled hot: one full-velocity note peaks at +1 dBFS, ten keys at +10.5 dBFS. With this
 /// headroom a loud note sits near −11 dBFS and a ten-note chord near −1.8 dBFS, so chords sum
 /// linearly instead of being squashed by a limiter (which made them pump and change tone).

@@ -745,7 +745,7 @@ pub struct SuggestParams {
     /// Key (0 = C) and scale (`pitch::scale_mask`) when known; None = chromatic.
     pub key: Option<(u32, u32)>,
     /// Reference of the equal-tempered grid, cents off A440 (an instrument tuned to 442 Hz is
-    /// +7.9; `wave analyze` measures a backing track's). None = A440. Not guessed from the
+    /// +7.9; `synkopa analyze` measures a backing track's). None = A440. Not guessed from the
     /// reference vocal: an unaccompanied singer's own drift is not the song's tuning.
     pub tuning: Option<f32>,
 }

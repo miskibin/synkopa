@@ -201,7 +201,7 @@ fn an_empty_insert_cannot_be_saved_and_a_bad_file_is_listed_but_not_loaded() {
     assert_eq!(rows.iter().map(|r| r["name"].as_str().unwrap()).collect::<Vec<_>>(), ["Alien", "Broken", "Future"]);
     assert!(rows.iter().all(|r| r["error"].is_string()), "{rows:?}");
     let before = e.project();
-    for (name, why) in [("Broken", "damaged"), ("Future", "newer WAVE"), ("Alien", "does not have"), ("Missing", "no FX chain preset")] {
+    for (name, why) in [("Broken", "damaged"), ("Future", "newer Synkopa"), ("Alien", "does not have"), ("Missing", "no FX chain preset")] {
         let err = load(&e, &dir, src, name, Some(Mode::Replace), None).unwrap_err();
         assert!(err.contains(why), "{name}: {err}");
     }

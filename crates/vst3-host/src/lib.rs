@@ -1,4 +1,4 @@
-//! `wave-vst3` -- VST3 plugins for the WAVE engine: stereo insert effects and Channel Rack
+//! `wave-vst3` -- VST3 plugins for the Synkopa engine: stereo insert effects and Channel Rack
 //! instruments.
 //!
 //! A hosted VST3 plugin is split in two:
@@ -117,7 +117,7 @@
 //! that crashes or hangs (a licence dialog) is block-listed, persisted, and
 //! never opened again until its line is removed from the block list file. A
 //! scan of an unchanged machine opens nothing. *Hosting* necessarily loads the
-//! plugin into WAVE's process; a plugin that crashes while processing takes the
+//! plugin into Synkopa's process; a plugin that crashes while processing takes the
 //! app with it, as in every DAW without per-plugin sandboxing.
 //!
 //! # Platforms

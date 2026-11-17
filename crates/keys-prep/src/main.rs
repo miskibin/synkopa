@@ -1,4 +1,4 @@
-//! `keys-prep <originals> <out>`: prepares the WAVE Keys piano for an installer.
+//! `keys-prep <originals> <out>`: prepares the Synkopa Keys piano for an installer.
 //!
 //! The Salamander recordings are 24-bit FLAC and up to 25 s long, but the engine keeps only
 //! the first [`keys::MAX_SECONDS`] of each (with a fade, [`keys::trimmed`]). This step applies

@@ -25,13 +25,13 @@ export function encodeComponent(s: string): string {
  * instructions are English (the model follows them best) and ask for the question's language.
  */
 export function askPrompt(question: string, ctx: { version: string | null; view: string | null }): string {
-  const app = ctx.version ? `WAVE Studio ${ctx.version}` : 'WAVE Studio';
+  const app = ctx.version ? `Synkopa ${ctx.version}` : 'Synkopa';
   const lines = [
     `I use ${app}, an open-source DAW: ${REPO_URL}`,
     'Check its source code before answering. Give concrete steps in its interface (menus, buttons, right-click menus, shortcuts).',
-    "If WAVE can't do it yet, say so plainly. Answer in the language of my question.",
+    "If Synkopa can't do it yet, say so plainly. Answer in the language of my question.",
   ];
-  if (ctx.view) lines.push(`Open in WAVE right now: ${ctx.view}.`);
+  if (ctx.view) lines.push(`Open in Synkopa right now: ${ctx.view}.`);
   return `${lines.join(' ')}\n\nQuestion: ${question.trim()}`;
 }
 

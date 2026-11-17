@@ -1,4 +1,4 @@
-//! `wave watch` end to end: a script file drives a project held by a session server (as the
+//! `synkopa watch` end to end: a script file drives a project held by a session server (as the
 //! running app serves the CLI) or a project file, through the real `wave` command line.
 
 use std::path::{Path, PathBuf};
@@ -110,7 +110,7 @@ fn every_save_replaces_the_song_and_an_edit_in_the_app_is_not_overwritten() {
     let script = d.join("song.txt");
     std::fs::write(&script, "bpm 133\n").unwrap();
     let file = s(&script);
-    // runs until the test process ends (as `wave watch` runs until Ctrl+C)
+    // runs until the test process ends (as `synkopa watch` runs until Ctrl+C)
     std::thread::spawn(move || {
         let _ = wave(&["watch", &file, "--session", &id]);
     });

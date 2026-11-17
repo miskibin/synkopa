@@ -185,7 +185,7 @@ pub struct WindowOptions {
     pub title: String,
     /// Dimmer text after the title (the format and kind: "VST3 instrument").
     pub subtitle: String,
-    /// Requested size of the **plugin's area** (below WAVE's header). Clamped to the
+    /// Requested size of the **plugin's area** (below Synkopa's header). Clamped to the
     /// service's limits.
     pub size: WindowSize,
     /// Whether the user may drag the frame. `false` gives a fixed-size window
@@ -193,7 +193,7 @@ pub struct WindowOptions {
     /// requires: otherwise the user drags a frame the editor will not follow.
     pub resizable: bool,
     /// The owner's id for this window, handed to the settings handler when the header's
-    /// gear is clicked ([`Service::set_settings_handler`]): in WAVE the effect or channel id.
+    /// gear is clicked ([`Service::set_settings_handler`]): in Synkopa the effect or channel id.
     pub tag: u64,
 }
 
@@ -444,7 +444,7 @@ impl Window {
     }
 
     /// The native handle plugins embed into (an `HWND`; an X11 window id on Linux) as an
-    /// integer, for `IPlugView::attached` / LV2's `ui:parent`: the area below WAVE's header.
+    /// integer, for `IPlugView::attached` / LV2's `ui:parent`: the area below Synkopa's header.
     /// Valid only while the window is open, and only on the UI thread (0 otherwise).
     pub fn native_handle(&self) -> isize {
         if self.live().is_err() {
@@ -583,7 +583,7 @@ pub(crate) struct WindowState {
     pub(crate) ticks: Arc<AtomicU64>,
     pub(crate) min_size: WindowSize,
     pub(crate) tick: std::cell::RefCell<Option<Rc<dyn Fn()>>>,
-    /// WAVE's header above the plugin, with the button under the pointer.
+    /// Synkopa's header above the plugin, with the button under the pointer.
     pub(crate) header: std::cell::RefCell<Header>,
     pub(crate) tag: u64,
     pub(crate) resizable: bool,

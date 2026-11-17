@@ -13178,7 +13178,7 @@
     },
     {
       "base": "main",
-      "error": "chord diatonic needs a project key and scale (`wave key A minor`)",
+      "error": "chord diatonic needs a project key and scale (`synkopa key A minor`)",
       "name": "chord diatonic needs a key and scale",
       "ops": [
         {

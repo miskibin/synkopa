@@ -87,7 +87,7 @@ export const SAMPLE_ROOT = 60;
  */
 export interface SynthState { preset: string | null; params: Record<string, number> }
 /**
- * WAVE Keys (the sampled grand piano): `release` = how long a note rings after its key is let
+ * Synkopa Keys (the sampled grand piano): `release` = how long a note rings after its key is let
  * go, in ms; `dynamics` 0..100 % = how much the velocity changes the level (the timbre always
  * follows the velocity). Mirrors crates/engine/src/keys.rs.
  */
@@ -129,7 +129,7 @@ export const samplerDefault = (): SamplerState => ({
   attackTension: 0, decayTension: 0, releaseTension: 0, cut: 0, fadeInMs: 0, fadeOutMs: 0,
 });
 /**
- * What a channel plays: a sample of a project source (the sampler), the built-in synth, WAVE Keys, or a hosted
+ * What a channel plays: a sample of a project source (the sampler), the built-in synth, Synkopa Keys, or a hosted
  * VST3 instrument (`plugin`; its sound, parameters and editor are the plugin's, `state` is saved with the project).
  */
 export type ChannelSrc =
@@ -338,7 +338,7 @@ export type AutoTarget =
   | { kind: 'chanPan'; id: Id }
   /** A synth channel's parameter (`Catalog.synth` id). */
   | { kind: 'synth'; chanId: Id; param: string }
-  /** A WAVE Keys channel's release (ms, log) or dynamics (%). */
+  /** A Synkopa Keys channel's release (ms, log) or dynamics (%). */
   | { kind: 'keys'; chanId: Id; param: 'release' | 'dynamics' }
   /** A hosted plugin parameter (`paramId` as `pluginParams` reports it: VST3 id, LV2 port index); values are normalized 0..1. */
   | { kind: 'plugin'; fxId: Id; paramId: number }
@@ -574,7 +574,7 @@ export type OpenResult =
   | { cancelled?: false; state: StateDto; warnings: string[] };
 /** Result of `projectSave`; `{ cancelled: true }` when the save dialog was dismissed. */
 export type SaveResult = { cancelled: true } | { cancelled?: false; path: string };
-/** An unsaved project a WAVE that crashed or was killed left behind (`recovery_list`). */
+/** An unsaved project a Synkopa that crashed or was killed left behind (`recovery_list`). */
 export interface RecoveredProject { id: string; savedMs: number }
 
 export interface ImportResult { sourceIds: Id[]; clipIds: Id[] }
@@ -592,7 +592,7 @@ export interface RelinkSearch {
   /** The search stopped at its limit before seeing the whole folder. */
   truncated: boolean;
 }
-/** What an imported MIDI part becomes: GM drums (one library sampler per drum), WAVE Keys or a synth preset. */
+/** What an imported MIDI part becomes: GM drums (one library sampler per drum), Synkopa Keys or a synth preset. */
 export type MidiBecomes =
   | { kind: 'drums'; drums: { key: number; name: string; notes: number }[] }
   | { kind: 'keys' }
@@ -625,7 +625,7 @@ export interface PluginInfo { format: PluginFormat; path: string; cid: string; n
  * machine (LV2 without liblilv). `instruments` is absent from an older backend.
  */
 export interface PluginScan { plugins: PluginInfo[]; instruments?: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
-/** A plugin that was loaded when the last session ended without exiting: one of these may be why WAVE died. */
+/** A plugin that was loaded when the last session ended without exiting: one of these may be why Synkopa died. */
 export interface PluginCrashSuspect { format: string; cid: string; name: string; path: string }
 /**
  * One parameter of a hosted plugin. `value`/`def` are normalized 0..1 (what `pluginSetParam` and automation take),
@@ -641,7 +641,7 @@ export interface PluginParam {
 
 export interface CliStatus { installed: boolean; command: string; path: string | null; note?: string | null }
 
-/** Marks an `fxErrors` entry of a plugin WAVE's safety check refused (it crashed or hung in a worker process): the UI offers "Load anyway". */
+/** Marks an `fxErrors` entry of a plugin Synkopa's safety check refused (it crashed or hung in a worker process): the UI offers "Load anyway". */
 export const UNSAFE_PLUGIN = 'UNSAFE_PLUGIN: ';
 /** The plugin was refused by the safety check: the sentence without the marker, else null. */
 export function unsafeReason(err: string | undefined): string | null {

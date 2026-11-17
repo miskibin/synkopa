@@ -1,5 +1,5 @@
 // Linux: puts Microsoft's ONNX Runtime library into app/resources/ort for the installer.
-// WAVE loads it at run time (`ort` `load-dynamic`) instead of linking the prebuilt `ort`
+// Synkopa loads it at run time (`ort` `load-dynamic`) instead of linking the prebuilt `ort`
 // downloads, which needs glibc 2.38: this one needs glibc 2.27, so the packages and the
 // AppImage start on Ubuntu 22.04 and Debian 12. The tarball is checked against its SHA-256.
 //   node scripts/fetch-onnxruntime.mjs

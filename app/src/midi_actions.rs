@@ -1,8 +1,8 @@
 //! Standard MIDI files in and out (`midi_inspect`, `midi_import`, `midi_export`): the same
-//! functions answer the running app and `wave --project FILE midi …`.
+//! functions answer the running app and `synkopa --project FILE midi …`.
 //!
 //! Import makes one pattern with a Channel Rack channel per part (General MIDI drums become
-//! samplers of the standard library, one per drum; other parts the closest WAVE instrument)
+//! samplers of the standard library, one per drum; other parts the closest Synkopa instrument)
 //! and places it on the Playlist, or puts one part's notes into a channel of a pattern. Export
 //! writes the song (pattern clips as the Playlist plays them) or one pattern as a format 1
 //! file with the tempo, one track per channel.
@@ -354,7 +354,7 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
         .path
         .as_deref()
         .and_then(|s| Path::new(s).file_stem().map(|x| x.to_string_lossy().into_owned()))
-        .unwrap_or_else(|| "WAVE".into());
+        .unwrap_or_else(|| "Synkopa".into());
     let bytes = midi_file::write(p.bpm, &title, &tracks)?;
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;

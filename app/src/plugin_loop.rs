@@ -1,7 +1,7 @@
 //! Linux: GTK's glib main loop, lent to plugin windows and plugins.
 //!
 //! Tauri runs GTK's main loop on the main thread. Installed as
-//! `wave_plugin_windows::event_loop` there, it reads WAVE's X11 connection for the plugin
+//! `wave_plugin_windows::event_loop` there, it reads Synkopa's X11 connection for the plugin
 //! windows and serves the file descriptors and timers VST3 plugins register through
 //! `Linux::IRunLoop` (JUCE- and DPF-built plugins depend on it). Every callback runs on the
 //! main thread, where VST3 wants all non-audio plugin work.
@@ -64,10 +64,10 @@ pub fn install() {
     wave_plugin_windows::event_loop::install(Rc::new(GlibLoop::default()));
 }
 
-/// Whether WAVE should run its GTK window through XWayland. Plugin interfaces on Linux are X11
+/// Whether Synkopa should run its GTK window through XWayland. Plugin interfaces on Linux are X11
 /// windows (VST3 `X11EmbedWindowID`, LV2 `X11UI`), and an X11 window can only stay above the
 /// app's window (`WM_TRANSIENT_FOR`) when that window is an X11 window too: under a native
-/// Wayland window every click on WAVE sends the plugin windows behind it. Bitwig, REAPER and
+/// Wayland window every click on Synkopa sends the plugin windows behind it. Bitwig, REAPER and
 /// Ardour run as X11 clients for the same reason. `WAVE_WAYLAND=1`, or a `GDK_BACKEND` the
 /// user set, keeps their choice.
 pub fn wants_x11(gdk_backend: Option<&str>, wave_wayland: Option<&str>, wayland_display: Option<&str>, display: Option<&str>) -> bool {

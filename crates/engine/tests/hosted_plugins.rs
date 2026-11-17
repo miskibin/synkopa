@@ -199,7 +199,7 @@ fn a_hosted_plugins_reported_latency_is_compensated_like_a_built_in_one() {
     let _ = std::fs::remove_dir_all(&d);
 }
 
-/// Refuses plugins until `allow` is set (WAVE's safety check refusing one, then "Load anyway").
+/// Refuses plugins until `allow` is set (Synkopa's safety check refusing one, then "Load anyway").
 struct Gate {
     allow: std::sync::atomic::AtomicBool,
     vetted: Mutex<Vec<String>>,
@@ -216,7 +216,7 @@ impl PluginFactory for Gate {
         if self.allow.load(Relaxed) {
             Ok(Box::new(Pass))
         } else {
-            Err(format!("{}: UNSAFE_PLUGIN: it crashed in WAVE's safety check", p.name))
+            Err(format!("{}: UNSAFE_PLUGIN: it crashed in Synkopa's safety check", p.name))
         }
     }
     fn vet(&self, plugins: &[(&PluginRef, bool)]) {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "WAVE",
+  "productName": "Synkopa",
   "version": "0.9.21",
   "identifier": "studio.wave.app",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "WAVE",
+        "title": "Synkopa",
         "width": 1440,
         "height": 900,
         "minWidth": 960,

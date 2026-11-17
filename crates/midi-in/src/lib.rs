@@ -302,7 +302,7 @@ impl Backend for MidirBackend {
     }
 
     fn connect(&self, id: &str, mut on_msg: RawSink) -> Result<Connection, String> {
-        let mut input = midir::MidiInput::new("wave").map_err(|e| e.to_string())?;
+        let mut input = midir::MidiInput::new("Synkopa").map_err(|e| e.to_string())?;
         input.ignore(midir::Ignore::All);
         let port = input.ports().into_iter().find(|p| p.id() == id).ok_or("the port is gone")?;
         let conn = input.connect(&port, "wave-in", move |_us, bytes, _| on_msg(bytes), ()).map_err(|e| e.to_string())?;

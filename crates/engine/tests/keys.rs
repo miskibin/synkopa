@@ -1,4 +1,4 @@
-//! WAVE Keys: the sampled piano as a Channel Rack channel (model, ops, rendering).
+//! Synkopa Keys: the sampled piano as a Channel Rack channel (model, ops, rendering).
 
 use std::sync::Arc;
 
@@ -37,7 +37,7 @@ fn project(notes: Vec<Note>, keys: KeysState) -> Project {
     let mut p = Project::empty();
     p.inserts[0].fx.clear();
     p.channels.push(Channel {
-        name: "WAVE Keys".into(),
+        name: "Synkopa Keys".into(),
         src: ChannelSrc::Keys { keys },
         root: 60,
         ..Channel::new(CH, "", "#4f8ef7", ChannelSrc::Keys { keys: Default::default() })

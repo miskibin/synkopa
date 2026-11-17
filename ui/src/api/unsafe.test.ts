@@ -7,7 +7,7 @@ beforeAll(() => { vi.stubGlobal('window', {}); });
 
 describe('plugins refused by the safety check', () => {
   it('reads the reason without the marker, and nothing from other load errors', () => {
-    expect(unsafeReason(`Vinyl: ${UNSAFE_PLUGIN}it crashed in WAVE's safety check.`)).toBe("Vinyl: it crashed in WAVE's safety check.");
+    expect(unsafeReason(`Vinyl: ${UNSAFE_PLUGIN}it crashed in Synkopa's safety check.`)).toBe("Vinyl: it crashed in Synkopa's safety check.");
     expect(unsafeReason('Amp (LV2): the LV2 plugin x is not installed')).toBeNull();
     expect(unsafeReason(undefined)).toBeNull();
   });

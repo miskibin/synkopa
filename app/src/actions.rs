@@ -1,7 +1,7 @@
 //! Everything the GUI and the CLI can ask for, implemented once.
 //!
 //! The actions run against a [`Host`]: the running app (`App`), or a project file opened
-//! by `wave --project FILE` with no window and no audio device (`headless::Headless`).
+//! by `synkopa --project FILE` with no window and no audio device (`headless::Headless`).
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -34,13 +34,13 @@ pub trait Host {
     fn cli_json(&self) -> Value;
     /// Why the installed RMVPE model could not be used, if it could not.
     fn model_error(&self) -> Option<String>;
-    /// Before an offline bounce: the WAVE Keys piano the project plays is loaded.
+    /// Before an offline bounce: the Synkopa Keys piano the project plays is loaded.
     fn wait_keys(&self) -> R<()>;
     /// Before pitch work or a bounce of pitch-edited clips: the pitch model is in place.
     fn ensure_pitch_model(&self) {}
     /// Before VST3 parameter access: the project's plugins run as live instances.
     fn ensure_live_plugins(&self) {}
-    /// The WAVE Keys piano recordings are on this computer (an import gives piano parts to it).
+    /// The Synkopa Keys piano recordings are on this computer (an import gives piano parts to it).
     fn keys_installed(&self) -> bool {
         false
     }
@@ -55,9 +55,9 @@ pub const LIVE_ONLY: &[&str] = &["play", "stop", "pattern_play", "pattern_loop",
 
 fn live_only_error(cmd: &str) -> String {
     let why = match cmd {
-        "undo" | "redo" => "a project file has no undo history (each `wave --project` call starts fresh; edit with `apply` and keep the file under version control, or use --dry-run / --save-as to try an edit)",
+        "undo" | "redo" => "a project file has no undo history (each `synkopa --project` call starts fresh; edit with `apply` and keep the file under version control, or use --dry-run / --save-as to try an edit)",
         "open" => "pass the file with --project instead",
-        _ => "it plays through the audio device; render with `wave --project FILE render --out x.wav` to listen",
+        _ => "it plays through the audio device; render with `synkopa --project FILE render --out x.wav` to listen",
     };
     format!("NEEDS_APP: `{cmd}` needs the running app: {why}")
 }
@@ -195,7 +195,7 @@ pub fn preset(app: &dyn Host, fx_id: u64, index: usize) -> R<u64> {
 }
 
 /// "Load anyway": the effect or plugin channel `id` (and every other use of the same plugin)
-/// loads although WAVE's safety check refused it, from now on. Not an edit (no undo step).
+/// loads although Synkopa's safety check refused it, from now on. Not an edit (no undo step).
 pub fn plugin_load_anyway(app: &dyn Host, id: u64) -> R<()> {
     let p = app.engine().project();
     let (plugin, instrument) = match p.find_fx(id) {
@@ -478,7 +478,7 @@ impl Bounce {
     }
 }
 
-/// Offline bounce shared by the GUI export dialog and `wave render`. `progress` hears what it is
+/// Offline bounce shared by the GUI export dialog and `synkopa render`. `progress` hears what it is
 /// doing (throttled while rendering).
 pub fn render_to_file(
     app: &dyn Host,
@@ -745,9 +745,9 @@ pub fn schema() -> Value {
     json!({
         "automation": "an automation plays through a clip of kind `auto` whose `ref` is the automation id; points t = beats from the automation start, v = 0..1 normalised (log params normalised logarithmically); optional per point, for the segment ending there: tension -1..1 (0 = straight) and shape curve|double|hold|stairs (stairs: tension sets 2..16 steps)",
         "units": "time in beats (quarter notes); pattern len in beats (4 = 1 bar, derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
-        "patterns": "channels are global (Channel Rack rows, `wave channels`); a pattern note plays channel `ch`; trig = true for a step trigger without sampler note-off; p = MIDI key (absent = the channel's root, the key at which a sampler plays its file unpitched); swing delays notes on odd 16ths by swing × ½ step; the pattern length is derived: the end of the last note rounded up to a bar, at least `minLen` beats (a `len` you send is ignored); when it changes, clips that show exactly one whole pass (offset 0) follow. Easier: `wave pattern --id N --ch C --steps \"x...x...x...x...\"`",
+        "patterns": "channels are global (Channel Rack rows, `synkopa channels`); a pattern note plays channel `ch`; trig = true for a step trigger without sampler note-off; p = MIDI key (absent = the channel's root, the key at which a sampler plays its file unpitched); swing delays notes on odd 16ths by swing × ½ step; the pattern length is derived: the end of the last note rounded up to a bar, at least `minLen` beats (a `len` you send is ignored); when it changes, clips that show exactly one whole pass (offset 0) follow. Easier: `synkopa pattern --id N --ch C --steps \"x...x...x...x...\"`",
         "ids": "take new ids from context.nextId and count up",
-        "routing": "an insert's output goes to the master (`master`: true, the default) and/or, post-fader, to other inserts through `sends` [{to, gain 0..2 linear}] (a bus, a shared reverb). `master` false = only where it sends. Loops and sends to itself or to the master (id 0) are refused. Easier: `wave route --from 3 --to 1 [--gain 0.5] [--only true]`, `wave unroute --from 3 --to 1`",
+        "routing": "an insert's output goes to the master (`master`: true, the default) and/or, post-fader, to other inserts through `sends` [{to, gain 0..2 linear}] (a bus, a shared reverb). `master` false = only where it sends. Loops and sends to itself or to the master (id 0) are refused. Easier: `synkopa route --from 3 --to 1 [--gain 0.5] [--only true]`, `synkopa unroute --from 3 --to 1`",
         "stretch": "audio clips only: `stretch` 0.25..4 = how many times longer the clip plays its audio (2 = half speed); `offset` and `len` are beats of the stretched audio, so stretching a clip from s0 to s1 multiplies its len and offset by s1/s0. Pitch is kept (rendered in the background; the clip plays resampled until it is ready, see state `stretching`) unless `resample` is true (speed and pitch change together, like a turntable)",
         "ops": {
             "putClips": {"clips": [{"id": 0, "track": 0, "start": 0, "len": 4, "offset": 0, "kind": "pat|audio|auto|comp", "ref": "pattern, source, automation or comp id", "muted": false, "gain": 0, "fadeIn": 0, "fadeOut": 0, "pan": 0, "norm": false, "rev": false, "stretch": 1, "resample": false}]},
@@ -772,12 +772,12 @@ pub fn schema() -> Value {
             "setKey": {"key": 2, "scale": 1},
             "putComp": {"comp": {"id": 0, "name": "Comp 1", "xfade": 0.01, "takes": [{"id": 0, "name": "Take 1", "ref": "source id", "start": 0, "len": 8, "offset": 0}], "regions": [{"take": 0, "from": 0, "to": 4, "xfade": 0.02}]}},
             "removeComp": {"id": 0},
-            "editTune": {"clip": 412, "edit": {"base": "segmentation fingerprint from `wave pitch inspect` (optional; refused as STALE_NOTES when the notes changed)", "init": "[[start, end], …] seconds: the analysis' notes, used only when the clip has no notes of its own yet (`pitch edit` adds it)", "notes": [{"i": 3, "shift": -20, "shiftBy": 0, "drift": 0.2, "formant": 0, "gain": 0, "speed": 60}], "reset": [5], "split": [{"i": 7, "at": 12.35}], "merge": [9], "clear": false, "erasePencil": [[1.0, 1.5]], "pencil": [[2.0, 64.0], [2.02, 64.1]]}},
+            "editTune": {"clip": 412, "edit": {"base": "segmentation fingerprint from `synkopa pitch inspect` (optional; refused as STALE_NOTES when the notes changed)", "init": "[[start, end], …] seconds: the analysis' notes, used only when the clip has no notes of its own yet (`pitch edit` adds it)", "notes": [{"i": 3, "shift": -20, "shiftBy": 0, "drift": 0.2, "formant": 0, "gain": 0, "speed": 60}], "reset": [5], "split": [{"i": 7, "at": 12.35}], "merge": [9], "clear": false, "erasePencil": [[1.0, 1.5]], "pencil": [[2.0, 64.0], [2.02, 64.1]]}},
             "putNotebook": {"notebook": {"pages": [{"id": 0, "name": "Zwrotka 1", "startBar": 1, "text": "[Zwrotka]\nfirst bar\n\nthird bar"}]}},
         },
-        "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, bar = 4 beats), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `wave context --full`",
-        "comps": "take lanes: a clip of kind `comp` plays comp `ref`; takes/regions are in comp beats (comp beat = clip.offset + timeline beat − clip.start); regions sorted, non-overlapping, gaps are silent; xfade in seconds (equal-power crossfade centred on each region start, default 0.01). Easier: `wave takes --track N`, `wave comp --track N --set '[{\"take\":ID,\"from\":B,\"to\":B}]'` (timeline beats)",
-        "pitchEdits": "editTune changes only a clip's pitch edits (the pitch editor's notes): indices name the notes as `wave pitch inspect` lists them (before this op), whatever order the parts are in; they apply as clear, reset, notes, split, merge, erasePencil, pencil. shift/formant in cents (within 2400), drift 0..1, gain -24..12 dB, speed 0..1000 ms (null = the reference's, else immediate). Easier: `wave pitch edit`",
+        "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, bar = 4 beats), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `synkopa context --full`",
+        "comps": "take lanes: a clip of kind `comp` plays comp `ref`; takes/regions are in comp beats (comp beat = clip.offset + timeline beat − clip.start); regions sorted, non-overlapping, gaps are silent; xfade in seconds (equal-power crossfade centred on each region start, default 0.01). Easier: `synkopa takes --track N`, `synkopa comp --track N --set '[{\"take\":ID,\"from\":B,\"to\":B}]'` (timeline beats)",
+        "pitchEdits": "editTune changes only a clip's pitch edits (the pitch editor's notes): indices name the notes as `synkopa pitch inspect` lists them (before this op), whatever order the parts are in; they apply as clear, reset, notes, split, merge, erasePencil, pencil. shift/formant in cents (within 2400), drift 0..1, gain -24..12 dB, speed 0..1000 ms (null = the reference's, else immediate). Easier: `synkopa pitch edit`",
         "example": [{"op": "setBpm", "bpm": 140}, {"op": "removeClips", "ids": [3]}],
     })
 }
@@ -872,10 +872,10 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
 /// A channel by id, by name (case-insensitive) or by built-in instrument name.
 fn find_channel<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine::Channel> {
     if let Some(id) = as_index(v) {
-        return p.channel(id).ok_or(format!("no channel {id} (see `wave channels`)"));
+        return p.channel(id).ok_or(format!("no channel {id} (see `synkopa channels`)"));
     }
     let s = v.as_str().ok_or("`ch` is a channel id or name")?.to_lowercase();
-    p.channels.iter().find(|c| c.name.to_lowercase() == s).ok_or(format!("no channel named `{s}` (see `wave channels`)"))
+    p.channels.iter().find(|c| c.name.to_lowercase() == s).ok_or(format!("no channel named `{s}` (see `synkopa channels`)"))
 }
 
 pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
@@ -904,7 +904,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
     if let Some(src) = arg(a, "sample").and_then(as_index) {
-        let s = p.sources.iter().find(|s| s.id == src).ok_or(format!("no source {src} (see `wave context`)"))?;
+        let s = p.sources.iter().find(|s| s.id == src).ok_or(format!("no source {src} (see `synkopa context`)"))?;
         let id = p.next_id + ops.len() as u64;
         let ch = Channel::sampler(id, &s.name, &s.color, src);
         added = Some(id);
@@ -916,7 +916,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         let synth = if name.is_empty() {
             wave_engine::SynthState::default()
         } else {
-            wave_engine::poly::preset_state(name).ok_or(format!("no synth preset `{name}` (see `wave catalog`)"))?
+            wave_engine::poly::preset_state(name).ok_or(format!("no synth preset `{name}` (see `synkopa catalog`)"))?
         };
         let bass = wave_engine::poly::presets::all().iter().any(|x| x.name == name && matches!(x.category, "808" | "Bas"));
         let label = if name.is_empty() { "Synth".to_string() } else { name.to_string() };
@@ -937,7 +937,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
             .ok_or(format!(
                 "no scanned VST3 instrument `{want}`{}",
                 if r.instruments.is_empty() {
-                    " (none is scanned: run `wave plugin_scan --rescan`)".to_string()
+                    " (none is scanned: run `synkopa plugin_scan --rescan`)".to_string()
                 } else {
                     format!("; installed: {}", r.instruments.iter().map(|i| i.name.as_str()).collect::<Vec<_>>().join(", "))
                 }
@@ -956,9 +956,9 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
     if arg(a, "keys").and_then(Value::as_bool).unwrap_or(false) {
-        // a WAVE Keys channel: the sampled grand piano
+        // a Synkopa Keys channel: the sampled grand piano
         let id = p.next_id + ops.len() as u64;
-        let ch = Channel::new(id, "WAVE Keys", "#e0a44a", ChannelSrc::Keys { keys: Default::default() });
+        let ch = Channel::new(id, "Synkopa Keys", "#e0a44a", ChannelSrc::Keys { keys: Default::default() });
         added = Some(id);
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
@@ -969,7 +969,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
             return Err(format!("channel `{}` is not a synth", c.name));
         }
         c.src = ChannelSrc::Synth {
-            synth: wave_engine::poly::preset_state(name).ok_or(format!("no synth preset `{name}` (see `wave catalog`)"))?,
+            synth: wave_engine::poly::preset_state(name).ok_or(format!("no synth preset `{name}` (see `synkopa catalog`)"))?,
         };
         ops.push(Op::PutChannel { channel: c, index: None });
     }
@@ -980,20 +980,20 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         match &mut c.src {
             ChannelSrc::Synth { synth } => {
                 let i = wave_engine::poly::params::index_of(param)
-                    .ok_or(format!("the synth has no parameter `{param}` (see `wave catalog`)"))?;
+                    .ok_or(format!("the synth has no parameter `{param}` (see `synkopa catalog`)"))?;
                 synth.params.insert(param.to_string(), wave_engine::poly::params::clamp(i, value) as f64);
                 synth.preset = None;
             }
             ChannelSrc::Plugin { plugin } => {
                 return Err(format!(
-                    "`{}` is a plugin instrument: list its parameters with `wave plugin_params --fxId {}` and set one with `wave plugin_set_param`",
+                    "`{}` is a plugin instrument: list its parameters with `synkopa plugin_params --fxId {}` and set one with `synkopa plugin_set_param`",
                     plugin.name, c.id
                 ))
             }
             ChannelSrc::Keys { keys } => match param {
                 "release" => keys.release = (value as f32).clamp(wave_engine::keys::RELEASE_MS.0, wave_engine::keys::RELEASE_MS.1),
                 "dynamics" => keys.dynamics = (value as f32).clamp(0.0, 100.0),
-                _ => return Err(format!("WAVE Keys has no parameter `{param}` (release in ms, dynamics in %)")),
+                _ => return Err(format!("Synkopa Keys has no parameter `{param}` (release in ms, dynamics in %)")),
             },
             ChannelSrc::Sample { sampler, .. } => {
                 let (v, on) = (value as f32, value != 0.0);
@@ -1095,7 +1095,7 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
     json!({ "id": pt.id, "name": pt.name, "color": pt.color, "bars": pt.len / 4.0, "lenBeats": pt.len, "minBars": pt.min_len / 4.0, "swing": (pt.swing * 100.0).round(), "rows": rows })
 }
 
-/// `wave pattern`: show a pattern as step strings, or edit it (one undo step).
+/// `synkopa pattern`: show a pattern as step strings, or edit it (one undo step).
 pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     use wave_engine::{Note, Pattern};
     let e = app.engine();
@@ -1174,12 +1174,12 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             }
         }
     }
-    // `wave notes stamp` lands here: one chord written through the existing note op
+    // `synkopa notes stamp` lands here: one chord written through the existing note op
     let mut stamped: Option<Value> = stamp.map(|st| -> Result<Value, String> {
         let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --stamp")?)?.id;
         let step = opt_f64(st, "step").ok_or("stamp needs `step` (16ths)")? as f32;
         let root = arg(st, "root").and_then(as_index).filter(|r| *r <= 127).ok_or("stamp needs `root` (a MIDI key 0..127, or a note name)")? as u8;
-        let ty = st.get("type").and_then(Value::as_str).ok_or("stamp needs `type` (a chord id like min7 — see `wave schema`)")?;
+        let ty = st.get("type").and_then(Value::as_str).ok_or("stamp needs `type` (a chord id like min7 — see `synkopa schema`)")?;
         let inv = arg(st, "inv").and_then(as_index).unwrap_or(0);
         let len = opt_f64(st, "len").unwrap_or(4.0) as f32;
         if !(step.is_finite() && step >= 0.0 && len.is_finite() && len > 0.0) {
@@ -1627,7 +1627,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             app.plugins().set_param(need_u64(a, "fxId")?, need_u64(a, "id")? as u32, opt_f64(a, "value").ok_or("`value` is required")?)?;
             Ok(json!({}))
         }
-        other => Err(format!("UNKNOWN_COMMAND: `{other}` (see `wave catalog`)")),
+        other => Err(format!("UNKNOWN_COMMAND: `{other}` (see `synkopa catalog`)")),
     }
 }
 

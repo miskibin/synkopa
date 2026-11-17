@@ -1,4 +1,4 @@
-//! MIDI files through the shared actions, as the app and `wave --project FILE midi …` use them:
+//! MIDI files through the shared actions, as the app and `synkopa --project FILE midi …` use them:
 //! inspect, import (new pattern, drums as library samplers, tempo, into a channel), export of
 //! the song and of a pattern, and an import → export round trip that keeps every note.
 
@@ -109,7 +109,7 @@ fn import_makes_one_pattern_with_drum_samplers_and_round_trips_through_export() 
         assert_eq!(g.1.vel, w.1.vel);
         assert!((g.1.start - w.1.start).abs() < 1e-3 && (g.1.len - w.1.len).abs() < 1e-3, "{g:?} vs {w:?}");
     }
-    // programs survive: the bass synth and the piano (synth piano or WAVE Keys)
+    // programs survive: the bass synth and the piano (synth piano or Synkopa Keys)
     let programs: Vec<Option<u8>> = back.parts.iter().filter(|p| p.channel != DRUM_CHANNEL).map(|p| p.program).collect();
     assert!(programs.contains(&Some(38)), "{programs:?}");
 

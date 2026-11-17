@@ -1,4 +1,4 @@
-//! WAVE Keys: the sampled grand piano behind Channel Rack channels of kind `keys`.
+//! Synkopa Keys: the sampled grand piano behind Channel Rack channels of kind `keys`.
 //!
 //! A [`KeysBank`] is a set of recordings of single notes (every minor third, a few
 //! dynamics each). A note plays the recording nearest to its key, resampled by at most

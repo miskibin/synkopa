@@ -1,4 +1,4 @@
-//! The live session: a running WAVE app listens on a local socket; the `wave`
+//! The live session: a running Synkopa app listens on a local socket; the `wave`
 //! CLI finds it through an endpoint file and sends JSON requests.
 //!
 //! Wire format: 4-byte little-endian length, then a JSON object. One request,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Makes a project saved in WAVE the built-in demo project.
+"""Makes a project saved in Synkopa the built-in demo project.
 
-    python scripts/update-demo.py path/to/demo.wave
+    python scripts/update-demo.py path/to/demo.synkopa
 
 Save the edited demo with File -> Save (or its zip export, unpacked), then run this. It writes
 crates/engine/src/demo_project.json: the project with every sample named by its standard-library
@@ -38,7 +38,7 @@ def main() -> None:
         sys.exit(__doc__)
     doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     if doc.get("format") != "wave-project":
-        sys.exit("not a WAVE project file")
+        sys.exit("not a Synkopa project file")
     p = doc["project"]
     used = {c["ref"] for c in p["clips"] if c["kind"] == "audio"}
     used |= {ch["source"] for ch in p["channels"] if ch.get("kind") == "sample"}

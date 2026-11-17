@@ -547,7 +547,7 @@ pub enum TargetRt {
         fx: Id,
         param_id: u32,
     },
-    /// WAVE Keys channel (index into `Timeline::chans`): release time, dynamics.
+    /// Synkopa Keys channel (index into `Timeline::chans`): release time, dynamics.
     KeysRelease(usize),
     KeysDynamics(usize),
     /// An audio clip (index into `Timeline::clips`; `usize::MAX` while it does not play).
@@ -694,7 +694,7 @@ pub struct ChanRt {
     /// and how it is played.
     pub sample: Option<Arc<Audio>>,
     pub smp: SmpRt,
-    /// WAVE Keys channels: the piano (`None` until it is loaded: the channel is silent),
+    /// Synkopa Keys channels: the piano (`None` until it is loaded: the channel is silent),
     /// the release time in seconds and the velocity → level amount 0..1.
     pub keys: Option<Arc<crate::keys::KeysBank>>,
     pub keys_release: f32,

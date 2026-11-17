@@ -8,7 +8,7 @@ import curvesJson from '../../../crates/engine/tests/fixtures/curves.json?raw';
 
 const cat = mockCatalog();
 
-/** The demo song plus a synth channel, a WAVE Keys channel and an audio clip to automate. */
+/** The demo song plus a synth channel, a Synkopa Keys channel and an audio clip to automate. */
 function project(): Project {
   const p = sketchProject(cat);
   const synth = { ...newSynthChannel(cat.synth, 7001, null), name: 'Lead' };
@@ -83,7 +83,7 @@ describe('automation of channels, synth and Keys parameters, and audio clips', (
     // a pattern clip has no gain to automate
     const pat = p.clips.find(c => c.kind === 'pat')!;
     expect(readTarget(p, { kind: 'clipGain', id: pat.id })).toBeNull();
-    // keys parameters of a channel that is not WAVE Keys
+    // keys parameters of a channel that is not Synkopa Keys
     expect(readTarget(p, { kind: 'keys', chanId: 7001, param: 'release' })).toBeNull();
   });
 

@@ -27,7 +27,7 @@ use crate::urid;
 use crate::world::{self, Designation, Model, PortKind, World};
 
 /// Bytes of each atom port buffer (an empty input sequence; room for output events,
-/// which WAVE discards).
+/// which Synkopa discards).
 const ATOM_BYTES: usize = 8192;
 /// The subject URI of a saved state.
 const STATE_URI: &str = "urn:wave:lv2-state\0";
@@ -90,7 +90,7 @@ pub(crate) struct Shared {
     latency: AtomicU32,
     dirty: AtomicBool,
     target: Mutex<Option<StateTarget>>,
-    /// The plugin's own interface WAVE can embed, or why none (looked up once).
+    /// The plugin's own interface Synkopa can embed, or why none (looked up once).
     ui: std::sync::OnceLock<Result<crate::ui::UiSpec, String>>,
     ui_open: AtomicBool,
     /// The running instance a UI may be given (`instance-access`), and what that UI holds.
@@ -734,8 +734,8 @@ impl Lv2Handle {
         self.shared.latency.load(Ordering::Relaxed) as usize
     }
 
-    /// Whether the plugin has an interface of its own WAVE can embed (an X11 UI whose
-    /// required features WAVE provides). Looks it up once.
+    /// Whether the plugin has an interface of its own Synkopa can embed (an X11 UI whose
+    /// required features Synkopa provides). Looks it up once.
     pub fn has_editor(&self) -> bool {
         self.editor_unavailable().is_none()
     }
@@ -750,7 +750,7 @@ impl Lv2Handle {
         self.shared.ui_open.load(Ordering::Acquire)
     }
 
-    /// Open the plugin's interface in a WAVE plugin window under a header showing `label`,
+    /// Open the plugin's interface in a Synkopa plugin window under a header showing `label`,
     /// or bring it forward. **UI thread only** (the window service's).
     pub fn open_editor(&self, windows: &wave_plugin_windows::Service, label: &wave_plugin_windows::Label) -> Result<(), String> {
         crate::ui::open(&self.shared, windows, label).map_err(|e| format!("{}: {e}", self.shared.info.name))
@@ -825,7 +825,7 @@ pub fn instantiate(uri: &str, state: Option<&[u8]>, sample_rate: f32, max_block:
 /// Every installed LV2 effect (plugins with audio in and out; instruments and analysers
 /// are left out), with the reason for those that cannot run here. `rescan` re-reads the
 /// LV2 directories (new or removed bundles). Reads Turtle metadata only: no plugin code
-/// runs. Bundles listed in `lv2-blocklist.txt` (WAVE's data directory) are skipped.
+/// runs. Bundles listed in `lv2-blocklist.txt` (Synkopa's data directory) are skipped.
 pub fn scan(rescan: bool) -> Result<Vec<PluginInfo>, String> {
     let l = lilv::lilv()?;
     let world = world::world(rescan)?;

@@ -1,6 +1,6 @@
 [package]
 name = "wave-audio-io"
-description = "WAVE audio devices: WASAPI, ASIO (feature `asio`), CoreAudio, ALSA and JACK via cpal; duplex in/out feeding the engine."
+description = "Synkopa audio devices: WASAPI, ASIO (feature `asio`), CoreAudio, ALSA and JACK via cpal; duplex in/out feeding the engine."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

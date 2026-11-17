@@ -70,7 +70,7 @@ function ExportDialog() {
   const range = () => exportRange(S.project, useLoop() && loopOk());
   const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds());
   const bytes = () => exportBytes(seconds(), RATES[rateI()], enc()) * (stems() ? nFiles() : 1);
-  const songName = () => (S.path ? baseName(S.path).replace(/\.wave$/i, '') : 'Song') + '.' + (mp3() ? 'mp3' : 'wav');
+  const songName = () => (S.path ? baseName(S.path).replace(/\.(synkopa|wave)$/i, '') : 'Song') + '.' + (mp3() ? 'mp3' : 'wav');
 
   // ---- progress
   const [busy, setBusy] = createSignal(false);

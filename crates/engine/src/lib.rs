@@ -1,4 +1,4 @@
-//! `wave-engine` — everything WAVE does with sound, independent of any window or device.
+//! `wave-engine` — everything Synkopa does with sound, independent of any window or device.
 
 pub mod autovocal;
 pub mod catalog;

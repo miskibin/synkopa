@@ -96,7 +96,7 @@ pub fn kits() -> Vec<KitInfo> {
     let standard = KitInfo {
         id: wave_engine::factory::KIT.into(),
         name: "Standard library".into(),
-        description: "Drums, percussion, orchestra, tonal one-shots and effects that ship with WAVE".into(),
+        description: "Drums, percussion, orchestra, tonal one-shots and effects that ship with Synkopa".into(),
         bytes: f.iter().map(|x| x.bytes.len() as u64).sum(),
         count: f.len(),
         installed: true,

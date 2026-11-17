@@ -1,4 +1,4 @@
-//! `wave` — the command line: the project open in a running WAVE app, or (with `--project`,
+//! `synkopa` — the command line: the project open in a running Synkopa app, or (with `--project`,
 //! given a [`Files`] provider by the app binary) a project file with no app running.
 //!
 //! stdout is only the JSON result; diagnostics go to stderr.
@@ -12,14 +12,14 @@ use wave_session as ws;
 
 mod watch;
 
-const HELP: &str = r#"wave — edit, render and inspect WAVE projects
+const HELP: &str = r#"synkopa — edit, render and inspect Synkopa projects
 docs: https://github.com/miskibin/wave-DAW/blob/main/docs/cli.md
 
 USAGE
-  wave <command> [options]                 the project open in the running app (--session ID if several are open)
-  wave -p song.wave <command> [options]    a project file, no app needed: load, run, save back if it changed
+  synkopa <command> [options]              the project open in the running app (--session ID if several are open)
+  synkopa -p song.synkopa <command> [options]  a project file, no app needed: load, run, save back if it changed
                                            [--save-as FILE] [--dry-run: save nothing] [--force: even if the app has it open]
-  wave new song.wave [--template empty|sketch|demo] [--bpm N]   create a project file
+  synkopa new song.synkopa [--template empty|sketch|demo] [--bpm N]   create a project file
 
 FOR SCRIPTS AND AGENTS
   stdout is one JSON value, messages go to stderr. Exit: 0 ok, 1 usage, 2 app not running/unreachable,
@@ -33,7 +33,7 @@ FOR SCRIPTS AND AGENTS
 
 SCRIPTS
   script FILE|-                            one command per line ('…'/"…" quote, # comments, a leading
-                                           `wave` is ignored); stops at the first failing line. With -p:
+                                           `synkopa` is ignored); stops at the first failing line. With -p:
                                            one load and one save, nothing written if a line fails
   watch FILE [--render OUT.wav] [--once] [--force]
                                            live coding: the script FILE describes the song. On every save
@@ -44,7 +44,7 @@ SCRIPTS
                                            --once: apply and exit. With -p FILE: on the file, never saved
 
 READ
-  sessions                                 list running WAVE apps
+  sessions                                 list running Synkopa apps
   status                                   transport, revision, file, audio device
   context [--full]                         project summary (--full: every clip, note and parameter)
   catalog                                  effect types, parameters and presets
@@ -74,10 +74,10 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
 PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and | are ignored)
   channels                                 Channel Rack: ids, instrument/sample, volume, pan, insert
   channels --add kick-808|snare|marimba…   add a sampler of a standard-library sample (--sample SOURCE_ID: of a project source)
-  channels --keys                          add WAVE Keys, the sampled grand piano
+  channels --keys                          add Synkopa Keys, the sampled grand piano
   channels --plugin "NAME|CID"             add a scanned VST3 instrument (name, start of a name, or class id)
   channels --synth "PRESET"                add a synth channel ("" = blank patch); --ch C --preset NAME loads one
-  channels --ch C --param ID --value V     one knob of a synth (ids in `catalog`) or of WAVE Keys (release ms, dynamics %)
+  channels --ch C --param ID --value V     one knob of a synth (ids in `catalog`) or of Synkopa Keys (release ms, dynamics %)
   channels --remove ID|NAME                remove a channel and its notes
   pattern [--id N]                         a pattern as step strings per channel
   pattern --id N --ch C --steps "x... x... x... x..." [--vel 0.8]   replace channel C's notes with step triggers
@@ -161,7 +161,7 @@ PLUGINS  (VST3 everywhere, LV2 on Linux)
                                            LV2: --cid is the plugin URI)
   plugin-params --fx ID [--query TEXT]     parameters of a plugin instance: an effect, or a plugin channel by its id (LV2: real range and unit too)
   plugin-set --fx ID --id PARAM --value 0..1
-  plugin-load-anyway --fx ID               load a plugin WAVE's safety check refused (it crashed or hung
+  plugin-load-anyway --fx ID               load a plugin Synkopa's safety check refused (it crashed or hung
                                            when tried in a separate process); from now on, every project
   vst3 [--rescan] | vst3-add | vst3-params | vst3-set    the same, VST3 only (older names)
   auto-add --fx ID --param ID [--points "0:0.2,4:0.8" | --value V] [--track N --name TEXT]
@@ -189,7 +189,7 @@ NOTES  (deterministic transforms and generators for a pattern's notes)
 "#;
 
 /// Opens and creates project files in this process: what `--project` and `new` need.
-/// The app binary provides it; the standalone `wave` binary only talks to a running app.
+/// The app binary provides it; the standalone `synkopa` binary only talks to a running app.
 pub trait Files {
     /// Loads a project file; the warnings name audio that could not be loaded.
     fn open(&self, path: &Path) -> Result<(Box<dyn Doc>, Vec<String>), String>;
@@ -344,15 +344,15 @@ pub fn run_cli_with(raw: Vec<String>, files: Option<&dyn Files>) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(Fail::Usage(m)) => {
-            eprintln!("wave: {m}\n(run `wave help`)");
+            eprintln!("synkopa: {m}\n(run `synkopa help`)");
             ExitCode::from(1)
         }
         Err(Fail::Conn(m)) => {
-            eprintln!("wave: {m}");
+            eprintln!("synkopa: {m}");
             ExitCode::from(2)
         }
         Err(Fail::App(m)) => {
-            eprintln!("wave: {m}");
+            eprintln!("synkopa: {m}");
             ExitCode::from(3)
         }
     }
@@ -383,7 +383,7 @@ pub fn execute(raw: Vec<String>, files: Option<&dyn Files>) -> Result<Value, Str
 fn need_files(files: Option<&dyn Files>) -> Result<&dyn Files, Fail> {
     files.ok_or_else(|| {
         Fail::Usage(
-            "this `wave` binary only talks to a running app; project files need the `wave` the WAVE app installs (it runs `WAVE --cli`)"
+            "this `synkopa` binary only talks to a running app; project files need the `synkopa` the Synkopa app installs (it runs `Synkopa --cli`)"
                 .into(),
         )
     })
@@ -414,7 +414,7 @@ fn not_open_in_app(path: &Path, a: &Args) -> Result<(), Fail> {
     }
     match open_in_session(path) {
         Some(id) => Err(Fail::App(format!(
-            "FILE_OPEN: {} is open in WAVE (session {id}). Edit it there (drop --project; the edit joins the app's undo history), close it in the app first, or add --force (the app overwrites the file on its next save)",
+            "FILE_OPEN: {} is open in Synkopa (session {id}). Edit it there (drop --project; the edit joins the app's undo history), close it in the app first, or add --force (the app overwrites the file on its next save)",
             path.display(),
         ))),
         None => Ok(()),
@@ -430,10 +430,10 @@ fn open_in_session(path: &Path) -> Option<String> {
     })
 }
 
-/// `wave --project FILE <command>`: load, run, save if it changed.
+/// `synkopa --project FILE <command>`: load, run, save if it changed.
 fn on_file(files: Option<&dyn Files>, cmd: &str, a: &Args) -> Result<Value, Fail> {
     let files = need_files(files)?;
-    let given = a.get("project").ok_or_else(|| Fail::Usage("--project needs a file: --project song.wave".into()))?;
+    let given = a.get("project").ok_or_else(|| Fail::Usage("--project needs a file: --project song.synkopa".into()))?;
     let path = abs(given);
     if a.has("session") {
         return Err(Fail::Usage("--session talks to a running app and --project works on a file; pick one".into()));
@@ -442,11 +442,11 @@ fn on_file(files: Option<&dyn Files>, cmd: &str, a: &Args) -> Result<Value, Fail
         return Err(Fail::Usage("--save-as needs a file".into()));
     }
     if !path.is_file() {
-        return Err(Fail::Usage(format!("{given} does not exist (create it with `wave new {given}`)")));
+        return Err(Fail::Usage(format!("{given} does not exist (create it with `synkopa new {given}`)")));
     }
     let (doc, warnings) = files.open(&path).map_err(|e| Fail::App(format!("OPEN_FAILED: {e}")))?;
     for w in &warnings {
-        eprintln!("wave: warning: {w}");
+        eprintln!("synkopa: warning: {w}");
     }
     let cx = Cx { doc: Some(&*doc) };
     let mut out = run(&cx, cmd, a)?;
@@ -473,14 +473,14 @@ fn on_file(files: Option<&dyn Files>, cmd: &str, a: &Args) -> Result<Value, Fail
     Ok(out)
 }
 
-/// `wave new FILE [--template empty|sketch|demo] [--bpm N] [--force]`
+/// `synkopa new FILE [--template empty|sketch|demo] [--bpm N] [--force]`
 fn new_file(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let files = need_files(files)?;
     let raw = a.pos.get(1).ok_or_else(|| u("new <FILE> [--template empty|sketch|demo] [--bpm N]".into()))?;
     let mut path = abs(raw);
     if path.extension().is_none() {
-        path.set_extension("wave");
+        path.set_extension("synkopa");
     }
     if path.exists() && !a.has("force") {
         return Err(Fail::App(format!("EXISTS: {} already exists (--force replaces it)", path.display())));
@@ -496,7 +496,7 @@ fn new_file(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> {
     // `--force` here only means "replace an existing file": a project the app has open is never replaced
     // behind its back (its next save would write the old project over the new one)
     if let Some(id) = open_in_session(&path) {
-        return Err(Fail::App(format!("FILE_OPEN: {} is open in WAVE (session {id}); close it in the app first", path.display())));
+        return Err(Fail::App(format!("FILE_OPEN: {} is open in Synkopa (session {id}); close it in the app first", path.display())));
     }
     doc.save(&path).map_err(|e| Fail::App(format!("SAVE_FAILED: {}: {e}", path.display())))?;
     let ctx = doc.call("context", &json!({}), None).map_err(|e| Fail::App(app_error(e)))?;
@@ -519,12 +519,12 @@ fn session(a: &Args) -> Result<ws::Endpoint, Fail> {
     let all = ws::sessions();
     match a.get("session") {
         Some(id) => {
-            all.into_iter().find(|e| e.session_id.starts_with(id)).ok_or_else(|| Fail::Conn(format!("no running WAVE session {id}")))
+            all.into_iter().find(|e| e.session_id.starts_with(id)).ok_or_else(|| Fail::Conn(format!("no running Synkopa session {id}")))
         }
         None => match all.len() {
-            0 => Err(Fail::Conn("WAVE is not running (start the app, or work on a file: wave --project song.wave …)".into())),
+            0 => Err(Fail::Conn("Synkopa is not running (start the app, or work on a file: synkopa --project song.synkopa …)".into())),
             1 => Ok(all.into_iter().next().unwrap()),
-            n => Err(Fail::Conn(format!("{n} WAVE apps are open; pick one with --session ID (see `wave sessions`)"))),
+            n => Err(Fail::Conn(format!("{n} Synkopa apps are open; pick one with --session ID (see `synkopa sessions`)"))),
         },
     }
 }
@@ -540,7 +540,7 @@ fn send(cx: &Cx, a: &Args, command: &str, args: Value) -> Result<Value, Fail> {
     }
     let ep = session(a)?;
     let rep = ws::call(&ep, command, args, rev, a.get("label").map(str::to_owned))
-        .map_err(|e| Fail::Conn(format!("could not reach WAVE: {e}")))?;
+        .map_err(|e| Fail::Conn(format!("could not reach Synkopa: {e}")))?;
     if rep.ok {
         let mut d = rep.data;
         if let Value::Object(m) = &mut d {
@@ -592,7 +592,7 @@ fn split_line(line: &str) -> Result<Vec<String>, String> {
 /// Options of the whole invocation, not of one script line.
 const OUTER_ONLY: &[&str] = &["project", "session", "save-as", "dry-run", "force", "pretty"];
 
-/// `wave [--project FILE] script FILE|-`: one command per line, stops at the first failure.
+/// `synkopa [--project FILE] script FILE|-`: one command per line, stops at the first failure.
 fn script(cx: &Cx, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let src = a.pos.get(1).ok_or_else(|| u("script <FILE> (or - for stdin)".into()))?;
@@ -617,7 +617,7 @@ fn run_lines(cx: &Cx, a: &Args, text: &str) -> Result<Vec<Value>, Fail> {
             continue;
         }
         let mut words = split_line(t).map_err(|e| u(format!("line {n}: {e}")))?;
-        if words.first().map(String::as_str) == Some("wave") {
+        if matches!(words.first().map(String::as_str), Some("synkopa" | "wave")) {
             words.remove(0);
         }
         let mut la = Args::parse(words);
@@ -626,12 +626,12 @@ fn run_lines(cx: &Cx, a: &Args, text: &str) -> Result<Vec<Value>, Fail> {
             return Err(u(format!("line {n}: `{cmd}` cannot run inside a script")));
         }
         if let Some((k, _)) = la.opts.iter().find(|(k, _)| OUTER_ONLY.contains(&k.as_str())) {
-            return Err(u(format!("line {n}: --{k} belongs to the whole script: `wave --{k} … script FILE`")));
+            return Err(u(format!("line {n}: --{k} belongs to the whole script: `synkopa --{k} … script FILE`")));
         }
         // on a file, where the project is written is decided once, after the script: a copy made here would be dropped
         if cx.doc.is_some() && cmd == "save" && la.has("path") {
             return Err(u(format!(
-                "line {n}: `save --path` cannot write a copy from a script; use `wave --project … --save-as FILE script …`"
+                "line {n}: `save --path` cannot write a copy from a script; use `synkopa --project … --save-as FILE script …`"
             )));
         }
         if let Some(s) = a.get("session") {
@@ -1257,7 +1257,7 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
     }
 }
 
-/// `wave fxchain list|save|load|rename|delete`: FX chain presets in the user's library.
+/// `synkopa fxchain list|save|load|rename|delete`: FX chain presets in the user's library.
 fn fxchain(cx: &Cx, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let name = || a.pos.get(2).cloned().ok_or_else(|| u("fxchain save|load|rename|delete NAME (quote a name with spaces)".into()));
@@ -1277,11 +1277,11 @@ fn fxchain(cx: &Cx, a: &Args) -> Result<Value, Fail> {
             send(cx, a, "fx_chain_rename", json!({ "name": name()?, "to": to }))
         }
         Some("delete") => send(cx, a, "fx_chain_delete", json!({ "name": name()? })),
-        _ => Err(u("fxchain list|save|load|rename|delete (see `wave help`)".into())),
+        _ => Err(u("fxchain list|save|load|rename|delete (see `synkopa help`)".into())),
     }
 }
 
-/// `wave midi inspect|import|export`: standard MIDI files.
+/// `synkopa midi inspect|import|export`: standard MIDI files.
 fn midi(cx: &Cx, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let abs = |p: &str| std::fs::canonicalize(p).map(|x| x.display().to_string()).unwrap_or_else(|_| p.to_string());
@@ -1315,11 +1315,11 @@ fn midi(cx: &Cx, a: &Args) -> Result<Value, Fail> {
             }
             send(cx, a, "midi_export", args)
         }
-        _ => Err(u("midi inspect|import|export (see `wave help`)".into())),
+        _ => Err(u("midi inspect|import|export (see `synkopa help`)".into())),
     }
 }
 
-/// `wave pitch inspect|compare|suggest|edit|render`: the pitch editor for scripts and agents.
+/// `synkopa pitch inspect|compare|suggest|edit|render`: the pitch editor for scripts and agents.
 fn pitch(cx: &Cx, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let verb = a.pos.get(1).map(String::as_str).ok_or_else(|| u("pitch inspect|compare|suggest|edit|render --clip ID …".into()))?;
@@ -1523,7 +1523,7 @@ mod tests {
     use std::rc::Rc;
     use std::sync::{Arc, Once};
 
-    /// Keeps the tests away from WAVE apps really running on this machine.
+    /// Keeps the tests away from Synkopa apps really running on this machine.
     fn isolate() -> PathBuf {
         static ONCE: Once = Once::new();
         let root = std::env::temp_dir().join(format!("wave-cli-tests-{}", std::process::id()));
@@ -1717,7 +1717,7 @@ mod tests {
         let d = dir("missing");
         let missing = d.join("nope.wave").display().to_string();
         match file(&FakeFiles::default(), &["context", "--project", &missing]) {
-            Err(Fail::Usage(m)) => assert!(m.contains("wave new"), "{m}"),
+            Err(Fail::Usage(m)) => assert!(m.contains("synkopa new"), "{m}"),
             other => panic!("{other:?}"),
         }
         let p = project(&d);
@@ -1782,7 +1782,7 @@ mod tests {
         let f = FakeFiles::default();
         let base = d.join("beat").display().to_string();
         let v = new_file(Some(&f), &args(&["new", &base, "--bpm", "95"])).unwrap();
-        let made = d.join("beat.wave");
+        let made = d.join("beat.synkopa");
         assert_eq!(v["saved"], json!(made.display().to_string()));
         assert_eq!(v["bpm"], 95.0);
         assert_eq!(std::fs::read_to_string(&made).unwrap(), "bpm 95");

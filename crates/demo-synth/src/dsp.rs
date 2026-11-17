@@ -1,4 +1,4 @@
-//! The sound of WAVE Demo Synth, independent of VST3: parameters, voices, rendering.
+//! The sound of Synkopa Demo Synth, independent of VST3: parameters, voices, rendering.
 //!
 //! A subtractive synth: one oscillator per voice (band-limited saw or square, or a
 //! triangle), a resonant low-pass (TPT state-variable filter) opened by the mod wheel, and

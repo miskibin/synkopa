@@ -182,7 +182,7 @@ pub(crate) enum PortKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Designation {
     None,
-    /// `lv2:enabled`: held at 1 (WAVE bypasses outside the plugin).
+    /// `lv2:enabled`: held at 1 (Synkopa bypasses outside the plugin).
     Enabled,
     /// `lv2:freeWheeling`: held at 0.
     FreeWheeling,
@@ -251,12 +251,12 @@ pub(crate) unsafe fn model(l: &Lilv, w: &World, p: *const Plugin, sample_rate: f
         let missing: Vec<&str> =
             required.iter().filter(|f| !sys::SUPPORTED_FEATURES.iter().any(|s| plain(s) == f.as_str())).map(|f| short_name(f)).collect();
         if !missing.is_empty() {
-            problems.push(format!("it needs host features WAVE does not provide: {}", missing.join(", ")));
+            problems.push(format!("it needs host features Synkopa does not provide: {}", missing.join(", ")));
         }
         let missing: Vec<&str> =
             options.iter().filter(|o| !sys::SUPPORTED_OPTIONS.iter().any(|s| plain(s) == o.as_str())).map(|o| short_name(o)).collect();
         if !missing.is_empty() {
-            problems.push(format!("it needs options WAVE does not pass: {}", missing.join(", ")));
+            problems.push(format!("it needs options Synkopa does not pass: {}", missing.join(", ")));
         }
 
         let n = (l.lilv_plugin_get_num_ports)(p);
@@ -345,7 +345,7 @@ pub(crate) unsafe fn model(l: &Lilv, w: &World, p: *const Plugin, sample_rate: f
             } else if optional {
                 PortKind::Unconnected
             } else {
-                let what = if is(u.event) { "an old-style event port" } else { "a port of a type WAVE does not know" };
+                let what = if is(u.event) { "an old-style event port" } else { "a port of a type Synkopa does not know" };
                 problems.push(format!("port `{symbol}` is {what}"));
                 PortKind::Unconnected
             };

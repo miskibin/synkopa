@@ -359,7 +359,7 @@ pub enum ChannelSrc {
         #[serde(default)]
         synth: SynthState,
     },
-    /// WAVE Keys: the sampled grand piano (see `crate::keys`).
+    /// Synkopa Keys: the sampled grand piano (see `crate::keys`).
     Keys {
         #[serde(default)]
         keys: KeysState,
@@ -521,7 +521,7 @@ impl Default for SamplerState {
     }
 }
 
-/// A WAVE Keys channel's settings.
+/// A Synkopa Keys channel's settings.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KeysState {
     /// How long a note rings after its key is let go, in milliseconds.
@@ -651,7 +651,7 @@ pub struct Note {
     pub v: f32,
     /// A step-sequencer trigger (FL Studio's zero-length step): a note-on without a note-off.
     /// A sampler plays its part to the end (or until a cut group or its own decay stops it),
-    /// whatever its One-shot / Gate mode. Synth and WAVE Keys channels hold it for `len`.
+    /// whatever its One-shot / Gate mode. Synth and Synkopa Keys channels hold it for `len`.
     /// `false` = a held Piano Roll note: a sampler stops at its end, or when the sample runs out.
     /// Legacy notes without this flag follow the channel's One-shot / Gate mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -797,7 +797,7 @@ pub enum AutoTarget {
         chan_id: Id,
         param: String,
     },
-    /// A WAVE Keys channel's `release` (ms, logarithmic) or `dynamics` (%).
+    /// A Synkopa Keys channel's `release` (ms, logarithmic) or `dynamics` (%).
     Keys {
         chan_id: Id,
         param: String,

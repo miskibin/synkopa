@@ -1,4 +1,4 @@
-//! Replacing the whole project in one go (`wave watch`): one undo step, the transport keeps
+//! Replacing the whole project in one go (`synkopa watch`): one undo step, the transport keeps
 //! going, loaded audio is kept, new files are decoded and a bad one goes missing.
 
 use std::path::Path;

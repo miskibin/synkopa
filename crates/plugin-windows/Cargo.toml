@@ -1,6 +1,6 @@
 [package]
 name = "wave-plugin-windows"
-description = "WAVE: native top-level windows for plugin editors (VST3, LV2) with WAVE's header, pumped by the app's own UI-thread event loop."
+description = "Synkopa: native top-level windows for plugin editors (VST3, LV2) with Synkopa's header, pumped by the app's own UI-thread event loop."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

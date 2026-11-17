@@ -1,4 +1,4 @@
-//! WAVE Keys: finds the piano's recordings (shipped inside the app, or downloaded into the
+//! Synkopa Keys: finds the piano's recordings (shipped inside the app, or downloaded into the
 //! sample library) and loads them the first time a project has a Keys channel.
 
 use std::path::PathBuf;
@@ -86,7 +86,7 @@ fn load_now(app: &App) {
             set(app, Phase::Ready, None);
         }
         Err(e) => {
-            log::warn!("WAVE Keys: {e}");
+            log::warn!("Synkopa Keys: {e}");
             set(app, Phase::Error, Some(e));
         }
     }

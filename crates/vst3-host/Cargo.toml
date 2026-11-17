@@ -1,6 +1,6 @@
 [package]
 name = "wave-vst3"
-description = "WAVE: VST3 effects as wave_engine::Processor insert effects, with crash-proof out-of-process scanning and native editor windows."
+description = "Synkopa: VST3 effects as wave_engine::Processor insert effects, with crash-proof out-of-process scanning and native editor windows."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

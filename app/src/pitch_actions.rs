@@ -1,7 +1,7 @@
-//! The pitch editor's actions for scripts and agents (`wave pitch …`): inspect a vocal clip,
+//! The pitch editor's actions for scripts and agents (`synkopa pitch …`): inspect a vocal clip,
 //! compare it with another performance, get a conservative correction proposal, edit notes
 //! (the `editTune` op the editor sends too) and render the clip alone. The same functions
-//! answer the running app and `wave --project FILE`.
+//! answer the running app and `synkopa --project FILE`.
 
 use serde_json::{json, Value};
 use wave_engine::pitch_api::{self, Decision, SuggestParams};
@@ -176,7 +176,7 @@ fn key_arg(a: &Value, project: &wave_engine::Project) -> R<Option<(u32, u32)>> {
     Ok(match (key, scale) {
         (Some(k), s) => Some((k, s.unwrap_or(1))),
         (None, Some(_)) => return Err("BAD_ARGS: `scale` needs `key`".into()),
-        // the project's key (`wave key …`) when it has one
+        // the project's key (`synkopa key …`) when it has one
         (None, None) => project.key.map(|k| (k as u32, project.scale)),
     })
 }

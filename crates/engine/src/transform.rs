@@ -1,5 +1,5 @@
 //! Note transforms: the deterministic muscle behind the piano roll's Tools strip and
-//! `wave notes`. Every verb is a pure function over a pattern's notes — same inputs and
+//! `synkopa notes`. Every verb is a pure function over a pattern's notes — same inputs and
 //! seed, byte-identical notes — so a run is reproducible and the tests can assert exact
 //! results. [`SplitMix64`] is the whole randomness story: no deps, ten lines, stable.
 

@@ -1,6 +1,6 @@
 [package]
 name = "wave-keys-prep"
-description = "Release-build step: cuts the WAVE Keys piano recordings to what the engine plays and stores them as 16-bit FLAC. Not shipped."
+description = "Release-build step: cuts the Synkopa Keys piano recordings to what the engine plays and stores them as 16-bit FLAC. Not shipped."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

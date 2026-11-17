@@ -199,7 +199,7 @@ pub(crate) fn read_classes(factory: &ComPtr<IPluginFactory>, path: &Path) -> Vec
 }
 
 /// The standard VST3 install locations for this platform, plus `%VST3_PATH%`
-/// (a path list) for pointing WAVE at a build directory.
+/// (a path list) for pointing Synkopa at a build directory.
 ///
 /// Windows: `C:\Program Files\Common Files\VST3`, `%COMMONPROGRAMFILES%\VST3`,
 /// `%LOCALAPPDATA%\Programs\Common\VST3`. Linux: `/usr/lib/vst3`,
@@ -354,7 +354,7 @@ pub fn scan_instruments(rescan: bool) -> Vec<PluginInfo> {
     scan_both(rescan).1
 }
 
-/// Folders of plugins that ship with the app (WAVE Demo Synth), scanned with every list.
+/// Folders of plugins that ship with the app (Synkopa Demo Synth), scanned with every list.
 static BUNDLED: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
 
 /// Adds a folder of plugins that ship with the app. Unlike the standard folders, its modules

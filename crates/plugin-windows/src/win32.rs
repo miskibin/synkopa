@@ -8,7 +8,7 @@
 //! to every window of the thread, ours and the plugin's child alike.
 //!
 //! # Layout
-//! A top-level window whose caption is removed (`WM_NCCALCSIZE`) so WAVE's header is the
+//! A top-level window whose caption is removed (`WM_NCCALCSIZE`) so Synkopa's header is the
 //! title bar: `WM_NCHITTEST` answers `HTCAPTION` over it (Windows moves, snaps and
 //! double-click-maximises as with any caption) and `HTCLIENT` over its buttons. Below the
 //! header a child "host" window fills the rest: the plugin's editor is attached to that
@@ -45,7 +45,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 use crate::header::{self, Canvas, Part};
 use crate::service::{WindowError, WindowEvent, WindowId, WindowOptions, WindowSize, WindowState, PUMP_INTERVAL_MS};
 
-/// Window class names, unique to WAVE so they cannot collide with a plugin's own.
+/// Window class names, unique to Synkopa so they cannot collide with a plugin's own.
 const CLASS_NAME: &str = "WavePluginWindow";
 const HOST_CLASS_NAME: &str = "WavePluginHost";
 

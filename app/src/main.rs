@@ -12,7 +12,7 @@ fn main() -> std::process::ExitCode {
         return std::process::ExitCode::SUCCESS;
     }
     let args: Vec<String> = std::env::args().skip(1).collect();
-    // `WAVE --cli …` is the `wave` command (see cli_shim): same binary, no window.
+    // `Synkopa --cli …` is the `wave` command (see cli_shim): same binary, no window.
     if args.first().map(String::as_str) == Some("--cli") {
         attach_console();
         return wave_app::cli_main(args[1..].to_vec());

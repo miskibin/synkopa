@@ -7,7 +7,7 @@
 //! they get one (Nota's "black window, silent plugin" bug was a run loop nobody pumped).
 //!
 //! So the application *installs* the loop it really runs, on its UI thread, once
-//! ([`install`]): in WAVE that is GTK's glib main context. Code that needs it asks
+//! ([`install`]): in Synkopa that is GTK's glib main context. Code that needs it asks
 //! [`current`], which answers only on that thread, and only if one is installed. A process
 //! without one (the `wave` CLI rendering headless, a test) then offers plugins no run loop
 //! at all, which is the safe answer: they keep their own message threads.

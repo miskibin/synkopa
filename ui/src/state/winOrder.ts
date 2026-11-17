@@ -5,7 +5,7 @@ import type { Id } from '../api/types';
 import { rackFloating, rollFloating } from './pattern';
 import { docked, U } from './ui';
 
-/** The open channel window (synth / WAVE Keys / plugin settings) and its place; null when closed. */
+/** The open channel window (synth / Synkopa Keys / plugin settings) and its place; null when closed. */
 export type Win = { id: Id; x: number; y: number; w: number; z: number };
 /** The Mixer floats as a window and is open. */
 export const mixFloating = () => !docked('mix') && !U.mixMin;

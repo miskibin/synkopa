@@ -1,6 +1,6 @@
 [package]
 name = "wave-perf"
-description = "WAVE performance harness: synthetic long-project fixtures and engine benchmarks (measurement only)."
+description = "Synkopa performance harness: synthetic long-project fixtures and engine benchmarks (measurement only)."
 edition.workspace = true
 version.workspace = true
 license.workspace = true

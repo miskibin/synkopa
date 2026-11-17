@@ -36,7 +36,7 @@ not exist (GTSinger segments with one index but different lyrics) are listed as 
 ## Environment and data
 
 * Windows 11, Intel Core i5-12400F (6 cores), 32 GB; Rust 1.99.0; release build.
-* Detector: RMVPE (`rmvpe.onnx`, SHA-256 `5370e71a…660fd`, the model WAVE installs), on CPU.
+* Detector: RMVPE (`rmvpe.onnx`, SHA-256 `5370e71a…660fd`, the model Synkopa installs), on CPU.
 * **Annotated VocalSet** — Zenodo 7061507 (annotations) + 1442513 (`VocalSet11.zip` audio),
   CC BY 4.0; 20 professional singers, hand-checked F0 and note boundaries. 30 recordings
   (spread over singers/techniques) for the controlled cases, 30 cross-singer pairs, 15
@@ -49,7 +49,7 @@ not exist (GTSinger segments with one index but different lyrics) are listed as 
 * **MedleyDB** — the full dataset needs an access request; the open **MedleyDB_Sample**
   (Zenodo 1438309, CC BY-SA 4.0) has one song with an annotated lead vocal
   (`LizNelson_Rainfall`, stems 02/03 are backing vocals). 12 phrases of 3–12 s.
-* Injected errors are made with WAVE's own PSOLA on the real recording; truth is the dataset's
+* Injected errors are made with Synkopa's own PSOLA on the real recording; truth is the dataset's
   annotation (VocalSet, MedleyDB) or the unmodified recording (GTSinger).
 
 ## Commands

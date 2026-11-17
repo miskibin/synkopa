@@ -140,10 +140,10 @@ export class MockBackend implements Backend {
   private srcMeta = new Map<Id, MockSource>();
   private takeN = 0;
   private kits = [
-    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with WAVE', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_FILES.length, installed: true },
-    { id: 'wave-drums', name: 'WAVE Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
-    { id: 'wave-keys', name: 'WAVE Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
-    { id: 'wave-fx', name: 'WAVE FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
+    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_FILES.length, installed: true },
+    { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
+    { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
+    { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
   ];
   private folders = ['C:\\Users\\michal\\Music\\Samples'];
   /** Live plugin instances' parameters (VST3: normalized only; LV2: by port, with their real values). */
@@ -211,7 +211,7 @@ export class MockBackend implements Backend {
       const p = MOCK_LV2[f.plugin.cid];
       if (!p) out[f.id] = `${f.plugin.name} (LV2): the LV2 plugin ${f.plugin.cid} is not installed`;
       else if (p.unsupported) out[f.id] = `${f.plugin.name} (LV2): ${p.name} cannot be used: ${p.unsupported}`;
-      else if (p.crashes && !this.trusted.has(f.plugin.cid)) out[f.id] = `${f.plugin.name}: ${UNSAFE_PLUGIN}it crashed in WAVE's safety check (the test process was killed by signal 11), so it was not loaded: loaded here it would close WAVE. Update the plugin, or load it anyway at your own risk.`;
+      else if (p.crashes && !this.trusted.has(f.plugin.cid)) out[f.id] = `${f.plugin.name}: ${UNSAFE_PLUGIN}it crashed in Synkopa's safety check (the test process was killed by signal 11), so it was not loaded: loaded here it would close WAVE. Update the plugin, or load it anyway at your own risk.`;
     }
     return out;
   }
@@ -1363,7 +1363,7 @@ export class MockBackend implements Backend {
     // the engine's `open_at_revision`: a take in progress first, then the approved revision
     if (this.rec) throw new Error('recording: stop it first');
     if (ifRevision != null && ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
-    this.resetTo(sketchProject(this.cat), path ?? 'C:\\Users\\michal\\Music\\Demo.wave');
+    this.resetTo(sketchProject(this.cat), path ?? 'C:\\Users\\michal\\Music\\Demo.synkopa');
     this.recovery = null;
     return { state: this.dto(), warnings: [] };
   }
@@ -1371,7 +1371,7 @@ export class MockBackend implements Backend {
   async projectSave(saveAs?: boolean): Promise<SaveResult> {
     if (!this.path || saveAs) {
       if (!this.dialog()) return { cancelled: true };
-      this.path = 'C:\\Users\\michal\\Music\\Projekt ' + (1 + (this.revision % 9)) + '.wave';
+      this.path = 'C:\\Users\\michal\\Music\\Projekt ' + (1 + (this.revision % 9)) + '.synkopa';
     }
     this.savedRev = this.revision; this.recovery = null; this.emit('state', this.dto());
     return { path: this.path };
@@ -1381,7 +1381,7 @@ export class MockBackend implements Backend {
     if (!this.dialog()) return { cancelled: true };
     if (this.rec) throw new Error('recording: stop it first');
     if (ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
-    return { path: this.path?.replace(/\.wave$/i, '.zip') ?? 'Song.zip' };
+    return { path: this.path?.replace(/\.(synkopa|wave)$/i, '.zip') ?? 'Song.zip' };
   }
 
   // ---------- crash recovery (app/src/recovery.rs) ----------
@@ -1423,7 +1423,7 @@ export class MockBackend implements Backend {
     const { from, to } = exportRange(this.p, opts.useLoop);
     const tail = opts.format !== 'mp3' && opts.wrapTail ? 0 : opts.tail;
     const secs = exportSeconds(from, to, this.p.bpm, tail);
-    const name = (this.path ? this.path.replace(/\.wave$/i, '') : 'C:\\Users\\michal\\Music\\Song') + (opts.format === 'mp3' ? '.mp3' : '.wav');
+    const name = (this.path ? this.path.replace(/\.(synkopa|wave)$/i, '') : 'C:\\Users\\michal\\Music\\Song') + (opts.format === 'mp3' ? '.mp3' : '.wav');
     // a short offline bounce with the engine's progress reports, so the dialog's readout and cancel work
     if (!(await this.mockBounce(0, 1, name.split(/[\\/]/).pop()!, from, to, 12))) return { cancelled: true };
     this.emit('export-progress', { done: 1, total: 1, name: '', stage: 'done', frac: 1, beat: to, peak: 0, wave: [] });
@@ -1510,7 +1510,7 @@ export class MockBackend implements Backend {
     const ch = (this.p.channels ?? []).find(c => c.id === id);
     return ch?.kind === 'plugin' && !this.fxErrors()[id] ? ch.plugin : undefined;
   }
-  /** Like the engine: a plugin's own window under WAVE's header (`label`), pinned on top when `pinned`; WAVE Demo Synth has none (plugins.rs `NO_EDITOR`). */
+  /** Like the engine: a plugin's own window under Synkopa's header (`label`), pinned on top when `pinned`; WAVE Demo Synth has none (plugins.rs `NO_EDITOR`). */
   async pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }, pinned?: boolean) {
     const pl = this.hosted(fxId);
     if (!pl) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
@@ -1595,7 +1595,7 @@ export class MockBackend implements Backend {
     if (!url) throw new Error(`the question is too long for a link (> ${MAX_ASK_URL} characters)`);
     try { window.open(url, '_blank', 'noopener'); } catch { /* no window */ }
   }
-  async cliStatus() { return { installed: false, command: 'wave', path: null, note: t('d.mock.nocli') }; }
+  async cliStatus() { return { installed: false, command: 'synkopa', path: null, note: t('d.mock.nocli') }; }
 
   async on<K extends keyof EventMap>(ev: K, cb: (p: EventMap[K]) => void) {
     let s = this.listeners.get(ev); if (!s) this.listeners.set(ev, s = new Set());

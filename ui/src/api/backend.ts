@@ -14,12 +14,12 @@ export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[];
 export interface EventMap {
   state: StateDto;
   'project-open-requested': null;
-  /** The gear in a plugin window's header (WAVE's header above a plugin's own interface): show WAVE's window for that effect or plugin channel. */
+  /** The gear in a plugin window's header (Synkopa's header above a plugin's own interface): show Synkopa's window for that effect or plugin channel. */
   'plugin-settings': { id: Id };
   /** The pin in a plugin window's header: the user pinned (`pinned`) or unpinned the window on top of the app. */
   'plugin-pin': { id: Id; pinned: boolean };
   'library-progress': LibraryProgress;
-  /** WAVE Keys: the piano started loading, is ready, or is not on this computer. */
+  /** Synkopa Keys: the piano started loading, is ready, or is not on this computer. */
   'keys-status': KeysStatus;
   'model-progress': ModelProgress;
   /** A stem export (`exportStems`) started the next file. */
@@ -157,7 +157,7 @@ export interface Backend {
   midiSetTarget(channel: Id | null): Promise<MidiStatus>;
   libraryList(): Promise<LibraryList>;
   libraryInstall(id: string): Promise<void>;
-  /** WAVE Keys: whether the piano's recordings are on this computer and loaded. */
+  /** Synkopa Keys: whether the piano's recordings are on this computer and loaded. */
   keysStatus(): Promise<KeysStatus>;
   libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles>;
   libraryAddFolder(): Promise<string[]>;
@@ -174,7 +174,7 @@ export interface Backend {
   /** Autosave tick for a project that was never saved: keeps its crash-recovery copy current
    *  (removes it once the project has a file or nothing unsaved). True when a copy was written. */
   recoveryWrite(): Promise<boolean>;
-  /** Unsaved projects left behind by a WAVE that crashed or was killed, newest first. */
+  /** Unsaved projects left behind by a Synkopa that crashed or was killed, newest first. */
   recoveryList(): Promise<RecoveredProject[]>;
   /** Opens a recovered project as an unsaved project (Save asks where to put it). */
   recoveryRestore(id: string): Promise<{ state: StateDto; warnings: string[] }>;
@@ -194,16 +194,16 @@ export interface Backend {
   exportCancel(): Promise<void>;
   /** Installed effects of every hosted format (VST3; LV2 on Linux). A cold `rescan` is slow. */
   pluginScan(rescan: boolean): Promise<PluginScan>;
-  /** A plugin's own window (VST3; LV2 with an X11 interface on Linux) under WAVE's header showing `label`. Rejects with
+  /** A plugin's own window (VST3; LV2 with an X11 interface on Linux) under Synkopa's header showing `label`. Rejects with
    *  `NO_EDITOR: …` when the plugin has no window of its own, and with the reason when none can be shown here. */
   pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }, pinned?: boolean): Promise<void>;
   /** Whether the plugin's own window is open (it may have been closed with its X). */
   pluginEditorOpen(fxId: Id): Promise<boolean>;
-  /** The plugins that were loaded when the last session ended without exiting (usually empty): WAVE did not leave through the front door, and one of these may be why. */
+  /** The plugins that were loaded when the last session ended without exiting (usually empty): Synkopa did not leave through the front door, and one of these may be why. */
   pluginCrashSuspects(): Promise<PluginCrashSuspect[]>;
   /** Keep a plugin's module out of future scans (the follow-up to `pluginCrashSuspects`). */
   pluginBlock(format: string, path: string): Promise<void>;
-  /** Load a plugin WAVE's safety check refused (its `fxErrors` entry contains `UNSAFE_PLUGIN`), from now on; every slot with it is retried. */
+  /** Load a plugin Synkopa's safety check refused (its `fxErrors` entry contains `UNSAFE_PLUGIN`), from now on; every slot with it is retried. */
   pluginLoadAnyway(fxId: Id): Promise<void>;
   pluginParams(fxId: Id): Promise<PluginParam[]>;
   /** A live plugin's current state (base64, what `PluginRef.state` stores): an effect or a plugin channel by id. */
@@ -216,7 +216,7 @@ export interface Backend {
   updateCheck(): Promise<UpdateInfo | null>;
   /** Downloads the update found by `updateCheck` (progress: `update-progress`) and verifies its signature. Nothing restarts. */
   updateDownload(): Promise<void>;
-  /** Installs the downloaded update and restarts WAVE (the call does not return then). Rejects on a failure; the old version keeps running. */
+  /** Installs the downloaded update and restarts Synkopa (the call does not return then). Rejects on a failure; the old version keeps running. */
   updateInstall(): Promise<void>;
   updateSetAuto(on: boolean): Promise<void>;
   /** Remembers that the release notes of `version` were shown. */

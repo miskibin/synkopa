@@ -1,5 +1,5 @@
 //! A real LV2 interface on Linux, end to end: x42's equaliser (`x42-plugins`, an X11 UI)
-//! opened in WAVE's window under a real X server (CI: Xvfb), its meter fed from the plugin's
+//! opened in Synkopa's window under a real X server (CI: Xvfb), its meter fed from the plugin's
 //! control output, and a user's wheel (XTEST) on a knob reaching the plugin's parameter. A
 //! plugin without an embeddable interface says why. Skips without a display or the plugin
 //! unless `WAVE_REQUIRE_PLUGIN_GUI=1`.
@@ -68,7 +68,7 @@ fn an_x11_interface_opens_shows_meters_and_its_knobs_reach_the_plugin() {
                 .and_then(|c| c.reply().ok())
                 .is_some_and(|r| r.value.starts_with(b"wave-plugin"))
         })
-        .expect("WAVE's plugin window is on the screen");
+        .expect("Synkopa's plugin window is on the screen");
     let at = x.translate_coordinates(frame, root, 0, 0).unwrap().reply().unwrap();
     let before = h.params();
     // the output gain knob, then the wheel

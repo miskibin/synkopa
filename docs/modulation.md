@@ -59,5 +59,5 @@ Phaser — Klasyczny, 4 stopnie, Delikatny, Głębokie przemiatanie, Funk — gi
 Odrzutowiec, Wir stereo, Pusty (ujemny feedback), Pad — przemiatanie (2 takty). The English UI
 shows them translated (`ui/src/i18n/names-fx.ts`).
 
-From the command line: `wave add-fx --insert 3 --type chorus --preset 1`, then `set-param` and
+From the command line: `synkopa add-fx --insert 3 --type chorus --preset 1`, then `set-param` and
 `load-preset` as for any built-in effect.

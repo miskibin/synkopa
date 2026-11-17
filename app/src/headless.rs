@@ -1,4 +1,4 @@
-//! `wave --project FILE …`: the CLI's actions run in this process on a project file, with
+//! `synkopa --project FILE …`: the CLI's actions run in this process on a project file, with
 //! no window, no audio device, no MIDI and no session socket. The same [`actions`] the
 //! running app uses, against an engine of its own.
 
@@ -103,10 +103,10 @@ impl Host for Headless {
         self.keys
             .get_or_init(|| {
                 let d = crate::keys::find_dir(bundled_keys()).ok_or(
-                    "KEYS_MISSING: the project plays WAVE Keys, but the piano recordings are not on this computer \
-                     (download the kit in the app: Library → WAVE Keys); the bounce would be silent",
+                    "KEYS_MISSING: the project plays Synkopa Keys, but the piano recordings are not on this computer \
+                     (download the kit in the app: Library → Synkopa Keys); the bounce would be silent",
                 )?;
-                let bank = KeysBank::load(&d).map_err(|e| format!("KEYS_ERROR: WAVE Keys: {e}"))?;
+                let bank = KeysBank::load(&d).map_err(|e| format!("KEYS_ERROR: Synkopa Keys: {e}"))?;
                 self.engine.set_keys_bank(Some(Arc::new(bank)));
                 Ok(())
             })
@@ -339,7 +339,7 @@ mod tests {
         let p = d.join("x.wave");
         std::fs::write(&p, "not json").unwrap();
         let e = Files.open(&p).err().unwrap();
-        assert!(e.contains("not a WAVE project"), "{e}");
+        assert!(e.contains("not a Synkopa project"), "{e}");
         assert!(Files.open(&d.join("missing.wave")).is_err());
         assert!(Files.create("nope").is_err());
         std::fs::remove_dir_all(&d).ok();

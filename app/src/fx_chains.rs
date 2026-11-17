@@ -81,11 +81,11 @@ fn read(path: &Path) -> R<Vec<Fx>> {
         return Err("not an FX chain preset".into());
     }
     if head.get("version").and_then(Value::as_u64).is_none_or(|v| v > u64::from(VERSION)) {
-        return Err("this preset was saved by a newer WAVE".into());
+        return Err("this preset was saved by a newer Synkopa".into());
     }
     let file: ChainFile = serde_json::from_value(head).map_err(|e| {
         if e.to_string().contains("unknown variant") {
-            "this preset uses an effect this version of WAVE does not have".to_string()
+            "this preset uses an effect this version of Synkopa does not have".to_string()
         } else {
             format!("the preset is damaged: {e}")
         }

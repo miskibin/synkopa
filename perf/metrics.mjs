@@ -123,7 +123,7 @@ export function evaluate({ engine, ui, uiSize }, baseline) {
 export function markdown(rows, summary, hasBaseline) {
   const f = x => (x == null ? '' : Math.abs(x) >= 100 ? Math.round(x).toString() : String(Math.round(x * 100) / 100));
   const L = [];
-  L.push(`# WAVE performance summary`, '', `Run ${summary.date} on ${summary.host.cpu ?? '?'} (${summary.host.cpus} threads, ${summary.host.totalMemGiB} GiB). Sizes: ${summary.sizes}; UI fixture: ${summary.uiSize}${summary.quick ? ' (quick)' : ''}.`, '');
+  L.push(`# Synkopa performance summary`, '', `Run ${summary.date} on ${summary.host.cpu ?? '?'} (${summary.host.cpus} threads, ${summary.host.totalMemGiB} GiB). Sizes: ${summary.sizes}; UI fixture: ${summary.uiSize}${summary.quick ? ' (quick)' : ''}.`, '');
   L.push(`Over budget (targets not met): **${summary.over.length}**, regressions vs baseline: **${hasBaseline ? summary.regressions.length : 'n/a (no baseline)'}**.`, '');
   const groups = new Map();
   for (const r of rows) { const g = r.key.split('.')[0] + (r.key.startsWith('ui.') ? '' : ''); (groups.get(g) ?? groups.set(g, []).get(g)).push(r); }

@@ -1,5 +1,5 @@
 #![recursion_limit = "512"]
-//! WAVE desktop app: Tauri commands around the engine, the audio device, the
+//! Synkopa desktop app: Tauri commands around the engine, the audio device, the
 //! sample library, VST3 plugins and the live session the `wave` CLI talks to.
 
 mod actions;
@@ -54,7 +54,7 @@ pub struct App {
     /// Why the installed RMVPE model could not be used, if it could not.
     pub model_error: Mutex<Option<String>>,
     session: Mutex<Option<wave_session::Server>>,
-    /// WAVE Keys piano: where it is and whether it is loaded.
+    /// Synkopa Keys piano: where it is and whether it is loaded.
     pub keys: keys::Keys,
     /// The update found by the last check and its downloaded installer.
     pub updater: updater::State,
@@ -102,7 +102,7 @@ impl actions::Host for App {
     }
 }
 
-/// `WAVE --cli …`: the `wave` command. Commands go to the running app, or with
+/// `Synkopa --cli …`: the `synkopa` command. Commands go to the running app, or with
 /// `--project FILE` run here, on the file, with no window and no audio device.
 pub fn cli_main(args: Vec<String>) -> std::process::ExitCode {
     wave_cli::run_cli_with(args, Some(&headless::Files))
@@ -617,7 +617,7 @@ async fn library_list(app: St<'_>) -> R<Value> {
     Ok(json!({ "kits": library::kits(), "folders": app.settings.lock().folders }))
 }
 
-/// WAVE Keys: is the piano on this computer, and is it loaded?
+/// Synkopa Keys: is the piano on this computer, and is it loaded?
 #[tauri::command]
 async fn keys_status(app: St<'_>) -> R<keys::KeysStatus> {
     Ok(keys::status(&app))
@@ -703,7 +703,9 @@ async fn project_open(app: St<'_>, handle: AppHandle, path: Option<String>, if_r
     let revision = if_revision.unwrap_or_else(|| app.engine.revision());
     let path = match path {
         Some(p) => Some(PathBuf::from(p)),
-        None => handle.dialog().file().add_filter("WAVE project", &["wave"]).blocking_pick_file().and_then(|p| p.into_path().ok()),
+        None => {
+            handle.dialog().file().add_filter("Synkopa project", &["synkopa", "wave"]).blocking_pick_file().and_then(|p| p.into_path().ok())
+        }
     };
     let Some(path) = path else { return Ok(json!({ "cancelled": true })) };
     let e = app.engine.clone();
@@ -724,14 +726,14 @@ async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>) -> 
         _ => handle
             .dialog()
             .file()
-            .add_filter("WAVE project", &["wave"])
-            .set_file_name("Song.wave")
+            .add_filter("Synkopa project", &["synkopa", "wave"])
+            .set_file_name("Song.synkopa")
             .blocking_save_file()
             .and_then(|p| p.into_path().ok()),
     };
     let Some(mut path) = path else { return Ok(json!({ "cancelled": true })) };
     if path.extension().is_none() {
-        path.set_extension("wave");
+        path.set_extension("synkopa");
     }
     let e = app.engine.clone();
     let p2 = path.clone();
@@ -766,7 +768,7 @@ async fn recovery_write(app: St<'_>) -> R<bool> {
     tauri::async_runtime::spawn_blocking(move || a.recovery.write(&a.engine)).await.map_err(es)?
 }
 
-/// Unsaved projects left behind by a WAVE that crashed or was killed, newest first.
+/// Unsaved projects left behind by a Synkopa that crashed or was killed, newest first.
 #[tauri::command]
 async fn recovery_list(app: St<'_>) -> R<Vec<recovery::Orphan>> {
     Ok(app.recovery.orphans())
@@ -942,7 +944,7 @@ async fn plugin_add(
     Ok(json!({ "fxId": id, "revision": rev }))
 }
 
-/// Open or close a plugin's own window. `title` / `subtitle`: what WAVE's header above it
+/// Open or close a plugin's own window. `title` / `subtitle`: what Synkopa's header above it
 /// says (the UI's names, in its language); `pinned`: kept on top of the app. The header's
 /// gear emits `plugin-settings`, its pin `plugin-pin`.
 #[tauri::command]
@@ -959,7 +961,7 @@ async fn plugin_editor(
     app.plugins.editor(&handle, fx_id, open, label, pinned.unwrap_or(false))
 }
 
-/// "Load anyway": the effect or plugin channel `fx_id` loads although WAVE's safety check
+/// "Load anyway": the effect or plugin channel `fx_id` loads although Synkopa's safety check
 /// refused it (see `plugin_probe`).
 #[tauri::command]
 async fn plugin_load_anyway(app: St<'_>, fx_id: u64) -> R<()> {
@@ -1128,7 +1130,7 @@ fn shutdown(h: &AppHandle, app: &App) {
     app.audio.stop();
     // a normal exit: the user already answered the unsaved-changes question
     app.recovery.close();
-    // nothing is suspect when WAVE left the front door
+    // nothing is suspect when Synkopa left the front door
     app.plugins.clean_exit();
 }
 
@@ -1150,7 +1152,7 @@ pub fn ensure_c_numeric_locale() {
 }
 
 pub fn run(project_arg: Option<&str>) {
-    // plugin windows are X11: keep them above WAVE's window under Wayland too
+    // plugin windows are X11: keep them above Synkopa's window under Wayland too
     #[cfg(target_os = "linux")]
     plugin_loop::prefer_x11();
     let boot = boot::Boot::new();
@@ -1280,7 +1282,7 @@ pub fn run(project_arg: Option<&str>) {
             open_ask
         ])
         .build(tauri::generate_context!())
-        .expect("error while building WAVE");
+        .expect("error while building Synkopa");
     boot.mark("tauri built, entering the event loop");
     tapp.run(|h, ev| {
         if let tauri::RunEvent::Exit = ev {
@@ -1296,7 +1298,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     // text parsing must stay in the C locale (see ensure_c_numeric_locale)
     ensure_c_numeric_locale();
     let plugins = plugins::Plugins::new();
-    // the plugins the installer ships (WAVE Demo Synth): listed without a rescan
+    // the plugins the installer ships (Synkopa Demo Synth): listed without a rescan
     plugins::register_bundled(tapp.path().resource_dir().ok());
     let settings = settings::Settings::load();
     // reopened on a thread of its own once the window exists (decoding its audio is slow)
@@ -1381,7 +1383,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     if let Some(xid) = tapp.get_webview_window("main").and_then(|w| plugin_loop::owner_xid(&w)) {
         plugin_windows.set_owner_window(xid as isize);
     }
-    // the gear in a plugin window's header: WAVE's own window for that effect or channel
+    // the gear in a plugin window's header: Synkopa's own window for that effect or channel
     let sh = tapp.handle().clone();
     plugin_windows.set_settings_handler(std::rc::Rc::new(move |id| {
         if let Some(w) = sh.get_webview_window("main") {
@@ -1420,7 +1422,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
         let _ = h.emit("state", dto);
     });
     if let Some(w) = tapp.get_webview_window("main") {
-        let _ = w.set_title("WAVE");
+        let _ = w.set_title("Synkopa");
     }
     app.boot.mark("tauri setup done");
     // the last project and the CLI session come in off the critical path: the UI's first

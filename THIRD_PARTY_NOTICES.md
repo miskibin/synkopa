@@ -1,6 +1,6 @@
 # Third-party notices
 
-WAVE is licensed AGPL-3.0-only (see [`LICENSE`](LICENSE)). It links or bundles the following components whose licences differ.
+Synkopa is licensed AGPL-3.0-only (see [`LICENSE`](LICENSE)). It links or bundles the following components whose licences differ.
 
 ## LAME (MP3 encoding)
 
@@ -13,13 +13,13 @@ GNU Lesser General Public License, version 2.0 (<https://www.gnu.org/licenses/ol
 The complete LAME source is available at <https://lame.sourceforge.io/> and, in the exact version
 used, in the `mp3lame-sys` crate on crates.io.
 
-LGPL relinking: WAVE is open source and ships its full source, so you may rebuild the application
+LGPL relinking: Synkopa is open source and ships its full source, so you may rebuild the application
 against a modified LAME (`cargo build` with a patched `mp3lame-sys`). Patents on MP3 have expired.
 This notice is not legal advice; check the licence terms before redistributing a binary.
 
 ## Standard library samples
 
-The standard library that ships inside WAVE (`crates/engine/library`) is made from
+The standard library that ships inside Synkopa (`crates/engine/library`) is made from
 recordings released to the public domain under
 [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/), except one under the
 [Unlicense](https://unlicense.org/) (listed below):
@@ -88,12 +88,12 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `loop-vox-dark-120-dmin.ogg`: "Drk Vox Loop [120bpm] [D Minor]" by deadrobotmusic on [Freesound](https://freesound.org/s/703686/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 <!-- factory-credits:end -->
 
-## Salamander Grand Piano (WAVE Keys)
+## Salamander Grand Piano (Synkopa Keys)
 
-The WAVE Keys piano plays recordings from the
+The Synkopa Keys piano plays recordings from the
 [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano) by
 Alexander Holm, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/). Installers
 ship 90 of its recordings, modified: each is cut to 9 seconds with a fade-out (the longest a
-note rings in WAVE) and stored as 16-bit FLAC (see `docs/keys.md`). The in-app download installs
+note rings in Synkopa) and stored as 16-bit FLAC (see `docs/keys.md`). The in-app download installs
 the original files unmodified.
-Music made with WAVE Keys contains these recordings: credit them as the licence asks.
+Music made with Synkopa Keys contains these recordings: credit them as the licence asks.

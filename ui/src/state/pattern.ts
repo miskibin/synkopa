@@ -407,7 +407,7 @@ export function addSynth(name: string | null) {
 }
 /** A new channel's colour: one the rack uses least, so its steps and notes stand apart. */
 const freshColor = () => nextChannelColor(channels().map(c => c.color));
-const keysChannel = (id: Id): Channel => ({ id, name: 'WAVE Keys', color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
+const keysChannel = (id: Id): Channel => ({ id, name: 'Synkopa Keys', color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
 /** `root`: the key at which the file plays at its own pitch (a library file may know it). */
 const samplerChannel = (id: Id, s: { id: Id; name: string; color: string }, root: number = SAMPLE_ROOT): Channel => ({ id, name: s.name, color: s.color, kind: 'sample', source: s.id, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root });
 
@@ -419,7 +419,7 @@ const pluginChannel = (id: Id, p: PluginInfo): Channel => ({
 });
 
 /**
- * What a channel can play, for "add" and "replace": a synth preset, WAVE Keys, a sampler of a source (`root`: the
+ * What a channel can play, for "add" and "replace": a synth preset, Synkopa Keys, a sampler of a source (`root`: the
  * file's own pitch, if known), or a scanned VST3 instrument.
  */
 export type InstrumentPick =
@@ -482,7 +482,7 @@ export function addPlugin(p: PluginInfo) {
   selectChannel(c.id);
   say(t('b.st.pluginSay', { name: p.name }));
 }
-/** A new WAVE Keys channel: the sampled grand piano. */
+/** A new Synkopa Keys channel: the sampled grand piano. */
 export function addKeys() {
   const c = { ...keysChannel(allocId()), color: freshColor() };
   commit([chanOp(c)], t('b.st.addKeys'));

@@ -1,6 +1,6 @@
 [package]
 name = "wave-cli"
-description = "`wave` — drive the open WAVE project from a terminal or an agent."
+description = "`synkopa` — drive the open Synkopa project from a terminal or an agent."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
@@ -11,8 +11,13 @@ name = "wave_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "wave"
+name = "synkopa"
 path = "src/main.rs"
+
+# The command's name before the rename; kept so existing scripts keep working.
+[[bin]]
+name = "wave"
+path = "src/wave_alias.rs"
 
 [dependencies]
 wave-session.workspace = true
