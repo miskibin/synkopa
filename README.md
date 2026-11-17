@@ -96,14 +96,14 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 
 | | |
 | --- | --- |
-| **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip |
+| **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
 | **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [WAVE Keys](docs/keys.md), a sampled concert grand; a sampler with a built-in drum and tonal library plus downloadable CC0 kits |
-| **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser; presets on every effect; a docked mixer under the Playlist or the full-screen Mix view (F9); route Channel rack channels to inserts FL-style (Ctrl+L) |
+| **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser; presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
-| **Plugins and audio** | VST3 effects after a crash-proof scan (their own windows on Windows, WAVE's parameter list on Linux); LV2 effects on Linux, edited in WAVE's parameter list; latency the plugins report is compensated; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
-| **Export** | Offline bounce of the song or a loop to 32-bit float WAV or MP3 |
+| **Plugins and audio** | VST3 effects and instruments; LV2 effects on Linux; native plugin editor windows on Windows and Linux where supported, otherwise WAVE's parameter list; isolated scanning (plugin processing still runs inside WAVE), plugin latency compensation; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
+| **Export** | Offline bounce of a song or loop to 16-/24-bit PCM or 32-bit float WAV, or MP3; mix and stem export; MIDI import/export |
 | **Portable projects** | File → Export project as ZIP packages the current arrangement, samples and recordings for sharing |
 | **Language** | English and Polish |
 
@@ -120,7 +120,7 @@ than twenty-five years behind it and wins on breadth.
 | Vocal pitch editing | Included | NewTone and Pitcher come with the higher editions |
 | Working with an AI agent | The agent edits the open project and measures its own renders | No command line into the open project |
 | Built-in instruments and effects | 14 | More than a hundred across the editions |
-| Third-party plugins | VST3 effects, and LV2 effects on Linux; plugin windows on Windows only | VST instruments and effects, and more formats |
+| Third-party plugins | VST3 instruments and effects; LV2 effects on Linux; supported native plugin windows on Windows and Linux | VST instruments and effects, and more formats |
 | Platforms | Windows and Linux | Windows and macOS |
 | Maturity | Version 0.9, one developer, expect rough edges | Since 1998, large community, tutorials, sample packs |
 
@@ -135,9 +135,8 @@ view or clip launcher, so if you write by launching clips, it does not replace L
 Version 0.9, built by one person with AI agents. It covers a complete beat and a vocal
 session. What it does not do yet:
 
-- no VST or LV2 instruments, only effects (VST3 everywhere, LV2 on Linux), and no CLAP; on
-  Linux an effect is edited through WAVE's parameter list, because plugin windows work on
-  Windows only (and LV2 plugins' own windows are not hosted yet);
+- no LV2 instruments or CLAP support yet (VST3 instruments and effects are supported); some
+  Linux plugin interfaces still use WAVE's parameter list when their native toolkit cannot be hosted;
 - LV2 needs the lilv library (`liblilv-0-0` on Debian/Ubuntu, `lilv-libs` on Fedora): the
   `.deb` and `.rpm` packages install it; with the AppImage, LV2 works when the system has it and
   WAVE says what to install when it does not. An LV2 plugin that needs a host feature WAVE does
@@ -154,9 +153,9 @@ Found a bug or miss something from FL? [Open an issue](https://github.com/miskib
 
 **Is it really free?** Yes. There is one build, no paid edition and no account.
 
-**Can it replace FL Studio?** For beats built from the built-in synth, the piano, samples and
-your own recordings: yes, that is what it is made for. If your sound depends on VST
-instruments such as Serum, or on FL's own plugins: not yet.
+**Can it replace FL Studio?** For beats made with the built-in instruments, samples, recordings
+and compatible VST3 plugins, it may cover your workflow. Plugin compatibility varies, and
+FL Studio's own plugins and `.flp` projects are not supported.
 
 **Does it run on a Mac?** No. Windows and Linux (deb, rpm, AppImage) only.
 
@@ -228,7 +227,7 @@ wave undo                                 # or press Ctrl+Z in the app
 | --- | --- |
 | `crates/engine` | project model, ops + undo, sequencer, synth and piano voices, built-in DSP, mixer graph, recording, offline render, analysis |
 | `crates/audio-io` | cpal devices: WASAPI / ASIO / CoreAudio / ALSA, duplex in/out |
-| `crates/vst3-host`, `crates/plugin-windows`, `crates/plugin-scan` | VST3 effects as engine processors, crash-proof out-of-process scan, native editor windows |
+| `crates/vst3-host`, `crates/plugin-windows`, `crates/plugin-scan` | VST3 effects and instruments, out-of-process plugin scanning, native editor windows |
 | `crates/lv2-host` | LV2 effects as engine processors on Linux (liblilv opened at run time): metadata scan, worker thread, state, latency |
 | `crates/audio-file` | WAV/FLAC/OGG/MP3 decoding |
 | `crates/session`, `crates/cli` | the local socket the CLI uses, and the CLI itself |
