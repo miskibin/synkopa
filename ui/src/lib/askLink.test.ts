@@ -19,7 +19,7 @@ describe('askPrompt', () => {
   it('names the version, the repository, the view and the question', () => {
     const p = askPrompt('  jak dodać kanał?  ', { version: '0.4.0', view: 'Mixer' });
     expect(p).toContain('Synkopa 0.4.0');
-    expect(p).toContain('https://github.com/miskibin/wave-DAW');
+    expect(p).toContain('https://github.com/miskibin/synkopa');
     expect(p).toContain('Open in Synkopa right now: Mixer.');
     expect(p.endsWith('Question: jak dodać kanał?')).toBe(true);
   });

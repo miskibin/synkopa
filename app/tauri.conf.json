@@ -33,7 +33,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg0RUM3OTRGNjU4MTU4RUMKUldUc1dJRmxUM25zaElEa1crQXhYaUl2Q21mMUlwd05MWmNFYVFCSG1QanM5VXVzZzlycS9PQjYK",
       "endpoints": [
-        "https://github.com/miskibin/wave-DAW/releases/latest/download/latest.json"
+        "https://github.com/miskibin/synkopa/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

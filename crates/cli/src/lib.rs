@@ -13,7 +13,7 @@ use wave_session as ws;
 mod watch;
 
 const HELP: &str = r#"synkopa — edit, render and inspect Synkopa projects
-docs: https://github.com/miskibin/wave-DAW/blob/main/docs/cli.md
+docs: https://github.com/miskibin/synkopa/blob/main/docs/cli.md
 
 USAGE
   synkopa <command> [options]              the project open in the running app (--session ID if several are open)

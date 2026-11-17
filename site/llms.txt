@@ -16,13 +16,13 @@ Facts, as of version 0.9 (November 2026):
 - Mixing: insert buses and sends, flexible mixer docking, effect-chain presets and plugin delay compensation.
 - MIDI: keyboard note input and recording, import and export of standard MIDI files.
 - Export: mixes and stems to 16-/24-bit PCM or 32-bit float WAV or MP3; portable project ZIP export.
-- Development: an open-source project with community contributors and AI-assisted coding. Special thanks to [@rebizu](https://github.com/rebizu) for architecture, test and Piano Roll contributions. See the [contributors](https://github.com/miskibin/wave-DAW/graphs/contributors).
+- Development: an open-source project with community contributors and AI-assisted coding. Special thanks to [@rebizu](https://github.com/rebizu) for architecture, test and Piano Roll contributions. See the [contributors](https://github.com/miskibin/synkopa/graphs/contributors).
 
 ## Links
 
-- [Download](https://github.com/miskibin/wave-DAW/releases/latest): installers for Windows and Linux
-- [Source code and README](https://github.com/miskibin/wave-DAW)
-- [Command line reference](https://github.com/miskibin/wave-DAW/blob/main/docs/cli.md): every `synkopa` command an agent can run
-- [Architecture](https://github.com/miskibin/wave-DAW/blob/main/docs/architecture.md): engine, ops and undo, telemetry, UI boundaries
-- [Changelog](https://github.com/miskibin/wave-DAW/blob/main/CHANGELOG.md): what changed in each release
+- [Download](https://github.com/miskibin/synkopa/releases/latest): installers for Windows and Linux
+- [Source code and README](https://github.com/miskibin/synkopa)
+- [Command line reference](https://github.com/miskibin/synkopa/blob/main/docs/cli.md): every `synkopa` command an agent can run
+- [Architecture](https://github.com/miskibin/synkopa/blob/main/docs/architecture.md): engine, ops and undo, telemetry, UI boundaries
+- [Changelog](https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md): what changed in each release
 - [Video](https://www.youtube.com/watch?v=wtuHDyIQpYk)

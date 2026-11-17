@@ -49,7 +49,7 @@ export class MockUpdates {
   }
   async updateCheck(): Promise<UpdateInfo | null> {
     await this.wait(500);
-    if (this.offline()) throw new Error('error sending request for url (https://github.com/miskibin/wave-DAW/releases/latest/download/latest.json)');
+    if (this.offline()) throw new Error('error sending request for url (https://github.com/miskibin/synkopa/releases/latest/download/latest.json)');
     this.downloaded = false;
     if (cmpVersion(MOCK_NEXT, this.version) <= 0) { this.found = null; return null; }
     this.found = { version: MOCK_NEXT, notes: MOCK_NOTES, date: '2026-11-10' };
@@ -76,7 +76,7 @@ export class MockUpdates {
   async updateSetAuto(on: boolean): Promise<void> { this.store.set('wave.mock.noauto', on ? '0' : '1'); }
   async updateMarkSeen(version: string): Promise<void> { this.store.set('wave.mock.seen', version); }
   async openReleasePage(version?: string | null): Promise<void> {
-    const url = `https://github.com/miskibin/wave-DAW/releases${version ? `/tag/v${version}` : ''}`;
+    const url = `https://github.com/miskibin/synkopa/releases${version ? `/tag/v${version}` : ''}`;
     try { window.open(url, '_blank', 'noopener'); } catch { /* no window */ }
   }
 }

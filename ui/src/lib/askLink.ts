@@ -4,11 +4,11 @@
 
 export type AskService = 'chatgpt' | 'deepwiki';
 
-export const REPO_URL = 'https://github.com/miskibin/wave-DAW';
+export const REPO_URL = 'https://github.com/miskibin/synkopa';
 export const MAX_ASK_URL = 2000;
 const CHATGPT_URL = 'https://chatgpt.com/?q=';
 const CHATGPT_HOME = 'https://chatgpt.com/';
-export const DEEPWIKI_URL = 'https://deepwiki.com/miskibin/wave-DAW';
+export const DEEPWIKI_URL = 'https://deepwiki.com/miskibin/synkopa';
 
 /** Percent-encodes everything but RFC 3986 unreserved characters, like `links::encode_component`. */
 export function encodeComponent(s: string): string {

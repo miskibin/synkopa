@@ -547,7 +547,7 @@ impl IPluginFactoryTrait for Factory {
     unsafe fn getFactoryInfo(&self, info: *mut PFactoryInfo) -> tresult {
         let Some(info) = info.as_mut() else { return kInvalidArgument };
         copy_cstring(VENDOR, &mut info.vendor);
-        copy_cstring("https://github.com/miskibin/wave-DAW", &mut info.url);
+        copy_cstring("https://github.com/miskibin/synkopa", &mut info.url);
         copy_cstring("", &mut info.email);
         info.flags = PFactoryInfo_::FactoryFlags_::kUnicode as int32;
         kResultOk

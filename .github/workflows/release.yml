@@ -96,7 +96,7 @@ jobs:
             ${{ steps.notes.outputs.notes }}
 
             ---
-            Synkopa (formerly WAVE): a fast, FL-Studio-style DAW. Website and audio examples: https://miskibin.github.io/wave-DAW/
+            Synkopa (formerly WAVE): a fast, FL-Studio-style DAW. Website and audio examples: https://miskibin.github.io/synkopa/
             * The Windows installer is built **with ASIO** (Settings → Audio → ASIO) and includes the Synkopa Keys piano.
             * Windows: there is no `.msi` any more. If you installed it from an `.msi`, uninstall it and install `Synkopa_…_x64-setup.exe` once; updates then arrive by themselves.
             * Linux: `.AppImage` (any distribution), `.deb` (Ubuntu, Debian, Mint) or `.rpm` (Fedora, openSUSE).

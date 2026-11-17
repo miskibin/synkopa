@@ -1,6 +1,6 @@
 > [!IMPORTANT]
 > **WAVE is now called Synkopa.** Same app, new name and logo: nothing of yours moves, `.wave` projects still open and
-> the `wave` command still works. The repository address still says `wave-DAW` for now.
+> the `wave` command still works. The repository moved to `miskibin/synkopa`; old links redirect.
 
 <p align="center"><img src="site/img/icon.png" width="96" alt="Synkopa logo"></p>
 <h1 align="center">Synkopa</h1>
@@ -9,15 +9,15 @@
   Audio recording and vocal tuning are included, and an AI agent can edit the project you have open.
 </p>
 <p align="center">
-  <a href="https://github.com/miskibin/wave-DAW/releases/latest"><b>Download</b> (Windows, Linux)</a> ·
+  <a href="https://github.com/miskibin/synkopa/releases/latest"><b>Download</b> (Windows, Linux)</a> ·
   <a href="https://www.youtube.com/watch?v=wtuHDyIQpYk">Watch the video</a> ·
-  <a href="https://miskibin.github.io/wave-DAW/">Hear a beat made in it</a> ·
+  <a href="https://miskibin.github.io/synkopa/">Hear a beat made in it</a> ·
   <a href="docs/cli.md">Command line</a>
 </p>
 <p align="center">
-  <a href="https://github.com/miskibin/wave-DAW/releases/latest"><img src="https://img.shields.io/github/v/release/miskibin/wave-DAW?label=release" alt="Latest release"></a>
-  <a href="https://github.com/miskibin/wave-DAW/actions/workflows/ci.yml"><img src="https://github.com/miskibin/wave-DAW/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://deepwiki.com/miskibin/wave-DAW"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://github.com/miskibin/synkopa/releases/latest"><img src="https://img.shields.io/github/v/release/miskibin/synkopa?label=release" alt="Latest release"></a>
+  <a href="https://github.com/miskibin/synkopa/actions/workflows/ci.yml"><img src="https://github.com/miskibin/synkopa/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://deepwiki.com/miskibin/synkopa"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 [![Synkopa: playlist, automation and the mixer. Click for the video.](site/img/hero.png)](https://www.youtube.com/watch?v=wtuHDyIQpYk)
@@ -75,13 +75,13 @@ pluck, written through the `synkopa` command):
   </tr>
 </table>
 
-A selection of instrument and effect windows is on the [website](https://miskibin.github.io/wave-DAW/#plugins).
+A selection of instrument and effect windows is on the [website](https://miskibin.github.io/synkopa/#plugins).
 
 **An AI agent can work in the project you have open.** Synkopa installs a `synkopa` command that
 talks to the running app. The agent reads the song as JSON, writes notes and sets knobs on
 your screen, then bounces offline and reads back peak, level and clipping, because it cannot
 hear. Every command is one step in your undo history, so Ctrl+Z removes whatever you do not
-like. [This trap beat](https://miskibin.github.io/wave-DAW/#listen) was made that way.
+like. [This trap beat](https://miskibin.github.io/synkopa/#listen) was made that way.
 
 ```sh
 synkopa context --pretty                     # tracks, inserts, patterns, channels
@@ -151,7 +151,7 @@ a complete beat and a vocal session. What it does not do yet:
 - releases come often, so things still move. The [changelog](CHANGELOG.md) is written for
   musicians, not for developers.
 
-Found a bug or miss something from FL? [Open an issue](https://github.com/miskibin/wave-DAW/issues).
+Found a bug or miss something from FL? [Open an issue](https://github.com/miskibin/synkopa/issues).
 
 ## Questions people ask
 
@@ -172,7 +172,7 @@ change, and a benchmark that counts allocations in the audio callback.
 
 ## Install
 
-Download the installer from the [latest release](https://github.com/miskibin/wave-DAW/releases/latest).
+Download the installer from the [latest release](https://github.com/miskibin/synkopa/releases/latest).
 The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Keys piano.
 If a Focusrite USB interface is disconnected, use **Switch to WASAPI** in the audio notification
 or in Settings → Audio to resume playback through the default Windows output. Connect the
@@ -254,7 +254,7 @@ cargo run -p wave-engine --example bench --release   # callback load, heavy mixe
 
 ## Credits
 
-Special thanks to [@rebizu](https://github.com/rebizu) for architectural reviews, engine/mock parity tests, the Piano Roll tool refactor and ongoing plugin UX work. Thanks to everyone contributing code, reviews and bug reports. See the [contributors](https://github.com/miskibin/wave-DAW/graphs/contributors).
+Special thanks to [@rebizu](https://github.com/rebizu) for architectural reviews, engine/mock parity tests, the Piano Roll tool refactor and ongoing plugin UX work. Thanks to everyone contributing code, reviews and bug reports. See the [contributors](https://github.com/miskibin/synkopa/graphs/contributors).
 
 Third-party components and sample credits are in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

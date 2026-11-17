@@ -15,7 +15,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-pub const REPO_URL: &str = "https://github.com/miskibin/wave-DAW";
+pub const REPO_URL: &str = "https://github.com/miskibin/synkopa";
 
 /// Release notes are the CHANGELOG section; the release body continues after this line with
 /// install tips that belong on the release page, not in the app.

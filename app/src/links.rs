@@ -18,7 +18,7 @@ pub const MAX_ASK_URL: usize = 2000;
 
 const CHATGPT_URL: &str = "https://chatgpt.com/?q=";
 const CHATGPT_HOME: &str = "https://chatgpt.com/";
-const DEEPWIKI_URL: &str = "https://deepwiki.com/miskibin/wave-DAW";
+const DEEPWIKI_URL: &str = "https://deepwiki.com/miskibin/synkopa";
 
 /// Percent-encodes everything but RFC 3986 unreserved characters (UTF-8 bytes, upper-case hex).
 /// `ui/src/lib/askLink.ts` encodes the same way, so both sides agree on a link's length.

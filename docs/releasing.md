@@ -29,7 +29,7 @@ largest because it also carries its own WebKit and GTK.
 ## What the updater uses
 
 * `latest.json` on the latest release, found at
-  `https://github.com/miskibin/wave-DAW/releases/latest/download/latest.json`. Pre-releases
+  `https://github.com/miskibin/synkopa/releases/latest/download/latest.json`. Pre-releases
   are not "latest", so they never reach users.
 * The `notes` in `latest.json` are the release body above the first `---` line: the CHANGELOG
   section. The part under the rule (install tips) stays on the release page.
