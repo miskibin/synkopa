@@ -60,11 +60,12 @@ export function toggleSelect(cur: readonly Id[], anchor: Id | null, id: Id): Id[
 }
 
 /** The parts of the layout the Mix view hides and must give back exactly as they were. */
-const ARRANGE_KEYS = ['rackWin', 'rollWin', 'rackDock', 'rollDock', 'rackDockW', 'rollDockH', 'rollMax', 'rackFloat', 'rollFloat',
-  'plugsHidden', 'mixH', 'mixMin', 'pickOpen', 'pickW'] as const;
+const ARRANGE_KEYS = ['rackWin', 'rollWin', 'dock', 'paneSize', 'dockHome', 'rollMax', 'rackFloat', 'rollFloat',
+  'plugsHidden', 'mixMin', 'pickOpen', 'pickW'] as const;
 export type Arrange = Pick<UiState, (typeof ARRANGE_KEYS)[number]>;
 
-const copy = <T>(v: T): T => (v && typeof v === 'object' ? { ...v } : v);
+/** A deep copy (the dock layout nests strips in edges). */
+const copy = <T>(v: T): T => (v && typeof v === 'object' ? (JSON.parse(JSON.stringify(v)) as T) : v);
 /** A detached copy of the arrange layout (window places are copied, not shared with the store). */
 export function takeArrange(u: Arrange): Arrange {
   const a = {} as Record<string, unknown>;

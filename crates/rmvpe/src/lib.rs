@@ -42,6 +42,36 @@ pub fn model_path() -> PathBuf {
     scratch.parent().unwrap_or(&scratch).join("Models").join("rmvpe.onnx")
 }
 
+/// The ONNX Runtime library on Linux (`ort` loads it at run time): `ORT_DYLIB_PATH`, else the
+/// one the installers bundle (`ort/` among the app's resources: `/usr/lib/WAVE/ort` in the
+/// packages and the AppImage, beside the binary in a portable folder), else, in a debug
+/// build, `app/resources/ort` after `node scripts/fetch-onnxruntime.mjs`.
+#[cfg(target_os = "linux")]
+pub fn ort_library() -> Option<PathBuf> {
+    const LIB: &str = "libonnxruntime.so.1";
+    if let Some(p) = std::env::var_os("ORT_DYLIB_PATH") {
+        return Some(PathBuf::from(p));
+    }
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    let mut c = vec![dir.join("ort").join(LIB), dir.join("..").join("lib").join("WAVE").join("ort").join(LIB)];
+    if cfg!(debug_assertions) {
+        c.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/resources/ort").join(LIB));
+    }
+    c.into_iter().find(|p| p.is_file())
+}
+
+#[cfg(target_os = "linux")]
+fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
+    let lib = ort_library().ok_or("ONNX Runtime is not installed with this build of WAVE (libonnxruntime.so.1)")?;
+    ort::init_from(&lib).map_err(|e| format!("{}: {e}", lib.display()))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
+    Ok(ort::init())
+}
+
 pub struct Rmvpe {
     session: Mutex<ort::session::Session>,
     _env: ort::environment::Environment,
@@ -51,7 +81,7 @@ pub struct Rmvpe {
 impl Rmvpe {
     pub fn load(model: &Path) -> Result<Self, String> {
         let fail = |e: String| format!("RMVPE model could not be loaded: {e}");
-        let env = ort::init().build().map_err(|e| fail(e.to_string()))?;
+        let env = ort_init().map_err(fail)?.build().map_err(|e| fail(e.to_string()))?;
         let threads = std::thread::available_parallelism().map(|n| n.get().min(8)).unwrap_or(4);
         let mut b = ort::session::Session::builder(&env)
             .map_err(|e| fail(e.to_string()))?

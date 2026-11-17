@@ -23,6 +23,34 @@ shown in the app after an update and is published as the release notes (see
   Dragging a point or turning a knob switches the envelope on. With it on, a note fades over
   the release from its note-off: a key let go or the end of a Piano Roll note. Off, the sample
   plays as recorded. A Channel Rack step still has no note-off and holds the sustain.
+
+### Changed
+- **The sampler's One-shot / Gate switch is now the Envelope switch.** Envelope off plays the
+  sample as recorded, as One-shot did, and no longer applies attack, decay and sustain: those
+  belong to the envelope. Envelope on works like Gate, and a sized Piano Roll note now fades over
+  the release from its end instead of stopping there. Projects keep their sound: a sampler that
+  was in Gate mode or had an attack or a sustain below 100 % opens with its envelope on.
+
+## 0.9.21 — 2026-11-17
+
+### Added
+- **A new demo song: OBSIDIAN 2093**, a 40-bar modern trap track (136 BPM, D# minor) with a
+  punchy kick, a warm 808, melodic hooks and filter sweeps automated on a bus. Open it from
+  File → Open demo project, or pick it in Settings → General. Six new free (CC0) sounds come
+  with it in the standard library: an 808 spin, a crisp trap clap and snare, and three loops.
+
+### Fixed
+- **Linux: WAVE starts on Ubuntu 22.04 and Debian 12.** The packages and the AppImage needed a
+  newer system library than those systems have and quit at once; they now run on any
+  distribution from Ubuntu 22.04 on.
+- **The Playlist no longer goes blank after a scroll.** Scrolling, or dragging a clip past the
+  edge so the view scrolls with it, could leave the Playlist empty but for a strip at its edge
+  (only fades showed) until something else made it redraw. It now always shows every clip and
+  the grid.
+
+## 0.9.20 — 2026-11-17
+
+### Added
 - **Mixer routing, as in FL Studio.** A mixer insert can send its sound to other inserts: group
   drums into a bus, or send the vocal and the keys to one shared reverb. In the maximized mixer,
   cables under the strips show every send with its level: drag the dot under a strip onto
@@ -35,15 +63,51 @@ shown in the app after an update and is published as the release notes (see
 - **Effects in the mixer strips.** When the mixer is taller, each strip lists its effects
   above the knobs (icon, name, on/bypass dot; click to open), as many as fit; the strip
   itself keeps its size. In the maximized mixer there is always room for five effects, and the faders take the rest of the height.
+- **Arrange the windows the way you work.** The Channel rack, the Piano roll and the Mixer can
+  each dock to the left, the right or the bottom of the main window, or float. Drag a window's
+  title bar and dock guides appear (as in Visual Studio): drop it on an edge, beside the
+  Playlist, or on another docked panel's guide to put the two side by side or one above the
+  other. Drag a docked panel's title bar to pull it off. Right-click a title bar, or use
+  View → Window layout, to dock it without dragging. Every splitter resizes, the Playlist always
+  keeps room, and the layout is remembered. View → Window layout → Reset puts it back.
 - **Three new themes**: *Dim*, a mid-grey dark theme, and *Fog* (cool) and *Sand* (warm), two
   mid-grey light themes for when white is too bright.
+- **Pin a plugin's window on top.** A plugin editor's header has a pin next to the gear: click
+  it and the window stays in front of WAVE's, so an instrument you are playing stays in sight
+  while you click in the arrangement. The choice is remembered per plugin, and the pin lights
+  up while it holds.
+- **When WAVE died, the suspects are named.** If the last session ended without exiting (a
+  plugin crashed it, or the machine did), the next start lists the plugins that were loaded
+  and offers, per plugin, to keep it out of future scans. A normal exit clears the list on its
+  own.
+- **A plugin that crashes no longer takes WAVE down when you load it.** The first time you use a
+  plugin, WAVE tries it in a separate, throw-away process: it creates it, plays sound (or notes)
+  through it, saves and restores its settings and closes it. If that test process crashes or
+  hangs, the plugin is not loaded into WAVE: its slot says why, and **Load anyway** loads it if
+  you want to take the risk. Plugins that pass load straight away from then on (an updated
+  plugin is tried again).
+- **Zoom much further into the Playlist**, down to single 16ths spread across the screen, for
+  detailed drum and edit work. The automatic snap follows down to 1/16 of a beat, and the snap
+  menu has 1/8 and 1/16 beat.
+
+### Fixed
+- **Linux: plugin windows stay in front of WAVE.** Under Wayland, clicking anywhere in WAVE sent
+  plugin windows (Vitalium, Surge XT, …) behind it. WAVE now runs through XWayland there, as
+  other Linux DAWs do, so plugin windows stay above it (`WAVE_WAYLAND=1` keeps native Wayland).
+- **Linux: LV2 plugins built with JUCE show their own window** (Surge XT, Dexed and others
+  needed the `instance-access` feature; they showed only WAVE's parameter list).
+- **Mono VST3 effects load.** Effects with a mono input or output (most ZAM plugins, several
+  DISTRHO ones) were refused as "not a stereo effect"; they now take the sum of both sides and
+  play on both.
+- **A plugin that outputs garbage cannot ruin the mix.** An effect that produces invalid samples
+  (NaN or infinity, as ZamEQ2 does) is silenced instead of breaking every effect after it and the
+  master.
 
 ### Changed
-- **The sampler's One-shot / Gate switch is now the Envelope switch.** Envelope off plays the
-  sample as recorded, as One-shot did, and no longer applies attack, decay and sustain: those
-  belong to the envelope. Envelope on works like Gate, and a sized Piano Roll note now fades over
-  the release from its end instead of stopping there. Projects keep their sound: a sampler that
-  was in Gate mode or had an attack or a sustain below 100 % opens with its envelope on.
+- **The Library's sections collapse.** Standard library, Kits to download and Folders each get
+  a chevron: click the heading to fold it away and leave your own folders in sight. A search
+  still looks everywhere, and what you folded stays folded after a restart.
+
 - **Redesigned Settings.** A bigger window with an icon sidebar (General, Look, Audio, MIDI and
   a new Updates tab), settings grouped into cards, and each option's explanation shown under its
   name instead of hidden in a tooltip. Themes are shown as small previews of the app, grouped
@@ -136,8 +200,6 @@ shown in the app after an update and is published as the release notes (see
   aside one by one: the loop readout, the BPM label, count-in and monitoring, the metronome,
   then the panel buttons. Each is still in the View menu or on its key. Nothing is cut off at
   any width.
-- **Dragging a clip shows it moving a frame sooner.** The Playlist draws clips with the
-  low-latency canvas where the system supports it.
 - **Recording works like FL Studio: nothing to arm.** Press R and Space: the recording goes to the
   first track that has room from the playhead on, or to a new track when every track is in use
   (undo removes that track with the take). The record button on every track is gone; a track's

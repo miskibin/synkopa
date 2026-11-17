@@ -19,7 +19,7 @@ USAGE
   wave <command> [options]                 the project open in the running app (--session ID if several are open)
   wave -p song.wave <command> [options]    a project file, no app needed: load, run, save back if it changed
                                            [--save-as FILE] [--dry-run: save nothing] [--force: even if the app has it open]
-  wave new song.wave [--template empty|sketch] [--bpm N]   create a project file
+  wave new song.wave [--template empty|sketch|demo] [--bpm N]   create a project file
 
 FOR SCRIPTS AND AGENTS
   stdout is one JSON value, messages go to stderr. Exit: 0 ok, 1 usage, 2 app not running/unreachable,
@@ -161,6 +161,8 @@ PLUGINS  (VST3 everywhere, LV2 on Linux)
                                            LV2: --cid is the plugin URI)
   plugin-params --fx ID [--query TEXT]     parameters of a plugin instance: an effect, or a plugin channel by its id (LV2: real range and unit too)
   plugin-set --fx ID --id PARAM --value 0..1
+  plugin-load-anyway --fx ID               load a plugin WAVE's safety check refused (it crashed or hung
+                                           when tried in a separate process); from now on, every project
   vst3 [--rescan] | vst3-add | vst3-params | vst3-set    the same, VST3 only (older names)
   auto-add --fx ID --param ID [--points "0:0.2,4:0.8" | --value V] [--track N --name TEXT]
                                            automate a hosted plugin parameter (adds the playlist clip too)
@@ -191,7 +193,7 @@ NOTES  (deterministic transforms and generators for a pattern's notes)
 pub trait Files {
     /// Loads a project file; the warnings name audio that could not be loaded.
     fn open(&self, path: &Path) -> Result<(Box<dyn Doc>, Vec<String>), String>;
-    /// A new, unsaved project from a template: `empty` or `sketch`.
+    /// A new, unsaved project from a template: `empty`, `sketch` or `demo`.
     fn create(&self, template: &str) -> Result<Box<dyn Doc>, String>;
 }
 
@@ -471,11 +473,11 @@ fn on_file(files: Option<&dyn Files>, cmd: &str, a: &Args) -> Result<Value, Fail
     Ok(out)
 }
 
-/// `wave new FILE [--template empty|sketch] [--bpm N] [--force]`
+/// `wave new FILE [--template empty|sketch|demo] [--bpm N] [--force]`
 fn new_file(files: Option<&dyn Files>, a: &Args) -> Result<Value, Fail> {
     let u = Fail::Usage;
     let files = need_files(files)?;
-    let raw = a.pos.get(1).ok_or_else(|| u("new <FILE> [--template empty|sketch] [--bpm N]".into()))?;
+    let raw = a.pos.get(1).ok_or_else(|| u("new <FILE> [--template empty|sketch|demo] [--bpm N]".into()))?;
     let mut path = abs(raw);
     if path.extension().is_none() {
         path.set_extension("wave");
@@ -1006,6 +1008,9 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             "plugin_set_param",
             json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64, "id": a.num("id").map_err(u)?.ok_or_else(|| u("missing --id".into()))? as u64, "value": a.num("value").map_err(u)?.ok_or_else(|| u("missing --value".into()))?}),
         ),
+        "plugin-load-anyway" => {
+            send(cx, a, "plugin_load_anyway", json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64}))
+        }
         "vst3" => send(cx, a, "vst3_scan", json!({"rescan": a.has("rescan")})),
         "vst3-add" => send(
             cx,
@@ -1599,7 +1604,7 @@ mod tests {
         }
         fn create(&self, template: &str) -> Result<Box<dyn Doc>, String> {
             match template {
-                "empty" | "sketch" => Ok(self.doc()),
+                "empty" | "sketch" | "demo" => Ok(self.doc()),
                 t => Err(format!("unknown template `{t}`")),
             }
         }

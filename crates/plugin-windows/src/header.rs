@@ -34,6 +34,9 @@ pub enum Part {
     Drag,
     /// Opens WAVE's settings for this plugin.
     Settings,
+    /// Pins the window on top of the app's (a plugin the user tweaks while the
+    /// arrangement plays stays in sight).
+    Pin,
     Close,
 }
 
@@ -44,6 +47,8 @@ pub struct Header {
     pub subtitle: String,
     pub hover: Option<Part>,
     pub pressed: Option<Part>,
+    /// Whether the window is pinned on top of the app's: the pin is lit.
+    pub pinned: bool,
 }
 
 /// Header height in device pixels at `scale`.
@@ -63,6 +68,8 @@ pub fn hit(width: u32, x: i32, y: i32, scale: f32) -> Option<Part> {
         Part::Close
     } else if x >= right - 2 * bw {
         Part::Settings
+    } else if x >= right - 3 * bw {
+        Part::Pin
     } else {
         Part::Drag
     })
@@ -229,6 +236,26 @@ fn cross(c: &mut Canvas, cx: f32, cy: f32, s: f32, color: u32) {
     });
 }
 
+/// A pushpin pointing down: head, collar, taper, needle (the pin button's glyph).
+fn pin(c: &mut Canvas, cx: f32, cy: f32, s: f32, color: u32) {
+    let (head, th) = (2.5 * s, 0.7 * s);
+    let r = (5.0 * s).ceil() as i32 + 1;
+    c.shape(cx as i32 - r, cy as i32 - r, cx as i32 + r + 1, cy as i32 + r + 1, color, |x, y| {
+        let (dx, dy) = (x - cx, y - cy);
+        // the head: a disc sitting above the centre line
+        if dy <= -0.5 * s {
+            return (dx * dx + (dy + 2.2 * s) * (dy + 2.2 * s)) <= head * head;
+        }
+        // the taper: from the collar's width down to the needle's
+        if dy <= 3.1 * s {
+            let t = (dy + 0.5 * s) / (3.6 * s);
+            return dx.abs() <= 2.1 * s * (1.0 - t) + th * t;
+        }
+        // the needle
+        dy <= 4.6 * s && dx.abs() <= 0.42 * s
+    });
+}
+
 impl Header {
     /// Draw the header across the top `height(scale)` rows of `canvas`.
     pub fn render(&self, canvas: &mut Canvas, scale: f32) {
@@ -251,10 +278,23 @@ impl Header {
             canvas.fill(w - 2 * bw, 0, w - bw, h - 1, if down { ACCENT } else { HOVER });
         }
         gear(canvas, (w - 2 * bw) as f32 + bw as f32 / 2.0, (h - 1) as f32 / 2.0, s, if hov || down { ICON_HI } else { ICON });
+        // pin: lit while the window is pinned on top of the app's
+        let (hov, down) = state(Part::Pin);
+        if hov || down {
+            canvas.fill(w - 3 * bw, 0, w - 2 * bw, h - 1, if down { ACCENT } else { HOVER });
+        }
+        let pin_color = if self.pinned {
+            ACCENT
+        } else if hov || down {
+            ICON_HI
+        } else {
+            ICON
+        };
+        pin(canvas, (w - 3 * bw) as f32 + bw as f32 / 2.0, (h - 1) as f32 / 2.0, s, pin_color);
         // title and subtitle
         let px = TEXT_PX * s;
         let baseline = ((h - 1) as f32 / 2.0 + px * 0.36).round();
-        let room = (w - 2 * bw) as f32 - 2.0 * PAD * s;
+        let room = (w - 3 * bw) as f32 - 2.0 * PAD * s;
         let title = fit(&self.title, px, room);
         let tw = text_width(&title, px);
         canvas.text(&title, PAD * s, baseline, px, FG);
@@ -271,7 +311,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_header_is_split_into_drag_settings_and_close() {
+    fn the_header_is_split_into_drag_pin_settings_and_close() {
         assert_eq!(height(1.0), 30);
         assert_eq!(height(2.0), 60);
         assert_eq!(hit(400, 5, 5, 1.0), Some(Part::Drag));
@@ -279,9 +319,12 @@ mod tests {
         assert_eq!(hit(400, 370, 5, 1.0), Some(Part::Close));
         assert_eq!(hit(400, 369, 5, 1.0), Some(Part::Settings));
         assert_eq!(hit(400, 340, 29, 1.0), Some(Part::Settings));
-        assert_eq!(hit(400, 339, 5, 1.0), Some(Part::Drag));
+        assert_eq!(hit(400, 339, 5, 1.0), Some(Part::Pin));
+        assert_eq!(hit(400, 310, 5, 1.0), Some(Part::Pin));
+        assert_eq!(hit(400, 309, 5, 1.0), Some(Part::Drag));
         assert_eq!(hit(400, 5, 30, 1.0), None, "below the header is the plugin");
         assert_eq!(hit(800, 739, 10, 2.0), Some(Part::Settings));
+        assert_eq!(hit(800, 679, 10, 2.0), Some(Part::Pin));
     }
 
     #[test]
@@ -295,18 +338,27 @@ mod tests {
     }
 
     #[test]
-    fn rendering_draws_the_name_and_both_icons() {
+    fn rendering_draws_the_name_and_the_icons() {
         let (w, s) = (360_u32, 1.0);
         let h = height(s);
         let mut px = vec![0; (w * h) as usize];
-        let header = Header { title: "Vitalium".into(), subtitle: "VST3".into(), hover: Some(Part::Settings), pressed: None };
+        let mut header =
+            Header { title: "Vitalium".into(), subtitle: "VST3".into(), hover: Some(Part::Settings), pressed: None, pinned: true };
         header.render(&mut Canvas { px: &mut px, width: w, height: h }, s);
         let region =
             |x0: u32, x1: u32| (0..h).flat_map(|y| (x0..x1).map(move |x| (x, y))).filter(|&(x, y)| px[(y * w + x) as usize] != BG).count();
         assert!(region(10, 80) > 40, "the title is drawn");
         assert!(region(w - 60, w - 30) > 100, "the hovered gear button is highlighted");
+        assert!(region(w - 90, w - 60) > 10, "the pin is drawn");
+        assert!(px.contains(&ACCENT), "the pinned pin is lit in the accent colour");
         assert!(region(w - 30, w) > 10, "the close cross is drawn");
         assert_eq!(px[((h - 1) * w + 5) as usize], RULE, "a rule under the header");
         assert!(px.iter().all(|p| p >> 24 == 0), "no alpha byte: Win32 and X11 read 0x00RRGGBB");
+        // unpinned, nothing is lit
+        let mut px2 = vec![BG; (w * h) as usize];
+        header.pinned = false;
+        header.hover = None;
+        header.render(&mut Canvas { px: &mut px2, width: w, height: h }, s);
+        assert!(!px2.contains(&ACCENT), "an unpinned window has no accent in its header");
     }
 }

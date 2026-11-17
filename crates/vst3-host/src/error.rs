@@ -61,7 +61,7 @@ pub enum Vst3Error {
     NoFloat32 { name: String },
 
     /// The plugin's buses are not a stereo insert effect's.
-    #[error("VST3 plugin '{name}' is not a stereo effect: {message}")]
+    #[error("VST3 plugin '{name}' cannot be an insert effect: {message}")]
     NotAStereoEffect { name: String, message: String },
 
     /// The plugin cannot play notes into a stereo output (no event input, no audio output).

@@ -76,6 +76,10 @@ FREESOUND = {
     "521664": ("https://cdn.freesound.org/previews/521/521664_10327019-hq.mp3", "urmom123543", "Blade runner pads (Free)"),
     "713120": ("https://cdn.freesound.org/previews/713/713120_14632469-hq.mp3", "DYEKHO", "Arabic Flute 04 130BPM"),
     "852268": ("https://cdn.freesound.org/previews/852/852268_12574855-hq.mp3", "holizna", "Trap Melody Loop #5 Ebmin 165 BPM"),
+    "646403": ("https://cdn.freesound.org/previews/646/646403_9839964-hq.mp3", "harrisonlace", "808_dalmation_C.wav"),
+    "347136": ("https://cdn.freesound.org/previews/347/347136_369949-hq.mp3", "NovaSoundTechnology", "Custom Mini Lex Trap Snare - Nova Sound"),
+    "647745": ("https://cdn.freesound.org/previews/647/647745_9839964-hq.mp3", "harrisonlace", "clap_caviar.wav"),
+    "703686": ("https://cdn.freesound.org/previews/703/703686_11532701-hq.mp3", "deadrobotmusic", "Drk Vox Loop [120bpm] [D Minor]"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -185,6 +189,7 @@ PICKS = [
     ("snare-rope.flac", "Rope Snare", "Snares", M + "Snare Drum, Rope Tension/Hi/RopeSnare_hi_sn_Main_vl4_rr1.wav", 1.2, 60),
     ("snare-field.flac", "Field Drum", "Snares", M + "Snare Drum, Rope Tension/Low/RopeSnare_low_sn_Main_vl3_rr1.wav", 1.4, 60),
     ("snare-trap.flac", "Trap Snare", "Snares", "fs:517297", 0.5, 60),
+    ("snare-trap-crisp.flac", "Trap Snare Crisp", "Snares", "fs:347136", 0.6, 60),
     ("snare-tr8.flac", "TR-8 Snare", "Snares", TR8 + "SD/001_808_Snare_Drum_1.wav", 0.6, 60),
     ("rimshot-tight.flac", "Rimshot Tight", "Snares", "fs:132418", 1.1, 60),
     ("clap-808.flac", "808 Clap", "Claps", "808-kit/clap.wav", 1.0, 60),
@@ -194,6 +199,7 @@ PICKS = [
     ("clap-group-2.flac", "Group Clap 2", "Claps", I + "Claps/Clap_rr4.wav", 0.7, 60),
     ("whip.flac", "Whip Crack", "Claps", I + "Slapstick/slapstick_rr1.wav", 0.6, 60),
     ("clap-snare.flac", "Clap Snare", "Claps", "fs:355065", 0.7, 60),
+    ("clap-trap-crisp.flac", "Trap Clap Crisp", "Claps", "fs:647745", 0.4, 60),
     ("clap-tr8.flac", "TR-8 Clap", "Claps", TR8 + "PERC/017_808_Hand_Clap.wav", 0.8, 60),
     ("finger-snap.flac", "Finger Snap", "Claps", "fs:332604", 0.4, 60),
     ("hat-808-closed.flac", "808 Closed Hat", "Hats", "808-kit/hat-closed.wav", 0.25, 60),
@@ -294,6 +300,7 @@ PICKS = [
     ("bass-808-mpc.flac", "808 Bass MPC", "Tonal", "fs:501761", 1.0, None),
     ("bass-808-sine.flac", "808 Bass Sine", "Tonal", SG + "kicks/sdbkit-sub-a.wav", 2.0, None),
     ("bass-808-tr8.flac", "808 Bass TR-8", "Tonal", TR8 + "BD/008_808_Bass_Drum_Long_2.wav", 5.0, None),
+    ("bass-808-spin.flac", "808 Bass Spin", "Tonal", "fs:646403", 2.0, None),
     ("choir-shot.flac", "Choir Shot", "Tonal", "fs:240745", 2.0, 68, T),
     ("steel-drum.flac", "Steel Drum", "Tonal", "steeldrum:flac/SteelDrum_072__C5_3-2.flac", 2.5, 72, T),
     # orchestra: single notes are tuned, the stabs and hits are layers on C
@@ -341,6 +348,7 @@ PICKS = [
     ("loop-guitar-nylon-148-fmin.ogg", "Guitar Nylon 148 Fm", "Loops", "fs:474961", 0, 60, loop(148, 8)),
     ("loop-pad-cinematic-110-ebmin.ogg", "Pad Cinematic 110 Ebm", "Loops", "fs:521664", 0, 60, loop(110, 4)),
     ("loop-flute-eastern-130-cmin.ogg", "Flute Eastern 130 Cm", "Loops", "fs:713120", 0, 60, loop(130, 8)),
+    ("loop-vox-dark-120-dmin.ogg", "Vox Dark 120 Dm", "Loops", "fs:703686", 0, 60, loop(120, 4)),
 ]
 
 
@@ -551,15 +559,23 @@ def write_ogg(dst, y, mono, tag):
         if have == tag:
             return False
     ch = "1" if mono else "2"
-    for _ in range(3):
+    best = None
+    for _ in range(5):
         pcm = np.clip(y, -1, 1).astype("<f4").tobytes()
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", ch, "-i", "-", "-c:a", "libvorbis", "-q:a", "6",
                         "-map_metadata", "-1", "-metadata:s:a", f"WAVE_SRC={tag}", "-bitexact", dst], input=pcm, check=True)
-        peak = np.abs(np.frombuffer(decoded(dst), dtype="<i2")).max() / 32768
+        dec = subprocess.run(["ffmpeg", "-v", "error", "-i", dst, "-f", "f32le", "-"], capture_output=True, check=True).stdout
+        peak = float(np.abs(np.frombuffer(dec, dtype="<f4")).max())
         err = 20 * np.log10(peak) + 1
+        with open(dst, "rb") as f:
+            data = f.read()
+        if best is None or abs(err) < best[0]:
+            best = (abs(err), data)
         if abs(err) < 0.03:
             break
-        y = y * 10 ** (-err / 20)
+        y = y * 10 ** (-0.5 * err / 20)
+    with open(dst, "wb") as f:
+        f.write(best[1])
     return True
 
 

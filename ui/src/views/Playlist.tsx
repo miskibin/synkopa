@@ -21,7 +21,7 @@ import { showInsert } from '../state/mixView';
 import { dblCheck, dragCursor, edgeScroller, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
-import { addFrameTask, fitCanvas, fonts } from '../ui/frameLoop';
+import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
 import { drawFades, drawGrid, drawOverlaps, type View } from './playlistDraw';
 import { drawRuler, rulerCursor, rulerDown as rulerPress, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
@@ -37,9 +37,10 @@ import { rgba, T, theme } from '../ui/theme';
 
 
 /** Shared geometry, so the browser and OS drops can find a beat/track under the pointer. */
-/** Clip canvases skip a compositor frame when the platform can (Chromium's low-latency canvas):
- *  a dragged clip shows one display frame sooner. */
-const LOW_LATENCY: CanvasRenderingContext2DSettings = { desynchronized: true };
+// The clip canvases are NOT `desynchronized` (Chromium's low-latency canvas): that hint is only
+// valid with no DOM element above the canvas, but the fade overlay, the playhead and the marquee
+// sit on top, and Chromium then kept stale pixels after scrolls (a clip or a ghost stayed on
+// screen until something repainted it).
 
 export const geom = { grid: null as HTMLDivElement | null, scroll: null as HTMLDivElement | null, tops: [0] as number[] };
 
@@ -350,16 +351,12 @@ export function Playlist() {
     if (full || moved || rects!.length) {
       const rec = recActive ? recState : null, v = frameView();
       if (full) fitCanvas(gridCv, t.w, t.h);
-      const g = gridCv.getContext('2d', LOW_LATENCY)!;
+      const g = gridCv.getContext('2d')!;
       if (full) { paintGrid(g, v, t, { x: 0, y: 0, w: t.w, h: t.h }, dpr, rec); tileBw = U.bw; paintedFull = true; }
       else {
         if (moved) {
           // shift what is already drawn, then draw only the exposed strips
-          g.save();
-          g.setTransform(1, 0, 0, 1, 0, 0);
-          g.globalCompositeOperation = 'copy';
-          g.drawImage(gridCv, Math.round(plan.dx * dpr), Math.round(plan.dy * dpr));
-          g.restore();
+          shiftCanvas(gridCv, Math.round(plan.dx * dpr), Math.round(plan.dy * dpr));
           for (const r of plan.strips) paintGrid(g, v, t, r, dpr, rec);
         }
         for (const r of rects!) paintGrid(g, v, t, r, dpr, rec);
@@ -377,7 +374,7 @@ export function Playlist() {
     if (dirtyFade) {
       dirtyFade = false;
       fitCanvas(fadeCv, t.w, t.h);
-      const g = fadeCv.getContext('2d', LOW_LATENCY)!;
+      const g = fadeCv.getContext('2d')!;
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, fadeCv.width, fadeCv.height);
       g.setTransform(dpr, 0, 0, dpr, 0, 0);

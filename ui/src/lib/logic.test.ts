@@ -42,6 +42,13 @@ describe('snap', () => {
     expect(autoSnap(4)).toBe(4);
     expect(autoSnap(1)).toBe(4);
   });
+  it('auto goes down to 1/16 beat when zoomed in for detail', () => {
+    expect(autoSnap(80)).toBe(0.125);
+    expect(autoSnap(160)).toBe(1 / 16);
+    expect(autoSnap(1024)).toBe(1 / 16);
+    expect(snapLabel(-1, 160)).toBe('Snap: auto · 1/16 beat');
+    expect(snapLabel(0.125, 22)).toBe('Snap: 1/8 beat');
+  });
   it('labels show the resolved auto unit', () => {
     expect(snapLabel(-1, 22)).toBe('Snap: auto · 1/2 beat');
     expect(snapLabel(-1, 60)).toBe('Snap: auto · 1/4 beat');

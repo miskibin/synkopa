@@ -3,12 +3,17 @@ import type { MockBackend } from '../api/mock';
 import type { PluginInfo } from '../api/types';
 
 // FL's plugin wrapper: opening an external plugin shows its own window under WAVE's header; the header's
-// gear (or a plugin without a window) brings WAVE's window.
+// gear (or a plugin without a window) brings WAVE's window. The header's pin is remembered per plugin.
 vi.mock('../ui/Confirm', () => ({ confirmUnsaved: async () => 'discard', confirmRecover: async () => 'later' }));
+const localStorageMap = new Map<string, string>();
 beforeAll(() => {
   const noop = () => {};
   vi.stubGlobal('window', { addEventListener: noop, removeEventListener: noop, innerWidth: 1600, innerHeight: 900, setTimeout, setInterval, clearInterval });
-  vi.stubGlobal('localStorage', { getItem: () => null, setItem: noop, removeItem: noop });
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => localStorageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => void localStorageMap.set(k, v),
+    removeItem: (k: string) => void localStorageMap.delete(k),
+  });
   vi.stubGlobal('document', { querySelector: () => null, activeElement: null });
   vi.stubGlobal('requestAnimationFrame', (f: () => void) => setTimeout(f, 0));
 });
@@ -23,6 +28,7 @@ const sync = async () => { await settle(); store.replaceState(await mock.getStat
 
 beforeEach(async () => {
   vi.resetModules();
+  localStorageMap.clear();
   const backend = await import('../api/backend');
   mock = (await backend.getBackend()) as MockBackend;
   A = await import('./actions');
@@ -85,5 +91,27 @@ describe('plugin windows (FL wrapper)', () => {
     await sync();
     const c = pattern.channels().at(-1)!;
     expect(pw.pluginLabel(c.id)).toEqual({ title: c.name, subtitle: 'VST3 instrument' });
+  });
+
+  it('a pin in the header is remembered per plugin: the next window opens pinned, unpinning is kept too', async () => {
+    const m = insert();
+    A.addPlugin(m.id, vst3('Vitalium'));
+    await sync();
+    const fx = store.S.project.inserts.find(x => x.id === m.id)!.fx.at(-1)!;
+    await vi.waitFor(() => expect(pw.editorOpen(fx.id)).toBe(true));
+    expect(mock.editorPinned(fx.id)).toBe(false);
+    // the user clicks the header's pin; the app reports back and the choice is kept
+    mock.on('plugin-pin', ({ id, pinned }) => pw.reportPin(id, pinned));
+    mock.pressEditorPin(fx.id);
+    await vi.waitFor(() => expect(localStorageMap.get('wave.pluginPin')).toContain('Vitalium'), { timeout: 2000 });
+    await pw.closeEditor(fx.id);
+    await pw.openEditor(fx.id);
+    await vi.waitFor(() => expect(mock.editorPinned(fx.id)).toBe(true));
+    // unpinning survives the same way
+    mock.pressEditorPin(fx.id);
+    await vi.waitFor(() => expect(JSON.parse(localStorageMap.get('wave.pluginPin') ?? '{}')).toEqual({}), { timeout: 2000 });
+    await pw.closeEditor(fx.id);
+    await pw.openEditor(fx.id);
+    await vi.waitFor(() => expect(mock.editorPinned(fx.id)).toBe(false));
   });
 });

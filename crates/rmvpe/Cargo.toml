@@ -10,4 +10,11 @@ publish.workspace = true
 wave-engine.workspace = true
 realfft.workspace = true
 parking_lot.workspace = true
+
+# Linux loads Microsoft's ONNX Runtime at run time (bundled by scripts/fetch-onnxruntime.mjs; it
+# needs glibc 2.27): the prebuilt library `ort` links needs glibc 2.38, which Ubuntu 22.04 lacks.
+[target.'cfg(target_os = "linux")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "tls-native", "api-20"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "tls-native", "api-20"] }

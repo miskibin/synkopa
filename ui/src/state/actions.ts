@@ -210,9 +210,19 @@ export async function guardUnsaved(what: string): Promise<boolean> {
   if (a === 'save') return projectSave(false);
   return true;
 }
-export async function projectNew() {
-  if (!(await guardUnsaved(t('d.act.guard.new')))) return;
-  try { acceptReply(await enqueue(() => be().projectNew())); afterProjectLoad(); if (!S.project.clips.length) openRack(); say(t('d.act.newproj')); } catch (e) { say(t('d.act.newfail', { err: String(e) })); }
+/** A new empty project, or with `demo` the built-in demo project (asks about unsaved changes first). */
+export async function projectNew(demo = false): Promise<boolean> {
+  endWheelGestures();
+  if (U.openingProject || inGesture()) { say(t('d.act.guard.busy')); return false; }
+  if (!(await guardUnsaved(t(demo ? 'd.act.guard.demo' : 'd.act.guard.new')))) return false;
+  try {
+    acceptReply(await enqueue(() => be().projectNew(demo)));
+    afterProjectLoad();
+    if (demo) setPatMode(false);
+    else if (!S.project.clips.length) openRack();
+    say(t(demo ? 'd.act.demoproj' : 'd.act.newproj'));
+    return true;
+  } catch (e) { say(t('d.act.newfail', { err: String(e) })); return false; }
 }
 export async function projectOpen(path?: string) {
   if (path && samePath(path, S.path)) return;
@@ -778,8 +788,8 @@ export function applyKeyToTune(root: number, minor: boolean, targetFxId?: Id | '
 }
 
 // ---------- view ----------
-/** Playlist zoom limits, px per beat. */
-export const BW_MIN = 4, BW_MAX = 96;
+/** Playlist zoom limits, px per beat (at the most, a 16th is 256 px: detailed drum editing, as in FL Studio). */
+export const BW_MIN = 4, BW_MAX = 1024;
 export function zoomAt(f: number) { setU('bw', clamp(U.bw * f, BW_MIN, BW_MAX)); }
 export function setSnap(v: number) {
   setU('snap', v);

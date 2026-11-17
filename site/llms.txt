@@ -8,13 +8,15 @@ Facts, as of version 0.9 (November 2026):
 - Licence: AGPL-3.0-only.
 - Platforms: Windows (WASAPI, ASIO) and Linux (ALSA and JACK, including PipeWire's JACK; deb, rpm, AppImage). No macOS build.
 - Engine: Rust; the audio callback does not allocate, lock or do I/O. Interface: Tauri 2, SolidJS, canvas.
-- Built in: a wavetable synth, a sampled grand piano (WAVE Keys), a sampler with a drum and tonal library, and 12 effects (24-band dynamic EQ, compressor, FET compressor, saturator, delay, reverb, limiter, de-esser, denoiser, pitch correction, voice, vocal rider).
+- Built in: a wavetable synth, a sampled grand piano (WAVE Keys), a sampler with a drum and tonal library, and 16 effects (dynamic EQ, compressor, FET compressor, saturator, delay, reverb, limiter, de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser).
 - Recording: loop recording with takes and comping, measured latency compensation, live monitoring.
 - Vocals: note-level pitch editor, live pitch correction, Tune to Reference, vocal rider.
-- Third-party plugins: VST3 effects only, with plugin editor windows on Windows and a parameter list on Linux. No VST instruments, CLAP or LV2.
+- Third-party plugins: VST3 instruments and effects on Windows and Linux, plus LV2 effects on Linux. Compatible native editors work on both platforms, otherwise WAVE shows parameters. Plugin scanning runs out of process; plugin processing is not sandboxed. No CLAP or LV2 instruments.
 - Not available: Session view or clip launching, FL Studio project (.flp) import.
-- Export: offline bounce to 32-bit float WAV or MP3.
-- Made by one developer with AI coding agents.
+- Mixing: insert buses and sends, flexible mixer docking, effect-chain presets and plugin delay compensation.
+- MIDI: keyboard note input and recording, import and export of standard MIDI files.
+- Export: mixes and stems to 16-/24-bit PCM or 32-bit float WAV or MP3; portable project ZIP export.
+- Development: an open-source project with community contributors and AI-assisted coding. Special thanks to [@rebizu](https://github.com/rebizu) for architecture, test and Piano Roll contributions. See the [contributors](https://github.com/miskibin/wave-DAW/graphs/contributors).
 
 ## Links
 

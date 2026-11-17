@@ -27,6 +27,8 @@ pub(crate) fn embed_handle(_hwnd: isize) -> isize {
 
 pub(crate) fn show_window(_hwnd: isize) {}
 
+pub(crate) fn set_always_on_top(_hwnd: isize, _pinned: bool) {}
+
 pub(crate) fn request_close(_hwnd: isize) {}
 
 pub(crate) fn set_tick_handler(_hwnd: isize, _handler: Option<Rc<dyn Fn()>>) {}

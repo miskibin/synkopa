@@ -10,7 +10,7 @@ import { autoDisplay, controlMenu, isAutomated, paramMenu } from '../state/autom
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { audition, chanById, chanOp } from '../state/pattern';
 import { outerZ, setWin, win, type Win } from '../state/winOrder';
-import { say, setU, U } from '../state/ui';
+import { docked, say, setU, U } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { channelIcon, InstIcon } from '../ui/instIcons';
 import { Knob } from '../ui/Knob';
@@ -57,7 +57,7 @@ export function toggleChannelWindow(id: Id, settings = false) {
   if (chanWin()?.id === id) { closeChannelWindow(); return; }
   const width = kind === 'synth' ? 900 : kind === 'keys' ? 700 : kind === 'plugin' ? 560 : Math.min(620, window.innerWidth - 20);
   // beside the Channel Rack: the floating window, or the docked panel's place on screen
-  const dk = U.rackDock ? document.querySelector('.rackwin')?.getBoundingClientRect() : undefined;
+  const dk = docked('rack') ? document.querySelector('.rackwin')?.getBoundingClientRect() : undefined;
   const r = dk ? { x: dk.left, y: dk.top, w: dk.width } : U.rackWin, W = window.innerWidth;
   const center = Math.max(20, (W - width) / 2);
   const x = r && r.x + r.w + 8 + width <= W - 10 ? r.x + r.w + 8 : r && r.x - 8 - width >= 10 ? r.x - 8 - width : center;

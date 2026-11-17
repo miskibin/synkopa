@@ -34,11 +34,12 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, CreateWindowExW, DefWindowProcW, DestroyWindow, GetClientRect, GetWindow, GetWindowLongPtrW, IsWindow, IsZoomed,
     KillTimer, MoveWindow, RegisterClassW, SetForegroundWindow, SetTimer, SetWindowLongPtrW, SetWindowPos, ShowWindow, CREATESTRUCTW,
-    CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, GW_CHILD, HTCAPTION, HTCLIENT, HTTOP, HTTOPLEFT, HTTOPRIGHT, MINMAXINFO,
-    NCCALCSIZE_PARAMS, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SW_SHOWNORMAL, USER_DEFAULT_SCREEN_DPI, WINDOW_EX_STYLE,
-    WM_CLOSE, WM_DPICHANGED, WM_ERASEBKGND, WM_GETMINMAXINFO, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCCALCSIZE, WM_NCCREATE,
-    WM_NCDESTROY, WM_NCHITTEST, WM_NCMOUSEMOVE, WM_PAINT, WM_SIZE, WM_TIMER, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_CLIPCHILDREN,
-    WS_CLIPSIBLINGS, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
+    CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, GW_CHILD, HTCAPTION, HTCLIENT, HTTOP, HTTOPLEFT, HTTOPRIGHT, HWND_NOTOPMOST,
+    HWND_TOPMOST, MINMAXINFO, NCCALCSIZE_PARAMS, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_SHOWNORMAL,
+    USER_DEFAULT_SCREEN_DPI, WINDOW_EX_STYLE, WM_CLOSE, WM_DPICHANGED, WM_ERASEBKGND, WM_GETMINMAXINFO, WM_LBUTTONDOWN, WM_LBUTTONUP,
+    WM_MOUSEMOVE, WM_NCCALCSIZE, WM_NCCREATE, WM_NCDESTROY, WM_NCHITTEST, WM_NCMOUSEMOVE, WM_PAINT, WM_SIZE, WM_TIMER, WNDCLASSW,
+    WS_CAPTION, WS_CHILD, WS_CLIPCHILDREN, WS_CLIPSIBLINGS, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_THICKFRAME,
+    WS_VISIBLE,
 };
 
 use crate::header::{self, Canvas, Part};
@@ -270,6 +271,33 @@ pub(crate) fn show_window(hwnd: isize) {
             BringWindowToTop(hwnd as HWND);
             SetForegroundWindow(hwnd as HWND);
         }
+    }
+}
+
+/// Pin (`pinned`) or unpin the window on top of the app's: `HWND_TOPMOST`, the one
+/// always-on-top guarantee Windows keeps even where an owned window's stacking does not.
+pub(crate) fn set_always_on_top(hwnd: isize, pinned: bool) {
+    if !alive(hwnd) {
+        return;
+    }
+    // SAFETY: created by this module on this thread; the state pointer is valid
+    // until WM_NCDESTROY.
+    unsafe {
+        if let Some(state) = state_of(hwnd as HWND) {
+            state.set_pinned_state(pinned);
+        }
+        SetWindowPos(
+            hwnd as HWND,
+            if pinned { HWND_TOPMOST } else { HWND_NOTOPMOST },
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+        );
+        // the header's pin follows the state
+        let rect = RECT { left: 0, top: 0, right: 0, bottom: header_height(hwnd as HWND) };
+        InvalidateRect(hwnd as HWND, &rect, 0);
     }
 }
 
@@ -538,7 +566,7 @@ unsafe fn dispatch(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> 
         WM_LBUTTONDOWN => {
             let state = state_of(hwnd)?;
             let (x, y) = point_of(lparam);
-            if let Some(part @ (Part::Settings | Part::Close)) = part_at(hwnd, x, y) {
+            if let Some(part @ (Part::Pin | Part::Settings | Part::Close)) = part_at(hwnd, x, y) {
                 SetCapture(hwnd);
                 set_state(hwnd, state, Some(part), Some(part));
             }
@@ -551,8 +579,12 @@ unsafe fn dispatch(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> 
             ReleaseCapture();
             set_state(hwnd, state, now, None);
             if let Some(part) = pressed.filter(|p| Some(*p) == now) {
-                // may run the app's settings handler; nothing below touches `state`
+                // may run the app's handlers; nothing below touches `state`
                 state.header_click(part);
+                if part == Part::Pin {
+                    // the toggle already happened in `header_click`: apply it
+                    set_always_on_top(hwnd as isize, state.pinned());
+                }
             }
             Some(0)
         }

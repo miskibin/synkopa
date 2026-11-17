@@ -27,11 +27,12 @@ import { Icon } from '../ui/icons';
 import { channelIcon, InstIcon } from '../ui/instIcons';
 import { MiniKnob, NumField, parseNum } from '../ui/Knob';
 import { PanelFrame, WinControls } from './PanelFrame';
+import { paneDock } from '../state/docking';
 import { wheelInsert } from '../ui/InsertPicker';
 import { showInsert } from '../state/mixView';
 import { closeChannelWindow, toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
-import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patDock, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
+import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
 const RACK_ICON = 'M4 5h4v4H4z M10 5h4v4h-4z M16 5h4v4h-4z M4 15h4v4H4z M10 15h4v4h-4z M16 15h4v4h-4z';
@@ -342,8 +343,8 @@ function Rack(props: { z: number; docked?: boolean }) {
     stepPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
   };
   return (
-    <PanelFrame {...patGeom('rackWin')} z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} front={rackFront} onKey={onKey} onHeadWheel={headWheel}
-      controls={<WinControls dock={patDock('rack')} close={{ tip: t(props.docked ? 'b.dk.closeRack' : 'b.pe.close'), act: closeRack }} />}
+    <PanelFrame {...patGeom('rackWin')} z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} dockId="rack" front={rackFront} onKey={onKey} onHeadWheel={headWheel}
+      controls={<WinControls dock={paneDock('rack')} close={{ tip: t(props.docked ? 'b.dk.closeRack' : 'b.pe.close'), act: closeRack }} />}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>
         <span class="wintitle">Channel rack</span>

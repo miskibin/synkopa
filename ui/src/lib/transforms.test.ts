@@ -141,7 +141,7 @@ describe('transformNotes (TS mirror)', () => {
       const e = [note(1, 2, 60, 0.9)];
       applyTransform(e, { kind: 'euclidFill', ch: 1, k: 5, n: 16, rotate: 0, vel: 0.7 }, 0, null, roots, null, 1, 16);
       expect(e.map(n => n.step)).toEqual([0, 4, 7, 10, 13]);
-      expect(e.map(n => n.v)).toEqual([1, 0.7, 0.7, 0.7, 1]);
+      expect(e.map(n => n.v ?? 1)).toEqual([1, 0.7, 0.7, 0.7, 1]); // accents write no `v` (the engine omits v == 1)
     });
 
     it('euclidDrums (seeded velocity shading, from golden_euclid_drums_seeded_velocity)', () => {

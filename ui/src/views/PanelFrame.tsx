@@ -10,6 +10,8 @@ import { track } from '../ui/drag';
 import { Icon } from '../ui/icons';
 import { moveWindow } from './FxWindow';
 import { guardKeys, useSize } from './patternShared';
+import type { PaneId } from '../lib/dock';
+import { openDockMenu, paneHeadDown } from '../state/docking';
 
 export interface Geom { x: number; y: number; w: number; h: number }
 
@@ -47,6 +49,8 @@ export function PanelFrame(props: {
   /** A move or resize by the user (only the fields that changed are passed). */
   setGeom: (g: Partial<Geom>) => void;
   z: number; class: string; minW: number; minH: number; docked?: boolean;
+  /** A dockable panel: its title bar drags it onto the dock guides (docked too) and right-clicks to its dock menu. */
+  dockId?: PaneId;
   front: () => void; onKey?: (e: KeyboardEvent) => void;
   /** Left part of the title bar: the window's icon, name and its own controls. */
   head: JSX.Element;
@@ -81,7 +85,8 @@ export function PanelFrame(props: {
       on:pointerdown={{ capture: true, handleEvent: () => { if (!props.docked) props.front(); } }}
       onPointerDown={e => { const tg = (e.target as HTMLElement).tagName; if (tg !== 'SELECT' && tg !== 'INPUT') root.focus({ preventScroll: true }); }}
       onKeyDown={e => guardKeys(e, props.onKey)}>
-      <div class="winhd" onPointerDown={e => { if (!props.docked) moveWindow(e, () => props.geom(), (x, y) => put({ x, y })); }} onWheel={e => props.onHeadWheel?.(e)}
+      <div class="winhd" onPointerDown={e => { if (props.dockId) paneHeadDown(e, props.dockId); else if (!props.docked) moveWindow(e, () => props.geom(), (x, y) => put({ x, y })); }} onWheel={e => props.onHeadWheel?.(e)}
+        onContextMenu={e => { if (props.dockId) openDockMenu(e, props.dockId); }}
         onDblClick={e => { if (!props.docked && !(e.target as HTMLElement).closest('button, select, input, .numf, .seg')) props.onHeadDbl?.(); }}>
         {props.head}
         <div style={{ flex: 1 }} />

@@ -48,9 +48,11 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `kick-trap-knock.flac`: "808 Kick (wav format)" by Elektronikz on [Freesound](https://freesound.org/s/190942/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `kick-trap-boom.flac`: "trappy kick" by OllieOllie on [Freesound](https://freesound.org/s/240893/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `snare-trap.flac`: "Trap Snare 2" by muffin3k on [Freesound](https://freesound.org/s/517297/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
+* `snare-trap-crisp.flac`: "Custom Mini Lex Trap Snare - Nova Sound" by NovaSoundTechnology on [Freesound](https://freesound.org/s/347136/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `snare-tr8.flac`: `001_808_Snare_Drum_1.wav` by MckAudio, recorded from a Roland TR-8 ([source](https://github.com/MckAudio/MckSamplePacks/blob/5db40e8fe26785c256845a5bb38921b2654a887f/TR8/SD/001_808_Snare_Drum_1.wav)), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 * `rimshot-tight.flac`: "Rimshot (sweet)" by Sajmund on [Freesound](https://freesound.org/s/132418/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `clap-snare.flac`: "Clap Snare" by eryps on [Freesound](https://freesound.org/s/355065/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
+* `clap-trap-crisp.flac`: "clap_caviar.wav" by harrisonlace on [Freesound](https://freesound.org/s/647745/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `clap-tr8.flac`: `017_808_Hand_Clap.wav` by MckAudio, recorded from a Roland TR-8 ([source](https://github.com/MckAudio/MckSamplePacks/blob/5db40e8fe26785c256845a5bb38921b2654a887f/TR8/PERC/017_808_Hand_Clap.wav)), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 * `finger-snap.flac`: "Single Finger Snap" by vckhaze on [Freesound](https://freesound.org/s/332604/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `hat-trap-tick.flac`: "Hat_04.wav" by CBeeching on [Freesound](https://freesound.org/s/75037/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
@@ -66,6 +68,7 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `bass-808-mpc.flac`: "MPC_808_F1.aif" by kbeezy88 on [Freesound](https://freesound.org/s/501761/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `bass-808-sine.flac`: `sdbkit-sub-a.wav` by Kevin B. (Fugue State Audio), Stargate DAW sample pack ([source](https://github.com/stargatedaw/stargate-sample-pack/blob/dbfd6ec52d4ed53b60bdbea5fc6adf295127c027/stargate-sample-pack/fugue-state-audio/drums/kicks/sdbkit-sub-a.wav)), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 * `bass-808-tr8.flac`: `008_808_Bass_Drum_Long_2.wav` by MckAudio, recorded from a Roland TR-8 ([source](https://github.com/MckAudio/MckSamplePacks/blob/5db40e8fe26785c256845a5bb38921b2654a887f/TR8/BD/008_808_Bass_Drum_Long_2.wav)), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+* `bass-808-spin.flac`: "808_dalmation_C.wav" by harrisonlace on [Freesound](https://freesound.org/s/646403/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `choir-shot.flac`: "Choir One-Shot" by majoranman on [Freesound](https://freesound.org/s/240745/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `steel-drum.flac`: `SteelDrum_072__C5_3-2.flac` by Jeff Learman, SteelDrum ([source](https://github.com/sfzinstruments/jlearman.SteelDrum/blob/dc15a36ad69a43b0d240fcbd0cc78fbc61b2b47e/flac/SteelDrum_072__C5_3-2.flac)), [Unlicense](https://unlicense.org/)
 * `cinematic-impact.flac`: "Cinematic Impact" by a deleted account on [Freesound](https://freesound.org/s/177242/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
@@ -82,6 +85,7 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `loop-guitar-nylon-148-fmin.ogg`: "guitar [fmin 148 bpm].wav" by skratan on [Freesound](https://freesound.org/s/474961/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `loop-pad-cinematic-110-ebmin.ogg`: "Blade runner pads (Free)" by urmom123543 on [Freesound](https://freesound.org/s/521664/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 * `loop-flute-eastern-130-cmin.ogg`: "Arabic Flute 04 130BPM" by DYEKHO on [Freesound](https://freesound.org/s/713120/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
+* `loop-vox-dark-120-dmin.ogg`: "Drk Vox Loop [120bpm] [D Minor]" by deadrobotmusic on [Freesound](https://freesound.org/s/703686/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 <!-- factory-credits:end -->
 
 ## Salamander Grand Piano (WAVE Keys)

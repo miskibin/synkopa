@@ -10,6 +10,13 @@ Do not ship placeholders, dead or misleading controls, disconnected mock UI, or
 happy-path-only behavior. Every visible element must earn the space it consumes
 and help the user understand or operate the product.
 
+## Claiming an Issue
+
+Before starting work on a GitHub issue, check its comments and the open pull requests for
+someone already on it. If nobody is, leave a short comment on the issue saying you are
+working on it (and what part, if only part), so two people or agents do not build the same
+change in parallel.
+
 ## Substantial Changes Require Research
 
 A substantial change includes any new user workflow or feature, DSP behavior,
