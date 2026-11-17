@@ -535,6 +535,7 @@ wave plugin-params --fx 1210 --query freq
                 # VST3: {id,name,value,display,def}; LV2 also {symbol,real,min,max,unit,
                 # steps,toggle,integer,log,options}: id is the control port index
 wave plugin-set --fx 1210 --id 42 --value 0.3   # normalised 0..1 (LV2: over the port's range)
+wave plugin-load-anyway --fx 1210               # load a plugin WAVE's safety check refused (it crashed or hung in a test process)
                 # vst3, vst3-add, vst3-params, vst3-set: the older names, VST3 only
 wave auto-add --fx 1210 --param 42 --points "0:0.2,8:0.8" --name "Reverb decay"
                 # automate a hosted plugin parameter: an envelope plus the

@@ -72,7 +72,7 @@ export function parseLayout(raw: string | null): Partial<UiState> {
   if (typeof v !== 'object' || Array.isArray(v)) return {};
   const p: Partial<UiState> = {
     tool: TOOLS_OK.includes(v.tool as Tool) ? (v.tool as Tool) : undefined,
-    snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 384), follow: bool(v.follow), // 384: keep in step with actions.BW_MAX
+    snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 1024), follow: bool(v.follow), // 1024: keep in step with actions.BW_MAX
     // the docked mixer can no longer be closed: a layout saved with it closed opens collapsed
     mixMin: v.mixOpen === false || v.mixMin === true ? true : bool(v.mixMin),
     headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),

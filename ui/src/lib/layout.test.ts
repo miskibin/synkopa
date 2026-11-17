@@ -63,7 +63,8 @@ describe('parseLayout', () => {
   it('keeps a deep playlist zoom from before the ceiling rose (#117)', () => {
     expect(parseLayout(JSON.stringify({ bw: 384 })).bw).toBe(384);
     expect(parseLayout(JSON.stringify({ bw: 96 })).bw).toBe(96);
-    expect(parseLayout(JSON.stringify({ bw: 400 })).bw).toBeUndefined(); // past the ceiling: not trusted
+    expect(parseLayout(JSON.stringify({ bw: 1024 })).bw).toBe(1024);
+    expect(parseLayout(JSON.stringify({ bw: 1100 })).bw).toBeUndefined(); // past the ceiling: not trusted
     expect(parseLayout(JSON.stringify({ bw: 2 })).bw).toBeUndefined();
   });
 });

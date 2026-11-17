@@ -5658,6 +5658,7 @@ dependencies = [
  "wave-rmvpe",
  "wave-session",
  "wave-vst3",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

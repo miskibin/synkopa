@@ -1241,3 +1241,8 @@ select option { background: var(--bg4); color: var(--fg); }
 /* an effect (or a whole chain) dragged over a mixer strip: where it lands */
 .strip[data-fx-drop] { outline: 2px solid var(--blue); outline-offset: -2px; background: color-mix(in srgb, var(--blue) 10%, transparent); }
 .fxchain .hd.grab { cursor: grab; }
+
+/* a plugin WAVE's safety check refused: why, and the way to load it anyway */
+.unsafe { display: flex; align-items: flex-start; gap: 10px; }
+.unsafe > .note { flex: 1; min-width: 0; }
+.unsafe > button { flex: none; }

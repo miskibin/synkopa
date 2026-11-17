@@ -15,6 +15,7 @@ mod models;
 mod pitch_actions;
 #[cfg(target_os = "linux")]
 mod plugin_loop;
+pub mod plugin_probe;
 mod plugins;
 mod project_launch;
 mod recovery;
@@ -950,6 +951,13 @@ async fn plugin_editor(
     app.plugins.editor(&handle, fx_id, open, label, pinned.unwrap_or(false))
 }
 
+/// "Load anyway": the effect or plugin channel `fx_id` loads although WAVE's safety check
+/// refused it (see `plugin_probe`).
+#[tauri::command]
+async fn plugin_load_anyway(app: St<'_>, fx_id: u64) -> R<()> {
+    actions::plugin_load_anyway(&**app, fx_id)
+}
+
 #[tauri::command]
 async fn plugin_editor_open(app: St<'_>, fx_id: u64) -> R<bool> {
     app.plugins.editor_open(fx_id)
@@ -1134,6 +1142,9 @@ pub fn ensure_c_numeric_locale() {
 }
 
 pub fn run(project_arg: Option<&str>) {
+    // plugin windows are X11: keep them above WAVE's window under Wayland too
+    #[cfg(target_os = "linux")]
+    plugin_loop::prefer_x11();
     let boot = boot::Boot::new();
     boot.mark("run() entered");
     let setup_boot = boot.clone();
@@ -1240,6 +1251,7 @@ pub fn run(project_arg: Option<&str>) {
             plugin_editor_open,
             plugin_crash_suspects,
             plugin_block,
+            plugin_load_anyway,
             plugin_params,
             plugin_state,
             plugin_set_param,

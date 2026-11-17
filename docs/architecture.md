@@ -390,6 +390,26 @@ or `wave_lv2::instantiate`. A plugin that does not load (not installed, refused)
   call. LV2 fixes the sample rate and block bound at instantiation, so a new device rate
   re-creates the instance from the saved state (the engine does that for every hosted plugin
   when the device changes).
+* **VST3 bus shapes.** The main buses are asked for stereo; a plugin that keeps a mono bus is
+  wired like LV2's: a mono input is fed the sum of both sides, a mono output plays on both.
+* **The safety check** (`app/src/plugin_probe.rs`). Plugins run inside WAVE, so a plugin that
+  crashes closes WAVE. Before a plugin (effect or instrument) is first loaded, the app starts
+  itself as a worker (the scan worker's protocol, `WAVE_SCAN_WORKER=plugin-check`, the request
+  as JSON) that creates it, runs a test signal (notes for an instrument) at block sizes from 1
+  to 512, saves its state, creates a second instance from that state, runs it and frees both.
+  A worker that crashes or does not answer within 45 s means the plugin is not loaded: the
+  factory returns an error starting `UNSAFE_PLUGIN: ` (the slot shows it in `fx_errors`) and the
+  UI offers **Load anyway** (`plugin_load_anyway {fxId}`: the verdict becomes "trying" and
+  `Engine::retry_plugins` loads every slot that failed; after 20 s with WAVE still running it is
+  "trusted", while a "trying" found at the next start means WAVE died with it, so it is refused
+  again and a recovered project does not crash on it a second time). The engine asks the
+  factory to `vet` the plugins an edit or a project load brings, before it takes its lock, so
+  the checks (up to four at once) never hold up other edits. Verdicts are kept per plugin with the
+  plugin file's length and time in `plugin-safety.json` (WAVE's data folder), so an updated
+  plugin is checked again. A plugin that refused to load in the check, or a build without a
+  worker, loads as before. This catches crashes on creation, processing, state and teardown
+  (Calf Vinyl on Ubuntu 24.04 crashes there, in lilv's `lv2bench` too); it is not a sandbox: a
+  crash later (in its editor, at one parameter value) still closes WAVE.
 
 ### Plugin windows
 
@@ -414,7 +434,13 @@ WAVE's window instead. Closing WAVE's window leaves the plugin's open.
   strips select pointer events (a frame that did would take an implicit grab and steal drags from
   plugins that read XInput2). Moves and resizes are handed to the window manager
   (`_NET_WM_MOVERESIZE`); minimal XEmbed (embedded notify, mapping on `_XEMBED_INFO`, focus).
-  `transient-for` the main window when GTK itself runs on X11. Scale: `Xft.dpi`. No X display
+  `transient-for` the main window when GTK itself runs on X11, so they stay above it. That is
+  why, in a Wayland session with XWayland, the app runs its own window through XWayland too
+  (`GDK_BACKEND=x11`, set at start by `plugin_loop::prefer_x11`, as Bitwig, REAPER and Ardour run):
+  an X11 window cannot stay above a native Wayland window, and every click on WAVE sent the
+  plugin windows behind it. `WAVE_WAYLAND=1`, or a `GDK_BACKEND` the user set, keeps native
+  Wayland. The header's pin keeps a window above every other application's too
+  (`_NET_WM_STATE_ABOVE`; `HWND_TOPMOST` on Windows). Scale: `Xft.dpi`. No X display
   (`DISPLAY` unset) makes `app_info.pluginEditors` false with the reason.
 * **The UI thread's loop.** Linux has no global event loop, so the app installs GTK's glib loop
   (`app/src/plugin_loop.rs`) as `wave_plugin_windows::event_loop` on the main thread. It reads
@@ -429,13 +455,19 @@ WAVE's window instead. Closing WAVE's window leaves the plugin's open.
   over the connected `IConnectionPoint`s (DPF plugins such as Vitalium need it).
 * **LV2 interfaces** (`crates/lv2-host/src/ui.rs`). A plugin's first `ui:X11UI` whose required
   features WAVE provides (`ui:parent`, `ui:resize`, `ui:idleInterface`, `urid:map`/`unmap`,
-  `options:options` with `ui:scaleFactor` and `ui:updateRate`, `log:log`) is loaded from its
+  `options:options` with `ui:scaleFactor` and `ui:updateRate`, `log:log`, `instance-access`) is
+  loaded from its
   library (never unloaded). Control-port writes from the UI (protocol 0) set the same per-port
   value the parameter list and automation set (and mark the state to save); every control port
   that changed, outputs (meters) included, goes back to the UI at each tick; `idle()` runs every
   tick. GTK and Qt interfaces are not embedded (they would need their toolkit in WAVE's process;
   GTK2 cannot share one with GTK3): those plugins keep the parameter list and
   `editor_unavailable` says why. Atom messages between UI and plugin are not carried yet.
+  `instance-access` (JUCE-built LV2 interfaces require it: Surge XT, Dexed, …) hands the UI the
+  running instance's `LV2_Handle`. The instance must then outlive the UI: one that stops running
+  while such a UI is open (removed, or re-created at a new rate) is parked in the plugin's
+  shared state and freed on the UI thread after the UI's `cleanup`; the UI closes at its next
+  tick.
 
 ### Plugin instruments
 
@@ -607,6 +639,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `plugin_editor` | `{fxId, open, title?, subtitle?}` | – (the plugin's own window under WAVE's header showing `title` / `subtitle`; its gear emits `plugin-settings` `{id}`). Rejects with `NO_EDITOR: …` for a plugin without one, with the reason when none can be shown (no X11 display). Here and below `fxId` may also be a plugin channel's id |
 | `plugin_params` | `{fxId}` | `[{id,name,value,display,def}]`; LV2 adds `{symbol,real,min,max,unit,steps?,toggle,integer,log,options?:[{value,label}]}` |
 | `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
+| `plugin_load_anyway` | `{fxId}` | – (an effect or plugin channel the safety check refused, its `fx_errors` entry containing `UNSAFE_PLUGIN: `, loads from now on; every plugin that failed to load is tried again) |
 | `plugin_state` | `{fxId}` | the live instance's current state, base64 (what `PluginRef.state` stores) |
 | `vst3_scan` / `vst3_add` / `vst3_editor` / `vst3_params` / `vst3_set_param` | as before | older names: the same, with `vst3_scan` listing only VST3 effects as a plain array |
 | `cli_status` | – | `{installed, command, path, note?}` |

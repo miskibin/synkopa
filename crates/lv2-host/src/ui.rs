@@ -14,7 +14,9 @@
 //!
 //! Only X11 UIs are embedded. GTK and Qt UIs would need their toolkit inside WAVE's process
 //! (suil wraps them, and GTK2 cannot share a process with GTK3 at all); such plugins keep
-//! WAVE's parameter list, and `has_editor` says why. Atom messages (`patch:Set`, files,
+//! WAVE's parameter list, and `has_editor` says why. A UI that requires `instance-access`
+//! (JUCE builds them) is handed the running instance; see `Shared::retire` for how the
+//! instance outlives it. Atom messages (`patch:Set`, files,
 //! scopes) between UI and plugin are not carried yet: a UI that edits through them shows
 //! its controls but those edits do not reach the plugin.
 
@@ -42,6 +44,8 @@ pub(crate) struct UiSpec {
     uri: CString,
     binary: String,
     bundle: CString,
+    /// It requires `instance-access` (JUCE-built UIs): it is handed the running instance.
+    needs_instance: bool,
 }
 
 /// The plugin's embeddable UI, or why it has none.
@@ -78,8 +82,9 @@ pub(crate) fn find(plugin_uri: &str) -> Result<UiSpec, String> {
             let binary = node_path(l, (l.lilv_ui_get_binary_uri)(ui));
             let bundle = node_path(l, (l.lilv_ui_get_bundle_uri)(ui));
             let uri = node_string(l, uri_node);
+            let needs_instance = needs.iter().any(|f| f.as_str() == plain(INSTANCE_ACCESS));
             if let (Ok(uri), Ok(bundle), false) = (CString::new(uri), CString::new(bundle_dir(&bundle)), binary.is_empty()) {
-                found = Some(UiSpec { uri, binary, bundle });
+                found = Some(UiSpec { uri, binary, bundle, needs_instance });
             }
         }
         (l.lilv_node_free)(x11);
@@ -159,7 +164,7 @@ struct Features {
 }
 
 impl Features {
-    fn new(parent: *mut c_void, controller: *mut c_void, scale: f32) -> Box<Self> {
+    fn new(parent: *mut c_void, controller: *mut c_void, scale: f32, instance: Option<usize>) -> Box<Self> {
         let zero = || LV2_Options_Option { context: OPTIONS_INSTANCE, subject: 0, key: 0, size: 0, type_: 0, value: std::ptr::null() };
         let mut f = Box::new(Self {
             scale,
@@ -197,6 +202,10 @@ impl Features {
             feature(OPTIONS_OPTIONS, f.options.as_mut_ptr().cast()),
             feature(LOG_LOG, std::ptr::addr_of_mut!(f.log).cast()),
         ];
+        if let Some(handle) = instance {
+            // the running plugin's own LV2_Handle (`instance-access`)
+            f.list.push(feature(INSTANCE_ACCESS, handle as *mut c_void));
+        }
         f.ptrs = f.list.iter().map(|x| x as *const LV2_Feature).chain(std::iter::once(std::ptr::null())).collect();
         f
     }
@@ -213,6 +222,9 @@ pub(crate) struct UiSession {
     controller: Box<Controller>,
     _features: Box<Features>,
     shared: Weak<Shared>,
+    /// Held while the UI has the running instance (`instance-access`): what it points into
+    /// is freed only after it is cleaned up (see `Shared::retire`).
+    lent: Option<Arc<Shared>>,
     /// Each port's value as last sent to the UI (f32 bits); `None` = never.
     sent: Vec<Option<u32>>,
     size: WindowSize,
@@ -254,7 +266,13 @@ impl UiSession {
         let scale = window.dpi().unwrap_or(96) as f32 / 96.0;
         let controller = Box::new(Controller { shared: Arc::downgrade(shared), resize: Cell::new(None) });
         let controller_ptr = std::ptr::from_ref(&*controller).cast_mut().cast::<c_void>();
-        let features = Features::new(window.native_handle() as *mut c_void, controller_ptr, scale);
+        let instance = shared.lend_instance();
+        if spec.needs_instance && instance.is_none() {
+            let _ = window.close();
+            return Err("its interface needs the running plugin, which is not running".into());
+        }
+        // from here a failure gives the instance back (`return_instance` frees nothing that runs)
+        let features = Features::new(window.native_handle() as *mut c_void, controller_ptr, scale, instance);
         let plugin_uri = CString::new(shared.uri()).map_err(|_| "bad plugin URI".to_owned())?;
         let mut widget: LV2UI_Widget = std::ptr::null_mut();
         // SAFETY: every pointer outlives the UI (owned by the session built below, or the
@@ -267,6 +285,9 @@ impl UiSession {
         .unwrap_or(std::ptr::null_mut());
         if handle.is_null() {
             let _ = window.close();
+            if instance.is_some() {
+                shared.return_instance();
+            }
             return Err("its interface could not be created".into());
         }
         let mut session = Self {
@@ -279,6 +300,7 @@ impl UiSession {
             controller,
             _features: features,
             shared: Arc::downgrade(shared),
+            lent: instance.map(|_| Arc::clone(shared)),
             sent: vec![None; shared.port_count()],
             size: FALLBACK,
         };
@@ -332,6 +354,10 @@ impl UiSession {
     /// UI's own close, or the plugin gone).
     pub(crate) fn pump(&mut self) -> bool {
         let Some(shared) = self.shared.upgrade() else { return true };
+        if self.lent.is_some() && shared.lent_instance_stale() {
+            // the plugin it was handed stopped running (removed, or re-created)
+            return true;
+        }
         let mut closed = false;
         for event in self.window.drain_events() {
             match event {
@@ -376,6 +402,10 @@ impl Drop for UiSession {
             }
         }
         let _ = self.window.close();
+        // only now can the instance it was handed be freed
+        if let Some(shared) = self.lent.take() {
+            shared.return_instance();
+        }
     }
 }
 
@@ -445,7 +475,7 @@ mod tests {
 
     #[test]
     fn the_ui_features_are_null_terminated_and_offer_parent_resize_and_idle() {
-        let f = Features::new(0x1234 as *mut c_void, std::ptr::null_mut(), 1.5);
+        let f = Features::new(0x1234 as *mut c_void, std::ptr::null_mut(), 1.5, None);
         assert!(f.ptrs.last().unwrap().is_null());
         let uris: Vec<&str> = f.list.iter().map(|x| unsafe { CStr::from_ptr(x.URI) }.to_str().unwrap()).collect();
         for want in [UI_PARENT, UI_RESIZE, UI_IDLE_INTERFACE, URID_MAP, OPTIONS_OPTIONS] {
@@ -453,6 +483,11 @@ mod tests {
         }
         assert_eq!(f.list[0].data as usize, 0x1234, "ui:parent carries the window id");
         assert_eq!(f.options[2].key, 0, "the options list ends with an empty entry");
+        assert!(!uris.contains(&plain(INSTANCE_ACCESS)), "no instance, no instance-access");
+        let g = Features::new(0x1234 as *mut c_void, std::ptr::null_mut(), 1.0, Some(0x5678));
+        let access = g.list.iter().find(|x| unsafe { CStr::from_ptr(x.URI) }.to_str().unwrap() == plain(INSTANCE_ACCESS)).unwrap();
+        assert_eq!(access.data as usize, 0x5678, "instance-access carries the plugin's handle");
+        assert!(g.ptrs.last().unwrap().is_null());
         assert!(SUPPORTED_UI_FEATURES.iter().all(|s| s.ends_with('\0')));
     }
 

@@ -166,6 +166,16 @@ impl Default for Shared {
 
 // ------------------------------------------------------------------ graph
 
+/// Non-finite samples (NaN, ±inf) become silence. No allocation; one pass.
+#[inline]
+pub(crate) fn finite_or_silent(x: &mut [f32]) {
+    for v in x {
+        if !v.is_finite() {
+            *v = 0.0;
+        }
+    }
+}
+
 pub struct FxSlot {
     pub id: Id,
     pub bypass: bool,
@@ -2280,6 +2290,10 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
                     ins.dry_r[..n].copy_from_slice(&ins.r[..n]);
                 }
                 p.process(&mut ins.l[..n], &mut ins.r[..n], ctx);
+                // a misbehaving (hosted) effect must not poison the effects after it and the
+                // mix: a filter fed one NaN stays NaN for good
+                finite_or_silent(&mut ins.l[..n]);
+                finite_or_silent(&mut ins.r[..n]);
                 if delayed {
                     // the line runs at every Mix so lowering it never plays stale audio
                     slot.delay_dry(&mut ins.dry_l[..n], &mut ins.dry_r[..n]);

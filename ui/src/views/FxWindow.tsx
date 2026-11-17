@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
 import { be } from '../api/backend';
-import { PLUGIN_FORMAT_LABEL, type Fx, type FxKind, type Id, type ParamDef, type PluginParam, type PluginRef } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, unsafeReason, type Fx, type FxKind, type Id, type ParamDef, type PluginParam, type PluginRef } from '../api/types';
 import { sliderStep } from '../lib/pluginParam';
 import { clamp } from '../lib/format';
 import { lang, t, tName, type TranslationKey } from '../lib/i18n';
@@ -678,6 +678,7 @@ export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boo
   const load = () => be().pluginParams(props.id).then(p => { setParams(p); setErr(null); }).catch(e => setErr(String(e)));
   /** Why the engine could not load the plugin (not installed, refused): shown instead of a parameter error. */
   const loadErr = () => S.fxErrors[props.id];
+  const [trusting, setTrusting] = createSignal(false);
   onMount(() => { load(); be().appInfo().then(i => { setEditors(i.pluginEditors); setEditorsWhy(i.pluginEditorsWhy ?? null); }).catch(() => {}); });
   // a window opened with the slot is asked before the engine has the instance: ask again once it does
   createEffect(() => { void S.revision; if (err() && !loadErr()) load(); });
@@ -699,7 +700,8 @@ export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boo
   return (
     <div style={{ padding: '12px 14px', display: 'flex', 'flex-direction': 'column', gap: '10px' }}>
       <div class="row" style={{ gap: '8px' }}>
-        <Show when={editors()} fallback={<span class="note" style={{ flex: 'none' }} title={editorsWhy() ?? t('c.fx.guiNone')}>{t('c.fx.guiNoneShort')}</span>}>
+        {/* a plugin that is not loaded has no window to show: the reason is below */}
+        <Show when={editors() && !loadErr()} fallback={<Show when={!loadErr()}><span class="note" style={{ flex: 'none' }} title={editorsWhy() ?? t('c.fx.guiNone')}>{t('c.fx.guiNoneShort')}</span></Show>}>
           <Show when={!noEd()} fallback={<span class="note" style={{ flex: 'none' }} title={t('c.fx.guiNoWindowTip')}>{t('c.fx.guiNoWindow')}</span>}>
             <button class="smallbtn primary" style={{ height: '26px', padding: '0 12px' }} onClick={toggleGui}>{editorOpen(props.id) ? t('c.fx.guiClose') : t('c.fx.guiOpen')}</button>
           </Show>
@@ -709,7 +711,19 @@ export function PluginBody(props: { id: Id; plugin?: PluginRef; instrument?: boo
       </div>
       <input class="textin" placeholder={t('c.fx.searchParam')} value={q()} onInput={e => setQ(e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
       <Show when={guiErr()}>{e => <span class="note err">{e()}</span>}</Show>
-      <Show when={loadErr() ?? err()}>{e => <span class="note err">{loadErr() ? t(props.instrument ? 'c.fx.instNotLoaded' : 'c.fx.pluginNotLoaded', { e: e() }) : e()}</span>}</Show>
+      <Show when={unsafeReason(loadErr())} fallback={
+        <Show when={loadErr() ?? err()}>{e => <span class="note err">{loadErr() ? t(props.instrument ? 'c.fx.instNotLoaded' : 'c.fx.pluginNotLoaded', { e: e() }) : e()}</span>}</Show>
+      }>
+        {why => (
+          <div class="unsafe">
+            <span class="note err">{t(props.instrument ? 'c.fx.unsafeInst' : 'c.fx.unsafeFx', { e: why() })}</span>
+            <button class="smallbtn" disabled={trusting()} title={t('c.fx.loadAnywayTip')}
+              onClick={() => { setTrusting(true); be().pluginLoadAnyway(props.id).then(() => load(), e => say(String(e))).finally(() => setTrusting(false)); }}>
+              {t('c.fx.loadAnyway')}
+            </button>
+          </div>
+        )}
+      </Show>
       <div style={{ 'max-height': '320px', overflow: 'auto', 'padding-right': '4px' }}>
         <For each={shown()} fallback={<span class="note">{t('c.fx.noParams')}</span>}>
           {p => {

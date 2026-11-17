@@ -140,6 +140,8 @@ pub struct Plugins {
     /// Plugins still live when the last session ended: the suspects of a crash (a session
     /// that exits normally leaves the marker file empty).
     crash_suspects: Mutex<Vec<CrashSuspect>>,
+    /// The safety check every plugin passes before it is first loaded into WAVE.
+    safety: Arc<crate::plugin_probe::Safety>,
     /// Where the live marker file is (`None`: nowhere — a machine without WAVE's data
     /// folder, and every test).
     marker: Option<std::path::PathBuf>,
@@ -177,6 +179,7 @@ struct Factory(Arc<Plugins>);
 impl PluginFactory for Factory {
     fn create(&self, fx_id: Id, p: &PluginRef, sr: f32, max_block: usize, live: bool) -> Result<Box<dyn Processor>, String> {
         let state = p.state.as_deref().and_then(|s| base64::engine::general_purpose::STANDARD.decode(s).ok());
+        self.0.safe(p, false).map_err(|e| format!("{}: {e}", p.name))?;
         let (proc, handle) = match p.format.as_str() {
             PluginRef::LV2 => {
                 let (proc, h) =
@@ -202,6 +205,7 @@ impl PluginFactory for Factory {
             return Err(format!("{}: {} instruments are not supported (VST3 only)", p.name, p.format_label()));
         }
         let state = p.state.as_deref().and_then(|s| base64::engine::general_purpose::STANDARD.decode(s).ok());
+        self.0.safe(p, true).map_err(|e| format!("{}: {e}", p.name))?;
         let path = self.0.vst3_path(p);
         let (inst, h) = wave_vst3::instantiate_instrument(&path, &p.cid, state.as_deref(), sr, max_block, !live)
             .map_err(|e| format!("{}: {e}", p.name))?;
@@ -210,6 +214,24 @@ impl PluginFactory for Factory {
             self.0.live_loaded(chan_id, p);
         }
         Ok(inst)
+    }
+    fn vet(&self, plugins: &[(&PluginRef, bool)]) {
+        // first-time safety checks, a few at once (a project opening with ten new plugins)
+        let mut seen = std::collections::HashSet::new();
+        let todo: Vec<crate::plugin_probe::Request> = plugins
+            .iter()
+            .map(|(p, inst)| self.0.request(p, *inst))
+            .filter(|r| self.0.safety.verdict(r).is_none() && seen.insert(r.clone()))
+            .collect();
+        std::thread::scope(|s| {
+            for chunk in todo.chunks(todo.len().div_ceil(4).max(1)) {
+                s.spawn(move || {
+                    for r in chunk {
+                        let _ = self.0.safety.check(r);
+                    }
+                });
+            }
+        });
     }
     fn release(&self, fx_id: Id) {
         self.0.handles.lock().remove(&fx_id);
@@ -236,12 +258,17 @@ impl PluginFactory for Factory {
 
 impl Plugins {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self::open(live_marker()))
+        Arc::new(Self::open(live_marker(), crate::plugin_probe::Safety::load()))
+    }
+
+    /// With a given safety check (tests: one without a worker process or a file).
+    pub fn with_safety(safety: crate::plugin_probe::Safety) -> Arc<Self> {
+        Arc::new(Self::open(None, safety))
     }
 
     /// Whatever the last session left in the marker file names its crash suspects; this
     /// session starts clean (entries come back as plugins load).
-    fn open(marker: Option<std::path::PathBuf>) -> Self {
+    fn open(marker: Option<std::path::PathBuf>, safety: crate::plugin_probe::Safety) -> Self {
         let crash_suspects = marker.as_ref().map(|p| read_marker_at(p)).unwrap_or_default();
         if let Some(p) = &marker {
             write_marker_at(p, &[]);
@@ -252,6 +279,7 @@ impl Plugins {
             live: Mutex::new(HashMap::new()),
             crash_suspects: Mutex::new(crash_suspects),
             marker,
+            safety: Arc::new(safety),
         }
     }
 
@@ -304,6 +332,22 @@ impl Plugins {
 
     pub fn factory(self: &Arc<Self>) -> Arc<dyn PluginFactory> {
         Arc::new(Factory(self.clone()))
+    }
+
+    /// The safety check for `p` (cached; the first time, the plugin is tried in a worker
+    /// process): `Err` when loading it would likely bring WAVE down.
+    fn safe(&self, p: &PluginRef, instrument: bool) -> Result<(), String> {
+        self.safety.check(&self.request(p, instrument))
+    }
+
+    fn request(&self, p: &PluginRef, instrument: bool) -> crate::plugin_probe::Request {
+        let path = if p.format == PluginRef::VST3 { self.vst3_path(p) } else { p.path.clone() };
+        crate::plugin_probe::Request::of(p, path, instrument)
+    }
+
+    /// Load `p` from now on although the safety check refused it.
+    pub fn trust(&self, p: &PluginRef, instrument: bool) {
+        self.safety.trust(&self.request(p, instrument));
     }
 
     /// Every installed effect of every format this platform hosts (VST3; LV2 on Linux).
@@ -487,7 +531,8 @@ mod tests {
         };
         // the "crashed" session left Vitalium in the marker
         write_marker_at(&marker, std::slice::from_ref(&vitalium));
-        let plugins = Plugins::open(Some(marker.clone()));
+        let plugins =
+            Plugins::open(Some(marker.clone()), crate::plugin_probe::Safety::with(None, wave_plugin_scan::WorkerSpawn::InProcess));
         assert_eq!(plugins.crash_suspects(), vec![vitalium.clone()]);
         // this session starts clean: the marker no longer names anybody
         assert_eq!(read_marker_at(&marker), vec![]);

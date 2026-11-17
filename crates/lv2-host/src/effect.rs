@@ -93,6 +93,24 @@ pub(crate) struct Shared {
     /// The plugin's own interface WAVE can embed, or why none (looked up once).
     ui: std::sync::OnceLock<Result<crate::ui::UiSpec, String>>,
     ui_open: AtomicBool,
+    /// The running instance a UI may be given (`instance-access`), and what that UI holds.
+    access: Mutex<Access>,
+}
+
+/// `instance-access`: a UI (JUCE-built ones need it) gets the plugin instance's own handle
+/// and calls into it directly, so the instance must outlive the UI. Instances that stop
+/// running while such a UI is open (the effect removed, or re-created at a new sample
+/// rate) are parked here and freed only after the UI is cleaned up; `stale` tells the UI
+/// to close at its next tick.
+#[derive(Default)]
+pub(crate) struct Access {
+    /// The first running instance's `LV2_Handle` (0: none running).
+    handle: usize,
+    /// An open UI was handed `handle`.
+    lent: bool,
+    /// The lent instance is no longer running: the UI must close.
+    stale: bool,
+    parked: Vec<Unit>,
 }
 
 impl Shared {
@@ -114,6 +132,7 @@ impl Shared {
             target: Mutex::new(None),
             ui: std::sync::OnceLock::new(),
             ui_open: AtomicBool::new(false),
+            access: Mutex::new(Access::default()),
         }
     }
 
@@ -156,6 +175,51 @@ impl Shared {
 
     pub(crate) fn set_ui_open(&self, open: bool) {
         self.ui_open.store(open, Ordering::Release);
+    }
+
+    /// Lend the running instance's handle to a UI that is opening (`None`: none running).
+    pub(crate) fn lend_instance(&self) -> Option<usize> {
+        let mut a = self.access.lock();
+        if a.handle == 0 {
+            return None;
+        }
+        a.lent = true;
+        a.stale = false;
+        Some(a.handle)
+    }
+
+    /// The lent instance stopped running: the UI holding it must close.
+    pub(crate) fn lent_instance_stale(&self) -> bool {
+        let a = self.access.lock();
+        a.lent && a.stale
+    }
+
+    /// The UI that held the instance is cleaned up: free what was parked for it (here,
+    /// outside the lock).
+    pub(crate) fn return_instance(&self) {
+        let parked = {
+            let mut a = self.access.lock();
+            a.lent = false;
+            a.stale = false;
+            std::mem::take(&mut a.parked)
+        };
+        drop(parked);
+    }
+
+    /// `units` stop running: parked while a UI holds their instance, else freed.
+    fn retire(&self, units: Vec<Unit>) {
+        let freed = {
+            let mut a = self.access.lock();
+            a.handle = 0;
+            if a.lent && !units.is_empty() {
+                a.stale = true;
+                a.parked.extend(units);
+                Vec::new()
+            } else {
+                units
+            }
+        };
+        drop(freed);
     }
 
     fn port_by_symbol(&self, symbol: &str) -> Option<usize> {
@@ -412,6 +476,7 @@ impl Lv2Effect {
             }
             u.inst.activate();
         }
+        shared.access.lock().handle = self.units.first().map_or(0, |u| u.inst.handle() as usize);
         *shared.target.lock() = self.units.first().map(|u| StateTarget {
             raw: u.inst.raw(),
             features: u.inst.features(),
@@ -508,6 +573,7 @@ impl Lv2Effect {
 impl Drop for Lv2Effect {
     fn drop(&mut self) {
         self.withdraw();
+        self.shared.retire(std::mem::take(&mut self.units));
     }
 }
 
@@ -526,7 +592,8 @@ impl Processor for Lv2Effect {
         match created {
             Ok(units) => {
                 self.withdraw();
-                self.units = units;
+                let old = std::mem::replace(&mut self.units, units);
+                self.shared.retire(old);
                 self.sample_rate = sample_rate;
                 self.max_block = max_block.max(1);
                 self.start();

@@ -199,6 +199,8 @@ export interface Backend {
   pluginCrashSuspects(): Promise<PluginCrashSuspect[]>;
   /** Keep a plugin's module out of future scans (the follow-up to `pluginCrashSuspects`). */
   pluginBlock(format: string, path: string): Promise<void>;
+  /** Load a plugin WAVE's safety check refused (its `fxErrors` entry contains `UNSAFE_PLUGIN`), from now on; every slot with it is retried. */
+  pluginLoadAnyway(fxId: Id): Promise<void>;
   pluginParams(fxId: Id): Promise<PluginParam[]>;
   /** A live plugin's current state (base64, what `PluginRef.state` stores): an effect or a plugin channel by id. */
   pluginState(fxId: Id): Promise<string>;
@@ -375,6 +377,7 @@ export function tauriBackend(): Backend {
     pluginEditorOpen: fxId => invoke('plugin_editor_open', { fxId }),
     pluginCrashSuspects: () => invoke('plugin_crash_suspects'),
     pluginBlock: (format, path) => invoke('plugin_block', { format, path }),
+    pluginLoadAnyway: fxId => invoke('plugin_load_anyway', { fxId }),
     pluginParams: fxId => invoke('plugin_params', { fxId }),
     pluginState: fxId => invoke('plugin_state', { fxId }),
     pluginSetParam: (fxId, id, value) => invoke('plugin_set_param', { fxId, id, value }),

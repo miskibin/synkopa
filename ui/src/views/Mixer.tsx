@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
+import { PLUGIN_FORMAT_LABEL, unsafeReason, VOL_UNITY, type Fx, type Id, type Insert } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { stripLabel } from '../lib/mixer';
 import { t as tr, tName } from '../lib/i18n';
@@ -368,7 +368,7 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
         <Show when={S.fxErrors[f().id]} fallback={
           <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
         }>
-          {e => <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--red)' }} title={e()}>{tr('c.mix.pluginNotLoaded')}</span>}
+          {e => <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--red)' }} title={unsafeReason(e()) ?? e()}>{tr(unsafeReason(e()) ? 'c.mix.pluginUnsafe' : 'c.mix.pluginNotLoaded')}</span>}
         </Show>
       </div>
       <Show when={f().type !== 'plugin'}>

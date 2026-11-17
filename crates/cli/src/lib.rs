@@ -161,6 +161,8 @@ PLUGINS  (VST3 everywhere, LV2 on Linux)
                                            LV2: --cid is the plugin URI)
   plugin-params --fx ID [--query TEXT]     parameters of a plugin instance: an effect, or a plugin channel by its id (LV2: real range and unit too)
   plugin-set --fx ID --id PARAM --value 0..1
+  plugin-load-anyway --fx ID               load a plugin WAVE's safety check refused (it crashed or hung
+                                           when tried in a separate process); from now on, every project
   vst3 [--rescan] | vst3-add | vst3-params | vst3-set    the same, VST3 only (older names)
   auto-add --fx ID --param ID [--points "0:0.2,4:0.8" | --value V] [--track N --name TEXT]
                                            automate a hosted plugin parameter (adds the playlist clip too)
@@ -1006,6 +1008,9 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             "plugin_set_param",
             json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64, "id": a.num("id").map_err(u)?.ok_or_else(|| u("missing --id".into()))? as u64, "value": a.num("value").map_err(u)?.ok_or_else(|| u("missing --value".into()))?}),
         ),
+        "plugin-load-anyway" => {
+            send(cx, a, "plugin_load_anyway", json!({"fxId": a.num("fx").map_err(u)?.ok_or_else(|| u("missing --fx".into()))? as u64}))
+        }
         "vst3" => send(cx, a, "vst3_scan", json!({"rescan": a.has("rescan")})),
         "vst3-add" => send(
             cx,

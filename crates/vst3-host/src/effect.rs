@@ -130,8 +130,8 @@ impl BusLayout {
         Ok(())
     }
 
-    /// `Ok` for the shape of a stereo insert effect: a stereo main input and
-    /// a stereo main output, plus at most a few extra (side-chain) buses.
+    /// `Ok` for the shape of an insert effect: a mono or stereo main input and output,
+    /// plus at most a few extra (side-chain) buses.
     pub(crate) fn check_stereo_effect(&self) -> Result<(), String> {
         let (Some(&main_in), Some(&main_out)) = (self.inputs.first(), self.outputs.first()) else {
             return Err(if self.inputs.is_empty() {
@@ -140,8 +140,10 @@ impl BusLayout {
                 "it has no audio output".to_owned()
             });
         };
-        if main_in != 2 || main_out != 2 {
-            return Err(format!("its main buses are {main_in} channel(s) in and {main_out} out, not stereo"));
+        // a mono bus is fine: a mono input is fed the sum of both sides, a mono output is
+        // copied to both (what LV2's mono wirings do, and what other hosts do with one)
+        if !(1..=2).contains(&main_in) || !(1..=2).contains(&main_out) {
+            return Err(format!("its main buses are {main_in} channel(s) in and {main_out} out, not mono or stereo"));
         }
         if self.inputs.len() > MAX_BUSES
             || self.outputs.len() > MAX_BUSES
@@ -840,8 +842,15 @@ unsafe impl Send for Vst3Effect {}
 impl Vst3Effect {
     fn run_block(&mut self, l: &mut [f32], r: &mut [f32], ctx: &ProcessCtx, offset: usize) {
         let frames = l.len();
-        self.io.main_in[0][..frames].copy_from_slice(l);
-        self.io.main_in[1][..frames].copy_from_slice(r);
+        if self.io.in_channels.first().is_some_and(|channels| *channels == 1) {
+            // a mono input hears both sides
+            for ((m, a), b) in self.io.main_in[0][..frames].iter_mut().zip(l.iter()).zip(r.iter()) {
+                *m = 0.5 * (a + b);
+            }
+        } else {
+            self.io.main_in[0][..frames].copy_from_slice(l);
+            self.io.main_in[1][..frames].copy_from_slice(r);
+        }
         if self.io.has_extra_inputs() {
             self.io.silence[..frames].fill(0.0);
         }
@@ -884,7 +893,9 @@ impl Vst3Effect {
         self.continuous_samples += frames as i64;
         if result == kResultOk {
             l.copy_from_slice(&self.io.main_out[0][..frames]);
-            r.copy_from_slice(&self.io.main_out[1][..frames]);
+            // a mono output plays on both sides
+            let stereo = self.io.out_channels.first().is_some_and(|channels| *channels >= 2);
+            r.copy_from_slice(&self.io.main_out[usize::from(stereo)][..frames]);
         } else {
             self.shared.counters.process_errors.fetch_add(1, Ordering::Relaxed);
         }
@@ -1538,7 +1549,7 @@ mod tests {
     }
 
     #[test]
-    fn only_a_stereo_in_stereo_out_layout_is_an_insert_effect() {
+    fn mono_or_stereo_main_buses_make_an_insert_effect() {
         assert!(stereo().check_stereo_effect().is_ok());
         let sidechain = BusLayout { inputs: vec![2, 2], outputs: vec![2], event_inputs: 0 };
         assert!(sidechain.check_stereo_effect().is_ok(), "a side-chain bus is fed silence");
@@ -1546,8 +1557,12 @@ mod tests {
         let instrument = BusLayout { inputs: vec![], outputs: vec![2], event_inputs: 0 };
         let err = instrument.check_stereo_effect().unwrap_err();
         assert!(err.contains("no audio input"), "{err}");
-        let mono = BusLayout { inputs: vec![1], outputs: vec![1], event_inputs: 0 };
-        assert!(mono.check_stereo_effect().unwrap_err().contains("1 channel"));
+        for (i, o) in [(1, 1), (1, 2), (2, 1)] {
+            let mono = BusLayout { inputs: vec![i], outputs: vec![o], event_inputs: 0 };
+            assert!(mono.check_stereo_effect().is_ok(), "{i} in, {o} out: a mono bus is wired to both sides");
+        }
+        let surround = BusLayout { inputs: vec![6], outputs: vec![6], event_inputs: 0 };
+        assert!(surround.check_stereo_effect().unwrap_err().contains("6 channel"));
         let sink = BusLayout { inputs: vec![2], outputs: vec![], event_inputs: 0 };
         assert!(sink.check_stereo_effect().is_err());
         let absurd = BusLayout { inputs: vec![2; MAX_BUSES + 1], outputs: vec![2], event_inputs: 0 };

@@ -36,14 +36,34 @@ shown in the app after an update and is published as the release notes (see
   plugin crashed it, or the machine did), the next start lists the plugins that were loaded
   and offers, per plugin, to keep it out of future scans. A normal exit clears the list on its
   own.
+- **A plugin that crashes no longer takes WAVE down when you load it.** The first time you use a
+  plugin, WAVE tries it in a separate, throw-away process: it creates it, plays sound (or notes)
+  through it, saves and restores its settings and closes it. If that test process crashes or
+  hangs, the plugin is not loaded into WAVE: its slot says why, and **Load anyway** loads it if
+  you want to take the risk. Plugins that pass load straight away from then on (an updated
+  plugin is tried again).
+- **Zoom much further into the Playlist**, down to single 16ths spread across the screen, for
+  detailed drum and edit work. The automatic snap follows down to 1/16 of a beat, and the snap
+  menu has 1/8 and 1/16 beat.
+
+### Fixed
+- **Linux: plugin windows stay in front of WAVE.** Under Wayland, clicking anywhere in WAVE sent
+  plugin windows (Vitalium, Surge XT, …) behind it. WAVE now runs through XWayland there, as
+  other Linux DAWs do, so plugin windows stay above it (`WAVE_WAYLAND=1` keeps native Wayland).
+- **Linux: LV2 plugins built with JUCE show their own window** (Surge XT, Dexed and others
+  needed the `instance-access` feature; they showed only WAVE's parameter list).
+- **Mono VST3 effects load.** Effects with a mono input or output (most ZAM plugins, several
+  DISTRHO ones) were refused as "not a stereo effect"; they now take the sum of both sides and
+  play on both.
+- **A plugin that outputs garbage cannot ruin the mix.** An effect that produces invalid samples
+  (NaN or infinity, as ZamEQ2 does) is silenced instead of breaking every effect after it and the
+  master.
 
 ### Changed
 - **The Library's sections collapse.** Standard library, Kits to download and Folders each get
   a chevron: click the heading to fold it away and leave your own folders in sight. A search
   still looks everywhere, and what you folded stays folded after a restart.
-- **The Playlist zooms in four times further.** The ceiling goes from 96 to 384 pixels per beat
-  (a 16th note at 24 px), for drum-level detail when arranging clips; the ruler, the clips and
-  their contents all follow.
+
 - **Redesigned Settings.** A bigger window with an icon sidebar (General, Look, Audio, MIDI and
   a new Updates tab), settings grouped into cards, and each option's explanation shown under its
   name instead of hidden in a tooltip. Themes are shown as small previews of the app, grouped

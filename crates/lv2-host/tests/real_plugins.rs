@@ -177,12 +177,21 @@ fn state_round_trips_and_survives_a_sample_rate_change() {
 /// Every usable installed effect (within a time budget): it instantiates, processes the
 /// test signal without NaN at an odd block size, reports a sane latency, and its state
 /// comes back.
+/// Calf Vinyl 0.90.3 (Ubuntu 24.04): segfaults in `lv2bench` as well. ZamEQ2 4.2: NaN from a
+/// quiet sine at its defaults, its VST3 build too (the engine silences non-finite effect output).
+const KNOWN_CRASHING: &[&str] = &["http://calf.sourceforge.net/plugins/Vinyl", "urn:zamaudio:ZamEQ2"];
+
 #[test]
 fn every_installed_effect_processes_the_test_signal_and_round_trips_its_state() {
     let Some(list) = effects() else { return };
     let budget = Instant::now() + Duration::from_secs(240);
     let (mut ran, mut failed_to_load, mut with_latency, mut with_worker) = (0, vec![], 0, 0);
-    for p in list.iter().filter(|p| p.unsupported.is_none()) {
+    // plugins that crash lilv's own reference host too (`lv2bench`), so in-process here; WAVE
+    // itself meets them in its safety check's worker process (app/src/plugin_probe.rs).
+    // `WAVE_LV2_TEST_SKIP` adds URIs (comma-separated) for a machine's own broken plugins.
+    let extra = std::env::var("WAVE_LV2_TEST_SKIP").unwrap_or_default();
+    let skip: Vec<&str> = KNOWN_CRASHING.iter().copied().chain(extra.split(',').map(str::trim).filter(|s| !s.is_empty())).collect();
+    for p in list.iter().filter(|p| p.unsupported.is_none() && !skip.contains(&p.cid.as_str())) {
         if Instant::now() > budget {
             eprintln!("time budget reached after {ran} plugins");
             break;

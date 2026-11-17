@@ -3,6 +3,10 @@
 
 fn main() -> std::process::ExitCode {
     wave_app::ensure_c_numeric_locale();
+    // a plugin safety check (the app re-invokes itself to try a plugin before loading it)
+    if wave_app::plugin_probe::run_if_requested() {
+        return std::process::ExitCode::SUCCESS;
+    }
     // a VST3 scan worker (the app re-invokes itself to read unknown plugins safely)
     if wave_vst3::run_scan_worker_if_requested() {
         return std::process::ExitCode::SUCCESS;

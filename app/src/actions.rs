@@ -194,6 +194,23 @@ pub fn preset(app: &dyn Host, fx_id: u64, index: usize) -> R<u64> {
     app.engine().apply(&[Op::PutFx { insert_id: m.id, fx: f, index: None }], false, None).map_err(|e| e.to_string())
 }
 
+/// "Load anyway": the effect or plugin channel `id` (and every other use of the same plugin)
+/// loads although WAVE's safety check refused it, from now on. Not an edit (no undo step).
+pub fn plugin_load_anyway(app: &dyn Host, id: u64) -> R<()> {
+    let p = app.engine().project();
+    let (plugin, instrument) = match p.find_fx(id) {
+        Some((_, f)) => (f.plugin.clone().ok_or("that effect is not a hosted plugin")?, false),
+        None => match p.channel(id).and_then(wave_engine::Channel::plugin) {
+            Some(pl) => (pl.clone(), true),
+            None => return Err(format!("no plugin effect or plugin channel has id {id}")),
+        },
+    };
+    app.plugins().trust(&plugin, instrument);
+    app.ensure_live_plugins();
+    app.engine().retry_plugins();
+    Ok(())
+}
+
 /// Put a scanned plugin (`format` `vst3` or `lv2`; LV2 plugins are found by `cid`, their
 /// URI, and `path` may be empty) on an insert.
 pub fn plugin_add(app: &dyn Host, insert_id: u64, format: &str, path: &str, cid: &str, index: Option<usize>) -> R<(u64, u64)> {
@@ -1403,7 +1420,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1595,6 +1612,10 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
                 .into_iter()
                 .filter(|p| q.as_ref().map(|q| p.name().to_lowercase().contains(q)).unwrap_or(true))
                 .collect::<Vec<_>>()))
+        }
+        "plugin_load_anyway" => {
+            plugin_load_anyway(app, need_u64(a, "fxId")?)?;
+            Ok(json!({}))
         }
         "plugin_set_param" | "vst3_set_param" => {
             app.plugins().set_param(need_u64(a, "fxId")?, need_u64(a, "id")? as u32, opt_f64(a, "value").ok_or("`value` is required")?)?;

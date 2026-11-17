@@ -33,7 +33,7 @@ wave-cli = { path = "../crates/cli" }
 wave-vst3 = { path = "../crates/vst3-host" }
 wave-lv2 = { path = "../crates/lv2-host" }
 wave-plugin-windows = { path = "../crates/plugin-windows" }
-wave-plugin-scan = { path = "../crates/plugin-scan" }
+wave-plugin-scan.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
@@ -49,6 +49,7 @@ tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2.5"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 # Plugin windows on Linux: GTK's glib loop runs them and the plugins' IRunLoop; the main
 # window's X11 id keeps them above it (the versions Tauri itself uses).

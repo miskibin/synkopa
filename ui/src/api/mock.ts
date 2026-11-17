@@ -34,6 +34,7 @@ import type {
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
 import { MOCK_LV2 } from './mockPlugins';
+import { UNSAFE_PLUGIN } from './types';
 import { fromNormalized, lv2Param } from '../lib/pluginParam';
 import { KEYS_DYNAMICS, KEYS_RELEASE, samplerDefault } from './types';
 import { newSynthChannel } from '../lib/synth';
@@ -210,6 +211,7 @@ export class MockBackend implements Backend {
       const p = MOCK_LV2[f.plugin.cid];
       if (!p) out[f.id] = `${f.plugin.name} (LV2): the LV2 plugin ${f.plugin.cid} is not installed`;
       else if (p.unsupported) out[f.id] = `${f.plugin.name} (LV2): ${p.name} cannot be used: ${p.unsupported}`;
+      else if (p.crashes && !this.trusted.has(f.plugin.cid)) out[f.id] = `${f.plugin.name}: ${UNSAFE_PLUGIN}it crashed in WAVE's safety check (the test process was killed by signal 11), so it was not loaded: loaded here it would close WAVE. Update the plugin, or load it anyway at your own risk.`;
     }
     return out;
   }
@@ -1514,6 +1516,18 @@ export class MockBackend implements Backend {
   /** Like the engine: the mock's sessions always exit cleanly, so nobody is ever a suspect. */
   async pluginCrashSuspects(): Promise<PluginCrashSuspect[]> { return []; }
   async pluginBlock(_format: string, _path: string) { /* nothing to block in the mock */ }
+  /** Plugins loaded although the safety check refused them (the engine keeps this per user, not per project). */
+  private trusted = new Set<string>();
+  async pluginLoadAnyway(fxId: Id) {
+    await delay();
+    const f = this.p.inserts.flatMap(m => m.fx).find(x => x.id === fxId);
+    const c = (this.p.channels ?? []).find(x => x.id === fxId);
+    const plugin = f?.plugin ?? (c?.kind === 'plugin' ? c.plugin : undefined);
+    if (!plugin) throw new Error(`no plugin effect or plugin channel has id ${fxId}`);
+    this.trusted.add(plugin.cid);
+    // not an edit: the state is sent again without a new revision
+    this.emit('state', this.dto());
+  }
   /** Test hook: the header a plugin window shows (undefined when closed). */
   editorLabel(fxId: Id) { return this.editors.get(fxId); }
   /** Test hook: whether the plugin's window is pinned on top (undefined when closed). */

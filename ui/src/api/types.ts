@@ -625,3 +625,12 @@ export interface PluginParam {
 }
 
 export interface CliStatus { installed: boolean; command: string; path: string | null; note?: string | null }
+
+/** Marks an `fxErrors` entry of a plugin WAVE's safety check refused (it crashed or hung in a worker process): the UI offers "Load anyway". */
+export const UNSAFE_PLUGIN = 'UNSAFE_PLUGIN: ';
+/** The plugin was refused by the safety check: the sentence without the marker, else null. */
+export function unsafeReason(err: string | undefined): string | null {
+  if (!err) return null;
+  const i = err.indexOf(UNSAFE_PLUGIN);
+  return i < 0 ? null : (err.slice(0, i) + err.slice(i + UNSAFE_PLUGIN.length)).trim();
+}
