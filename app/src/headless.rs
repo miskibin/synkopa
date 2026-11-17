@@ -30,7 +30,8 @@ impl wave_cli::Files for Files {
         let p = match template {
             "empty" => Project::empty(),
             "sketch" => Project::sketch(),
-            t => return Err(format!("unknown template `{t}` (empty, sketch)")),
+            "demo" => Project::demo(),
+            t => return Err(format!("unknown template `{t}` (empty, sketch, demo)")),
         };
         Ok(Box::new(Headless::new(p)))
     }
@@ -341,6 +342,24 @@ mod tests {
         assert!(e.contains("not a WAVE project"), "{e}");
         assert!(Files.open(&d.join("missing.wave")).is_err());
         assert!(Files.create("nope").is_err());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn demo_template_saves_reopens_and_renders_without_warnings() {
+        let d = tmp("demo-template");
+        let path = d.join("demo.wave");
+        let doc = Files.create("demo").unwrap();
+        assert!(!doc.dirty());
+        doc.save(&path).unwrap();
+        let (reopened, warnings) = Files.open(&path).unwrap();
+        assert!(warnings.is_empty(), "{warnings:?}");
+        let ctx = reopened.call("context", &json!({}), None).unwrap();
+        assert_eq!(ctx["bpm"], 136.0);
+        let out = d.join("preview.wav");
+        let r = reopened.call("render", &json!({"out": out.display().to_string(), "from": 16.0, "to": 24.0, "tail": 0.0}), None).unwrap();
+        assert_eq!(r["stats"]["silent"], false, "{r}");
+        assert_eq!(r["stats"]["clippedSamples"], 0, "{r}");
         std::fs::remove_dir_all(&d).ok();
     }
 }

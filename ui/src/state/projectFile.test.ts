@@ -281,4 +281,21 @@ describe('crash recovery of a project that was never saved', () => {
     mock.simulateCrash();
     expect(await mock.recoveryList()).toEqual([]);
   });
+  it('opens the demo project in SONG mode and guards unsaved edits first', async () => {
+    const pat = await import('./pattern');
+    pat.setPatMode(true);
+    await mock.applyOps([{ op: 'setBpm', bpm: 111 }]);
+    store.replaceState(await mock.getState());
+    answer = 'cancel';
+    expect(await A.projectNew(true)).toBe(false);
+    expect(store.S.project.bpm).toBe(111);
+    expect(pat.patMode()).toBe(true);
+
+    answer = 'discard';
+    expect(await A.projectNew(true)).toBe(true);
+    expect(store.S.project.bpm).toBe(136);
+    expect(store.S.path).toBeNull();
+    expect(store.S.dirty).toBe(false);
+    expect(pat.patMode()).toBe(false);
+  });
 });

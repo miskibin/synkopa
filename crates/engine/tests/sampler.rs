@@ -512,9 +512,101 @@ fn a_new_project_does_not_inherit_audio_from_the_previous_one() {
     assert_eq!(peak(&out[2 * SR as usize * 6 / 10..]), 0.0);
 }
 
-/// The in-browser mock (`ui/src/api/mock.ts`) must start a new project like the engine and list
-/// the same standard library, so it reads both from a file generated here. After a change to
-/// the starter kit or the library, regenerate it:
+#[test]
+fn the_demo_project_is_self_contained_and_every_section_sounds() {
+    let p = Project::demo();
+    assert_eq!(p.bpm, wave_engine::demo::DEMO_BPM);
+    assert_eq!(p.key, Some(3));
+    assert_eq!(p.scale, 2);
+    assert!(p.sources.iter().all(|s| factory::embedded(&s.path).is_some()));
+    for c in &p.clips {
+        match c.kind {
+            ClipKind::Pat => assert!(p.patterns.iter().any(|x| x.id == c.source)),
+            ClipKind::Audio => assert!(p.sources.iter().any(|x| x.id == c.source)),
+            ClipKind::Auto => assert!(p.automations.iter().any(|x| x.id == c.source)),
+            ClipKind::Comp => panic!("the demo has no comps"),
+        }
+        assert!((c.track as usize) < p.tracks.len());
+        if let Some(ins) = c.insert {
+            assert!(p.insert(ins).is_some());
+        }
+    }
+    for pt in &p.patterns {
+        assert!(p.clips.iter().any(|c| c.kind == ClipKind::Pat && c.source == pt.id), "pattern {} is not on the playlist", pt.name);
+        assert!(pt.notes.iter().all(|n| p.channel(n.ch).is_some()));
+    }
+    for c in &p.channels {
+        assert!(p.patterns.iter().any(|pt| pt.notes.iter().any(|n| n.ch == c.id)), "channel {} plays nothing", c.name);
+        if let Some(ins) = c.insert {
+            assert!(p.insert(ins).is_some());
+        }
+    }
+    for t in &p.tracks {
+        assert!(p.insert(t.insert).is_some());
+    }
+    for m in &p.inserts {
+        wave_engine::routing::validate(&p, m).unwrap_or_else(|e| panic!("insert {}: {e}", m.name));
+    }
+
+    let unique = |mut ids: Vec<Id>, what: &str| {
+        let n = ids.len();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), n, "{what} ids repeat");
+        ids.last().copied().unwrap_or(0)
+    };
+    unique(p.clips.iter().map(|c| c.id).collect(), "clip");
+    unique(p.patterns.iter().map(|x| x.id).collect(), "pattern");
+    unique(p.inserts.iter().flat_map(|m| m.fx.iter().map(|f| f.id)).collect(), "effect");
+    let top = unique(
+        p.channels.iter().map(|x| x.id).chain(p.sources.iter().map(|x| x.id)).chain(p.automations.iter().map(|x| x.id)).collect(),
+        "channel, source and automation",
+    );
+    assert!(p.next_id > top);
+    assert_eq!(p.song_end(), 160.0);
+
+    let mut again = p.clone();
+    again.migrate();
+    assert_eq!(again, p);
+
+    // round-trip save & open without warnings
+    let dir = tmp("demo-roundtrip");
+    let file = dir.join("demo.wave");
+    let e = Engine::new(p.clone(), Arc::new(NoPlugins));
+    e.save(&file).unwrap();
+    let reopened = Engine::new(Project::empty(), Arc::new(NoPlugins));
+    assert!(reopened.open(&file).unwrap().is_empty());
+    assert_eq!(reopened.project(), p);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let out = e.render(0.0, 160.0, 2.0, SR).unwrap();
+    let frames_per_beat = 60.0 / wave_engine::demo::DEMO_BPM * SR as f64;
+    let rms = |a: f64, b: f64| {
+        let s = &out[(a * frames_per_beat) as usize * 2..(b * frames_per_beat) as usize * 2];
+        (s.iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / s.len() as f64).sqrt()
+    };
+    for (name, a, b) in [
+        ("intro", 0.0, 16.0),
+        ("act 1 hook", 16.0, 48.0),
+        ("verse", 48.0, 80.0),
+        ("bridge", 80.0, 94.0),
+        ("act 2 drop", 96.0, 128.0),
+        ("climax", 128.0, 144.0),
+        ("outro", 144.0, 156.0),
+    ] {
+        let v = rms(a, b);
+        assert!(v > 0.02, "{name} is silent ({v})");
+    }
+    // pre-drop vacuum cuts cleanly to silence right before Act II
+    assert!(rms(95.25, 95.85) < 1e-4, "switch vacuum leaked: {}", rms(95.25, 95.85));
+    let pk = peak(&out);
+    assert!(pk <= 1.0, "the demo clips: {pk}");
+    assert!(peak(&out[out.len() - SR as usize / 2..]) < 0.02, "outro tail did not fade out");
+}
+
+/// The in-browser mock (`ui/src/api/mock.ts`) must start new and demo projects like the engine
+/// and list the same standard library, so it reads them from a file generated here. After a
+/// change to the demo, the starter kit or the library, regenerate it:
 /// `WAVE_UPDATE_FIXTURES=1 cargo test -p wave-engine --test sampler mock_fixture`.
 #[test]
 fn the_mock_fixture_matches_the_engine() {
@@ -522,7 +614,7 @@ fn the_mock_fixture_matches_the_engine() {
         .iter()
         .map(|f| serde_json::json!({ "file": f.file, "name": f.name, "group": f.group, "root": f.root, "pitched": f.pitched, "dur": f.dur, "ch": f.ch, "bytes": f.bytes.len(), "color": factory::color(f) }))
         .collect();
-    let want = serde_json::json!({ "kit": factory::KIT, "files": files, "empty": Project::empty() });
+    let want = serde_json::json!({ "kit": factory::KIT, "files": files, "empty": Project::empty(), "demo": Project::demo() });
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/src/api/factory.json");
     if std::env::var_os("WAVE_UPDATE_FIXTURES").is_some() {
         std::fs::write(path, serde_json::to_string(&want).unwrap() + "\n").unwrap();

@@ -24,7 +24,7 @@ stdout is only JSON (`--pretty` to indent), with numbers rounded to at most four
 ## Project files without the app
 
 ```sh
-wave new song.wave --template sketch --bpm 140      # or --template empty (default); --force replaces a file
+wave new song.wave --template demo                  # or --template empty (default) / sketch; --force replaces a file
 wave -p song.wave context                           # any read: nothing is written
 wave -p song.wave pattern --id 1 --ch kick --steps "x... x... x... x..."   # saved back to song.wave
 wave -p song.wave render --out song.wav             # or --stems --out stems/

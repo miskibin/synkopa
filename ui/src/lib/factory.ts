@@ -15,6 +15,7 @@ export const factoryFile = (path: string) => FACTORY_FILES.find(f => libPath(f.f
 export const STARTER_KIT: readonly [string, string][] = [['kick-808-short.flac', 'Kick'], ['clap-808.flac', 'Clap'], ['hat-808-closed.flac', 'Hat'], ['snare-808.flac', 'Snare']];
 
 export const emptyProject = (): Project => structuredClone(data.empty) as unknown as Project;
+export const demoProject = (): Project => structuredClone(data.demo) as unknown as Project;
 
 /** The project source of a standard-library file: the one already there, or a new one (factory.rs `source`). */
 export function factorySource(p: Project, file: string): Id | null {

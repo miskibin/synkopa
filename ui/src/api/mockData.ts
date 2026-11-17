@@ -3,7 +3,7 @@
 import { VOL_UNITY, type AnyBuiltinKind, type Catalog, type Clip, type EqBand, type Note, type ParamDef, type Preset, type Project, type WarpMaps } from './types';
 import { defaultBands, loadPreset, newFx } from '../lib/presets';
 import { addStarterKit, factoryChannel } from '../lib/factory';
-export { emptyProject } from '../lib/factory';
+export { demoProject, emptyProject } from '../lib/factory';
 import { SYNTH_CATALOG } from './synthCatalog';
 import warpFactoryJson from '../../../crates/engine/src/warp_factory.json?raw';
 import warpLibraryJson from '../../../crates/engine/src/warp_library.json?raw';

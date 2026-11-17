@@ -6,7 +6,7 @@ import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
 import type { Backend, EventMap, OsDropEvent } from './backend';
 import { encodeFrame, SCOPE_LEN, SPEC_BANDS, type EncFx } from './telemetry';
-import { BUILTIN, emptyProject, mockCatalog, sketchProject } from './mockData';
+import { BUILTIN, demoProject, emptyProject, mockCatalog, sketchProject } from './mockData';
 import { FACTORY_FILES, FACTORY_KIT, factoryFile, LIB_SCHEME, libPath } from '../lib/factory';
 
 /** Reverb mix (%) the engine computes for the research plate at a -18 dB send (autovocal::reverb_mix_for_send). */
@@ -1310,7 +1310,7 @@ export class MockBackend implements Backend {
     this.tr = { ...this.tr, playing: false }; this.revision++; this.savedRev = this.revision;
     this.emit('state', this.dto());
   }
-  async projectNew() { this.resetTo(emptyProject(), null); this.recovery = null; return this.dto(); }
+  async projectNew(demo?: boolean) { this.resetTo(demo ? demoProject() : emptyProject(), null); this.recovery = null; return this.dto(); }
   /** Tests: the next native file dialog is dismissed, as when the user presses Cancel. */
   dismissNextDialog = false;
   private dialog(): boolean { const ok = !this.dismissNextDialog; this.dismissNextDialog = false; return ok; }

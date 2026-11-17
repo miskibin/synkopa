@@ -157,7 +157,8 @@ export interface Backend {
   libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles>;
   libraryAddFolder(): Promise<string[]>;
   libraryRemoveFolder(path: string): Promise<string[]>;
-  projectNew(): Promise<StateDto>;
+  /** A new project: empty (eight tracks, the starter kit in the Channel Rack), or with `demo` the built-in demo project. */
+  projectNew(demo?: boolean): Promise<StateDto>;
   /** The file dialog when `path` is omitted. */
   projectOpen(path?: string, ifRevision?: number): Promise<OpenResult>;
   /** Project paths received at launch or forwarded by another instance. */
@@ -352,7 +353,7 @@ export function tauriBackend(): Backend {
     libraryFiles: q => invoke('library_files', { kit: q.kit ?? null, folder: q.folder ?? null }),
     libraryAddFolder: () => invoke('library_add_folder'),
     libraryRemoveFolder: path => invoke('library_remove_folder', { path }),
-    projectNew: () => invoke('project_new'),
+    projectNew: demo => invoke('project_new', { demo: !!demo }),
     projectOpen: (path, ifRevision) => invoke('project_open', { path: path ?? null, ifRevision }),
     takeProjectOpenRequests: () => invoke('take_project_open_requests'),
     projectSave: saveAs => invoke('project_save', { saveAs: !!saveAs }),

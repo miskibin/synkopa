@@ -675,8 +675,8 @@ fn take_project_open_requests(requests: State<'_, ProjectOpenRequests>) -> Vec<S
 }
 
 #[tauri::command]
-async fn project_new(app: St<'_>) -> R<StateDto> {
-    app.engine.new_project(Project::empty());
+async fn project_new(app: St<'_>, demo: Option<bool>) -> R<StateDto> {
+    app.engine.new_project(if demo.unwrap_or(false) { Project::demo() } else { Project::empty() });
     app.recovery.clear();
     Ok(app.engine.state())
 }

@@ -281,8 +281,9 @@ function MenuBar() {
   const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
   const menus: [TranslationKey, () => MenuItem[]][] = [
     ['a.mn.file', () => [
-      { t: 'item', label: t('a.mn.new'), glyph: G.new, kbd: 'Ctrl+N', act: () => void A.projectNew() },
-      { t: 'item', label: t('a.mn.open'), glyph: G.open, kbd: 'Ctrl+O', act: () => void A.projectOpen() },
+      { t: 'item', label: t('a.mn.new'), glyph: G.new, kbd: 'Ctrl+N', disabled: U.openingProject, act: () => void A.projectNew() },
+      { t: 'item', label: t('a.mn.open'), glyph: G.open, kbd: 'Ctrl+O', disabled: U.openingProject, act: () => void A.projectOpen() },
+      { t: 'item', label: t('a.mn.openDemo'), glyph: G.open, disabled: U.openingProject, act: () => void A.projectNew(true) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.save'), glyph: G.save, kbd: 'Ctrl+S', act: () => void A.projectSave(false) },
       { t: 'item', label: t('a.mn.saveAs'), glyph: G.saveAs, kbd: 'Ctrl+Shift+S', act: () => void A.projectSave(true) },

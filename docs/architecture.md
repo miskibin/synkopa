@@ -252,9 +252,9 @@ clip that hides N − 1 clips entirely (`lib/overlaps.ts`). Clicking such a clip
 the status line. The overlay is recomputed with the fades on clip edits and tile moves,
 never per frame.
 
-**The standard library** (`crates/engine/src/factory.rs`). 176 one-shots in ten groups
-(kicks, snares, claps, hats, cymbals, toms, percussion, tonal, orchestra, FX) and 10 melodic
-loops (group `Loops`) are embedded in the engine (`crates/engine/library`, 18.7 MB: FLAC
+**The standard library** (`crates/engine/src/factory.rs`). 179 one-shots in ten groups
+(kicks, snares, claps, hats, cymbals, toms, percussion, tonal, orchestra, FX) and 13 melodic
+loops (group `Loops`) are embedded in the engine (`crates/engine/library`, 19.3 MB: FLAC
 one-shots, Ogg Vorbis loops). All are CC0 but one (the Unlicense); `THIRD_PARTY_NOTICES.md`
 credits each file from other authors than Versilian and the TR-808 set, and a test checks that
 list against the table. A loop is cut to whole 4/4 bars at the tempo its name gives
@@ -275,8 +275,9 @@ kits resolve to `<data>/WAVE/Library/<kit>/`. Importing a library file twice giv
 source: a sampler channel and audio clips of one sample share it. The app also writes the
 standard library into `<data>/WAVE/Library/Standard` (`factory::install`) so the browser
 lists, previews and drags it like any downloaded kit. `ui/src/api/factory.json` (the file
-table and the empty project, for the in-browser mock) is generated from the engine;
-`tests/sampler.rs` fails when it is stale and says how to regenerate it.
+table, the empty project and the demo project `demo::demo_project`, for the in-browser mock)
+is generated from the engine; `tests/sampler.rs` fails when it is stale and says how to
+regenerate it.
 
 **Old files.** Files from before the standard library name synthesised instruments:
 `{"kind":"inst","inst":"kick"}` channels, or `inst` on notes before channels existed.
@@ -559,7 +560,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `library_install` | `{id}` | – ; progress as event `library-progress {id,done,total,error?}` |
 | `library_files` | `{kit?}` or `{folder?}` | `{files: [{name, path, group, root?, pitched?}], truncated}`; kit `Standard` = the standard library (always installed); `root` = the key a sampler made from the file is rooted at, when the library knows it; `pitched` = the file plays a note there (drums and noises do not); `truncated` = the folder was bigger than the walk's 5000-file cap and the list says so |
 | `library_add_folder` / `library_remove_folder` | – (native dialog) / `{path}` | updated `folders` |
-| `project_new` / `project_open` / `project_save` | – / `{path?, ifRevision?}` / `{saveAs?}` | `StateDto` / `{state: StateDto, warnings}` or `{cancelled}` / `{path}` or `{cancelled}`. Open checks the approved revision before replacing the project. A save first keeps the file it replaces as `<name> (backup).wave` |
+| `project_new` / `project_open` / `project_save` | `{demo?}` (`true` = the demo project) / `{path?, ifRevision?}` / `{saveAs?}` | `StateDto` / `{state: StateDto, warnings}` or `{cancelled}` / `{path}` or `{cancelled}`. Open checks the approved revision before replacing the project. A save first keeps the file it replaces as `<name> (backup).wave` |
 | `take_project_open_requests` | – | `string[]`; drains project paths supplied at startup or forwarded to the running Windows instance. The `project-open-requested` event tells the UI to drain again and use its normal guarded open workflow. |
 | `recovery_write` | – | `bool`; the autosave tick for a project with no file: writes its crash-recovery copy (`<data>/WAVE/Recovery/<session>.wave`), or removes it once the project has a file or nothing unsaved |
 | `recovery_list` / `recovery_restore` / `recovery_discard` | – / `{id}` / `{id}` | `[{id, savedMs}]` newest first (copies of sessions that did not exit normally) / `{state, warnings}` (opened as an unsaved project) / – |
