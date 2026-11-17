@@ -424,6 +424,15 @@ pub(crate) fn close(shared: &Arc<Shared>) {
     shared.set_ui_open(false);
 }
 
+/// Pin the UI's window on top of the app's (no-op when it is closed). UI thread.
+pub(crate) fn set_pinned(shared: &Arc<Shared>, pinned: bool) {
+    SESSIONS.with(|s| {
+        if let Some(session) = s.borrow().get(&key(shared)) {
+            let _ = session.window().set_pinned(pinned);
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

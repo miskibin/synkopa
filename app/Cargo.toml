@@ -33,6 +33,7 @@ wave-cli = { path = "../crates/cli" }
 wave-vst3 = { path = "../crates/vst3-host" }
 wave-lv2 = { path = "../crates/lv2-host" }
 wave-plugin-windows = { path = "../crates/plugin-windows" }
+wave-plugin-scan = { path = "../crates/plugin-scan" }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"

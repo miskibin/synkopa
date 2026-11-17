@@ -6,7 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
-  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam,
+  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
 } from './types';
 
 export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[]; x: number; y: number }
@@ -16,6 +16,8 @@ export interface EventMap {
   'project-open-requested': null;
   /** The gear in a plugin window's header (WAVE's header above a plugin's own interface): show WAVE's window for that effect or plugin channel. */
   'plugin-settings': { id: Id };
+  /** The pin in a plugin window's header: the user pinned (`pinned`) or unpinned the window on top of the app. */
+  'plugin-pin': { id: Id; pinned: boolean };
   'library-progress': LibraryProgress;
   /** WAVE Keys: the piano started loading, is ready, or is not on this computer. */
   'keys-status': KeysStatus;
@@ -190,9 +192,13 @@ export interface Backend {
   pluginScan(rescan: boolean): Promise<PluginScan>;
   /** A plugin's own window (VST3; LV2 with an X11 interface on Linux) under WAVE's header showing `label`. Rejects with
    *  `NO_EDITOR: …` when the plugin has no window of its own, and with the reason when none can be shown here. */
-  pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }): Promise<void>;
+  pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }, pinned?: boolean): Promise<void>;
   /** Whether the plugin's own window is open (it may have been closed with its X). */
   pluginEditorOpen(fxId: Id): Promise<boolean>;
+  /** The plugins that were loaded when the last session ended without exiting (usually empty): WAVE did not leave through the front door, and one of these may be why. */
+  pluginCrashSuspects(): Promise<PluginCrashSuspect[]>;
+  /** Keep a plugin's module out of future scans (the follow-up to `pluginCrashSuspects`). */
+  pluginBlock(format: string, path: string): Promise<void>;
   pluginParams(fxId: Id): Promise<PluginParam[]>;
   /** A live plugin's current state (base64, what `PluginRef.state` stores): an effect or a plugin channel by id. */
   pluginState(fxId: Id): Promise<string>;
@@ -365,8 +371,10 @@ export function tauriBackend(): Backend {
     exportStems: opts => invoke('export_stems', { ...opts }),
     exportCancel: () => invoke('export_cancel'),
     pluginScan: rescan => invoke('plugin_scan', { rescan }),
-    pluginEditor: (fxId, open, label) => invoke('plugin_editor', { fxId, open, title: label?.title, subtitle: label?.subtitle }),
+    pluginEditor: (fxId, open, label, pinned) => invoke('plugin_editor', { fxId, open, title: label?.title, subtitle: label?.subtitle, pinned }),
     pluginEditorOpen: fxId => invoke('plugin_editor_open', { fxId }),
+    pluginCrashSuspects: () => invoke('plugin_crash_suspects'),
+    pluginBlock: (format, path) => invoke('plugin_block', { format, path }),
     pluginParams: fxId => invoke('plugin_params', { fxId }),
     pluginState: fxId => invoke('plugin_state', { fxId }),
     pluginSetParam: (fxId, id, value) => invoke('plugin_set_param', { fxId, id, value }),

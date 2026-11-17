@@ -694,6 +694,11 @@ impl Lv2Handle {
         crate::ui::close(&self.shared);
         Ok(())
     }
+
+    /// Pin the interface's window on top of the app's (no-op when it is closed). **UI thread only.**
+    pub fn set_editor_pinned(&self, pinned: bool) {
+        crate::ui::set_pinned(&self.shared, pinned);
+    }
 }
 
 impl std::fmt::Debug for Lv2Handle {

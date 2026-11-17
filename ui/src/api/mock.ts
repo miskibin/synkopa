@@ -29,7 +29,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
 } from './types';
 import { exportRange, exportSeconds, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
@@ -1501,21 +1501,29 @@ export class MockBackend implements Backend {
     const ch = (this.p.channels ?? []).find(c => c.id === id);
     return ch?.kind === 'plugin' && !this.fxErrors()[id] ? ch.plugin : undefined;
   }
-  /** Like the engine: a plugin's own window under WAVE's header (`label`); WAVE Demo Synth has none (plugins.rs `NO_EDITOR`). */
-  async pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }) {
+  /** Like the engine: a plugin's own window under WAVE's header (`label`), pinned on top when `pinned`; WAVE Demo Synth has none (plugins.rs `NO_EDITOR`). */
+  async pluginEditor(fxId: Id, open: boolean, label?: { title: string; subtitle: string }, pinned?: boolean) {
     const pl = this.hosted(fxId);
     if (!pl) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
     if (open && /demo synth/i.test(pl.name)) throw new Error(ERR_NO_EDITOR + ' this plugin has no window of its own; its parameters are listed below');
-    if (open) this.editors.set(fxId, label ?? { title: '', subtitle: '' }); else this.editors.delete(fxId);
+    if (open) { this.editors.set(fxId, label ?? { title: '', subtitle: '' }); this.editorPins.set(fxId, !!pinned); } else { this.editors.delete(fxId); this.editorPins.delete(fxId); }
   }
   private editors = new Map<Id, { title: string; subtitle: string }>();
+  private editorPins = new Map<Id, boolean>();
   async pluginEditorOpen(fxId: Id) { return this.editors.has(fxId); }
+  /** Like the engine: the mock's sessions always exit cleanly, so nobody is ever a suspect. */
+  async pluginCrashSuspects(): Promise<PluginCrashSuspect[]> { return []; }
+  async pluginBlock(_format: string, _path: string) { /* nothing to block in the mock */ }
   /** Test hook: the header a plugin window shows (undefined when closed). */
   editorLabel(fxId: Id) { return this.editors.get(fxId); }
+  /** Test hook: whether the plugin's window is pinned on top (undefined when closed). */
+  editorPinned(fxId: Id) { return this.editorPins.get(fxId); }
   /** Test hook: the user closed the plugin's window with its X. */
-  closeEditorWindow(fxId: Id) { this.editors.delete(fxId); }
+  closeEditorWindow(fxId: Id) { this.editors.delete(fxId); this.editorPins.delete(fxId); }
   /** Test hook: the gear in a plugin window's header. */
   pressEditorSettings(fxId: Id) { this.emit('plugin-settings', { id: fxId }); }
+  /** Test hook: the pin in a plugin window's header (toggles, like the real header). */
+  pressEditorPin(fxId: Id) { const pinned = !this.editorPins.get(fxId); this.editorPins.set(fxId, pinned); this.emit('plugin-pin', { id: fxId, pinned }); }
   async pluginState(fxId: Id): Promise<string> {
     if (!this.hosted(fxId)) throw new Error(`${fxId} is not a loaded plugin effect or instrument`);
     // the mock's "state" is its parameter values

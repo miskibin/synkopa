@@ -77,6 +77,8 @@ export interface UiState {
   midiWin: { path: string; beat?: number; track?: number; into?: { pattern: Id; ch: Id } } | null;
   readout: string;
   headW: number; pickW: number; pickOpen: boolean; browserTab: 'patterns' | 'audio' | 'library';
+  /** Whole Library sections the user closed (STANDARD LIBRARY, KITS, FOLDERS); absent = open. Survives a restart. */
+  browserSec: Record<'std' | 'kits' | 'folders', boolean | undefined>;
   ghost: { x: number; y: number; name: string; color: string } | null;
   dragOver: boolean;
   eqSel: Record<number, number>;
@@ -140,6 +142,7 @@ export const [U, setU] = createStore<UiState>({
   projectZipBusy: false,
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'patterns',
+  browserSec: { std: undefined, kits: undefined, folders: undefined },
   ghost: null, dragOver: false, eqSel: {}, fetMode: {}, pitchEd: null, pat: 1, selCh: null, chSel: [], rackWin: null, rollWin: null,
   dock: defaultDock(), paneSize: defaultSizes(), dockHome: defaultHomes(), rackFloat: null, rollFloat: null, rollMax: true, mixWin: { x: 120, y: 140, w: 1100, h: 420, z: 0 },
   rackGraph: null, patPlaying: false, takesOpen: {}, compSel: null, autoSel: null, zTop: 1, marquee: null,
@@ -156,7 +159,7 @@ const LAYOUT_KEY = 'wave.layout';
 try { setU(parseLayout(localStorage.getItem(LAYOUT_KEY))); } catch { /* private window */ }
 const geo = (w: PatWin): Geo => ({ x: w.x, y: w.y, w: w.w, h: w.h });
 createRoot(() => createEffect(() => {
-  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab,
+  const s = JSON.stringify({ tool: U.tool, snap: U.snap, bw: U.bw, follow: U.follow, mixMin: U.mixMin, headW: U.headW, pickW: U.pickW, pickOpen: U.pickOpen, browserTab: U.browserTab, browserSec: U.browserSec,
     dock: U.dock, paneSize: U.paneSize, dockHome: U.dockHome, rollMax: U.rollMax,
     // the floating place: live while the window is open (a restart with it open keeps it), else where it closed
     rackFloat: U.rackWin ? geo(U.rackWin) : U.rackFloat, rollFloat: U.rollWin ? geo(U.rollWin) : U.rollFloat, mixFloat: geo(U.mixWin) });

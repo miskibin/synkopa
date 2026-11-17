@@ -17,6 +17,7 @@ import { FxWindow } from './views/FxWindow';
 import { MixerWindow, MixView } from './views/Mixer';
 import { hideMixer, leaveMixView, toggleMixer } from './state/mixView';
 import { chanById, routeSelectedChannels } from './state/pattern';
+import { reportPin } from './state/pluginWindows';
 import { playlistZoom } from './views/Playlist';
 import { DockGuides, Workspace } from './views/PatDock';
 import { SampleEditor } from './views/SampleEditor';
@@ -33,6 +34,7 @@ import { chanWin, closeChannelWindow, toggleChannelWindow } from './views/Channe
 import { channels } from './state/pattern';
 import { MusicDialog } from './views/MusicDialog';
 import { MissingAudio } from './views/MissingAudio';
+import { PluginCrash } from './views/PluginCrash';
 import { MidiImport } from './views/MidiImport';
 import { FxPickerHost, openFxPicker } from './views/FxPicker';
 import { FxChainsHost } from './views/FxChains';
@@ -218,6 +220,9 @@ export function App() {
       else if (findFx(id)) A.openPlug(id, true);
     });
     onCleanup(() => void offSettings.then(off => off()));
+    // the pin in a plugin window's header: remember the choice for its next window
+    const offPin = be().on('plugin-pin', ({ id, pinned }) => reportPin(id, pinned));
+    onCleanup(() => void offPin.then(off => off()));
     if (isTauri()) {
       void import('@tauri-apps/api/window').then(async ({ getCurrentWindow }) => {
         const w = getCurrentWindow();
@@ -307,6 +312,7 @@ export function App() {
       <AudioToast />
       <Notice />
       <MissingAudio />
+      <PluginCrash />
     </div>
     <Show when={U.openingProject}>
       <div class="overlay" style={{ 'z-index': 400 }}>

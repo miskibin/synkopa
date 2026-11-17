@@ -54,6 +54,18 @@ describe('parseLayout', () => {
     expect(parseLayout(JSON.stringify({ browserTab: 'audio' })).browserTab).toBe('audio');
     expect(parseLayout(JSON.stringify({ browserTab: 'nope' })).browserTab).toBeUndefined();
   });
+  it('keeps the closed Library sections and forgets junk', () => {
+    expect(parseLayout(JSON.stringify({ browserSec: { std: true } })).browserSec).toEqual({ std: true, kits: undefined, folders: undefined });
+    expect(parseLayout(JSON.stringify({ browserSec: { std: 'yes', kits: true, folders: false } })).browserSec).toEqual({ std: undefined, kits: true, folders: false });
+    expect(parseLayout(JSON.stringify({ browserSec: 'closed' })).browserSec).toBeUndefined();
+    expect(parseLayout(null).browserSec).toBeUndefined();
+  });
+  it('keeps a deep playlist zoom from before the ceiling rose (#117)', () => {
+    expect(parseLayout(JSON.stringify({ bw: 384 })).bw).toBe(384);
+    expect(parseLayout(JSON.stringify({ bw: 96 })).bw).toBe(96);
+    expect(parseLayout(JSON.stringify({ bw: 400 })).bw).toBeUndefined(); // past the ceiling: not trusted
+    expect(parseLayout(JSON.stringify({ bw: 2 })).bw).toBeUndefined();
+  });
 });
 
 describe('parseGeo', () => {

@@ -610,6 +610,8 @@ export interface PluginInfo { format: PluginFormat; path: string; cid: string; n
  * machine (LV2 without liblilv). `instruments` is absent from an older backend.
  */
 export interface PluginScan { plugins: PluginInfo[]; instruments?: PluginInfo[]; unavailable: Partial<Record<PluginFormat, string>> }
+/** A plugin that was loaded when the last session ended without exiting: one of these may be why WAVE died. */
+export interface PluginCrashSuspect { format: string; cid: string; name: string; path: string }
 /**
  * One parameter of a hosted plugin. `value`/`def` are normalized 0..1 (what `pluginSetParam` and automation take),
  * `display` the plugin's text for the value. LV2 adds the port's own range and kind: `real` within `min..max` in

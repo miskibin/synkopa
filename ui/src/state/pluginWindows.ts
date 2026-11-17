@@ -50,6 +50,22 @@ export function pluginLabel(id: Id): { title: string; subtitle: string } {
 
 const mark = (id: Id, on: boolean) => setOpen(s => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
 
+// whether a plugin's window is pinned on top of the app survives a restart, per plugin class
+// (the header's pin toggles at runtime; the app reports it back through `plugin-pin`)
+const PIN_KEY = 'wave.pluginPin';
+const pinPrefs = (): Record<string, boolean> => { try { return JSON.parse(localStorage.getItem(PIN_KEY) ?? '{}'); } catch { return {}; } };
+const pinPref = (cid: string) => !!pinPrefs()[cid];
+function setPinPref(cid: string, pinned: boolean) {
+  const m = pinPrefs();
+  if (pinned) m[cid] = true; else delete m[cid];
+  try { localStorage.setItem(PIN_KEY, JSON.stringify(m)); } catch { /* private window */ }
+}
+/** Called by App for the header pin's report (the window has already applied it). */
+export function reportPin(id: Id, pinned: boolean) {
+  const p = pluginOf(id);
+  if (p) setPinPref(p.ref.cid, pinned);
+}
+
 // the user may close a plugin window with its own X (or the plugin may go): follow it
 let poll = 0;
 function watch() {
@@ -69,7 +85,7 @@ export async function openEditor(id: Id): Promise<void> {
   const p = pluginOf(id);
   if (!p) throw new Error(`${id} is not a plugin`);
   try {
-    await be().pluginEditor(id, true, pluginLabel(id));
+    await be().pluginEditor(id, true, pluginLabel(id), pinPref(p.ref.cid));
   } catch (e) {
     if (isNoEditor(e)) noEditorCids.add(p.ref.cid);
     throw e;

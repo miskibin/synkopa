@@ -778,8 +778,8 @@ export function applyKeyToTune(root: number, minor: boolean, targetFxId?: Id | '
 }
 
 // ---------- view ----------
-/** Playlist zoom limits, px per beat. */
-export const BW_MIN = 4, BW_MAX = 96;
+/** Playlist zoom limits, px per beat. The ceiling puts a 1/16 note at 24 px, close enough for drum-detail arranging. */
+export const BW_MIN = 4, BW_MAX = 384;
 export function zoomAt(f: number) { setU('bw', clamp(U.bw * f, BW_MIN, BW_MAX)); }
 export function setSnap(v: number) {
   setU('snap', v);

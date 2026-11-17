@@ -28,8 +28,22 @@ shown in the app after an update and is published as the release notes (see
   keeps room, and the layout is remembered. View → Window layout → Reset puts it back.
 - **Three new themes**: *Dim*, a mid-grey dark theme, and *Fog* (cool) and *Sand* (warm), two
   mid-grey light themes for when white is too bright.
+- **Pin a plugin's window on top.** A plugin editor's header has a pin next to the gear: click
+  it and the window stays in front of WAVE's, so an instrument you are playing stays in sight
+  while you click in the arrangement. The choice is remembered per plugin, and the pin lights
+  up while it holds.
+- **When WAVE died, the suspects are named.** If the last session ended without exiting (a
+  plugin crashed it, or the machine did), the next start lists the plugins that were loaded
+  and offers, per plugin, to keep it out of future scans. A normal exit clears the list on its
+  own.
 
 ### Changed
+- **The Library's sections collapse.** Standard library, Kits to download and Folders each get
+  a chevron: click the heading to fold it away and leave your own folders in sight. A search
+  still looks everywhere, and what you folded stays folded after a restart.
+- **The Playlist zooms in four times further.** The ceiling goes from 96 to 384 pixels per beat
+  (a 16th note at 24 px), for drum-level detail when arranging clips; the ruler, the clips and
+  their contents all follow.
 - **Redesigned Settings.** A bigger window with an icon sidebar (General, Look, Audio, MIDI and
   a new Updates tab), settings grouped into cards, and each option's explanation shown under its
   name instead of hidden in a tooltip. Themes are shown as small previews of the app, grouped

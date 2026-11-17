@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use base64::Engine as _;
 use parking_lot::Mutex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use wave_engine::{Id, Instrument, PluginFactory, PluginRef, Processor};
 
@@ -135,6 +135,41 @@ fn vst3_editor_error(e: wave_vst3::Vst3Error) -> String {
 pub struct Plugins {
     handles: Mutex<HashMap<Id, Handle>>,
     known: Mutex<Option<ScanResult>>,
+    /// This session's live plugins, mirrored into the marker file (`live_loaded`).
+    live: Mutex<HashMap<Id, CrashSuspect>>,
+    /// Plugins still live when the last session ended: the suspects of a crash (a session
+    /// that exits normally leaves the marker file empty).
+    crash_suspects: Mutex<Vec<CrashSuspect>>,
+    /// Where the live marker file is (`None`: nowhere — a machine without WAVE's data
+    /// folder, and every test).
+    marker: Option<std::path::PathBuf>,
+}
+
+/// A plugin to ask the user about: it was loaded when WAVE last died without exiting.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CrashSuspect {
+    pub format: String,
+    /// VST3 class id, LV2 plugin URI.
+    pub cid: String,
+    pub name: String,
+    /// The module (bundle) path, as the scan block list knows it.
+    pub path: String,
+}
+
+/// The file naming every live plugin; its absence or emptiness means a normal exit.
+fn live_marker() -> Option<std::path::PathBuf> {
+    wave_plugin_scan::data_file("live-plugins.json")
+}
+
+fn read_marker_at(path: &std::path::Path) -> Vec<CrashSuspect> {
+    std::fs::read_to_string(path).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+}
+
+fn write_marker_at(path: &std::path::Path, live: &[CrashSuspect]) {
+    if let Ok(t) = serde_json::to_string(live) {
+        let _ = std::fs::write(path, t);
+    }
 }
 
 struct Factory(Arc<Plugins>);
@@ -158,6 +193,7 @@ impl PluginFactory for Factory {
         };
         if live {
             self.0.handles.lock().insert(fx_id, handle);
+            self.0.live_loaded(fx_id, p);
         }
         Ok(proc)
     }
@@ -171,11 +207,13 @@ impl PluginFactory for Factory {
             .map_err(|e| format!("{}: {e}", p.name))?;
         if live {
             self.0.handles.lock().insert(chan_id, Handle::Vst3(h));
+            self.0.live_loaded(chan_id, p);
         }
         Ok(inst)
     }
     fn release(&self, fx_id: Id) {
         self.0.handles.lock().remove(&fx_id);
+        self.0.live_released(fx_id);
     }
     fn state(&self, fx_id: Id) -> Option<String> {
         let h = self.0.handles.lock().get(&fx_id).cloned()?;
@@ -198,7 +236,70 @@ impl PluginFactory for Factory {
 
 impl Plugins {
     pub fn new() -> Arc<Self> {
-        Arc::new(Plugins { handles: Mutex::new(HashMap::new()), known: Mutex::new(None) })
+        Arc::new(Self::open(live_marker()))
+    }
+
+    /// Whatever the last session left in the marker file names its crash suspects; this
+    /// session starts clean (entries come back as plugins load).
+    fn open(marker: Option<std::path::PathBuf>) -> Self {
+        let crash_suspects = marker.as_ref().map(|p| read_marker_at(p)).unwrap_or_default();
+        if let Some(p) = &marker {
+            write_marker_at(p, &[]);
+        }
+        Plugins {
+            handles: Mutex::new(HashMap::new()),
+            known: Mutex::new(None),
+            live: Mutex::new(HashMap::new()),
+            crash_suspects: Mutex::new(crash_suspects),
+            marker,
+        }
+    }
+
+    /// A plugin loaded for real: it goes into the live marker, so a crash while it is
+    /// loaded points here the next time WAVE starts.
+    fn live_loaded(&self, id: Id, p: &PluginRef) {
+        let path = match p.format.as_str() {
+            PluginRef::VST3 => self.vst3_path(p),
+            _ => p.path.clone(),
+        };
+        let suspect = CrashSuspect { format: p.format.clone(), cid: p.cid.clone(), name: p.name.clone(), path };
+        let mut live = self.live.lock();
+        live.insert(id, suspect);
+        self.write_live(&live);
+    }
+
+    /// A plugin's instance went away: out of the live marker with it.
+    fn live_released(&self, id: Id) {
+        let mut live = self.live.lock();
+        if live.remove(&id).is_some() {
+            self.write_live(&live);
+        }
+    }
+
+    /// The marker file follows the live set.
+    fn write_live(&self, live: &HashMap<Id, CrashSuspect>) {
+        if let Some(path) = &self.marker {
+            let mut all: Vec<CrashSuspect> = live.values().cloned().collect();
+            all.sort_by(|a, b| a.cid.cmp(&b.cid).then_with(|| a.path.cmp(&b.path)));
+            write_marker_at(path, &all);
+        }
+    }
+
+    /// The plugins that were live when the last session ended without exiting.
+    pub fn crash_suspects(&self) -> Vec<CrashSuspect> {
+        self.crash_suspects.lock().clone()
+    }
+
+    /// A clean exit: nothing is suspected any more.
+    pub fn clear_crash_suspects(&self) {
+        self.crash_suspects.lock().clear();
+    }
+
+    /// Keep a plugin's module out of future scans (the user asked, after a crash).
+    pub fn block(&self, format: &str, path: &str) -> Result<(), String> {
+        let file = wave_plugin_scan::data_file(&format!("{format}-blocklist.txt")).ok_or("WAVE has no data folder for the block list")?;
+        wave_plugin_scan::BlockList::with_file(file).block(std::path::Path::new(path));
+        Ok(())
     }
 
     pub fn factory(self: &Arc<Self>) -> Arc<dyn PluginFactory> {
@@ -321,8 +422,16 @@ impl Plugins {
     }
 
     /// Open (or bring forward) or close the plugin's own window, under WAVE's header showing
-    /// `label`. The window lives on the UI thread; this waits for it.
-    pub fn editor(&self, app: &tauri::AppHandle, fx: Id, open: bool, label: wave_plugin_windows::Label) -> Result<(), String> {
+    /// `label`, pinned on top of the app when `pinned`. The window lives on the UI thread; this
+    /// waits for it.
+    pub fn editor(
+        &self,
+        app: &tauri::AppHandle,
+        fx: Id,
+        open: bool,
+        label: wave_plugin_windows::Label,
+        pinned: bool,
+    ) -> Result<(), String> {
         let h = self.handle(fx)?;
         if open {
             let has = match &h {
@@ -343,6 +452,14 @@ impl Plugins {
                 (Handle::Lv2(h), true) => h.open_editor(&w, &label),
                 (Handle::Lv2(h), false) => h.close_editor(),
             };
+            if open && r.is_ok() {
+                match &h {
+                    Handle::Vst3(h) => {
+                        let _ = h.set_editor_pinned(pinned);
+                    }
+                    Handle::Lv2(h) => h.set_editor_pinned(pinned),
+                }
+            }
             let _ = tx.send(r);
         })
         .map_err(|e| e.to_string())?;
@@ -353,6 +470,58 @@ impl Plugins {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The plugins that were live when the last session died are the next session's crash
+    /// suspects; a clean exit names none, and a released plugin leaves the marker.
+    #[test]
+    fn crash_suspects_come_from_the_marker_a_crashed_session_left_behind() {
+        let dir = std::env::temp_dir().join(format!("wave-suspects-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let marker = dir.join("live-plugins.json");
+        let vitalium = CrashSuspect {
+            format: PluginRef::VST3.into(),
+            cid: "Vitalium".repeat(8)[..32].to_owned(),
+            name: "Vitalium".into(),
+            path: "/vst3/Vitalium.vst3".into(),
+        };
+        // the "crashed" session left Vitalium in the marker
+        write_marker_at(&marker, &[vitalium.clone()]);
+        let plugins = Plugins::open(Some(marker.clone()));
+        assert_eq!(plugins.crash_suspects(), vec![vitalium.clone()]);
+        // this session starts clean: the marker no longer names anybody
+        assert_eq!(read_marker_at(&marker), vec![]);
+        plugins.clear_crash_suspects();
+        assert!(plugins.crash_suspects().is_empty());
+        // a live load lands in the marker, and its release takes it out again
+        let p = PluginRef {
+            format: PluginRef::VST3.into(),
+            path: "/vst3/Vitalium.vst3".into(),
+            cid: vitalium.cid.clone(),
+            name: "Vitalium".into(),
+            vendor: String::new(),
+            state: None,
+        };
+        plugins.live_loaded(7, &p);
+        assert_eq!(read_marker_at(&marker), vec![vitalium.clone()]);
+        plugins.live_released(7);
+        assert_eq!(read_marker_at(&marker), vec![]);
+        // a refused load (the factory's error path) never entered the marker
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn block_writes_the_formats_block_list_for_future_scans() {
+        let dir = std::env::temp_dir().join(format!("wave-block-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("vst3-blocklist.txt");
+        let module = std::path::Path::new("/vst3/BadActor.vst3");
+        wave_plugin_scan::BlockList::with_file(&file).block(module);
+        let list = wave_plugin_scan::BlockList::with_file(&file);
+        assert!(list.contains(module));
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     #[test]
     fn scan_entries_and_params_serialise_in_the_shapes_the_ui_expects() {

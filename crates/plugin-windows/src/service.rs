@@ -226,7 +226,7 @@ impl WindowOptions {
     }
 
     pub(crate) fn header(&self) -> Header {
-        Header { title: self.title.clone(), subtitle: self.subtitle.clone(), hover: None, pressed: None }
+        Header { title: self.title.clone(), subtitle: self.subtitle.clone(), hover: None, pressed: None, pinned: false }
     }
 }
 
@@ -235,6 +235,7 @@ type SettingsHandler = Rc<dyn Fn(u64)>;
 
 thread_local! {
     static SETTINGS: std::cell::RefCell<Option<SettingsHandler>> = const { std::cell::RefCell::new(None) };
+    static PINNED: std::cell::RefCell<Option<PinnedHandler>> = const { std::cell::RefCell::new(None) };
 }
 
 /// The header's gear was clicked on the window tagged `tag`. UI thread (called by backends).
@@ -244,6 +245,19 @@ pub(crate) fn settings_requested(tag: u64) {
     match handler {
         Some(handler) => handler(tag),
         None => log::debug!("plugin window {tag:#x}: settings asked for, but nobody listens"),
+    }
+}
+
+/// What the header's pin calls, with the window's tag and the new state.
+type PinnedHandler = Rc<dyn Fn(u64, bool)>;
+
+/// The header's pin was clicked on the window tagged `tag`, now `pinned`. UI thread (called by backends).
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
+pub(crate) fn pinned_requested(tag: u64, pinned: bool) {
+    let handler = PINNED.with(|h| h.borrow().clone());
+    match handler {
+        Some(handler) => handler(tag, pinned),
+        None => log::debug!("plugin window {tag:#x}: pin set to {pinned}, but nobody listens"),
     }
 }
 
@@ -293,6 +307,13 @@ impl Service {
     /// [`WindowOptions::tag`]. Call on the UI thread.
     pub fn set_settings_handler(&self, handler: Rc<dyn Fn(u64)>) {
         SETTINGS.with(|h| *h.borrow_mut() = Some(handler));
+    }
+
+    /// What a click on a header's pin does: called on the UI thread with the window's
+    /// [`WindowOptions::tag`] and the new pinned state (the window has already applied it).
+    /// Call on the UI thread.
+    pub fn set_pinned_handler(&self, handler: Rc<dyn Fn(u64, bool)>) {
+        PINNED.with(|h| *h.borrow_mut() = Some(handler));
     }
 
     /// The thread this service (and every window it opens) belongs to.
@@ -453,6 +474,14 @@ impl Window {
         Ok(())
     }
 
+    /// Pin the window on top of the app's (`true`), or let it stack normally again. The
+    /// header's pin follows. Call on the UI thread.
+    pub fn set_pinned(&self, pinned: bool) -> Result<(), WindowError> {
+        let hwnd = self.live()?;
+        backend::set_always_on_top(hwnd, pinned);
+        Ok(())
+    }
+
     /// Resize the **client area** (clamped), keeping the top-left corner.
     pub fn set_client_size(&self, size: WindowSize) -> Result<(), WindowError> {
         let hwnd = self.live()?;
@@ -584,8 +613,27 @@ impl WindowState {
         match part {
             crate::header::Part::Settings => settings_requested(self.tag),
             crate::header::Part::Close => self.post(WindowEvent::Closed),
+            crate::header::Part::Pin => {
+                let pinned = {
+                    let mut h = self.header.borrow_mut();
+                    h.pinned = !h.pinned;
+                    h.pinned
+                };
+                pinned_requested(self.tag, pinned);
+            }
             crate::header::Part::Drag => {}
         }
+    }
+
+    /// The pinned state the header shows right now.
+    #[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
+    pub(crate) fn pinned(&self) -> bool {
+        self.header.borrow().pinned
+    }
+
+    /// Pin or unpin the window on top of the app's (the header's pin follows). UI thread.
+    pub(crate) fn set_pinned_state(&self, pinned: bool) {
+        self.header.borrow_mut().pinned = pinned;
     }
 
     /// Set the hovered / pressed button; `true` when that changed the picture.
@@ -763,5 +811,24 @@ mod tests {
         assert!(!state.set_header_state(Some(Part::Settings), None), "no change, no repaint");
         assert!(state.set_header_state(Some(Part::Drag), None), "the drag area is not a hover state");
         assert_eq!(state.header.borrow().hover, None);
+    }
+
+    #[test]
+    fn the_pin_toggles_and_reports_to_the_handler() {
+        use crate::header::Part;
+        let (sender, receiver) = channel();
+        let state =
+            WindowState::new(&WindowOptions::new("Vitalium", WindowSize::new(400, 300)).tag(9), sender, Arc::new(AtomicU64::new(0)));
+        let seen = Rc::new(std::cell::Cell::new((0_u64, false)));
+        let s = Rc::clone(&seen);
+        Service::new().set_pinned_handler(Rc::new(move |tag, pinned| s.set((tag, pinned))));
+        assert!(!state.pinned(), "a window starts unpinned");
+        state.header_click(Part::Pin);
+        assert!(state.pinned());
+        assert_eq!(seen.get(), (9, true), "the handler hears the new state and the window's tag");
+        state.header_click(Part::Pin);
+        assert!(!state.pinned());
+        assert_eq!(seen.get(), (9, false));
+        assert!(receiver.try_iter().collect::<Vec<_>>().is_empty(), "the pin is not a window event: the handler is the report");
     }
 }

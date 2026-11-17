@@ -50,6 +50,13 @@ const OLD_DOCK_KEYS = ['rackDock', 'rollDock', 'mixDock', 'rackDockW', 'rollDock
 const TOOLS_OK: Tool[] = ['draw', 'paint', 'erase', 'mute', 'slice', 'select'];
 const num = (v: unknown, lo: number, hi: number): number | undefined => (typeof v === 'number' && isFinite(v) && v >= lo && v <= hi ? v : undefined);
 const bool = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
+/** Which whole Library sections (STANDARD LIBRARY, KITS, FOLDERS) the user collapsed; `true` = closed. */
+const SECS = ['std', 'kits', 'folders'] as const;
+const parseSec = (v: unknown): Record<(typeof SECS)[number], boolean | undefined> | undefined => {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  return { std: bool(o.std), kits: bool(o.kits), folders: bool(o.folders) };
+};
 /** A saved floating window's place, or undefined when anything about it is off (it is clamped on screen when used). */
 export function parseGeo(v: unknown): Geo | undefined {
   if (!v || typeof v !== 'object') return undefined;
@@ -65,12 +72,13 @@ export function parseLayout(raw: string | null): Partial<UiState> {
   if (typeof v !== 'object' || Array.isArray(v)) return {};
   const p: Partial<UiState> = {
     tool: TOOLS_OK.includes(v.tool as Tool) ? (v.tool as Tool) : undefined,
-    snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 96), follow: bool(v.follow),
+    snap: num(v.snap, -1, 64), bw: num(v.bw, 4, 384), follow: bool(v.follow), // 384: keep in step with actions.BW_MAX
     // the docked mixer can no longer be closed: a layout saved with it closed opens collapsed
     mixMin: v.mixOpen === false || v.mixMin === true ? true : bool(v.mixMin),
     headW: num(v.headW, 120, 600), pickW: num(v.pickW, 140, 800), pickOpen: bool(v.pickOpen),
     // 'project' (Patterns and Audio in one tab, before they were split) opens on Patterns
     browserTab: v.browserTab === 'project' ? 'patterns' : v.browserTab === 'patterns' || v.browserTab === 'audio' || v.browserTab === 'library' ? v.browserTab : undefined,
+    browserSec: parseSec(v.browserSec),
     rackFloat: parseGeo(v.rackFloat), rollFloat: parseGeo(v.rollFloat), rollMax: bool(v.rollMax),
     mixWin: ((g: Geo | undefined) => g && { ...g, z: 0 })(parseGeo(v.mixFloat)),
     // where the panels are docked; a layout from before panels could go anywhere is translated

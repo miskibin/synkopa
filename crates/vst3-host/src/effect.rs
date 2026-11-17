@@ -1158,6 +1158,18 @@ impl Vst3Handle {
         self.shared.editor_open.store(false, Ordering::Release);
         Ok(())
     }
+
+    /// Pin the editor's window on top of the app's (no-op when it is closed). **UI thread only.**
+    pub fn set_editor_pinned(&self, pinned: bool) -> Result<(), Vst3Error> {
+        if !main_thread::on_main_thread() {
+            return Err(Vst3Error::WrongThread);
+        }
+        let guard = self.shared.instance.lock();
+        if let Some(editor) = guard.as_ref().and_then(|instance| instance.editor.as_ref()) {
+            let _ = editor.window().set_pinned(pinned);
+        }
+        Ok(())
+    }
 }
 
 impl std::fmt::Debug for Vst3Handle {
