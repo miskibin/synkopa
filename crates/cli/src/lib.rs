@@ -1731,11 +1731,12 @@ mod tests {
         let p = project(&d);
         let f = FakeFiles::default();
         let ok = d.join("ok.txt");
-        std::fs::write(&ok, "# tempo first\n\nwave bpm 100\napply --json '[{\"op\":\"setBpm\",\"bpm\":101}]'\ncontext\n").unwrap();
+        std::fs::write(&ok, "# tempo first\nsynkopa bpm 99\nwave bpm 100\napply --json '[{\"op\":\"setBpm\",\"bpm\":101}]'\ncontext\n")
+            .unwrap();
         let v = file(&f, &["script", &ok.display().to_string(), "--project", &p]).unwrap();
         let lines: Vec<_> = v["results"].as_array().unwrap().iter().map(|r| r["line"].as_u64().unwrap()).collect();
-        assert_eq!(lines, [3, 4, 5]);
-        assert_eq!(v["results"][2]["result"]["bpm"], 101.0);
+        assert_eq!(lines, [2, 3, 4, 5]);
+        assert_eq!(v["results"][3]["result"]["bpm"], 101.0);
         assert_eq!(f.saves().len(), 1, "one save for the whole script");
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "bpm 101");
 

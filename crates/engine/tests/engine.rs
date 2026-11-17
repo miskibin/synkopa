@@ -592,7 +592,9 @@ fn saving_keeps_the_previous_save_as_a_backup() {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("Song.wave");
     let backup = engine::backup_path(&path);
-    assert_eq!(backup, dir.join("Song (backup).wave"));
+    assert_eq!(backup, dir.join("Song (backup).wave"), "a project from before the rename keeps its extension");
+    assert_eq!(engine::backup_path(&dir.join("Song.synkopa")), dir.join("Song (backup).synkopa"));
+    assert_eq!(engine::backup_path(&dir.join("Song")), dir.join("Song (backup).synkopa"));
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
     e.apply(&[Op::SetBpm { bpm: 100.0 }], false, None).unwrap();
     e.save(&path).unwrap();

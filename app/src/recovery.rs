@@ -234,6 +234,29 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_left_by_a_version_from_before_the_rename_is_still_offered() {
+        let dir = tmp("legacy");
+        let a = Recovery::start(dir.clone());
+        assert!(a.write(&edited()).unwrap());
+        assert_eq!(a.file.extension().and_then(|x| x.to_str()), Some("synkopa"));
+        // that version wrote `<session>.wave`
+        let legacy = a.file.with_extension("wave");
+        std::fs::rename(&a.file, &legacy).unwrap();
+        drop(a);
+
+        let b = Recovery::start(dir.clone());
+        let o = b.orphans();
+        assert_eq!(o.len(), 1, "{o:?}");
+        let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
+        b.restore(&e, &o[0].id).unwrap();
+        assert_eq!(e.state().project.bpm, 137.0);
+        assert!(!legacy.exists(), "the old copy became this session's own");
+        assert!(b.file.is_file());
+        b.close();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn a_running_session_is_never_offered_to_another() {
         let dir = tmp("live");
         let e = edited();

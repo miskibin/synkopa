@@ -80,6 +80,15 @@ mod tests {
     }
 
     #[test]
+    fn opens_projects_saved_before_and_after_the_rename() {
+        let cwd = std::env::temp_dir();
+        for name in ["Song.synkopa", "Song.SYNKOPA", "Song.wave"] {
+            assert_eq!(project_path(name, Some(&cwd)).as_deref(), cwd.join(name).to_str(), "{name}");
+        }
+        assert_eq!(project_path("Song.synkopa.bak", Some(&cwd)), None);
+    }
+
+    #[test]
     fn ignores_flags_and_other_file_types() {
         let cwd = std::env::temp_dir();
         for arg in ["--cli", "--test.wave", "Song.wav", "Song.wave.bak", ""] {

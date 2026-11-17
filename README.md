@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **WAVE is now called Synkopa.** Same app, new name and logo: nothing of yours moves, `.wave` projects still open and
+> the `wave` command still works. The repository address still says `wave-DAW` for now.
+
 <p align="center"><img src="app/icons/128x128@2x.png" width="96" alt=""></p>
 <h1 align="center">Synkopa</h1>
 <p align="center">
