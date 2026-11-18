@@ -878,7 +878,7 @@ fn a_file_loaded_during_a_gesture_undoes_to_the_gestures_start() {
     let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
     let start = e.project();
     let m = start.inserts[0].clone();
-    e.begin_gesture();
+    e.begin_gesture(None);
     e.apply(&[Op::PutInsert { insert: Insert { vol: 0.5, ..m.clone() } }], true, None).unwrap();
     e.import_audio_with(&[two_level_wav("gesture-import")], None, false).unwrap();
     e.apply(&[Op::PutInsert { insert: Insert { vol: 0.25, ..m.clone() } }], true, None).unwrap();
