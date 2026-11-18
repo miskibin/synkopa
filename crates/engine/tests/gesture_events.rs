@@ -63,3 +63,46 @@ fn edits_outside_a_gesture_are_reported_each_time() {
     }
     assert_eq!(n.load(Ordering::Relaxed), 6);
 }
+
+#[test]
+fn a_noop_gesture_never_moves_the_revision() {
+    let (e, n, _) = engine();
+    // a snap can swallow drag moves into one grid point: the batch changes nothing
+    let rev = e.revision();
+    e.begin_gesture();
+    e.apply(&[vol(&e, e.project().tracks[0].vol)], true, None).unwrap();
+    assert_eq!(e.revision(), rev, "a no-op gesture frame must not bump the revision");
+    e.end_gesture();
+    assert_eq!(n.load(Ordering::Relaxed), 0, "nothing changed, nothing to report");
+    assert!(!e.state().can_undo);
+}
+
+#[test]
+fn lane_height_drags_alone_are_not_an_undo_step() {
+    let (e, _, _) = engine();
+    let mut t = e.project().tracks[0].clone();
+    t.h *= 2.0;
+    e.apply(&[Op::PutTrack { track: t.clone() }], false, None).unwrap();
+    assert!(!e.state().can_undo, "a lane-height edit carries into history, it is not history");
+    assert_eq!(e.project().tracks[0].h, t.h);
+}
+
+#[test]
+fn undoing_a_drag_keeps_the_lanes_as_they_are_now() {
+    let (e, n, _) = engine();
+    let h0 = e.project().tracks[0].h;
+    e.begin_gesture();
+    // the lane is dragged, then the clip too: one undo step for the whole drag, but the
+    // lane keeps its new height when the drag is undone
+    let mut t = e.project().tracks[0].clone();
+    t.h = h0 * 2.0;
+    e.apply(&[Op::PutTrack { track: t }], true, None).unwrap();
+    e.apply(&[vol(&e, 0.4)], true, None).unwrap();
+    e.end_gesture();
+    assert!(e.state().can_undo);
+    assert_eq!(n.load(Ordering::Relaxed), 1);
+    e.undo();
+    let p = e.project();
+    assert_eq!(p.tracks[0].h, h0 * 2.0, "undoing the drag must keep the lane's new height");
+    assert_ne!(p.tracks[0].vol, 0.4, "the drag itself is undone");
+}
