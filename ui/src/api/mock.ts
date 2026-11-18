@@ -1522,7 +1522,11 @@ export class MockBackend implements Backend {
     this.tr = { ...this.tr, playing: false }; this.revision++; this.savedRev = this.revision;
     this.emit('state', this.dto());
   }
-  async projectNew(demo?: boolean) { this.resetTo(demo ? demoProject() : emptyProject(), null); this.recovery = null; return this.dto(); }
+  async projectNew(demo?: boolean) {
+    // like the engine: a refused reset (recording) keeps the project and its recovery copy
+    if (this.rec) throw new Error('recording: stop it first');
+    this.resetTo(demo ? demoProject() : emptyProject(), null); this.recovery = null; return this.dto();
+  }
   /** Tests: the next native file dialog is dismissed, as when the user presses Cancel. */
   dismissNextDialog = false;
   private dialog(): boolean { const ok = !this.dismissNextDialog; this.dismissNextDialog = false; return ok; }

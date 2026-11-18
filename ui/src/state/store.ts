@@ -2,12 +2,13 @@
 // StateDto plus local optimistic edits (applied immediately so drags feel instant).
 import { batch, createMemo, createRoot, createSignal } from 'solid-js';
 import { $RAW, createStore, produce, reconcile } from 'solid-js/store';
-import type { Catalog, Clip, Fx, Id, Insert, Op, Project, StateDto, TransportDto } from '../api/types';
+import type { Catalog, Clip, Fx, Id, Insert, Note, Op, Project, StateDto, TransportDto } from '../api/types';
 import { applyCompOp, compExtent } from '../lib/comp';
 import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
-import { applyPatternOp } from '../lib/pattern';
+import { applyPatternOp, fitLen as fitPatternLen, followPatternLength } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
+import { applyTransform } from '../lib/transforms';
 import { dropSourcePeaks } from './peaks';
 
 export interface EngineState {
@@ -199,6 +200,15 @@ function applyInPlace(p: Project, op: Op) {
       if (op.track.id >= p.nextId) p.nextId = op.track.id + 1;
       return;
     }
+    case 'removeTrack': {
+      // engine semantics (applyOps ported): clips on the track go, clips below it shift up
+      const idx = p.tracks.findIndex(t => t.id === op.id);
+      if (idx < 0 || p.tracks.length === 1) return; // refused: the engine's reply resyncs
+      p.tracks.splice(idx, 1);
+      p.clips = p.clips.filter(c => c.track !== idx);
+      for (const c of p.clips) if (c.track > idx) c.track -= 1;
+      return;
+    }
     case 'putInsert': {
       const m = p.inserts.find(x => x.id === op.insert.id);
       const { fx, ...rest } = op.insert;
@@ -243,6 +253,7 @@ function applyInPlace(p: Project, op: Op) {
     case 'putNotebook': applyNotebookOp(p, op.notebook, false); return;
     case 'setBpm': p.bpm = op.bpm; return;
     case 'setLoop': p.loop = op.loop ? { ...op.loop } : null; return;
+    case 'setKey': p.key = op.key; p.scale = op.scale ?? 1; return;
     case 'putAutomation': {
       const a = clone(op.automation); a.points.sort((x, y) => x.t - y.t);
       if (!p.automations) p.automations = [];
@@ -259,11 +270,30 @@ function applyInPlace(p: Project, op: Op) {
       p.automations = (p.automations ?? []).filter(a => a.id !== op.id);
       p.clips = p.clips.filter(c => !(c.kind === 'auto' && c.ref === op.id));
       return;
+    case 'transformNotes': {
+      // like the engine's transform path (applyOps ported): an edit it would refuse is left to its reply to undo
+      const pt = p.patterns.find(x => x.id === op.pattern); if (!pt) return;
+      const roots = (p.channels ?? []).map(c => ({ id: c.id, root: c.root ?? 60 }));
+      // plain copies: `p` is a Solid draft here, and its proxies do not survive structuredClone
+      const notes: Note[] = JSON.parse(JSON.stringify(pt.notes ?? []));
+      try { applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(16, Math.round(pt.len * 4))); } catch { return; }
+      pt.notes = notes;
+      const oldLen = pt.len;
+      fitPatternLen(pt);
+      // a generator can push notes past the pattern's end: whole-pass clips follow, like putPattern
+      if (Math.abs(oldLen - pt.len) > 1e-9) followPatternLength(p, op.pattern, oldLen, pt.len);
+      return;
+    }
     case 'editTune': {
       // the engine's own semantics (tune_edit.rs, ported): an edit it would refuse is left to its reply to undo
       const c = p.clips.find(x => x.id === op.clip); if (!c || c.kind !== 'audio') return;
       try { c.tune = applyTuneEdit(c.tune, op.edit); } catch { /* refused: the engine's reply resyncs */ }
       return;
+    }
+    default: {
+      // a new Op kind must be applied optimistically too, or its edit stalls until the reconcile
+      const exhaustive: never = op;
+      return exhaustive;
     }
   }
 }

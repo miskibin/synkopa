@@ -149,7 +149,8 @@ fn bench_all(cache: &Path, sizes: &[String], quick: bool, full_export: bool) -> 
         let _ = reparse;
         let (e2, new_ms) = time_ms(|| {
             let e2 = Engine::new(Project::routed(), Arc::new(NoPlugins));
-            e2.new_project(p.clone());
+            // a fresh engine has no recording take: this cannot fail
+            let _ = e2.new_project(p.clone());
             e2
         });
         drop(e2);

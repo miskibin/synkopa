@@ -102,8 +102,7 @@ impl actions::Host for App {
         *self.model_error.lock() = e;
     }
     fn wait_keys(&self) -> R<()> {
-        keys::wait(self);
-        Ok(())
+        keys::wait(self)
     }
     fn keys_installed(&self) -> bool {
         keys::status(self).installed
@@ -445,7 +444,8 @@ async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>) -> R<Value> {
     app.export_cancel.store(false, Ordering::Relaxed);
     let a = app.inner().clone();
     let r = tauri::async_runtime::spawn_blocking(move || {
-        keys::wait(&a);
+        // a bounce must not start while the piano is still loading (it would be silent)
+        keys::wait(&a).map_err(wave_engine::EngineError::Msg)?;
         a.engine.export_in_place(&clip_ids, actions::IN_PLACE_RATE, &a.export_cancel, &mut |_| {})
     })
     .await
@@ -762,7 +762,9 @@ fn take_project_open_requests(requests: State<'_, ProjectOpenRequests>) -> Vec<S
 
 #[tauri::command]
 async fn project_new(app: St<'_>, demo: Option<bool>) -> R<StateDto> {
-    app.engine.new_project(if demo.unwrap_or(false) { Project::demo() } else { Project::empty() });
+    // clear crash recovery only once the reset really happened: a refused reset (recording)
+    // must keep the still-unsaved project's recovery copy, like open/save do
+    app.engine.new_project(if demo.unwrap_or(false) { Project::demo() } else { Project::empty() }).map_err(es)?;
     app.recovery.clear();
     Ok(app.engine.state())
 }
@@ -995,7 +997,7 @@ async fn export_stems(
             let _ = h.emit("export-progress", s);
         };
         // a stem export must not start while the piano is still loading (its stems would be silent)
-        keys::wait(&a);
+        keys::wait(&a)?;
         actions::render_stems_to_dir(&a.engine, &dir, bounce, &a.export_cancel, include_master, fmt, &progress)
     })
     .await

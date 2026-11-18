@@ -604,7 +604,7 @@ fn library_samples_are_stored_by_a_portable_path_and_shared() {
 fn a_new_project_does_not_inherit_audio_from_the_previous_one() {
     // ids start over: the audio of source N of the old project must not play as source N of the new
     let (e, _) = engine("fresh", |_| {}, &[(0.0, 1.0, None)]);
-    e.new_project(Project::empty());
+    e.new_project(Project::empty()).expect("no take is active");
     let p = e.project();
     assert!(p.sources.iter().all(|s| s.path.starts_with("lib:")));
     let kick = p.channels[0].id;

@@ -123,6 +123,21 @@ describe('opening a project', () => {
     expect((await import('./ui')).U.readout).toContain('recording: stop it first');
     await mock.transportStop();
   });
+  it('refuses to start a new project while a take is recording, like the engine', async () => {
+    await A.projectOpen('C:\\Muzyka\\First.wave');
+    await mock.applyOps([{ op: 'setBpm', bpm: 97 }]);
+    store.replaceState(await mock.getState());
+    const track = store.S.project.tracks[0];
+    await mock.applyOps([{ op: 'putTrack', track: { ...track, arm: true } }]);
+    await mock.transportSet({ rec: true });
+    await mock.transportPlay(0);
+    store.replaceState(await mock.getState());
+    await expect(mock.projectNew()).rejects.toThrow('recording: stop it first');
+    expect(store.S.project.bpm).toBe(97); // the refused reset left the project alone
+    await mock.transportStop();
+    await A.projectNew();
+    expect(store.S.project.bpm).not.toBe(97); // with the take over, the reset goes through
+  });
   it('explains how to retry an Explorer open while another confirmation is active', async () => {
     await A.projectOpen('C:\\Muzyka\\First.wave');
     await mock.applyOps([{ op: 'setBpm', bpm: 137 }]);

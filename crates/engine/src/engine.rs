@@ -2246,11 +2246,11 @@ impl Engine {
 
     // ------------------------------------------------------------ project files
 
-    pub fn new_project(&self, project: Project) {
+    pub fn new_project(&self, project: Project) -> Result<(), EngineError> {
         self.vet_project(&project);
         let mut c = self.core.lock();
         if c.take.is_some() {
-            return;
+            return Err(EngineError::Msg("recording: stop it first".into()));
         }
         send(&mut c, Cmd::Stop);
         send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None });
@@ -2274,6 +2274,7 @@ impl Engine {
         self.forget_plugs(&mut c);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
+        Ok(())
     }
 
     pub fn save(&self, path: &Path) -> Result<(), EngineError> {
@@ -4445,7 +4446,7 @@ pub(crate) fn build_graph(
                     .zip(procs)
                     .map(|(f, proc)| {
                         let params = if f.kind == FxKind::Plugin { None } else { Some(param_block(f)) };
-                        FxSlot::new(f.id, f.bypass, f.mix.clamp(0.0, 1.0), proc, params, fx_latency(f, sr, hosted))
+                        FxSlot::new(f.id, f.kind, f.bypass, f.mix.clamp(0.0, 1.0), proc, params, fx_latency(f, sr, hosted))
                     })
                     .collect();
             let k = p.inserts.iter().position(|x| x.id == id).unwrap_or(0);

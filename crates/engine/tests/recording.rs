@@ -393,3 +393,22 @@ fn the_recording_filter_leaves_audio_out_and_keeps_one_kind_on() {
     record_second(&e);
     assert_eq!(take_track(&e.project()), Some(0));
 }
+
+#[test]
+fn a_new_project_is_refused_while_a_take_is_active() {
+    // Ctrl+N during a recording take must be refused (the app keeps the crash-recovery copy
+    // of the still-unsaved project and reports the refusal), not silently ignored.
+    let mut p = armed();
+    p.bpm = 97.0;
+    let e = engine(p, "newproj");
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.set_transport(None, Some(false), Some(true), None);
+    e.play(0.0);
+    let mut at = 0;
+    feed(&mut rt, &mut at, BLOCK * 4, &|_| 0.3);
+    assert!(e.new_project(Project::empty()).is_err(), "a take is active: the reset must be refused");
+    assert_eq!(e.project().bpm, 97.0, "the refused reset must leave the project alone");
+    e.stop();
+    e.new_project(Project::empty()).expect("the take is over: the reset must work");
+    assert!(e.project().clips.is_empty() && e.project().bpm != 97.0, "the new project replaced the old one");
+}

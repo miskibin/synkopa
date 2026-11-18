@@ -53,7 +53,8 @@ impl Headless {
         let plugins = Plugins::new();
         crate::plugins::register_bundled(None);
         let engine = Engine::new(Project::empty(), plugins.factory());
-        engine.new_project(project);
+        // a fresh engine has no recording take: this cannot fail
+        let _ = engine.new_project(project);
         Self { engine, plugins, model: OnceLock::new(), keys: OnceLock::new(), rt: Mutex::new(None) }
     }
 
@@ -102,11 +103,8 @@ impl Host for Headless {
         }
         self.keys
             .get_or_init(|| {
-                let d = crate::keys::find_dir(bundled_keys()).ok_or(
-                    "KEYS_MISSING: the project plays Synkopa Keys, but the piano recordings are not on this computer \
-                     (download the kit in the app: Library → Synkopa Keys); the bounce would be silent",
-                )?;
-                let bank = KeysBank::load(&d).map_err(|e| format!("KEYS_ERROR: Synkopa Keys: {e}"))?;
+                let d = crate::keys::find_dir(bundled_keys()).ok_or_else(crate::keys::missing_msg)?;
+                let bank = KeysBank::load(&d).map_err(|e| crate::keys::error_msg(&e))?;
                 self.engine.set_keys_bank(Some(Arc::new(bank)));
                 Ok(())
             })

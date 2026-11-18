@@ -160,7 +160,8 @@ export class Gesture {
     if (!ops.length) return;
     this.busy = true;
     enqueue(() => be().applyOps(ops, { label: this.label, transient: true }))
-      .then(noteRev, e => console.warn('[wave] transient op rejected', e))
+      // a refused frame must not leave its local state on screen: pull the engine's truth, like commit()
+      .then(noteRev, e => resync(e))
       .finally(() => { this.busy = false; if (this.order.length) this.flush(); });
   }
 
@@ -169,7 +170,7 @@ export class Gesture {
     if (this.done) return;
     this.done = true;
     const ops = this.take();
-    if (ops.length) enqueue(() => be().applyOps(ops, { label: this.label, transient: true })).then(noteRev, e => console.warn(e));
+    if (ops.length) enqueue(() => be().applyOps(ops, { label: this.label, transient: true })).then(noteRev, e => resync(e));
     enqueue(() => be().endGesture(label ?? this.label)).catch(e => console.warn(e)).finally(() => { gestures--; settle(); });
   }
 }
