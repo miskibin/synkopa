@@ -2458,7 +2458,9 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
         if let Some(w) = w {
             push_tap(&mut taps.input[w], &ins.l[..n], &ins.r[..n]);
         }
-        let fading = (!slot.bypass && slot.mix > 0.0005) || slot.fade > 0.0;
+        // the wet path runs while it is audible or still ramping out: a bypassed slot whose
+        // fade has reached 0 costs nothing again
+        let fading = (!slot.bypass && slot.mix > 0.0005) || (slot.bypass && slot.fade > 0.0);
         if !slot.bypass && slot.mix <= 0.0005 && delayed {
             // fully dry: still late by the latency PDC is compensating for
             slot.delay_dry(&mut ins.l[..n], &mut ins.r[..n]);
@@ -2466,7 +2468,11 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
             if let Some(p) = slot.proc.as_mut() {
                 let mix = slot.mix.min(1.0);
                 let mut g = slot.fade;
-                if mix < 0.9995 || g < 0.9995 || delayed {
+                let down = slot.bypass;
+                // the ramp must run whenever the wet scale is not settled: a bypass flip at
+                // full Mix arrives with g == 1.0 and still has to ramp down to dry
+                let blending = mix < 0.9995 || g < 0.9995 || down;
+                if blending || delayed {
                     ins.dry_l[..n].copy_from_slice(&ins.l[..n]);
                     ins.dry_r[..n].copy_from_slice(&ins.r[..n]);
                 }
@@ -2479,9 +2485,9 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
                     // the line runs at every Mix so lowering it never plays stale audio
                     slot.delay_dry(&mut ins.dry_l[..n], &mut ins.dry_r[..n]);
                 }
-                if mix < 0.9995 || g < 0.9995 {
+                if blending {
                     for i in 0..n {
-                        if slot.bypass {
+                        if down {
                             g -= declick;
                             if g < 0.0 {
                                 g = 0.0;
