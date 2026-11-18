@@ -508,7 +508,7 @@ fn bench_ops(wave: &Path, _sp: &Spec, quick: bool) -> Value {
         }),
         false,
     );
-    e.begin_gesture();
+    e.begin_gesture(None);
     let mut c = clip.clone();
     res["drag_clip_transient_ms"] = time_op(
         Box::new(move |k| {
@@ -521,7 +521,7 @@ fn bench_ops(wave: &Path, _sp: &Spec, quick: bool) -> Value {
     // a note drag in the piano roll: the whole pattern per frame (as the UI sends it), from JSON
     if let Some(big) = p.patterns.iter().max_by_key(|x| x.notes.len()).cloned() {
         res["note_drag_pattern_notes"] = json!(big.notes.len());
-        e.begin_gesture();
+        e.begin_gesture(None);
         let mut pt = big.clone();
         res["note_drag_transient_ms"] = time_op(
             Box::new(move |k| {
@@ -534,7 +534,7 @@ fn bench_ops(wave: &Path, _sp: &Spec, quick: bool) -> Value {
         );
         e.end_gesture();
     }
-    e.begin_gesture();
+    e.begin_gesture(None);
     let mut t = track.clone();
     res["fader_drag_transient_ms"] = time_op(
         Box::new(move |k| {
@@ -544,7 +544,7 @@ fn bench_ops(wave: &Path, _sp: &Spec, quick: bool) -> Value {
         true,
     );
     e.end_gesture();
-    e.begin_gesture();
+    e.begin_gesture(None);
     let mut f = comp_fx.clone();
     res["fx_param_drag_transient_ms"] = time_op(
         Box::new(move |k| {
@@ -641,7 +641,7 @@ fn bench_ops(wave: &Path, _sp: &Spec, quick: bool) -> Value {
     e.on_change(move |dto| {
         b2.fetch_add(serde_json::to_vec(dto).unwrap().len(), Ordering::Relaxed);
     });
-    e.begin_gesture();
+    e.begin_gesture(None);
     let mut t = t_vec();
     let mut tr = track.clone();
     for k in 0..n {
