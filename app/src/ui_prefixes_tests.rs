@@ -8,7 +8,7 @@
 //! rewrites the file.
 
 use serde_json::json;
-use wave_engine::errors::{ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_REVISION_CONFLICT};
+use wave_engine::errors::{ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_NO_STEM_MODEL, ERR_REVISION_CONFLICT};
 
 #[test]
 fn the_ui_error_prefix_fixture_matches() {
@@ -19,6 +19,7 @@ fn the_ui_error_prefix_fixture_matches() {
         "revisionConflict": ERR_REVISION_CONFLICT,
         "invalidTarget": ERR_INVALID_TARGET,
         "noEditor": ERR_NO_EDITOR,
+        "noStemModel": ERR_NO_STEM_MODEL,
     });
     let text = serde_json::to_string_pretty(&fixture).unwrap() + "\n";
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui/src/api/__fixtures__/error-prefixes.json");

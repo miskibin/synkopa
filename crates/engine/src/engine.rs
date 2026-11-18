@@ -3589,6 +3589,198 @@ pub struct InPlace {
     pub track: u32,
 }
 
+/// Longest region "Extract stems" separates: what [`Audio::load`] decodes again when the project
+/// is reopened (longer stems would come back cut).
+pub const STEMS_MAX_S: f64 = 1800.0;
+
+/// The audio an audio clip plays, for stem separation ([`Engine::stem_region`]): the source
+/// region under the clip with `lead` seconds of context before it and up to as much after,
+/// normalised and/or reversed as the clip plays it (interleaved stereo at the source's rate).
+pub struct StemRegion {
+    pub clip: Clip,
+    /// The clip's name as the playlist shows it (its sample's).
+    pub name: String,
+    pub data: Vec<f32>,
+    pub sr: u32,
+    /// Seconds of the (normalised/reversed) source where `data` starts.
+    pub from_s: f64,
+    /// Length of the whole source in seconds.
+    pub source_s: f64,
+    /// Where new media of this project are written (the project's audio folder, or the
+    /// scratch folder of an unsaved project, which the first save moves next to it).
+    pub dir: PathBuf,
+}
+
+/// One separated stem for [`Engine::place_stems`]: its label ("Drums"), the WAV written to the
+/// project's media and the decoded audio of that file.
+pub struct StemFile {
+    pub label: String,
+    pub color: String,
+    pub path: PathBuf,
+    pub audio: Audio,
+}
+
+/// What [`Engine::place_stems`] made: one source, track and clip per stem (in order), the
+/// index of the first new track; the source clip is now muted.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlacedStems {
+    pub source_ids: Vec<Id>,
+    pub clip_ids: Vec<Id>,
+    pub track: u32,
+    pub muted_clip: Id,
+}
+
+impl Engine {
+    /// The audio a clip plays from its source, for "Extract stems": the region under the clip
+    /// plus up to `context_s` seconds either side (the separator hears what leads into the
+    /// region), with the clip's normalise/reverse applied. Pitch, stretch, gain, fades and pan are
+    /// left to the stem clips, which copy them. The lock is held only to copy the clip and the
+    /// source's `Arc`.
+    pub fn stem_region(&self, clip_id: Id, context_s: f64) -> Result<StemRegion, EngineError> {
+        let err = |m: &str| EngineError::Msg(m.into());
+        let (clip, name, base, bpm, dir) = {
+            let c = self.core.lock();
+            let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(err("no such clip"))?;
+            if clip.kind != ClipKind::Audio {
+                return Err(err("stems can be extracted from audio clips only"));
+            }
+            let Some(base) = c.sources.get(clip.source).cloned() else {
+                let why = c.source_errors.get(&clip.source).cloned().unwrap_or_else(|| "not loaded".into());
+                return Err(EngineError::Msg(format!("the clip's audio file is missing ({why}); relink it first")));
+            };
+            (clip.clone(), clip_name(&c.project, &clip), base, c.project.bpm, audio_dir(&c))
+        };
+        let audio = if clip.norm || clip.rev { Arc::new(base.derived(clip.norm, clip.rev)) } else { base };
+        let sr = f64::from(audio.sr);
+        let (sa, sb) = clip.source_span(bpm);
+        let sb = sb.min(audio.seconds());
+        if sb - sa < 0.05 {
+            return Err(err("the clip plays less than 50 ms of its audio: nothing to separate"));
+        }
+        if sb - sa > STEMS_MAX_S {
+            return Err(EngineError::Msg(format!(
+                "the clip plays {:.0} minutes of audio; stems can be extracted from at most {:.0} minutes at a time (split the clip first)",
+                (sb - sa) / 60.0,
+                STEMS_MAX_S / 60.0
+            )));
+        }
+        let a = ((sa - context_s).max(0.0) * sr) as usize;
+        let b = (((sb + context_s) * sr).ceil() as usize).min(audio.frames);
+        Ok(StemRegion {
+            data: audio.content()[a * 2..b * 2].to_vec(),
+            sr: audio.sr,
+            from_s: a as f64 / sr,
+            source_s: audio.seconds(),
+            clip,
+            name,
+            dir,
+        })
+    }
+
+    /// Puts separated stems into the playlist as one undo step: each stem becomes a source, a new
+    /// track right below the source clip's track (in the order given, playing into that track's
+    /// insert) and a clip at the same place as the source clip, playing the same part of the audio
+    /// the same way (stretch, pitch, gain, fades, pan, mixer insert); the source clip is muted.
+    ///
+    /// `region` is what was separated. The project may have changed meanwhile: the clip must
+    /// still exist, play the same source the same way (normalise/reverse) and stay inside the
+    /// separated region, else nothing changes and the files are the caller's to delete.
+    pub fn place_stems(&self, region: &StemRegion, stems: Vec<StemFile>) -> Result<PlacedStems, EngineError> {
+        let err = |m: &str| EngineError::Msg(m.into());
+        if stems.is_empty() {
+            return Err(err("no stems to place"));
+        }
+        let mut c = self.core.lock();
+        let now = c
+            .project
+            .clips
+            .iter()
+            .find(|x| x.id == region.clip.id)
+            .cloned()
+            .ok_or(err("the clip was deleted while its stems were extracted; nothing was added"))?;
+        let (sa, sb) = now.source_span(c.project.bpm);
+        let to_s = region.from_s + region.data.len() as f64 / 2.0 / f64::from(region.sr);
+        if now.kind != ClipKind::Audio
+            || now.source != region.clip.source
+            || now.norm != region.clip.norm
+            || now.rev != region.clip.rev
+            || sa < region.from_s - 1e-6
+            || sb.min(region.source_s) > to_s + 1e-3
+        {
+            return Err(err("the clip changed while its stems were extracted (another sample or region); extract them again"));
+        }
+        let before = c.project.clone();
+        let track = c.project.tracks.get(now.track as usize).cloned().ok_or(err("the clip's track is missing"))?;
+        let at = now.track + 1;
+        let n = stems.len() as u32;
+        for x in c.project.clips.iter_mut() {
+            if x.track >= at {
+                x.track += n;
+            }
+            if x.id == now.id {
+                x.muted = true;
+            }
+        }
+        let spb = 60.0 / c.project.bpm.max(1.0);
+        // the stem file starts at `from_s` of the source: the same second sits that much earlier in it
+        let offset = (sa - region.from_s).max(0.0) * now.stretch.max(STRETCH_MIN) / spb;
+        let (mut source_ids, mut clip_ids) = (Vec::new(), Vec::new());
+        for (k, s) in stems.into_iter().enumerate() {
+            let name = format!("{} – {}", region.name, s.label);
+            let source_id = c.project.alloc_id();
+            c.project.sources.push(Source {
+                id: source_id,
+                name: name.clone(),
+                color: s.color.clone(),
+                path: s.path.display().to_string(),
+                dur: s.audio.seconds(),
+                sr: s.audio.sr,
+                ch: s.audio.channels,
+                peak_db: crate::dsp::gain_to_db(s.audio.peak()),
+            });
+            c.sources.insert(source_id, Arc::new(s.audio));
+            let track_id = c.project.alloc_id();
+            let ti = at + k as u32;
+            c.project.tracks.insert(
+                ti as usize,
+                Track {
+                    id: track_id,
+                    name,
+                    color: s.color,
+                    muted: false,
+                    solo: false,
+                    arm: false,
+                    vol: VOL_UNITY,
+                    h: track.h,
+                    insert: track.insert,
+                    icon: None,
+                },
+            );
+            let clip_id = c.project.alloc_id();
+            c.project.clips.push(Clip {
+                id: clip_id,
+                track: ti,
+                source: source_id,
+                offset,
+                muted: false,
+                norm: false,
+                rev: false,
+                // note edits belong to the analysis of the mix; the stems play the source's pitch
+                tune: None,
+                ..now.clone()
+            });
+            source_ids.push(source_id);
+            clip_ids.push(clip_id);
+        }
+        push_undo(&mut c, before);
+        c.revision += 1;
+        self.sync(&mut c, Dirty { timeline: true, mixer: true, ..Default::default() });
+        self.changed(c);
+        Ok(PlacedStems { source_ids, clip_ids, track: at, muted_clip: now.id })
+    }
+}
+
 /// A clip's name as the playlist shows it: its sample's or its pattern's.
 fn clip_name(p: &Project, c: &Clip) -> String {
     match c.kind {

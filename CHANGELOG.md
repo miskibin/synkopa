@@ -7,6 +7,12 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Extract stems from an audio clip.** Click the clip's menu → Extract stems…, tick drums, bass,
+  vocals and/or the rest, and each stem lands on a new track right below the clip, in the same
+  place and with the same length, stretch, pitch, fades and gain; the clip is muted, and one Ctrl+Z
+  takes it all back. It runs in the background (about 25 s per minute of audio on a 6-core CPU) with
+  progress and Cancel, so you can keep working. The separation model (HTDemucs, 90 MB, MIT licence)
+  is downloaded the first time. Also `synkopa stems --clip ID`.
 - **An underrun counter and a CPU meter.** Settings → Audio counts, next to Buffer, every time
   the output ran dry — a buffer rendered too late, or a dropout the driver reports — since a larger
   buffer is the cure; Reset starts a fresh count. Turn on "CPU meter in toolbar" there for FL

@@ -34,6 +34,8 @@ import { releaseAll, setTypingOn, typingDown, typingOn, typingUp } from './state
 import { chanWin, closeChannelWindow, toggleChannelWindow } from './views/ChannelWindow';
 import { channels } from './state/pattern';
 import { MusicDialog } from './views/MusicDialog';
+import { StemsDialog } from './views/StemsDialog';
+import { closeStems, STEMS } from './state/stems';
 import { MissingAudio } from './views/MissingAudio';
 import { PluginCrash } from './views/PluginCrash';
 import { MidiImport } from './views/MidiImport';
@@ -129,6 +131,7 @@ function onKey(e: KeyboardEvent) {
     if (U.menu) return closeMenu();
     if (U.autoSel) return setU('autoSel', null);
     if (U.musicWin) return A.closeMusicAnalysis();
+    if (STEMS.win != null) return closeStems();
     if (U.missingOpen) return setU('missingOpen', false);
     if (U.midiWin) return setU('midiWin', null);
     if (U.fxPicker) return setU('fxPicker', null);
@@ -313,6 +316,7 @@ export function App() {
     if (U.pitchEd && !S.project.clips.some(c => c.id === U.pitchEd!.clipId)) setU('pitchEd', null);
     if (U.musicWin?.clipId != null && !S.project.clips.some(c => c.id === U.musicWin!.clipId)) setU('musicWin', null);
     if (U.musicWin?.fxId != null && !findFx(U.musicWin!.fxId)) setU('musicWin', null);
+    if (STEMS.win != null && !S.project.clips.some(c => c.id === STEMS.win)) closeStems();
   });
   createEffect(() => { be().setTitle((S.path ? baseName(S.path) : tl('a.tb.untitled')) + (S.dirty ? ' •' : '') + ' — Synkopa'); });
 
@@ -351,6 +355,7 @@ export function App() {
       <FxPickerHost />
       <FxChainsHost />
       <MusicDialog />
+      <StemsDialog />
       <MidiImport />
       <AudioToast />
       <Notice />

@@ -13,3 +13,6 @@ pub const ERR_REVISION_CONFLICT: &str = "REVISION_CONFLICT:";
 pub const ERR_INVALID_TARGET: &str = "INVALID_TARGET:";
 /// A hosted plugin exposes no window of its own (`plugins.rs`).
 pub const ERR_NO_EDITOR: &str = "NO_EDITOR:";
+/// Stem extraction needs the HTDemucs model, which is not installed (`app/src/stems_actions.rs`):
+/// the Extract stems dialog offers the download on it.
+pub const ERR_NO_STEM_MODEL: &str = "STEM_MODEL_MISSING:";

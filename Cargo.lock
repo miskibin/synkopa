@@ -5646,6 +5646,7 @@ dependencies = [
  "gdkx11",
  "glib",
  "gtk",
+ "hound",
  "libc",
  "log",
  "parking_lot",
@@ -5668,6 +5669,7 @@ dependencies = [
  "wave-plugin-windows",
  "wave-rmvpe",
  "wave-session",
+ "wave-stems",
  "wave-vst3",
  "windows-sys 0.61.2",
 ]

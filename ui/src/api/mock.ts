@@ -12,7 +12,7 @@ import { FACTORY_FILES, FACTORY_KIT, FACTORY_LISTED_FILES, factoryFile, LIB_SCHE
 
 /** Reverb mix (%) the engine computes for the research plate at a -18 dB send (autovocal::reverb_mix_for_send). */
 const MOCK_REVERB_MIX = 37.2;
-import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_REVISION_CONFLICT } from './errors';
+import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_NO_STEM_MODEL, ERR_REVISION_CONFLICT } from './errors';
 import { projectEq } from '../lib/projectEq';
 import { applyAll, stripClipDefaults } from '../lib/applyOps';
 import { stripPatternDefaults } from '../lib/pattern';
@@ -30,6 +30,7 @@ import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
   AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
+  ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
@@ -43,6 +44,14 @@ import { candidate, rank, unambiguous } from '../lib/relink';
 const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#e0a44a', '#9a8cf0', '#d9678f', '#8b93a1'];
 const BAND_F = new Float32Array(SPEC_BANDS).map((_, k) => 20 * Math.pow(1000, k / (SPEC_BANDS - 1)));
 const delay = (ms = 0) => new Promise<void>(r => setTimeout(r, ms));
+/** The stem model download (crates/stems `MODEL_BYTES`). */
+const MOCK_STEM_MODEL_BYTES = 90_358_774;
+const STEM_IDS: StemId[] = ['drums', 'bass', 'other', 'vocals'];
+/** stems_actions.rs `STEMS` (names and colours of the new tracks); `scale` shapes the mock's fake waveforms. */
+const STEM_META: Record<StemId, { label: string; color: string; scale: number }> = {
+  drums: { label: 'Drums', color: '#e8a33d', scale: 0.9 }, bass: { label: 'Bass', color: '#8f6ee8', scale: 0.7 },
+  other: { label: 'Other', color: '#47b8a8', scale: 0.55 }, vocals: { label: 'Vocals', color: '#e05a8a', scale: 0.6 },
+};
 const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 
 function rng(seed: number) {
@@ -1255,6 +1264,96 @@ export class MockBackend implements Backend {
     this.p.clips.push(mkClip(clipId, at, from, to - from, 'audio', sourceId));
     this.pushUndo(prev); this.changed();
     return { sourceId, clipId, track: at };
+  }
+  // ---------- stem separation (app/src/stems_actions.rs) ----------
+  private stemModel = false;
+  private stemsCancelled = false;
+  private stemsBusy = false;
+  /** Dev/tests: the model download fails (also `?offline` in the URL, like the updater mock). */
+  stemsOffline = (() => { try { return new URLSearchParams(location.search).has('offline'); } catch { return false; } })();
+  async stemsModelStatus(): Promise<StemModelStatus> {
+    return {
+      id: 'htdemucs', name: 'HTDemucs stem separation model', bytes: MOCK_STEM_MODEL_BYTES, installed: this.stemModel,
+      licenseNote: 'Demucs v4 (HTDemucs) by Meta AI Research: code and pretrained weights under the MIT licence.',
+      licenseUrl: 'https://github.com/facebookresearch/demucs/blob/main/LICENSE',
+      path: 'C:\\Users\\michal\\AppData\\Local\\WAVE\\Models\\htdemucs.onnx', stems: [...STEM_IDS],
+    };
+  }
+  async stemsModelInstall(): Promise<StemModelStatus | { cancelled: true }> {
+    this.stemsCancelled = false;
+    const total = MOCK_STEM_MODEL_BYTES;
+    for (let k = 0; k <= 20; k++) {
+      if (this.stemsCancelled) return { cancelled: true };
+      if (this.stemsOffline) { this.emit('model-progress', { id: 'htdemucs', done: 0, total: 0, error: 'download failed: offline' }); throw new Error('download failed: io: offline'); }
+      this.emit('model-progress', { id: 'htdemucs', done: Math.round(total * k / 20), total });
+      await delay(60);
+    }
+    this.stemModel = true;
+    return this.stemsModelStatus();
+  }
+  async stemsCancel() { this.stemsCancelled = true; }
+  /** stems_actions.rs `extract` + engine.rs `stem_region`/`place_stems`: the region under the clip plus 3 s either side is
+   *  "separated" (fake stems: the source's waveform, scaled per stem), then one track per stem right below the clip, a clip at
+   *  the same place playing the same part the same way, the clip muted — one undo step. */
+  async extractStems(clipId: Id, stems: StemId[]): Promise<ExtractStemsResult | { cancelled: true }> {
+    const picked = STEM_IDS.filter(s => stems.includes(s));
+    const bad = stems.find(s => !STEM_IDS.includes(s));
+    if (bad) throw new Error(`no stem called \`${bad}\` (drums, bass, other, vocals)`);
+    if (!picked.length) throw new Error('pick at least one stem');
+    if (!this.stemModel) throw new Error(`${ERR_NO_STEM_MODEL} the stem separation model is not installed (90 MB download)`);
+    if (this.stemsBusy) throw new Error('stems are already being extracted from another clip; wait for it or cancel it');
+    const c0 = this.p.clips.find(x => x.id === clipId);
+    if (!c0) throw new Error('no such clip');
+    if (c0.kind !== 'audio') throw new Error('stems can be extracted from audio clips only');
+    if (this.missing()[c0.ref]) throw new Error(`the clip's audio file is missing (${this.missing()[c0.ref]}); relink it first`);
+    const s = this.p.sources.find(x => x.id === c0.ref); if (!s) throw new Error('audio not loaded');
+    const snap = { ...c0 }, spb0 = this.spb(), st0 = c0.stretch ?? 1;
+    const sa0 = c0.offset * spb0 / st0, sb0 = Math.min(s.dur, (c0.offset + c0.len) * spb0 / st0);
+    if (sb0 - sa0 < 0.05) throw new Error('the clip plays less than 50 ms of its audio: nothing to separate');
+    if (sb0 - sa0 > 1800) throw new Error(`the clip plays ${Math.round((sb0 - sa0) / 60)} minutes of audio; stems can be extracted from at most 30 minutes at a time (split the clip first)`);
+    const fromS = Math.max(0, sa0 - 3), toS = Math.min(s.dur, sb0 + 3);
+    this.stemsBusy = true; this.stemsCancelled = false;
+    try {
+      const prog = (stage: StemsProgress['stage'], frac: number) => this.emit('stems-progress', { clipId, stage, frac });
+      prog('prepare', 0); await delay(40);
+      prog('load', 0); await delay(120);
+      const steps = Math.max(4, Math.min(30, Math.ceil((toS - fromS) / 5.85)));
+      for (let k = 0; k < steps; k++) {
+        if (this.stemsCancelled) return { cancelled: true };
+        prog('separate', k / steps); await delay(150);
+      }
+      prog('separate', 1);
+      if (this.stemsCancelled) return { cancelled: true };
+      prog('place', 1);
+      // like place_stems: the clip as it is now must still play that region of that source
+      const c = this.p.clips.find(x => x.id === clipId);
+      if (!c) throw new Error('the clip was deleted while its stems were extracted; nothing was added');
+      const spb = this.spb(), st = c.stretch ?? 1, sa = c.offset * spb / st, sb = (c.offset + c.len) * spb / st;
+      if (c.kind !== 'audio' || c.ref !== snap.ref || !!c.norm !== !!snap.norm || !!c.rev !== !!snap.rev || sa < fromS - 1e-6 || Math.min(sb, s.dur) > toS + 1e-3)
+        throw new Error('the clip changed while its stems were extracted (another sample or region); extract them again');
+      const tr = this.p.tracks[c.track]; if (!tr) throw new Error("the clip's track is missing");
+      const pk = await this.sourcePeaks(c.ref, c.norm, c.rev);
+      const prev = structuredClone(this.p), at = c.track + 1, n = picked.length;
+      for (const x of this.p.clips) { if (x.track >= at) x.track += n; if (x.id === c.id) x.muted = true; }
+      const name = s.name, offset = (sa - fromS) * st / spb;
+      const sourceIds: Id[] = [], clipIds: Id[] = [];
+      picked.forEach((stem, k) => {
+        const meta = STEM_META[stem], sname = `${name} – ${meta.label}`, id = this.p.nextId++;
+        const src: MockSource = { id, name: sname, color: meta.color, path: `C:\\Users\\michal\\Music\\${name} - ${meta.label}.wav`, dur: toS - fromS, sr: 44100, ch: 2, peakDb: s.peakDb - 3, seed: hash(sname) };
+        this.srcMeta.set(id, src); this.p.sources.push(strip(src));
+        this.recPeaks.set(id, pk.slice(Math.floor(fromS * 100) * 2, Math.ceil(toS * 100) * 2).map((v, i) => v * meta.scale * (stem === 'drums' && (i >> 4) % 3 ? 0.35 : 1)));
+        this.p.tracks.splice(at + k, 0, { id: this.p.nextId++, name: sname, color: meta.color, muted: false, solo: false, arm: false, vol: 0.7937, h: tr.h, insert: tr.insert });
+        const cid = this.p.nextId++;
+        const nc: Clip = { ...structuredClone(c), id: cid, track: at + k, ref: id, offset, muted: false, norm: false, rev: false };
+        delete nc.tune;
+        this.p.clips.push(nc);
+        sourceIds.push(id); clipIds.push(cid);
+      });
+      this.pushUndo(prev); this.changed();
+      return { sourceIds, clipIds, track: at, mutedClip: c.id, revision: this.revision };
+    } finally {
+      this.stemsBusy = false;
+    }
   }
   async previewClip(clipId: Id, from?: number) {
     const c = this.p.clips.find(x => x.id === clipId); if (!c) return;

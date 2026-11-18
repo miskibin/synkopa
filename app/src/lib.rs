@@ -20,6 +20,9 @@ mod plugins;
 mod project_launch;
 mod recovery;
 mod settings;
+mod stems_actions;
+#[cfg(test)]
+mod stems_actions_tests;
 #[cfg(test)]
 mod ui_prefixes_tests;
 mod updater;
@@ -51,6 +54,8 @@ pub struct App {
     pub cli: Mutex<CliStatus>,
     /// Set while an offline bounce is running; flipped by `export_cancel`.
     pub export_cancel: AtomicBool,
+    /// Set to stop a running stem extraction or model download; flipped by `stems_cancel`.
+    pub stems_cancel: AtomicBool,
     /// Why the installed RMVPE model could not be used, if it could not.
     pub model_error: Mutex<Option<String>>,
     session: Mutex<Option<wave_session::Server>>,
@@ -450,6 +455,60 @@ async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>) -> R<Value> {
         Err(wave_engine::EngineError::Cancelled) => Ok(json!({ "cancelled": true })),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+async fn stems_model_status() -> R<stems_actions::StemModelStatus> {
+    Ok(stems_actions::status())
+}
+
+/// Downloads the stem model (`model-progress` with id "htdemucs"); `stems_cancel` stops it.
+#[tauri::command]
+async fn stems_model_install(app: St<'_>, handle: AppHandle) -> R<Value> {
+    app.stems_cancel.store(false, Ordering::Relaxed);
+    let a = app.inner().clone();
+    let h = handle.clone();
+    let res = tauri::async_runtime::spawn_blocking(move || {
+        models::fetch(&stems_actions::download(), Some(&a.stems_cancel), |done, total| {
+            let _ = h.emit("model-progress", json!({ "id": wave_stems::MODEL_ID, "done": done, "total": total }));
+        })
+    })
+    .await
+    .map_err(es)?;
+    match res {
+        Ok(()) => Ok(json!(stems_actions::status())),
+        Err(e) if e == models::DOWNLOAD_CANCELLED => Ok(json!({ "cancelled": true })),
+        Err(e) => {
+            let _ = handle.emit("model-progress", json!({ "id": wave_stems::MODEL_ID, "done": 0, "total": 0, "error": e }));
+            Err(e)
+        }
+    }
+}
+
+/// "Extract stems" on an audio clip, off the IPC thread: `stems-progress {clipId, stage, frac}`
+/// as it goes, `{cancelled: true}` after `stems_cancel`. See `stems_actions::extract`.
+#[tauri::command]
+async fn extract_stems(app: St<'_>, handle: AppHandle, clip_id: u64, stems: Vec<String>) -> R<Value> {
+    app.stems_cancel.store(false, Ordering::Relaxed);
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        // throttled: the separator reports once per 5.85 s segment, the other stages once
+        let progress = |stage: &'static str, frac: f64| {
+            let _ = handle.emit("stems-progress", json!({ "clipId": clip_id, "stage": stage, "frac": frac }));
+        };
+        match stems_actions::extract(&a.engine, clip_id, &stems, &a.stems_cancel, &progress)? {
+            Some(p) => Ok(stems_actions::placed_json(&p, a.engine.revision())),
+            None => Ok(json!({ "cancelled": true })),
+        }
+    })
+    .await
+    .map_err(es)?
+}
+
+#[tauri::command]
+async fn stems_cancel(app: St<'_>) -> R<()> {
+    app.stems_cancel.store(true, Ordering::Relaxed);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1239,6 +1298,10 @@ pub fn run(project_arg: Option<&str>) {
             melody_reference,
             f0_model_status,
             f0_model_install,
+            stems_model_status,
+            stems_model_install,
+            extract_stems,
+            stems_cancel,
             music_analyze,
             auto_vocal_plan,
             bake_rider,
@@ -1379,6 +1442,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
         settings: Mutex::new(settings),
         cli: Mutex::new(cli_shim::install()),
         export_cancel: AtomicBool::new(false),
+        stems_cancel: AtomicBool::new(false),
         model_error: Mutex::new(None),
         session: Mutex::new(None),
         keys: keys::Keys::default(),

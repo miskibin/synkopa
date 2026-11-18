@@ -70,6 +70,12 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
                                            sample on a new track below, routed to a free mixer insert
   export-in-place --clip ID[,ID...]        render clips (with their mixer effects) to one audio clip on a new
                                            track below them; the originals are muted (one undo step)
+  stems --clip ID [--only drums,bass,other,vocals]
+                                           extract stems (HTDemucs) from an audio clip: one new track per
+                                           stem right below it, same place and length; the clip is muted
+                                           (one undo step; about 25 s per minute of audio on 6 cores)
+  stems [--install]                        stem model install state (--install: downloads ~90 MB, MIT,
+                                           SHA-256 checked)
 
 PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and | are ignored)
   channels                                 Channel Rack: ids, instrument/sample, volume, pan, insert
@@ -923,6 +929,18 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 .collect::<Result<Vec<_>, _>>()?;
             send(cx, a, "export_in_place", json!({ "clipIds": ids }))
         }
+        "stems" if a.has("install") => {
+            eprintln!("downloading the HTDemucs stem model (~90 MB; MIT licence)");
+            send(cx, a, "stems_model_install", json!({}))
+        }
+        "stems" => match a.num("clip").map_err(u)? {
+            Some(clip) => {
+                let stems: Option<Vec<&str>> = a.get("only").map(|s| s.split(',').map(str::trim).filter(|x| !x.is_empty()).collect());
+                eprintln!("separating clip {} (this takes a while: about 25 s per minute of audio)", clip as u64);
+                send(cx, a, "extract_stems", json!({ "clipId": clip as u64, "stems": stems }))
+            }
+            None => send(cx, a, "stems_model", json!({})),
+        },
         "takes" => send(cx, a, "takes", json!({"track": a.num("track").map_err(u)?.ok_or_else(|| u("missing --track".into()))? as u64})),
         "comp" => {
             let mut args =

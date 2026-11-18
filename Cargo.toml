@@ -57,6 +57,7 @@ wave-audio-file = { path = "crates/audio-file" }
 wave-plugin-scan = { path = "crates/plugin-scan" }
 wave-session = { path = "crates/session" }
 wave-rmvpe = { path = "crates/rmvpe" }
+wave-stems = { path = "crates/stems" }
 wave-midi-in = { path = "crates/midi-in" }
 wave-stretch = { path = "crates/stretch" }
 

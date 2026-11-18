@@ -7,6 +7,7 @@ import type { BeatRange } from '../lib/patLoop';
 import type {
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
   KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
+  ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 
 export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[]; x: number; y: number }
@@ -22,6 +23,8 @@ export interface EventMap {
   /** Synkopa Keys: the piano started loading, is ready, or is not on this computer. */
   'keys-status': KeysStatus;
   'model-progress': ModelProgress;
+  /** `extractStems` moved on (stage, fraction of the separation done). */
+  'stems-progress': StemsProgress;
   /** A stem export (`exportStems`) started the next file. */
   'export-progress': ExportProgress;
   /** The update installer is downloading (`updateDownload`). `total` is 0 when the size is unknown. */
@@ -85,6 +88,16 @@ export interface Backend {
    *  they cover into one audio clip on a new track right below them, routed to the master; the originals are muted.
    *  One undo step. Rejects a selection that renders silent; `exportCancel` stops it (`cancelled`). */
   exportInPlace(clipIds: Id[]): Promise<{ sourceId: Id; clipId: Id; track: number } | { cancelled: true }>;
+  /** The stem separation model (HTDemucs): size, licence, whether it is installed. */
+  stemsModelStatus(): Promise<StemModelStatus>;
+  /** Downloads the stem model (progress: `model-progress` with id `htdemucs`), SHA-256 checked. `stemsCancel` stops it. */
+  stemsModelInstall(): Promise<StemModelStatus | { cancelled: true }>;
+  /** FL's *Extract stems*: the audio clip separated into `stems` (progress: `stems-progress`), one new track per stem
+   *  right below the clip with a clip at the same place playing the same part the same way; the clip is muted. One
+   *  undo step. Rejects with `ERR_NO_STEM_MODEL` when the model is missing; `stemsCancel` stops it (`cancelled`). */
+  extractStems(clipId: Id, stems: StemId[]): Promise<ExtractStemsResult | { cancelled: true }>;
+  /** Stops a running `extractStems` or `stemsModelInstall`; nothing is left behind. */
+  stemsCancel(): Promise<void>;
   /** Points sources at other files (decoded first), one undo step. Rejects when no file decodes. */
   relinkSources(items: { sourceId: Id; path: string }[]): Promise<Relinked[]>;
   /** Finds the missing sources' files in `folder` (and below) by name; relinks the unambiguous ones of the remembered length. */
@@ -313,6 +326,10 @@ export function tauriBackend(): Backend {
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),
     exportInPlace: clipIds => invoke('export_in_place', { clipIds }),
+    stemsModelStatus: () => invoke('stems_model_status'),
+    stemsModelInstall: () => invoke('stems_model_install'),
+    extractStems: (clipId, stems) => invoke('extract_stems', { clipId, stems }),
+    stemsCancel: () => invoke('stems_cancel'),
     relinkSources: async items => (await invoke<{ relinked: Relinked[] }>('relink_sources', { args: { items } })).relinked,
     relinkSearch: async folder => (await invoke<{ search: RelinkSearch }>('relink_search', { args: { folder } })).search,
     async pickFolder(start) {

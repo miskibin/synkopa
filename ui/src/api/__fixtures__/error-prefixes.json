@@ -2,5 +2,6 @@
   "exists": "EXISTS:",
   "invalidTarget": "INVALID_TARGET:",
   "noEditor": "NO_EDITOR:",
+  "noStemModel": "STEM_MODEL_MISSING:",
   "revisionConflict": "REVISION_CONFLICT:"
 }

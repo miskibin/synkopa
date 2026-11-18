@@ -24,6 +24,34 @@ use std::sync::Arc;
 
 /// The rate every HTDemucs model runs at. Other rates are resampled with [`resample`].
 pub const SR: u32 = 44100;
+
+/// The model is not shipped with the installer: the app downloads it the first time stems are
+/// extracted. It is `scripts/export-htdemucs-onnx.py htdemucs` (Demucs 4.0.1) with its weights
+/// stored as fp16 (`--fp16-weights`; the graph still computes in fp32), published as a
+/// pre-release asset under its own tag so the app updater never sees it.
+pub const MODEL_ID: &str = "htdemucs";
+pub const MODEL_NAME: &str = "HTDemucs stem separation model";
+pub const MODEL_URL: &str = "https://github.com/miskibin/synkopa/releases/download/models-htdemucs-v1/htdemucs.onnx";
+pub const MODEL_SHA256: &str = "4d199bd7f79b5c4a509871a05ec82e2b32a28148db31b811b7453896ce808660";
+pub const MODEL_BYTES: u64 = 90_358_774;
+pub const LICENSE_URL: &str = "https://github.com/facebookresearch/demucs/blob/main/LICENSE";
+pub const LICENSE_NOTE: &str = "Demucs v4 (HTDemucs) by Meta AI Research: code and pretrained weights under the MIT licence.";
+/// The stems [`Separator::sources`] lists for this model, in its order.
+pub const STEMS: [&str; 4] = ["drums", "bass", "other", "vocals"];
+
+/// Where the downloaded model lives (`WAVE_STEMS_MODEL` overrides it): `<data>/Models/htdemucs.onnx`.
+pub fn model_path() -> std::path::PathBuf {
+    if let Some(p) = std::env::var_os("WAVE_STEMS_MODEL") {
+        return p.into();
+    }
+    wave_rmvpe::models_dir().join("htdemucs.onnx")
+}
+
+/// ONNX Runtime threads for a separation: leave two logical cores for the audio engine and the
+/// UI (the app keeps playing while it separates), at most 8 (more gained nothing measurable).
+pub fn default_threads() -> usize {
+    std::thread::available_parallelism().map(|n| n.get().saturating_sub(2).clamp(2, 8)).unwrap_or(4)
+}
 const NFFT: usize = 4096;
 const HOP: usize = NFFT / 4;
 const BINS: usize = NFFT / 2;
@@ -298,34 +326,42 @@ impl Stft {
     }
 }
 
-/// Windowed-sinc resampling of one channel (offline; for inputs not at [`SR`] and for writing the
-/// stems back at the source's rate).
+/// Windowed-sinc resampling of one channel (offline; for inputs not at [`SR`]).
+///
+/// The kernel (sinc × Blackman over ±32 input samples) is tabulated at 1/512 of a sample and
+/// read with linear interpolation instead of evaluating a sine and two cosines per tap.
 pub fn resample(x: &[f32], from: f64, to: f64) -> Vec<f32> {
     if (from - to).abs() < 1e-9 || x.is_empty() {
         return x.to_vec();
     }
     const HALF: isize = 32;
+    const STEPS: usize = 512;
     let ratio = to / from;
     let cutoff = ratio.min(1.0) * 0.97;
+    let kernel = |d: f64| {
+        let arg = std::f64::consts::PI * d * cutoff;
+        let sinc = if arg.abs() < 1e-12 { 1.0 } else { arg.sin() / arg };
+        let u = (d / HALF as f64 + 1.0) * 0.5;
+        if (0.0..=1.0).contains(&u) {
+            sinc * (0.42 - 0.5 * (2.0 * std::f64::consts::PI * u).cos() + 0.08 * (4.0 * std::f64::consts::PI * u).cos())
+        } else {
+            0.0
+        }
+    };
+    // table[k] = kernel(k / STEPS - HALF), k = 0 ..= 2·HALF·STEPS (+1 guard for the interpolation)
+    let len = 2 * HALF as usize * STEPS + 2;
+    let table: Vec<f64> = (0..len).map(|k| kernel(k as f64 / STEPS as f64 - HALF as f64)).collect();
     let n_out = (x.len() as f64 * ratio).round() as usize;
     let mut y = Vec::with_capacity(n_out);
     for j in 0..n_out {
         let pos = j as f64 / ratio;
         let c = pos.floor() as isize;
-        let mut acc = 0.0f64;
-        let mut wsum = 0.0f64;
+        let (mut acc, mut wsum) = (0.0f64, 0.0f64);
         for i in c - HALF + 1..=c + HALF {
-            let d = pos - i as f64;
-            let arg = std::f64::consts::PI * d * cutoff;
-            let sinc = if arg.abs() < 1e-12 { 1.0 } else { arg.sin() / arg };
-            // Blackman window over ±HALF
-            let u = (d / HALF as f64 + 1.0) * 0.5;
-            let w = if (0.0..=1.0).contains(&u) {
-                0.42 - 0.5 * (2.0 * std::f64::consts::PI * u).cos() + 0.08 * (4.0 * std::f64::consts::PI * u).cos()
-            } else {
-                0.0
-            };
-            let k = sinc * w;
+            let t = (pos - i as f64 + HALF as f64) * STEPS as f64;
+            let k0 = t as usize;
+            let f = t - k0 as f64;
+            let k = table[k0] + (table[k0 + 1] - table[k0]) * f;
             wsum += k;
             if i >= 0 && (i as usize) < x.len() {
                 acc += k * x[i as usize] as f64;
@@ -397,6 +433,16 @@ mod tests {
         );
         assert!(matches!(res, Err(Error::Cancelled)));
         assert_eq!(seen, 2);
+    }
+
+    #[test]
+    fn the_model_download_is_pinned() {
+        assert_eq!(MODEL_SHA256.len(), 64);
+        assert!(MODEL_SHA256.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
+        // a pre-release tag of its own: never `releases/latest`, which the app updater reads
+        assert!(MODEL_URL.starts_with("https://github.com/miskibin/synkopa/releases/download/models-htdemucs-v"), "{MODEL_URL}");
+        assert!(MODEL_BYTES > 50_000_000 && MODEL_BYTES < 200_000_000);
+        assert!(default_threads() >= 2 && default_threads() <= 8);
     }
 
     #[test]

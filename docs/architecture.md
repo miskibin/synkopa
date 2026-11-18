@@ -636,6 +636,10 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `fx_chain` | `{cmd: "fx_chain_rename", args: {name, to}}` / `{cmd: "fx_chain_delete", args: {name}}` | `{name}` / `{deleted}` |
 | `make_unique` | `{clipIds}` | `{sourceId, track, insertId}` — FL's "Make unique" for audio clips (one source, one track): a copy of the source entry (same file and decoded audio, name "Name #n"), a new track right below that plays where the old track does (the master unless the user routed it; no insert is claimed), the clips move there. One undo step |
 | `export_in_place` | `{clipIds}` | `{sourceId, clipId, track}` or `{cancelled}` — FL's *Export in place*: the clips rendered from the start of their span (through their inserts and effects, not the master's) into a WAV with the project's media, as one audio clip on a new track right below them routed to the master; the originals are muted. Effect tails and releases are kept: the clip runs past the span until the decay stays under -90 dBFS (at most 30 s). One undo step; a silent render is an error. `export_cancel` stops it |
+| `stems_model_status` | – | `{id:"htdemucs", name, bytes, installed, licenseNote, licenseUrl, path, stems}` — the stem separation model (`crates/stems`: URL, size, SHA-256, licence as constants) |
+| `stems_model_install` | – | the status, or `{cancelled}` after `stems_cancel`; downloads to `<data>/Models/htdemucs.onnx` (`WAVE_STEMS_MODEL` overrides), size and SHA-256 checked; progress as `model-progress {id:"htdemucs",…}` |
+| `extract_stems` | `{clipId, stems: ("drums"\|"bass"\|"other"\|"vocals")[]}` | `{sourceIds, clipIds, track, mutedClip, revision}` or `{cancelled}` — FL's *Extract stems*: HTDemucs on the region the audio clip plays (±3 s of context, normalise/reverse as it plays), one WAV per stem with the project's media, one track per stem right below the clip (its track's insert) with a clip at the same place playing the same part the same way (stretch, pitch, gain, fades, pan copied; pitch-editor notes not), the clip muted; one undo step. Progress as `stems-progress {clipId, stage: prepare\|load\|separate\|place, frac}`; `STEM_MODEL_MISSING:` without the model; one job at a time; `stems_cancel` stops it and deletes its files |
+| `stems_cancel` | – | – (stops `extract_stems` or `stems_model_install`) |
 | `flatten_comp` | `{clipId}` | `{sourceId}` — renders a comp clip to a new file; the clip becomes an `audio` clip, the takes go (one undo step) |
 | `comp_audition` | `{compId, takeId?}` | – ; plays one whole take instead of the comp (`null` = the comp). Live only: not saved, not undone, ignored by renders |
 | `note_audition` | `{ch, key?, vel?, pattern?}` | – ; plays one note of a channel now (step clicks, piano-roll keys). `pattern`: the edited pattern, so a track-routed channel is heard through that pattern's track. Not an edit |
@@ -698,7 +702,7 @@ watch passes the revision of its last apply as `if_revision`, so an edit made in
 meanwhile is refused (`REVISION_CONFLICT`) rather than overwritten.
 
 Events: `state` (a `StateDto`, after every change from any origin: UI, CLI,
-undo, import, recording, file open), `library-progress`, `model-progress`, `audio-status`,
+undo, import, recording, file open), `library-progress`, `model-progress`, `stems-progress`, `audio-status`,
 `export-progress` (`{done, total, name, stage, frac, beat, peak, wave}` while a bounce runs: the
 file in progress, `prepare`/`render`/`write`/`done`, the song position and a live peak waveform).
 
@@ -1125,17 +1129,37 @@ size, SHA-256 and licence link are constants in `crates/rmvpe`) to
 `<data>/Models/rmvpe.onnx`; `WAVE_RMVPE_MODEL` overrides the path.
 `crates/tune-bench` measures the whole pipeline (see `docs/cli.md`).
 
-## Stem separation (prototype)
+## Stem separation
 
-`crates/stems` splits a stereo mix into drums, bass, other and vocals with Demucs v4
-(HTDemucs, MIT code and weights) on the same ONNX Runtime as RMVPE. Not wired into the app
-yet. `scripts/export-htdemucs-onnx.py` exports the network without its STFT/iSTFT (ONNX has
-no complex tensors) and records the source names, rate and segment as model metadata; the
-crate does the STFT, iSTFT, the 7.8 s segments with 25 % triangular cross-fades and the mix
-normalisation exactly as `demucs.apply`/`demucs.separate` do (outputs match PyTorch to about
-3e-5), and streams finished frames to a sink, so memory is one segment per stem whatever the
-length. `cargo run -p wave-stems --release --example separate -- model.onnx mix.wav out/` is
-the headless entry point. The model is never committed: like RMVPE it will be downloaded.
+`crates/stems` splits a stereo mix into drums, bass, other and vocals with Demucs v4 (HTDemucs, MIT
+code and weights) on the same ONNX Runtime as RMVPE. `scripts/export-htdemucs-onnx.py` exports the
+network without its STFT/iSTFT (ONNX has no complex tensors) and records the source names, rate and
+segment as model metadata; `--fp16-weights` stores the weights as fp16 behind Cast nodes (90 MB
+instead of 174 MB; ONNX Runtime folds the casts at load, so it computes in fp32 and the stems differ
+from the fp32 export by < 1e-4). The crate does the STFT, iSTFT, the 7.8 s segments with 25 %
+triangular cross-fades and the mix normalisation exactly as `demucs.apply`/`demucs.separate` do
+(outputs match PyTorch to about 7e-5), and streams finished frames to a sink, so memory is one segment
+per stem whatever the length. `cargo run -p wave-stems --release --example separate -- model.onnx
+mix.wav out/` is the headless entry point.
+
+The model is never committed or bundled: `stems_model_install` (`app/src/models.rs` `fetch`, shared
+with RMVPE) downloads the pinned release asset (tag `models-htdemucs-v1`, a pre-release, so the
+updater, which reads `releases/latest`, never sees it) and checks its size and SHA-256.
+
+*Extract stems* (`app/src/stems_actions.rs`, one function for the dialog, the session socket and
+`synkopa stems`): `Engine::stem_region` copies the region the clip plays (±3 s of context, with
+normalise/reverse applied) under the lock and nothing else; off the lock it is resampled to 44.1 kHz
+if needed, separated with `default_threads()` (cores − 2, 2..8: the audio engine keeps playing) and
+streamed to one 32-bit float WAV per picked stem in the project's audio folder (the scratch folder
+of an unsaved project, which the first save moves). The separator is dropped before the stems are
+decoded back, so peak memory is the model's (~2.7 GB on a 4-minute song), not the model's plus the
+stems'. `Engine::place_stems` then adds them as one undo step and checks first that the clip still
+plays the same source the same way inside the separated region (else an error and the files go).
+The stems stay at 44.1 kHz whatever the source's rate (any rate plays; converting back would cost a
+second filter). Stretch, pitch, gain, fades, pan, the clip's insert and root are copied to the stem
+clips, so they play exactly what the clip played (tested by rendering: stems that sum to the region
+render like the muted clip); pitch-editor notes are not (they belong to the analysis of the mix).
+Regions over 30 minutes are refused (`Audio::load` would cut the stems on reopening).
 
 ## Updates and release notes
 

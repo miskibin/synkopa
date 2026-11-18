@@ -265,6 +265,18 @@ export interface AppInfo { version: string; seenVersion: string | null; autoUpda
 export interface UpdateProgress { done: number; total: number }
 export interface ModelProgress { id: string; done: number; total: number; error?: string }
 
+/** The stems HTDemucs separates, in its order. */
+export type StemId = 'drums' | 'bass' | 'other' | 'vocals';
+/** `stems_model_status`: the stem separation model (downloaded on first use). */
+export interface StemModelStatus {
+  id: string; name: string; bytes: number; installed: boolean;
+  licenseNote: string; licenseUrl: string; path: string; stems: StemId[];
+}
+/** `stems-progress` while `extractStems` runs: `prepare` (copying/resampling the region), `load` (the model),
+ *  `separate` (`frac` 0..1, once per 5.85 s of audio), `place` (the stems go into the playlist). */
+export interface StemsProgress { clipId: Id; stage: 'prepare' | 'load' | 'separate' | 'place'; frac: number }
+/** What `extractStems` made: one source, track and clip per stem in the model's order; `track` = the first new track. */
+export interface ExtractStemsResult { sourceIds: Id[]; clipIds: Id[]; track: number; mutedClip: Id; revision: number }
 export interface TempoCandidate { bpm: number; score: number }
 export interface TempoEstimate { bpm: number; confidence: number; candidates: TempoCandidate[]; firstBeat: number }
 export interface KeyCandidate { root: number; minor: boolean; score: number }

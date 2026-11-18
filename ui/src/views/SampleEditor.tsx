@@ -8,6 +8,7 @@ import { t, type TranslationKey } from '../lib/i18n';
 import { envelopeGraph, msText, STAGES, TENSION_KEY, type Bent, type Stage } from '../lib/sampler';
 import * as A from '../state/actions';
 import { autoDisplay, controlMenu, isAutomated, paramMenu } from '../state/automation';
+import { openStems } from '../state/stems';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { audition, chanById, chanOp, chanSource, replaceWithFile } from '../state/pattern';
 import { getPeaks, peakRange, peaksVersion } from '../state/peaks';
@@ -377,6 +378,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
       <button class="smallbtn" title={t('d.smp.pitchEd.tip')} onClick={() => { const cid = c().id; A.stopSamplePreview(); A.openPitchEditor(cid); }}>
         {t('d.smp.pitchEd')}{c().tune ? ' •' : ''}
       </button>
+      <button class="smallbtn" title={t('a.pl.extractStemsTip')} onClick={() => openStems(c().id)} data-smp-stems>{t('d.smp.stems')}</button>
       <PitchCorrectButton insert={() => insert() ?? null} />
     </>}
     toggle={key => {

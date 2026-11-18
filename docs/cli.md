@@ -165,6 +165,8 @@ synkopa midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one p
 synkopa midi export --out song.mid [--pattern 3]         # the song or one pattern, with tempo
 synkopa make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
 synkopa export-in-place --clip 5012,5013                 # render them (with mixer effects) to one clip on a new track below
+synkopa stems --clip 5012 [--only vocals,drums]           # extract stems: one track per stem below the clip, clip muted
+synkopa stems [--install]                                 # stem model state; --install downloads it (90 MB, MIT, SHA-256 checked)
 synkopa apply --file edit.json --label "Busier hats"
 synkopa undo
 ```
@@ -368,6 +370,14 @@ prints the licence note, downloads the model (a few minutes, no live progress),
 checks its SHA-256 and switches the detector to it; works without the app too
 (`synkopa -p song.synkopa f0-model --install`). `WAVE_RMVPE_MODEL=path` points at a
 copy you already have.
+
+**Stems.** `synkopa stems --clip ID` splits an audio clip with HTDemucs into drums, bass, other and vocals
+(`--only` picks some) exactly as the Playlist's *Extract stems…* does: the region the clip plays plus 3 s either
+side is separated, each stem is written next to the project's audio as a WAV (44.1 kHz, 32-bit float), goes on
+a new track right below the clip and gets a clip at the same place playing the same part with the same
+stretch, pitch, gain, fades and pan; the clip is muted; one undo step. It takes about 25 s per minute of
+audio on a 6-core CPU and up to ~2.7 GB of memory while it runs. The model is downloaded once
+(`synkopa stems --install`); `WAVE_STEMS_MODEL=path` points at a copy you already have.
 
 **Benchmark.** `cargo run --release -p wave-tune-bench -- synth` (synthetic
 takes with ±25…400 ct errors and drift against references in other voices,

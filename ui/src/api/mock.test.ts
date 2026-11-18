@@ -208,6 +208,78 @@ describe('make unique (audio) in the mock', () => {
   });
 });
 
+// the same journey as app/src/stems_actions.rs + crates/engine/tests/stems.rs
+describe('extract stems in the mock', () => {
+  async function setup() {
+    const be = new MockBackend();
+    await be.projectNew();
+    const r = await be.importAudio({ paths: ['C:\\loops\\song (3 min).wav'], track: 1, beat: 8 });
+    const c = (await be.getState()).project.clips.find(x => x.id === r.clipIds[0])!;
+    // the clip plays 30 s..60 s of the song, stretched and transposed
+    const spb = 60 / (await be.getState()).project.bpm;
+    await be.applyOps([{ op: 'putClips', clips: [{ ...c, offset: 30 / spb * 1.5, len: 30 / spb * 1.5, stretch: 1.5, pitch: 2, gain: -3 }] }]);
+    return { be, clipId: c.id, src: r.sourceIds[0], spb };
+  }
+  it('needs the model, downloads it with progress, then places one track per stem below the clip in one undo step', async () => {
+    const { be, clipId, spb } = await setup();
+    await expect(be.extractStems(clipId, ['drums'])).rejects.toThrow(/^STEM_MODEL_MISSING:/);
+    const seen: number[] = [];
+    await be.on('model-progress', p => seen.push(p.done));
+    const m = await be.stemsModelInstall();
+    expect(m).toMatchObject({ installed: true, stems: ['drums', 'bass', 'other', 'vocals'] });
+    expect(seen.at(-1)).toBe((m as { bytes: number }).bytes);
+    const before = structuredClone((await be.getState()).project);
+    const stages: string[] = [];
+    await be.on('stems-progress', p => stages.push(p.stage));
+    const r = await be.extractStems(clipId, ['vocals', 'drums']);
+    if ('cancelled' in r) throw new Error('cancelled');
+    expect(stages[0]).toBe('prepare');
+    expect(stages).toContain('separate');
+    expect(stages.at(-1)).toBe('place');
+    const p = (await be.getState()).project;
+    expect(r.track).toBe(2);
+    expect(p.tracks.slice(2, 4).map(t => t.name)).toEqual(['song (3 min) – Drums', 'song (3 min) – Vocals']);
+    expect(p.tracks).toHaveLength(before.tracks.length + 2);
+    const src = p.clips.find(x => x.id === clipId)!;
+    expect(src.muted).toBe(true);
+    for (const [k, id] of r.clipIds.entries()) {
+      const c = p.clips.find(x => x.id === id)!;
+      // the stem file starts 3 s before the region: the clip's offset moves by that much
+      expect(c).toMatchObject({ track: 2 + k, start: src.start, len: src.len, stretch: 1.5, pitch: 2, gain: -3, muted: false });
+      expect(c.offset).toBeCloseTo(3 * 1.5 / spb, 6);
+      expect(p.sources.find(s => s.id === c.ref)!.dur).toBeCloseTo(36, 6);
+    }
+    await be.undo();
+    expect((await be.getState()).project).toEqual(before);
+  });
+  it('cancels without leaving anything, and refuses bad requests', async () => {
+    const { be, clipId } = await setup();
+    await be.stemsModelInstall();
+    const before = structuredClone((await be.getState()).project);
+    const job = be.extractStems(clipId, ['bass']);
+    await expect(be.extractStems(clipId, ['bass'])).rejects.toThrow(/already/);
+    await be.stemsCancel();
+    expect(await job).toEqual({ cancelled: true });
+    expect((await be.getState()).project).toEqual(before);
+    await expect(be.extractStems(clipId, [])).rejects.toThrow(/at least one/);
+    await expect(be.extractStems(clipId, ['piano' as never])).rejects.toThrow(/no stem called/);
+    await expect(be.extractStems(999999, ['bass'])).rejects.toThrow(/no such clip/);
+  });
+  it('places nothing when the clip is deleted while it separates', async () => {
+    const { be, clipId } = await setup();
+    await be.stemsModelInstall();
+    const job = be.extractStems(clipId, ['drums']);
+    await be.applyOps([{ op: 'removeClips', ids: [clipId] }]);
+    await expect(job).rejects.toThrow(/deleted/);
+  });
+  it('reports a failed download and stays uninstalled', async () => {
+    const be = new MockBackend();
+    be.stemsOffline = true;
+    await expect(be.stemsModelInstall()).rejects.toThrow(/download failed/);
+    expect((await be.stemsModelStatus()).installed).toBe(false);
+  });
+});
+
 describe('routing channels to inserts in the mock (like the engine)', () => {
   it('creates inserts and routes channels to them in one undo step', async () => {
     const be = new MockBackend();

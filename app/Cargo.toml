@@ -26,6 +26,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 wave-engine.workspace = true
 wave-rmvpe.workspace = true
+wave-stems.workspace = true
+hound.workspace = true
 wave-audio-io.workspace = true
 wave-session.workspace = true
 wave-midi-in.workspace = true
