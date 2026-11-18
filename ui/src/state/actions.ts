@@ -752,7 +752,9 @@ export async function trimClip(id: Id) {
   try { await enqueue(() => be().trimClip(id)); say(t('d.smp.trimmed')); }
   catch (e) { say(t('d.smp.trimfail', { err: String(e) })); void resync(); }
 }
-export function closeEditor() { if (U.previewing) void be().previewStop(); setU('editor', null); }
+export function closeEditor() { stopSamplePreview(); setU('editor', null); }
+/** Stops a ringing sample preview (the editor window stays open). */
+export function stopSamplePreview() { if (U.previewing) void be().previewStop(); }
 /** The note-based pitch editor of an audio clip. */
 export function openPitchEditor(id: Id, melody?: { channel: Id; span?: [number, number] | null }) {
   const c = S.project.clips.find(x => x.id === id); if (!c || c.kind !== 'audio') return;
@@ -768,7 +770,7 @@ export function pitchFront() {
   const z = U.zTop + 1;
   setU('zTop', z); setU('pitchEd', ed => ed && { ...ed, z });
 }
-export const closePitchEditor = () => setU('pitchEd', null);
+export const closePitchEditor = () => { stopSamplePreview(); setU('pitchEd', null); };
 
 export function openMusicAnalysis(args: { clipId?: Id; fxId?: Id }) {
   setU('musicWin', args);

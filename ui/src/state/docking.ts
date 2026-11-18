@@ -105,8 +105,9 @@ function floatGeo(id: PaneId) {
 
 /**
  * A press on a dockable panel's title bar (floating or docked). A drag moves the window — a docked
- * panel floats off under the pointer first — and shows the dock guides; let go on a guide docks it
- * there, anywhere else it stays a window where it was dropped. Without a drag nothing happens.
+ * panel floats off under the pointer first — and, over a dock slot, shows that slot's guide; let go
+ * on it docks the panel there, anywhere else it stays a window where it was dropped (a plain move
+ * of a window covers no edges with guides). Without a drag nothing happens.
  */
 export function paneHeadDown(e: PointerEvent, id: PaneId) {
   if (e.button !== 0 || (e.target as HTMLElement).closest('button,select,input,.miniknob,.numf,.seg')) return;

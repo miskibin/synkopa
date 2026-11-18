@@ -32,7 +32,7 @@ import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { autoValueText, parseAutoValue, cyclesOf, stairsOf } from '../lib/automation';
 import { addPoint, deletePoints, dragTension, hitEnv, insetGeom, movePoints, pointsInBox, setShape, type EnvHit } from '../lib/envEdit';
 import { autoById } from '../state/store';
-import { openPattern } from '../state/pattern';
+import { addSampler, openPattern } from '../state/pattern';
 import { rgba, T, theme } from '../ui/theme';
 
 
@@ -91,6 +91,10 @@ function sameDrawnTrack(a: Track | undefined, b: Track): boolean {
 /** Same for a channel: pattern clips show its notes' rows (kind, root) and an icon (name, instrument), not its knobs. */
 function sameDrawnChannel(a: Channel | undefined, b: Channel): boolean {
   return !!a && a.name === b.name && a.kind === b.kind && a.root === b.root;
+}
+/** True when the Channel Rack already has a sampler channel playing this source. */
+function hasSamplerOf(ref: Id): boolean {
+  return !!S.project.channels?.some(ch => ch.kind === 'sample' && ch.source === ref);
 }
 
 /** `cb`: a comp region boundary (`bnd` = its index in `boundaries(comp.regions)`). */
@@ -433,7 +437,7 @@ export function Playlist() {
   const onWheel = (e: WheelEvent) => {
     if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY))) holdFollow();
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
+      e.preventDefault(); holdFollow();
       const r = scrollEl.getBoundingClientRect(), mx = e.clientX - r.left - U.headW;
       const beat = (scrollEl.scrollLeft + mx) / U.bw;
       const bw = clamp(U.bw * (e.deltaY < 0 ? 1.15 : 1 / 1.15), A.BW_MIN, A.BW_MAX);
@@ -481,6 +485,7 @@ export function Playlist() {
   const views: { bw: number; x: number; y: number }[] = [];
   const pushView = () => { views.push({ bw: U.bw, x: scrollEl.scrollLeft, y: scrollEl.scrollTop }); if (views.length > 32) views.shift(); };
   const setView = (bw: number, x: number, y = scrollEl.scrollTop) => {
+    holdFollow(); // every user zoom (pointer steps, presets, fit, zoom box) goes through here
     setU('bw', clamp(bw, A.BW_MIN, A.BW_MAX));
     scrollEl.scrollLeft = x; scrollEl.scrollTop = y;
     syncScroll();
@@ -1160,6 +1165,8 @@ export function Playlist() {
           { t: 'item', label: tl('a.pl.makeUnique'), title: tl('a.pl.makeUniqueAudioTip'), act: () => A.makeUnique(c) } as MenuItem,
           { t: 'item', label: tl('a.pl.editSample'), kbd: tl('a.pl.dblClick'), act: () => A.openEditor(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.editPitch'), kbd: c.tune?.notes.length ? tl('a.pl.edited') : '', act: () => A.openPitchEditor(c.id) } as MenuItem,
+          // a playlist drop plays the source directly; this adds the rack entry for it (FL's audio clip channel)
+          { t: 'item', label: tl('a.pl.toSampler'), title: tl(hasSamplerOf(c.ref) ? 'a.pl.toSamplerHave' : 'a.pl.toSamplerTip'), disabled: hasSamplerOf(c.ref), act: () => addSampler(c.ref) } as MenuItem,
           // how a stretch plays (the clip's stretch factor in the label: set it in Stretch mode)
           { t: 'chips', label: tl('a.pl.stretchMethod', { k: (c.stretch ?? 1).toFixed(2) }), options: [tl('a.pl.keepPitch'), tl('a.pl.resample')], active: c.resample ? 1 : 0, pick: (i: number) => A.setStretchMethod(c, i === 1) } as MenuItem,
           ...(S.stretching[c.id] ? [{ t: 'item', label: tl('a.pl.stretchFailed'), title: S.stretching[c.id], disabled: true, act: () => {} } as MenuItem] : []),

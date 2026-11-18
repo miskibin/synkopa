@@ -371,7 +371,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
         nullLabel={t('d.smp.likeTrack', { name: insName(S.project.inserts.find(m => m.id === trackInsert()) ?? S.project.inserts[0]) })}
         ops={insert => [put({ insert })]}
         label={t('d.smp.routing')} wheelKey={id + 'route'} title={t('d.smp.mixer.tip', { track: S.project.tracks[c().track]?.name ?? '' })} />
-      <button class="smallbtn" title={t('d.smp.pitchEd.tip')} onClick={() => { const cid = c().id; A.closeEditor(); A.openPitchEditor(cid); }}>
+      <button class="smallbtn" title={t('d.smp.pitchEd.tip')} onClick={() => { const cid = c().id; A.stopSamplePreview(); A.openPitchEditor(cid); }}>
         {t('d.smp.pitchEd')}{c().tune ? ' •' : ''}
       </button>
       <PitchCorrectButton insert={() => insert() ?? null} />
