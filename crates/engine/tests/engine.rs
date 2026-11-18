@@ -973,6 +973,70 @@ fn export_in_place_renders_the_selection_onto_a_new_track() {
     assert!(!p.clips.iter().find(|x| x.id == c.id).unwrap().muted);
 }
 
+/// A one-bar tone clip whose track's insert runs only one `kind` effect (its params set by `set`).
+fn one_bar_through(kind: FxKind, set: &[(&str, f64)]) -> (Arc<Engine>, Clip) {
+    let dir = std::env::temp_dir().join(format!("wave-inplace-{kind:?}-{}-{:?}", std::process::id(), std::thread::current().id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut p = Project::routed();
+    for m in p.inserts.iter_mut() {
+        m.fx.clear();
+    }
+    let bar = (4.0 * 60.0 / p.bpm * 48000.0) as usize;
+    let wav = dir.join("bar.wav");
+    let tone: Vec<f32> = (0..bar).flat_map(|i| [(i as f32 * 0.0626).sin() * 0.5; 2]).collect();
+    wave_engine::sources::write_wav(&wav, &tone, 48000).unwrap();
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((1, 0.0))).unwrap();
+    let c = e.project().clips.iter().find(|c| c.id == clips[0]).unwrap().clone();
+    let ins = e.project().tracks[c.track as usize].insert;
+    let mut fx = new_fx(90_001, kind, e.project().bpm);
+    for (k, v) in set {
+        fx.params.insert((*k).into(), *v);
+    }
+    e.apply(&[Op::PutFx { insert_id: ins, fx, index: None }], false, None).unwrap();
+    (e, c)
+}
+
+/// Exports `c` in place and checks the new clip carries the effect's tail past the span.
+fn assert_in_place_keeps_tail(e: &Engine, c: &Clip) {
+    let never = AtomicBool::new(false);
+    let others: Vec<Clip> = e.project().clips.iter().filter(|x| x.id != c.id).cloned().collect();
+    let r = e.export_in_place(&[c.id], 48000, &never, &mut |_| {}).unwrap();
+    let p = e.project();
+    let made = p.clips.iter().find(|x| x.id == r.clip_id).unwrap().clone();
+    assert_eq!(made.start, c.start);
+    assert!(made.len > c.len + 0.25, "the tail extends the clip past the selection ({} vs {})", made.len, c.len);
+    let max_beats = c.len + IN_PLACE_MAX_TAIL_S * p.bpm / 60.0;
+    assert!(made.len < max_beats, "the silent end of the tail is trimmed ({} beats)", made.len);
+    let src = p.sources.iter().find(|s| s.id == r.source_id).unwrap();
+    assert!((src.dur * p.bpm / 60.0 - made.len).abs() < 1e-6, "the clip shows the whole rendered file");
+    // the new track holds only the new clip; nothing else moved or doubled
+    assert!(p.clips.iter().filter(|x| x.track == r.track).all(|x| x.id == r.clip_id));
+    for o in &others {
+        let now = p.clips.iter().find(|x| x.id == o.id).unwrap();
+        assert_eq!((now.start, now.len, now.muted), (o.start, o.len, o.muted), "other arrangement content is untouched");
+    }
+    assert!(p.clips.iter().find(|x| x.id == c.id).unwrap().muted, "the original is muted, so it does not play twice");
+    // what plays past the span now is the rendered tail (the original and its effects are silent)
+    let after = e.render(c.start + c.len + 0.05, made.start + made.len, 0.0, 48000).unwrap();
+    assert!(rms(&after) > 1e-4, "the tail sounds after the span ({})", rms(&after));
+    let span = e.render(c.start, c.start + c.len, 0.0, 48000).unwrap();
+    assert!(rms(&span) > 1e-2, "the span itself still sounds");
+}
+
+#[test]
+fn export_in_place_keeps_a_long_reverb_tail() {
+    let (e, c) = one_bar_through(FxKind::Reverb, &[("size", 6.0), ("mix", 60.0)]);
+    assert_in_place_keeps_tail(&e, &c);
+}
+
+#[test]
+fn export_in_place_keeps_delay_echoes() {
+    // an echo a beat later, fed back: several repeats ring after the bar
+    let (e, c) = one_bar_through(FxKind::Delay, &[("beats", 1.0), ("fb", 50.0)]);
+    assert_in_place_keeps_tail(&e, &c);
+}
+
 #[test]
 fn export_in_place_refuses_an_empty_or_silent_selection() {
     let (e, c) = lone_audio_clip();

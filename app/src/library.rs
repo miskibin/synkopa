@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 const MANIFEST: &str = include_str!("../../assets-manifest.json");
-const AUDIO_EXT: &[&str] = &["wav", "flac", "ogg", "oga", "mp3", "aif", "aiff"];
+/// What a folder walk lists: exactly what the decoders open, so nothing shown fails to play.
+const AUDIO_EXT: &[&str] = wave_engine::AUDIO_EXTENSIONS;
 
 #[derive(Deserialize)]
 struct Manifest {
@@ -274,6 +275,25 @@ mod tests {
         assert_eq!(cut.files.len(), 2);
         assert!(cut.truncated);
         assert!(!super::folder_walk(&dir, 3).truncated);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn folder_walk_lists_exactly_the_formats_the_decoders_open() {
+        let dir = std::env::temp_dir().join(format!("wave-library-formats-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["a.wav", "b.AIF", "c.aiff", "d.mp3", "e.m4a", "f.wma", "g.aac"] {
+            std::fs::write(dir.join(name), b"").unwrap();
+        }
+        let listed = super::folder_walk(&dir, 100).files;
+        let mut names: Vec<_> = listed.iter().map(|f| f.name.as_str()).collect();
+        names.sort();
+        assert_eq!(names, ["a", "b", "c", "d"], "formats with no decoder behind them are not offered");
+        // every listed extension is one the decoder claims
+        for f in &listed {
+            let ext = std::path::Path::new(&f.path).extension().unwrap().to_string_lossy().to_ascii_lowercase();
+            assert!(wave_engine::AUDIO_EXTENSIONS.contains(&ext.as_str()), "{ext}");
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

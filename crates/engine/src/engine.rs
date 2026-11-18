@@ -179,7 +179,19 @@ pub enum RenderTail {
     Seconds(f64),
     /// Let one full pass initialize effects, then keep a second pass of the same length.
     Wrap,
+    /// Let effects and releases ring out after `to` until the output has stayed below
+    /// [`DECAY_FLOOR`] for [`DECAY_HOLD_S`] (a delay's silent gap between echoes is not the end),
+    /// at most `max` seconds; the result ends on the last audible frame, never before `to`.
+    Decay {
+        max: f64,
+    },
 }
+
+/// Level under which a ringing tail counts as finished (-90 dBFS).
+pub const DECAY_FLOOR: f32 = 3.162e-5;
+/// How long the output must stay under [`DECAY_FLOOR`] before a decaying render stops: longer
+/// than the longest built-in delay, so the gap before an echo is not taken for the end.
+pub const DECAY_HOLD_S: f64 = crate::dsp::delay::MAX_DELAY_S as f64 + 0.5;
 
 /// Progress of an offline render, reported between DSP blocks (on the rendering thread).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -2642,6 +2654,7 @@ impl Engine {
         let graph = build_graph(&project, &HashSet::new(), sr, block, &*self.factory, false, &mut errs, &mut hosted);
         let mut tl = build_timeline(&project, &mut |clip| store_snapshot.get(&clip.id).cloned(), &takes, &HashMap::new(), keys.as_ref());
         let wrap = matches!(tail, RenderTail::Wrap);
+        let decay = matches!(tail, RenderTail::Decay { .. });
         tl.loop_range = wrap.then_some((from, to));
         tl.song_end = TOTAL_BEATS;
         let _ = cmd_tx.push(Cmd::Graph(Box::new(graph)));
@@ -2667,7 +2680,9 @@ impl Engine {
         let duration = (to - from) * spb;
         let play_frames = (duration * f64::from(sample_rate)) as usize;
         let (frames, warmup) = match tail {
-            RenderTail::Seconds(tail) => (((duration + tail.max(0.0)) * f64::from(sample_rate)) as usize, 0),
+            RenderTail::Seconds(tail) | RenderTail::Decay { max: tail } => {
+                (((duration + tail.max(0.0)) * f64::from(sample_rate)) as usize, 0)
+            }
             RenderTail::Wrap => {
                 let period = (duration * f64::from(sample_rate)).round() as usize;
                 if period == 0 {
@@ -2689,6 +2704,8 @@ impl Engine {
         let mut r = vec![0f32; block];
         let mut done = 0;
         let mut stopped = false;
+        let hold = (DECAY_HOLD_S * f64::from(sample_rate)) as usize;
+        let mut quiet = 0usize;
         let frames_per_beat = spb * f64::from(sample_rate);
         let beat_at = |done: usize| {
             let rendered = done.saturating_sub(pdc);
@@ -2733,6 +2750,17 @@ impl Engine {
             let peak = if done > discard { peak_of(&l[..n], &r[..n]) } else { 0.0 };
             progress(RenderProgress::Rendering { done, total, peak, beat: beat_at(done) });
             while gb_rx.pop().is_ok() {}
+            if decay && stopped && done > discard {
+                quiet = if peak < DECAY_FLOOR { quiet + n } else { 0 };
+                if quiet >= hold {
+                    break;
+                }
+            }
+        }
+        if decay {
+            // end on the last audible frame of the tail, but never before `to`
+            let last = out.iter().rposition(|x| x.abs() >= DECAY_FLOOR).map_or(0, |i| i / 2 + 1);
+            out.truncate(last.max(play_frames).min(out.len() / 2) * 2);
         }
         Ok(out)
     }
@@ -3404,7 +3432,9 @@ impl Engine {
     /// inserts and effects, without the master's — over the span they cover, saves the audio
     /// with the project's media and puts it as one audio clip on a new track right below the
     /// selection, routed to the master; the originals are muted. One undo step. Automation
-    /// still applies; other clips are left out. No effect tail: the clip is exactly the span.
+    /// still applies; other clips are left out. Like FL's *Render to audio in place*, effect
+    /// tails and releases are kept: the clip runs past the span until the decay has died away
+    /// (at most [`IN_PLACE_MAX_TAIL_S`]); on its own new track it overlaps nothing.
     pub fn export_in_place(
         &self,
         clip_ids: &[Id],
@@ -3413,7 +3443,7 @@ impl Engine {
         progress: &mut dyn FnMut(RenderProgress),
     ) -> Result<InPlace, EngineError> {
         let err = |m: &str| EngineError::Msg(m.into());
-        let (picked, from, to) = {
+        let (picked, from, to, bpm) = {
             let c = self.core.lock();
             let picked: Vec<Clip> =
                 c.project.clips.iter().filter(|x| clip_ids.contains(&x.id) && x.kind != ClipKind::Auto).cloned().collect();
@@ -3422,7 +3452,7 @@ impl Engine {
             }
             let from = picked.iter().map(|x| x.start).fold(f64::INFINITY, f64::min);
             let to = picked.iter().map(|x| x.start + x.len).fold(f64::NEG_INFINITY, f64::max);
-            (picked, from, to)
+            (picked, from, to, c.project.bpm)
         };
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
@@ -3457,7 +3487,10 @@ impl Engine {
             }
             p
         };
-        let data = self.render_scoped(&scope, from, to, RenderTail::Seconds(0.0), sample_rate, cancel, progress)?;
+        let tail = RenderTail::Decay { max: IN_PLACE_MAX_TAIL_S };
+        let data = self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress)?;
+        // the render's own tempo turns its length into beats: the span plus the tail
+        let len = ((data.len() / 2) as f64 / f64::from(sample_rate) * bpm / 60.0).max(to - from);
         let audio = Audio::from_stereo(data.clone(), sample_rate, 2);
         if audio.peak() < 1e-6 {
             return Err(err("the selection renders silent: nothing to export"));
@@ -3517,7 +3550,7 @@ impl Engine {
             id: clip_id,
             track: at,
             start: from,
-            len: to - from,
+            len,
             offset: 0.0,
             kind: ClipKind::Audio,
             source: source_id,
@@ -3542,6 +3575,10 @@ impl Engine {
         Ok(InPlace { source_id, clip_id, track: at })
     }
 }
+
+/// Longest effect tail [`Engine::export_in_place`] keeps after the selection (a feedback
+/// delay set to never die out would otherwise ring forever).
+pub const IN_PLACE_MAX_TAIL_S: f64 = 30.0;
 
 /// What [`Engine::export_in_place`] made: the new source, its clip and the track it is on.
 #[derive(Clone, Debug, Serialize)]

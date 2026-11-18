@@ -1,7 +1,7 @@
 //! `wave-audio-file` -- one audio file, in memory, as interleaved stereo `f32`.
 //!
 //! ```text
-//!   *.wav / *.flac / *.ogg / *.mp3  --decode_stereo-->  DecodedAudio
+//!   *.wav / *.aif / *.flac / *.ogg / *.mp3  --decode_stereo-->  DecodedAudio
 //!      (non-RT: symphonia)                       { data, frames, sample_rate }
 //!                                                        |
 //!                                       into_padded() ----+
@@ -31,7 +31,7 @@
 //!
 //! # Format policy
 //! `symphonia` with the formats a musician actually drops on a timeline: **WAV,
-//! FLAC and Ogg Vorbis**, plus **MP3** through `minimp3` because
+//! AIFF, FLAC and Ogg Vorbis**, plus **MP3** through `minimp3` because
 //! `symphonia-bundle-mp3` has no released 0.6. Default features stay off on
 //! symphonia -- every extra decoder is attack surface for a file this project
 //! did not author.
@@ -51,11 +51,10 @@ pub const CHANNELS: usize = 2;
 
 /// The extensions the formats in this build are usually written with.
 ///
-/// **Not a gate.** [`decode_stereo`] *probes* the stream and never switches on
 /// **Not a gate.** [`decode_stereo`] *probes* the stream (and, for `.mp3`,
-/// falls back to minimp3). This exists so a file dialog's type filter and the
-/// decoders cannot drift apart.
-pub const AUDIO_EXTENSIONS: &[&str] = &["wav", "flac", "ogg", "oga", "mp3"];
+/// falls back to minimp3). This exists so a file dialog's type filter, the
+/// library listing and the decoders cannot drift apart.
+pub const AUDIO_EXTENSIONS: &[&str] = &["wav", "flac", "ogg", "oga", "mp3", "aif", "aiff"];
 
 /// Interpolation taps needed before the current frame.
 pub const PAD_LEAD: usize = 1;
@@ -577,6 +576,55 @@ mod tests {
     #[test]
     fn mp3_is_in_the_filter_this_build_claims() {
         assert!(AUDIO_EXTENSIONS.contains(&"mp3"), "the dialog and the library listing share this list");
+    }
+
+    /// A 16-bit big-endian PCM AIFF (what Logic and older sample packs write).
+    fn aiff_bytes(rate: u32, channels: u16, frames: &[i16]) -> Vec<u8> {
+        let count = (frames.len() / channels as usize) as u32;
+        // the sample rate is an 80-bit IEEE extended float
+        let exp = 31 - rate.leading_zeros();
+        let mut ext = ((16383 + exp) as u16).to_be_bytes().to_vec();
+        ext.extend_from_slice(&((u64::from(rate)) << (63 - exp)).to_be_bytes());
+        let mut comm = vec![];
+        comm.extend_from_slice(&channels.to_be_bytes());
+        comm.extend_from_slice(&count.to_be_bytes());
+        comm.extend_from_slice(&16u16.to_be_bytes());
+        comm.extend_from_slice(&ext);
+        let mut ssnd = vec![0u8; 8]; // offset, block size
+        for s in frames {
+            ssnd.extend_from_slice(&s.to_be_bytes());
+        }
+        let mut body = b"AIFF".to_vec();
+        for (id, chunk) in [(b"COMM", comm), (b"SSND", ssnd)] {
+            body.extend_from_slice(id);
+            body.extend_from_slice(&(chunk.len() as u32).to_be_bytes());
+            body.extend_from_slice(&chunk);
+        }
+        let mut out = b"FORM".to_vec();
+        out.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        out.extend_from_slice(&body);
+        out
+    }
+
+    #[test]
+    fn every_listed_extension_has_a_decoder_and_aiff_decodes() {
+        assert!(AUDIO_EXTENSIONS.contains(&"aif") && AUDIO_EXTENSIONS.contains(&"aiff"));
+        // a 441 Hz sine, mono, one tenth of a second
+        let sine: Vec<i16> = (0..4410).map(|i| ((i as f32 * 441.0 * std::f32::consts::TAU / 44_100.0).sin() * 16_000.0) as i16).collect();
+        let dir = std::env::temp_dir().join(format!("wave-aiff-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for ext in ["aif", "aiff", "AIFF"] {
+            let path = dir.join(format!("sine.{ext}"));
+            std::fs::write(&path, aiff_bytes(44_100, 1, &sine)).unwrap();
+            let decoded = decode_stereo(&path, |_| None).unwrap_or_else(|e| panic!("{ext}: {e}"));
+            assert_eq!(decoded.frames, 4410);
+            assert!((decoded.sample_rate - 44_100.0).abs() < 1e-6);
+            // mono is duplicated, and the big-endian samples come out with their sign and scale
+            assert!((decoded.data[2 * 25] - 16_000.0 / 32_768.0).abs() < 1e-3, "{}", decoded.data[2 * 25]);
+            assert_eq!(decoded.data[2 * 25], decoded.data[2 * 25 + 1]);
+            assert!((decoded.data[2 * 75] + 16_000.0 / 32_768.0).abs() < 1e-3);
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

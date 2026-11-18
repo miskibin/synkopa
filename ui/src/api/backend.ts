@@ -81,7 +81,7 @@ export interface Backend {
    *  insert (no track or channel routed to it, no effects; a new one when none is free), named after the copy.
    *  One undo step; other clips of the source are untouched. Rejects other clip kinds and mixed sources/tracks. */
   makeUnique(clipIds: Id[]): Promise<{ sourceId: Id; track: number; insertId: Id }>;
-  /** FL's *Export in place*: the clips rendered (through their inserts and effects, not the master's) over the span
+  /** FL's *Export in place*: the clips rendered (through their inserts and effects, not the master's, tails kept) over the span
    *  they cover into one audio clip on a new track right below them, routed to the master; the originals are muted.
    *  One undo step. Rejects a selection that renders silent; `exportCancel` stops it (`cancelled`). */
   exportInPlace(clipIds: Id[]): Promise<{ sourceId: Id; clipId: Id; track: number } | { cancelled: true }>;

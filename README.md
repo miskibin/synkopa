@@ -238,7 +238,7 @@ synkopa undo                                 # or press Ctrl+Z in the app
 | `crates/audio-io` | cpal devices: WASAPI / ASIO / CoreAudio / ALSA, duplex in/out |
 | `crates/vst3-host`, `crates/plugin-windows`, `crates/plugin-scan` | VST3 effects and instruments, out-of-process plugin scanning, native editor windows |
 | `crates/lv2-host` | LV2 effects as engine processors on Linux (liblilv opened at run time): metadata scan, worker thread, state, latency |
-| `crates/audio-file` | WAV/FLAC/OGG/MP3 decoding |
+| `crates/audio-file` | WAV/AIFF/FLAC/OGG/MP3 decoding |
 | `crates/session`, `crates/cli` | the local socket the CLI uses, and the CLI itself |
 | `app` | Tauri shell: commands, library downloads, settings, CLI launcher |
 | `ui` | SolidJS + TypeScript frontend (runs in a plain browser with a mock backend too) |

@@ -1227,7 +1227,8 @@ export class MockBackend implements Backend {
     this.pushUndo(prev); this.changed();
     return { sourceId: id, track: at, insertId };
   }
-  /** engine.rs `export_in_place`: one audio clip over the selection's span on a new track below it, routed to the master. */
+  /** engine.rs `export_in_place`: one audio clip over the selection's span on a new track below it, routed to the master.
+   *  The engine's clip also carries the effect tail past the span; the mock renders no effects, so it has none. */
   async exportInPlace(clipIds: Id[]) {
     await delay(30);
     const cs = this.p.clips.filter(c => clipIds.includes(c.id) && c.kind !== 'auto');
