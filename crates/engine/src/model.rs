@@ -29,6 +29,10 @@ pub fn fader_gain(t: f32) -> f32 {
     2.0 * t * t * t
 }
 
+/// The project format `migrate` brings a file up to. 3: the Reverb's Decay reaches 20 s
+/// (was 6 s), so automation of it (stored normalised over the range) is rescaled once.
+pub const PROJECT_VERSION: u32 = 3;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
@@ -1406,6 +1410,20 @@ impl Project {
                 }
             }
         }
+        // projects from before the 20 s reverb decay: its automation lands on the same seconds
+        if self.version < 3 {
+            let reverbs: Vec<Id> = self.inserts.iter().flat_map(|i| &i.fx).filter(|f| f.kind == FxKind::Reverb).map(|f| f.id).collect();
+            for a in &mut self.automations {
+                if let AutoTarget::Fx { fx_id, param } = &a.target {
+                    if param == "size" && reverbs.contains(fx_id) {
+                        for pt in a.points.iter_mut() {
+                            pt.v = crate::dsp::reverb_v2::migrate_auto_size(pt.v);
+                        }
+                    }
+                }
+            }
+        }
+        self.version = self.version.max(PROJECT_VERSION);
         // ids the file used must stay taken
         let max = self.channels.iter().map(|c| c.id).chain(self.sources.iter().map(|s| s.id)).max().unwrap_or(0);
         if max >= self.next_id {

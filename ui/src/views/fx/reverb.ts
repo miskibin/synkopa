@@ -96,7 +96,7 @@ function drawStatic(g: CanvasRenderingContext2D, W: number, H: number, fx: Fx, h
     g.strokeStyle = db === -60 ? T.vizGrid2 : T.vizGrid; g.beginPath(); g.moveTo(ex0, y); g.lineTo(ex1, y); g.stroke();
     g.fillText(String(db), ex0 - 4, y + 3);
   }
-  const step = L.span > 4 ? 1 : L.span > 1.6 ? 0.5 : L.span > 0.8 ? 0.25 : 0.1;
+  const step = L.span > 20 ? 5 : L.span > 8 ? 2 : L.span > 4 ? 1 : L.span > 1.6 ? 0.5 : L.span > 0.8 ? 0.25 : 0.1;
   g.textAlign = 'center';
   for (let t = 0; t <= L.span + 1e-6; t += step) {
     const x = Math.round(tx(t)) + 0.5;

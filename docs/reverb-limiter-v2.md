@@ -34,10 +34,19 @@ network of delay lines; the feedback delay network (FDN) is the general, analysa
 incommensurate geometric line lengths, slow per-line delay modulation with cubic reads,
 two first-order shelves per line for three-band RT60 (bass / mid / treble), 4 input
 allpass diffusers per channel, velvet-noise early reflections (none for Plate), wet HPF/LPF,
-stereo outputs from two orthogonal Hadamard rows, M/S width, and a dry-keyed ducker. The
-macro set stays usable at every position: decay ≤ 6 s, treble decay always shorter than
+stereo outputs from two orthogonal Hadamard rows, M/S width, and a dry-keyed ducker (`dsp::ducker`, shared with the Delay). The
+macro set stays usable at every position: decay ≤ 20 s (was 6 s; the log taper keeps 0.2–2 s in
+the knob's first half), treble decay always shorter than
 mid, bass decay 0.5–1.5× mid, network size follows the decay, the wet is partly
 normalised for decay, and the Mix law keeps the dry at unity up to 50 %.
+
+Decay is stored in seconds, so a saved reverb keeps its decay. Its automation is stored
+normalised over the knob's range; projects from before the 20 s range (format < 3) have it
+rescaled once on load (`reverb_v2::migrate_auto_size`), so it lands on the same seconds. A 20 s
+decay stays stable by construction: every line's absorption gain is `10^(−3·L/T60) < 1` for any
+finite T60 (also the 30 s bass band at 1.5×), and the network size stops growing at its scale
+limit (the delay lines are sized for it); `the_longest_decay_is_stable_and_really_decays` measures
+the 20 s mid RT60 and checks the tail is gone by `tail_samples`.
 
 **Limiter.** Audit of the old limiter (1 ms look-ahead, instant gain step, 60 ms release,
 sample-peak only, hard clip, latency not reported to PDC) found real defects (table below):

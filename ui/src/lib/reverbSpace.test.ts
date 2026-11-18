@@ -41,7 +41,8 @@ describe('reverb display model', () => {
     const p = P({ space: 1, pre: 30 }), e = envelope(p);
     expect(decayAt(p, e.onset + 2.5)).toBeCloseTo(2.5, 6);
     expect(decayAt(p, 0)).toBe(0.2);
-    expect(decayAt(p, 99)).toBe(6);
+    expect(decayAt(p, 99)).toBe(20);
+    expect(decayAt(p, e.onset + 14)).toBeCloseTo(14, 6);
   });
 
   it('shows the whole tail on a round time axis', () => {

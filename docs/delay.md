@@ -8,6 +8,7 @@ design (Image-Line's Fruity Delay 3 is the reference musicians know). The DSP is
 ```text
  in ─ Input ─┬─ model routing (+ offset pre-delay) ─ + ─ ring ─ read ─ loop chain ─┬─ Stereo ─ Tone ─ Wet ─┐
              │                                      └──── × Feedback ─────────────┘                       │
+             ├─ envelope (ducking side-chain) ─────────────────────────────────────────────── × Duck ─┤
              └──────────────────────────────── Dry ───────────────────────────────────────────────── + ─ out
  loop chain: filter (LP/HP/BP, LFO on cutoff) → sample-rate hold → Limit / Sat → DC block → bits → diffusion
 ```
@@ -18,8 +19,8 @@ and the effect is a filter / lo-fi / drive unit with no delay.
 
 ## Parameters
 
-The window shows Time (with Sync), Feedback, Model, the loop filter's Cutoff, Wet and Dry; everything
-else is under *Advanced*.
+The window shows Time (with Sync), Feedback, Model, the loop filter's Cutoff, Wet, Dry and Ducking;
+everything else is under *Advanced*.
 
 
 | id | range | |
@@ -40,8 +41,10 @@ else is under *Advanced*.
 | `diff`, `dspread` | 0–100 % | four all-passes blended into each repeat: smears the attacks towards a reverb-like cloud |
 | `rate`, `mtime`, `mcut` | 0.05–20 Hz, 0–100 %, 0–100 % | sine LFO on the time (±6 ms at 100 %, at most 45 % of the time: wow on long echoes, chorus on short ones) and on the cutoff (±3 octaves) |
 | `mix`, `tone`, `dry` | 0–100 %, −100–100 %, 0–100 % | wet level, a post-loop tone filter (left = low-pass, centre = off, right = high-pass), dry level. On a send, set Dry to 0 |
+| `duck` | 0–12 dB | ducking: the most the wet is pulled down while the dry input plays (input from −45 dBFS up to −15 dBFS ramps it from 0 to the full amount; 15 ms down; once the phrase ends the wet blooms back over about a second as its level falls away). It acts on the wet output after the loop, so the repeats keep regenerating underneath and bloom back in the gaps. The same ducker (`dsp::ducker`) and knob as the Reverb's. On a send the side-chain is the send's own input |
 
-The first delay's ids `time`, `fb` and `mix` are kept, so its automation still applies.
+The first delay's ids `time`, `fb` and `mix` are kept, so its automation still applies. `duck` is
+the last slot, so projects and automation saved before it keep their indices (it loads as 0 dB, off).
 
 ## Presets
 
@@ -77,7 +80,8 @@ values.
 
 `[0]`/`[1]` read heads L/R in ms (with the LFO), `[2]` loop level dBFS, `[3]` level the drive
 stage takes off (dB ≤ 0), `[4]` LFO −1..1, `[5]` model in use, `[6]` wet output dBFS, `[7]`
-the set time in ms at the current tempo.
+the set time in ms at the current tempo, `[8]` ducking gain dB (≤ 0, lowest of the block; the
+window shows it next to the time when the wet is ducked).
 
 ## Tests
 
@@ -86,5 +90,8 @@ ping-pong alternates sides; stereo offset; 125 % feedback into a resonant band-p
 of noise stays finite and within ±4; self-oscillation sustains above 100 % (and the chain is
 never parked); keep pitch holds the frequency through a time change while repitch bends it;
 model Off has no delay; bit reduction; the drive curve; the tail estimate; the old-project
-migration (same echoes, automation remapped). UI: `ui/src/lib/delay.test.ts` (beat labels,
+migration (same echoes, automation remapped); ducking: a noise burst then silence, the wet is
+~12 dB down during the burst and back at full level after it (the loop kept regenerating), and
+with Ducking at 0 the gain is exactly 1 (output unchanged). `dsp::ducker::tests`: the shared ducker
+is bit-identical to the reverb's former inline one. UI: `ui/src/lib/delay.test.ts` (beat labels,
 note names, snapping, tap diagram, loop gain).

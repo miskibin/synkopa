@@ -16,11 +16,11 @@ export class DelayViz implements Viz {
   private layer = new Layer();
   private gate = new TeleGate();
   private sOut = new Float32Array(256);
-  private m = new Float32Array(8);
+  private m = new Float32Array(9);
   update(_fx: Fx, a: FxFrame | null) {
     if (!this.gate.fresh(a, 2)) return false;
     this.sOut.set(a!.scopeOut.subarray(0, this.sOut.length));
-    for (let i = 0; i < 8; i++) this.m[i] = a!.meters[i] ?? 0;
+    for (let i = 0; i < 9; i++) this.m[i] = a!.meters[i] ?? 0;
     return true;
   }
   draw(g: CanvasRenderingContext2D, W: number, H: number, fx: Fx) {
@@ -97,6 +97,13 @@ export class DelayViz implements Viz {
       if (loopGain(p) >= 1) {
         g.fillStyle = T.red; g.textAlign = 'right'; g.fillText('∞ ' + tr('c.fx.dly.selfOsc'), x1 - 2, top - 5); g.textAlign = 'left';
       }
+    }
+
+    // ducking: how far the wet is pulled under the input right now (meter [8], dB ≤ 0)
+    const duck = this.m[8];
+    if (duck < -0.1 && !fx.bypass) {
+      g.font = MONO10; g.fillStyle = T.amber; g.textAlign = 'left';
+      g.fillText(tr('c.fx.dly.duck') + ' ' + duck.toFixed(1) + ' dB', x0, top - 5);
     }
 
     // waveshaper inset: input → output of the loop drive, with the live drive amount

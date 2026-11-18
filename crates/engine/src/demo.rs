@@ -13,7 +13,7 @@ const COLORS: [usize; 8] = [0, 6, 5, 3, 4, 8, 9, 9];
 
 fn base(names: &[&str], ins_names: &[&str]) -> Project {
     let mut p = Project {
-        version: 2,
+        version: PROJECT_VERSION,
         bpm: 128.0,
         tracks: vec![],
         inserts: vec![Insert {

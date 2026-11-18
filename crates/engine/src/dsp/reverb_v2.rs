@@ -18,7 +18,7 @@
 //!   for that line's own length (Jot's absorption-filter rule `g = 10^(-3·L/T60)`).
 //! * Early field: sparse velvet-noise taps (Järveläinen & Karjalainen 2007; Välimäki et al.
 //!   2017) with different patterns per channel for decorrelation; none for the plate.
-//! * Macro controls stay usable at every position: the decay is capped at 6 s, the
+//! * Macro controls stay usable at every position: the decay is capped at 20 s, the
 //!   high-band RT60 is always below the mid one, the network size follows the decay
 //!   (short decays use short lines, long decays longer ones) and the wet level is
 //!   partly normalised for decay, so "Mix" means about the same at every setting.
@@ -28,6 +28,7 @@
 
 use crate::processor::{ParamBlock, ProcessCtx, Processor};
 
+use super::ducker::WetDucker;
 use super::{Biquad, FilterType};
 
 /// Parameter slots, in the order of `catalog::params(FxKind::Reverb)`.
@@ -54,8 +55,21 @@ const MAX_ER_MS: f32 = 120.0;
 const MAX_SCALE: f32 = 1.8;
 const MIN_SCALE: f32 = 0.6;
 const MAX_MOD_MS: f32 = 0.6;
-/// Longest decay the reverb accepts (s); longer only gets washy on a vocal.
-pub const MAX_DECAY: f32 = 6.0;
+/// Longest decay the reverb accepts (s): room for ambient washes and big halls, the long end
+/// FL's Reeverb 2 and Valhalla's reverbs offer. Every line's gain stays below 1 at any decay
+/// (`Absorb`), so a long decay only rings longer; the knob's log taper keeps 0.2–2 s in its
+/// first half.
+pub const MAX_DECAY: f32 = 20.0;
+
+/// Decay's range before format 3 (s): automation saved then is normalised over it.
+const OLD_MAX_DECAY: f32 = 6.0;
+
+/// Remaps a normalised (log) automation value of Decay from the 0.2–6 s range of projects before
+/// format 3 to today's 0.2–20 s, so it lands on the same seconds.
+pub fn migrate_auto_size(v: f32) -> f32 {
+    let s = 0.2 * (OLD_MAX_DECAY / 0.2).powf(v.clamp(0.0, 1.0));
+    (s / 0.2).ln() / (MAX_DECAY / 0.2).ln()
+}
 
 /// Character of the space: line lengths, early reflections, diffusion.
 #[derive(Clone, Copy)]
@@ -380,16 +394,9 @@ pub struct ReverbV2 {
     wet_cur: f32,
     dry_cur: f32,
     norm: f32,
-    duck_db: f32,
-    env: f32,
-    duck_cur: f32,
-    duck_t: f32,
+    duck: WetDucker,
     k_param: f32,
     k_len: f32,
-    k_env_att: f32,
-    k_env_rel: f32,
-    k_duck_att: f32,
-    k_duck_rel: f32,
     wet: Vec<f32>,
     wet_n: usize,
 }
@@ -437,16 +444,9 @@ impl Default for ReverbV2 {
             wet_cur: 0.3,
             dry_cur: 1.0,
             norm: 1.0,
-            duck_db: 0.0,
-            env: 0.0,
-            duck_cur: 1.0,
-            duck_t: 1.0,
+            duck: WetDucker::default(),
             k_param: 1.0,
             k_len: 1.0,
-            k_env_att: 1.0,
-            k_env_rel: 1.0,
-            k_duck_att: 1.0,
-            k_duck_rel: 1.0,
             wet: vec![],
             wet_n: 0,
         }
@@ -552,7 +552,7 @@ impl ReverbV2 {
         self.wet_g = (2.0 * m).min(1.0);
         self.dry_g = (2.0 * (1.0 - m)).min(1.0);
         self.norm = wet_norm(d.t_mid);
-        self.duck_db = v[idx::DUCK].clamp(0.0, 24.0);
+        self.duck.set_depth_db(v[idx::DUCK]);
         if first {
             self.wet_cur = self.wet_g;
             self.dry_cur = self.dry_g;
@@ -579,10 +579,7 @@ impl Processor for ReverbV2 {
         self.sync_lfo(0.0);
         self.k_param = coef(sr, 30.0);
         self.k_len = coef(sr, 120.0);
-        self.k_env_att = coef(sr, 5.0);
-        self.k_env_rel = coef(sr, 200.0);
-        self.k_duck_att = coef(sr, 15.0);
-        self.k_duck_rel = coef(sr, 250.0);
+        self.duck.prepare(sr);
         self.wet = vec![0.0; max.max(1)];
         self.reset();
         self.apply(true);
@@ -603,7 +600,6 @@ impl Processor for ReverbV2 {
         let kp = self.k_param;
         let kl = self.k_len;
         let dg = self.diff_g;
-        let duck_on = self.duck_db > 0.0;
         if c.playing && c.bpm > 0.0 {
             // follow the playhead, so a render is the same whether or not silent stretches
             // were skipped (and a re-render is bit-identical)
@@ -618,23 +614,8 @@ impl Processor for ReverbV2 {
         }
         for i in 0..l.len() {
             let (xl, xr) = (l[i], r[i]);
-            // ducking side-chain from the dry input
-            let pk = xl.abs().max(xr.abs());
-            let ka = if pk > self.env { self.k_env_att } else { self.k_env_rel };
-            self.env += (pk - self.env) * ka;
-            // the duck target moves slowly: recompute it every 16 samples
-            if i % 16 == 0 {
-                self.duck_t = if duck_on {
-                    let lvl = 20.0 * (self.env + 1e-9).log10();
-                    let amt = ((lvl + 45.0) / 30.0).clamp(0.0, 1.0);
-                    10f32.powf(-self.duck_db * amt / 20.0)
-                } else {
-                    1.0
-                };
-            }
-            let duck_t = self.duck_t;
-            let kd = if duck_t < self.duck_cur { self.k_duck_att } else { self.k_duck_rel };
-            self.duck_cur += (duck_t - self.duck_cur) * kd;
+            // ducking side-chain from the dry input (the target moves slowly: every 16 samples)
+            let duck = self.duck.tick(xl, xr, i % 16 == 0);
 
             // wet input: band-limit, pre-delay
             let inp = [self.lp[0].tick(self.hp[0].tick(xl)), self.lp[1].tick(self.hp[1].tick(xr))];
@@ -695,7 +676,7 @@ impl Processor for ReverbV2 {
             }
 
             // output
-            let g = self.norm * self.duck_cur;
+            let g = self.norm * duck;
             let wl = (late[0] * 0.25 * self.late_gain + er[0]) * g;
             let wr = (late[1] * 0.25 * self.late_gain + er[1]) * g;
             self.width_cur += (self.width - self.width_cur) * kp;
@@ -728,9 +709,7 @@ impl Processor for ReverbV2 {
             a.hz = 0.0;
         }
         self.er_lp = [0.0; 2];
-        self.env = 0.0;
-        self.duck_cur = 1.0;
-        self.duck_t = 1.0;
+        self.duck.reset();
     }
 
     fn tail_samples(&self) -> Option<usize> {
@@ -915,6 +894,60 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn the_longest_decay_is_stable_and_really_decays() {
+        // 20 s with the bass at 1.5× (a 30 s low band), full modulation: the network must stay
+        // bounded, ring for the time asked and be gone by the reported tail
+        let sr = 44100.0;
+        for space in [0usize, 2] {
+            let mut pb = preset("Vocal Plate");
+            let v = &mut pb.values;
+            v[idx::SPACE] = space as f32;
+            v[idx::SIZE] = MAX_DECAY;
+            v[idx::BASS] = 1.5;
+            v[idx::MOD] = 100.0;
+            v[idx::LO] = 20.0;
+            v[idx::HI] = 16000.0;
+            // the mid band decays at the knob's value
+            let h = ir(&pb, sr, MAX_DECAY * 2.5);
+            assert!(h.iter().all(|x| x.is_finite() && x.abs() < 4.0), "space {space}: unbounded IR");
+            let mid = rt60(&bandpass(&h, 1000.0, sr), sr);
+            assert!((mid - MAX_DECAY).abs() / MAX_DECAY < 0.15, "space {space}: mid RT60 {mid} s");
+            let low = rt60(&bandpass(&h, 125.0, sr), sr);
+            let d = design_rt60(&pb.values, 125.0, sr);
+            assert!((low - d).abs() / d < 0.2 && low > mid, "space {space}: low RT60 {low} s (design {d} s)");
+            // a loud burst: bounded, and silent by the tail length
+            pb.values[idx::MIX] = 100.0;
+            let mut p = make(&pb, sr);
+            let tail = p.tail_samples().unwrap();
+            let burst = (sr * 0.5) as usize;
+            let (mut peak, mut last, mut frame, mut s) = (0f32, 0f32, 0, 1u32);
+            while frame < burst + tail + BLK {
+                let mut l = [0f32; BLK];
+                if frame < burst {
+                    for a in l.iter_mut() {
+                        s ^= s << 13;
+                        s ^= s >> 17;
+                        s ^= s << 5;
+                        *a = (s as f32 / u32::MAX as f32 - 0.5) * 1.6;
+                    }
+                }
+                let mut r = l;
+                p.process(&mut l, &mut r, &ctx(sr, frame));
+                for x in l.iter().chain(&r) {
+                    assert!(x.is_finite());
+                    peak = peak.max(x.abs());
+                    if frame >= burst + tail {
+                        last = last.max(x.abs());
+                    }
+                }
+                frame += BLK;
+            }
+            assert!(peak < 4.0, "space {space}: peak {peak}");
+            assert!(last < 1e-7, "space {space}: {last} still ringing after the tail");
         }
     }
 

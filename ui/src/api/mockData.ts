@@ -38,9 +38,10 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
     p('bits', 'Bits', 2, 24, 24, 'bit'), choice('dist', 'Distortion', 1, ['Limit', 'Sat']), p('level', 'Threshold', -36, 0, 0, 'dB'),
     p('knee', 'Knee', 0, 100, 50, '%'), p('sym', 'Symmetry', 0, 100, 0, '%'), p('diff', 'Diffusion', 0, 100, 0, '%'),
     p('dspread', 'Diff. spread', 0, 100, 50, '%'), p('rate', 'LFO rate', 0.05, 20, 0.5, 'Hz', true), p('mtime', 'Mod time', 0, 100, 0, '%'),
-    p('mcut', 'Mod cutoff', 0, 100, 0, '%'), p('mix', 'Wet', 0, 100, 25, '%'), p('tone', 'Tone', -100, 100, 0, '%'), p('dry', 'Dry', 0, 100, 100, '%')],
+    p('mcut', 'Mod cutoff', 0, 100, 0, '%'), p('mix', 'Wet', 0, 100, 25, '%'), p('tone', 'Tone', -100, 100, 0, '%'), p('dry', 'Dry', 0, 100, 100, '%'),
+    p('duck', 'Ducking', 0, 12, 0, 'dB')],
   // catalog.rs REVERB / LIMIT (v2)
-  reverb: [p('size', 'Decay', 0.2, 6, 1, 's', true), p('pre', 'Pre-delay', 0, 150, 25, 'ms'), p('lo', 'Low cut', 20, 1000, 300, 'Hz', true),
+  reverb: [p('size', 'Decay', 0.2, 20, 1, 's', true), p('pre', 'Pre-delay', 0, 150, 25, 'ms'), p('lo', 'Low cut', 20, 1000, 300, 'Hz', true),
     p('hi', 'High cut', 2000, 16000, 7000, 'Hz', true), p('width', 'Width', 0, 100, 100, '%'), p('mix', 'Mix', 0, 100, 15, '%'),
     p('tone', 'Tone', -100, 100, 0, '%'), choice('space', 'Space', 0, ['Plate', 'Room', 'Hall', 'Ambience']), p('duck', 'Ducking', 0, 12, 0, 'dB'),
     p('early', 'Early', 0, 100, 50, '%'), p('bass', 'Bass decay', 0.5, 1.5, 1, '×'), p('mod', 'Modulation', 0, 100, 50, '%')],
@@ -272,7 +273,7 @@ const COLORS = [0, 6, 5, 3, 4, 8, 9, 9];
 
 function base(names: string[], insNames: string[], cat: Catalog): Project {
   const p: Project = {
-    version: 2, bpm: 128, tracks: [], patterns: [], sources: [], clips: [], loop: null, nextId: 1000, automations: [],
+    version: 3, bpm: 128, tracks: [], patterns: [], sources: [], clips: [], loop: null, nextId: 1000, automations: [],
     inserts: [{ id: 0, name: 'Master', color: '#d5dae2', vol: VOL_UNITY, pan: 0, width: 1, muted: false, solo: false, fx: [] }],
   };
   insNames.forEach((name, i) => p.inserts.push({ id: i + 1, name, color: TC[COLORS[i]], vol: VOL_UNITY, pan: 0, width: 1, muted: false, solo: false, fx: [] }));

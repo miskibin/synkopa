@@ -3,6 +3,7 @@
 use std::f32::consts::PI;
 
 pub mod delay;
+pub mod ducker;
 pub mod halftime;
 pub mod limiter_v2;
 pub mod modulation;

@@ -9,7 +9,8 @@ export const SPACES: SpaceInfo[] = data.spaces;
 const [MIN_SCALE, MAX_SCALE] = data.scale;
 export const PLATE = 0;
 const SOUND_M_PER_S = 343;
-export const MIN_DECAY = 0.2, MAX_DECAY = 6;
+/** The Decay knob's range (s), from the engine (`reverb_v2::MAX_DECAY`). */
+export const [MIN_DECAY, MAX_DECAY] = data.decay;
 
 type Params = Record<string, number | undefined>;
 
@@ -69,5 +70,5 @@ export const decayAt = (p: Params, t: number) => Math.min(MAX_DECAY, Math.max(MI
 /** A round time span the envelope axis shows: the longest band's decay plus some room, at least 0.5 s. */
 export function timeSpan(p: Params): number {
   const e = envelope(p), need = Math.max(0.5, e.end * 1.12);
-  return [0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 8].find(s => s >= need) ?? need;
+  return [0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 30, 40].find(s => s >= need) ?? need;
 }

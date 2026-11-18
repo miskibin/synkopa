@@ -127,3 +127,35 @@ fn a_project_with_the_first_delay_loads_as_the_same_echo() {
     again.migrate();
     assert_eq!(again.automations, p.automations);
 }
+
+#[test]
+fn reverb_decay_automation_from_before_the_20_s_range_keeps_its_seconds() {
+    // format 2 stored Decay automation normalised over 0.2–6 s (log); it must still mean 3 s
+    let mut p = Project::routed();
+    p.version = 2;
+    let ins = p.tracks[2].insert;
+    let mut verb = new_fx(9400, FxKind::Reverb, 120.0);
+    verb.params.insert("size".into(), 3.0);
+    p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx = vec![verb];
+    let v_old = (3f32 / 0.2).ln() / 30f32.ln();
+    p.automations.push(Automation {
+        id: 9401,
+        name: "decay".into(),
+        color: "#fff".into(),
+        target: AutoTarget::Fx { fx_id: 9400, param: "size".into() },
+        points: vec![AutoPoint::at(0.0, v_old), AutoPoint::at(4.0, 1.0)],
+    });
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let p = e.project();
+    assert_eq!(p.version, PROJECT_VERSION);
+    let f = p.inserts.iter().flat_map(|m| m.fx.iter()).find(|f| f.id == 9400).unwrap();
+    assert_eq!(f.params["size"], 3.0, "the plain value is stored in seconds and kept");
+    let secs = |v: f32| 0.2 * (dsp::reverb_v2::MAX_DECAY / 0.2).powf(v);
+    let pts = &p.automations[0].points;
+    assert!((secs(pts[0].v) - 3.0).abs() < 1e-3, "{} s", secs(pts[0].v));
+    assert!((secs(pts[1].v) - 6.0).abs() < 1e-3, "the old top stays 6 s: {} s", secs(pts[1].v));
+    // loading it again (now format 3) changes nothing
+    let mut again = p.clone();
+    again.migrate();
+    assert_eq!(again.automations, p.automations);
+}

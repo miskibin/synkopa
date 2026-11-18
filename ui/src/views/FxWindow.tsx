@@ -285,7 +285,8 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     ] },
     { title: 'c.fx.sec.model', items: [{ stack: [{ id: 'model', small: true }] }] },
     { title: 'c.fx.sec.tone', items: [{ id: 'cutoff', when: fx => (fx.params.ftype ?? 1) >= 0.5 }] },
-    { title: 'c.fx.sec.output', items: [{ id: 'mix' }, { id: 'dry' }] },
+    // Ducking sits with the levels: it is a level move on the wet (same knob as the reverb's)
+    { title: 'c.fx.sec.output', items: [{ id: 'mix' }, { id: 'dry' }, { id: 'duck', size: 'sm' }] },
     { title: 'c.fx.sec.time', adv: true, items: [
       { stack: [{ id: 'keep', labels: ['c.fx.lab.repitch', 'c.fx.lab.keepPitch'], small: true }] },
       { id: 'smooth', size: 'sm', when: fx => (fx.params.keep ?? 0) < 0.5 },

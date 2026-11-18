@@ -646,14 +646,17 @@ export class MockBackend implements Backend {
       }
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k];
     } else if (fx.type === 'delay') {
-      // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms
+      // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms, [8] ducking dB
       const model = Math.round(pr.model ?? 1), base = delayMs(pr, this.p.bpm), lfo = Math.sin(t * 2 * Math.PI * (pr.rate ?? 0.5));
       const mod = (pr.mtime ?? 0) / 100 * lfo * Math.min(6, 0.45 * base), off = (pr.offset ?? 0) / 100;
       const loopDb = level > 0 ? lvDb + 20 * Math.log10(Math.max(1e-3, Math.min(1, loopGain(pr)) * 0.9)) : -120;
       meters[0] = model === 3 ? 0 : base * (model === 0 ? 1 + Math.max(0, -off) : 1) + mod;
       meters[1] = model === 3 ? 0 : base * (model === 0 ? 1 + Math.max(0, off) : 1) + mod;
       meters[2] = Math.min(loopDb, pr.level ?? 0); meters[3] = Math.min(0, (pr.level ?? 0) - Math.max(lvDb, -60)) * 0.3;
-      meters[4] = lfo; meters[5] = model; meters[6] = loopDb + 20 * Math.log10(Math.max(1e-3, (pr.mix ?? 25) / 100)); meters[7] = base;
+      // dsp::ducker: −45 … −15 dBFS of input ramps the wet down by 0 … Ducking dB
+      const duckDb = level > 0 ? -(pr.duck ?? 0) * Math.min(1, Math.max(0, (lvDb + 45) / 30)) : 0;
+      meters[4] = lfo; meters[5] = model; meters[6] = loopDb + duckDb + 20 * Math.log10(Math.max(1e-3, (pr.mix ?? 25) / 100)); meters[7] = base;
+      meters[8] = duckDb;
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + 20 * Math.log10(1 + (pr.mix ?? 25) / 100);
     } else {
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + 20 * Math.log10(1 + (pr.mix ?? 25) / 100);

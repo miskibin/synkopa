@@ -6,6 +6,7 @@
 //! ```text
 //!  in ─ Input ─┬─ (model routing, pre-delay offset) ─ + ─ ring ─ read (Hermite) ─ loop chain ─┬─ spread ─ Tone ─ Wet ─┐
 //!              │                                     └──── × Feedback ────────────────────────┘                      │
+//!              ├─ envelope (ducking side-chain) ───────────────────────────────────────────────────────────── × Duck ─┤
 //!              └──────────────────────────────────────────── Dry ──────────────────────────────────────────────── + ─ out
 //!  loop chain: SVF filter (LP/HP/BP, LFO on cutoff) → sample-rate hold → Limit / Sat → DC blocker
 //!              → bit quantiser → diffusion (4 all-passes, blended)
@@ -22,8 +23,11 @@
 //!   its threshold and Limit clips at it, and a ±4 safety clamp plus a NaN guard on the write
 //!   keep any setting finite.
 //! * Model switches dip the wet path for 10 ms instead of jumping (no click).
+//! * Ducking (`dsp::ducker`, shared with the reverb) lowers only the wet output, after the loop:
+//!   the repeats keep regenerating under a phrase and bloom back in the gaps.
 //! * No allocation after `prepare`.
 
+use super::ducker::WetDucker;
 use super::{flush, Biquad, FilterType};
 use crate::processor::{ParamBlock, ProcessCtx, Processor, METERS};
 
@@ -57,7 +61,9 @@ pub mod idx {
     pub const MIX: usize = 25;
     pub const TONE: usize = 26;
     pub const DRY: usize = 27;
-    pub const COUNT: usize = 28;
+    /// Wet ducking (dB): appended last so older projects and their automation keep their slots.
+    pub const DUCK: usize = 28;
+    pub const COUNT: usize = 29;
 }
 
 pub const SYNCS: [&str; 2] = ["Tempo", "ms"];
@@ -300,6 +306,7 @@ pub struct Delay {
     tone_last: f32,
     lfo: f64,
     ctl: usize,
+    duck: WetDucker,
     // meters
     m_d: [f32; 2],
     m_loop: f32,
@@ -307,6 +314,8 @@ pub struct Delay {
     m_red: f32,
     m_lfo: f32,
     m_target: f32,
+    /// Lowest ducking gain since the meters were read (1 = none).
+    m_duck: f32,
 }
 
 impl Delay {
@@ -447,6 +456,9 @@ impl Processor for Delay {
         }
         self.tone_last = f32::NAN;
         self.d_cur = 0.0;
+        self.duck.prepare(sr);
+        self.duck.reset();
+        self.m_duck = 1.0;
     }
 
     fn set_params(&mut self, pb: &ParamBlock) {
@@ -457,6 +469,7 @@ impl Processor for Delay {
         // 0 % = jump, 50 % ≈ 55 ms, 100 % = 1.5 s time constant
         self.slew_k = if s <= 0.0 || self.sr <= 0.0 { 1.0 } else { self.glide_k(2.0 * 750f32.powf(s)) };
         self.model_want = self.model_param();
+        self.duck.set_depth_db(self.p[idx::DUCK]);
         if first && self.sr > 0.0 {
             self.snap_smoothers();
         }
@@ -495,8 +508,11 @@ impl Processor for Delay {
         let mask = n - 1;
         let sc = 0.3 + 1.9 * self.dspread.v;
         let mut ap_len = AP_MS.map(|ms| ms * sc * sr / 1000.0);
+        self.m_duck = 1.0;
 
         for i in 0..l.len() {
+            // ducking side-chain from the dry input; its target follows at the control rate
+            let duck = self.duck.tick(l[i], r[i], self.ctl == 0);
             // control rate: filter, tone, all-pass lengths (every 16 samples)
             if self.ctl == 0 {
                 let lfo_v = (self.lfo * std::f64::consts::TAU).sin() as f32;
@@ -681,7 +697,9 @@ impl Processor for Delay {
                 ol = self.tone_f[0].tick(ol);
                 or = self.tone_f[1].tick(or);
             }
-            let g = wet * self.sw;
+            // ducking acts on what leaves the loop, never on what feeds it
+            let g = wet * self.sw * duck;
+            self.m_duck = self.m_duck.min(duck);
             ol *= g;
             or *= g;
             self.m_wet = self.m_wet.max(ol.abs().max(or.abs()));
@@ -719,6 +737,8 @@ impl Processor for Delay {
         self.m_loop = 0.0;
         self.m_wet = 0.0;
         self.m_red = 0.0;
+        self.duck.reset();
+        self.m_duck = 1.0;
     }
 
     fn tail_samples(&self) -> Option<usize> {
@@ -751,6 +771,7 @@ impl Processor for Delay {
         out[5] = self.model as f32;
         out[6] = db(self.m_wet);
         out[7] = self.m_target;
+        out[8] = db(self.m_duck).min(0.0);
     }
 }
 
@@ -962,6 +983,56 @@ mod tests {
         }
         assert!((shape(0.2, 1, 1.0, 0.5, 0.0) - 0.2).abs() < 1e-6, "below the knee the curve is the identity");
         assert_eq!(shape(2.0, 0, 0.5, 0.0, 0.0), 0.5);
+    }
+
+    #[test]
+    fn ducking_lowers_the_wet_during_a_phrase_and_the_echoes_bloom_back_after() {
+        // 1 s noise burst, then silence; 250 ms echoes with 60 % feedback, wet only
+        let burst = 48000;
+        let input = |i: usize| {
+            if i < burst {
+                let mut s = (i as u32).wrapping_mul(2_654_435_761) ^ 0x5bd1_e995;
+                s ^= s << 13;
+                s ^= s >> 17;
+                s ^= s << 5;
+                let x = (s as f32 / u32::MAX as f32 - 0.5) * 1.0;
+                (x, -x)
+            } else {
+                (0.0, 0.0)
+            }
+        };
+        let base = [(idx::SYNC, 1.0), (idx::TIME, 250.0), (idx::FB, 60.0), (idx::MODEL, STEREO as f32)];
+        let n = 5 * 48000;
+        let (l0, _, _) = run(clean(&base), input, n, 120.0);
+        let mut ducked = base.to_vec();
+        ducked.push((idx::DUCK, 12.0));
+        let (l1, _, _) = run(clean(&ducked), input, n, 120.0);
+        let rms = |x: &[f32], a: f32, b: f32| {
+            let s = &x[(a * 48000.0) as usize..(b * 48000.0) as usize];
+            (s.iter().map(|v| v * v).sum::<f32>() / s.len() as f32).sqrt()
+        };
+        let db = |a: f32, b: f32| 20.0 * (rms(&l1, a, b) / rms(&l0, a, b)).log10();
+        // during the burst the echoes sit ~12 dB under the dry
+        let during = db(0.4, 1.0);
+        assert!(during < -10.0 && during > -12.5, "during the phrase: {during} dB");
+        // after it the repeats are back at full level: the loop kept regenerating underneath
+        let after = db(3.5, 4.5);
+        assert!(after.abs() < 0.3, "after the phrase: {after} dB");
+        assert!(rms(&l1, 3.5, 4.5) > 1e-3, "the echoes are still sounding");
+        // off: the gain is exactly 1 all along (× 1.0 is exact), so the output is bit for bit the
+        // delay's from before ducking existed
+        let mut d = Delay::default();
+        d.prepare(48000.0, 256);
+        d.set_params(&clean(&base));
+        let ctx = ProcessCtx { sample_rate: 48000.0, bpm: 120.0, beat: 0.0, playing: true };
+        let mut m = [0f32; METERS];
+        for b in 0..200 {
+            let (mut l, mut r): (Vec<f32>, Vec<f32>) = (b * 256..(b + 1) * 256).map(input).unzip();
+            d.process(&mut l, &mut r, &ctx);
+            d.meters(&mut m);
+            assert_eq!(m[8], 0.0, "block {b}");
+            assert_eq!(d.duck.gain(), 1.0);
+        }
     }
 
     #[test]

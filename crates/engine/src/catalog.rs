@@ -92,10 +92,12 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         p("mix", "Wet", 0.0, 100.0, 25.0, "%", false),
         p("tone", "Tone", -100.0, 100.0, 0.0, "%", false),
         p("dry", "Dry", 0.0, 100.0, 100.0, "%", false),
+        // appended (not next to Wet) so saved projects and automation keep their slots
+        p("duck", "Ducking", 0.0, 12.0, 0.0, "dB", false),
     ];
     // order = dsp::reverb_v2::idx; size/pre/tone/mix are the macros, the rest is "advanced"
     const REVERB: &[ParamDef] = &[
-        p("size", "Decay", 0.2, 6.0, 1.0, "s", true),
+        p("size", "Decay", 0.2, crate::dsp::reverb_v2::MAX_DECAY as f64, 1.0, "s", true),
         p("pre", "Pre-delay", 0.0, 150.0, 25.0, "ms", false),
         p("lo", "Low cut", 20.0, 1000.0, 300.0, "Hz", true),
         p("hi", "High cut", 2000.0, 16000.0, 7000.0, "Hz", true),

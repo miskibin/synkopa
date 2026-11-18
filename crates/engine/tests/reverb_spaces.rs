@@ -20,7 +20,7 @@ fn params(space: usize, size: f32, tone: f32, bass: f32) -> [f32; MAX_PARAMS] {
 fn the_display_fixture_matches_the_dsp() {
     let mut samples = vec![];
     for space in 0..4 {
-        for size in [0.2f32, 0.6, 1.0, 2.0, 6.0] {
+        for size in [0.2f32, 0.6, 1.0, 2.0, 6.0, reverb_v2::MAX_DECAY] {
             for (tone, bass) in [(0.0f32, 1.0f32), (-100.0, 0.5), (100.0, 1.5)] {
                 let v = params(space, size, tone, bass);
                 let d = reverb_v2::derive(&v);
@@ -35,6 +35,7 @@ fn the_display_fixture_matches_the_dsp() {
     let want = serde_json::json!({
         "spaces": reverb_v2::space_info(),
         "scale": [reverb_v2::SCALE_LIMITS.0, reverb_v2::SCALE_LIMITS.1],
+        "decay": [0.2, reverb_v2::MAX_DECAY],
         "samples": samples,
     });
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/src/api/reverbSpaces.json");
