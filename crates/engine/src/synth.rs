@@ -326,7 +326,15 @@ impl VoicePool {
 
     /// Adds every live voice into its destination: a track buffer, an insert's input, or
     /// the click bus. Samples are stereo (the channel's pan is a balance).
-    pub fn render(&mut self, n: usize, tracks: &mut [(Vec<f32>, Vec<f32>)], inserts: &mut [InsertRt], click: &mut [f32], chans: &[ChanRt]) {
+    pub fn render(
+        &mut self,
+        n: usize,
+        tracks: &mut [(Vec<f32>, Vec<f32>)],
+        inserts: &mut [InsertRt],
+        click: &mut [f32],
+        chans: &[ChanRt],
+        track_dirty: &mut [bool],
+    ) {
         let sr = self.sr;
         let bend = self.bend;
         for v in self.voices.iter_mut().filter(|v| v.alive) {
@@ -366,14 +374,20 @@ impl VoicePool {
                 // the click bus is mono
                 Dest::Click => (&mut click[..], &mut []),
                 Dest::Track(t) => match tracks.get_mut(t) {
-                    Some((l, r)) => (&mut l[..], &mut r[..]),
+                    Some((l, r)) => {
+                        track_dirty[t] = true;
+                        (&mut l[..], &mut r[..])
+                    }
                     None => {
                         v.alive = false;
                         continue;
                     }
                 },
                 Dest::Insert(k) => match inserts.get_mut(k) {
-                    Some(ins) => (&mut ins.l[..], &mut ins.r[..]),
+                    Some(ins) => {
+                        ins.dirty = true;
+                        (&mut ins.l[..], &mut ins.r[..])
+                    }
                     None => {
                         v.alive = false;
                         continue;
