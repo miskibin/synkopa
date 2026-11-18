@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audycja Trap Kicks i 808 — Synkopa</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: dark;
+  --bg0: #0d0f13;
+  --bg1: #14171e;
+  --bg2: #1c202a;
+  --bg3: #191d26;
+  --line: #2a3140;
+  --line2: #343c4c;
+  --fg: #d5dae2;
+  --fg-hi: #f2f4f7;
+  --fg2: #b4bac4;
+  --fg3: #9aa2ad;
+  --fg4: #7d8592;
+  --fg5: #5c6573;
+  --kick: #4f8ef7;
+  --bass: #e06b55;
+  --accept: #5fbf8a;
+  --reject: #d9678f;
+  --amber: #e0a44a;
+  --play: #eef1f5;
+  --sans: system-ui, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg0); color: var(--fg); }
+body { font: 12px/1.4 var(--sans); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus { outline: none; }
+button:focus-visible, input:focus-visible { outline: 1px solid var(--kick); outline-offset: -1px; }
+a { color: #8fb6ff; }
+#app { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.top, .tabs, .transport, .foot { flex: none; }
+.top { display: flex; align-items: flex-start; gap: 14px; padding: 8px 12px; background: var(--bg1); border-bottom: 1px solid var(--bg0); }
+.brand { min-width: 240px; flex: 1 1 280px; }
+.brand h1 { margin: 0; font-size: 14px; font-weight: 620; letter-spacing: .01em; color: var(--fg-hi); }
+.brand p { margin: 2px 0 0; color: var(--fg4); font-size: 11px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.btn { height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg1); color: var(--fg); }
+.btn:hover { background: var(--bg2); color: var(--fg-hi); }
+.btn.primary { background: var(--kick); border-color: var(--kick); color: #0b1220; font-weight: 650; }
+.btn.primary:hover { background: #6ba2ff; }
+.btn.primary.is-stop { background: var(--reject); border-color: var(--reject); color: #1a0c12; }
+.btn.go.on { background: #173528; border-color: #2f6b4e; color: var(--accept); }
+.btn.danger.on { background: #3a1c28; border-color: #6e3144; color: var(--reject); }
+.btn.bit.on { background: #1a2433; border-color: var(--kick); color: #c5d9ff; }
+.btn.tiny { height: 22px; padding: 0 7px; font-size: 11px; }
+.tabs { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg1); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tab { height: 26px; padding: 0 10px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--fg3); }
+.tab:hover { color: var(--fg-hi); }
+.tab.on { background: var(--bg2); border-color: var(--line); color: var(--fg-hi); }
+.tab[data-tab="kicks"].on { color: var(--kick); }
+.tab[data-tab="basses"].on { color: var(--bass); }
+.pills { display: flex; gap: 4px; margin-left: 8px; }
+.pill { height: 22px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--fg3); font: 500 11px var(--sans); }
+.pill.on { background: var(--bg2); color: var(--fg-hi); border-color: var(--line2); }
+.pill[data-filter="accept"].on { color: var(--accept); border-color: #2f6b4e; }
+.pill[data-filter="reject"].on { color: var(--reject); border-color: #6e3144; }
+.search { margin-left: auto; height: 26px; width: min(280px, 40vw); padding: 0 8px; background: var(--bg0); border: 1px solid var(--line); border-radius: 4px; color: var(--fg-hi); }
+.transport { background: var(--bg2); border-bottom: 1px solid var(--bg0); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+.trow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.transport h2 { margin: 0; font: 600 10px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3); }
+.bpmbox { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; background: var(--bg0); border: 1px solid var(--line); border-radius: 4px; }
+.bpmbox input[type="range"] { width: 128px; accent-color: var(--kick); }
+.bpmnum { font: 560 14px var(--mono); color: var(--kick); min-width: 36px; font-variant-numeric: tabular-nums; }
+.tag { font: 500 10px var(--mono); letter-spacing: .06em; color: var(--fg4); }
+.mute { height: 24px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg0); color: var(--fg4); display: inline-flex; align-items: center; gap: 5px; }
+.mute.on { color: var(--fg-hi); border-color: var(--line2); }
+.mute .sw { width: 8px; height: 8px; }
+.sw { display: inline-block; width: 8px; height: 8px; }
+.sw.kick { background: var(--kick); }
+.sw.bass { background: var(--bass); }
+.sw.perc { background: var(--amber); }
+.sw.hat { background: var(--fg3); }
+.sw.roll { background: var(--accept); }
+.check { display: inline-flex; align-items: center; gap: 6px; color: var(--fg2); }
+.check input { accent-color: var(--kick); }
+.activename { font: 500 12px var(--sans); color: var(--fg-hi); background: transparent; border: 0; padding: 0; }
+.activename.kick { color: #c5d9ff; }
+.activename.bass { color: #f0c2b8; }
+.pitches { display: flex; gap: 4px; }
+.pitch { height: 22px; min-width: 36px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg0); color: var(--fg2); font: 560 11px var(--mono); }
+.pitch:hover { border-color: var(--bass); color: var(--fg-hi); }
+.gridwrap { display: flex; flex-direction: column; gap: 4px; }
+.stepgrid { display: grid; grid-template-columns: repeat(32, 1fr); height: 32px; background: var(--bg0); border: 1px solid var(--line); }
+.step { position: relative; display: flex; flex-direction: column; justify-content: flex-end; border-right: 1px solid #10141b; padding: 0 1px 2px; }
+.step.beat { border-left: 1px solid var(--line2); }
+.step.bar { border-left: 1px solid #4a5568; }
+.step.now { background: #252c38; }
+.step.now::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--play); }
+.step.bar::after { content: attr(data-bar); position: absolute; top: 1px; left: 3px; font: 9px var(--mono); color: var(--fg5); }
+.mk { display: block; height: 3px; margin-top: 1px; }
+.mk.kick { background: var(--kick); }
+.mk.bass { background: var(--bass); }
+.mk.clap { background: var(--amber); }
+.mk.hat { background: #8b93a1; }
+.mk.roll { background: var(--accept); height: 2px; }
+.legend { display: flex; gap: 12px; color: var(--fg4); font: 10px var(--mono); letter-spacing: .04em; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend .mk { width: 10px; height: 8px; margin: 0; }
+.pattern { color: var(--fg4); font: 11px var(--mono); }
+#beatStatus { color: var(--fg2); font: 11px var(--mono); }
+#arm { background: #241c12; color: var(--amber); border-bottom: 1px solid #6d5830; padding: 6px 12px; font-size: 12px; }
+#arm[hidden] { display: none; }
+.progress { height: 2px; background: var(--bg0); }
+.progress > div { height: 2px; width: 0; background: var(--kick); }
+.list { flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--bg0); }
+.list::-webkit-scrollbar { width: 10px; }
+.list::-webkit-scrollbar-track { background: var(--bg0); }
+.list::-webkit-scrollbar-thumb { background: var(--line2); border: 2px solid var(--bg0); }
+.sec { position: sticky; top: 0; z-index: 2; height: 24px; display: flex; align-items: center; padding: 0 12px; background: var(--bg3); border-bottom: 1px solid var(--bg0); color: var(--fg4); font: 600 10px var(--sans); letter-spacing: .12em; text-transform: uppercase; }
+.empty { padding: 28px 12px; color: var(--fg4); }
+.row { display: grid; grid-template-columns: 34px minmax(240px, 380px) minmax(180px, 1fr) 132px; gap: 10px; align-items: center; padding: 8px 12px 8px 10px; border-bottom: 1px solid #191d26; border-left: 2px solid transparent; background: var(--bg0); }
+.row.is-sel { background: var(--bg2); }
+.row.is-accept { border-left-color: var(--accept); }
+.row.is-reject { border-left-color: var(--reject); }
+.row.is-swap { border-left-color: var(--amber); }
+.row.is-reject .meta { opacity: .7; }
+.play { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg1); color: var(--fg-hi); display: flex; align-items: center; justify-content: center; padding: 0; }
+.play:hover { border-color: var(--line2); }
+.row.is-kick .play.is-on { color: var(--kick); border-color: var(--kick); }
+.row.is-808 .play.is-on { color: var(--bass); border-color: var(--bass); }
+.tri { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.play.is-on .tri { width: 8px; height: 8px; margin: 0; border: 0; background: currentColor; }
+.line1, .line2, .metrics, .src { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.line1 { margin-bottom: 2px; }
+.name { background: transparent; border: 0; padding: 0; color: var(--fg-hi); font: 620 13px var(--sans); text-align: left; min-width: 0; }
+.name:hover { color: #fff; }
+.score { margin-left: auto; font: 620 11px var(--mono); padding: 0 5px; border: 1px solid currentColor; border-radius: 3px; flex: none; }
+.slug { font: 11px var(--mono); color: var(--fg3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arch { flex: none; font: 500 10px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--fg4); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; }
+.metrics { margin-top: 3px; font: 11px var(--mono); color: var(--fg3); font-variant-numeric: tabular-nums; }
+.metrics b { font-weight: 560; color: var(--fg2); }
+.m.sub { color: var(--bass); }
+.m.punch { color: var(--kick); }
+.note { margin: 4px 0 0; color: var(--fg2); font-size: 12px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.src { margin-top: 4px; color: var(--fg4); font-size: 11px; }
+.src a { text-decoration: none; }
+.src a:hover { text-decoration: underline; }
+.warn { margin-top: 4px; color: var(--amber); font: 11px var(--mono); }
+.warn i { font-style: normal; border: 1px solid #6d5830; background: #241c12; padding: 0 4px; margin-right: 6px; letter-spacing: .06em; }
+.bitflag { font: 500 9px var(--mono); letter-spacing: .08em; color: var(--kick); border: 1px solid var(--kick); padding: 0 4px; border-radius: 3px; }
+.row.is-808 .bitflag { color: var(--bass); border-color: var(--bass); }
+.swapflag { font: 500 9px var(--mono); letter-spacing: .08em; color: var(--amber); border: 1px solid var(--amber); padding: 0 4px; }
+.wave { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+canvas { width: 100%; height: 68px; background: #0d0f13; border: 1px solid var(--line); border-radius: 3px; display: block; touch-action: none; cursor: pointer; }
+.row .pitches { flex-wrap: wrap; }
+.acts { display: flex; flex-direction: column; gap: 4px; }
+.acts .btn { width: 100%; }
+.foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 12px; background: var(--bg1); border-top: 1px solid var(--bg0); }
+.counts { font: 11px var(--mono); color: var(--fg3); }
+.counts b { color: var(--fg-hi); font-weight: 600; }
+.keys { margin-left: auto; color: var(--fg5); font: 10px var(--mono); letter-spacing: .02em; }
+kbd { font: 500 10px var(--mono); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; color: var(--fg3); background: var(--bg0); }
+.credits { flex-basis: 100%; color: var(--fg5); font-size: 10px; }
+#modal[hidden] { display: none !important; }
+#modal { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); }
+.panel { position: relative; width: min(880px, 100%); max-height: min(82vh, 820px); display: flex; flex-direction: column; background: var(--bg1); border: 1px solid var(--line2); border-radius: 4px; }
+.panel head, .phead { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.phead h3 { margin: 0; font-size: 13px; color: var(--fg-hi); font-weight: 620; }
+#copyState { font: 11px var(--mono); color: var(--accept); }
+.pbody { margin: 0; padding: 10px 12px; overflow: auto; white-space: pre; font: 11px/1.45 var(--mono); color: var(--fg2); }
+@media (max-width: 980px) {
+  .row { grid-template-columns: 34px 1fr; }
+  .wave, .acts { grid-column: 2; }
+  .acts { flex-direction: row; }
+  .acts .btn { width: auto; }
+  .keys { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Audycja Trap Kicks i 808</h1>
+      <p>Odsłuch, porównanie w bicie i decyzja, co wchodzi do biblioteki Synkopa. Wybory zostają w tej przeglądarce.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" id="btnAi">Zastosuj rekomendację AI (≥ 8.3)</button>
+      <button type="button" class="btn" id="btnClear">Wyczyść decyzje</button>
+      <button type="button" class="btn" id="btnCopy">Kopiuj wynik do schowka</button>
+      <button type="button" class="btn" id="btnDownload">Pobierz JSON</button>
+    </div>
+  </header>
+  <div id="arm" hidden>Przeglądarka wstrzymała dźwięk. Kliknij gdziekolwiek albo naciśnij spację, żeby odblokować odsłuch.</div>
+  <nav class="tabs" aria-label="Katalog">
+    <button type="button" class="tab on" data-tab="kicks">Nowe Trap Kicks (14)</button>
+    <button type="button" class="tab" data-tab="basses">Nowe Trap 808 (15)</button>
+    <button type="button" class="tab" data-tab="current">Obecne w bibliotece (27)</button>
+    <button type="button" class="tab" data-tab="all">Wszystkie (56)</button>
+    <div class="pills" role="tablist" aria-label="Status">
+      <button type="button" class="pill on" data-filter="all">Wszystkie</button>
+      <button type="button" class="pill" data-filter="todo">Do oceny</button>
+      <button type="button" class="pill" data-filter="accept">Zaakceptowane</button>
+      <button type="button" class="pill" data-filter="reject">Odrzucone</button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="Szukaj nazwy, pliku, opisu…" autocomplete="off" spellcheck="false" aria-label="Szukaj">
+  </nav>
+  <section class="transport" aria-label="Test w bicie">
+    <div class="trow">
+      <h2 id="beatTitle">Test w bicie 140 BPM</h2>
+      <button type="button" class="btn primary" id="btnBeat">Graj bit</button>
+      <div class="bpmbox">
+        <span class="tag">BPM</span>
+        <input id="bpm" type="range" min="115" max="165" step="1" value="140" aria-label="Tempo">
+        <span class="bpmnum" id="bpmNum">140</span>
+      </div>
+      <button type="button" class="mute on" id="muteKick" aria-pressed="true"><i class="sw kick"></i>Kick</button>
+      <button type="button" class="mute on" id="muteBass" aria-pressed="true"><i class="sw bass"></i>808</button>
+      <button type="button" class="mute on" id="mutePerc" aria-pressed="true"><i class="sw perc"></i>Clap+Hat</button>
+      <label class="check"><input type="checkbox" id="autoSwap" checked>Auto-podmiana przy odsłuchu</label>
+    </div>
+    <div class="trow">
+      <span class="tag">AKTYWNY KICK</span>
+      <button type="button" class="activename kick" id="activeKickName"></button>
+      <span class="tag">AKTYWNY 808</span>
+      <button type="button" class="activename bass" id="activeBassName"></button>
+      <div class="pitches" id="transportPitches" aria-label="Strój 808"></div>
+      <span id="beatStatus">Gotowy.</span>
+    </div>
+    <div class="gridwrap">
+      <div class="stepgrid" id="stepGrid" aria-hidden="true"></div>
+      <div class="legend">
+        <span><i class="mk kick"></i>Kick</span>
+        <span><i class="mk bass"></i>808</span>
+        <span><i class="mk clap"></i>Clap</span>
+        <span><i class="mk hat"></i>Hat</span>
+        <span><i class="mk roll"></i>Roll</span>
+      </div>
+      <div class="pattern">2 takty · kick 0, 6, 10, 16, 22, 26, 28 · 808 C1 / G1 / G#1 · clap na 2 i 4 · hat na ósemki + rolle 32nd przy krokach 7 i 23</div>
+    </div>
+  </section>
+  <div class="progress" aria-hidden="true"><div id="loadBar"></div></div>
+  <main class="list" id="list"></main>
+  <footer class="foot">
+    <div class="counts" id="counts"></div>
+    <div class="actions">
+      <button type="button" class="btn tiny" id="btnAi2">Zastosuj rekomendację AI (≥ 8.3)</button>
+      <button type="button" class="btn tiny" id="btnClear2">Wyczyść decyzje</button>
+      <button type="button" class="btn tiny" id="btnCopy2">Kopiuj wynik do schowka</button>
+      <button type="button" class="btn tiny" id="btnDownload2">Pobierz JSON</button>
+    </div>
+    <div class="keys"><kbd>↑</kbd><kbd>↓</kbd> odsłuch · <kbd>spacja</kbd> start/stop · <kbd>A</kbd> akceptuj · <kbd>R</kbd>/<kbd>X</kbd> odrzuć · <kbd>1</kbd>–<kbd>5</kbd> strój 808 · <kbd>B</kbd> bit</div>
+    <div class="credits">Clap: <a href="https://freesound.org/s/647745/" target="_blank" rel="noopener">clap_caviar.wav</a> — harrisonlace, CC0. Hat: <a href="https://freesound.org/s/75037/" target="_blank" rel="noopener">Hat_04.wav</a> — CBeeching, CC0. Freesound.</div>
+  </footer>
+</div>
+<div id="modal" hidden>
+  <div class="backdrop" data-close="1"></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="phead">
+      <h3 id="modalTitle">Wynik audycji</h3>
+      <span id="copyState"></span>
+      <span style="flex:1"></span>
+      <button type="button" class="btn tiny" id="btnCopy3">Kopiuj</button>
+      <button type="button" class="btn tiny" id="modalClose">Zamknij</button>
+    </div>
+    <pre class="pbody" id="exportText"></pre>
+  </div>
+</div>
+<script>
+"use strict";
+const CATALOG = {"proposed_kicks":[{"uid":"fs:542893","section":"proposed_kick","kind":"kick","sourceId":"fs:542893","slug":"kick-trap-rack.flac","name":"Trap Kick Rack","origTitle":"Kick (19).wav","uploader":"Rippleys_Circus","url":"https://cdn.freesound.org/previews/542/542893_6414380-hq.mp3","pageUrl":"https://freesound.org/s/542893/","license":"CC0-1.0","score":9.3,"archetype":"Rack / Clipped","maxS":0.5,"root":60,"rootName":"—","dur":0.136,"subPct":92.4,"punchPct":6.2,"midPct":1.2,"note":"Klasyczny FL Rack Kick: ostry, czysty soft-clip na ataku, potężny knock w klatkę (80–140 Hz) i krótki ogon 136 ms bez fazowania z 808."},{"uid":"fs:508909","section":"proposed_kick","kind":"kick","sourceId":"fs:508909","slug":"kick-trap-knock-2.flac","name":"Trap Kick Knock","origTitle":"Trap Kick 2","uploader":"muffin3k","url":"https://cdn.freesound.org/previews/508/508909_10137963-hq.mp3","pageUrl":"https://freesound.org/s/508909/","license":"CC0-1.0","score":9.2,"archetype":"Rack / Soft-Clip","maxS":0.5,"root":60,"rootName":"—","dur":0.152,"subPct":94.9,"punchPct":4.9,"midPct":0.0,"note":"Ciepły, nasycony clipperem cios 70–125 Hz z mocnym dołem i zwartym wygaszeniem 152 ms — idealnie klei się ze Spinz i Zay 808."},{"uid":"fs:542899","section":"proposed_kick","kind":"kick","sourceId":"fs:542899","slug":"kick-trap-clip.flac","name":"Trap Kick Clip","origTitle":"Kick (4).wav","uploader":"Rippleys_Circus","url":"https://cdn.freesound.org/previews/542/542899_6414380-hq.mp3","pageUrl":"https://freesound.org/s/542899/","license":"CC0-1.0","score":9.1,"archetype":"Southside / Clip","maxS":0.5,"root":60,"rootName":"—","dur":0.197,"subPct":95.7,"punchPct":3.6,"midPct":0.7,"note":"Agresywny charakter Fruity Soft Clippera: zadziorny atak, gęsty slam 80–130 Hz w stylu Southside / 808 Mafia (197 ms)."},{"uid":"fs:421108","section":"proposed_kick","kind":"kick","sourceId":"fs:421108","slug":"kick-trap-hard.flac","name":"Trap Kick Hard","origTitle":"Gucci Kick.wav","uploader":"Nilzner","url":"https://cdn.freesound.org/previews/421/421108_8323444-hq.mp3","pageUrl":"https://freesound.org/s/421108/","license":"CC0-1.0","score":9.0,"archetype":"Metro / Bounce","maxS":0.5,"root":60,"rootName":"—","dur":0.169,"subPct":96.8,"punchPct":2.3,"midPct":0.3,"note":"Sprężysty, pełny trapowy kick (169 ms) z wyraźnym kliknięciem i okrągłą wagą 60–110 Hz bez kartonowego środka."},{"uid":"fs:666823","section":"proposed_kick","kind":"kick","sourceId":"fs:666823","slug":"kick-trap-punch.flac","name":"Trap Kick Punch","origTitle":"JH Trap Kick (F#).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/666/666823_4819210-hq.mp3","pageUrl":"https://freesound.org/s/666823/","license":"CC0-1.0","score":9.0,"archetype":"Crisp / Knock","maxS":0.5,"root":60,"rootName":"—","dur":0.15,"subPct":95.7,"punchPct":3.9,"midPct":0.3,"note":"Wyrazisty, twardy atak (150 ms), który przebija się przez gęste hi-hat rolle i syntezatory bez długiego ogona."},{"uid":"fs:501553","section":"proposed_kick","kind":"kick","sourceId":"fs:501553","slug":"kick-trap-top.flac","name":"Trap Kick Top","origTitle":"Trap Kick 1","uploader":"muffin3k","url":"https://cdn.freesound.org/previews/501/501553_10137963-hq.mp3","pageUrl":"https://freesound.org/s/501553/","license":"CC0-1.0","score":8.8,"archetype":"Top Layer / Fast","maxS":0.4,"root":60,"rootName":"—","dur":0.117,"subPct":90.7,"punchPct":7.0,"midPct":2.0,"note":"Ultraszybki (117 ms) kick warstwowy: daje natychmiastowy snap i znika zanim rozwinie się sub ciężkiego 808."},{"uid":"fs:832660","section":"proposed_kick","kind":"kick","sourceId":"fs:832660","slug":"kick-trap-phonk.flac","name":"Trap Kick Phonk","origTitle":"Phonk Kick 4","uploader":"CAT-FOX_ALEX","url":"https://cdn.freesound.org/previews/832/832660_17675683-hq.mp3","pageUrl":"https://freesound.org/s/832660/","license":"CC0-1.0","score":8.7,"archetype":"Phonk / Memphis","maxS":0.5,"root":60,"rootName":"—","dur":0.18,"subPct":85.7,"punchPct":9.4,"midPct":4.6,"note":"Gruby, przesterowany clipperem nos i ciężki dół (180 ms) pod Memphis, Phonk, agresywny Drill i ciemny Trap."},{"uid":"fs:542877","section":"proposed_kick","kind":"kick","sourceId":"fs:542877","slug":"kick-trap-tight.flac","name":"Trap Kick Tight","origTitle":"Kick (11).wav","uploader":"Rippleys_Circus","url":"https://cdn.freesound.org/previews/542/542877_6414380-hq.mp3","pageUrl":"https://freesound.org/s/542877/","license":"CC0-1.0","score":8.4,"archetype":"Tight / Workhorse","maxS":0.5,"root":60,"rootName":"—","dur":0.178,"subPct":93.3,"punchPct":3.7,"midPct":0.4,"note":"Czysty, skupiony i bardzo uniwersalny kick roboczy (178 ms) pod bity w stylu Metro / Pierre / Drill."},{"uid":"fs:717631","section":"proposed_kick","kind":"kick","sourceId":"fs:717631","slug":"kick-trap-bounce.flac","name":"Trap Kick Bounce","origTitle":"Short Kick","uploader":"nobody0101","url":"https://cdn.freesound.org/previews/717/717631_15556857-hq.mp3","pageUrl":"https://freesound.org/s/717631/","license":"CC0-1.0","score":8.3,"archetype":"Pierre / Wheezy","maxS":0.5,"root":60,"rootName":"—","dur":0.171,"subPct":96.6,"punchPct":3.4,"midPct":0.0,"note":"Gładki, ciemniejszy na górze kick (171 ms) bez ostrego kliku bijaka — świetnie siedzi w melodyjnym bounce w stylu Pierre / Wheezy."},{"uid":"fs:691738","section":"proposed_kick","kind":"kick","sourceId":"fs:691738","slug":"kick-trap-stomp.flac","name":"Trap Kick Stomp","origTitle":"JH Kick 6 (F 100 bpm).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/691/691738_4819210-hq.mp3","pageUrl":"https://freesound.org/s/691738/","license":"CC0-1.0","score":8.3,"archetype":"Drill / Heavy","maxS":0.6,"root":60,"rootName":"—","dur":0.3,"subPct":99.3,"punchPct":0.6,"midPct":0.0,"note":"Potężny, nasycony stomp (300 ms) z dużą masą sub-basową pod mroczny Drill lub rzadsze patterny 808."},{"uid":"fs:866443","section":"proposed_kick","kind":"kick","sourceId":"fs:866443","slug":"kick-trap-clean.flac","name":"Trap Kick Clean","origTitle":"Rnb Kick 5","uploader":"CAT-FOX_ALEX","url":"https://cdn.freesound.org/previews/866/866443_17675683-hq.mp3","pageUrl":"https://freesound.org/s/866443/","license":"CC0-1.0","score":8.2,"archetype":"Melodic / Clean","maxS":0.5,"root":60,"rootName":"—","dur":0.201,"subPct":96.2,"punchPct":3.5,"midPct":0.3,"note":"Ciepły, wypolerowany kick (201 ms) z czystą definicją ataku pod melodyjny trap i trap-soul."},{"uid":"fs:836743","section":"proposed_kick","kind":"kick","sourceId":"fs:836743","slug":"kick-trap-brick.flac","name":"Trap Kick Brick","origTitle":"Phonk Kick 1","uploader":"CAT-FOX_ALEX","url":"https://cdn.freesound.org/previews/836/836743_17675683-hq.mp3","pageUrl":"https://freesound.org/s/836743/","license":"CC0-1.0","score":7.7,"archetype":"Hard Clipped","maxS":0.4,"root":60,"rootName":"—","dur":0.134,"subPct":58.8,"punchPct":40.0,"midPct":1.1,"note":"Mocno ścięty brickwallem krótki punch (134 ms) z naciskiem na 90–140 Hz do gęstych, przesterowanych miksów."},{"uid":"fs:704245","section":"proposed_kick","kind":"kick","sourceId":"fs:704245","slug":"kick-trap-heavy.flac","name":"Trap Kick Heavy","origTitle":"kick_uppercut.wav","uploader":"harrisonlace","url":"https://cdn.freesound.org/previews/704/704245_9839964-hq.mp3","pageUrl":"https://freesound.org/s/704245/","license":"CC0-1.0","score":7.5,"archetype":"Low Thump","maxS":0.5,"root":60,"rootName":"—","dur":0.25,"subPct":94.6,"punchPct":4.8,"midPct":0.5,"note":"Czytelny tick na wejściu i gęste uderzenie w niskim paśmie 50–95 Hz (250 ms)."},{"uid":"fs:542889","section":"proposed_kick","kind":"kick","sourceId":"fs:542889","slug":"kick-trap-dark.flac","name":"Trap Kick Dark","origTitle":"Kick (7).wav","uploader":"Rippleys_Circus","url":"https://cdn.freesound.org/previews/542/542889_6414380-hq.mp3","pageUrl":"https://freesound.org/s/542889/","license":"CC0-1.0","score":7.4,"archetype":"Dark / UK Drill","maxS":0.5,"root":60,"rootName":"—","dur":0.232,"subPct":98.5,"punchPct":1.2,"midPct":0.3,"note":"Ciemny, okrągły soft-clip thump (232 ms) z kontrolowanym dołem bez artefaktów w ogonie."}],"proposed_808s":[{"uid":"fs:729513","section":"proposed_808","kind":"808","sourceId":"fs:729513","slug":"bass-808-zay.flac","name":"808 Zay Warm","origTitle":"Rough And Tumble - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729513_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729513/","license":"CC0-1.0","score":9.3,"archetype":"Zay / Saturated","maxS":2.5,"root":24,"rootName":"C1","dur":2.049,"subPct":41.1,"punchPct":58.5,"midPct":0.4,"note":"Flagowa hybryda Zay/Spinz w C1: sprężysty punch na wejściu + bogate nasycenie niskiego środka, świetnie słyszalne nawet na laptopie i telefonie."},{"uid":"fs:729507","section":"proposed_808","kind":"808","sourceId":"fs:729507","slug":"bass-808-oak.flac","name":"808 Spinz Clean","origTitle":"Oak - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729507_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729507/","license":"CC0-1.0","score":8.9,"archetype":"Spinz / Workhorse","maxS":2.5,"root":24,"rootName":"C1","dur":2.177,"subPct":96.6,"punchPct":2.5,"midPct":0.1,"note":"Klasyczny koń roboczy w stylu Spinz / CTM (C1, 2.18 s): zwarty drewniany atak i czysty, pełny sustain do każdego bitu."},{"uid":"fs:729512","section":"proposed_808","kind":"808","sourceId":"fs:729512","slug":"bass-808-opium.flac","name":"808 Opium Growl","origTitle":"Poster - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729512_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729512/","license":"CC0-1.0","score":8.9,"archetype":"Opium / F1lthy","maxS":3.0,"root":24,"rootName":"C1","dur":3.0,"subPct":59.1,"punchPct":40.7,"midPct":0.1,"note":"Ciężki, mroczny growl low-mid (Opium / F1lthy / Southside) podparty betonowym, fazowo spójnym subem w C1 (3.0 s)."},{"uid":"fs:729508","section":"proposed_808","kind":"808","sourceId":"fs:729508","slug":"bass-808-mafia.flac","name":"808 Mafia Grit","origTitle":"Outer Edge - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729508_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729508/","license":"CC0-1.0","score":8.8,"archetype":"808 Mafia / Dark","maxS":2.5,"root":24,"rootName":"C1","dur":2.124,"subPct":94.5,"punchPct":5.2,"midPct":0.3,"note":"Twardy knock z przodu i potężny rdzeń C1 (94% sub) owinięty ciemną, chropowatą saturacją w stylu Atlanta / 808 Mafia."},{"uid":"fs:729468","section":"proposed_808","kind":"808","sourceId":"fs:729468","slug":"bass-808-clip.flac","name":"808 Distorted Clip","origTitle":"Chill Blaster - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729468_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729468/","license":"CC0-1.0","score":8.8,"archetype":"Hard Clip / Knock","maxS":2.5,"root":24,"rootName":"C1","dur":2.095,"subPct":82.2,"punchPct":17.6,"midPct":0.2,"note":"Uderzenie prosto w sufit clippera na transjencie + 82% czystego subu C1 pod spodem bez cyfrowego skwierczenia."},{"uid":"fs:729491","section":"proposed_808","kind":"808","sourceId":"fs:729491","slug":"bass-808-metro.flac","name":"808 Metro Deep","origTitle":"Heartless - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729491_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729491/","license":"CC0-1.0","score":8.7,"archetype":"Metro / Long Sub","maxS":3.0,"root":24,"rootName":"C1","dur":3.0,"subPct":98.2,"punchPct":1.7,"midPct":0.0,"note":"Skupiony atak i długi, idealnie stabilny 3-sekundowy sub C1 pod progresje w stylu Metro Boomin / Future."},{"uid":"fs:729464","section":"proposed_808","kind":"808","sourceId":"fs:729464","slug":"bass-808-pierre.flac","name":"808 Pierre Short","origTitle":"Box - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729464_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729464/","license":"CC0-1.0","score":8.6,"archetype":"Pierre / Short","maxS":1.2,"root":24,"rootName":"C1","dur":0.819,"subPct":99.3,"punchPct":0.7,"midPct":0.0,"note":"Krótki, mocny cios w klatkę (0.82 s, C1) bez ciągnącego się ogona — stworzony do szybkich, skocznych patternów Pierre / Plugg."},{"uid":"fs:729490","section":"proposed_808","kind":"808","sourceId":"fs:729490","slug":"bass-808-roar.flac","name":"808 Overdrive Roar","origTitle":"Gucci Gang - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729490_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729490/","license":"CC0-1.0","score":8.6,"archetype":"Rage / Ronny J","maxS":2.5,"root":24,"rootName":"C1","dur":2.037,"subPct":47.0,"punchPct":52.4,"midPct":0.3,"note":"Wybuchowy przesterowany ryk w wyższym basie (styl Ronny J / SoundCloud Rage), który przebija każdy gęsty aranż."},{"uid":"fs:729484","section":"proposed_808","kind":"808","sourceId":"fs:729484","slug":"bass-808-rage.flac","name":"808 Rage Buzz","origTitle":"Fort Night - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729484_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729484/","license":"CC0-1.0","score":8.5,"archetype":"Yeat / BNYX Buzz","maxS":2.5,"root":24,"rootName":"C1","dur":2.239,"subPct":95.3,"punchPct":3.7,"midPct":0.7,"note":"Fazowo zablokowany piłokształtny buzz na górze (styl Yeat / BNYX) nad 95% subem C1 — zero rozjeżdżania fazy unisono."},{"uid":"fs:679775","section":"proposed_808","kind":"808","sourceId":"fs:679775","slug":"bass-808-drill.flac","name":"808 Drill Glide","origTitle":"Drill 808 bass (JH).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/679/679775_4819210-hq.mp3","pageUrl":"https://freesound.org/s/679775/","license":"CC0-1.0","score":8.4,"archetype":"Drill / Slide","maxS":2.5,"root":24,"rootName":"C1","dur":1.999,"subPct":75.0,"punchPct":24.3,"midPct":0.8,"note":"Zwarty atak bez przesteru i czytelne harmoniczne (2.0 s, C1), dzięki którym wysokie slide'y UK/NY Drill brzmią czysto."},{"uid":"fs:679780","section":"proposed_808","kind":"808","sourceId":"fs:679780","slug":"bass-808-ctm.flac","name":"808 CTM Tight","origTitle":"JH 808 2 C (1 sec).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/679/679780_4819210-hq.mp3","pageUrl":"https://freesound.org/s/679780/","license":"CC0-1.0","score":8.3,"archetype":"CTM / Melodic","maxS":1.5,"root":24,"rootName":"C1","dur":1.0,"subPct":41.4,"punchPct":55.5,"midPct":3.0,"note":"Szybki pitch-drop punch i mocne pasmo 80–150 Hz (1.0 s, C1) w stylu CTM / Nick Mira."},{"uid":"fs:635285","section":"proposed_808","kind":"808","sourceId":"fs:635285","slug":"bass-808-cuff.flac","name":"808 Southside Dark","origTitle":"Cuff 808 [1lovewav]","uploader":"1LOVE","url":"https://cdn.freesound.org/previews/635/635285_11990934-hq.mp3","pageUrl":"https://freesound.org/s/635285/","license":"CC0-1.0","score":8.2,"archetype":"Southside / Tube","maxS":3.0,"root":24,"rootName":"C1","dur":3.0,"subPct":85.0,"punchPct":12.5,"midPct":1.3,"note":"Mocny kick-transjent na starcie i ciepły, lampowo nasycony 3-sekundowy ogon C1."},{"uid":"fs:679781","section":"proposed_808","kind":"808","sourceId":"fs:679781","slug":"bass-808-pure.flac","name":"808 Sub Pure","origTitle":"JH 808 3 C (2 sec).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/679/679781_4819210-hq.mp3","pageUrl":"https://freesound.org/s/679781/","license":"CC0-1.0","score":8.2,"archetype":"Clean Sub","maxS":2.5,"root":24,"rootName":"C1","dur":1.999,"subPct":93.1,"punchPct":6.6,"midPct":0.3,"note":"Studyjnie czysty fundament sub-basowy C1 (93% sub, 2.0 s) z pewnym atakiem bez kliku."},{"uid":"fs:679779","section":"proposed_808","kind":"808","sourceId":"fs:679779","slug":"bass-808-plugg.flac","name":"808 Plugg Short","origTitle":"JH 808 1 C (0.5 sec).wav","uploader":"Johnnie_Holiday","url":"https://cdn.freesound.org/previews/679/679779_4819210-hq.mp3","pageUrl":"https://freesound.org/s/679779/","license":"CC0-1.0","score":8.1,"archetype":"Plugg / Pocket","maxS":1.2,"root":24,"rootName":"C1","dur":0.805,"subPct":90.6,"punchPct":9.1,"midPct":0.4,"note":"Okrągły, gładki krótki 808 (0.80 s, C1) zostawiający mnóstwo miejsca w gęstych bębnach."},{"uid":"fs:729480","section":"proposed_808","kind":"808","sourceId":"fs:729480","slug":"bass-808-tube.flac","name":"808 Dark Tube","origTitle":"Drop - C","uploader":"James_KuKu","url":"https://cdn.freesound.org/previews/729/729480_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729480/","license":"CC0-1.0","score":7.8,"archetype":"Dark Saturated","maxS":3.0,"root":24,"rootName":"C1","dur":2.855,"subPct":80.3,"punchPct":19.7,"midPct":0.0,"note":"Ciemna saturacja 2. i 3. harmonicznej (2.86 s, C1) — gęsta masa bez jasnego bzyczenia na górze."}],"existing_kicks":[{"uid":"cur:kick-808.flac","section":"existing_kick","kind":"kick","sourceId":"808-kit/kick-tone50-decay50.wav","slug":"kick-808.flac","name":"808 Kick","origTitle":"kick-tone50-decay50.wav","uploader":"808-kit","localRel":"../crates/engine/library/kick-808.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5050.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5050.WAV","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":1.2,"drive":0,"root":60,"rootName":"—","dur":1.2,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Vintage TR-808 z 1994 (1.2 s czystego sinusa, 0% punch/mid) — brak trapowego uderzenia, zamula bas.","usedBy":"Mapa GM MIDI klawisz 36 (można podmienić źródło in-place)"},{"uid":"cur:kick-808-short.flac","section":"existing_kick","kind":"kick","sourceId":"808-kit/kick-tone00-decay25.wav","slug":"kick-808-short.flac","name":"808 Kick Short","origTitle":"kick-tone00-decay25.wav","uploader":"808-kit","localRel":"../crates/engine/library/kick-808-short.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0025.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0025.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":0.5,"drive":0,"root":60,"rootName":"—","dur":0.378,"subPct":99.9,"punchPct":0.0,"midPct":0.0,"note":"Krótki vintage TR-808 (378 ms, czysty sinus) — grzeczny, pusty, używany w STARTER_KIT.","usedBy":"STARTER_KIT / migracja starych plików (można podmienić źródło in-place)"},{"uid":"cur:kick-808-tight.flac","section":"existing_kick","kind":"kick","sourceId":"808-kit/kick-tone50-decay00.wav","slug":"kick-808-tight.flac","name":"808 Kick Tight","origTitle":"kick-tone50-decay00.wav","uploader":"808-kit","localRel":"../crates/engine/library/kick-808-tight.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5000.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5000.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":0.25,"drive":0,"root":60,"rootName":"—","dur":0.184,"subPct":92.6,"punchPct":1.3,"midPct":0.0,"note":"Cienki syntetyczny blip TR-808 (184 ms) w stylu electro, bez nasycenia i wagi.","usedBy":""},{"uid":"cur:kick-808-bright.flac","section":"existing_kick","kind":"kick","sourceId":"808-kit/kick-tone100-decay25.wav","slug":"kick-808-bright.flac","name":"808 Kick Bright","origTitle":"kick-tone100-decay25.wav","uploader":"808-kit","localRel":"../crates/engine/library/kick-808-bright.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1025.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1025.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":0.5,"drive":0,"root":60,"rootName":"—","dur":0.378,"subPct":99.9,"punchPct":0.0,"midPct":0.0,"note":"Niemal duplikat kick-808-short z plastikowym tyknięciem i czystym sinusem.","usedBy":""},{"uid":"cur:kick-studio.flac","section":"existing_kick","kind":"kick","sourceId":"studio-drums/kick-v4.wav","slug":"kick-studio.flac","name":"Studio Kick","origTitle":"kick-v4.wav","uploader":"studio-drums","localRel":"../crates/engine/library/kick-studio.flac","url":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v7_rr1_Sum.wav","pageUrl":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v7_rr1_Sum.wav","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":0.9,"drive":0,"root":60,"rootName":"—","dur":0.9,"subPct":19.2,"punchPct":73.6,"midPct":7.2,"note":"Akustyczna stopa perkusyjna z pogłosem pokoju (0.9 s) — pod rock/indie, nie pod trap.","usedBy":"Mapa GM MIDI klawisz 35 (Acoustic Bass Drum)"},{"uid":"cur:kick-studio-soft.flac","section":"existing_kick","kind":"kick","sourceId":"studio-drums/kick-v3.wav","slug":"kick-studio-soft.flac","name":"Studio Kick Soft","origTitle":"kick-v3.wav","uploader":"studio-drums","localRel":"../crates/engine/library/kick-studio-soft.flac","url":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav","pageUrl":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav","license":"CC0-1.0","score":1.0,"archetype":"Obecny w bibliotece","maxS":0.9,"drive":0,"root":60,"rootName":"—","dur":0.9,"subPct":38.6,"punchPct":56.3,"midPct":5.0,"note":"Miękki filcowy bijak akustycznej stopy z pogłosem pokoju — zupełnie nie ten gatunek.","usedBy":""},{"uid":"cur:kick-cajon.flac","section":"existing_kick","kind":"kick","sourceId":"percussion-fx/cajon-bass-v3.wav","slug":"kick-cajon.flac","name":"Cajon Kick","origTitle":"cajon-bass-v3.wav","uploader":"percussion-fx","localRel":"../crates/engine/library/kick-cajon.flac","url":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cajon/Cajon_hit1_fff_rr1.wav","pageUrl":"https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cajon/Cajon_hit1_fff_rr1.wav","license":"CC0-1.0","score":1.0,"archetype":"Obecny w bibliotece","maxS":0.9,"drive":0,"root":60,"rootName":"—","dur":0.625,"subPct":45.8,"punchPct":40.5,"midPct":9.3,"note":"Uderzenie dłonią w drewniany cajon z pudełkowym rezonansem 200–600 Hz.","usedBy":""},{"uid":"cur:kick-808-long.flac","section":"existing_kick","kind":"kick","sourceId":"808:bd8/BD5075.WAV","slug":"kick-808-long.flac","name":"808 Kick Long","origTitle":"BD5075.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/kick-808-long.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5075.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5075.WAV","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":1.5,"drive":0,"root":60,"rootName":"—","dur":1.5,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Kolejny duplikat 1.5 s czystego sinusa TR-808 bez punchu.","usedBy":""},{"uid":"cur:kick-808-boom.flac","section":"existing_kick","kind":"kick","sourceId":"808:bd8/BD0010.WAV","slug":"kick-808-boom.flac","name":"808 Kick Boom","origTitle":"BD0010.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/kick-808-boom.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0010.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0010.WAV","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":2.0,"drive":0,"root":60,"rootName":"—","dur":2.0,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"2-sekundowy nieprzesterowany boom TR-808 — identyczny plik źródłowy co 808 Bass Deep.","usedBy":""},{"uid":"cur:kick-808-deep.flac","section":"existing_kick","kind":"kick","sourceId":"808:bd8/BD0075.WAV","slug":"kick-808-deep.flac","name":"808 Kick Deep","origTitle":"BD0075.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/kick-808-deep.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0075.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0075.WAV","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":1.5,"drive":0,"root":60,"rootName":"—","dur":1.5,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Trzeci niemal identyczny 1.5 s czysty sinus TR-808 z miękkim atakiem.","usedBy":""},{"uid":"cur:kick-808-punch.flac","section":"existing_kick","kind":"kick","sourceId":"808:bd8/BD7550.WAV","slug":"kick-808-punch.flac","name":"808 Kick Punch","origTitle":"BD7550.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/kick-808-punch.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7550.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7550.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":1.2,"drive":0,"root":60,"rootName":"—","dur":1.159,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Mimo nazwy 'Punch' ma 0% energii powyżej 85 Hz i ciągnie 1.16 s czystego sinusa.","usedBy":""},{"uid":"cur:kick-808-click.flac","section":"existing_kick","kind":"kick","sourceId":"808:bd8/BD1000.WAV","slug":"kick-808-click.flac","name":"808 Kick Click","origTitle":"BD1000.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/kick-808-click.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1000.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1000.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":0.25,"drive":0,"root":60,"rootName":"—","dur":0.174,"subPct":92.8,"punchPct":1.3,"midPct":0.0,"note":"Krótki (174 ms) cienki klik TR-808 bez trapowego mięsa.","usedBy":"Mapa GM MIDI fallback"},{"uid":"cur:kick-trap.flac","section":"existing_kick","kind":"kick","sourceId":"fs:353396","slug":"kick-trap.flac","name":"Trap Kick","origTitle":"Kick - Proper Bottom.wav","uploader":"TechGeekMusic","localRel":"../crates/engine/library/kick-trap.flac","url":"https://cdn.freesound.org/previews/353/353396_6397561-hq.mp3","pageUrl":"https://freesound.org/s/353396/","license":"CC0-1.0","score":5.0,"archetype":"Obecny w bibliotece","maxS":0.8,"drive":0,"root":60,"rootName":"—","dur":0.383,"subPct":97.0,"punchPct":2.9,"midPct":0.1,"note":"Jedyny znośny z obecnych (383 ms), ale wciąż grzeczny, nieprzesterowany sinus bez gryzu clippera.","usedBy":"Używany w demo_project.json (można podmienić in-place)"},{"uid":"cur:kick-trap-knock.flac","section":"existing_kick","kind":"kick","sourceId":"fs:190942","slug":"kick-trap-knock.flac","name":"Trap Kick Knock","origTitle":"808 Kick (wav format)","uploader":"Elektronikz","localRel":"../crates/engine/library/kick-trap-knock.flac","url":"https://cdn.freesound.org/previews/190/190942_2661752-hq.mp3","pageUrl":"https://freesound.org/s/190942/","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":1.0,"drive":0,"root":60,"rootName":"—","dur":0.982,"subPct":99.9,"punchPct":0.1,"midPct":0.0,"note":"Myląca nazwa: brak knocku, 0.98 s czystego sinusa, który gryzie się z 808.","usedBy":""},{"uid":"cur:kick-trap-boom.flac","section":"existing_kick","kind":"kick","sourceId":"fs:240893","slug":"kick-trap-boom.flac","name":"Trap Kick Boom","origTitle":"trappy kick","uploader":"OllieOllie","localRel":"../crates/engine/library/kick-trap-boom.flac","url":"https://cdn.freesound.org/previews/240/240893_4206277-hq.mp3","pageUrl":"https://freesound.org/s/240893/","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":1.6,"drive":0,"root":60,"rootName":"—","dur":1.56,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Szósty klon długiego (1.56 s) czystego sinusa w stylu starego automatu TR-808.","usedBy":""}],"existing_808s":[{"uid":"cur:bass-808.flac","section":"existing_808","kind":"808","sourceId":"808-bass/bass-tone100-decay100.wav","slug":"bass-808.flac","name":"808 Bass","origTitle":"bass-tone100-decay100.wav","uploader":"808-bass","localRel":"../crates/engine/library/bass-808.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1010.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1010.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":3.0,"drive":0,"root":32,"rootName":"G#1","dur":3.0,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Stary TR-808 nastrojony w G#1 (3.0 s czystego sinusa, 0% harmonicznych) — znika na małych głośnikach.","usedBy":"Używany w demo::sketch_project (można podmienić na mocny C1 808!)"},{"uid":"cur:bass-808-short.flac","section":"existing_808","kind":"808","sourceId":"808-bass/bass-tone75-decay75.wav","slug":"bass-808-short.flac","name":"808 Bass Short","origTitle":"bass-tone75-decay75.wav","uploader":"808-bass","localRel":"../crates/engine/library/bass-808-short.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7575.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7575.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":1.2,"drive":0,"root":31,"rootName":"G1","dur":1.2,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Cichy, grzeczny 1.2 s sinus TR-808 w G1 bez sprężystości Zay/Pierre.","usedBy":"Migracja starego synth bassu"},{"uid":"cur:bass-808-deep.flac","section":"existing_808","kind":"808","sourceId":"808:bd8/BD0010.WAV","slug":"bass-808-deep.flac","name":"808 Bass Deep","origTitle":"BD0010.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/bass-808-deep.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0010.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD0010.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":3.0,"drive":0,"root":32,"rootName":"G#1","dur":3.0,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Duplikat czystego sinusa TR-808 w G#1 (ten sam WAV co Kick Boom).","usedBy":""},{"uid":"cur:bass-808-mid.flac","section":"existing_808","kind":"808","sourceId":"808:bd8/BD5010.WAV","slug":"bass-808-mid.flac","name":"808 Bass Mid","origTitle":"BD5010.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/bass-808-mid.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5010.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD5010.WAV","license":"CC0-1.0","score":2.0,"archetype":"Obecny w bibliotece","maxS":3.0,"drive":0,"root":32,"rootName":"G#1","dur":3.0,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Myląca nazwa 'Mid': pomiar i odsłuch wykazują 0.0% pasma średniego, klon czystego sinusa G#1.","usedBy":""},{"uid":"cur:bass-808-punch.flac","section":"existing_808","kind":"808","sourceId":"808:bd8/BD7575.WAV","slug":"bass-808-punch.flac","name":"808 Bass Punch","origTitle":"BD7575.WAV","uploader":"tidalcycles","localRel":"../crates/engine/library/bass-808-punch.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7575.WAV","pageUrl":"https://github.com/tidalcycles/sounds-tr808-fischer/blob/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD7575.WAV","license":"CC0-1.0","score":4.0,"archetype":"Obecny w bibliotece","maxS":1.5,"drive":0,"root":31,"rootName":"G1","dur":1.5,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Nieco twardszy start TR-808 w G1, ale dalej 100% czysty, nienasycony sinus.","usedBy":""},{"uid":"cur:bass-808-drive.flac","section":"existing_808","kind":"808","sourceId":"808-bass/bass-tone100-decay100.wav","slug":"bass-808-drive.flac","name":"808 Bass Drive","origTitle":"bass-tone100-decay100.wav","uploader":"808-bass","localRel":"../crates/engine/library/bass-808-drive.flac","url":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1010.WAV","pageUrl":"https://raw.githubusercontent.com/tidalcycles/sounds-tr808-fischer/85fbecf1bec32553395625ea659e2a56dfd7c0e1/bd8/BD1010.WAV","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":3.0,"drive":14,"root":32,"rootName":"G#1","dur":3.0,"subPct":99.2,"punchPct":0.7,"midPct":0.0,"note":"Mimo tanh +14 dB wciąż brzmi niemal jak czysty sinus G#1 (0.7% punch, 0% mid).","usedBy":""},{"uid":"cur:bass-808-sorrow.flac","section":"existing_808","kind":"808","sourceId":"fs:514880","slug":"bass-808-sorrow.flac","name":"808 Bass Sorrow","origTitle":"Sorrow State zay 808.wav","uploader":"tkky","localRel":"../crates/engine/library/bass-808-sorrow.flac","url":"https://cdn.freesound.org/previews/514/514880_3173681-hq.mp3","pageUrl":"https://freesound.org/s/514880/","license":"CC0-1.0","score":4.0,"archetype":"Obecny w bibliotece","maxS":3.0,"drive":0,"root":24,"rootName":"C1","dur":1.477,"subPct":98.8,"punchPct":1.2,"midPct":0.0,"note":"Krótki ciemny thud (C1), po którym sub bardzo szybko opada i brzmi pusto w bicie.","usedBy":""},{"uid":"cur:bass-808-sub.flac","section":"existing_808","kind":"808","sourceId":"fs:729532","slug":"bass-808-sub.flac","name":"808 Bass Sub","origTitle":"XXX - C","uploader":"James_KuKu","localRel":"../crates/engine/library/bass-808-sub.flac","url":"https://cdn.freesound.org/previews/729/729532_15200476-hq.mp3","pageUrl":"https://freesound.org/s/729532/","license":"CC0-1.0","score":4.0,"archetype":"Obecny w bibliotece","maxS":2.5,"drive":0,"root":24,"rootName":"C1","dur":2.287,"subPct":100.0,"punchPct":0.0,"midPct":0.0,"note":"Cichy, miękki w ataku czysty sinus C1 bez harmonicznych — znacznie słabszy niż nowe propozycje.","usedBy":""},{"uid":"cur:bass-808-mpc.flac","section":"existing_808","kind":"808","sourceId":"fs:501761","slug":"bass-808-mpc.flac","name":"808 Bass MPC","origTitle":"MPC_808_F1.aif","uploader":"kbeezy88","localRel":"../crates/engine/library/bass-808-mpc.flac","url":"https://cdn.freesound.org/previews/501/501761_4600366-hq.mp3","pageUrl":"https://freesound.org/s/501761/","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":1.0,"drive":0,"root":29,"rootName":"F1","dur":0.968,"subPct":99.9,"punchPct":0.1,"midPct":0.0,"note":"Bardzo cichy, krótki (0.97 s) sub w F1 bez harmonicznych.","usedBy":""},{"uid":"cur:bass-808-sine.flac","section":"existing_808","kind":"808","sourceId":"stargate:stargate-sample-pack/fugue-state-audio/drums/kicks/sdbkit-sub-a.wav","slug":"bass-808-sine.flac","name":"808 Bass Sine","origTitle":"sdbkit-sub-a.wav","uploader":"Kevin B. (Fugue State Audio), Stargate DAW sample pack","localRel":"../crates/engine/library/bass-808-sine.flac","url":"https://raw.githubusercontent.com/stargatedaw/stargate-sample-pack/dbfd6ec52d4ed53b60bdbea5fc6adf295127c027/stargate-sample-pack/fugue-state-audio/drums/kicks/sdbkit-sub-a.wav","pageUrl":"https://github.com/stargatedaw/stargate-sample-pack/blob/dbfd6ec52d4ed53b60bdbea5fc6adf295127c027/stargate-sample-pack/fugue-state-audio/drums/kicks/sdbkit-sub-a.wav","license":"CC0-1.0","score":6.0,"archetype":"Obecny w bibliotece","maxS":2.0,"drive":0,"root":33,"rootName":"A1","dur":1.949,"subPct":99.8,"punchPct":0.2,"midPct":0.0,"note":"Sensowny! Równy, gęsty sub-sinus (A1, 1.95 s) dobry jako czysty dół pod R&B / Drake.","usedBy":""},{"uid":"cur:bass-808-tr8.flac","section":"existing_808","kind":"808","sourceId":"mck:TR8/BD/008_808_Bass_Drum_Long_2.wav","slug":"bass-808-tr8.flac","name":"808 Bass TR-8","origTitle":"008_808_Bass_Drum_Long_2.wav","uploader":"MckAudio, recorded from a Roland TR-8","localRel":"../crates/engine/library/bass-808-tr8.flac","url":"https://raw.githubusercontent.com/MckAudio/MckSamplePacks/5db40e8fe26785c256845a5bb38921b2654a887f/TR8/BD/008_808_Bass_Drum_Long_2.wav","pageUrl":"https://github.com/MckAudio/MckSamplePacks/blob/5db40e8fe26785c256845a5bb38921b2654a887f/TR8/BD/008_808_Bass_Drum_Long_2.wav","license":"CC0-1.0","score":3.0,"archetype":"Obecny w bibliotece","maxS":5.0,"drive":0,"root":30,"rootName":"F#1","dur":5.0,"subPct":99.9,"punchPct":0.1,"midPct":0.0,"note":"5-sekundowy surowy automat Roland TR-8 w F#1 — natychmiast robi błoto w szybszych patternach.","usedBy":""},{"uid":"cur:bass-808-spin.flac","section":"existing_808","kind":"808","sourceId":"fs:646403","slug":"bass-808-spin.flac","name":"808 Bass Spin","origTitle":"808_dalmation_C.wav","uploader":"harrisonlace","localRel":"../crates/engine/library/bass-808-spin.flac","url":"https://cdn.freesound.org/previews/646/646403_9839964-hq.mp3","pageUrl":"https://freesound.org/s/646403/","license":"CC0-1.0","score":7.0,"archetype":"Obecny w bibliotece","maxS":2.0,"drive":0,"root":24,"rootName":"C1","dur":1.705,"subPct":91.3,"punchPct":8.5,"midPct":0.2,"note":"Najlepszy z obecnej paczki! Strojony w C1 (1.70 s), ma realny punch (8.5%) i dobrze siedzi w demo projekcie.","usedBy":"Używany w demo_project.json — warto zostawić!"}]};
+const STORE_KEY = "synkopa.sample_audition.v1";
+const PITCHES = [
+  { key: "1", midi: 24, name: "C1" },
+  { key: "2", midi: 27, name: "D#1" },
+  { key: "3", midi: 29, name: "F1" },
+  { key: "4", midi: 31, name: "G1" },
+  { key: "5", midi: 36, name: "C2" }
+];
+const KICK_STEPS = [0, 6, 10, 16, 22, 26, 28];
+const CLAP_STEPS = [4, 12, 20, 28];
+const BASS_STEPS = { 0: 24, 6: 24, 10: 24, 14: 31, 16: 24, 22: 24, 26: 32, 29: 31 };
+const GAIN = { kickBeat: 0.4, bassBeat: 0.38, clap: 0.2, hat: 0.16, kickSolo: 0.9, bassSolo: 0.85 };
+const CLAP = {
+  uid: "drum:clap",
+  kind: "clap",
+  url: "https://cdn.freesound.org/previews/647/647745_9839964-hq.mp3",
+  maxS: 0.4,
+  drive: 0
+};
+const HAT = {
+  uid: "drum:hat",
+  kind: "hat",
+  url: "https://cdn.freesound.org/previews/75/75037_1151436-hq.mp3",
+  maxS: 0.3,
+  drive: 0
+};
+
+const ITEMS = []
+  .concat(CATALOG.proposed_kicks, CATALOG.proposed_808s, CATALOG.existing_kicks, CATALOG.existing_808s);
+const BY_ID = new Map(ITEMS.map(function (it) { return [it.uid, it]; }));
+
+let decisions = {};
+let activeKick = "fs:542893";
+let active808 = "fs:729513";
+let selected = "fs:542893";
+let bpm = 140;
+let autoSwap = true;
+let tab = "kicks";
+let filter = "all";
+let query = "";
+
+let ctx = null;
+let previewBus = null;
+let kickBus = null;
+let bassBus = null;
+let percBus = null;
+const cache = new Map();
+const peaks = new Map();
+const errors = new Map();
+const inflight = new Map();
+const queue = [];
+let activeLoads = 0;
+const voices = { kick: null, bass: null };
+let previewVoice = null;
+let tails = [];
+let hits = [];
+let beatOn = false;
+let beatTimer = 0;
+let nextTime = 0;
+let stepIndex = 0;
+let stepMarks = [];
+let shownStep = -1;
+const mute = { kick: false, bass: false, perc: false };
+let drag = null;
+let playToken = 0;
+let lastTrigger = null;
+
+const listEl = document.getElementById("list");
+const qEl = document.getElementById("q");
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+function itemOf(uid) { return BY_ID.get(uid) || null; }
+function isProposed(it) { return String(it.section || "").indexOf("proposed") === 0; }
+function mentionsSwap(it) { return /podmien/i.test(it.usedBy || ""); }
+function isProtected(it) { return !!(it.usedBy && String(it.usedBy).trim()) && !mentionsSwap(it); }
+function fmtDur(sec) {
+  if (sec < 1) return Math.round(sec * 1000) + " ms";
+  return (Math.round(sec * 100) / 100).toFixed(2) + " s";
+}
+function scoreColor(score) {
+  if (score >= 8.3) return "#5fbf8a";
+  if (score >= 6) return "#e0a44a";
+  return "#d9678f";
+}
+function pyQuote(s) {
+  return '"' + String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+}
+function pyNum(n) {
+  if (!isFinite(n)) return "0";
+  if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n).toFixed(1);
+  return String(Math.round(n * 1000) / 1000);
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const allowed = { accept: 1, reject: 1, swap: 1 };
+    if (data && data.decisions && typeof data.decisions === "object") {
+      decisions = {};
+      Object.keys(data.decisions).forEach(function (k) {
+        if (BY_ID.has(k) && allowed[data.decisions[k]]) decisions[k] = data.decisions[k];
+      });
+    }
+    if (BY_ID.has(data.activeKick)) activeKick = data.activeKick;
+    if (BY_ID.has(data.active808)) active808 = data.active808;
+    if (typeof data.bpm === "number") bpm = clamp(Math.round(data.bpm), 115, 165);
+    if (typeof data.autoSwap === "boolean") autoSwap = data.autoSwap;
+    if (data.tab === "kicks" || data.tab === "basses" || data.tab === "current" || data.tab === "all") tab = data.tab;
+    if (data.filter === "all" || data.filter === "todo" || data.filter === "accept" || data.filter === "reject") filter = data.filter;
+    if (typeof data.q === "string") query = data.q;
+    if (BY_ID.has(data.selected)) selected = data.selected;
+  } catch (e) { /* zostaw domyślne */ }
+}
+function saveStore() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      v: 1,
+      decisions: decisions,
+      activeKick: activeKick,
+      active808: active808,
+      bpm: bpm,
+      autoSwap: autoSwap,
+      tab: tab,
+      filter: filter,
+      q: query,
+      selected: selected
+    }));
+  } catch (e) { /* prywatny tryb */ }
+}
+
+function visibleItems() {
+  const q = query.trim().toLowerCase();
+  return ITEMS.filter(function (it) {
+    if (tab === "kicks" && it.section !== "proposed_kick") return false;
+    if (tab === "basses" && it.section !== "proposed_808") return false;
+    if (tab === "current" && String(it.section).indexOf("existing") !== 0) return false;
+    const d = decisions[it.uid] || "";
+    if (filter === "todo" && d) return false;
+    if (filter === "accept" && d !== "accept") return false;
+    if (filter === "reject" && d !== "reject") return false;
+    if (q) {
+      const hay = [it.name, it.slug, it.note, it.archetype, it.uploader, it.origTitle, it.uid, it.sourceId, it.usedBy || ""].join(" ").toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function counts() {
+  const c = { accept: 0, reject: 0, swap: 0, todo: 0 };
+  ITEMS.forEach(function (it) {
+    const d = decisions[it.uid];
+    if (d === "accept") c.accept++;
+    else if (d === "reject") c.reject++;
+    else if (d === "swap") c.swap++;
+    else c.todo++;
+  });
+  return c;
+}
+
+function recommendMap() {
+  const out = {};
+  ITEMS.forEach(function (it) {
+    if (isProposed(it)) {
+      out[it.uid] = it.score >= 8.3 ? "accept" : "reject";
+      return;
+    }
+    if (it.score >= 6) { out[it.uid] = "accept"; return; }
+    if (mentionsSwap(it)) { out[it.uid] = "swap"; return; }
+    if (isProtected(it)) return;
+    out[it.uid] = "reject";
+  });
+  return out;
+}
+function applyRecommendation() {
+  decisions = recommendMap();
+  saveStore();
+  renderList();
+  paintCounts();
+}
+function clearDecisions() {
+  decisions = {};
+  saveStore();
+  renderList();
+  paintCounts();
+}
+
+function brief(it) {
+  const row = {
+    uid: it.uid,
+    slug: it.slug,
+    name: it.name,
+    kind: it.kind,
+    score: it.score,
+    sourceId: it.sourceId,
+    root: it.root,
+    maxS: it.maxS
+  };
+  if (it.drive > 0) row.drive = it.drive;
+  if (it.usedBy) row.usedBy = it.usedBy;
+  return row;
+}
+function picksLine(it) {
+  const group = it.kind === "808" ? "Bass" : "Kicks";
+  const head = "(" + [pyQuote(it.slug), pyQuote(it.name), pyQuote(group), pyQuote(it.sourceId), pyNum(it.maxS), String(it.root || 0)].join(", ");
+  if (it.drive > 0) return "    " + head + ", {\"drive\": " + pyNum(it.drive) + "}),";
+  return "    " + head + "),";
+}
+function freesoundLine(it) {
+  const id = String(it.sourceId || "");
+  if (id.indexOf("fs:") !== 0) return "";
+  const num = id.slice(3);
+  return "    " + pyQuote(num) + ": (" + pyQuote(it.url) + ", " + pyQuote(it.uploader) + ", " + pyQuote(it.origTitle) + "),";
+}
+function buildExport() {
+  const buckets = {
+    accepted_proposed: [],
+    rejected_proposed: [],
+    keep_existing: [],
+    drop_existing: [],
+    swap_existing: [],
+    undecided: []
+  };
+  ITEMS.forEach(function (it) {
+    const d = decisions[it.uid] || "";
+    const row = brief(it);
+    if (isProposed(it)) {
+      if (d === "accept") buckets.accepted_proposed.push(row);
+      else if (d === "reject") buckets.rejected_proposed.push(row);
+      else buckets.undecided.push(row);
+    } else if (d === "accept") buckets.keep_existing.push(row);
+    else if (d === "reject") buckets.drop_existing.push(row);
+    else if (d === "swap") buckets.swap_existing.push(row);
+    else buckets.undecided.push(row);
+  });
+  const fsLines = [];
+  const pickLines = [];
+  buckets.accepted_proposed.forEach(function (row) {
+    const it = itemOf(row.uid);
+    const fs = freesoundLine(it);
+    if (fs) fsLines.push(fs);
+    pickLines.push(picksLine(it));
+  });
+  const payload = {
+    accepted_proposed: buckets.accepted_proposed,
+    rejected_proposed: buckets.rejected_proposed,
+    keep_existing: buckets.keep_existing,
+    drop_existing: buckets.drop_existing,
+    swap_existing: buckets.swap_existing,
+    undecided: buckets.undecided,
+    freesound_py: fsLines.join("\n"),
+    picks_py: pickLines.join("\n")
+  };
+  const lines = [];
+  lines.push("SYNKOPA — decyzje audycji Trap Kicks i 808");
+  lines.push("accepted_proposed: " + buckets.accepted_proposed.length);
+  lines.push("rejected_proposed: " + buckets.rejected_proposed.length);
+  lines.push("keep_existing: " + buckets.keep_existing.length);
+  lines.push("drop_existing: " + buckets.drop_existing.length);
+  lines.push("swap_existing: " + buckets.swap_existing.length + "  (zostaw plik, podmień źródło in-place)");
+  lines.push("undecided: " + buckets.undecided.length);
+  lines.push("");
+  lines.push(JSON.stringify(payload, null, 2));
+  lines.push("");
+  lines.push("# Wklej do FREESOUND w scripts/make-factory-library.py");
+  lines.push(fsLines.join("\n") || "# (brak zaakceptowanych propozycji z Freesound)");
+  lines.push("");
+  lines.push("# Wklej do PICKS w scripts/make-factory-library.py");
+  lines.push(pickLines.join("\n") || "# (brak zaakceptowanych propozycji)");
+  const warned = buckets.drop_existing.filter(function (r) { return r.usedBy; });
+  if (warned.length) {
+    lines.push("");
+    lines.push("# UWAGA: odrzucone pliki, które są gdzieś używane");
+    warned.forEach(function (r) { lines.push("# " + r.slug + " — " + r.usedBy); });
+  }
+  return { payload: payload, text: lines.join("\n") };
+}
+
+function sectionLabel(section) {
+  if (section === "proposed_kick") return "Nowe Trap Kicks";
+  if (section === "proposed_808") return "Nowe Trap 808";
+  if (section === "existing_kick") return "Obecne kicki";
+  if (section === "existing_808") return "Obecne 808";
+  return section;
+}
+
+function rowHtml(it) {
+  const d = decisions[it.uid] || "";
+  const cls = ["row", it.kind === "808" ? "is-808" : "is-kick"];
+  if (it.uid === selected) cls.push("is-sel");
+  if (d === "accept") cls.push("is-accept");
+  else if (d === "reject") cls.push("is-reject");
+  else if (d === "swap") cls.push("is-swap");
+  if (!cache.has(it.uid) && !errors.has(it.uid)) cls.push("is-loading");
+  const active = (it.kind === "kick" && it.uid === activeKick) || (it.kind === "808" && it.uid === active808);
+  const pitches = it.kind === "808"
+    ? '<div class="pitches">' + PITCHES.map(function (p) {
+      return '<button type="button" class="pitch" data-pitch="' + p.midi + '">' + p.name + "</button>";
+    }).join("") + "</div>"
+    : "";
+  const warn = it.usedBy && String(it.usedBy).trim()
+    ? '<div class="warn"><i>W UŻYCIU</i>' + esc(it.usedBy) + "</div>"
+    : "";
+  const flags = (active ? '<span class="bitflag">W BICIE</span>' : "") + (d === "swap" ? '<span class="swapflag">PODMIANA</span>' : "");
+  return '<article class="' + cls.join(" ") + '" data-uid="' + esc(it.uid) + '">' +
+    '<button type="button" class="play" aria-label="Odtwórz ' + esc(it.name) + '"><i class="tri"></i></button>' +
+    '<div class="meta">' +
+      '<div class="line1"><button type="button" class="name">' + esc(it.name) + "</button>" + flags +
+        '<span class="score" style="color:' + scoreColor(it.score) + '">' + Number(it.score).toFixed(1) + "/10</span></div>" +
+      '<div class="line2"><span class="slug">' + esc(it.slug) + '</span><span class="arch">' + esc(it.archetype || "") + "</span></div>" +
+      '<div class="metrics"><span>' + fmtDur(it.dur) + "</span><span>" + esc(it.rootName || "—") + "</span>" +
+        '<span class="m sub">S ' + Number(it.subPct).toFixed(1) + "</span>" +
+        '<span class="m punch">P ' + Number(it.punchPct).toFixed(1) + "</span>" +
+        "<span>M " + Number(it.midPct).toFixed(1) + "</span></div>" +
+      '<p class="note" title="' + esc(it.note || "") + '">' + esc(it.note || "") + "</p>" +
+      '<div class="src"><a href="' + esc(it.pageUrl || it.url) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(it.origTitle || "") + " · " + esc(it.uploader || "") + "</a> · " + esc(it.license || "CC0") + "</div>" +
+      warn +
+    "</div>" +
+    '<div class="wave"><canvas data-uid="' + esc(it.uid) + '" aria-label="Fala ' + esc(it.name) + '"></canvas>' + pitches + "</div>" +
+    '<div class="acts">' +
+      '<button type="button" class="btn tiny act-bit' + (active ? " bit on" : "") + '">Do bitu</button>' +
+      '<button type="button" class="btn tiny act-acc' + (d === "accept" ? " go on" : "") + '" aria-pressed="' + (d === "accept") + '">Akceptuj</button>' +
+      '<button type="button" class="btn tiny act-rej' + (d === "reject" ? " danger on" : "") + '" aria-pressed="' + (d === "reject") + '">Odrzuć</button>' +
+    "</div></article>";
+}
+
+function renderList() {
+  const vis = visibleItems();
+  if (!vis.length) {
+    listEl.innerHTML = '<div class="empty">Nic nie pasuje do tego filtra.</div>';
+    return;
+  }
+  let html = "";
+  let last = "";
+  const heads = tab === "all" || tab === "current";
+  vis.forEach(function (it) {
+    if (heads && it.section !== last) {
+      last = it.section;
+      html += '<div class="sec">' + esc(sectionLabel(it.section)) + "</div>";
+    }
+    html += rowHtml(it);
+  });
+  listEl.innerHTML = html;
+  vis.forEach(function (it) {
+    if (peaks.has(it.uid)) drawWave(it.uid, playheadRatio(it.uid, ctx ? ctx.currentTime : 0));
+    else drawWave(it.uid, null);
+  });
+  observeRows();
+}
+function rowEl(uid) {
+  const all = listEl.querySelectorAll(".row");
+  for (let i = 0; i < all.length; i++) if (all[i].dataset.uid === uid) return all[i];
+  return null;
+}
+function patchRow(uid) {
+  const el = rowEl(uid);
+  const it = itemOf(uid);
+  if (!el || !it) return;
+  const d = decisions[uid] || "";
+  el.classList.toggle("is-sel", uid === selected);
+  el.classList.toggle("is-accept", d === "accept");
+  el.classList.toggle("is-reject", d === "reject");
+  el.classList.toggle("is-swap", d === "swap");
+  const acc = el.querySelector(".act-acc");
+  const rej = el.querySelector(".act-rej");
+  const bit = el.querySelector(".act-bit");
+  acc.classList.toggle("on", d === "accept");
+  acc.classList.toggle("go", d === "accept");
+  acc.setAttribute("aria-pressed", d === "accept" ? "true" : "false");
+  rej.classList.toggle("on", d === "reject");
+  rej.classList.toggle("danger", d === "reject");
+  rej.setAttribute("aria-pressed", d === "reject" ? "true" : "false");
+  const active = (it.kind === "kick" && uid === activeKick) || (it.kind === "808" && uid === active808);
+  bit.classList.toggle("on", active);
+  bit.classList.toggle("bit", active);
+  let flag = el.querySelector(".bitflag");
+  if (active && !flag) {
+    flag = document.createElement("span");
+    flag.className = "bitflag";
+    flag.textContent = "W BICIE";
+    el.querySelector(".name").after(flag);
+  } else if (!active && flag) flag.remove();
+  let swap = el.querySelector(".swapflag");
+  if (d === "swap" && !swap) {
+    swap = document.createElement("span");
+    swap.className = "swapflag";
+    swap.textContent = "PODMIANA";
+    (el.querySelector(".bitflag") || el.querySelector(".name")).after(swap);
+  } else if (d !== "swap" && swap) swap.remove();
+}
+function paintSelection() {
+  listEl.querySelectorAll(".row").forEach(function (el) {
+    el.classList.toggle("is-sel", el.dataset.uid === selected);
+  });
+}
+function paintPlayButtons() {
+  const now = ctx ? ctx.currentTime : 0;
+  listEl.querySelectorAll(".row").forEach(function (el) {
+    const on = playheadRatio(el.dataset.uid, now) != null;
+    const btn = el.querySelector(".play");
+    if (btn) btn.classList.toggle("is-on", on);
+  });
+}
+
+let io = null;
+function observeRows() {
+  if (io) io.disconnect();
+  if (!("IntersectionObserver" in window)) {
+    visibleItems().forEach(function (it) { requestLoad(it, false); });
+    return;
+  }
+  io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      const it = itemOf(e.target.dataset.uid);
+      if (it) requestLoad(it, false);
+    });
+  }, { root: listEl, rootMargin: "240px 0px" });
+  listEl.querySelectorAll(".row").forEach(function (el) { io.observe(el); });
+}
+
+function paintCounts() {
+  const c = counts();
+  document.getElementById("counts").innerHTML =
+    "Zaakceptowane <b>" + c.accept + "</b> · Odrzucone <b>" + c.reject + "</b> · Podmiana <b>" + c.swap +
+    "</b> · Do oceny <b>" + c.todo + "</b> · widoczne " + visibleItems().length;
+  document.querySelectorAll(".pill").forEach(function (p) {
+    const id = p.dataset.filter;
+    const n = id === "all" ? ITEMS.length : id === "todo" ? c.todo : id === "accept" ? c.accept : c.reject;
+    const base = id === "all" ? "Wszystkie" : id === "todo" ? "Do oceny" : id === "accept" ? "Zaakceptowane" : "Odrzucone";
+    p.textContent = base + " (" + n + ")";
+    p.classList.toggle("on", filter === id);
+  });
+  document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("on", t.dataset.tab === tab); });
+}
+function paintActive() {
+  const k = itemOf(activeKick);
+  const b = itemOf(active808);
+  const kn = document.getElementById("activeKickName");
+  const bn = document.getElementById("activeBassName");
+  kn.textContent = k ? k.name : "—";
+  bn.textContent = b ? b.name : "—";
+  listEl.querySelectorAll(".row").forEach(function (el) { patchRow(el.dataset.uid); });
+}
+function paintBpm() {
+  document.getElementById("bpm").value = String(bpm);
+  document.getElementById("bpmNum").textContent = String(bpm);
+  document.getElementById("beatTitle").textContent = "Test w bicie " + bpm + " BPM";
+}
+function setStatus(text) { document.getElementById("beatStatus").textContent = text; }
+function paintBeatButton() {
+  const b = document.getElementById("btnBeat");
+  b.textContent = beatOn ? "Stop" : "Graj bit";
+  b.classList.toggle("is-stop", beatOn);
+  b.setAttribute("aria-pressed", beatOn ? "true" : "false");
+}
+function updateProgress() {
+  let done = 0;
+  ITEMS.forEach(function (it) { if (cache.has(it.uid) || errors.has(it.uid)) done++; });
+  document.getElementById("loadBar").style.width = (100 * done / ITEMS.length) + "%";
+}
+
+function bootAudio() {
+  if (ctx) return true;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  ctx = new AC();
+  const master = ctx.createGain();
+  master.gain.value = 0.95;
+  previewBus = ctx.createGain();
+  const beatBus = ctx.createGain();
+  beatBus.gain.value = 0.85;
+  kickBus = ctx.createGain();
+  bassBus = ctx.createGain();
+  percBus = ctx.createGain();
+  previewBus.connect(master);
+  kickBus.connect(beatBus);
+  bassBus.connect(beatBus);
+  percBus.connect(beatBus);
+  beatBus.connect(master);
+  master.connect(ctx.destination);
+  const arm = document.getElementById("arm");
+  function syncArm() { arm.hidden = ctx.state === "running"; }
+  ctx.addEventListener("statechange", syncArm);
+  syncArm();
+  return true;
+}
+function unlock() {
+  if (!bootAudio()) return;
+  if (ctx.state === "suspended") ctx.resume();
+}
+
+/* Port scripts/make-factory-library.py prepare(), plus optional tanh drive. */
+function prepareChannels(channels, sampleRate, item) {
+  const sr = sampleRate;
+  const ch = channels.length;
+  const n = channels[0].length;
+  if (item.drive > 0 && n > 0) {
+    let peak = 0;
+    for (let c = 0; c < ch; c++) {
+      const d = channels[c];
+      for (let i = 0; i < n; i++) {
+        const a = d[i] < 0 ? -d[i] : d[i];
+        if (a > peak) peak = a;
+      }
+    }
+    if (peak > 0) {
+      const drive = Math.pow(10, item.drive / 20);
+      for (let c = 0; c < ch; c++) {
+        const d = channels[c];
+        for (let i = 0; i < n; i++) d[i] = Math.tanh((d[i] / peak) * drive);
+      }
+    }
+  }
+  const env = new Float32Array(n);
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    let m = 0;
+    for (let c = 0; c < ch; c++) {
+      const a = channels[c][i];
+      const v = a < 0 ? -a : a;
+      if (v > m) m = v;
+    }
+    env[i] = m;
+    if (m > peak) peak = m;
+  }
+  if (!(peak > 0) || n === 0) return [new Float32Array([0])];
+  const gate = peak * Math.pow(10, -40 / 20);
+  let first = 0;
+  for (; first < n; first++) if (env[first] > gate) break;
+  if (first === n) first = 0;
+  const start = Math.max(0, first - Math.trunc(0.0005 * sr));
+  const trimmed = n - start;
+  const tailGate = peak * 1e-3;
+  let last = -1;
+  for (let i = 0; i < trimmed; i++) if (env[start + i] > tailGate) last = i;
+  const cap = Math.trunc((item.maxS > 0 ? item.maxS : 1) * sr);
+  let end = trimmed;
+  if (last >= 0) end = Math.min(trimmed, last + Math.trunc(0.02 * sr), cap);
+  else end = Math.min(trimmed, cap);
+  if (end < 1) end = 1;
+  const truncated = end < trimmed;
+  let fade = truncated ? Math.max(Math.trunc(0.02 * sr), Math.trunc(0.15 * end)) : Math.trunc(0.01 * sr);
+  if (fade > end) fade = end;
+  if (fade < 1) fade = 1;
+  const leadN = Math.min(Math.trunc(0.0003 * sr), end);
+  const out = [];
+  for (let c = 0; c < ch; c++) out.push(new Float32Array(end));
+  const fadeAt = end - fade;
+  for (let i = 0; i < end; i++) {
+    let g = 1;
+    if (i >= fadeAt) {
+      const k = i - fadeAt;
+      const ang = fade === 1 ? 0 : (k * Math.PI) / (fade - 1);
+      g *= Math.cos(ang) * 0.5 + 0.5;
+    }
+    if (start > 0 && leadN > 0 && i < leadN) {
+      g *= leadN === 1 ? (i === 0 ? 0 : 1) : i / (leadN - 1);
+    }
+    for (let c = 0; c < ch; c++) out[c][i] = channels[c][start + i] * g;
+  }
+  let outPeak = 0;
+  for (let c = 0; c < ch; c++) {
+    const d = out[c];
+    for (let i = 0; i < end; i++) {
+      const a = d[i] < 0 ? -d[i] : d[i];
+      if (a > outPeak) outPeak = a;
+    }
+  }
+  if (outPeak > 0) {
+    const norm = Math.pow(10, -1 / 20) / outPeak;
+    for (let c = 0; c < ch; c++) {
+      const d = out[c];
+      for (let i = 0; i < end; i++) d[i] *= norm;
+    }
+  }
+  if (ch >= 2) {
+    let mono = true;
+    const a = out[0];
+    const b = out[1];
+    for (let i = 0; i < end; i++) {
+      const diff = a[i] - b[i];
+      if ((diff < 0 ? -diff : diff) >= 1e-4) { mono = false; break; }
+    }
+    if (mono) return [out[0]];
+  }
+  return out;
+}
+
+function computePeaks(buffer, bins) {
+  const n = buffer.length;
+  const ch = buffer.numberOfChannels;
+  const data = [];
+  for (let c = 0; c < ch; c++) data.push(buffer.getChannelData(c));
+  const pk = new Float32Array(bins * 2);
+  for (let i = 0; i < bins; i++) {
+    const a = Math.floor(i * n / bins);
+    const b = Math.max(a + 1, Math.floor((i + 1) * n / bins));
+    let mn = 0;
+    let mx = 0;
+    for (let c = 0; c < ch; c++) {
+      const d = data[c];
+      for (let s = a; s < b && s < n; s++) {
+        const v = d[s];
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+    }
+    pk[i * 2] = mn;
+    pk[i * 2 + 1] = mx;
+  }
+  return pk;
+}
+
+function decodeBuffer(raw) {
+  const copy = raw.slice(0);
+  const result = ctx.decodeAudioData(copy);
+  if (result && typeof result.then === "function") return result;
+  return new Promise(function (resolve, reject) {
+    ctx.decodeAudioData(raw.slice(0), resolve, reject);
+  });
+}
+function audioBufferFrom(channels, sampleRate) {
+  const buf = ctx.createBuffer(channels.length, channels[0].length, sampleRate);
+  for (let c = 0; c < channels.length; c++) buf.copyToChannel(channels[c], c);
+  return buf;
+}
+
+function requestLoad(item, priority) {
+  if (!item) return Promise.resolve(null);
+  if (cache.has(item.uid)) return Promise.resolve(cache.get(item.uid));
+  if (inflight.has(item.uid)) {
+    if (priority) {
+      const i = queue.findIndex(function (job) { return job.item.uid === item.uid; });
+      if (i > 0) queue.unshift(queue.splice(i, 1)[0]);
+    }
+    return inflight.get(item.uid);
+  }
+  let resolve, reject;
+  const promise = new Promise(function (res, rej) { resolve = res; reject = rej; });
+  inflight.set(item.uid, promise);
+  const job = { item: item, resolve: resolve, reject: reject };
+  if (priority) queue.unshift(job);
+  else queue.push(job);
+  pump();
+  return promise;
+}
+function pump() {
+  while (activeLoads < 3 && queue.length) {
+    const job = queue.shift();
+    activeLoads++;
+    fetchAndPrepare(job.item).then(job.resolve, job.reject).finally(function () {
+      inflight.delete(job.item.uid);
+      activeLoads--;
+      pump();
+    });
+  }
+}
+async function fetchAndPrepare(item) {
+  if (!bootAudio()) throw new Error("brak AudioContext");
+  const urls = [];
+  const http = location.protocol.startsWith("http");
+  if (http && item.localRel) urls.push({ href: item.localRel, local: true });
+  if (item.url) urls.push({ href: item.url, local: false });
+  let last = "brak adresu";
+  for (let u = 0; u < urls.length; u++) {
+    try {
+      const res = await fetch(urls[u].href);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const raw = await res.arrayBuffer();
+      const decoded = await decodeBuffer(raw);
+      const channels = [];
+      for (let c = 0; c < decoded.numberOfChannels; c++) channels.push(new Float32Array(decoded.getChannelData(c)));
+      /* Plik z biblioteki jest już po drive+prepare. Drugi tanh zepsułby bass-808-drive. */
+      const spec = urls[u].local ? Object.assign({}, item, { drive: 0 }) : item;
+      const prepared = prepareChannels(channels, decoded.sampleRate, spec);
+      const buf = audioBufferFrom(prepared, decoded.sampleRate);
+      cache.set(item.uid, buf);
+      peaks.set(item.uid, computePeaks(buf, 1024));
+      errors.delete(item.uid);
+      const el = rowEl(item.uid);
+      if (el) el.classList.remove("is-loading");
+      drawWave(item.uid, null);
+      updateProgress();
+      return buf;
+    } catch (e) {
+      last = e && e.message ? e.message : String(e);
+    }
+  }
+  errors.set(item.uid, last);
+  const el = rowEl(item.uid);
+  if (el) el.classList.remove("is-loading");
+  drawWave(item.uid, null);
+  updateProgress();
+  throw new Error(last);
+}
+
+function drawWave(uid, pos) {
+  const canvas = listEl.querySelector('canvas[data-uid="' + String(uid).replace(/"/g, "") + '"]');
+  if (!canvas) return;
+  const cssW = canvas.clientWidth;
+  const cssH = canvas.clientHeight;
+  if (cssW < 2 || cssH < 2) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const pw = Math.max(1, Math.floor(cssW * dpr));
+  const ph = Math.max(1, Math.floor(cssH * dpr));
+  if (canvas.width !== pw || canvas.height !== ph) {
+    canvas.width = pw;
+    canvas.height = ph;
+  }
+  const g = canvas.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, cssW, cssH);
+  g.fillStyle = "#2a3140";
+  g.fillRect(0, (cssH / 2) - 0.5, cssW, 1);
+  const it = itemOf(uid);
+  const pk = peaks.get(uid);
+  if (!pk) {
+    g.fillStyle = "#7d8592";
+    g.font = "11px ui-monospace, monospace";
+    g.fillText(errors.has(uid) ? "nie wczytano — kliknij, aby ponowić" : "dekodowanie", 8, cssH / 2 - 6);
+    return;
+  }
+  const color = it && it.kind === "808" ? "#e06b55" : "#4f8ef7";
+  g.fillStyle = color;
+  const bins = pk.length / 2;
+  const mid = cssH / 2;
+  const amp = mid - 2;
+  for (let x = 0; x < cssW; x++) {
+    const i0 = Math.floor(x / cssW * bins);
+    const i1 = Math.max(i0 + 1, Math.floor((x + 1) / cssW * bins));
+    let mn = 0;
+    let mx = 0;
+    for (let i = i0; i < i1 && i < bins; i++) {
+      const a = pk[i * 2];
+      const b = pk[i * 2 + 1];
+      if (a < mn) mn = a;
+      if (b > mx) mx = b;
+    }
+    const y1 = mid - mx * amp;
+    const y2 = mid - mn * amp;
+    g.fillRect(x, y1, 1, Math.max(1, y2 - y1));
+  }
+  if (pos != null && pos >= 0 && pos <= 1) {
+    g.fillStyle = "#eef1f5";
+    g.fillRect(Math.round(pos * (cssW - 1)), 0, 1, cssH);
+  }
+}
+
+function noteHit(v) {
+  hits.push(v);
+  if (hits.length > 80) hits.splice(0, hits.length - 80);
+}
+function playheadRatio(uid, now) {
+  let best = null;
+  let bestWhen = -1;
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h.uid !== uid || h.choked && h.when + 0.02 < now) continue;
+    const span = Math.max(0.001, (h.dur - h.offset) / h.rate);
+    const end = h.when + span;
+    if (now >= h.when && now <= end && h.when >= bestWhen) {
+      bestWhen = h.when;
+      best = (h.offset + (now - h.when) * h.rate) / h.dur;
+    }
+  }
+  return best;
+}
+function choke(voice, when) {
+  if (!voice || voice.choked) return;
+  voice.choked = true;
+  const t = Math.max(when, ctx.currentTime);
+  try { voice.src.stop(t + 0.012); } catch (e) { /* już zatrzymany */ }
+  try {
+    const g = voice.gain.gain;
+    g.cancelScheduledValues(t);
+    const from = voice.kind === "hat" || voice.kind === "clap" ? (g.value || 0.0001) : voice.level;
+    g.setValueAtTime(Math.max(0.0001, from), t);
+    g.linearRampToValueAtTime(0, t + 0.008);
+  } catch (e) {
+    try { voice.gain.gain.value = 0; } catch (e2) {}
+  }
+}
+function spawn(buffer, when, rate, offset, level, bus) {
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.playbackRate.value = rate;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(level, when);
+  src.connect(gain);
+  gain.connect(bus);
+  const off = Math.max(0, Math.min(offset || 0, Math.max(0, buffer.duration - 0.001)));
+  src.start(when, off);
+  return { src: src, gain: gain, level: level, when: when, rate: rate, offset: off, dur: buffer.duration, choked: false };
+}
+function fireKick(buffer, when, level, bus, uid, offset) {
+  choke(voices.kick, when);
+  const v = spawn(buffer, when, 1, offset || 0, level, bus);
+  v.uid = uid;
+  v.kind = "kick";
+  voices.kick = v;
+  noteHit(v);
+  lastTrigger = { kind: "kick", uid: uid, rate: 1, when: when };
+  return v;
+}
+function fireBass(buffer, when, midi, root, level, bus, uid, offset) {
+  const rate = Math.pow(2, (midi - root) / 12);
+  choke(voices.bass, when);
+  const v = spawn(buffer, when, rate, offset || 0, level, bus);
+  v.uid = uid;
+  v.kind = "bass";
+  v.midi = midi;
+  v.preview = level > 0.5;
+  voices.bass = v;
+  noteHit(v);
+  lastTrigger = { kind: "bass", uid: uid, midi: midi, rate: rate, when: when };
+  return v;
+}
+function firePreview(buffer, when, rate, offset, level, uid) {
+  choke(previewVoice, when);
+  const v = spawn(buffer, when, rate, offset, level, previewBus);
+  v.uid = uid;
+  v.kind = "preview";
+  v.preview = true;
+  previewVoice = v;
+  noteHit(v);
+  lastTrigger = { kind: "preview", uid: uid, rate: rate, when: when };
+  return v;
+}
+function fireHat(buffer, when, vel) {
+  const level = Math.max(0.0001, GAIN.hat * (vel / 0.7));
+  const v = spawn(buffer, when, 1, 0, level, percBus);
+  const decay = vel > 0.45 ? 0.07 : 0.04;
+  try {
+    v.gain.gain.setValueAtTime(level, when);
+    v.gain.gain.exponentialRampToValueAtTime(0.0001, when + decay);
+  } catch (e) {}
+  try { v.src.stop(when + decay + 0.015); } catch (e) {}
+  v.kind = "hat";
+  v.uid = HAT.uid;
+  tails.push(v);
+}
+function fireClap(buffer, when) {
+  const v = spawn(buffer, when, 1, 0, GAIN.clap, percBus);
+  v.kind = "clap";
+  v.uid = CLAP.uid;
+  tails.push(v);
+}
+
+function playItem(item, opts) {
+  if (!item) return;
+  opts = opts || {};
+  if (!opts._token) opts._token = ++playToken;
+  const cause = opts.cause || "click";
+  if (!opts.keepSelection) {
+    selected = item.uid;
+    paintSelection();
+    if (cause === "nav") {
+      const el = rowEl(item.uid);
+      if (el) el.scrollIntoView({ block: "nearest" });
+    }
+  }
+  unlock();
+  if (!bootAudio()) return;
+  const buf = cache.get(item.uid);
+  if (!buf) {
+    const el = rowEl(item.uid);
+    if (el) el.classList.add("is-loading");
+    requestLoad(item, true).then(function () {
+      if (opts._token !== playToken) return;
+      playItem(item, opts);
+    }).catch(function () { drawWave(item.uid, null); });
+    return;
+  }
+  const swap = cause === "bit" || (autoSwap && cause !== "scrub");
+  if (swap && (item.kind === "kick" || item.kind === "808")) {
+    if (item.kind === "kick") activeKick = item.uid;
+    else active808 = item.uid;
+    saveStore();
+    paintActive();
+  } else saveStore();
+  const now = ctx.currentTime + 0.005;
+  const offset = opts.offsetRatio != null ? opts.offsetRatio * buf.duration : 0;
+  if (offset >= buf.duration - 0.001) return;
+  if (!beatOn) {
+    if (previewVoice) choke(previewVoice, now);
+    if (item.kind !== "808" && voices.bass) choke(voices.bass, now);
+    if (item.kind === "808" && voices.kick) choke(voices.kick, now);
+  }
+  if (item.kind === "808") {
+    const midi = opts.midi != null ? opts.midi : (item.root || 24);
+    const solo = !(beatOn && cause !== "scrub");
+    fireBass(buf, now, midi, item.root || 24, solo ? GAIN.bassSolo : GAIN.bassBeat, solo ? previewBus : bassBus, item.uid, offset);
+  } else if (beatOn && swap && cause !== "scrub") {
+    fireKick(buf, now, GAIN.kickBeat, kickBus, item.uid, offset);
+  } else {
+    firePreview(buf, now, 1, offset, GAIN.kickSolo, item.uid);
+  }
+}
+function stopPreview() {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  if (previewVoice) choke(previewVoice, t);
+  previewVoice = null;
+  if (voices.bass && voices.bass.preview) choke(voices.bass, t);
+}
+
+function hatEvents(step, stepDur) {
+  const ev = [];
+  if (step % 2 === 0) ev.push({ offset: 0, vel: step % 8 === 0 ? 0.7 : 0.42 });
+  if (step === 6 || step === 22) {
+    ev.push({ offset: stepDur * 0.5, vel: 0.22 });
+    ev.push({ offset: stepDur * 0.75, vel: 0.26 });
+  }
+  if (step === 7 || step === 23) {
+    const dt = stepDur / 3;
+    ev.push({ offset: 0, vel: 0.24 });
+    ev.push({ offset: dt, vel: 0.3 });
+    ev.push({ offset: dt * 2, vel: 0.36 });
+  }
+  return ev;
+}
+function scheduleStep(step, when) {
+  const stepDur = (60 / bpm) / 4;
+  stepMarks.push({ step: step, when: when });
+  if (stepMarks.length > 64) stepMarks.splice(0, stepMarks.length - 64);
+  if (!mute.kick && KICK_STEPS.indexOf(step) >= 0) {
+    const buf = cache.get(activeKick);
+    if (buf) fireKick(buf, when, GAIN.kickBeat, kickBus, activeKick, 0);
+  }
+  if (!mute.bass && BASS_STEPS[step] != null) {
+    const item = itemOf(active808);
+    const buf = cache.get(active808);
+    if (buf && item) fireBass(buf, when, BASS_STEPS[step], item.root || 24, GAIN.bassBeat, bassBus, item.uid, 0);
+  }
+  if (!mute.perc) {
+    const clap = cache.get(CLAP.uid);
+    const hat = cache.get(HAT.uid);
+    if (clap && CLAP_STEPS.indexOf(step) >= 0) fireClap(clap, when);
+    if (hat) {
+      hatEvents(step, stepDur).forEach(function (ev) { fireHat(hat, when + ev.offset, ev.vel); });
+    }
+  }
+  if (tails.length > 64) {
+    const now = ctx.currentTime;
+    tails = tails.filter(function (v) { return !v.choked && v.when + 1 > now; });
+  }
+}
+function schedulerTick() {
+  if (!beatOn || !ctx) return;
+  const horizon = ctx.currentTime + 0.12;
+  let guard = 0;
+  while (nextTime < horizon && guard < 64) {
+    guard++;
+    if (nextTime < ctx.currentTime - 0.05) {
+      nextTime = ctx.currentTime + 0.05;
+    }
+    if (nextTime >= ctx.currentTime - 0.02) scheduleStep(stepIndex, Math.max(nextTime, ctx.currentTime + 0.005));
+    nextTime += (60 / bpm) / 4;
+    stepIndex = (stepIndex + 1) % 32;
+  }
+  beatTimer = setTimeout(schedulerTick, 25);
+}
+async function startBeat() {
+  if (beatOn) return;
+  unlock();
+  if (!bootAudio()) { setStatus("Ta przeglądarka nie ma Web Audio."); return; }
+  beatOn = true;
+  paintBeatButton();
+  setStatus("Wczytuję próbki bitu…");
+  const jobs = [requestLoad(itemOf(activeKick), true), requestLoad(itemOf(active808), true), requestLoad(CLAP, true), requestLoad(HAT, true)];
+  const settled = await Promise.all(jobs.map(function (p) { return p.then(function () { return true; }, function () { return false; }); }));
+  if (!beatOn) return;
+  const missing = [];
+  if (!settled[0]) missing.push("kick");
+  if (!settled[1]) missing.push("808");
+  if (!settled[2]) missing.push("clap");
+  if (!settled[3]) missing.push("hat");
+  nextTime = ctx.currentTime + 0.06;
+  stepIndex = 0;
+  setStatus(missing.length ? ("Gra bez: " + missing.join(", ")) : ("Gra · " + bpm + " BPM"));
+  schedulerTick();
+}
+function stopBeat() {
+  beatOn = false;
+  clearTimeout(beatTimer);
+  if (ctx) {
+    const t = ctx.currentTime;
+    choke(voices.kick, t);
+    choke(voices.bass, t);
+    tails.forEach(function (v) { choke(v, t); });
+  }
+  tails = [];
+  stepMarks = [];
+  setShownStep(-1);
+  paintBeatButton();
+  setStatus("Stop.");
+}
+function toggleBeat() { if (beatOn) stopBeat(); else startBeat(); }
+
+function setShownStep(step) {
+  if (step === shownStep) return;
+  shownStep = step;
+  const cells = document.getElementById("stepGrid").children;
+  for (let i = 0; i < cells.length; i++) cells[i].classList.toggle("now", i === step);
+}
+function frame() {
+  requestAnimationFrame(frame);
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  let cur = -1;
+  for (let i = stepMarks.length - 1; i >= 0; i--) {
+    if (stepMarks[i].when <= now) { cur = stepMarks[i].step; break; }
+  }
+  if (!beatOn) cur = -1;
+  setShownStep(cur);
+  const need = new Set();
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (!itemOf(h.uid)) continue;
+    const end = h.when + Math.max(0.001, (h.dur - h.offset) / h.rate);
+    if (now >= h.when && now <= end) need.add(h.uid);
+  }
+  if (!frame.prev) frame.prev = new Set();
+  frame.prev.forEach(function (uid) {
+    if (!need.has(uid)) drawWave(uid, null);
+  });
+  need.forEach(function (uid) { drawWave(uid, playheadRatio(uid, now)); });
+  frame.prev = need;
+  paintPlayButtons();
+}
+frame.prev = new Set();
+
+function setDecision(uid, kind, advance) {
+  const it = itemOf(uid);
+  if (!it) return;
+  const vis = visibleItems();
+  const idx = vis.findIndex(function (row) { return row.uid === uid; });
+  const next = idx >= 0 ? vis[idx + 1] : null;
+  if (decisions[uid] === kind) delete decisions[uid];
+  else decisions[uid] = kind;
+  saveStore();
+  const still = visibleItems().some(function (row) { return row.uid === uid; });
+  if (!still) renderList();
+  else patchRow(uid);
+  paintCounts();
+  if (advance && decisions[uid] && next) playItem(next, { cause: "nav" });
+}
+function moveSelection(dir) {
+  const vis = visibleItems();
+  if (!vis.length) return;
+  let idx = vis.findIndex(function (it) { return it.uid === selected; });
+  if (idx < 0) idx = dir > 0 ? -1 : 0;
+  const n = vis[clamp(idx + dir, 0, vis.length - 1)];
+  if (!n || n.uid === selected && idx >= 0) {
+    if (n) playItem(n, { cause: "nav" });
+    return;
+  }
+  playItem(n, { cause: "nav" });
+}
+function triggerPitch(midi) {
+  const sel = itemOf(selected);
+  const item = sel && sel.kind === "808" ? sel : itemOf(active808);
+  if (!item) return;
+  playItem(item, { midi: midi, cause: "pitch", keepSelection: !(sel && sel.kind === "808") });
+}
+function assignToBeat(uid) {
+  const it = itemOf(uid);
+  if (!it) return;
+  playItem(it, { cause: "bit" });
+}
+
+function scrollToItem(uid) {
+  selected = uid;
+  saveStore();
+  const it = itemOf(uid);
+  if (!it) return;
+  const want = it.section.indexOf("proposed_kick") === 0 ? "kicks"
+    : it.section.indexOf("proposed_808") === 0 ? "basses"
+    : "current";
+  if (tab !== "all" && tab !== want) {
+    tab = want;
+    filter = "all";
+    saveStore();
+    renderList();
+    paintCounts();
+  }
+  paintSelection();
+  const el = rowEl(uid);
+  if (el) el.scrollIntoView({ block: "center" });
+}
+
+let lastExport = "";
+function openExport() {
+  const built = buildExport();
+  lastExport = built.text;
+  document.getElementById("exportText").textContent = built.text;
+  document.getElementById("modal").hidden = false;
+  document.getElementById("copyState").textContent = "";
+  copyExport();
+}
+async function copyExport() {
+  const text = lastExport || buildExport().text;
+  lastExport = text;
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch (e) { ok = false; }
+  if (!ok) {
+    try {
+      const pre = document.getElementById("exportText");
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ok = document.execCommand("copy");
+    } catch (e2) { ok = false; }
+  }
+  document.getElementById("copyState").textContent = ok ? "Skopiowano! Wklej w czacie" : "Zaznacz tekst i skopiuj ręcznie";
+  if (ok) {
+    const btn = document.getElementById("btnCopy");
+    const prev = "Kopiuj wynik do schowka";
+    btn.textContent = "Skopiowano! Wklej w czacie";
+    setTimeout(function () { btn.textContent = prev; }, 2200);
+  }
+}
+function downloadJson() {
+  const payload = buildExport().payload;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "sample-decisions.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+}
+function closeModal() { document.getElementById("modal").hidden = true; }
+
+function buildGrid() {
+  const grid = document.getElementById("stepGrid");
+  const kicks = new Set(KICK_STEPS);
+  const claps = new Set(CLAP_STEPS);
+  const hats = new Set();
+  for (let i = 0; i < 32; i += 2) hats.add(i);
+  const rolls = new Set([6, 7, 22, 23]);
+  for (let i = 0; i < 32; i++) {
+    const d = document.createElement("div");
+    d.className = "step" + (i % 16 === 0 ? " bar" : i % 4 === 0 ? " beat" : "");
+    if (i === 0) d.dataset.bar = "1";
+    if (i === 16) d.dataset.bar = "2";
+    let marks = "";
+    if (kicks.has(i)) marks += '<i class="mk kick"></i>';
+    if (BASS_STEPS[i] != null) marks += '<i class="mk bass"></i>';
+    if (claps.has(i)) marks += '<i class="mk clap"></i>';
+    if (hats.has(i)) marks += '<i class="mk hat"></i>';
+    if (rolls.has(i)) marks += '<i class="mk roll"></i>';
+    d.innerHTML = marks;
+    grid.appendChild(d);
+  }
+}
+function buildPitchButtons() {
+  const host = document.getElementById("transportPitches");
+  PITCHES.forEach(function (p) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pitch";
+    b.textContent = p.name;
+    b.title = p.name + " · MIDI " + p.midi + " · klawisz " + p.key;
+    b.addEventListener("click", function () { triggerPitch(p.midi); });
+    host.appendChild(b);
+  });
+}
+
+function onListClick(e) {
+  const row = e.target.closest(".row");
+  if (!row) return;
+  const uid = row.dataset.uid;
+  const it = itemOf(uid);
+  if (!it) return;
+  if (e.target.closest("a")) return;
+  const pitch = e.target.closest("[data-pitch]");
+  if (pitch) {
+    playItem(it, { midi: Number(pitch.dataset.pitch), cause: "pitch" });
+    return;
+  }
+  if (e.target.closest(".act-bit")) { assignToBeat(uid); return; }
+  if (e.target.closest(".act-acc")) { setDecision(uid, "accept", false); return; }
+  if (e.target.closest(".act-rej")) { setDecision(uid, "reject", false); return; }
+  if (e.target.closest(".play") || e.target.closest(".name")) playItem(it, { cause: "click" });
+}
+function onPointerDown(e) {
+  const canvas = e.target.closest("canvas");
+  if (!canvas || !listEl.contains(canvas)) return;
+  const uid = canvas.dataset.uid;
+  const it = itemOf(uid);
+  if (!it) return;
+  drag = { uid: uid, x: e.clientX, y: e.clientY, moved: false, pointerId: e.pointerId, last: 0 };
+  playItem(it, { cause: "click" });
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+}
+function onPointerMove(e) {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  if (!drag.moved && Math.abs(e.clientX - drag.x) < 4 && Math.abs(e.clientY - drag.y) < 4) return;
+  drag.moved = true;
+  const nowMs = performance.now();
+  if (nowMs - drag.last < 45) return;
+  drag.last = nowMs;
+  const canvas = listEl.querySelector('canvas[data-uid="' + String(drag.uid).replace(/"/g, "") + '"]');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 0.985);
+  const it = itemOf(drag.uid);
+  playItem(it, { cause: "scrub", offsetRatio: ratio });
+}
+function onPointerUp(e) {
+  if (drag && e.pointerId === drag.pointerId) drag = null;
+}
+
+function typingTarget(e) {
+  const t = e.target;
+  if (!t || !t.tagName) return false;
+  const tag = t.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable;
+}
+function onKey(e) {
+  if (e.key === "Escape") {
+    if (!document.getElementById("modal").hidden) { closeModal(); return; }
+  }
+  if (!document.getElementById("modal").hidden) return;
+  if (typingTarget(e)) return;
+  const k = e.key;
+  if (k === "ArrowDown" || k === "ArrowUp") {
+    e.preventDefault();
+    moveSelection(k === "ArrowDown" ? 1 : -1);
+    return;
+  }
+  if (k === " ") {
+    e.preventDefault();
+    const now = ctx ? ctx.currentTime : 0;
+    const active = playheadRatio(selected, now);
+    const previewing = (previewVoice && !previewVoice.choked && previewVoice.uid === selected) ||
+      (voices.bass && voices.bass.preview && !voices.bass.choked && voices.bass.uid === selected);
+    if (active != null && previewing) stopPreview();
+    else playItem(itemOf(selected), { cause: "space" });
+    return;
+  }
+  if (k === "a" || k === "A") { e.preventDefault(); if (!e.repeat) setDecision(selected, "accept", true); return; }
+  if (k === "r" || k === "R" || k === "x" || k === "X") { e.preventDefault(); if (!e.repeat) setDecision(selected, "reject", true); return; }
+  if (k === "b" || k === "B") { e.preventDefault(); if (!e.repeat) toggleBeat(); return; }
+  const pitch = PITCHES.filter(function (p) { return p.key === k; })[0];
+  if (pitch) { e.preventDefault(); if (!e.repeat) triggerPitch(pitch.midi); }
+}
+
+function setMute(which, button) {
+  mute[which] = !mute[which];
+  button.classList.toggle("on", !mute[which]);
+  button.setAttribute("aria-pressed", mute[which] ? "false" : "true");
+  if (!ctx) return;
+  const bus = which === "kick" ? kickBus : which === "bass" ? bassBus : percBus;
+  const t = ctx.currentTime;
+  bus.gain.cancelScheduledValues(t);
+  bus.gain.setValueAtTime(bus.gain.value, t);
+  bus.gain.linearRampToValueAtTime(mute[which] ? 0 : 1, t + 0.01);
+  if (mute[which] && which === "bass") choke(voices.bass, t);
+  if (mute[which] && which === "kick") choke(voices.kick, t);
+}
+
+function init() {
+  loadStore();
+  qEl.value = query;
+  document.getElementById("autoSwap").checked = autoSwap;
+  buildGrid();
+  buildPitchButtons();
+  paintBpm();
+  paintBeatButton();
+  renderList();
+  paintCounts();
+  paintActive();
+  bootAudio();
+  requestLoad(itemOf(activeKick), true);
+  requestLoad(itemOf(active808), true);
+  requestAnimationFrame(function () {
+    visibleItems().slice(0, 8).forEach(function (it) { requestLoad(it, false); });
+  });
+  document.getElementById("btnAi").addEventListener("click", applyRecommendation);
+  document.getElementById("btnAi2").addEventListener("click", applyRecommendation);
+  document.getElementById("btnClear").addEventListener("click", clearDecisions);
+  document.getElementById("btnClear2").addEventListener("click", clearDecisions);
+  document.getElementById("btnCopy").addEventListener("click", openExport);
+  document.getElementById("btnCopy2").addEventListener("click", openExport);
+  document.getElementById("btnCopy3").addEventListener("click", copyExport);
+  document.getElementById("btnDownload").addEventListener("click", downloadJson);
+  document.getElementById("btnDownload2").addEventListener("click", downloadJson);
+  document.getElementById("modalClose").addEventListener("click", closeModal);
+  document.querySelector("#modal .backdrop").addEventListener("click", closeModal);
+  document.getElementById("btnBeat").addEventListener("click", toggleBeat);
+  document.getElementById("bpm").addEventListener("input", function (e) {
+    bpm = clamp(Number(e.target.value), 115, 165);
+    paintBpm();
+    if (beatOn) setStatus("Gra · " + bpm + " BPM");
+    saveStore();
+  });
+  document.getElementById("autoSwap").addEventListener("change", function (e) {
+    autoSwap = !!e.target.checked;
+    saveStore();
+  });
+  document.getElementById("muteKick").addEventListener("click", function (e) { setMute("kick", e.currentTarget); });
+  document.getElementById("muteBass").addEventListener("click", function (e) { setMute("bass", e.currentTarget); });
+  document.getElementById("mutePerc").addEventListener("click", function (e) { setMute("perc", e.currentTarget); });
+  document.getElementById("activeKickName").addEventListener("click", function () { scrollToItem(activeKick); });
+  document.getElementById("activeBassName").addEventListener("click", function () { scrollToItem(active808); });
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      tab = t.dataset.tab;
+      saveStore();
+      renderList();
+      paintCounts();
+    });
+  });
+  document.querySelectorAll(".pill").forEach(function (p) {
+    p.addEventListener("click", function () {
+      filter = p.dataset.filter;
+      saveStore();
+      renderList();
+      paintCounts();
+    });
+  });
+  qEl.addEventListener("input", function () {
+    query = qEl.value;
+    saveStore();
+    renderList();
+    paintCounts();
+  });
+  listEl.addEventListener("click", onListClick);
+  listEl.addEventListener("pointerdown", onPointerDown);
+  listEl.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerUp);
+  window.addEventListener("keydown", onKey);
+  window.addEventListener("pointerdown", unlock, { passive: true });
+  window.addEventListener("resize", function () {
+    const now = ctx ? ctx.currentTime : 0;
+    listEl.querySelectorAll("canvas").forEach(function (c) { drawWave(c.dataset.uid, playheadRatio(c.dataset.uid, now)); });
+  });
+  requestAnimationFrame(frame);
+}
+
+init();
+
+window.__audition = {
+  prepareChannels: prepareChannels,
+  items: ITEMS,
+  pitches: PITCHES,
+  kickSteps: KICK_STEPS,
+  clapSteps: CLAP_STEPS,
+  bassSteps: BASS_STEPS,
+  hatEvents: hatEvents,
+  get decisions() { return decisions; },
+  recommendMap: recommendMap,
+  buildExport: buildExport,
+  catalog: CATALOG,
+  loaded: function () { return cache.size; },
+  failed: function () { return errors.size; },
+  last: function () { return lastTrigger; }
+};
+</script>
+</body>
+</html>
