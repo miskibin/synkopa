@@ -1,7 +1,7 @@
 // Pure helpers of the mixer: strip labels, FL-style channel routing (Ctrl+L / Shift+Ctrl+L),
 // the Channel Rack's multi-selection and the Mix view's snapshot of the arrange layout.
 // Tested in mixer.test.ts.
-import type { Id } from '../api/types';
+import { VOL_UNITY, type Id, type Insert, type Op, type Project } from '../api/types';
 import type { UiState } from '../state/ui';
 
 /** A name the app gave an insert ("Insert 7"): the strip shows only its number then. */
@@ -75,4 +75,31 @@ export function takeArrange(u: Arrange): Arrange {
 /** The patch that puts a taken layout back (fresh copies, so the snapshot stays reusable). */
 export function restoreArrange(a: Arrange): Partial<UiState> {
   return takeArrange(a);
+}
+
+/**
+ * The insert FL's "route to a free mixer track" picks: the first one (in mixer order, never the
+ * Master) with no effects that nothing plays into: no channel, no playlist track, no audio clip
+ * routed to it and no insert sending to it. Null when every insert is in use.
+ */
+export function freeInsert(p: Project): Insert | null {
+  const used = new Set<Id>();
+  for (const c of p.channels ?? []) if (c.insert != null) used.add(c.insert);
+  for (const t of p.tracks) used.add(t.insert);
+  for (const c of p.clips) if (c.insert != null) used.add(c.insert);
+  for (const m of p.inserts) for (const s of m.sends ?? []) used.add(s.to);
+  return p.inserts.find(m => m.id !== 0 && !m.fx.length && !used.has(m.id)) ?? null;
+}
+
+/**
+ * Give `name` (a channel or a sample) a mixer insert of its own: the first free one, else a new one
+ * after the last, named and coloured after it (FL). `route` makes the ops that send it there.
+ * Returns the insert and every op, to commit as one undo step.
+ */
+export function routeToFreeInsert(p: Project, name: string, color: string, newId: () => Id, route: (id: Id) => Op[]): { insert: Insert; ops: Op[]; created: boolean } {
+  const free = freeInsert(p);
+  const insert: Insert = free
+    ? { ...free, name, color }
+    : { id: newId(), name, color, vol: VOL_UNITY, pan: 0, muted: false, solo: false, fx: [] };
+  return { insert, ops: [{ op: 'putInsert', insert }, ...route(insert.id)], created: !free };
 }

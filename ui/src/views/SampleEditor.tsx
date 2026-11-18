@@ -372,7 +372,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
     header={<>
       <InsertPicker value={c().insert != null && S.project.inserts.some(m => m.id === c().insert) ? c().insert! : null} master
         nullLabel={t('d.smp.likeTrack', { name: insName(S.project.inserts.find(m => m.id === trackInsert()) ?? S.project.inserts[0]) })}
-        ops={insert => [put({ insert })]}
+        ops={insert => [put({ insert })]} free={{ name: src().name, color: src().color }}
         label={t('d.smp.routing')} wheelKey={id + 'route'} title={t('d.smp.mixer.tip', { track: S.project.tracks[c().track]?.name ?? '' })} />
       <button class="smallbtn" title={t('d.smp.pitchEd.tip')} onClick={() => { const cid = c().id; A.stopSamplePreview(); A.openPitchEditor(cid); }}>
         {t('d.smp.pitchEd')}{c().tune ? ' •' : ''}
@@ -481,7 +481,7 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
     fileInfo={<Show when={src()}>{file => (file().dur * (s().end - s().start)).toFixed(2) + ' s · ' + fileFormat(file())}</Show>}
     fileAction={<button class="smallbtn" onClick={() => void replaceWithFile(c())} title={t('b.cw.changeSampleTitle')}>{t('b.cw.changeSampleBtn')}</button>}
     header={<>
-      <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={insert => [chanOp(c(), { insert })]}
+      <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={insert => [chanOp(c(), { insert })]} free={{ name: c().name, color: c().color }}
         label={t('d.smp.routing')} wheelKey={id + 'route'} title={t('b.cw.mixerTip')} />
       <PitchCorrectButton insert={() => chanHeardInsert(c())} />
     </>}

@@ -110,7 +110,7 @@ function Body(props: { w: Win; c: Channel }) {
         <span class="title">{c().name}</span>
         <span class="sub">{t(c().kind === 'synth' ? 'b.cw.kSynth' : c().kind === 'plugin' ? 'b.cw.kPlugin' : 'b.cw.kKeys')}</span>
         <div style={{ flex: 1 }} />
-        <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={id => [chanOp(live(), { insert: id })]} label={t('b.pe.mixCh')}
+        <InsertPicker value={c().insert} nullLabel={t('b.cw.likeClipTrack')} ops={id => [chanOp(live(), { insert: id })]} label={t('b.pe.mixCh')} free={{ name: c().name, color: c().color }}
           wheelKey={'cwroute' + props.c.id} title={t('b.cw.mixerTip')} />
         <button class="iconbtn" title={t('b.cw.previewTitle')} onClick={() => audition(c().id, undefined, 0.9, true)}>▶</button>
         <button class="closebtn" title={t('b.cw.close')} onClick={closeChannelWindow}>×</button>

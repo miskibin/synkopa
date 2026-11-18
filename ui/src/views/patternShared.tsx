@@ -78,7 +78,7 @@ export function insTitle(c: Channel): string {
 }
 /** A channel's mixer box as an insert choice (the same one the channel window's MIXER picker makes). */
 export function chanInsertChoice(c: Channel): InsertChoice {
-  return { value: c.insert ?? null, nullLabel: t('b.cw.likeClipTrack'), ops: insert => [chanOp(c, { insert })], label: t('b.pe.mixCh'), wheelKey: 'cins' + c.id };
+  return { value: c.insert ?? null, nullLabel: t('b.cw.likeClipTrack'), ops: insert => [chanOp(c, { insert })], label: t('b.pe.mixCh'), wheelKey: 'cins' + c.id, free: { name: c.name, color: c.color } };
 }
 
 export function insertMenu(c: Channel, x: number, y: number) {

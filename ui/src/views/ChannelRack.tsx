@@ -28,7 +28,7 @@ import { channelIcon, InstIcon } from '../ui/instIcons';
 import { MiniKnob, NumField, parseNum } from '../ui/Knob';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
-import { wheelInsert } from '../ui/InsertPicker';
+import { pickFreeInsert, wheelInsert } from '../ui/InsertPicker';
 import { showInsert } from '../state/mixView';
 import { toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
@@ -443,7 +443,8 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
   let insTimer = 0;
   onCleanup(() => clearTimeout(insTimer));
   const insClick = (e: MouseEvent) => {
-    if (insTimer) { clearTimeout(insTimer); insTimer = 0; if (c().insert == null) say(t('b.pe.insAutoGo')); else showInsert(c().insert); return; }
+    // FL: a double-click on a channel without its own insert gives it a free one (named and coloured after it)
+    if (insTimer) { clearTimeout(insTimer); insTimer = 0; if (c().insert == null) pickFreeInsert(chanInsertChoice(live())); else showInsert(c().insert); return; }
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     insTimer = window.setTimeout(() => { insTimer = 0; insertMenu(c(), r.left, r.bottom + 2); }, 250);
   };
