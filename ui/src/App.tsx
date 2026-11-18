@@ -3,7 +3,7 @@ import { t as tl } from './lib/i18n';
 import { closeNotebook, NB } from './state/notebook';
 import { ConfirmDialog } from './ui/Confirm';
 import { createEffect, For, onCleanup, onMount, Show } from 'solid-js';
-import { be, isTauri } from './api/backend';
+import { be } from './api/backend';
 import { baseName } from './lib/format';
 import { typingIn } from './lib/keys';
 import { awayZone, releasesFocus } from './lib/focusZone';
@@ -270,17 +270,10 @@ export function App() {
     // the pin in a plugin window's header: remember the choice for its next window
     const offPin = be().on('plugin-pin', ({ id, pinned }) => reportPin(id, pinned));
     onCleanup(() => void offPin.then(off => off()));
-    if (isTauri()) {
-      void import('@tauri-apps/api/window').then(async ({ getCurrentWindow }) => {
-        const w = getCurrentWindow();
-        let closing = false;
-        await w.onCloseRequested(async ev => {
-          if (closing) return;
-          ev.preventDefault();
-          if (await A.closeWindowGuarded()) { closing = true; await w.destroy(); }
-        });
-      }).catch(() => {});
-    }
+    // the window's X / Alt+F4 asks the save prompts first; only the guard's OK destroys it
+    void be().win?.onCloseRequested(async destroy => {
+      if (await A.closeWindowGuarded()) await destroy();
+    }).catch(() => {});
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', reclaimFocus, true);
     window.addEventListener('keyup', onKeyUp);
