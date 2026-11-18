@@ -272,6 +272,25 @@ mod tests {
         }
     }
 
+    /// The FLACs carry no PADDING block (ffmpeg reserves 8 KiB per file for tags; over the
+    /// whole library that was 2 MB of the program for nothing).
+    #[test]
+    fn flac_files_carry_no_padding() {
+        for f in files().iter().filter(|f| f.file.ends_with(".flac")) {
+            let b = f.bytes;
+            assert_eq!(&b[..4], b"fLaC", "{}", f.file);
+            let mut i = 4;
+            loop {
+                let (h, n) = (b[i], u32::from_be_bytes([0, b[i + 1], b[i + 2], b[i + 3]]) as usize);
+                assert_ne!(h & 0x7F, 1, "{}: has a padding block", f.file);
+                i += 4 + n;
+                if h & 0x80 != 0 {
+                    break;
+                }
+            }
+        }
+    }
+
     /// A loop is a whole number of 4/4 bars at the tempo its name gives, so it repeats in time
     /// when the project runs at that tempo.
     #[test]

@@ -15,6 +15,10 @@ shown in the app after an update and is published as the release notes (see
   (Zay Warm, Opium Growl, Drill Glide, Sub Pure, Plugg Short…) in a Browser section of their own
   between Percussion and Tonal. Every 808 is pitched at its measured root key, so they swap and layer
   on the same notes.
+- **Trap hats, snares and claps in the Standard library.** Nine closed hats and three open hats
+  (Trap Hat Crisp, Tight, Metal…, Trap Open Hat Smooth…), fourteen snares (Trap Snare Punch, Hard,
+  Rage, Low, Clap…) and twelve claps (Trap Clap Thick, Warm, Gritty, Click…), chosen to sit with
+  the trap kicks and 808s. The library also takes 2 MB less space, with the same sound.
 - **Double-click an empty mixer box to give a channel its own insert** (as in FL). On a channel
   with no insert ("—") it routes the channel to the first unused mixer insert, else a new one,
   named and coloured after the channel, in one undo step. An insert you muted, renamed, set up or

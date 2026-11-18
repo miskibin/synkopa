@@ -8,7 +8,7 @@ repositories of SOURCES at a pinned commit (`vcsl:<path>` …), or a Freesound s
 `factory` in the same manifest. The script downloads what it needs
 into a cache and refuses a file that does not match its pin. For every pick it trims
 silence before the hit and the dead tail, fades the end, normalises the peak to -1 dBFS and
-writes 16-bit FLAC. A loop (option `loop`) is instead cut to a whole number of bars at its
+writes 16-bit FLAC without the 8 KiB of padding ffmpeg reserves (it is embedded in the app). A loop (option `loop`) is instead cut to a whole number of bars at its
 tempo, from its first sample and without fades, so it repeats in time, and stored as Ogg
 Vorbis: the Freesound loops are lossy previews already, and FLAC would make them five times
 bigger for nothing. A pick can also be a list of layers, each tuned to a key and mixed (the
@@ -109,6 +109,44 @@ FREESOUND = {
     "679781": ("https://cdn.freesound.org/previews/679/679781_4819210-hq.mp3", "Johnnie_Holiday", "JH 808 3 C (2 sec).wav"),
     "679779": ("https://cdn.freesound.org/previews/679/679779_4819210-hq.mp3", "Johnnie_Holiday", "JH 808 1 C (0.5 sec).wav"),
     "729480": ("https://cdn.freesound.org/previews/729/729480_15200476-hq.mp3", "James_KuKu", "Drop - C"),
+    "506452": ("https://cdn.freesound.org/previews/506/506452_4600366-hq.mp3", "kbeezy88", "505 CLOSEDHH.wav"),
+    "509965": ("https://cdn.freesound.org/previews/509/509965_8033171-hq.mp3", "blakengouda", "Hi-Hat Closed 10.mp3"),
+    "509968": ("https://cdn.freesound.org/previews/509/509968_8033171-hq.mp3", "blakengouda", "Hi-Hat Closed 6.mp3"),
+    "509971": ("https://cdn.freesound.org/previews/509/509971_8033171-hq.mp3", "blakengouda", "Hi-Hat Closed 9.mp3"),
+    "542802": ("https://cdn.freesound.org/previews/542/542802_6414380-hq.mp3", "Rippleys_Circus", "Hihat 8.wav"),
+    "542796": ("https://cdn.freesound.org/previews/542/542796_6414380-hq.mp3", "Rippleys_Circus", "Hihat 2.wav"),
+    "513363": ("https://cdn.freesound.org/previews/513/513363_938351-hq.mp3", "pomeroyjoshua", "HH Cl 02.wav"),
+    "513367": ("https://cdn.freesound.org/previews/513/513367_938351-hq.mp3", "pomeroyjoshua", "HH Cl 06.wav"),
+    "588131": ("https://cdn.freesound.org/previews/588/588131_11532701-hq.mp3", "deadrobotmusic", "DR Hi Hat 049"),
+    "509984": ("https://cdn.freesound.org/previews/509/509984_8033171-hq.mp3", "blakengouda", "Hi-Hat Open 1.mp3"),
+    "612837": ("https://cdn.freesound.org/previews/612/612837_12074381-hq.mp3", "PopoMagoo", "Hat Open.wav"),
+    "513383": ("https://cdn.freesound.org/previews/513/513383_938351-hq.mp3", "pomeroyjoshua", "HH Op 03.wav"),
+    "240434": ("https://cdn.freesound.org/previews/240/240434_4181817-hq.mp3", "WillOlis", "Punchy Snare"),
+    "399747": ("https://cdn.freesound.org/previews/399/399747_7079194-hq.mp3", "nbmusic098", "Trap Snare 1"),
+    "169950": ("https://cdn.freesound.org/previews/169/169950_2875663-hq.mp3", "Musictart", "Punchy Snare 4 (Small Tail).wav"),
+    "542850": ("https://cdn.freesound.org/previews/542/542850_6414380-hq.mp3", "Rippleys_Circus", "Snare (10).wav"),
+    "632704": ("https://cdn.freesound.org/previews/632/632704_12672694-hq.mp3", "adh.dreaming", "Fly on the Wall Snare"),
+    "542851": ("https://cdn.freesound.org/previews/542/542851_6414380-hq.mp3", "Rippleys_Circus", "Snare (1).wav"),
+    "542866": ("https://cdn.freesound.org/previews/542/542866_6414380-hq.mp3", "Rippleys_Circus", "Snare (21).wav"),
+    "542873": ("https://cdn.freesound.org/previews/542/542873_6414380-hq.mp3", "Rippleys_Circus", "Snare (22).wav"),
+    "577235": ("https://cdn.freesound.org/previews/577/577235_11532701-hq.mp3", "deadrobotmusic", "DR Snare 058"),
+    "577207": ("https://cdn.freesound.org/previews/577/577207_11532701-hq.mp3", "deadrobotmusic", "DR Snare 112"),
+    "577226": ("https://cdn.freesound.org/previews/577/577226_11532701-hq.mp3", "deadrobotmusic", "DR Snare 102"),
+    "320870": ("https://cdn.freesound.org/previews/320/320870_2381150-hq.mp3", "alexthegr81", "Dirty Snare.wav"),
+    "252743": ("https://cdn.freesound.org/previews/252/252743_1939565-hq.mp3", "choomaque-crispydinner", "CRDN_UpgrSn_009.wav"),
+    "355068": ("https://cdn.freesound.org/previews/355/355068_1973065-hq.mp3", "eryps", "Low Snare Hit"),
+    "199266": ("https://cdn.freesound.org/previews/199/199266_1332991-hq.mp3", "Stumber", "Diamond_Clap_05.wav"),
+    "542834": ("https://cdn.freesound.org/previews/542/542834_6414380-hq.mp3", "Rippleys_Circus", "Clap  (7).wav"),
+    "513415": ("https://cdn.freesound.org/previews/513/513415_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 01.wav"),
+    "542837": ("https://cdn.freesound.org/previews/542/542837_6414380-hq.mp3", "Rippleys_Circus", "Clap  (9).wav"),
+    "532248": ("https://cdn.freesound.org/previews/532/532248_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 05.wav"),
+    "542831": ("https://cdn.freesound.org/previews/542/542831_6414380-hq.mp3", "Rippleys_Circus", "Clap  (2).wav"),
+    "828843": ("https://cdn.freesound.org/previews/828/828843_17675683-hq.mp3", "CAT-FOX_ALEX", "Clap 1"),
+    "513421": ("https://cdn.freesound.org/previews/513/513421_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 09.wav"),
+    "513413": ("https://cdn.freesound.org/previews/513/513413_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 03.wav"),
+    "513419": ("https://cdn.freesound.org/previews/513/513419_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 05.wav"),
+    "532245": ("https://cdn.freesound.org/previews/532/532245_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 08.wav"),
+    "532246": ("https://cdn.freesound.org/previews/532/532246_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 07.wav"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -237,6 +275,20 @@ PICKS = [
     ("snare-trap-crisp.flac", "Trap Snare Crisp", "Snares", "fs:347136", 0.6, 60),
     ("snare-tr8.flac", "TR-8 Snare", "Snares", TR8 + "SD/001_808_Snare_Drum_1.wav", 0.6, 60),
     ("rimshot-tight.flac", "Rimshot Tight", "Snares", "fs:132418", 1.1, 60),
+    ("snare-trap-punch.flac", "Trap Snare Punch", "Snares", "fs:240434", 0.6, 60),
+    ("snare-trap-tight.flac", "Trap Snare Tight", "Snares", "fs:399747", 0.6, 60),
+    ("snare-trap-hard.flac", "Trap Snare Hard", "Snares", "fs:169950", 0.6, 60),
+    ("snare-trap-sharp.flac", "Trap Snare Sharp", "Snares", "fs:542850", 0.6, 60),
+    ("snare-trap-classic.flac", "Trap Snare Classic", "Snares", "fs:632704", 0.6, 60),
+    ("snare-trap-layered.flac", "Trap Snare Layered", "Snares", "fs:542851", 0.6, 60),
+    ("snare-trap-clean.flac", "Trap Snare Clean", "Snares", "fs:542866", 0.6, 60),
+    ("snare-trap-smack.flac", "Trap Snare Smack", "Snares", "fs:542873", 0.6, 60),
+    ("snare-trap-clap.flac", "Trap Snare Clap", "Snares", "fs:577235", 0.6, 60),
+    ("snare-trap-round.flac", "Trap Snare Round", "Snares", "fs:577207", 0.6, 60),
+    ("snare-trap-snap.flac", "Trap Snare Snap", "Snares", "fs:577226", 0.6, 60),
+    ("snare-trap-dirty.flac", "Trap Snare Dirty", "Snares", "fs:320870", 0.6, 60),
+    ("snare-trap-rage.flac", "Trap Snare Rage", "Snares", "fs:252743", 0.2, 60),
+    ("snare-trap-low.flac", "Trap Snare Low", "Snares", "fs:355068", 0.6, 60),
     ("clap-808.flac", "808 Clap", "Claps", "808-kit/clap.wav", 1.0, 60),
     ("clap-hand.flac", "Hand Clap", "Claps", "percussion-fx/clap-v4.wav", 0.45, 60),
     ("clap-hand-soft.flac", "Hand Clap Soft", "Claps", "percussion-fx/clap-v3.wav", 0.6, 60),
@@ -246,6 +298,18 @@ PICKS = [
     ("clap-snare.flac", "Clap Snare", "Claps", "fs:355065", 0.7, 60),
     ("clap-trap-crisp.flac", "Trap Clap Crisp", "Claps", "fs:647745", 0.4, 60),
     ("clap-tr8.flac", "TR-8 Clap", "Claps", TR8 + "PERC/017_808_Hand_Clap.wav", 0.8, 60),
+    ("clap-trap-punch.flac", "Trap Clap Punch", "Claps", "fs:199266", 0.5, 60),
+    ("clap-trap-warm.flac", "Trap Clap Warm", "Claps", "fs:542834", 0.5, 60),
+    ("clap-trap-thick.flac", "Trap Clap Thick", "Claps", "fs:513415", 0.5, 60),
+    ("clap-trap-layered.flac", "Trap Clap Layered", "Claps", "fs:542837", 0.5, 60),
+    ("clap-trap-tight.flac", "Trap Clap Tight", "Claps", "fs:532248", 0.5, 60),
+    ("clap-trap-bright.flac", "Trap Clap Bright", "Claps", "fs:542831", 0.5, 60),
+    ("clap-trap-hard.flac", "Trap Clap Hard", "Claps", "fs:828843", 0.5, 60),
+    ("clap-trap-short.flac", "Trap Clap Short", "Claps", "fs:513421", 0.5, 60),
+    ("clap-trap-gritty.flac", "Trap Clap Gritty", "Claps", "fs:513413", 0.5, 60),
+    ("clap-trap-sharp.flac", "Trap Clap Sharp", "Claps", "fs:513419", 0.5, 60),
+    ("clap-trap-click.flac", "Trap Clap Click", "Claps", "fs:532245", 0.5, 60),
+    ("clap-trap-clean.flac", "Trap Clap Clean", "Claps", "fs:532246", 0.5, 60),
     ("finger-snap.flac", "Finger Snap", "Claps", "fs:332604", 0.4, 60),
     ("hat-808-closed.flac", "808 Closed Hat", "Hats", "808-kit/hat-closed.wav", 0.25, 60),
     ("hat-808-open.flac", "808 Open Hat", "Hats", "808-kit/hat-open-decay75.wav", 0.75, 60),
@@ -264,6 +328,18 @@ PICKS = [
     ("hat-tr8-open.flac", "TR-8 Open Hat", "Hats", TR8 + "HATS/001_808_Open_HiHat.wav", 1.0, 60),
     ("hat-open-choked.flac", "Open Hat Choked", "Hats", "fs:91791", 0.4, 60),
     ("hat-open-zildjian.flac", "Open Hat Zildjian", "Hats", "fs:816813", 1.6, 60),
+    ("hat-trap-punch.flac", "Trap Hat Punch", "Hats", "fs:506452", 0.3, 60),
+    ("hat-trap-crisp.flac", "Trap Hat Crisp", "Hats", "fs:509965", 0.3, 60),
+    ("hat-trap-sharp.flac", "Trap Hat Sharp", "Hats", "fs:509968", 0.3, 60),
+    ("hat-trap-bright.flac", "Trap Hat Bright", "Hats", "fs:509971", 0.3, 60),
+    ("hat-trap-tight.flac", "Trap Hat Tight", "Hats", "fs:542802", 0.3, 60),
+    ("hat-trap-snap.flac", "Trap Hat Snap", "Hats", "fs:542796", 0.3, 60),
+    ("hat-trap-cut.flac", "Trap Hat Cut", "Hats", "fs:513363", 0.3, 60),
+    ("hat-trap-classic.flac", "Trap Hat Classic", "Hats", "fs:513367", 0.3, 60),
+    ("hat-trap-metal.flac", "Trap Hat Metal", "Hats", "fs:588131", 0.3, 60),
+    ("hat-trap-open-smooth.flac", "Trap Open Hat Smooth", "Hats", "fs:509984", 0.8, 60),
+    ("hat-trap-open-bright.flac", "Trap Open Hat Bright", "Hats", "fs:612837", 0.8, 60),
+    ("hat-trap-open-short.flac", "Trap Open Hat Short", "Hats", "fs:513383", 0.8, 60),
     ("cymbal-808.flac", "808 Cymbal", "Cymbals", "808-kit/cymbal-tone50-decay50.wav", 2.5, 60),
     ("crash-studio.flac", "Studio Crash", "Cymbals", "studio-drums/crash-v3.wav", 5.0, 60),
     ("ride-studio.flac", "Studio Ride", "Cymbals", "studio-drums/ride-v3.wav", 3.0, 60),
@@ -597,6 +673,33 @@ def prepare(x, max_s, soft=False):
     return (x[:, :1] if mono else x), mono
 
 
+def strip_padding(path):
+    """Drop the FLAC's PADDING blocks (ffmpeg reserves 8 KiB in every file for tags written
+    later; the embedded library never gets any). The audio frames are untouched. True if the
+    file changed."""
+    with open(path, "rb") as f:
+        b = f.read()
+    assert b[:4] == b"fLaC", path
+    i, keep, padded = 4, [], False
+    while True:
+        h, n = b[i], int.from_bytes(b[i + 1:i + 4], "big")
+        if h & 0x7F == 1:
+            padded = True
+        else:
+            keep.append(bytearray(b[i:i + 4 + n]))
+        i += 4 + n
+        if h & 0x80:
+            break
+    if not padded:
+        return False
+    for k in keep:
+        k[0] &= 0x7F
+    keep[-1][0] |= 0x80
+    with open(path, "wb") as f:
+        f.write(b"fLaC" + b"".join(keep) + b[i:])
+    return True
+
+
 def decoded(path):
     return subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "s16le", "-"], capture_output=True, check=True).stdout
 
@@ -711,6 +814,7 @@ def main():
             kept += 1
         else:
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "s16le", "-ar", str(SR), "-ac", "1" if mono else "2", "-i", "-", "-compression_level", "8", "-bitexact", "-map_metadata", "-1", dst], input=pcm, check=True)
+        strip_padding(dst)  # also files kept from a build before padding was stripped
         total += os.path.getsize(dst)
         rows.append((out, name, group, root, str(pitched).lower(), len(y) / SR, 1 if mono else 2))
         print(f"{out:28} {len(y) / SR:5.2f} s  {'mono' if mono else 'stereo':6} root {root:3} {os.path.getsize(dst) // 1024:4} K")
