@@ -755,7 +755,14 @@ impl Engine {
                 return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
             }
         }
-        let before = c.project.clone();
+        let in_gesture = transient && c.gesture.is_some();
+        // Inside a gesture the undo base is the snapshot begin_gesture took, so a frame does
+        // not push undo and skips the whole-project copy: a no-op frame is detected against
+        // that snapshot (an equality walk, no copy) and a batch of lane-height edits
+        // snapshots just the (small) track list, to carry heights into the history below.
+        let track_before =
+            if !ops.is_empty() && ops.iter().all(|op| matches!(op, Op::PutTrack { .. })) { Some(c.project.tracks.clone()) } else { None };
+        let before = if in_gesture { None } else { Some(c.project.clone()) };
         // plugin automation targets are validated here, not in `ops::apply_all`:
         // whether a parameter id exists is knowledge the plugin factory holds
         for op in ops {
@@ -771,21 +778,26 @@ impl Engine {
             }
         }
         let d = ops::apply_all(&mut c.project, ops)?;
-        if c.project == before {
+        let unchanged = match (&before, c.gesture.as_ref()) {
+            (Some(b), _) => c.project == *b,
+            (None, Some(g)) => c.project == *g,
+            (None, None) => false,
+        };
+        if unchanged {
             return Ok(c.revision);
         }
-        let in_gesture = transient && c.gesture.is_some();
         // Lane heights are how the Playlist is viewed, not what the song is: zooming the tracks
         // is not an undo step (Ctrl+Z after it must take back the last edit, not the zoom). The
         // height is saved with the song, so it is carried into the history instead: undoing an
         // older edit keeps the lanes as they are now.
-        if only_track_heights(ops, &before, &c.project) {
+        let height_only = track_before.as_deref().filter(|tb| only_track_heights(ops, tb, &c.project.tracks));
+        if let Some(tb) = height_only {
             // only the lanes whose height changed, and only into the same track: a track's id stays
             // with its slot when lanes swap (Move up / down), so the history is walked step by step
             // from now, and the carry stops at the first step where the lane at that id became
             // another track (see `same_lane`: a rename keeps it the same track)
             let changed: Vec<Track> =
-                c.project.tracks.iter().filter(|t| before.tracks.iter().any(|b| b.id == t.id && b.h != t.h)).cloned().collect();
+                c.project.tracks.iter().zip(tb).filter(|(t, b)| t.id == b.id && t.h != b.h).map(|(t, _)| t.clone()).collect();
             let core = &mut *c;
             for now in &changed {
                 // undo: the newest snapshot is last; redo: the next state is last
@@ -794,7 +806,7 @@ impl Engine {
                 }
                 carry_height(now, core.gesture.iter_mut());
             }
-        } else if !in_gesture {
+        } else if let Some(before) = before {
             push_undo(&mut c, before);
         }
         c.revision += 1;
@@ -1197,28 +1209,42 @@ impl Engine {
         c.sources.variant(id, norm, rev).map(|a| a.peaks.clone())
     }
 
-    /// Replaces the clip's source by a new file holding only the clip's region.
+    /// Replaces the clip's source by a new file holding only the clip's region. The copy
+    /// and the WAV write run without the engine lock (a long region can take a while on
+    /// disk), so the UI keeps moving while the file is written; the clip and the bpm are
+    /// re-checked when the lock comes back and the trim refuses ("try again") if they
+    /// changed in the meantime.
     pub fn trim_clip(&self, clip_id: Id) -> Result<Id, EngineError> {
-        let mut c = self.core.lock();
-        let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
-        if clip.kind != ClipKind::Audio {
-            return Err(EngineError::Msg("only audio clips can be trimmed".into()));
-        }
-        let audio = c.sources.variant(clip.source, clip.norm, clip.rev).ok_or(EngineError::Msg("audio not loaded".into()))?;
-        let sr = audio.sr as f64;
-        // the source region (a stretched clip keeps its stretch over the trimmed source)
-        let (sa, sb) = clip.source_span(c.project.bpm);
-        let a = ((sa * sr) as usize).min(audio.frames);
-        let b = ((sb * sr) as usize).min(audio.frames);
-        if b <= a + 16 {
-            return Err(EngineError::Msg("the region is empty".into()));
-        }
+        let (clip, old, audio, bpm, a, b, id, path) = {
+            let mut c = self.core.lock();
+            let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
+            if clip.kind != ClipKind::Audio {
+                return Err(EngineError::Msg("only audio clips can be trimmed".into()));
+            }
+            let audio = c.sources.variant(clip.source, clip.norm, clip.rev).ok_or(EngineError::Msg("audio not loaded".into()))?;
+            let sr = audio.sr as f64;
+            // the source region (a stretched clip keeps its stretch over the trimmed source)
+            let (sa, sb) = clip.source_span(c.project.bpm);
+            let a = ((sa * sr) as usize).min(audio.frames);
+            let b = ((sb * sr) as usize).min(audio.frames);
+            if b <= a + 16 {
+                return Err(EngineError::Msg("the region is empty".into()));
+            }
+            let old = c.project.sources.iter().find(|s| s.id == clip.source).cloned().unwrap();
+            let id = c.project.alloc_id();
+            let path = fresh_path(&audio_dir(&c), &format!("{} trim {}", sanitize(&old.name), id));
+            (clip, old, audio, c.project.bpm, a, b, id, path)
+        };
         let data = audio.content()[a * 2..b * 2].to_vec();
-        let old = c.project.sources.iter().find(|s| s.id == clip.source).cloned().unwrap();
-        let id = c.project.alloc_id();
-        let path = fresh_path(&audio_dir(&c), &format!("{} trim {}", sanitize(&old.name), id));
         write_wav(&path, &data, audio.sr)?;
         let new = Audio::from_stereo(data, audio.sr, audio.channels);
+        let mut c = self.core.lock();
+        let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
+        if now.as_ref() != Some(&clip) || c.project.bpm != bpm {
+            // the file is ours alone (its name carries the id): no trim, no file
+            let _ = std::fs::remove_file(&path);
+            return Err(EngineError::Msg("the clip changed while it was trimmed; try again".into()));
+        }
         let before = c.project.clone();
         c.project.sources.push(Source {
             id,
@@ -1424,33 +1450,47 @@ impl Engine {
 
     /// Renders what a comp clip plays into a new source and replaces the clip by an
     /// ordinary audio clip (gain, fades and pan stay on the clip). The take group goes
-    /// when no other clip plays it. One undo step.
+    /// when no other clip plays it. One undo step. The render and the WAV write run
+    /// without the engine lock (a long comp takes a while), so the UI keeps moving; the
+    /// clip and its comp are re-checked when the lock comes back and the flatten refuses
+    /// ("try again") if either changed in the meantime.
     pub fn flatten_comp(&self, clip_id: Id) -> Result<Id, EngineError> {
-        let mut c = self.core.lock();
-        let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
-        if clip.kind != ClipKind::Comp {
-            return Err(EngineError::Msg("only comp clips can be flattened".into()));
-        }
-        let comp = c.project.comp(clip.source).cloned().ok_or(EngineError::Msg("the clip's comp is missing".into()))?;
-        let map = comp_audio(&c.sources, std::slice::from_ref(&comp));
-        let first = comp.takes.iter().find_map(|t| map.get(&t.source)).ok_or(EngineError::Msg("the takes' audio is not loaded".into()))?;
-        let (sr, ch) = (first.sr, comp.takes.iter().filter_map(|t| map.get(&t.source)).map(|a| a.channels).max().unwrap_or(1));
-        let spb = 60.0 / c.project.bpm;
-        let frames = (clip.len * spb * sr as f64).round() as usize;
-        if frames < 16 {
-            return Err(EngineError::Msg("the clip is empty".into()));
-        }
-        // two guard frames: the playhead's beat may land a hair before the clip end
-        let frames = frames + 2;
+        let (clip, comp, map, spb, sr, ch, frames, id, name, path) = {
+            let mut c = self.core.lock();
+            let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
+            if clip.kind != ClipKind::Comp {
+                return Err(EngineError::Msg("only comp clips can be flattened".into()));
+            }
+            let comp = c.project.comp(clip.source).cloned().ok_or(EngineError::Msg("the clip's comp is missing".into()))?;
+            let map = comp_audio(&c.sources, std::slice::from_ref(&comp));
+            let first =
+                comp.takes.iter().find_map(|t| map.get(&t.source)).ok_or(EngineError::Msg("the takes' audio is not loaded".into()))?;
+            let (sr, ch) = (first.sr, comp.takes.iter().filter_map(|t| map.get(&t.source)).map(|a| a.channels).max().unwrap_or(1));
+            let spb = 60.0 / c.project.bpm;
+            let frames = (clip.len * spb * sr as f64).round() as usize;
+            if frames < 16 {
+                return Err(EngineError::Msg("the clip is empty".into()));
+            }
+            // two guard frames: the playhead's beat may land a hair before the clip end
+            let frames = frames + 2;
+            let id = c.project.alloc_id();
+            let name = format!("{} (flat)", comp.name);
+            let path = fresh_path(&audio_dir(&c), &format!("{} flat {}", sanitize(&comp.name), id));
+            (clip, comp, map, spb, sr, ch, frames, id, name, path)
+        };
         let rt = crate::comp::build(&comp, spb, None, &map);
         let (mut l, mut r) = (vec![0f32; frames], vec![0f32; frames]);
         rt.render_add(clip.offset, 1.0 / (spb * sr as f64), &mut l, &mut r, spb);
         let data: Vec<f32> = l.iter().zip(&r).flat_map(|(a, b)| [*a, *b]).collect();
-        let id = c.project.alloc_id();
-        let name = format!("{} (flat)", comp.name);
-        let path = fresh_path(&audio_dir(&c), &format!("{} flat {}", sanitize(&comp.name), id));
         write_wav(&path, &data, sr)?;
         let audio = Audio::from_stereo(data, sr, ch);
+        let mut c = self.core.lock();
+        let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
+        if now.as_ref() != Some(&clip) || c.project.comp(clip.source) != Some(&comp) {
+            // the file is ours alone (its name carries the id): no flatten, no file
+            let _ = std::fs::remove_file(&path);
+            return Err(EngineError::Msg("the comp changed while it was flattened; try again".into()));
+        }
         let before = c.project.clone();
         c.project.sources.push(Source {
             id,
@@ -1526,8 +1566,8 @@ fn missing_sources(c: &Core) -> HashMap<Id, String> {
 
 /// True when `ops` changed nothing but lane heights: every op puts a track, and `after` is
 /// `before` with other heights.
-fn only_track_heights(ops: &[Op], before: &Project, after: &Project) -> bool {
-    if ops.is_empty() || !ops.iter().all(|op| matches!(op, Op::PutTrack { .. })) || before.tracks.len() != after.tracks.len() {
+fn only_track_heights(ops: &[Op], before: &[Track], after: &[Track]) -> bool {
+    if ops.is_empty() || !ops.iter().all(|op| matches!(op, Op::PutTrack { .. })) || before.len() != after.len() {
         return false;
     }
     let same_but_height = |a: &Track, b: &Track| {
@@ -1535,7 +1575,7 @@ fn only_track_heights(ops: &[Op], before: &Project, after: &Project) -> bool {
         a.h = b.h;
         a == *b
     };
-    before.tracks.iter().zip(&after.tracks).all(|(a, b)| same_but_height(a, b))
+    before.iter().zip(after).all(|(a, b)| same_but_height(a, b))
 }
 
 /// True when `a` and `b` (the lane at one id in two consecutive history states) are the same
