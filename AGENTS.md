@@ -142,6 +142,10 @@ documentation.
 - Manually verify the actual user journey, not only isolated functions.
 - For DSP or performance work, add objective measurements or deterministic test
   signals where practical.
+- When judging how something sounds (DSP, instruments, separation, mixing),
+  metrics are not enough: if available, also have the rendered audio checked by
+  a model with audio input modality (e.g. Gemini 4 Hydrogen or Carbon), and
+  offer the user short MP3 renders to listen to.
 
 ## Commits and Pull Requests
 
