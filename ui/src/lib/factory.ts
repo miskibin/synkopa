@@ -12,7 +12,8 @@ export const FACTORY_LISTED_FILES = FACTORY_FILES.filter(f => !unlisted.has(f.fi
 export const LIB_SCHEME = 'lib:';
 export const libPath = (file: string) => `${LIB_SCHEME}${FACTORY_KIT}/${file}`;
 /** The standard-library file a stored path names (`lib:Standard/<file>`), if it is one. */
-export const factoryFile = (path: string) => FACTORY_FILES.find(f => libPath(f.file) === path);
+let byPath: Map<string, FactoryFile> | undefined;
+export const factoryFile = (path: string) => (byPath ??= new Map(FACTORY_FILES.map(f => [libPath(f.file), f]))).get(path);
 /** File name → channel name of a new project's Channel Rack (model.rs `STARTER_KIT`). */
 export const STARTER_KIT: readonly [string, string][] = [['kick-808-short.flac', 'Kick'], ['clap-808.flac', 'Clap'], ['hat-808-closed.flac', 'Hat'], ['snare-808.flac', 'Snare']];
 

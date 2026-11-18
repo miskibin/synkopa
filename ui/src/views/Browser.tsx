@@ -21,7 +21,7 @@ import { flatten, groupFiles, groupOpen, GHEAD_H, matches, ROW_H, searchTerms, s
 import { noteName } from '../lib/pitch';
 import { libFileGlyph, libGroupGlyph, type MenuGlyph } from '../ui/menuIcons';
 import { patternItemMenu } from './patternShared';
-import { guessIcon, InstIcon, patternIcon } from '../ui/instIcons';
+import { InstIcon, patternIcon, sampleIcon } from '../ui/instIcons';
 
 /**
  * Drag something from the browser with a ghost label; `onDrop` gets the release point. `over`
@@ -171,7 +171,7 @@ function PatternsTab() {
               onContextMenu={e => { e.preventDefault(); patternItemMenu(p, e.clientX, e.clientY); }}
               onPointerDown={e => pick('pat', p.id, p.name, p.color, e, () => openPattern(p.id))}>
               <div class="prow">
-                <Show when={patternIcon(p, chanMap())} fallback={<span style={{ width: '8px', height: '8px', 'border-radius': '2px', flex: 'none', background: p.color }} />}>
+                <Show when={patternIcon(p, chanMap(), (id: number) => S.project.sources.find(s => s.id === id))} fallback={<span style={{ width: '8px', height: '8px', 'border-radius': '2px', flex: 'none', background: p.color }} />}>
                   {id => <span class="picon" style={{ color: p.color }}><InstIcon id={id()} size={12} /></span>}
                 </Show>
                 <span class="nm">{p.name}</span>
@@ -209,7 +209,7 @@ function AudioTab() {
                 }}>
                 <div class="row" style={{ gap: '8px' }}>
                   {/* the icon its clips show in the Playlist (guessed from the name), else a sample's */}
-                  <span class="picon" style={{ color: s.color }}><InstIcon id={guessIcon(s.name) ?? 'sample'} size={12} /></span>
+                  <span class="picon" style={{ color: s.color }}><InstIcon id={sampleIcon(s) ?? 'sample'} size={12} /></span>
                   <span class="ell" style={{ flex: 1, font: '500 12px var(--sans)' }}>{s.name}</span>
                   <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg4)' }}>{s.dur.toFixed(2)}s</span>
                 </div>

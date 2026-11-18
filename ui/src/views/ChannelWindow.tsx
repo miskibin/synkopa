@@ -106,7 +106,7 @@ function Body(props: { w: Win; c: Channel }) {
       on:pointerdown={{ capture: true, handleEvent: chanFront }}>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => props.w, setPos)} title={t('b.cw.headTip')}
         onDblClick={e => { if (!(e.target as HTMLElement).closest('button, select, input')) showInsert(chanHeardInsert(c()) ?? 0); }}>
-        <span class="chicon" style={{ color: c().color }}><InstIcon id={channelIcon(c())} size={14} /></span>
+        <span class="chicon" style={{ color: c().color }}><InstIcon id={channelIcon(c(), (id: number) => S.project.sources.find(s => s.id === id))} size={14} /></span>
         <span class="title">{c().name}</span>
         <span class="sub">{t(c().kind === 'synth' ? 'b.cw.kSynth' : c().kind === 'plugin' ? 'b.cw.kPlugin' : 'b.cw.kKeys')}</span>
         <div style={{ flex: 1 }} />

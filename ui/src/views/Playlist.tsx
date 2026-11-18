@@ -2,7 +2,7 @@ import { prefs } from '../state/prefs';
 import { t as tl } from '../lib/i18n';
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import { unwrap } from 'solid-js/store';
-import { InstIcon, trackIcon } from '../ui/instIcons';
+import { InstIcon, laneAutoIcons, trackIcon } from '../ui/instIcons';
 import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, type Automation, type AutoPoint, type Channel, type Clip, type Comp, type CurveShape, type Id, type Op, type Take, type Track } from '../api/types';
 import { boundaries, boundaryXfade, moveBoundary, setBoundaryXfade, takeEnd, toComp, toTimeline, unusedTakes, usedBeats, writeRange } from '../lib/comp';
 import * as CA from '../state/comp';
@@ -189,6 +189,9 @@ export function Playlist() {
   const ZOOM_SETTLE_MS = 90;
   /** Bumped when the clip lookups of `drawGrid` (patterns, sources, …) may be stale: not for a clip-only edit. */
   let lookVer = 0;
+  /** The icon a lane header shows when its track has none and its name says nothing: its clips' (one pass per arrangement edit). */
+  const laneIcons = createMemo(() => { arrVersion(); return laneAutoIcons(unwrap(S.project)); }, [] as (string | null)[],
+    { equals: (a, b) => a.length === b.length && a.every((x, i) => x === b[i]) });
   /** The automation clip under the pointer, and the point / tension handle there. */
   const [envHover, setEnvHover] = createSignal<{ clip: Id; hover: EnvHit | null } | null>(null);
   // what the grid canvas depends on (not mixer state), split so a zoom does not re-walk every clip.
@@ -1383,7 +1386,7 @@ export function Playlist() {
           </div>
           <div style={{ display: 'flex' }}>
             <div class="lanesCol" style={{ width: U.headW + 'px' }}>
-              <For each={S.project.tracks}>{(t, i) => <><LaneHeader t={t} i={i()} /><TakeHeaders i={i()} /></>}</For>
+              <For each={S.project.tracks}>{(t, i) => <><LaneHeader t={t} i={i()} auto={laneIcons()[i()] ?? null} /><TakeHeaders i={i()} /></>}</For>
               <button class="addTrack" onClick={A.addTrack}>{tl('a.pl.addTrack')}</button>
               <div class="hsplit" onPointerDown={headSplit} title={tl('a.pl.headSplitTip')} />
             </div>
@@ -1448,8 +1451,9 @@ function openLaneMenu(x: number, y: number, i: number) {
   ], 400);
 }
 
-function LaneHeader(props: { t: Track; i: number }) {
+function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
   const t = () => props.t;
+  const icon = () => trackIcon(t()) ?? props.auto;
   const audible = () => !t().muted && (!anyTrackSolo() || t().solo);
   const routeIdx = () => S.project.inserts.findIndex(m => m.id === t().insert);
   const down = (e: PointerEvent) => {
@@ -1490,9 +1494,9 @@ function LaneHeader(props: { t: Track; i: number }) {
       <div class="body">
         <div class="row" style={{ gap: '6px', 'min-width': 0 }}>
           {/* FL: double-click on a track's icon shows the mixer insert it plays into */}
-          <Show when={trackIcon(t())}>
+          <Show when={icon()}>
             <span class="laneicon" style={{ color: t().color }} title={tl('a.pl.trackTip', { n: props.i + 1 }) + ' · ' + tl('a.pl.numTip')}
-              onDblClick={() => showInsert(t().insert ?? 0)}><InstIcon id={trackIcon(t())} size={13} /></span>
+              onDblClick={() => showInsert(t().insert ?? 0)}><InstIcon id={icon()} size={13} /></span>
           </Show>
           <span class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }} title={tl('a.pl.nameTip')}
             onDblClick={e => openRename(e.clientX, e.clientY, t().name, v => A.setTrack(props.i, { name: v }, tl('a.pl.trackName')))}>{t().name}</span>

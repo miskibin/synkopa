@@ -17,7 +17,7 @@ import { say, setU, U, type SampleTarget } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { track } from '../ui/drag';
 import { addFrameTask, fitCanvas, Layer } from '../ui/frameLoop';
-import { channelIcon, guessIcon, InstIcon } from '../ui/instIcons';
+import { channelIcon, InstIcon, sampleIcon } from '../ui/instIcons';
 import { InsertPicker } from '../ui/InsertPicker';
 import { Knob } from '../ui/Knob';
 import { PianoKeys, type KeyPlayer } from '../ui/PianoKeys';
@@ -358,7 +358,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
   };
 
   return <EditorFrame name={src().name} description={t('d.smp.kind', { track: S.project.tracks[c().track]?.name ?? '' }) + (siblings().length > 1 ? ' · ' + t('d.smp.shared', { n: siblings().length }) : '')} insert={() => insert() ?? 0}
-    color={src().color} icon={<InstIcon id={guessIcon(src().name) ?? 'sample'} size={14} />}
+    color={src().color} icon={<InstIcon id={sampleIcon(src()) ?? 'sample'} size={14} />}
     wave={{
       source: src, color: () => src().color, normalized: () => c().norm, reversed: () => c().rev,
       gain: () => dbg(c().gain), preview, previewPosition, title: 'd.smp.waveTip', drag,
@@ -473,7 +473,7 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
   };
 
   return <EditorFrame name={c().name} description={t('b.cw.kSampler')} channelId={c().id} insert={() => chanHeardInsert(c()) ?? 0}
-    color={c().color} icon={<InstIcon id={channelIcon(c())} size={14} />}
+    color={c().color} icon={<InstIcon id={channelIcon(c(), (id: number) => S.project.sources.find(s => s.id === id))} size={14} />}
     wave={{
       source: src, color: () => c().color, normalized: () => s().norm, reversed: () => s().reverse, region,
       preview: () => { if (src()) audition(c().id, c().root, 0.9, true); }, title: 'b.sm.waveTitle', drag, reset,

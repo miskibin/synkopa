@@ -1,4 +1,5 @@
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import { factoryFile } from '../lib/factory';
 import { t, type TranslationKey } from '../lib/i18n';
 import {
   faDrum, faGuitar, faHeadphones, faMicrophone, faMusic, faRecordVinyl, faWandMagicSparkles, faWaveSquare,
@@ -45,9 +46,10 @@ export function InstIcon(props: { id?: string | null; size?: number }) {
 // Shown whenever the user has not picked one: a guess from the name, else from what plays.
 
 const RULES: [RegExp, string][] = [
-  [/vo[ck]|wokal|g[łl]os|rap|ch[óo]r|adlib|\bmic|\bvox|\bvoice|zwrotk|refren|nagran/i, 'vocal'],
+  // "rap" and "chór" only as words: "Kick Trap" is a drum, "Chord" a synth
+  [/vo[ck]|wokal|g[łl]os|\brap\b|\bch[óo]r(?!d)|adlib|\bmic|\bvox|\bvoice|zwrotk|refren|nagran/i, 'vocal'],
   // drum words before bass: "808 Kick" is a drum, "808 Bass" a bass
-  [/kick|snare|hat|clap|perc|drum|b[ęe]b|beat|\btom|cymb|ride|crash|shaker|rim|stopa|werbel|talerz/i, 'drums'],
+  [/kick|snare|hat|clap|perc|drum|b[ęe]b|beat|\btoms?\b|cymb|\bride\b|crash|shaker|\brim|stopa|werbel|talerz|conga|bongo|cajon|cowbell|tambo|clave|maraca|\bsnap\b|stick/i, 'drums'],
   [/bass|\bbas\b|\bbasy?\b|808|\bsub\b/i, 'bass'],
   [/piano|pian|keys|rhodes|klaw|organ|organy/i, 'piano'],
   [/guit|gitar/i, 'guitar'],
@@ -67,23 +69,88 @@ export function guessIcon(name: string | null | undefined): string | null {
 /** A track's icon: the picked one, else a guess from its name. */
 export const trackIcon = (t: { icon?: string | null; name: string }): string | null => t.icon ?? guessIcon(t.name);
 
-type ChannelKind = 'sample' | 'synth' | 'keys' | 'plugin';
+/** What each standard-library group is: the library already knows, the name need not be read. */
+const LIB_GROUP_ICON: Record<string, string> = {
+  Kicks: 'drums', Snares: 'drums', Claps: 'drums', Hats: 'drums', Cymbals: 'drums', Toms: 'drums', Percussion: 'drums',
+  808: 'bass', FX: 'fx',
+};
+/** The icon of a standard-library file's group, when the group says what the file is (not Tonal, Orchestra, Loops). */
+const libIcon = (path: string | null | undefined): string | null => {
+  const f = path ? factoryFile(path) : undefined;
+  return (f && LIB_GROUP_ICON[f.group]) || null;
+};
 
-/** A Channel Rack row's icon: name first, then 'piano', 'synth' (also a plugin instrument) or 'sample'. */
-export function channelIcon(c: { name: string; kind: ChannelKind }): string {
-  const g = guessIcon(c.name); if (g) return g;
+/** A sample's icon: its standard-library group (Kicks, 808…) when it is one of the library's files, else a guess from its name. */
+export function sampleIcon(s: { name: string; path?: string | null }): string | null {
+  return libIcon(s.path) ?? guessIcon(s.name);
+}
+
+type ChannelKind = 'sample' | 'synth' | 'keys' | 'plugin';
+type ChannelLike = { name: string; kind: ChannelKind; source?: number };
+/** A source by id (a sample channel's sample), for icons read from what the sample is. */
+export type SourceOf = (id: number) => { name: string; path: string } | undefined;
+
+/**
+ * A Channel Rack row's icon: a standard-library sample's group first (the library knows a
+ * "Sleigh Bells" is percussion), then the channel's name, then its sample's name, then
+ * 'piano', 'synth' (also a plugin instrument) or 'sample'.
+ */
+export function channelIcon(c: ChannelLike, src?: SourceOf): string {
+  const s = c.kind === 'sample' && c.source != null ? src?.(c.source) : undefined;
+  const i = libIcon(s?.path) ?? guessIcon(c.name) ?? (s ? guessIcon(s.name) : null);
+  if (i) return i;
   if (c.kind === 'keys') return 'piano';
   return c.kind === 'synth' || c.kind === 'plugin' ? 'synth' : 'sample';
 }
 
-/** A pattern's icon: name first, else the most used channel icon among its notes. */
-export function patternIcon(p: { name: string; notes: readonly { ch: number }[] }, chans: ReadonlyMap<number, { name: string; kind: ChannelKind }>): string | null {
+/**
+ * A pattern's icon. A pattern that plays one channel (what "Split by channel" makes) shows that
+ * channel's icon: its name repeats the parent pattern's ("Beat – 808"). Otherwise the name, else
+ * the most used channel icon among its notes.
+ */
+export function patternIcon(p: { name: string; notes: readonly { ch: number }[] }, chans: ReadonlyMap<number, ChannelLike>, src?: SourceOf): string | null {
+  const ch0 = p.notes[0]?.ch;
+  if (ch0 !== undefined && p.notes.every(x => x.ch === ch0)) { const c = chans.get(ch0); if (c) return channelIcon(c, src); }
   const g = guessIcon(p.name); if (g) return g;
   const n = new Map<string, number>();
-  for (const x of p.notes) { const c = chans.get(x.ch); if (c) { const id = channelIcon(c); n.set(id, (n.get(id) ?? 0) + 1); } }
+  for (const x of p.notes) { const c = chans.get(x.ch); if (c) { const id = channelIcon(c, src); n.set(id, (n.get(id) ?? 0) + 1); } }
+  return mostUsed(n);
+}
+
+function mostUsed(n: ReadonlyMap<string, number>): string | null {
   let best: string | null = null, bn = 0;
   for (const [id, k] of n) if (k > bn) { best = id; bn = k; }
   return best;
+}
+
+/**
+ * Per track, the icon shown when the track has none of its own and its name says nothing ("Track 7"):
+ * the most common icon of the clips on it, so the lanes "Split by channel" fills are marked like
+ * their clips. Null where the track has its own icon or holds no clip with one.
+ */
+export function laneAutoIcons(p: {
+  tracks: readonly { icon?: string | null; name: string }[];
+  clips: readonly { track: number; kind: string; ref: number }[];
+  patterns: readonly { id: number; name: string; notes: readonly { ch: number }[] }[];
+  channels?: readonly (ChannelLike & { id: number })[];
+  sources: readonly { id: number; name: string; path: string }[];
+}): (string | null)[] {
+  const need = p.tracks.map(t => !trackIcon(t));
+  if (!need.some(Boolean)) return p.tracks.map(() => null);
+  const srcs = new Map(p.sources.map(s => [s.id, s])), src: SourceOf = id => srcs.get(id);
+  const chans = new Map((p.channels ?? []).map(c => [c.id, c]));
+  const pats = new Map(p.patterns.map(x => [x.id, x]));
+  const patIcon = new Map<number, string | null>(), counts = p.tracks.map(() => new Map<string, number>());
+  for (const c of p.clips) {
+    if (!need[c.track]) continue;
+    let id: string | null = null;
+    if (c.kind === 'pat') {
+      id = patIcon.get(c.ref) ?? null;
+      if (!patIcon.has(c.ref)) { const pt = pats.get(c.ref); id = pt ? patternIcon(pt, chans, src) : null; patIcon.set(c.ref, id); }
+    } else if (c.kind === 'audio') { const s = srcs.get(c.ref); id = s ? sampleIcon(s) : null; }
+    if (id) counts[c.track].set(id, (counts[c.track].get(id) ?? 0) + 1);
+  }
+  return counts.map((n, i) => (need[i] ? mostUsed(n) : null));
 }
 
 const paths = new Map<string, { p: Path2D; s: number; w: number; h: number; eo: boolean }>();
