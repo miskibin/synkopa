@@ -749,7 +749,8 @@ export function Playlist() {
       moved = true;
       const o = orig.find(c => c.id === lead)!;
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw;
-      const d0 = snapRound(o.start + raw, unit(ev.altKey)) - o.start;
+      // snap the distance moved, not the start: a clip placed off the grid keeps its offset (as FL Studio does)
+      const d0 = snapRound(raw, unit(ev.altKey));
       const dt0 = trackAtYClamped(ev.clientY - gridEl.getBoundingClientRect().top) - t0;
       const [d, dt] = clampMove(orig, d0, dt0, n);
       // most pointer moves land on the same snapped place: nothing to apply, send or repaint
