@@ -18,6 +18,7 @@ import { modePattern, openRack, patMode, setPatMode, stopPreview, togglePreview 
 import { allocId, findFx, insName, plain, S, setTransport } from './store';
 import { say, setU, tucked, U, type SampleTarget } from './ui';
 import { notify } from './notice';
+import { warnIfNoAudio } from './audioWatch';
 import { midiStatus } from './midi';
 import { typingOn } from './typingKeys';
 import { recTarget, recUntil } from '../lib/recTarget';
@@ -33,6 +34,7 @@ export function recTargetName(from: number): string {
   return i === 'new' ? t('d.act.newTrack') : S.project.tracks[i].name;
 }
 export async function play(from = U.start) {
+  warnIfNoAudio();
   if (U.patPlaying) await stopPreview();
   markPlayCmd();
   setU('playing', true);

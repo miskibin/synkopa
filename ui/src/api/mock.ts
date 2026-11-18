@@ -1325,6 +1325,11 @@ export class MockBackend implements Backend {
   setWasapiOutputPresent(present: boolean) { this.wasapiOutputPresent = present; }
 
   /** Dev tools / tests: the device stops by itself and the audio thread reopens it, as in the app. */
+  /** Test hook: the output could not be opened (the engine's status after a WASAPI/ASIO open error); the next `audioSetConfig` opens it again. */
+  audioOpenFailed(err: string) {
+    this.audio = { ...this.audio, running: false, error: err };
+    this.emit('audio-status', { ...this.audio });
+  }
   audioDeviceLost(why = 'The requested device is no longer available') {
     this.audio = { ...this.audio, running: true, error: null, restarts: this.audio.restarts + 1, note: `Audio restarted by itself: ${why}.` };
     this.emit('audio-status', { ...this.audio });
