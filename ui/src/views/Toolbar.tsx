@@ -30,6 +30,8 @@ import { VOL_UNITY } from '../api/types';
 import { volText } from '../lib/format';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
+import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../state/underruns';
+import { audioStatus, openAudioSettings } from '../state/audioWatch';
 
 export const TOOLS: [Tool, string, TranslationKey][] = [
   ['draw', 'P', 'a.tb.toolDraw'], ['paint', 'B', 'a.tb.toolPaint'], ['erase', 'D', 'a.tb.toolErase'], ['mute', 'T', 'a.tb.toolMute'], ['slice', 'C', 'a.tb.toolSlice'], ['select', 'E', 'a.tb.toolSelect'],
@@ -214,6 +216,7 @@ export function Toolbar() {
       <div class="tbright" data-drag>
       <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
       <div data-drag class="dragfill" />
+      <Show when={prefs().cpuMeter}><CpuMeter /></Show>
       <button class="ibtn typkb" classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
         onClick={() => setTypingOn(!typingOn())}>
         <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
@@ -584,5 +587,46 @@ function MainVolume() {
           onMenu={(x, y) => paramMenu(x, y, target, () => { const op = put(VOL_UNITY); if (op) commit([op], t('a.tb.mainVol')); })} />
       </div>
     </Show>
+  );
+}
+
+/** How often the CPU percentage is reprinted: a figure that changes 60 times a second is unreadable. */
+const CPU_TEXT_MS = 250;
+
+/**
+ * FL Studio's toolbar CPU meter: how much of each audio buffer's time the engine spends rendering
+ * it (near 100 % the output crackles), with the underrun count of its Audio settings. It flashes
+ * red when the output runs dry; a click resets the count (like the master clip latch), or, with
+ * nothing to reset, opens the audio settings where the buffer size is. Shown only when turned on
+ * in Settings → Audio (the bar is short on room); the count is always there.
+ */
+function CpuMeter() {
+  let bar!: HTMLSpanElement;
+  let hold = 0, shownW = -1, textAt = 0;
+  const [load, setLoad] = createSignal(0);
+  const off = () => audioStatus()?.running === false;
+  onMount(() => onCleanup(addFrameTask(now => {
+    const c = Math.max(0, tele.frame.cpu || 0);
+    // the engine already peak-holds per callback; this keeps a spike visible between frames
+    hold = Math.max(c, hold * 0.92);
+    const w = Math.min(1, hold);
+    if (Math.abs(w - shownW) > 0.004) { shownW = w; bar.style.transform = `scaleX(${w})`; }
+    if (now - textAt >= CPU_TEXT_MS) { textAt = now; setLoad(hold); }
+  })));
+  const tip = () => off() ? t('a.tb.cpuOff') : t('a.tb.cpuTip', {
+    pct: cpuText(load()), n: underruns(),
+    act: underruns() ? t('a.tb.cpuActReset') : t('a.tb.cpuActOpen'),
+  });
+  const click = () => {
+    if (underruns() && !off()) { resetUnderruns(); say(t('a.tb.underrunReset')); }
+    else openAudioSettings();
+  };
+  return (
+    <button class={'cpumeter ' + cpuBand(load())} classList={{ flash: underrunFlash(), xrun: underruns() > 0, off: off() }}
+      title={tip()} aria-label={tip()} onClick={click}>
+      <span class="cpuval mono">{off() ? '—' : cpuText(load())}</span>
+      <span class="cpubar"><span ref={bar} /></span>
+      <Show when={underruns() > 0 && !off()}><span class="cpuxr mono">{underruns() > 99 ? '99+' : underruns()}</span></Show>
+    </button>
   );
 }

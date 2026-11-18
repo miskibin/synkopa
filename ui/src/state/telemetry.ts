@@ -3,6 +3,7 @@
 import { be } from '../api/backend';
 import { TelemetryDecoder, type FxFrame } from '../api/telemetry';
 import { noteMasterPeak } from './masterClip';
+import { noteUnderruns } from './underruns';
 import { setU, U } from './ui';
 
 /** A frame can be older than the last play/stop/pattern command the UI sent (it was produced
@@ -42,6 +43,7 @@ function onFrame() {
   }
   const master = f.ins.get(0);
   if (master) noteMasterPeak(master.l, master.r, f.beat, f.patBeat);
+  noteUnderruns(f.underruns);
   const settled = teleClock.lastAt - cmdAt > SETTLE_MS;
   if (settled && f.playing !== U.playing) setU('playing', f.playing);
   if (f.previewing !== U.previewing) setU('previewing', f.previewing);

@@ -89,5 +89,7 @@ pub fn frame(
     }
     // trailing: the pattern loop preview's position (beats into the pattern, −1 = stopped)
     w.f64(shared.pat_beat());
+    // trailing: output underruns since the engine started (late callbacks + driver xruns)
+    w.u32(shared.underruns());
     w.0
 }

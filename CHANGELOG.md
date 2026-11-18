@@ -4,6 +4,19 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **An underrun counter and a CPU meter.** Settings → Audio counts, next to Buffer, every time
+  the output ran dry — a buffer rendered too late, or a dropout the driver reports — since a larger
+  buffer is the cure; Reset starts a fresh count. Turn on "CPU meter in toolbar" there for FL
+  Studio's CPU meter: how much of each audio buffer the mix takes to render (near 100 % the output
+  crackles); it flashes red on an underrun and keeps the count until you click it.
+
+### Fixed
+- A single dropout reported by the audio driver no longer restarts the audio device; it is counted
+  as an underrun instead.
+
 ## 0.9.25 — 2026-11-18
 
 ### Added

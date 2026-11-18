@@ -725,7 +725,7 @@ u8  flags           // bit0 playing, bit1 recording, bit2 previewing
 u8  pad, u16 pad
 f32 inLevel         // input peak since last frame (linear)
 f32 previewPos      // seconds into the previewed file, -1 when not previewing
-f32 cpu             // audio callback load 0..1
+f32 cpu             // audio callback load 0..1 (peak-held, slow decay)
 u32 nIns  × { u32 insertId, f32 peakL, f32 peakR }            // linear peaks since last frame
 u32 nFx   × { u32 fxId, f32 inPeak, f32 outPeak, f32 grDb,     // only watched fx (every frame, 60 Hz)
               f32 meters[32],                                   // per-type live readings, see "Effect meters"
@@ -734,6 +734,7 @@ u32 nFx   × { u32 fxId, f32 inPeak, f32 outPeak, f32 grDb,     // only watched 
 u32 rec             // 0, or 1 followed by:
     u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]   // new [min,max] pairs at 100/s
 f64 patBeat         // beats into the pattern the loop preview plays; −1 = stopped (decoders treat a missing field as −1)
+u32 underruns       // output underruns since the engine started: callbacks slower than their period + driver xruns (missing = 0)
 ```
 
 ## Performance budget

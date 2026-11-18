@@ -102,6 +102,20 @@ describe('telemetry decoder', () => {
     const bad = encodeFrame({ ...base, fx: [] }); new DataView(bad).setUint32(0, 1, true);
     expect(d.decode(bad)).toBe(false);
   });
+  it('carries the output underrun count last, like the engine, and reads 0 from older frames', () => {
+    const base = { seq: 1, beat: 0, playing: false, recording: false, previewing: false, inLevel: 0, previewPos: -1, cpu: 0.5, ins: [], fx: [], rec: null };
+    // the same 56-byte layout crates/engine/tests/underruns.rs checks on the writer's side
+    const buf = encodeFrame({ ...base, underruns: 2 });
+    expect(buf.byteLength).toBe(56);
+    expect(new DataView(buf).getFloat64(44, true)).toBe(-1);
+    expect(new DataView(buf).getUint32(52, true)).toBe(2);
+    const d = new TelemetryDecoder();
+    expect(d.decode(buf)).toBe(true);
+    expect(d.frame.underruns).toBe(2);
+    expect(d.decode(buf.slice(0, 52))).toBe(true);
+    expect(d.frame.underruns).toBe(0);
+    expect(d.frame.cpu).toBeCloseTo(0.5);
+  });
 });
 
 describe('presets', () => {

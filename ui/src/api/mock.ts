@@ -157,6 +157,9 @@ export class MockBackend implements Backend {
     unavailableOutput: null,
     recOffsetMs: 0, inputUnderruns: 0, inputOverruns: 0, inputDriftPpm: 0, restarts: 0,
   };
+  /** Output underruns since the engine started (telemetry `underruns`): the browser renders
+   *  nothing, so none happen unless a test injects them with {@link mockUnderrun}. */
+  private underrunTotal = 0;
   private focusritePresent = true;
   private wasapiOutputPresent = true;
 
@@ -492,7 +495,7 @@ export class MockBackend implements Backend {
     const inLevel = this.tr.rec ? 0.2 + 0.5 * Math.abs(Math.sin(t * 3)) * Math.random() : 0;
     void spb;
     this.teleCb(encodeFrame({ seq, beat, playing, recording: !!this.rec && this.rawBeat() >= (this.rec?.clipStart ?? 0), previewing: !!this.preview,
-      inLevel, previewPos, cpu: playing ? 0.12 + 0.03 * Math.random() : 0.02, ins, fx, rec, patBeat }));
+      inLevel, previewPos, cpu: playing ? 0.12 + 0.03 * Math.random() : 0.02, ins, fx, rec, patBeat, underruns: this.underrunTotal }));
   }
 
   private findFx(id: Id): { fx: Fx; ins: Id } | null {
@@ -1611,6 +1614,8 @@ export class MockBackend implements Backend {
     // not an edit: the state is sent again without a new revision
     this.emit('state', this.dto());
   }
+  /** Test hook: the output ran dry `n` times (a late callback or a driver xrun in the engine). */
+  mockUnderrun(n = 1) { this.underrunTotal += n; }
   /** Test hook: the header a plugin window shows (undefined when closed). */
   editorLabel(fxId: Id) { return this.editors.get(fxId); }
   /** Test hook: whether the plugin's window is pinned on top (undefined when closed). */

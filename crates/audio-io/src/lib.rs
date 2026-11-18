@@ -906,6 +906,11 @@ const INPUT_ERR: &str = "input: ";
 
 /// Whether the output stream is dead, and why: a crash in its callback, or a stream error that
 /// is not the input's.
+/// A buffer under- or overrun the driver reported: the stream goes on (cpal recovers it).
+fn is_xrun(e: &cpal::Error) -> bool {
+    e.kind() == cpal::ErrorKind::Xrun
+}
+
 fn output_failure(crashed: bool, error: Option<&str>) -> Option<String> {
     if crashed {
         return Some("the audio engine crashed in the output callback".into());
@@ -957,6 +962,7 @@ fn build_output(
     let mut ir = vec![0f32; MAX_CALLBACK];
     let shared_clock = w.shared_clock;
     let crashed = w.crashed.clone();
+    let xruns = w.shared.clone();
     let mut render = move |frames: usize, out_lat: u32, now_ns: f64, write: &mut dyn FnMut(usize, f32, f32)| {
         while let Ok(next) = w.swap.pop() {
             if let Some(old) = std::mem::replace(&mut input, next) {
@@ -1021,6 +1027,12 @@ fn build_output(
         }
     };
     let on_err = move |e: cpal::Error| {
+        // An xrun is a glitch, not a lost stream: cpal keeps it running (and may report it
+        // from the audio thread), so it is only counted, lock-free, for the underrun meter.
+        if is_xrun(&e) {
+            xruns.add_underrun();
+            return;
+        }
         if let Ok(mut g) = err.lock() {
             *g = Some(e.to_string());
         }
@@ -1086,6 +1098,10 @@ fn build_input(
     let rate = sc.sample_rate;
     let mut pushed = 0u64;
     let on_err = move |e: cpal::Error| {
+        // an input xrun is a gap the jitter buffer already fades over and counts
+        if is_xrun(&e) {
+            return;
+        }
         if let Ok(mut g) = err.lock() {
             *g = Some(format!("{INPUT_ERR}{e}"));
         }
@@ -1479,6 +1495,14 @@ mod tests {
         );
         assert!(output_failure(true, None).unwrap().contains("crashed"));
         assert!(output_failure(true, Some("input: x")).is_some());
+    }
+
+    #[test]
+    fn an_xrun_is_counted_not_a_lost_stream() {
+        // the driver's xrun goes to the underrun meter; it must not reopen the device
+        assert!(is_xrun(&cpal::Error::from(cpal::ErrorKind::Xrun)));
+        assert!(!is_xrun(&cpal::Error::from(cpal::ErrorKind::DeviceNotAvailable)));
+        assert!(!is_xrun(&cpal::Error::from(cpal::ErrorKind::BackendError)));
     }
 
     #[test]

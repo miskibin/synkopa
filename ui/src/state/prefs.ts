@@ -20,10 +20,13 @@ export interface Prefs {
   autosaveMin: number;
   /** show the tool hint in the toolbar's hint line */
   hints: boolean;
+  /** FL's CPU meter (load + underrun count) in the toolbar; off by default, the bar is short
+   *  on room. The underrun count is always in Settings → Audio. */
+  cpuMeter: boolean;
 }
 
 const KEY = 'wave.prefs';
-const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true };
+const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false };
 
 function load(): Prefs {
   try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en' }; } catch { return { ...DEFAULTS }; }

@@ -32,7 +32,7 @@ for (let w = 1920; w >= 960; w -= 40) {
     }
     const mid = document.querySelector('.tbmid').getBoundingClientRect(), right = document.querySelector('.tbright').getBoundingClientRect(), left = document.querySelector('.tbleft').getBoundingClientRect();
     if (mid.left < left.right - 1 || right.left < mid.right - 1) bad.push('sections overlap');
-    const hidden = ['.loopText', '.clockbox .tag9', '.count', '.monbtn', '.hinttxt', '.metrobtn', '.typkb', '.panelbtn', '.tapbtn', '.projName'].filter(q => { const e = document.querySelector(q); return e && !vis(e); });
+    const hidden = ['.loopText', '.clockbox .tag9', '.count', '.monbtn', '.hinttxt', '.metrobtn', '.typkb', '.panelbtn', '.tapbtn', '.projName', '.cpumeter'].filter(q => { const e = document.querySelector(q); return e && !vis(e); });
     return { bad: [...new Set(bad)], hidden };
   });
   console.log(w, r.bad.length ? 'BAD ' + r.bad.join(', ') : 'ok', '| hidden:', r.hidden.join(' '));

@@ -34,6 +34,9 @@ pub struct Shared {
     pub stopped_at_end: AtomicBool,
     in_level: AtomicU32,
     cpu: AtomicU32,
+    /// Output underruns since the engine started: callbacks that took longer than the audio
+    /// they rendered lasts (the device ran dry, a click), plus xruns the driver reported.
+    underruns: AtomicU32,
     preview_pos: AtomicU32,
     /// Beats into the previewed pattern (f64 bits); negative when no pattern preview runs.
     pat_beat: AtomicU64,
@@ -51,6 +54,12 @@ pub struct Shared {
     take_lat_n: AtomicU32,
     /// Beat where input capture began (f64 bits; NaN until the audio thread has started it).
     rec_start: AtomicU64,
+}
+
+/// A callback that took longer (seconds) than the audio it rendered lasts: the device played
+/// out what it had before this block arrived.
+fn missed_deadline(spent: f32, period: f32) -> bool {
+    spent > period
 }
 
 fn fset(a: &AtomicU32, v: f32) {
@@ -76,6 +85,7 @@ impl Shared {
             stopped_at_end: AtomicBool::new(false),
             in_level: AtomicU32::new(0),
             cpu: AtomicU32::new(0),
+            underruns: AtomicU32::new(0),
             preview_pos: AtomicU32::new((-1f32).to_bits()),
             pat_beat: AtomicU64::new((-1f64).to_bits()),
             meters: (0..MAX_INSERTS).map(|_| (AtomicU32::new(0), AtomicU32::new(0))).collect(),
@@ -107,6 +117,16 @@ impl Shared {
     }
     pub fn cpu(&self) -> f32 {
         fget(&self.cpu)
+    }
+    /// Output underruns counted since the engine started (late callbacks + driver xruns).
+    /// Never reset here: the UI shows the count since its own reset.
+    pub fn underruns(&self) -> u32 {
+        self.underruns.load(Relaxed)
+    }
+    /// Counts one output underrun. Lock-free; the device layer calls it for an xrun the driver
+    /// reports (possibly from the audio thread).
+    pub fn add_underrun(&self) {
+        self.underruns.fetch_add(1, Relaxed);
     }
     pub fn preview_pos(&self) -> f32 {
         fget(&self.preview_pos)
@@ -1592,8 +1612,14 @@ impl Rt {
             self.preroll -= mute;
             pos += m;
         }
+        let spent = t0.elapsed().as_secs_f32();
+        // later than the audio it rendered lasts: the device ran dry before this block arrived
+        // (the pre-roll counts here: the deadline is missed all the same)
+        if missed_deadline(spent, period) {
+            self.shared.add_underrun();
+        }
         // the pre-roll is not this callback's load (the meter would only show its spike)
-        let load = (t0.elapsed().as_secs_f32() - pre).max(0.0) / period.max(1e-6);
+        let load = (spent - pre).max(0.0) / period.max(1e-6);
         let prev = fget(&self.shared.cpu);
         fset(&self.shared.cpu, if load > prev { load } else { prev * 0.95 + load * 0.05 });
     }
@@ -2661,5 +2687,28 @@ pub(crate) fn loop_span(range: Option<(f64, f64)>, len: f64) -> (f64, f64) {
             }
         }
         _ => (0.0, len),
+    }
+}
+
+#[cfg(test)]
+mod underrun_tests {
+    use super::*;
+
+    #[test]
+    fn only_a_callback_slower_than_its_audio_misses_the_deadline() {
+        let period = 256.0 / 48000.0; // 5.3 ms
+        assert!(!missed_deadline(0.0, period));
+        assert!(!missed_deadline(period * 0.99, period));
+        assert!(!missed_deadline(period, period));
+        assert!(missed_deadline(period * 1.01, period));
+    }
+
+    #[test]
+    fn underruns_only_count_up() {
+        let s = Shared::new();
+        assert_eq!(s.underruns(), 0);
+        s.add_underrun();
+        s.add_underrun();
+        assert_eq!(s.underruns(), 2);
     }
 }

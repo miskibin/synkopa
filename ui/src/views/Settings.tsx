@@ -3,6 +3,7 @@ import { ICONS } from '../ui/icons';
 import { be } from '../api/backend';
 import { PLUGIN_FORMAT_LABEL, type AudioConfig, type AudioDevices, type AudioHost, type AudioStatus, type CliStatus, type MidiDevice, type PluginInfo, type PluginScan } from '../api/types';
 import * as A from '../state/actions';
+import { resetUnderruns, underruns } from '../state/underruns';
 import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, audioTabRequested, refreshAudioStatus, switchToWasapi, takeAudioTabRequest } from '../state/audioWatch';
 import { DEFAULT_FIXED_VELOCITY, keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget, setMidiVelocity } from '../state/midi';
 import { S } from '../state/store';
@@ -138,6 +139,16 @@ function SettingsDialog() {
                 <option value="">{t('d.set.auto')}</option>
                 <For each={BUFFERS}>{b => <option value={String(b)}>{t('d.set.samples', { n: b })}</option>}</For>
               </select>
+              {/* FL's "Underruns" sits by the buffer length: a larger buffer is the cure */}
+              <label title={t('d.set.underruns.tip')}>{t('d.set.underruns')}</label>
+              <span class="note underruns" title={t('d.set.underruns.tip')}>
+                <span classList={{ warn: underruns() > 0 }}>{underruns() ? t('d.set.underruns.note', { n: underruns() }) : t('d.set.underruns.none')}</span>
+                <Show when={underruns() > 0}>
+                  <button class="smallbtn" onClick={resetUnderruns}>{t('d.set.underruns.reset')}</button>
+                </Show>
+              </span>
+              <label title={t('d.set.cpumeter.tip')}>{t('d.set.cpumeter')}</label>
+              <span class="note" title={t('d.set.cpumeter.tip')}><OnOff on={() => prefs().cpuMeter} set={v => setPref('cpuMeter', v)} /></span>
               <label>{t('d.set.state')}</label>
               <span class="note mono" style={{ color: s().running ? 'var(--green)' : 'var(--danger)' }}>
                 {t('d.set.statline', { state: s().running ? t('d.set.running') : t('d.set.stopped'), rate: s().actualRate, buf: s().actualBuffer, ms: s().latencyMs.toFixed(1), ch: s().inputChannels })}

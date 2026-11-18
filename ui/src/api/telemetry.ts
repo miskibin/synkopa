@@ -6,6 +6,7 @@
 //   u32 nFx  × {u32 fxId, f32 inPeak, f32 outPeak, f32 grDb, f32 specIn[128], f32 specOut[128], f32 scopeIn[256], f32 scopeOut[256]}
 //   u32 rec (0 | 1 + {u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]})
 //   f64 patBeat (beats into the pattern the loop preview plays; −1 = stopped; absent in old frames)
+//   u32 underruns (output underruns since the engine started: late callbacks + driver xruns; absent in old frames)
 //
 // The decoder writes into long-lived objects so a 60 Hz stream does not allocate per frame.
 
@@ -37,6 +38,8 @@ export interface Frame {
   inLevel: number; previewPos: number; cpu: number;
   /** Pattern loop preview position in beats, −1 when stopped. */
   patBeat: number;
+  /** Output underruns since the engine started (never decreases; the UI keeps its own reset). */
+  underruns: number;
   ins: Map<number, { l: number; r: number }>;
   /** fx present in *this* frame (analysis frames only). */
   fxIds: number[];
@@ -46,7 +49,7 @@ export interface Frame {
 export class TelemetryDecoder {
   frame: Frame = {
     seq: 0, beat: 0, playing: false, recording: false, previewing: false,
-    inLevel: 0, previewPos: -1, cpu: 0, patBeat: -1, ins: new Map(), fxIds: [], rec: null,
+    inLevel: 0, previewPos: -1, cpu: 0, patBeat: -1, underruns: 0, ins: new Map(), fxIds: [], rec: null,
   };
   /** Latest analysis per fx id (persists across frames that carry no fx). */
   fx = new Map<number, FxFrame>();
@@ -121,7 +124,8 @@ export class TelemetryDecoder {
         f.rec = r;
         o += n * 4;
       } else f.rec = null;
-      f.patBeat = o + 8 <= buf.byteLength ? v.getFloat64(o, true) : -1;
+      f.patBeat = o + 8 <= buf.byteLength ? v.getFloat64(o, true) : -1; o += 8;
+      f.underruns = o + 4 <= buf.byteLength ? v.getUint32(o, true) : 0;
     } catch {
       return false;
     }
@@ -144,6 +148,7 @@ export interface EncFrame {
   seq: number; beat: number; playing: boolean; recording: boolean; previewing: boolean;
   inLevel: number; previewPos: number; cpu: number;
   patBeat?: number;
+  underruns?: number;
   ins: { id: number; l: number; r: number }[];
   fx: EncFx[];
   rec: null | { track: number; clipStart: number; seconds: number; peakOffset: number; peaks: ArrayLike<number> };
@@ -151,7 +156,7 @@ export interface EncFrame {
 
 export function encodeFrame(f: EncFrame): ArrayBuffer {
   const recBytes = f.rec ? 24 + f.rec.peaks.length * 4 : 0;
-  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + 4 + recBytes + 8;
+  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + 4 + recBytes + 8 + 4;
   const buf = new ArrayBuffer(size);
   const v = new DataView(buf);
   v.setUint32(0, MAGIC, true);
@@ -184,6 +189,7 @@ export function encodeFrame(f: EncFrame): ArrayBuffer {
   } else {
     v.setUint32(o, 0, true); o += 4;
   }
-  v.setFloat64(o, f.patBeat ?? -1, true);
+  v.setFloat64(o, f.patBeat ?? -1, true); o += 8;
+  v.setUint32(o, (f.underruns ?? 0) >>> 0, true);
   return buf;
 }

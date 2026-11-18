@@ -698,6 +698,25 @@ select option { background: var(--bg4); color: var(--fg); }
 .masterout.clip { border-color: var(--red); background: var(--red); cursor: pointer; }
 .masterout.clip:hover { filter: brightness(1.12); }
 .masterout .moclip { font: 700 10px var(--mono); color: #fff; letter-spacing: 0.02em; white-space: nowrap; }
+/* FL's CPU meter: load of each audio buffer (number over a bar) and the underruns since reset */
+.cpumeter { display: grid; grid-template-columns: 30px auto; grid-template-rows: auto 4px; column-gap: 4px; row-gap: 2px; align-items: center; height: 28px; box-sizing: border-box; padding: 0 5px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--fg3); cursor: pointer; flex: none; transition: background-color 0.4s, border-color 0.4s; }
+.cpumeter:hover { border-color: var(--line2); }
+.cpumeter .cpuval { grid-column: 1; grid-row: 1; font-size: 10px; line-height: 10px; text-align: right; }
+.cpumeter .cpubar { grid-column: 1; grid-row: 2; position: relative; height: 4px; border-radius: 1px; overflow: hidden; background: var(--line); }
+.cpumeter .cpubar > span { position: absolute; inset: 0; background: var(--green); transform-origin: left; transform: scaleX(0); }
+.cpumeter.warn .cpubar > span { background: var(--amber); }
+.cpumeter.hot .cpubar > span { background: var(--red); }
+.cpumeter.hot .cpuval { color: var(--red); }
+.cpumeter .cpuxr { grid-column: 2; grid-row: 1 / 3; font-size: 10px; font-weight: 700; color: var(--amber); }
+/* a new underrun: red for a moment, then the amber count stays until reset */
+.cpumeter.flash { background: var(--red); border-color: var(--red); transition: none; }
+.cpumeter.flash .cpuval, .cpumeter.flash .cpuxr { color: #fff; }
+.cpumeter.flash .cpubar { background: rgba(255, 255, 255, 0.3); }
+.cpumeter.flash .cpubar > span { background: #fff; }
+.note.underruns { display: flex; align-items: center; gap: 8px; }
+.note.underruns .warn { color: var(--amber); }
+.cpumeter.off { color: var(--fg5); }
+.cpumeter.off .cpubar > span { visibility: hidden; }
 .tbright { min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .tbright .dragfill { flex: 1 1 0; min-width: 0; align-self: stretch; }
 /* one height for every control in the bar */
@@ -708,8 +727,9 @@ select option { background: var(--bg4); color: var(--fg); }
 /* One row, like FL Studio's bar. As the window narrows, the least needed controls step aside
    in this order, never half-clipped (perf/toolbar_fit.mjs checks it). Each stays reachable: loop on the
    timeline, BPM label/TAP in the tempo's right-click menu and keys, transport toggles and
-   panels in the View menu (F5-F9), tools on their keys (T C E), Ask on F1. The master output
-   meter never steps aside: the widths leave room for it with its clip readout. */
+   panels in the View menu (F5-F9), tools on their keys (T C E), Ask on F1, the CPU meter's
+   underrun count in Settings → Audio (the meter is shown only when turned on there). The master output meter never steps aside: the widths
+   leave room for it with its clip readout. */
 .toolbar { container: toolbar / inline-size; }
 @container toolbar (max-width: 1812px) { .toolbar .loopText { display: none; } }
 @container toolbar (max-width: 1702px) { .toolbar .clockbox .tag9, .toolbar .typoct { display: none; } }
@@ -717,15 +737,18 @@ select option { background: var(--bg4); color: var(--fg); }
 @container toolbar (max-width: 1592px) { .toolbar .metrobtn, .toolbar .typkb, .toolbar .hinttxt { display: none; } }
 @container toolbar (max-width: 1522px) { .toolbar .panelbtn { display: none; } }
 @container toolbar (max-width: 1372px) { .toolbar .tapbtn, .toolbar .mainvol, .toolbar .projName { display: none; } }
+/* the CPU meter (a Settings option, off by default) takes its room from these a step earlier */
+@container toolbar (max-width: 1412px) { .toolbar:has(.cpumeter) .tapbtn, .toolbar:has(.cpumeter) .mainvol, .toolbar:has(.cpumeter) .projName { display: none; } }
 @container toolbar (max-width: 1302px) {
   .toolbar .tools > button:nth-child(n+4), .toolbar .patselnew { display: none; }
   .toolbar .patselbtn { min-width: 80px; max-width: 120px; }
   .toolbar .snapsel { width: 80px; }
   .tbmid, .tbright { gap: 5px; }
+  .toolbar .cpumeter { padding: 0 3px; column-gap: 2px; }
 }
 @container toolbar (max-width: 1152px) { .toolbar .askbtn { display: none; } .toolbar .clockbox { gap: 6px; padding: 0 7px; } .toolbar .patselbtn { min-width: 64px; max-width: 96px; } }
 @container toolbar (max-width: 1122px) { .toolbar .tools { display: none; } }
-@container toolbar (max-width: 1000px) { .toolbar .masterout .cliplbl { display: none; } }
+@container toolbar (max-width: 1000px) { .toolbar .masterout .cliplbl, .toolbar .cpumeter { display: none; } }
 /* (the bar's own columns follow the window: a container query cannot style its container) */
 @media (max-width: 1070px) { .toolbar { grid-template-columns: minmax(170px, 1fr) minmax(0, auto) minmax(max-content, 1fr); column-gap: 10px; } }
 .winbtns > button { width: 46px; border: 0; background: transparent; color: var(--fg2); cursor: default; display: flex; align-items: center; justify-content: center; padding: 0; }
