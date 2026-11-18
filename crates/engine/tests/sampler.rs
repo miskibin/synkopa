@@ -870,3 +870,20 @@ fn undoing_a_sampler_made_from_a_file_also_removes_the_file() {
     assert_eq!(e.project().sources.len(), sources + 1);
     assert_eq!(e.project().channels.len(), channels + 1);
 }
+
+/// A file loaded (no step of its own) in the middle of a knob drag: Ctrl+Z after the drag goes
+/// back to before the drag, not to the knob values the import happened to see.
+#[test]
+fn a_file_loaded_during_a_gesture_undoes_to_the_gestures_start() {
+    let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
+    let start = e.project();
+    let m = start.inserts[0].clone();
+    e.begin_gesture();
+    e.apply(&[Op::PutInsert { insert: Insert { vol: 0.5, ..m.clone() } }], true, None).unwrap();
+    e.import_audio_with(&[two_level_wav("gesture-import")], None, false).unwrap();
+    e.apply(&[Op::PutInsert { insert: Insert { vol: 0.25, ..m.clone() } }], true, None).unwrap();
+    e.end_gesture();
+    assert!(e.undo());
+    assert_eq!(e.project().inserts[0].vol, m.vol, "undo returns to the value before the drag");
+    assert_eq!(e.project().sources, start.sources, "and the file loaded during it goes too");
+}

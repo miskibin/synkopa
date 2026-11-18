@@ -79,8 +79,10 @@ export function restoreArrange(a: Arrange): Partial<UiState> {
 
 /**
  * The insert FL's "route to a free mixer track" picks: the first one (in mixer order, never the
- * Master) with no effects that nothing plays into: no channel, no playlist track, no audio clip
- * routed to it and no insert sending to it. Null when every insert is in use.
+ * Master) that nothing plays into (no channel, playlist track, audio clip or send routed to it),
+ * that no automation moves, and that is still as a new insert is: no effects, no sends of its own,
+ * its default name, the fader at unity and centred, not muted, soloed or narrowed, into the Master.
+ * A muted, renamed or prepared insert is the user's, not free. Null when every insert is in use.
  */
 export function freeInsert(p: Project): Insert | null {
   const used = new Set<Id>();
@@ -88,7 +90,10 @@ export function freeInsert(p: Project): Insert | null {
   for (const t of p.tracks) used.add(t.insert);
   for (const c of p.clips) if (c.insert != null) used.add(c.insert);
   for (const m of p.inserts) for (const s of m.sends ?? []) used.add(s.to);
-  return p.inserts.find(m => m.id !== 0 && !m.fx.length && !used.has(m.id)) ?? null;
+  for (const a of p.automations ?? []) if (a.target.kind === 'insertVol' || a.target.kind === 'insertPan') used.add(a.target.id);
+  const pristine = (m: Insert) => !m.fx.length && !m.sends?.length && (!m.name.trim() || isDefaultInsertName(m.name))
+    && Math.abs(m.vol - VOL_UNITY) < 1e-4 && m.pan === 0 && !m.muted && !m.solo && (m.width ?? 1) === 1 && m.master !== false;
+  return p.inserts.find(m => m.id !== 0 && !used.has(m.id) && pristine(m)) ?? null;
 }
 
 /**

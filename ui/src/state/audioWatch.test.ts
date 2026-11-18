@@ -107,3 +107,15 @@ describe('play while the output is not open', () => {
     expect(notice()?.actions.map(a => a.label)).toEqual(['Try again', 'Audio settings']);
   });
 });
+
+describe('Audio settings from a notice', () => {
+  it('asks for the Audio tab once, also while Settings is already open', async () => {
+    const { audioTabRequested, openAudioSettings, takeAudioTabRequest } = await import('./audioWatch');
+    expect(audioTabRequested()).toBe(false);
+    openAudioSettings();
+    expect(audioTabRequested()).toBe(true);
+    expect(takeAudioTabRequest()).toBe(true);
+    expect(audioTabRequested()).toBe(false);
+    expect(takeAudioTabRequest()).toBe(false);
+  });
+});

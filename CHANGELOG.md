@@ -4,12 +4,24 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.24 — 2026-11-18
 
 ### Added
 - **Fixed velocity for the MIDI keyboard.** Settings → MIDI → Velocity: "Fixed" plays and
   records every key at one velocity (100 by default, any 1–127) however hard it is pressed —
   for keyboards without velocity or when you do not want it. "From keyboard" is the default.
+- **Trap kicks and an 808 section in the Standard library.** Fourteen new trap kicks (Brick, Clean,
+  Clip, Dark, Hard, Heavy, Knock, Phonk, Punch, Rack, Stomp, Tight, Top…) and fifteen new 808s
+  (Zay Warm, Opium Growl, Drill Glide, Sub Pure, Plugg Short…) in a Browser section of their own
+  between Percussion and Tonal. Every 808 is pitched at its measured root key, so they swap and layer
+  on the same notes.
+- **Double-click an empty mixer box to give a channel its own insert** (as in FL). On a channel
+  with no insert ("—") it routes the channel to the first unused mixer insert, else a new one,
+  named and coloured after the channel, in one undo step. An insert you muted, renamed, set up or
+  automate is never taken. The channel and sample windows' MIXER list has the same as
+  *+ Free insert*.
+- **The Playlist's vertical scrollbar zooms the lanes**, as in FL: drag the thumb to scroll, drag
+  either end to make every lane taller or shorter, Ctrl+wheel over it to zoom.
 - **Play says why there is no sound.** When the audio output failed to open (a headset driver
   error, an unplugged interface), pressing Play or playing a pattern shows a notice with the
   reason, **Try again** (reopens the device) and **Audio settings**, instead of silently not
@@ -28,12 +40,26 @@ shown in the app after an update and is published as the release notes (see
   item is disabled when the rack already has a channel playing that sample.
 
 ### Changed
-- **Dock guides only show where you point.** Moving a floating Channel Rack, Piano roll or Mixer
-  no longer covers the workspace with dock guides: the guide and the area the panel would take
-  appear only for the dock slot under the pointer, and a drop anywhere else keeps it floating.
-  The dock button, the title-bar right-click menu and View → Window layout dock as before.
+- **Lighter dock guides.** Moving a floating Channel Rack, Piano roll or Mixer no longer covers
+  the workspace with full-size guides: every dock slot shows a small, faint arrow, and the one
+  under the pointer lights up with the area the panel would take. A drop anywhere else keeps it
+  floating. The dock button, the title-bar right-click menu and View → Window layout dock as before.
+- **Less CPU while nothing plays.** Silent tracks and mixer inserts no longer cost anything in
+  each audio block: a stopped project uses almost no CPU, and big songs play with more headroom
+  (fewer crackles at small buffer sizes).
+- **The loading screen shows the Synkopa logo** above the progress bar.
 
 ### Fixed
+- **Type in value works on pan and EQ Q.** A centred pan (shown "C") and an EQ band's Q accept a
+  typed value instead of greying the item out.
+- **A sample dropped on the Channel Rack is undone with its channel.** One Ctrl+Z removes both,
+  and the file no longer stays in the project's audio list. A file loaded during a knob drag no
+  longer makes Ctrl+Z stop half-way through the drag.
+- **Lane heights stay with their track.** Undoing a Move up / down no longer hands a resized
+  lane's height to the other track, and undoing a rename keeps the height you gave the lane.
+- **Plugin parameter sliders reset on Alt+click**, as their menu says.
+- **Paint:** a fast diagonal sweep paints every lane it crosses instead of filling the last one.
+- **A folder removed from the Browser** forgets that it was open and is not read again.
 - **Zooming no longer fights the playhead.** With Follow on and the song playing, every zoom
   step (Ctrl+wheel, Page Up/Down, the presets, a zoom box, the scrollbar) now pauses following
   instead of letting the view get yanked between the zoom's anchor and the playhead — the

@@ -739,27 +739,20 @@ impl Engine {
         // height is saved with the song, so it is carried into the history instead: undoing an
         // older edit keeps the lanes as they are now.
         if only_track_heights(ops, &before, &c.project) {
-            // only the lanes whose height changed, and only into the same lane: a track's id stays with
-            // its slot when lanes swap (Move up / down), so the name tells whether the snapshot's lane
-            // at that id holds the same track; one that held another track keeps its own height
-            let heights: HashMap<Id, (f32, String)> = c
-                .project
-                .tracks
-                .iter()
-                .filter(|t| before.tracks.iter().any(|b| b.id == t.id && b.h != t.h))
-                .map(|t| (t.id, (t.h, t.name.clone())))
-                .collect();
-            let carry = |p: &mut Project| {
-                for t in &mut p.tracks {
-                    if let Some((h, name)) = heights.get(&t.id) {
-                        if *name == t.name {
-                            t.h = *h;
-                        }
-                    }
-                }
-            };
+            // only the lanes whose height changed, and only into the same track: a track's id stays
+            // with its slot when lanes swap (Move up / down), so the history is walked step by step
+            // from now, and the carry stops at the first step where the lane at that id became
+            // another track (see `same_lane`: a rename keeps it the same track)
+            let changed: Vec<Track> =
+                c.project.tracks.iter().filter(|t| before.tracks.iter().any(|b| b.id == t.id && b.h != t.h)).cloned().collect();
             let core = &mut *c;
-            core.undo.iter_mut().chain(core.redo.iter_mut()).chain(core.gesture.iter_mut()).for_each(carry);
+            for now in &changed {
+                // undo: the newest snapshot is last; redo: the next state is last
+                for stack in [&mut core.undo, &mut core.redo] {
+                    carry_height(now, stack.iter_mut().rev());
+                }
+                carry_height(now, core.gesture.iter_mut());
+            }
         } else if !in_gesture {
             push_undo(&mut c, before);
         }
@@ -789,6 +782,9 @@ impl Engine {
         let unreported = std::mem::take(&mut c.gesture_unreported);
         if let Some(g) = c.gesture.take() {
             if g != c.project {
+                // the gesture's start predates any file imported during it: that start is the
+                // state Ctrl+Z returns to, not the import's base (taken mid-gesture)
+                c.import_base = None;
                 push_undo(&mut c, g);
                 // renders skipped during the drag (pitch edits) happen now
                 self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
@@ -3643,6 +3639,33 @@ fn only_track_heights(ops: &[Op], before: &Project, after: &Project) -> bool {
         a == *b
     };
     before.tracks.iter().zip(&after.tracks).all(|(a, b)| same_but_height(a, b))
+}
+
+/// True when `a` and `b` (the lane at one id in two consecutive history states) are the same
+/// track: the same name, or everything but the name (and height) the same, a rename. Lanes that
+/// swapped places (Move up / down keeps ids with their slots) differ in more than the name.
+fn same_lane(a: &Track, b: &Track) -> bool {
+    if a.name == b.name {
+        return true;
+    }
+    let mut a = a.clone();
+    a.name.clone_from(&b.name);
+    a.h = b.h;
+    a == *b
+}
+
+/// Gives the lane `now` its current height in each history state of `states`, nearest first,
+/// until a state where that lane holds another track (or no lane has its id).
+fn carry_height<'a>(now: &Track, states: impl Iterator<Item = &'a mut Project>) {
+    let mut prev = now.clone();
+    for p in states {
+        let Some(t) = p.tracks.iter_mut().find(|t| t.id == now.id) else { break };
+        if !same_lane(&prev, t) {
+            break;
+        }
+        prev = t.clone();
+        t.h = now.h;
+    }
 }
 
 fn push_undo(c: &mut Core, before: Project) {

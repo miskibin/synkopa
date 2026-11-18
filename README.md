@@ -258,3 +258,6 @@ Special thanks to [@rebizu](https://github.com/rebizu) for architectural reviews
 
 Third-party components and sample credits are in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+
+[![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)

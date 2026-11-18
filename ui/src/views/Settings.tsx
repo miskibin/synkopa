@@ -3,7 +3,7 @@ import { ICONS } from '../ui/icons';
 import { be } from '../api/backend';
 import { PLUGIN_FORMAT_LABEL, type AudioConfig, type AudioDevices, type AudioHost, type AudioStatus, type CliStatus, type MidiDevice, type PluginInfo, type PluginScan } from '../api/types';
 import * as A from '../state/actions';
-import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, refreshAudioStatus, switchToWasapi, takeAudioTabRequest } from '../state/audioWatch';
+import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, audioTabRequested, refreshAudioStatus, switchToWasapi, takeAudioTabRequest } from '../state/audioWatch';
 import { DEFAULT_FIXED_VELOCITY, keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget, setMidiVelocity } from '../state/midi';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
@@ -31,6 +31,8 @@ function SettingsDialog() {
   if (takeAudioTabRequest()) lastTab = 'audio';
   const [tab, setTab] = createSignal<Tab>(lastTab);
   const pickTab = (t: Tab) => { lastTab = t; setTab(t); };
+  // "Audio settings" on a notice while Settings is already open switches it to the Audio tab
+  createEffect(() => { if (audioTabRequested() && takeAudioTabRequest()) pickTab('audio'); });
   const cur = () => TABS.find(x => x.id === tab()) ?? TABS[0];
   const st = audioStatus;
   const busy = audioBusy;

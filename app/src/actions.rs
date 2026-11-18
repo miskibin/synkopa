@@ -981,11 +981,13 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         // ".flac"), its display name, or the start of either ("kick" = the first kick)
         let want = k.to_lowercase();
         let stem = |f: &factory::FactoryFile| f.file.trim_end_matches(".flac").to_string();
-        let files = factory::files();
-        let f = files
-            .iter()
-            .find(|f| stem(f) == want.trim_end_matches(".flac") || f.name.to_lowercase() == want)
-            .or_else(|| files.iter().find(|f| stem(f).starts_with(&want) || f.name.to_lowercase().starts_with(&want)))
+        // the samples the Library tab lists come first; a hidden one (kept for older songs) only
+        // by its exact name, so "kick-trap" is one of the listed trap kicks, not the old hidden file
+        let exact = |f: &&factory::FactoryFile| stem(f) == want.trim_end_matches(".flac") || f.name.to_lowercase() == want;
+        let f = factory::listed_files()
+            .find(exact)
+            .or_else(|| factory::listed_files().find(|f| stem(f).starts_with(&want) || f.name.to_lowercase().starts_with(&want)))
+            .or_else(|| factory::files().iter().find(exact))
             .ok_or(format!("no standard-library sample `{k}`: try kick-808, snare-studio, hat-808-open, bass-808, marimba ... (the browser's Library tab lists them all)"))?;
         // the import adds the project source (or finds the one already there)
         let (srcs, _) = e.import_audio_with(&[PathBuf::from(factory::lib_path(f.file))], None, false).map_err(|x| x.to_string())?;
@@ -1738,7 +1740,17 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             // our own bake moved the project one step past the caller's guard; a foreign change
             // still conflicts (the entry check above refuses before anything is done)
             let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
-            e.apply(&ops, false, guard).map_err(|x| x.to_string())?;
+            if let Err(x) = e.apply(&ops, false, guard) {
+                // the bake is already committed (its own undo step): say so, or a retry skips it
+                // as already baked and the caller never learns the audio changed
+                return Err(match &baked {
+                    Some(b) => format!(
+                        "{x} (the rider was already baked into the clip: {b}, project now at revision {}; the effect chain was not added, run auto-vocal again to add it)",
+                        e.revision()
+                    ),
+                    None => x.to_string(),
+                });
+            }
             Ok(json!({
                 "revision": e.revision(), "clipId": cid, "insertId": insert, "style": plan.style,
                 "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,

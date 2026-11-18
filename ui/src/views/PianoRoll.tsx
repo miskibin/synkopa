@@ -589,8 +589,10 @@ function Roll(props: { z: number; docked?: boolean }) {
       let at = noteClip.at ?? pasteStart(a, hRange().pos, hRange().len);
       // a paste exactly onto the notes it copied (Ctrl+C, Ctrl+V in place) would stack invisible doubles:
       // it goes a whole bar on past the block instead, like FL's paste after its source
-      const same = (x: Note, y: Note) => x.ch === y.ch && Math.abs(x.step - y.step) < 1e-6 && Math.abs(x.len - y.len) < 1e-6 && (x.p ?? null) === (y.p ?? null);
-      const lands = (from: number) => clip.every(n => notesRaw().some(o => same(o, { ...n, ch: ch().id, step: n.step - a + from })));
+      // the channel's notes by place, so each candidate bar costs O(copied), not O(copied × notes)
+      const key = (step: number, n: Note) => `${Math.round(step * 1e6)}|${Math.round(n.len * 1e6)}|${n.p ?? null}`;
+      const cid = ch().id, here = new Set(notesRaw().filter(o => o.ch === cid).map(o => key(o.step, o)));
+      const lands = (from: number) => clip.every(n => here.has(key(n.step - a + from, n)));
       for (let guard = 0; guard < 64 && lands(at); guard++) at += Math.max(1, Math.ceil((b - a) / 16 - 1e-9)) * 16;
       const copies = clip.map(n => ({ ...n, ch: ch().id, step: n.step - a + at }));
       const base = notesRaw().length;

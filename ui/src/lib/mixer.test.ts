@@ -123,6 +123,18 @@ describe('route to a free insert (FL)', () => {
     expect(r.insert).toMatchObject({ id: ins[8].id, name: 'Vox', color: '#d9678f' });
     expect(r.ops).toHaveLength(2);
   });
+  it('skips inserts the user muted, renamed, moved or automates', () => {
+    const p = proj();
+    const ins = p.inserts;
+    ins[5].muted = true;
+    ins[6].name = 'Vox bus';
+    ins[7].vol = 0;
+    p.automations = [{ id: 77, name: 'A', color: '#fff', target: { kind: 'insertVol', id: ins[8].id }, points: [] }];
+    // 1-4 play the starter kit and 5-8 are the user's now: none is free, so a new insert is made
+    expect(freeInsert(p)).toBeNull();
+    ins[5].muted = false;
+    expect(freeInsert(p)?.id).toBe(ins[5].id);
+  });
   it('makes a new insert when every one is in use', () => {
     const p = proj();
     for (const m of p.inserts.slice(1)) m.fx.push({ id: m.id + 500, type: 'eq', params: {} } as never);

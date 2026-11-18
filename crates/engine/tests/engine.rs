@@ -1046,3 +1046,20 @@ fn a_lane_resized_after_a_move_keeps_its_height_with_its_track_on_undo() {
     assert_eq!(p.tracks[1].name, b.name);
     assert_eq!(p.tracks[1].h, b.h, "the other track does not take the resized height");
 }
+
+/// A track renamed (an undo step), then resized (no step): undoing the rename keeps the new
+/// height, because the lane still holds the same track.
+#[test]
+fn a_lane_resized_after_a_rename_keeps_its_height_when_the_rename_is_undone() {
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    let t = e.project().tracks[0].clone();
+    e.apply(&[Op::PutTrack { track: Track { name: "Vox".into(), ..t.clone() } }], false, None).unwrap();
+    let vox = e.project().tracks[0].clone();
+    e.apply(&[Op::PutTrack { track: Track { h: 200.0, ..vox } }], false, None).unwrap();
+    assert!(e.undo(), "the rename is undone (the resize was no step)");
+    let p = e.project();
+    assert_eq!(p.tracks[0].name, t.name);
+    assert_eq!(p.tracks[0].h, 200.0);
+    assert!(e.redo());
+    assert_eq!(e.project().tracks[0].h, 200.0);
+}

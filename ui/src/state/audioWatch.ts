@@ -74,10 +74,12 @@ export function noAudioReason(s: AudioStatus | null): string | null {
   return s.error ?? s.unavailableOutput ?? null;
 }
 
-let audioTabWanted = false;
-/** Settings opens on the Audio tab once (after "Audio settings" on a notice). */
-export const takeAudioTabRequest = () => { const w = audioTabWanted; audioTabWanted = false; return w; };
-export function openAudioSettings() { audioTabWanted = true; setU('settings', true); }
+const [audioTabWanted, setAudioTabWanted] = createSignal(false);
+/** "Audio settings" on a notice asked for the Audio tab (a signal: Settings may already be open). */
+export const audioTabRequested = audioTabWanted;
+/** Settings shows the Audio tab once per request (after "Audio settings" on a notice). */
+export const takeAudioTabRequest = () => { const w = audioTabWanted(); if (w) setAudioTabWanted(false); return w; };
+export function openAudioSettings() { setAudioTabWanted(true); setU('settings', true); }
 
 /**
  * Play / pattern play while the output is not open: transport would start but nothing would

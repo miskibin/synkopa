@@ -29,7 +29,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
 } from './types';
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
@@ -255,11 +255,28 @@ export class MockBackend implements Backend {
     const heightsOnly = ops.every(op => op.op === 'putTrack') && prev.tracks.length === next.tracks.length
       && prev.tracks.every((t, i) => projectEq({ ...t, h: next.tracks[i].h } as unknown as Json, next.tracks[i] as unknown as Json));
     if (heightsOnly) {
-      // only the lanes that changed, and only into the same track (ids stay with their slots when lanes swap)
-      const h = new Map(next.tracks.filter((t, i) => prev.tracks[i].h !== t.h).map(t => [t.id, t]));
-      const carry = (p: Project): Project => ({ ...p, tracks: p.tracks.map(t => { const n = h.get(t.id); return n && n.name === t.name ? { ...t, h: n.h } : t; }) });
-      this.undoStack = this.undoStack.map(carry); this.redoStack = this.redoStack.map(carry);
-      if (this.gesture) this.gesture = carry(this.gesture);
+      // only the lanes that changed, and only into the same track (ids stay with their slots when lanes
+      // swap): like the engine (carry_height) the history is walked from now, nearest state first, and the
+      // carry stops where the lane at that id became another track (a rename keeps it the same track)
+      const changed = next.tracks.filter((t, i) => prev.tracks[i].h !== t.h);
+      const sameLane = (a: Track, b: Track) => a.name === b.name
+        || projectEq({ ...a, name: b.name, h: b.h } as unknown as Json, b as unknown as Json);
+      const carry = (states: Project[]) => {
+        for (const now of changed) {
+          let last: Track = now;
+          for (let i = 0; i < states.length; i++) {
+            const t = states[i].tracks.find(x => x.id === now.id);
+            if (!t || !sameLane(last, t)) break;
+            last = t;
+            states[i] = { ...states[i], tracks: states[i].tracks.map(x => x.id === now.id ? { ...x, h: now.h } : x) };
+          }
+        }
+        return states;
+      };
+      // nearest first: the undo stack's newest is last, the redo stack's next state is last
+      this.undoStack = carry([...this.undoStack].reverse()).reverse();
+      this.redoStack = carry([...this.redoStack].reverse()).reverse();
+      if (this.gesture) this.gesture = carry([this.gesture])[0];
       if (opts?.transient && this.gesture) { this.revision++; this.gestureUnreported = true; } else this.changed();
       return { revision: this.revision };
     }
@@ -1324,12 +1341,12 @@ export class MockBackend implements Backend {
 
   setWasapiOutputPresent(present: boolean) { this.wasapiOutputPresent = present; }
 
-  /** Dev tools / tests: the device stops by itself and the audio thread reopens it, as in the app. */
   /** Test hook: the output could not be opened (the engine's status after a WASAPI/ASIO open error); the next `audioSetConfig` opens it again. */
   audioOpenFailed(err: string) {
     this.audio = { ...this.audio, running: false, error: err };
     this.emit('audio-status', { ...this.audio });
   }
+  /** Dev tools / tests: the device stops by itself and the audio thread reopens it, as in the app. */
   audioDeviceLost(why = 'The requested device is no longer available') {
     this.audio = { ...this.audio, running: true, error: null, restarts: this.audio.restarts + 1, note: `Audio restarted by itself: ${why}.` };
     this.emit('audio-status', { ...this.audio });

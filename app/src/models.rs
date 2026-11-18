@@ -53,6 +53,10 @@ pub fn activate(engine: &Engine) -> Result<bool, String> {
 /// Streams the model to `<file>.part`, hashing as it goes, and renames it into
 /// place only when the checksum matches. Blocking.
 pub fn install(progress: impl Fn(u64, u64)) -> Result<(), String> {
+    // one install at a time: the app's Install button and `synkopa f0-model --install` both
+    // stream to the same `.part` file. A second caller waits, then finds the model in place.
+    static INSTALLING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one = INSTALLING.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let dst = wave_rmvpe::model_path();
     if dst.is_file() {
         return Ok(());
