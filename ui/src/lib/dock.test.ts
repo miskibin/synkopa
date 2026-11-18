@@ -101,7 +101,9 @@ describe('splitShares', () => {
 describe('dock guides', () => {
   const stage = { x: 0, y: 50, w: 1600, h: 900 }, center = { x: 300, y: 50, w: 1000, h: 500 };
   const panes = [{ edge: 'bottom' as const, strip: 0, at: 0, rect: { x: 0, y: 555, w: 1600, h: 395 } }];
-  const gs = dockGuides(stage, center, panes, { left: 0, right: 1, bottom: 1 });
+  // the row (Browser 0-300, Playlist 300-1300, a right strip 1300-1600) over a bottom strip, as in PatDock's Workspace
+  const frame = { row: { x: 0, y: 50, w: 1600, h: 500 }, col: stage };
+  const gs = dockGuides(stage, center, panes, { left: 0, right: 1, bottom: 1 }, frame);
   const find = (pred: (g: Guide) => boolean) => gs.find(pred)!;
   it('outer edges dock outside every strip there, the Playlist compass beside the Playlist', () => {
     expect(find(g => g.dir === 'right' && g.x > 1500).target).toEqual({ kind: 'strip', edge: 'right', at: 1 });
@@ -120,7 +122,7 @@ describe('dock guides', () => {
     expect(by('down')).toEqual({ kind: 'strip', edge: 'bottom', at: 1 });
   });
   it('a side panel’s compass: up / down stack in its strip', () => {
-    const g2 = dockGuides(stage, center, [{ edge: 'left', strip: 1, at: 0, rect: { x: 0, y: 50, w: 290, h: 500 } }], { left: 2, right: 0, bottom: 0 });
+    const g2 = dockGuides(stage, center, [{ edge: 'left', strip: 1, at: 0, rect: { x: 0, y: 50, w: 290, h: 500 } }], { left: 2, right: 0, bottom: 0 }, frame);
     const on = g2.filter(g => Math.abs(g.x - 145) <= 41 && Math.abs(g.y - 300) <= 41);
     const by = (d: Guide['dir']) => on.find(g => g.dir === d)!.target;
     expect(by('up')).toEqual({ kind: 'join', edge: 'left', strip: 1, at: 0 });
@@ -138,6 +140,54 @@ describe('dock guides', () => {
       expect(g.preview.w).toBeGreaterThan(0); expect(g.preview.h).toBeGreaterThan(0);
       expect(g.preview.x).toBeGreaterThanOrEqual(stage.x); expect(g.preview.x + g.preview.w).toBeLessThanOrEqual(stage.x + stage.w + 0.5);
     }
+  });
+});
+
+describe('dock guide previews show where the panel lands (#161)', () => {
+  // Browser 0-200, a left strip with two stacked panels 200-500, the Playlist 500-1600; a bottom strip of two panels side by side under it all
+  const stage = { x: 0, y: 40, w: 1600, h: 860 }, row = { x: 0, y: 40, w: 1600, h: 560 }, col = stage;
+  const center = { x: 500, y: 40, w: 1100, h: 560 };
+  const panes = [
+    { edge: 'left' as const, strip: 0, at: 0, rect: { x: 200, y: 40, w: 300, h: 280 } },
+    { edge: 'left' as const, strip: 0, at: 1, rect: { x: 200, y: 320, w: 300, h: 280 } },
+    { edge: 'bottom' as const, strip: 0, at: 0, rect: { x: 0, y: 604, w: 800, h: 296 } },
+    { edge: 'bottom' as const, strip: 0, at: 1, rect: { x: 800, y: 604, w: 800, h: 296 } },
+  ];
+  const gs = dockGuides(stage, center, panes, { left: 1, right: 0, bottom: 1 }, { row, col, want: { w: 460, h: 300 } });
+  const tgt = (t: object) => gs.filter(g => JSON.stringify(g.target) === JSON.stringify(t));
+  it('the Playlist compass ↓ previews a strip across the whole window, right under the Playlist row', () => {
+    const [g] = tgt({ kind: 'strip', edge: 'bottom', at: 0 }).filter(g => g.x > 900 && g.x < 1200 && g.y < 500);
+    expect(g.preview.x).toBe(0); expect(g.preview.w).toBe(1600);
+    expect(g.preview.y + g.preview.h).toBe(599); // right above the Mixer's strip and its splitter
+    expect(g.preview.h).toBe(300); // the dragged panel's own docked height
+  });
+  it('a new strip beside a bottom panel spans the full width, not just that panel', () => {
+    for (const g of [...tgt({ kind: 'strip', edge: 'bottom', at: 0 }), ...tgt({ kind: 'strip', edge: 'bottom', at: 1 })]) {
+      expect(g.preview.x).toBe(0); expect(g.preview.w).toBe(1600);
+    }
+  });
+  it('a new strip beside a stacked side panel spans the row’s height', () => {
+    for (const g of [...tgt({ kind: 'strip', edge: 'left', at: 0 }), ...tgt({ kind: 'strip', edge: 'left', at: 1 })]) {
+      expect(g.preview.y).toBe(40); expect(g.preview.h).toBe(560);
+    }
+  });
+  it('the outer left guide previews outside the left strips but inside the Browser, row high only', () => {
+    const [g] = tgt({ kind: 'strip', edge: 'left', at: 1 }).filter(g => g.x < 100);
+    expect(g.preview.x).toBe(200); expect(g.preview.h).toBe(560);
+  });
+  it('sharing a strip previews an equal part of it, in its place among the others', () => {
+    // two panels side by side + the dropped one between them: three thirds with two splitters
+    const [g] = tgt({ kind: 'join', edge: 'bottom', strip: 0, at: 1 }).filter(g => g.x < 800);
+    expect(g.preview).toEqual({ x: 535, y: 604, w: 530, h: 296 });
+    // first in the strip: the strip takes the dropped panel's own height (300), still bottom-aligned
+    const [f] = tgt({ kind: 'join', edge: 'bottom', strip: 0, at: 0 });
+    expect(f.preview).toEqual({ x: 0, y: 600, w: 530, h: 300 });
+  });
+  it('a new strip inside a side strip goes between it and the Playlist; outside it, where it was', () => {
+    // (the Playlist compass's ← and the panel's → are the same place, and so are the outer ← and the panel's ←)
+    for (const g of tgt({ kind: 'strip', edge: 'left', at: 0 })) { expect(g.preview.x).toBe(505); expect(g.preview.w).toBe(460); }
+    for (const g of tgt({ kind: 'strip', edge: 'left', at: 1 })) expect(g.preview.x).toBe(200);
+    expect(tgt({ kind: 'strip', edge: 'left', at: 0 }).length).toBe(3);
   });
 });
 

@@ -128,20 +128,27 @@ export function splitShares(px: number[], i: number, d: number, mins: number[]):
 export interface Rect { x: number; y: number; w: number; h: number }
 /** Where a dock guide is drawn (its centre), which way its arrow points, where the panel would go and the area it would take. */
 export interface Guide { x: number; y: number; dir: 'left' | 'right' | 'up' | 'down'; target: DockTarget; preview: Rect }
-/** A docked panel on screen, for the guides. */
-export interface PaneRect { edge: Edge; strip: number; at: number; rect: Rect }
+/** A docked panel on screen, for the guides (`id`: which panel, for its minimum size). */
+export interface PaneRect { edge: Edge; strip: number; at: number; rect: Rect; id?: PaneId }
 
 /** The guide buttons' size, and the distance from a compass centre to its arrows. */
 export const GUIDE = 32, COMPASS = 40;
-
-const band = (r: Rect, dir: Guide['dir'], t: number): Rect => {
-  if (dir === 'left') return { x: r.x, y: r.y, w: Math.min(t, r.w), h: r.h };
-  if (dir === 'right') return { x: r.x + r.w - Math.min(t, r.w), y: r.y, w: Math.min(t, r.w), h: r.h };
-  if (dir === 'up') return { x: r.x, y: r.y, w: r.w, h: Math.min(t, r.h) };
-  return { x: r.x, y: r.y + r.h - Math.min(t, r.h), w: r.w, h: Math.min(t, r.h) };
-};
-const thick = (r: Rect, dir: Guide['dir'], k: number) => Math.round(Math.max(120, Math.min(420, (dir === 'left' || dir === 'right' ? r.w : r.h) * k)));
+/** The splitter beside each strip and between panels sharing one (px; PatDock, styles.css). */
+export const DOCK_SPLIT = 5;
+/** The narrowest / lowest the Playlist gets beside the strips (lib/layout's PLAYLIST_MIN_W / _H). */
+const PL_MIN: PaneSize = { w: 320, h: 140 };
 const EDGE_DIR: Record<Edge, Guide['dir']> = { left: 'left', right: 'right', bottom: 'down' };
+
+/**
+ * Where the strips of the work area go (PatDock's Workspace): side strips are as tall as the row
+ * that holds the Browser, the side strips and the Playlist (`row`); bottom strips run under all of
+ * it, as wide as the whole work column (`col`).
+ */
+export interface DockFrame {
+  row: Rect; col: Rect;
+  /** The dragged panel and its docked size: the thickness of a strip it leads (`w` on a side, `h` at the bottom). */
+  drag?: PaneId; want?: PaneSize;
+}
 
 /**
  * The dock guides while a panel is dragged (Visual Studio's): one at the middle of each outer edge
@@ -149,18 +156,87 @@ const EDGE_DIR: Record<Edge, Guide['dir']> = { left: 'left', right: 'right', bot
  * it) and one over every docked panel. On a panel's compass the arrows along its strip share the
  * strip with it (stacked on a side edge, side by side at the bottom); the arrows across it make a
  * new strip on that side of it.
+ *
+ * Each guide's preview is the area the panel will take once dropped, laid out as PatDock lays out
+ * the strips (#161: the Playlist compass's ↓ showed a band under the Playlist only, then docked
+ * across the window). A new strip spans its whole edge and sits next to the strips that stay put
+ * (the outer ones; the inner ones and the Playlist make room); a panel joining a strip takes an
+ * equal part of it.
  */
-export function dockGuides(stage: Rect, center: Rect, panes: PaneRect[], counts: Record<Edge, number>): Guide[] {
+export function dockGuides(stage: Rect, center: Rect, panes: PaneRect[], counts: Record<Edge, number>, frame: DockFrame): Guide[] {
   const g: Guide[] = [];
   const m = GUIDE / 2 + 8;
-  g.push({ x: stage.x + m, y: stage.y + stage.h / 2, dir: 'left', target: { kind: 'strip', edge: 'left', at: counts.left }, preview: band(stage, 'left', thick(stage, 'left', 0.3)) });
-  g.push({ x: stage.x + stage.w - m, y: stage.y + stage.h / 2, dir: 'right', target: { kind: 'strip', edge: 'right', at: counts.right }, preview: band(stage, 'right', thick(stage, 'right', 0.3)) });
-  g.push({ x: stage.x + stage.w / 2, y: stage.y + stage.h - m, dir: 'down', target: { kind: 'strip', edge: 'bottom', at: counts.bottom }, preview: band(stage, 'down', thick(stage, 'down', 0.35)) });
+  const { row, col } = frame;
+  // the strips on screen, per edge, by index (the union of their panels)
+  const strips: Record<Edge, Rect[]> = { left: [], right: [], bottom: [] };
+  for (const p of panes) {
+    const s = strips[p.edge], r = s[p.strip];
+    if (!r) { s[p.strip] = { ...p.rect }; continue; }
+    const x0 = Math.min(r.x, p.rect.x), y0 = Math.min(r.y, p.rect.y);
+    s[p.strip] = { x: x0, y: y0, w: Math.max(r.x + r.w, p.rect.x + p.rect.w) - x0, h: Math.max(r.y + r.h, p.rect.y + p.rect.h) - y0 };
+  }
+  const drag = frame.drag, want = frame.want;
+  /** How thick a strip led by the dragged panel gets on `edge`: its docked size, at least the minimums, at most what the Playlist can give. */
+  const thickness = (edge: Edge, extraMin = 0) => {
+    const d = dim(edge), sd = side(edge);
+    const fallback = Math.round((sd ? center.w : center.h) * 0.4);
+    return Math.round(Math.max(want?.[d] || fallback, drag ? PANE_MIN[drag][d] : 0, extraMin));
+  };
+  /**
+   * The strips on `edge`'s axis fitted again with a new one among them (fitStrips, as PatDock
+   * does: in a tight window they all give way): the new strip's thickness and each shown strip's.
+   */
+  const refit = (edge: Edge) => {
+    const sd = side(edge), d = dim(edge), es: Edge[] = sd ? ['left', 'right'] : ['bottom'];
+    const have = es.flatMap(e => strips[e].flatMap((r, si) => (r ? [{ key: e + si, px: sd ? r.w : r.h, min: Math.max(0, ...panes.filter(p => p.edge === e && p.strip === si).map(p => (p.id ? PANE_MIN[p.id][d] : 0))) }] : [])));
+    const used = have.reduce((a, x) => a + x.px + DOCK_SPLIT, 0), avail = (sd ? center.w : center.h) + used - DOCK_SPLIT;
+    const px = fitStrips([...have.map(x => x.px), thickness(edge)], [...have.map(x => x.min), drag ? PANE_MIN[drag][d] : 0], avail, sd ? PL_MIN.w : PL_MIN.h);
+    const of = new Map(have.map((x, i) => [x.key, px[i]]));
+    return { t: px[px.length - 1], px: (e: Edge, si: number) => of.get(e + si) ?? 0 };
+  };
+  /**
+   * A new strip at index `k` of `edge`: just inside strip `k`, or outermost. The strips from `k`
+   * outward stay stacked from the edge's outer side (a hidden panel's strip takes no room); the
+   * inner ones and the Playlist make room.
+   */
+  const newStrip = (edge: Edge, k: number): Rect => {
+    const f = refit(edge), t = f.t, ss = strips[edge];
+    const shown = ss.flatMap((r, si) => (r ? [si] : [])), last = shown.length ? ss[shown[shown.length - 1]] : null;
+    const outside = shown.filter(si => si >= k).reduce((a, si) => a + f.px(edge, si) + DOCK_SPLIT, 0);
+    if (edge === 'left') {
+      const anchor = last ? last.x : center.x; // the outer side of the left strips (the Browser is beyond it)
+      return { x: anchor + outside, y: row.y, w: t, h: row.h };
+    }
+    if (edge === 'right') {
+      const anchor = last ? last.x + last.w : center.x + center.w;
+      return { x: anchor - outside - t, y: row.y, w: t, h: row.h };
+    }
+    return { x: col.x, y: col.y + col.h - outside - t, w: col.w, h: t };
+  };
+  /** The dragged panel joining strip `si` of `edge` at panel index `at`: an equal part of the strip; the others shrink alike. */
+  const joinStrip = (edge: Edge, si: number, at: number): Rect => {
+    const S = strips[edge][si], sd = side(edge);
+    const inStrip = panes.filter(p => p.edge === edge && p.strip === si).sort((a, b) => a.at - b.at), n = inStrip.length;
+    const along = (r: Rect) => (sd ? r.h : r.w);
+    // n + 1 panels with n splitters between them, in the strip's length
+    const room = along(S) - n * DOCK_SPLIT, k = room / (n + 1);
+    const before = inStrip.filter(p => p.at < at).length;
+    const pos = (sd ? S.y : S.x) + before * (k + DOCK_SPLIT);
+    // across: the strip keeps its thickness, unless the panel goes first (a strip is as thick as its first panel wants)
+    const mins = Math.max(0, ...inStrip.map(p => (p.id ? PANE_MIN[p.id][dim(edge)] : 0)));
+    const across = at === 0 ? thickness(edge, mins) : sd ? S.w : S.h;
+    if (edge === 'left') return { x: S.x, y: pos, w: across, h: k };
+    if (edge === 'right') return { x: S.x + S.w - across, y: pos, w: across, h: k };
+    return { x: pos, y: S.y + S.h - across, w: k, h: across };
+  };
+  g.push({ x: stage.x + m, y: stage.y + stage.h / 2, dir: 'left', target: { kind: 'strip', edge: 'left', at: counts.left }, preview: newStrip('left', counts.left) });
+  g.push({ x: stage.x + stage.w - m, y: stage.y + stage.h / 2, dir: 'right', target: { kind: 'strip', edge: 'right', at: counts.right }, preview: newStrip('right', counts.right) });
+  g.push({ x: stage.x + stage.w / 2, y: stage.y + stage.h - m, dir: 'down', target: { kind: 'strip', edge: 'bottom', at: counts.bottom }, preview: newStrip('bottom', counts.bottom) });
   const cx = center.x + center.w / 2, cy = center.y + center.h / 2;
   for (const edge of EDGES) {
     const dir = EDGE_DIR[edge];
     g.push({ x: cx + (dir === 'left' ? -COMPASS : dir === 'right' ? COMPASS : 0), y: cy + (dir === 'down' ? COMPASS : 0), dir,
-      target: { kind: 'strip', edge, at: 0 }, preview: band(center, dir, thick(center, dir, 0.45)) });
+      target: { kind: 'strip', edge, at: 0 }, preview: newStrip(edge, 0) });
   }
   for (const p of panes) {
     const r = p.rect, px = r.x + r.w / 2, py = r.y + r.h / 2;
@@ -169,13 +245,14 @@ export function dockGuides(stage: Rect, center: Rect, panes: PaneRect[], counts:
     const inward: Guide['dir'] = p.edge === 'left' ? 'right' : p.edge === 'right' ? 'left' : 'up';
     const outward: Guide['dir'] = p.edge === 'left' ? 'left' : p.edge === 'right' ? 'right' : 'down';
     const at = (d: Guide['dir']) => ({ x: px + (d === 'left' ? -COMPASS : d === 'right' ? COMPASS : 0), y: py + (d === 'up' ? -COMPASS : d === 'down' ? COMPASS : 0) });
-    g.push({ ...at(along[0]), dir: along[0], target: { kind: 'join', edge: p.edge, strip: p.strip, at: p.at }, preview: band(r, along[0], (along[0] === 'up' ? r.h : r.w) / 2) });
-    g.push({ ...at(along[1]), dir: along[1], target: { kind: 'join', edge: p.edge, strip: p.strip, at: p.at + 1 }, preview: band(r, along[1], (along[1] === 'down' ? r.h : r.w) / 2) });
-    g.push({ ...at(inward), dir: inward, target: { kind: 'strip', edge: p.edge, at: p.strip }, preview: band(r, inward, thick(r, inward, 0.45)) });
-    g.push({ ...at(outward), dir: outward, target: { kind: 'strip', edge: p.edge, at: p.strip + 1 }, preview: band(r, outward, thick(r, outward, 0.45)) });
+    g.push({ ...at(along[0]), dir: along[0], target: { kind: 'join', edge: p.edge, strip: p.strip, at: p.at }, preview: joinStrip(p.edge, p.strip, p.at) });
+    g.push({ ...at(along[1]), dir: along[1], target: { kind: 'join', edge: p.edge, strip: p.strip, at: p.at + 1 }, preview: joinStrip(p.edge, p.strip, p.at + 1) });
+    g.push({ ...at(inward), dir: inward, target: { kind: 'strip', edge: p.edge, at: p.strip }, preview: newStrip(p.edge, p.strip) });
+    g.push({ ...at(outward), dir: outward, target: { kind: 'strip', edge: p.edge, at: p.strip + 1 }, preview: newStrip(p.edge, p.strip + 1) });
   }
   return g;
 }
+
 /** The guide under the pointer, if any. */
 export function guideAt(gs: Guide[], x: number, y: number): Guide | null {
   const h = GUIDE / 2;

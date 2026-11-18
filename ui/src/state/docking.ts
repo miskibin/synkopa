@@ -13,7 +13,9 @@ import { track } from '../ui/drag';
 import type { MenuItem } from './ui';
 import { docked, openMenu, say, setU, U } from './ui';
 import { leaveMixView, mixFloated, mixFront, showMixer } from './mixView';
-import { openRack, openRoll, patWinFloated, rollMoved } from './pattern';
+import { curPat, openRack, openRoll, patWinFloated, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, rollMoved, STEP_W } from './pattern';
+import { rackDockFitWidth } from '../lib/rack';
+import { stepsOf } from '../lib/pattern';
 
 const NAME: Record<PaneId, TranslationKey> = { rack: 'a.mn.rack', roll: 'a.mn.roll', mix: 'a.mn.mixer' };
 const WHERE: Record<Edge, TranslationKey> = { left: 'b.dk.atLeft', right: 'b.dk.atRight', bottom: 'b.dk.atBottom' };
@@ -84,16 +86,20 @@ const rectOf = (el: Element | null): Rect | null => {
   return r.width > 0 && r.height > 0 ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
 };
 /** The guides for the layout on screen now (the dragged panel already floats, so it is not among them). */
-function readGuides(): Guide[] {
+function readGuides(id: PaneId): Guide[] {
   const stage = rectOf(document.querySelector('.stage')), center = rectOf(document.querySelector('.workrow > .plwrap'));
-  if (!stage || !center) return [];
+  const row = rectOf(document.querySelector('.workrow')), col = rectOf(document.querySelector('.workcol'));
+  if (!stage || !center || !row || !col) return [];
   const panes: PaneRect[] = [];
   for (const el of document.querySelectorAll<HTMLElement>('[data-dockpane]')) {
     const r = rectOf(el), [edge, strip, at] = (el.dataset.dockpane ?? '').split(':');
-    if (r && EDGES.includes(edge as Edge)) panes.push({ edge: edge as Edge, strip: +strip, at: +at, rect: r });
+    if (r && EDGES.includes(edge as Edge)) panes.push({ edge: edge as Edge, strip: +strip, at: +at, rect: r, id: U.dock[edge as Edge][+strip]?.[+at]?.id });
   }
   const counts = { left: U.dock.left.length, right: U.dock.right.length, bottom: U.dock.bottom.length };
-  return dockGuides(stage, center, panes, counts);
+  // a rack docked at its automatic width (0) is as wide as the pattern's steps (PatDock)
+  const want = { ...U.paneSize[id] };
+  if (id === 'rack' && !want.w) { const pt = curPat(); want.w = rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); }
+  return dockGuides(stage, center, panes, counts, { row, col, drag: id, want });
 }
 
 /** A panel's floating place, read and moved through the same paths as its frame. */
@@ -133,7 +139,7 @@ export function paneHeadDown(e: PointerEvent, id: PaneId) {
         off = { dx: sx - o.x, dy: sy - o.y };
       }
       if (id === 'mix') mixFront();
-      setGuides({ list: readGuides(), hot: null });
+      setGuides({ list: readGuides(id), hot: null });
     }
     const o = g.get(); if (!o) return;
     g.set(clamp(ev.clientX - off.dx, 80 - o.w, window.innerWidth - 80), clamp(ev.clientY - off.dy, 0, window.innerHeight - 40));
