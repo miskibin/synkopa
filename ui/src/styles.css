@@ -545,6 +545,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .dockguides { position: fixed; inset: 0; z-index: 49; pointer-events: none; }
 .dockguide { position: absolute; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
   background: var(--bg7); color: var(--fg2); border: 1px solid var(--line3); box-shadow: 0 4px 14px var(--shadow); }
+.dockguide.faint { opacity: .72; transform: scale(.82); color: var(--blue-hi); border-color: color-mix(in srgb, var(--blue) 55%, transparent); box-shadow: none; }
 .dockguide.hot { background: var(--blue); color: var(--on-accent, #fff); border-color: var(--blue-hi); }
 .dockpreview { position: absolute; background: color-mix(in srgb, var(--blue) 22%, transparent); border: 2px solid var(--blue); border-radius: 3px; }
 .win.docked { position: relative; flex: 1; min-width: 0; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
