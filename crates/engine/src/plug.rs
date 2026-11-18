@@ -306,13 +306,27 @@ impl PlugBank {
     /// Adds every instance's output into where its notes were played (a track buffer or an
     /// insert input), scaled by its channel's gain and pan. An instance that has not played
     /// a note yet still runs (a plugin may sound by itself), into nowhere.
-    pub fn render(&mut self, n: usize, tracks: &mut [(Vec<f32>, Vec<f32>)], inserts: &mut [InsertRt], chans: &[ChanRt], ctx: &ProcessCtx) {
+    pub fn render(
+        &mut self,
+        n: usize,
+        tracks: &mut [(Vec<f32>, Vec<f32>)],
+        inserts: &mut [InsertRt],
+        chans: &[ChanRt],
+        ctx: &ProcessCtx,
+        track_dirty: &mut [bool],
+    ) {
         for s in self.insts.iter_mut() {
             let (g, pan) = chans.iter().find(|c| c.id == s.chan).map(|c| (if c.on { c.gain } else { 0.0 }, c.pan)).unwrap_or((0.0, 0.0));
             let (pl, pr) = pan_gains(pan);
             let out: Option<(&mut [f32], &mut [f32])> = match s.dest {
-                Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| (&mut l[..], &mut r[..])),
-                Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| (&mut i.l[..], &mut i.r[..])),
+                Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| {
+                    track_dirty[t] = true;
+                    (&mut l[..], &mut r[..])
+                }),
+                Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| {
+                    i.dirty = true;
+                    (&mut i.l[..], &mut i.r[..])
+                }),
                 _ => None,
             };
             match out {

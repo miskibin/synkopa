@@ -1,7 +1,11 @@
-import type { Insert, LoopRange, Project } from '../api/types';
+import { VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
 
-/** Beat range for a song or loop bounce — mirrors `Engine::export_range`. */
-export function exportRange(project: Project, useLoop: boolean): { from: number; to: number } {
+/** Beat range for a song, loop or pattern bounce — mirrors `Engine::export_range` / `Engine::pattern_range`. */
+export function exportRange(project: Project, useLoop: boolean, pattern?: Id | null): { from: number; to: number } {
+  if (pattern != null) {
+    const pt = project.patterns.find(x => x.id === pattern);
+    return { from: 0, to: Math.max(4, pt?.len ?? 4) };
+  }
   if (useLoop) {
     const l = project.loop;
     if (l && l.b > l.a) return { from: l.a, to: l.b };
@@ -19,6 +23,28 @@ export function songEnd(project: Pick<Project, 'clips'>): number {
   let end = 4;
   for (const c of project.clips) end = Math.max(end, c.start + c.len - SONG_END_SLACK, c.start + 1e-6);
   return Math.ceil(end / 4) * 4;
+}
+
+/**
+ * The project as a pattern export hears it, like PAT mode plays it — mirrors engine.rs `pattern_project`:
+ * pattern `id` once from beat 0 on the first track (unmuted, unity, into the master) and nothing else
+ * of the arrangement. Its channels play into their own inserts, or the master.
+ */
+export function patternProject(p: Project, id: Id): Project {
+  const q = structuredClone(p);
+  const len = Math.max(4, q.patterns.find(x => x.id === id)?.len ?? 4);
+  q.clips = []; if (q.comps) q.comps = []; q.loop = null;
+  if (!q.tracks.length) q.tracks.push({ id: 1, name: 'Pattern', color: '#4f8ef7', muted: false, solo: false, arm: false, vol: VOL_UNITY, h: 56, insert: 0 });
+  q.tracks.forEach((t, i) => { t.solo = false; if (i === 0) { t.muted = false; t.vol = VOL_UNITY; t.insert = 0; } });
+  q.clips.push({ id: q.nextId++, track: 0, start: 0, len, offset: 0, kind: 'pat', ref: id, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+  return q;
+}
+
+/** A pattern export would be silent: the pattern has no note on an unmuted channel. */
+export function patternSilent(p: Project, id: Id): boolean {
+  const pt = p.patterns.find(x => x.id === id);
+  const chans = p.channels ?? [];
+  return !pt || !pt.notes.some(n => chans.some(c => c.id === n.ch && !c.mute));
 }
 
 /** Wall-clock length of a bounce including the effect tail. */

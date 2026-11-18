@@ -1,11 +1,13 @@
-//! Crash recovery for projects that were never saved.
+//! Crash recovery: the autosave.
 //!
-//! A saved project is autosaved to its own file (and the previous save is kept as
-//! `Song (backup).synkopa`). A project without a file has nowhere to go, so the autosave
-//! timer writes it to `<data>/WAVE/Recovery/<session>.synkopa` instead. The file is
-//! removed when the project gets a real file, is replaced (New/Open), or Synkopa exits
-//! normally; a copy that is still there at the next start therefore belongs to a
-//! session that crashed or was killed, and the UI offers it back.
+//! The autosave never writes over the project's own file, so the last save the user made stays
+//! as it was (FL Studio, Ableton Live and Logic keep their autosaves apart too). Instead, every
+//! tick with unsaved changes writes this session's snapshot to `<data>/WAVE/Recovery/<session>.synkopa`,
+//! with `<session>.json` naming the project file the changes belong to (none for a project that
+//! was never saved). The snapshot is removed when nothing is unsaved any more (Save), the project
+//! is replaced (New/Open), or Synkopa exits normally; a snapshot that is still there at the next
+//! start therefore belongs to a session that crashed or was killed, and the UI offers it back:
+//! a named project reopens as that file with the snapshot's changes unsaved.
 //!
 //! Every running Synkopa holds an exclusive lock on its own `<session>.lock` for its
 //! whole life, so two windows never offer (or delete) each other's copy: a copy is
@@ -27,6 +29,24 @@ pub struct Orphan {
     pub id: String,
     /// When the copy was last written, ms since the Unix epoch.
     pub saved_ms: u64,
+    /// The project file the changes belong to (`None`: a project that was never saved).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<String>,
+}
+
+/// `<session>.json` beside a snapshot: the project file it belongs to.
+#[derive(serde::Deserialize, Serialize)]
+struct Meta {
+    project: Option<String>,
+}
+
+fn meta_path(copy: &Path) -> PathBuf {
+    copy.with_extension("json")
+}
+
+fn read_meta(copy: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(meta_path(copy)).ok()?;
+    serde_json::from_str::<Meta>(&text).ok()?.project
 }
 
 pub struct Recovery {
@@ -76,26 +96,31 @@ impl Recovery {
         self.lock.lock().is_some()
     }
 
-    /// The autosave tick: keeps this session's copy in step with an unsaved project.
-    /// Returns whether a copy was written. A project that has a file (or nothing to
-    /// lose) needs no copy, so an old one is removed.
+    /// The autosave tick: keeps this session's snapshot in step with the project's unsaved
+    /// changes, saved or never saved. Returns whether a snapshot was written. A project with
+    /// nothing to lose needs none, so an old one is removed. The project's own file is never
+    /// touched.
     pub fn write(&self, engine: &Engine) -> Result<bool, String> {
         if !self.enabled() {
             return Ok(false);
         }
         let st = engine.state();
-        if st.path.is_some() || !st.dirty {
+        if !st.dirty {
             self.clear();
             return Ok(false);
         }
+        // the name first: a snapshot is never offered back under the wrong file
+        let meta = serde_json::to_string(&Meta { project: st.path.clone() }).map_err(|e| e.to_string())?;
+        std::fs::write(meta_path(&self.file), meta).map_err(|e| format!("{}: {e}", self.dir.display()))?;
         engine.save_copy(&self.file).map_err(|e| e.to_string())?;
         Ok(true)
     }
 
-    /// Drops this session's copy (the project was saved, replaced, or Synkopa is exiting
+    /// Drops this session's snapshot (the project was saved, replaced, or Synkopa is exiting
     /// after the user answered the unsaved-changes question).
     pub fn clear(&self) {
         let _ = std::fs::remove_file(&self.file);
+        let _ = std::fs::remove_file(meta_path(&self.file));
     }
 
     /// Ends the session: the copy and the lock go.
@@ -128,7 +153,7 @@ impl Recovery {
                 continue;
             }
             let saved_ms = e.metadata().and_then(|m| m.modified()).map(now_ms).unwrap_or(0);
-            out.push(Orphan { id, saved_ms });
+            out.push(Orphan { id, saved_ms, project: read_meta(&p) });
         }
         out.sort_by_key(|o| std::cmp::Reverse(o.saved_ms));
         out
@@ -154,15 +179,20 @@ impl Recovery {
             .ok_or_else(|| format!("no recovered project `{id}`"))
     }
 
-    /// Opens an orphan as this session's unsaved project. The copy becomes this
-    /// session's own, so it stays protected until the user saves it.
+    /// Opens an orphan with its changes unsaved: as the project file it belongs to (Save writes
+    /// there, closing asks first), or as an unsaved project when it never had one. The copy
+    /// becomes this session's own, so it stays protected until the user saves it.
     pub fn restore(&self, engine: &Engine, id: &str) -> Result<Vec<String>, String> {
         let p = self.orphan_path(id)?;
-        let warnings = engine.open_recovered(&p).map_err(|e| e.to_string())?;
+        let project = read_meta(&p).map(PathBuf::from);
+        let warnings = engine.open_recovered_for(&p, project.as_deref()).map_err(|e| e.to_string())?;
         if std::fs::rename(&p, &self.file).is_err() {
             // another file system or a locked file: write a fresh copy, then drop the old one
             engine.save_copy(&self.file).map_err(|e| e.to_string())?;
             let _ = std::fs::remove_file(&p);
+        }
+        if std::fs::rename(meta_path(&p), meta_path(&self.file)).is_err() {
+            let _ = std::fs::remove_file(meta_path(&p));
         }
         let _ = std::fs::remove_file(self.dir.join(format!("{id}.lock")));
         Ok(warnings)
@@ -172,6 +202,7 @@ impl Recovery {
     pub fn discard(&self, id: &str) -> Result<(), String> {
         let p = self.orphan_path(id)?;
         std::fs::remove_file(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+        let _ = std::fs::remove_file(meta_path(&p));
         let _ = std::fs::remove_file(self.dir.join(format!("{id}.lock")));
         Ok(())
     }
@@ -284,17 +315,62 @@ mod tests {
     }
 
     #[test]
-    fn saved_or_clean_projects_need_no_copy() {
+    fn a_saved_and_clean_project_needs_no_copy() {
         let dir = tmp("saved");
         let e = edited();
         let a = Recovery::start(dir.clone());
         assert!(a.write(&e).unwrap());
         e.save(&dir.join("Song.wave")).unwrap();
         assert!(!a.write(&e).unwrap());
-        assert!(!a.file.is_file(), "the copy goes once the project has a file");
+        assert!(!a.file.is_file(), "the copy goes once nothing is unsaved");
         let clean = Engine::new(Project::empty(), Arc::new(NoPlugins));
         assert!(!a.write(&clean).unwrap());
         a.close();
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    fn bpm_in(file: &Path) -> f64 {
+        let doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap();
+        doc["project"]["bpm"].as_f64().unwrap()
+    }
+
+    /// Issue #125: the autosave of a saved project must never replace the user's own save
+    /// (nor its backup); its changes come back from the snapshot, as that project, after a crash.
+    #[test]
+    fn the_autosave_never_writes_over_the_saved_project() {
+        let dir = tmp("named");
+        let song = dir.join("Autosave-test.synkopa");
+        let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
+        e.apply(&[Op::SetBpm { bpm: 128.0 }], false, None).unwrap();
+        e.save(&song).unwrap();
+        let a = Recovery::start(dir.clone());
+        for bpm in [141.0, 147.0] {
+            e.apply(&[Op::SetBpm { bpm }], false, None).unwrap();
+            assert!(a.write(&e).unwrap(), "unsaved changes of a saved project get a snapshot");
+            assert_eq!(bpm_in(&song), 128.0, "the saved file stays as the user saved it");
+            assert!(!wave_engine::engine::backup_path(&song).exists(), "no backup churn either");
+        }
+        assert_eq!(e.state().path.as_deref(), Some(song.to_str().unwrap()));
+        assert!(e.state().dirty, "the autosave does not mark the project saved");
+        drop(a); // crash
+
+        let b = Recovery::start(dir.clone());
+        let o = b.orphans();
+        assert_eq!(o.len(), 1, "{o:?}");
+        assert_eq!(o[0].project.as_deref(), Some(song.to_str().unwrap()), "the offer names the project");
+        let e2 = Engine::new(Project::empty(), Arc::new(NoPlugins));
+        b.restore(&e2, &o[0].id).unwrap();
+        let st = e2.state();
+        assert_eq!(st.project.bpm, 147.0, "the latest snapshot comes back");
+        assert_eq!(st.path.as_deref(), Some(song.to_str().unwrap()), "as the project it belongs to");
+        assert!(st.dirty, "with its changes unsaved: Save writes them, closing asks");
+        assert_eq!(bpm_in(&song), 128.0);
+        // Save then writes the recovered changes to the project, and the snapshot goes
+        e2.save(&song).unwrap();
+        assert_eq!(bpm_in(&song), 147.0);
+        assert!(!b.write(&e2).unwrap());
+        assert!(!b.file.is_file() && !meta_path(&b.file).is_file());
+        b.close();
         std::fs::remove_dir_all(&dir).ok();
     }
 

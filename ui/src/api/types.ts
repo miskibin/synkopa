@@ -528,7 +528,11 @@ export interface LibraryProgress { id: string; done: number; total: number; erro
 
 /** `wavBits`: 16 or 24 = signed PCM, 32 = float (default); `dither` (TPDF, ±1 LSB) only for PCM. */
 export interface WavExportOptions { wavBits?: 16 | 24 | 32; dither?: boolean; wrapTail?: boolean }
-export interface ExportRangeOptions { useLoop: boolean; tail: number; sampleRate: number }
+export interface ExportRangeOptions {
+  useLoop: boolean; tail: number; sampleRate: number;
+  /** Render this pattern alone, as PAT mode plays it (FL's pattern export), instead of the song. */
+  pattern?: Id | null;
+}
 export type ExportAudioOptions = ExportRangeOptions & (
   | ({ format?: 'wav' } & WavExportOptions)
   | { format: 'mp3'; mp3Kbps?: number }
@@ -575,7 +579,8 @@ export type OpenResult =
 /** Result of `projectSave`; `{ cancelled: true }` when the save dialog was dismissed. */
 export type SaveResult = { cancelled: true } | { cancelled?: false; path: string };
 /** An unsaved project a Synkopa that crashed or was killed left behind (`recovery_list`). */
-export interface RecoveredProject { id: string; savedMs: number }
+/** `project`: the file the unsaved changes belong to (absent: a project that was never saved). */
+export interface RecoveredProject { id: string; savedMs: number; project?: string }
 
 export interface ImportResult { sourceIds: Id[]; clipIds: Id[] }
 

@@ -79,6 +79,8 @@ export interface RollCtx {
   gest(label: string): RollGesture;
   // sound and the status line
   audition(key: number, vel: number): void;
+  /** FL: the note under the mouse sounds for as long as the button is held. hold(key, vel) starts it (ending the one before), hold(null) lets go. */
+  hold(key: number | null, vel?: number): void;
   typingNote(on: boolean, key: number, vel: number): void;
   say(msg: string): void;
   // previews and popovers

@@ -32,6 +32,7 @@ synkopa new song.synkopa --template demo                  # or --template empty 
 synkopa -p song.synkopa context                           # any read: nothing is written
 synkopa -p song.synkopa pattern --id 1 --ch kick --steps "x... x... x... x..."   # saved back to song.synkopa
 synkopa -p song.synkopa render --out song.wav             # or --stems --out stems/
+synkopa -p song.synkopa render --pattern 1 --out beat.wav # one pattern alone, as PAT mode plays it
 synkopa -p song.synkopa export-project --out song.zip      # without saving changes to song.synkopa
 synkopa -p song.synkopa bpm 150 --save-as song-150.synkopa   # song.synkopa stays as it was
 synkopa -p song.synkopa apply --file ops.json --dry-run   # try it: the reply has dryRun.changed, nothing is saved
@@ -357,8 +358,16 @@ uses the installed RMVPE model, or `--model rmvpe.onnx`, or `--yin`.
 **Pitch detector.** Synkopa detects pitch with YIN out of the box. The RMVPE
 model (362 MB, from the RVC project; read its licence first) is better on
 real voices: Pitch Editor → *Pobierz RMVPE* downloads it after showing the
-licence, checks its SHA-256 and switches to it. `WAVE_RMVPE_MODEL=path`
-points at a copy you already have.
+licence, checks its SHA-256 and switches to it — or from the command line:
+
+```sh
+synkopa f0-model --install
+```
+
+prints the licence note, downloads the model (a few minutes, no live progress),
+checks its SHA-256 and switches the detector to it; works without the app too
+(`synkopa -p song.synkopa f0-model --install`). `WAVE_RMVPE_MODEL=path` points at a
+copy you already have.
 
 **Benchmark.** `cargo run --release -p wave-tune-bench -- synth` (synthetic
 takes with ±25…400 ct errors and drift against references in other voices,
@@ -509,6 +518,43 @@ What the defaults protect: a different note, an ornament the reference has and y
 the other way round), a slide or vibrato, and a reference that is not the same song are left
 as sung. Timing is never changed. `--max-cents` raises the limit when you know the take is far
 off; low-level `pitch edit` always lets you override the plan.
+
+## Auto vocal
+
+One call that does what the app's Auto vocal button does: measures the take (loudness,
+sibilance, key, how much of it is sung), then puts a calibrated chain on the clip's mixer
+insert — pitch correction, vocal rider, FET compressor, slow compressor, de-esser, reverb,
+limiter — tuned to that measurement. On the Playlist the clip must sit on a lane routed to its
+own insert (a lane that plays into the master is refused; route it in the mixer first).
+
+```sh
+synkopa auto-vocal --clip 412                              # measure, and put the chain on the insert
+synkopa auto-vocal --clip 412 --style hard                 # rap / hard-tune windows
+synkopa auto-vocal --clip 412 --beat-clip 300              # take the key and level from the beat
+synkopa auto-vocal --clip 412 --plan > plan.json           # read-only: the plan, nothing changes
+```
+
+The rider (a long look-ahead, so seconds of delay if it ran live) is rendered into the clip's
+audio first — the clip then plays that bake at 0 dB gain and the original source stays in the
+project. A clip that was baked before is not baked twice; `--no-bake` keeps the rider live on
+the insert instead. Effects of the kinds the chain brings are replaced (an old rider counts);
+others, e.g. an EQ, stay in front of the chain. The reply:
+
+```jsonc
+{
+  "revision": 41, "clipId": 412, "insertId": 3, "style": "natural",
+  "riderBaked": { "sourceId": 908, "clipId": 412 },    // null with --no-bake and on a re-run
+  "fxIds": [911, 912, 913, 914, 915, 916],             // the chain stages, in chain order
+  "trackGainDb": 6.4,                                  // null without --beat-clip
+  "warnings": []
+}
+```
+
+The bake and the chain are two undo steps. `--plan` prints the plan itself: the `chain` with
+every stage's parameters and a one-line reason (`note`), `riderBake` when the rider would be
+baked, the measured `analysis`, the `trackGainDb` level suggestion and `stages` (what each
+stage achieved). Slow: a few seconds per minute of audio. Works without the app
+(`synkopa -p song.synkopa auto-vocal --clip 412`), like every offline command.
 
 ## FX chain presets
 

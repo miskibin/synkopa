@@ -15,15 +15,16 @@ export function confirmUnsaved(what: string): Promise<Answer | 'busy'> {
 }
 
 export type RecoverAnswer = 'restore' | 'discard' | 'later';
-const [askRec, setAskRec] = createSignal<{ savedMs: number; openPath: string | null; done: (a: RecoverAnswer) => void } | null>(null);
+const [askRec, setAskRec] = createSignal<{ savedMs: number; openPath: string | null; project: string | null; done: (a: RecoverAnswer) => void } | null>(null);
 
 /**
  * "Synkopa closed unexpectedly…": restore the project, delete it, or keep it for the next start.
  * `openPath`: the project file open now (e.g. the one just opened from Explorer), which a
  * restore replaces in this window; the question says so.
  */
-export function confirmRecover(savedMs: number, openPath: string | null = null): Promise<RecoverAnswer> {
-  return new Promise(res => setAskRec({ savedMs, openPath, done: a => { setAskRec(null); res(a); } }));
+/** `project`: the file the recovered changes belong to (null: a project that was never saved). */
+export function confirmRecover(savedMs: number, openPath: string | null = null, project: string | null = null): Promise<RecoverAnswer> {
+  return new Promise(res => setAskRec({ savedMs, openPath, project, done: a => { setAskRec(null); res(a); } }));
 }
 
 const fileName = (path: string) => path.split(/[\\/]/).pop()!;
@@ -38,7 +39,7 @@ export function ConfirmDialog() {
             onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') q().done('later'); if (e.key === 'Enter') q().done('restore'); }}>
             <div class="hd"><span id="rec-hd">{t('d.ui.recover')}</span><button title={t('d.ui.recover.later.tip')} onClick={() => q().done('later')}>×</button></div>
             <p style={{ margin: '4px 0 16px', color: 'var(--fg2)', 'font-size': '13px' }}>
-              {t('d.ui.recover.body', { when: when(q().savedMs) })}
+              {q().project ? t('d.ui.recover.bodyNamed', { when: when(q().savedMs), name: t('d.ui.named', { name: fileName(q().project!) }) }) : t('d.ui.recover.body', { when: when(q().savedMs) })}
               <Show when={q().openPath}>{p => <> {t('d.ui.recover.replaces', { name: t('d.ui.named', { name: fileName(p()) }) })}</>}</Show>
             </p>
             <div class="row" style={{ gap: '8px', 'justify-content': 'flex-end' }}>

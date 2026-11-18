@@ -93,6 +93,9 @@ impl actions::Host for App {
     fn model_error(&self) -> Option<String> {
         self.model_error.lock().clone()
     }
+    fn set_model_error(&self, e: Option<String>) {
+        *self.model_error.lock() = e;
+    }
     fn wait_keys(&self) -> R<()> {
         keys::wait(self);
         Ok(())
@@ -252,11 +255,13 @@ async fn watch_fx(app: St<'_>, ids: Vec<u64>) -> R<()> {
 // ---------------------------------------------------------------- audio sources
 
 #[tauri::command]
-async fn import_audio(app: St<'_>, paths: Vec<String>, track: Option<u32>, beat: Option<f64>) -> R<Value> {
+async fn import_audio(app: St<'_>, paths: Vec<String>, track: Option<u32>, beat: Option<f64>, step: Option<bool>) -> R<Value> {
     let a = app.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || actions::import(&*a, &json!({ "paths": paths, "track": track, "beat": beat })))
-        .await
-        .map_err(es)?
+    tauri::async_runtime::spawn_blocking(move || {
+        actions::import(&*a, &json!({ "paths": paths, "track": track, "beat": beat, "step": step.unwrap_or(true) }))
+    })
+    .await
+    .map_err(es)?
 }
 
 #[tauri::command]
@@ -353,7 +358,8 @@ async fn auto_vocal_plan(
 #[tauri::command]
 async fn bake_rider(app: St<'_>, clip_id: u64, params: std::collections::BTreeMap<String, f64>) -> R<Value> {
     let e = app.engine.clone();
-    let (source, clip) = tauri::async_runtime::spawn_blocking(move || e.bake_rider(clip_id, &params)).await.map_err(es)?.map_err(es)?;
+    let (source, clip) =
+        tauri::async_runtime::spawn_blocking(move || e.bake_rider(clip_id, &params, None)).await.map_err(es)?.map_err(es)?;
     Ok(json!({ "sourceId": source, "clipId": clip }))
 }
 
@@ -719,17 +725,22 @@ async fn project_open(app: St<'_>, handle: AppHandle, path: Option<String>, if_r
 }
 
 #[tauri::command]
-async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>) -> R<Value> {
+async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>, version: Option<bool>) -> R<Value> {
     let cur = app.engine.state().path.map(PathBuf::from);
     let path = match (cur, save_as.unwrap_or(false)) {
+        // save new version: the next free `Name_N` beside the current file; the project then continues there
+        (Some(p), false) if version.unwrap_or(false) => Some(actions::next_version_path(&p, |q| q.exists())),
         (Some(p), false) => Some(p),
-        _ => handle
-            .dialog()
-            .file()
-            .add_filter("Synkopa project", &["synkopa", "wave"])
-            .set_file_name("Song.synkopa")
-            .blocking_save_file()
-            .and_then(|p| p.into_path().ok()),
+        (cur, _) => {
+            // start from the project's own name and folder, not a fixed "Song"
+            let mut dialog = handle.dialog().file().add_filter("Synkopa project", &["synkopa", "wave"]);
+            let name = cur.as_ref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned());
+            dialog = dialog.set_file_name(name.unwrap_or_else(|| "Song.synkopa".into()));
+            if let Some(dir) = cur.as_ref().and_then(|p| p.parent()).filter(|d| d.is_dir()) {
+                dialog = dialog.set_directory(dir);
+            }
+            dialog.blocking_save_file().and_then(|p| p.into_path().ok())
+        }
     };
     let Some(mut path) = path else { return Ok(json!({ "cancelled": true })) };
     if path.extension().is_none() {
@@ -788,6 +799,21 @@ async fn recovery_discard(app: St<'_>, id: String) -> R<()> {
     app.recovery.discard(&id)
 }
 
+/// The beat range of an export: pattern `pattern` alone (PAT mode's export, FL Studio's), the
+/// project loop (`use_loop`), or the song. A loop is needed to wrap the tail.
+fn export_span(project: &Project, use_loop: bool, wrap: bool, pattern: Option<u64>) -> R<(f64, f64)> {
+    if let Some(id) = pattern {
+        if wrap {
+            return Err("wrap tail is for a loop of the song, not a pattern export".into());
+        }
+        return Engine::pattern_range(project, id).ok_or_else(|| "that pattern no longer exists".into());
+    }
+    if wrap && (!use_loop || project.loop_range.is_none_or(|l| l.b <= l.a)) {
+        return Err("select a loop to wrap its tail".into());
+    }
+    Ok(Engine::export_range(project, use_loop))
+}
+
 /// Bounce the master mix to a 32-bit float or 16/24-bit PCM stereo WAV, or a CBR MP3 (`format: "mp3"`,
 /// `mp3_kbps` 128/192/256/320, default 320), song or loop + tail.
 ///
@@ -800,6 +826,7 @@ async fn export_audio(
     app: St<'_>,
     handle: AppHandle,
     use_loop: bool,
+    pattern: Option<u64>,
     tail: f64,
     sample_rate: u32,
     format: Option<String>,
@@ -819,11 +846,8 @@ async fn export_audio(
         return Err("tail must be 0, 2 or 8 seconds".into());
     }
     let st = app.engine.state();
-    if wrap && (!use_loop || st.project.loop_range.is_none_or(|l| l.b <= l.a)) {
-        return Err("select a loop to wrap its tail".into());
-    }
-    let (from, to) = Engine::export_range(&st.project, use_loop);
-    let bounce = actions::Bounce { from, to, tail, rate: sample_rate, wrap };
+    let (from, to) = export_span(&st.project, use_loop, wrap, pattern)?;
+    let bounce = actions::Bounce { from, to, tail, rate: sample_rate, wrap, pattern };
     let suggested = st
         .path
         .as_deref()
@@ -869,6 +893,7 @@ async fn export_stems(
     app: St<'_>,
     handle: AppHandle,
     use_loop: bool,
+    pattern: Option<u64>,
     tail: f64,
     sample_rate: u32,
     include_master: bool,
@@ -888,11 +913,8 @@ async fn export_stems(
         return Err("tail must be 0, 2 or 8 seconds".into());
     }
     let project = app.engine.project();
-    if wrap && (!use_loop || project.loop_range.is_none_or(|l| l.b <= l.a)) {
-        return Err("select a loop to wrap its tail".into());
-    }
-    let (from, to) = Engine::export_range(&project, use_loop);
-    let bounce = actions::Bounce { from, to, tail, rate: sample_rate, wrap };
+    let (from, to) = export_span(&project, use_loop, wrap, pattern)?;
+    let bounce = actions::Bounce { from, to, tail, rate: sample_rate, wrap, pattern };
     let Some(dir) = handle.dialog().file().blocking_pick_folder().and_then(|p| p.into_path().ok()) else {
         return Ok(json!({ "cancelled": true }));
     };

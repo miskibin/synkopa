@@ -160,6 +160,11 @@ a { color: var(--blue); }
 .plscroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; position: relative; background: var(--bg2); }
 /* the overview bar on top replaces the native horizontal scrollbar (vertical one stays) */
 .plscroll::-webkit-scrollbar:horizontal { height: 0; }
+/* … and the vertical one is the lane-zoom scrollbar beside it (FL): drag an end = every lane's height */
+.plbody { flex: 1; min-height: 0; min-width: 0; display: flex; }
+.plbody > .plscroll { scrollbar-width: none; }
+.plbody > .plscroll::-webkit-scrollbar:vertical { width: 0; }
+.plbody > .zbar.plv { flex: none; width: 14px; margin: 27px 1px 1px 2px; }
 /* FL-style overview scrollbar on top: minimap of the song + a wide, easy-to-grab thumb */
 .rulerRow { position: sticky; top: 0; z-index: 5; display: flex; height: 26px; }
 .plhead { position: sticky; left: 0; z-index: 6; flex: none; background: var(--bg5); border-right: 1px solid var(--bg0); border-bottom: 1px solid var(--bg0); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
@@ -243,6 +248,8 @@ a { color: var(--blue); }
 .strips { flex: 1; min-width: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
 .strip { width: 86px; flex: none; display: flex; flex-direction: column; gap: 6px; padding: 0 6px 8px; background: var(--bg4); border-right: 1px solid var(--bg0); min-height: 0; }
 .strip.on { background: var(--sel-bg2); box-shadow: inset 0 0 0 1px var(--sel-ring); }
+/* also selected (Ctrl+Shift+click): part of the group, without being the strip whose effects are shown */
+.strip.multi { background: var(--sel-bg2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sel-ring) 55%, transparent); }
 .strip .bar { height: 3px; margin: 0 -6px; }
 .strip .nmrow { display: flex; align-items: baseline; gap: 3px; min-width: 0; height: 15px; margin-top: 2px; }
 .strip .nmrow .num { flex: none; font: 500 9px var(--mono); color: var(--fg4); }
@@ -538,6 +545,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .dockguides { position: fixed; inset: 0; z-index: 49; pointer-events: none; }
 .dockguide { position: absolute; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
   background: var(--bg7); color: var(--fg2); border: 1px solid var(--line3); box-shadow: 0 4px 14px var(--shadow); }
+.dockguide.faint { opacity: .72; transform: scale(.82); color: var(--blue-hi); border-color: color-mix(in srgb, var(--blue) 55%, transparent); box-shadow: none; }
 .dockguide.hot { background: var(--blue); color: var(--on-accent, #fff); border-color: var(--blue-hi); }
 .dockpreview { position: absolute; background: color-mix(in srgb, var(--blue) 22%, transparent); border: 2px solid var(--blue); border-radius: 3px; }
 .win.docked { position: relative; flex: 1; min-width: 0; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }

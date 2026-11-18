@@ -216,22 +216,20 @@ function DockEmpty(props: { which: 'rack' | 'roll'; msg: string; action?: { labe
 
 const ARROW: Record<string, string> = { left: 'M15 6l-6 6 6 6', right: 'M9 6l6 6-6 6', up: 'M6 15l6-6 6 6', down: 'M6 9l6 6 6-6' };
 /**
- * While a panel's title bar is dragged, only the dock slot under the pointer shows (the arrow and
- * the area the panel would take there): a plain move of a window covers no edges with guides — they
- * appear where a drop would dock. The full slot list stays in `guides()` for the hit test.
+ * While a panel's title bar is dragged, every dock slot shows as a small, faint arrow, so you can
+ * see where the panel could dock without the edges being covered (issue #136); the one under the
+ * pointer lights up with the area the panel would take there.
  */
 export function DockGuides() {
   return (
     <Show when={guides()}>{gs => (
       <div class="dockguides" aria-hidden="true">
-        <Show when={gs().hot}>{h => (
-          <>
-            <div class="dockpreview" style={{ left: h().preview.x + 'px', top: h().preview.y + 'px', width: h().preview.w + 'px', height: h().preview.h + 'px' }} />
-            <div class="dockguide hot" style={{ left: h().x - 16 + 'px', top: h().y - 16 + 'px' }}>
-              <svg viewBox="0 0 24 24" width="18" height="18"><path d={ARROW[h().dir]} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            </div>
-          </>
-        )}</Show>
+        <Show when={gs().hot}>{h => <div class="dockpreview" style={{ left: h().preview.x + 'px', top: h().preview.y + 'px', width: h().preview.w + 'px', height: h().preview.h + 'px' }} />}</Show>
+        <For each={gs().list}>{g => (
+          <div class="dockguide" classList={{ hot: gs().hot === g, faint: gs().hot !== g }} style={{ left: g.x - 16 + 'px', top: g.y - 16 + 'px' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d={ARROW[g.dir]} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </div>
+        )}</For>
       </div>
     )}</Show>
   );

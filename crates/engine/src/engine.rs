@@ -296,6 +296,11 @@ struct Core {
     gesture: Option<Project>,
     /// A transient edit inside the open gesture was not reported to listeners yet.
     gesture_unreported: bool,
+    /// A file imported on the way to another edit (`import_audio_with`, `step` false): the
+    /// project before it, and the revision the import left. The next undo step taken while the
+    /// project is still at that revision starts from here, so undoing that edit takes the
+    /// imported source back out too.
+    import_base: Option<(u64, Project)>,
     sources: SourceStore,
     path: Option<PathBuf>,
     saved_revision: u64,
@@ -442,6 +447,7 @@ impl Engine {
                 revision: 1,
                 gesture: None,
                 gesture_unreported: false,
+                import_base: None,
                 sources,
                 path: None,
                 saved_revision: 1,
@@ -728,7 +734,33 @@ impl Engine {
             return Ok(c.revision);
         }
         let in_gesture = transient && c.gesture.is_some();
-        if !in_gesture {
+        // Lane heights are how the Playlist is viewed, not what the song is: zooming the tracks
+        // is not an undo step (Ctrl+Z after it must take back the last edit, not the zoom). The
+        // height is saved with the song, so it is carried into the history instead: undoing an
+        // older edit keeps the lanes as they are now.
+        if only_track_heights(ops, &before, &c.project) {
+            // only the lanes whose height changed, and only into the same lane: a track's id stays with
+            // its slot when lanes swap (Move up / down), so the name tells whether the snapshot's lane
+            // at that id holds the same track; one that held another track keeps its own height
+            let heights: HashMap<Id, (f32, String)> = c
+                .project
+                .tracks
+                .iter()
+                .filter(|t| before.tracks.iter().any(|b| b.id == t.id && b.h != t.h))
+                .map(|t| (t.id, (t.h, t.name.clone())))
+                .collect();
+            let carry = |p: &mut Project| {
+                for t in &mut p.tracks {
+                    if let Some((h, name)) = heights.get(&t.id) {
+                        if *name == t.name {
+                            t.h = *h;
+                        }
+                    }
+                }
+            };
+            let core = &mut *c;
+            core.undo.iter_mut().chain(core.redo.iter_mut()).chain(core.gesture.iter_mut()).for_each(carry);
+        } else if !in_gesture {
             push_undo(&mut c, before);
         }
         c.revision += 1;
@@ -1107,9 +1139,18 @@ impl Engine {
 
     // ------------------------------------------------------------ audio sources
 
-    /// Decodes files (slow; call off the UI thread) and adds them as sources.
+    /// Decodes files (slow; call off the UI thread) and adds them as sources, as one undo step.
     /// With `place`, also puts one clip per file on consecutive tracks starting there.
     pub fn import_audio(&self, paths: &[PathBuf], place: Option<(u32, f64)>) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
+        self.import_audio_with(paths, place, true)
+    }
+
+    /// [`Engine::import_audio`] where the caller says whether the import is an undo step of its own.
+    /// `step` false is for a file loaded on the way to another edit (a sampler channel made from
+    /// it, a channel's sample replaced): that edit is the step, and Ctrl+Z after dropping a sample
+    /// on the rack took two presses, one of which changed nothing you could see. A new source still
+    /// clears redo, so ids only ever grow along the history.
+    pub fn import_audio_with(&self, paths: &[PathBuf], place: Option<(u32, f64)>, step: bool) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
         let mut loaded = vec![];
         let mut errors = vec![];
         // A file of the sample library is one source however often it is used (a sampler
@@ -1211,8 +1252,25 @@ impl Engine {
                 clip_ids.push(cid);
             }
         }
-        push_undo(&mut c, before);
+        let added = c.project.sources.len() != before.sources.len();
+        let fold = if step || !clip_ids.is_empty() {
+            push_undo(&mut c, before);
+            None
+        } else if added {
+            c.redo.clear();
+            Some(before)
+        } else {
+            None
+        };
         c.revision += 1;
+        if let Some(before) = fold {
+            // the edit that follows (the sampler channel) is the step, and it takes the source with it
+            let base = match c.import_base.take() {
+                Some((r, b)) if r + 1 == c.revision => b,
+                _ => before,
+            };
+            c.import_base = Some((c.revision, base));
+        }
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
         Ok((src_ids, clip_ids))
@@ -1687,6 +1745,14 @@ impl Engine {
         Ok(crate::music::MusicAnalysis { tempo: best_tempo.map(|(_, t)| t), key })
     }
 
+    /// The mixer insert the clip is heard on (its own, else its track's); `None` when the
+    /// clip does not exist. What Auto Vocal's chain replaces the effects of.
+    pub fn clip_insert(&self, clip_id: Id) -> Option<Id> {
+        let c = self.core.lock();
+        let clip = c.project.clips.iter().find(|x| x.id == clip_id)?;
+        Some(c.project.clip_insert(clip))
+    }
+
     /// "Auto vocal": measures the vocal clip (what it plays, its region only) and returns
     /// the calibrated insert chain for its track. The key comes from `beat_clip` when given,
     /// else from the project's other audio (tracks not routed to the vocal's insert); the
@@ -1757,8 +1823,14 @@ impl Engine {
     /// source stays in the project. One undo step. `params` are Rider params (catalog ids;
     /// missing ones take the catalog defaults), e.g. an auto-vocal plan's `rider_bake`.
     /// Returns (new source id, clip id). Slow (the whole region is rendered): call it off
-    /// the UI thread.
-    pub fn bake_rider(&self, clip_id: Id, params: &std::collections::BTreeMap<String, f64>) -> Result<(Id, Id), EngineError> {
+    /// the UI thread. `if_revision` is checked under the commit lock, so a project that
+    /// moved on while the rider was rendering refuses the bake before anything is written.
+    pub fn bake_rider(
+        &self,
+        clip_id: Id,
+        params: &std::collections::BTreeMap<String, f64>,
+        if_revision: Option<u64>,
+    ) -> Result<(Id, Id), EngineError> {
         let (clip, audio, bpm, src_name, color) = {
             let mut c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
@@ -1801,6 +1873,11 @@ impl Engine {
         let (stretch, resample) = if rate != 1.0 { (clip.stretch, clip.resample) } else { (1.0, false) };
 
         let mut c = self.core.lock();
+        if let Some(r) = if_revision {
+            if c.revision != r {
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
+            }
+        }
         let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
         if now.as_ref() != Some(&clip) || c.project.bpm != bpm {
             return Err(EngineError::Msg("the clip changed while the rider was rendering; try again".into()));
@@ -2227,8 +2304,8 @@ impl Engine {
 
     /// Writes the current project to `path` without making it the project's file: the
     /// path, the dirty flag and the sources stay as they are (recordings stay in the
-    /// scratch folder, paths are absolute). Crash recovery uses it for projects that
-    /// were never saved.
+    /// scratch folder, paths are absolute). Crash recovery uses it: the autosave never
+    /// writes over the project's own file.
     pub fn save_copy(&self, path: &Path) -> Result<(), EngineError> {
         let mut c = self.core.lock();
         self.snapshot_plugin_states(&mut c.project);
@@ -2261,9 +2338,16 @@ impl Engine {
     /// Opens a copy written by [`Engine::save_copy`] as an unsaved project with unsaved
     /// changes: Save asks where to put it instead of overwriting the copy.
     pub fn open_recovered(&self, path: &Path) -> Result<Vec<String>, EngineError> {
+        self.open_recovered_for(path, None)
+    }
+
+    /// [`Self::open_recovered`] of a copy of the project saved at `file`: the project is that
+    /// file again, with the copy's changes unsaved, so Save writes them there and closing asks
+    /// first. `None`: a project that was never saved (Save asks where to put it).
+    pub fn open_recovered_for(&self, path: &Path, file: Option<&Path>) -> Result<Vec<String>, EngineError> {
         let warnings = self.open(path)?;
         let mut c = self.core.lock();
-        c.path = None;
+        c.path = file.map(Path::to_path_buf);
         c.revision += 1;
         self.changed(c);
         Ok(warnings)
@@ -2432,11 +2516,45 @@ impl Engine {
         cancel: &AtomicBool,
         progress: &mut dyn FnMut(RenderProgress),
     ) -> Result<Vec<f32>, EngineError> {
-        let scope = move |p: Project| match stem {
-            Some(id) => stem_project(p, id),
-            None => p,
+        self.render_bounce(stem, None, from, to, tail, sample_rate, cancel, progress)
+    }
+
+    /// [`Self::render_export_with`] of one pattern alone (`pattern`: FL Studio's pattern export,
+    /// what PAT mode plays) or of the song (`None`). See [`pattern_project`] for what a pattern
+    /// bounce hears; [`Self::pattern_range`] is its range. The project itself is not changed.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_bounce(
+        &self,
+        stem: Option<Id>,
+        pattern: Option<Id>,
+        from: f64,
+        to: f64,
+        tail: RenderTail,
+        sample_rate: u32,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(RenderProgress),
+    ) -> Result<Vec<f32>, EngineError> {
+        if let Some(id) = pattern {
+            if !self.core.lock().project.patterns.iter().any(|p| p.id == id) {
+                return Err(EngineError::Msg(format!("no pattern {id}")));
+            }
+        }
+        let scope = move |p: Project| {
+            let p = match pattern {
+                Some(id) => pattern_project(p, id),
+                None => p,
+            };
+            match stem {
+                Some(id) => stem_project(p, id),
+                None => p,
+            }
         };
         self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress)
+    }
+
+    /// Beat range of a pattern export: the whole pattern from its first beat (`None`: no such pattern).
+    pub fn pattern_range(project: &Project, pattern: Id) -> Option<(f64, f64)> {
+        project.patterns.iter().find(|p| p.id == pattern).map(|p| (0.0, p.len.max(BAR_BEATS)))
     }
 
     /// Renders what `scope` makes of the current project (a stem, the selected clips alone …).
@@ -3513,7 +3631,26 @@ fn missing_sources(c: &Core) -> HashMap<Id, String> {
         .collect()
 }
 
+/// True when `ops` changed nothing but lane heights: every op puts a track, and `after` is
+/// `before` with other heights.
+fn only_track_heights(ops: &[Op], before: &Project, after: &Project) -> bool {
+    if ops.is_empty() || !ops.iter().all(|op| matches!(op, Op::PutTrack { .. })) || before.tracks.len() != after.tracks.len() {
+        return false;
+    }
+    let same_but_height = |a: &Track, b: &Track| {
+        let mut a = a.clone();
+        a.h = b.h;
+        a == *b
+    };
+    before.tracks.iter().zip(&after.tracks).all(|(a, b)| same_but_height(a, b))
+}
+
 fn push_undo(c: &mut Core, before: Project) {
+    // a file imported for this edit (and nothing else since) is undone with it
+    let before = match c.import_base.take() {
+        Some((r, b)) if r == c.revision => b,
+        _ => before,
+    };
     c.undo.push(before);
     if c.undo.len() > UNDO_LIMIT {
         c.undo.remove(0);
@@ -3711,6 +3848,62 @@ fn fresh_path(dir: &Path, stem: &str) -> PathBuf {
         p = dir.join(format!("{stem} ({k}).wav"));
         k += 1;
     }
+    p
+}
+
+/// The project as a pattern export hears it, like PAT mode plays it: pattern `id` once from beat 0
+/// and nothing else of the arrangement (no other clip, no automation clip, no take). Its channels play
+/// into their own inserts, or the master when they have none, never through a playlist track's insert.
+pub fn pattern_project(mut p: Project, id: Id) -> Project {
+    let len = p.patterns.iter().find(|x| x.id == id).map_or(BAR_BEATS, |x| x.len.max(BAR_BEATS));
+    p.clips.clear();
+    p.comps.clear();
+    p.loop_range = None;
+    if p.tracks.is_empty() {
+        p.tracks.push(Track {
+            id: 1,
+            name: "Pattern".into(),
+            color: "#4f8ef7".into(),
+            muted: false,
+            solo: false,
+            arm: false,
+            vol: VOL_UNITY,
+            h: 56.0,
+            insert: 0,
+            icon: None,
+        });
+    }
+    for (i, t) in p.tracks.iter_mut().enumerate() {
+        t.solo = false;
+        if i == 0 {
+            t.muted = false;
+            t.vol = VOL_UNITY;
+            t.insert = 0;
+        }
+    }
+    let cid = p.alloc_id();
+    p.clips.push(Clip {
+        id: cid,
+        track: 0,
+        start: 0.0,
+        len,
+        offset: 0.0,
+        kind: ClipKind::Pat,
+        source: id,
+        muted: false,
+        gain: 0.0,
+        fade_in: 0.0,
+        fade_out: 0.0,
+        pan: 0.0,
+        norm: false,
+        rev: false,
+        tune: None,
+        stretch: 1.0,
+        resample: false,
+        pitch: 0.0,
+        insert: None,
+        root: crate::model::CLIP_ROOT,
+    });
     p
 }
 

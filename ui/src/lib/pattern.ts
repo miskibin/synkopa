@@ -313,14 +313,14 @@ export function snapStep(x: number, unit: number, floor = false): number {
 }
 
 /**
- * Moves notes `idx` by `dStep` steps and `dKey` semitones from their `orig` positions. The time
- * move is snapped so the first note lands on the grid (relative positions stay), clamped at 0;
- * keys stay within 0..127.
+ * Moves notes `idx` by `dStep` steps and `dKey` semitones from their `orig` positions. The move
+ * itself is snapped, in whole grid units (FL): a note off the grid keeps its offset, so a drag
+ * straight up or down never shifts its timing. Clamped at 0; keys stay within 0..127.
  */
 export function moveNotes(orig: readonly Note[], idx: readonly number[], dStep: number, dKey: number, unit: number, chan: Channel | undefined): Note[] {
   const sel = idx.map(i => orig[i]);
   const first = Math.min(...sel.map(n => n.step));
-  let d = snapStep(first + dStep, unit) - first;
+  let d = snapStep(dStep, unit);
   d = Math.max(d, -first);
   const keys = sel.map(n => keyOf(n, chan));
   const dk = Math.max(-Math.min(...keys), Math.min(127 - Math.max(...keys), dKey));

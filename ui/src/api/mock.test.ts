@@ -49,6 +49,38 @@ describe('standard library in the mock', () => {
   });
 });
 
+describe('pattern export in the mock (#125)', () => {
+  const opts = { useLoop: false, tail: 2, sampleRate: 48000 };
+  it('renders the current pattern with an empty Playlist, over the pattern, and leaves the project as it was', async () => {
+    const be = new MockBackend();
+    await be.projectNew();
+    const st = await be.getState();
+    const [kick] = st.project.channels!;
+    const pt = st.project.patterns[0];
+    await be.applyOps([{ op: 'putPattern', pattern: { ...pt, notes: [{ ch: kick.id, step: 0, len: 1, trig: true }] } }]);
+    const before = (await be.getState()).project;
+    expect(before.clips).toEqual([]);
+    const song = await be.exportAudio({ ...opts, format: 'wav', wavBits: 32 });
+    if (song.cancelled) throw new Error('cancelled');
+    expect(song.stats.silent).toBe(true); // what the issue saw: Song of an empty Playlist
+    const r = await be.exportAudio({ ...opts, pattern: pt.id, format: 'wav', wavBits: 32 });
+    if (r.cancelled) throw new Error('cancelled');
+    expect(r.stats.silent).toBe(false);
+    expect([r.fromBeat, r.toBeat]).toEqual([0, 4]);
+    expect((await be.getState()).project).toEqual(before);
+    // the starter kit plays into its own inserts: the kick's is a stem of the pattern
+    const stems = await be.exportStems({ ...opts, pattern: pt.id, includeMaster: false });
+    if (stems.cancelled) throw new Error('cancelled');
+    expect(stems.files.map(f => f.name)).toContain('Kick');
+  });
+  it('refuses a wrapped tail or a pattern that is gone', async () => {
+    const be = new MockBackend();
+    await expect(be.exportAudio({ ...opts, pattern: 999_999, format: 'wav' })).rejects.toThrow(/no longer exists/);
+    const pt = (await be.getState()).project.patterns[0];
+    await expect(be.exportAudio({ ...opts, pattern: pt.id, format: 'wav', wrapTail: true })).rejects.toThrow(/wrap/);
+  });
+});
+
 describe('stem export in the mock', () => {
   const opts = { useLoop: false, tail: 2, sampleRate: 48000, includeMaster: true };
   const done = (r: ExportStemsResult) => { if (r.cancelled) throw new Error('cancelled'); return r; };
@@ -255,5 +287,82 @@ describe('recording in the mock (like the engine)', () => {
     const be = new MockBackend();
     expect(await be.transportSet({ recAudio: false })).toMatchObject({ recAudio: false, recNotes: true });
     expect(await be.transportSet({ recNotes: false })).toMatchObject({ recAudio: false, recNotes: true });
+  });
+});
+
+describe('lane heights are view state (engine.rs only_track_heights)', () => {
+  it('a vertical zoom or a lane resize adds no undo step and survives undoing an older edit', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const p0 = (await be.getState()).project, t1 = p0.tracks[1];
+    await be.applyOps([{ op: 'putTrack', track: { ...t1, muted: !t1.muted } }]);
+    await be.applyOps(p0.tracks.map(t => ({ op: 'putTrack' as const, track: { ...(t.id === t1.id ? { ...t, muted: !t1.muted } : t), h: t.h + 12 } })));
+    await be.beginGesture();
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: 140 } }], { transient: true });
+    await be.endGesture();
+    let s = await be.getState();
+    expect(s.project.tracks[0].h).toBe(140);
+    expect(s.project.tracks[2].h).toBe(p0.tracks[2].h + 12);
+    // one undo: the mute goes back, the lanes stay
+    await be.undo();
+    s = await be.getState();
+    expect(s.project.tracks[1].muted).toBe(t1.muted);
+    expect(s.project.tracks[0].h).toBe(140);
+    expect(s.project.tracks[2].h).toBe(p0.tracks[2].h + 12);
+    expect(s.canUndo).toBe(false);
+    await be.redo();
+    s = await be.getState();
+    expect(s.project.tracks[1].muted).toBe(!t1.muted);
+    expect(s.project.tracks[0].h).toBe(140);
+  });
+  it('a height change together with another change is an ordinary edit', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: t0.h + 20, name: 'Renamed' } }]);
+    expect((await be.getState()).canUndo).toBe(true);
+    await be.undo();
+    expect((await be.getState()).project.tracks[0]).toMatchObject({ h: t0.h, name: t0.name });
+  });
+});
+
+describe('import as an undo step (engine import_audio_with)', () => {
+  it('into the audio list it is one step; loaded for an edit that follows it is none, and redo is dropped', async () => {
+    const be = new MockBackend();
+    await be.projectNew();
+    const n = (await be.getState()).project.sources.length;
+    await be.importAudio({ paths: ['C:\\loops\\a.wav'] });
+    expect((await be.getState()).canUndo).toBe(true);
+    await be.undo();
+    expect((await be.getState()).project.sources).toHaveLength(n);
+    expect((await be.getState()).canRedo).toBe(true);
+    // for a sampler channel: no step of its own, and the stale redo (a project without the source) goes
+    await be.importAudio({ paths: ['C:\\loops\\b.wav'], step: false });
+    const s = await be.getState();
+    expect(s.project.sources).toHaveLength(n + 1);
+    expect(s.canUndo).toBe(false);
+    expect(s.canRedo).toBe(false);    // the channel made from it is the step, and undoing it takes the file out too
+    const src = s.project.sources.at(-1)!.id;
+    const ch = { ...s.project.channels![0], id: s.project.nextId + 5, name: 'Drop', source: src, insert: null };
+    await be.applyOps([{ op: 'putChannel', channel: ch }]);
+    await be.undo();
+    const u = await be.getState();
+    expect(u.project.sources).toHaveLength(n);
+    expect(u.project.channels!.some(c => c.name === 'Drop')).toBe(false);
+    expect(u.canUndo).toBe(false);
+  });
+  it('a lane-height gesture reports its state when it ends, though it adds no undo step', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const states: number[] = [];
+    await be.on('state', s => states.push(s.revision));
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.beginGesture();
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: t0.h + 30 } }], { transient: true });
+    await be.endGesture();
+    await new Promise(r => setTimeout(r, 5));
+    expect(states.length).toBeGreaterThan(0);
+    expect((await be.getState()).canUndo).toBe(false);
   });
 });

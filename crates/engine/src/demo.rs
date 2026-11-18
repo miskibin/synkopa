@@ -90,11 +90,23 @@ pub fn routed_project() -> Project {
 
 /// What the program starts with. Playlist tracks are plain lanes, as in FL Studio: none is tied
 /// to a mixer insert (they play into the master); routing belongs to the channels, and a track
-/// is sent to an insert by hand.
+/// is sent to an insert by hand. As in FL Studio's default template, the starter kit's Kick,
+/// Clap, Hat and Snare play into inserts 1-4, named after them, so a fader or an effect there
+/// acts on the drum at once.
 pub fn empty_project() -> Project {
     let mut p = routed_project();
     for t in &mut p.tracks {
         t.insert = 0;
+    }
+    let kit: Vec<(Id, String)> = p.channels.iter().take(STARTER_KIT.len()).map(|c| (c.id, c.name.clone())).collect();
+    for (i, (ch, name)) in kit.into_iter().enumerate() {
+        let ins = i as Id + 1;
+        if let Some(c) = p.channels.iter_mut().find(|c| c.id == ch) {
+            c.insert = Some(ins);
+        }
+        if let Some(m) = p.inserts.iter_mut().find(|m| m.id == ins) {
+            m.name = name;
+        }
     }
     p
 }

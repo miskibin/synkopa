@@ -26,14 +26,43 @@ export function track(move: (e: PointerEvent) => void, up?: ((e: PointerEvent) =
   window.addEventListener('pointercancel', u);
 }
 
-let lastTap: { k: string; t: number } | null = null;
-/** True when this is the second tap on `key` within 320 ms (pointerdown-based double click). */
+/** How far (px) the pointer may travel between or during the two presses of a double click. */
+export const DBL_SLOP = 4;
+let lastTap: { k: string; t: number; x: number; y: number } | null = null;
+/** Where the press being handled went down (recorded in capture, before any view's handler). */
+let press: { x: number; y: number } | null = null;
+let watching = false;
+/**
+ * A double click is two presses in one place. Without this, grabbing a knob again right after a
+ * drag (or pressing two controls that share a key) counted as one and reset the value.
+ */
+function watchPresses() {
+  if (watching || typeof window === 'undefined' || !window.addEventListener) return;
+  watching = true;
+  window.addEventListener('pointerdown', (e: PointerEvent) => { press = { x: e.clientX, y: e.clientY }; }, true);
+  window.addEventListener('pointermove', (e: PointerEvent) => {
+    // the first press turned into a drag: the next press starts over
+    if (lastTap && e.buttons && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) > DBL_SLOP) lastTap = null;
+  }, true);
+}
+/**
+ * True when this is the second press on `key` within 320 ms, at the same spot, with no drag in
+ * between (pointerdown-based double click).
+ */
 export function dblCheck(key: string): boolean {
+  watchPresses();
   const now = performance.now();
-  const d = !!lastTap && lastTap.k === key && now - lastTap.t < 320;
-  lastTap = d ? null : { k: key, t: now };
+  const at = press ?? { x: 0, y: 0 };
+  const d = !!lastTap && lastTap.k === key && now - lastTap.t < 320 && Math.hypot(at.x - lastTap.x, at.y - lastTap.y) <= DBL_SLOP;
+  lastTap = d ? null : { k: key, t: now, x: at.x, y: at.y };
   return d;
 }
+watchPresses(); // from page load, so the first double click of a session counts too
+/** Test hook: forget the last press. */
+export function resetDblCheck() { lastTap = null; press = null; }
+
+/** Drag speed for a continuous control: Ctrl or Shift is fine adjust (FL uses Ctrl; Shift is kept). */
+export const fineMul = (e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => (e.shiftKey || e.ctrlKey || e.metaKey ? 0.2 : 1);
 
 /** `track` with the moves coalesced to one per animation frame (high-rate mice and touchpads send
  * several pointermoves per frame; each one re-applied a whole pattern). The last move is flushed

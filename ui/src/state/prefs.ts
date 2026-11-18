@@ -4,7 +4,6 @@ import { createSignal } from 'solid-js';
 import { setLang, type Lang } from '../lib/i18n';
 import { isTauri } from '../api/backend';
 import * as A from './actions';
-import { S } from './store';
 import { U } from './ui';
 
 export interface Prefs {
@@ -54,10 +53,11 @@ function applyPref(k: keyof Prefs, p: Prefs) {
   if (k === 'autosaveMin') {
     if (timer) clearInterval(timer);
     timer = null;
+    // the autosave is a recovery snapshot (recovery.rs), saved project or not: it never writes
+    // over the project's own file, so the last save stays as the user made it
     if (p.autosaveMin > 0) timer = setInterval(() => {
       if (U.openingProject) return;
-      if (!S.path) void A.recoveryTick(); // also drops a stale copy once nothing is unsaved
-      else if (S.dirty) void A.projectSave(false);
+      void A.recoveryTick(); // also drops a stale snapshot once nothing is unsaved
     }, p.autosaveMin * 60_000);
   }
 }

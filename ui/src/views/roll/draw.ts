@@ -45,7 +45,7 @@ export function moveDrag(ctx: RollCtx, e: RollPtr, idx0: number[], mode: 'move' 
     gest.update([ctx.notesOp(notes)]);
     const ln = notes[idx[idx.length - 1]];
     if (ln) ctx.setLastLen(ln.len, !!ln.trig);
-    if (mode === 'move' && ln && keyOf(ln, ctx.ch()) !== lastKey) { lastKey = keyOf(ln, ctx.ch()); ctx.audition(lastKey, ln.v ?? 1); }
+    if (mode === 'move' && ln && keyOf(ln, ctx.ch()) !== lastKey) { lastKey = keyOf(ln, ctx.ch()); ctx.hold(lastKey, ln.v ?? 1); }
   };
   const es = ctx.autoScroll(run, mode === 'resize' ? { x: true } : undefined);
   // a modifier pressed or released without moving the mouse applies at once
@@ -57,6 +57,7 @@ export function moveDrag(ctx: RollCtx, e: RollPtr, idx0: number[], mode: 'move' 
   ctx.beginDrag({ frame: true, cursor: mode === 'move' ? 'grabbing' : 'ew-resize' }, m => { mods = { shift: m.shift, ctrl: m.ctrl }; run(m); if (moved) es.move(m); }, () => {
     unmods();
     es.stop();
+    ctx.hold(null); // the held audition ends with the button
     gest?.end(); if (!moved) clone?.();
   });
 }
@@ -95,7 +96,7 @@ const noteToolDown = (ctx: RollCtx, e: RollPtr, i: number, paint: boolean) => {
     const idx = dragIdx(ctx, i, false);
     if (!ctx.sel().has(i)) ctx.setSel(new Set([i]));
     if (ctx.edgeHit(i, e.p.x)) return moveDrag(ctx, e, idx, 'resize');
-    ctx.audition(keyOf(n, ctx.ch()), n.v ?? 1);
+    ctx.hold(keyOf(n, ctx.ch()), n.v ?? 1);
     return moveDrag(ctx, e, idx, 'move');
   }
   // a new note: grid start, last touched length, the row's key
@@ -109,7 +110,8 @@ const noteToolDown = (ctx: RollCtx, e: RollPtr, i: number, paint: boolean) => {
   g.update([ctx.notesOp(notes)]);
   grewSay(ctx, lenBefore);
   ctx.setSel(new Set([notes.length - 1]));
-  ctx.audition(e.p.key, 1);
+  // heard at the velocity it is written with, for as long as the button is held
+  if (paint) ctx.audition(e.p.key, ctx.lastVel()); else ctx.hold(e.p.key, ctx.lastVel());
   if (paint) return paintDrag(ctx, e, g, notes);
   moveDrag(ctx, e, [notes.length - 1], 'move', g);
 };

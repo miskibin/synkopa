@@ -34,6 +34,8 @@ pub trait Host {
     fn cli_json(&self) -> Value;
     /// Why the installed RMVPE model could not be used, if it could not.
     fn model_error(&self) -> Option<String>;
+    /// After an install attempt: remember why the model still cannot be used, or clear it.
+    fn set_model_error(&self, _e: Option<String>) {}
     /// Before an offline bounce: the Synkopa Keys piano the project plays is loaded.
     fn wait_keys(&self) -> R<()>;
     /// Before pitch work or a bounce of pitch-edited clips: the pitch model is in place.
@@ -164,6 +166,55 @@ pub fn unroute(app: &dyn Host, from: u64, to: u64, if_revision: Option<u64>) -> 
         }
     }
     app.engine().apply(&[Op::PutInsert { insert: m }], false, if_revision).map_err(|e| e.to_string())
+}
+
+/// The clip's source was already baked: its name ends " (rider)". The chain then leaves the
+/// rider out (it is in the audio) and no second bake is made — same guard as the app.
+fn already_baked(e: &Engine, clip_id: u64) -> bool {
+    let p = e.project();
+    p.clips
+        .iter()
+        .find(|c| c.id == clip_id)
+        .and_then(|c| p.sources.iter().find(|s| s.id == c.source))
+        .map(|s| s.name.ends_with(" (rider)"))
+        .unwrap_or(false)
+}
+
+/// The Auto Vocal plan as ops on `insert`: the insert's effects of the kinds the chain brings
+/// (and any old rider) are removed — others, e.g. an EQ, stay in front — then each stage is put
+/// with its calibrated params (full param sets over the defaults, the stage's mix, bypassed when
+/// not enabled, not a preset). The plan leaves the vocal far under the limiter, so the level
+/// suggestion is folded into the limiter's gain to bring it to mix level (what the app does).
+/// Returns the ops and the ids the chain stages will get.
+fn chain_ops(e: &Engine, insert: u64, plan: &wave_engine::autovocal::AutoVocalPlan) -> (Vec<Op>, Vec<u64>) {
+    let p = e.project();
+    let makeup = plan.track_gain_db.unwrap_or(-18.0 - plan.stages.lufs_after);
+    let makeup = (makeup.clamp(0.0, 24.0) * 10.0).round() / 10.0;
+    let mut kinds = plan.chain.iter().map(|f| f.kind).collect::<std::collections::HashSet<_>>();
+    kinds.insert(FxKind::Rider);
+    let mut ops: Vec<Op> = p
+        .insert(insert)
+        .into_iter()
+        .flat_map(|m| m.fx.iter())
+        .filter(|f| kinds.contains(&f.kind))
+        .map(|f| Op::RemoveFx { fx_id: f.id })
+        .collect();
+    let mut ids = Vec::with_capacity(plan.chain.len());
+    for (n, stage) in plan.chain.iter().enumerate() {
+        let id = p.next_id + n as u64;
+        let mut fx = new_fx(id, stage.kind, p.bpm);
+        fx.params.extend(stage.params.iter().map(|(k, v)| (k.clone(), *v)));
+        fx.mix = stage.mix as f32;
+        fx.preset = None;
+        fx.bypass = !stage.enabled;
+        if stage.kind == FxKind::Limit {
+            let gain = fx.params.get("gain").copied().unwrap_or(0.0) + makeup;
+            fx.params.insert("gain".into(), gain.clamp(0.0, 24.0));
+        }
+        ops.push(Op::PutFx { insert_id: insert, fx, index: None });
+        ids.push(id);
+    }
+    (ops, ids)
 }
 
 pub fn set_param(app: &dyn Host, fx_id: u64, param: &str, value: f64, if_revision: Option<u64>) -> R<u64> {
@@ -454,6 +505,8 @@ pub struct Bounce {
     pub tail: f64,
     pub rate: u32,
     pub wrap: bool,
+    /// Render this pattern alone, as PAT mode plays it (`from..to` is then its range), not the song.
+    pub pattern: Option<u64>,
 }
 
 impl Bounce {
@@ -466,7 +519,9 @@ impl Bounce {
     ) -> R<Vec<f32>> {
         use wave_engine::RenderTail;
         let tail = if self.wrap { RenderTail::Wrap } else { RenderTail::Seconds(self.tail) };
-        engine.render_export_with(insert, self.from, self.to, tail, self.rate, cancel, &mut |p| tracker.on(p)).map_err(|e| e.to_string())
+        engine
+            .render_bounce(insert, self.pattern, self.from, self.to, tail, self.rate, cancel, &mut |p| tracker.on(p))
+            .map_err(|e| e.to_string())
     }
 
     fn tail_seconds(self) -> f64 {
@@ -511,6 +566,7 @@ pub fn render_to_file(
         "toBeat": bounce.to,
         "tail": bounce.tail_seconds(),
         "wrapTail": bounce.wrap,
+        "pattern": bounce.pattern,
         "format": fmt.extension(),
         "stats": stats(&audio, bounce.rate),
     }))
@@ -536,6 +592,29 @@ pub fn safe_file_stem(name: &str) -> String {
         format!("_{cleaned}")
     } else {
         cleaned
+    }
+}
+
+/// Where "save new version" writes next to `current`: `Beat.synkopa` → `Beat_2.synkopa`,
+/// `Beat_2` → `Beat_3` (FL Studio's Ctrl+N). A name already taken is skipped, so an earlier
+/// version is never overwritten; `taken` says whether a path exists.
+pub fn next_version_path(current: &Path, taken: impl Fn(&Path) -> bool) -> PathBuf {
+    let stem = current.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Song".into());
+    let ext = current.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_else(|| "synkopa".into());
+    // a trailing `_<number>` is the version; anything else (also `Beat_final`) starts at 2
+    let (base, from) = match stem.rsplit_once('_') {
+        Some((b, n)) if !b.is_empty() && !n.is_empty() && n.len() <= 6 && n.bytes().all(|c| c.is_ascii_digit()) => {
+            (b.to_string(), n.parse::<u32>().unwrap_or(1).saturating_add(1))
+        }
+        _ => (stem, 2),
+    };
+    let mut n = from.max(2);
+    loop {
+        let p = current.with_file_name(format!("{base}_{n}.{ext}"));
+        if !taken(&p) {
+            return p;
+        }
+        n = n.saturating_add(1);
     }
 }
 
@@ -575,7 +654,10 @@ pub fn render_stems_to_dir(
     if bounce.to <= bounce.from {
         return Err("`to` must be after `from`".into());
     }
-    let project = engine.project();
+    let project = match bounce.pattern {
+        Some(id) => wave_engine::pattern_project(engine.project(), id),
+        None => engine.project(),
+    };
     // (insert id — None is the master mix, display name)
     let mut jobs: Vec<(Option<u64>, String)> = vec![];
     if include_master {
@@ -639,6 +721,7 @@ pub fn render_stems_to_dir(
         "toBeat": bounce.to,
         "tail": bounce.tail_seconds(),
         "wrapTail": bounce.wrap,
+        "pattern": bounce.pattern,
         "format": ext,
         "files": files,
         "skipped": skipped,
@@ -651,12 +734,19 @@ pub fn render(app: &dyn Host, a: &Value) -> R<Value> {
     let wrap = arg(a, "wrapTail").and_then(Value::as_bool).unwrap_or(false);
     let from = opt_f64(a, "from");
     let to = opt_f64(a, "to");
-    let (from, to) = match (wrap, p.loop_range) {
-        (true, Some(l)) if l.b > l.a => (from.unwrap_or(l.a), to.unwrap_or(l.b)),
-        (true, _) => from.zip(to).ok_or("wrap tail requires a project loop or both `from` and `to`")?,
-        (false, range) => (from.unwrap_or(0.0), to.unwrap_or_else(|| range.map_or_else(|| p.song_end(), |l| l.b))),
+    let pattern = opt_f64(a, "pattern").map(|v| v as u64);
+    let (from, to) = match (pattern, wrap, p.loop_range) {
+        (Some(_), true, _) => return Err("wrap tail is for a loop of the song, not a pattern export".into()),
+        (Some(id), false, _) => {
+            let (a0, b0) = wave_engine::Engine::pattern_range(&p, id).ok_or_else(|| format!("no pattern {id}"))?;
+            (from.unwrap_or(a0), to.unwrap_or(b0))
+        }
+        (None, true, Some(l)) if l.b > l.a => (from.unwrap_or(l.a), to.unwrap_or(l.b)),
+        (None, true, _) => from.zip(to).ok_or("wrap tail requires a project loop or both `from` and `to`")?,
+        (None, false, range) => (from.unwrap_or(0.0), to.unwrap_or_else(|| range.map_or_else(|| p.song_end(), |l| l.b))),
     };
-    let bounce = Bounce { from, to, tail: opt_f64(a, "tail").unwrap_or(2.0), rate: opt_f64(a, "rate").unwrap_or(48000.0) as u32, wrap };
+    let bounce =
+        Bounce { from, to, tail: opt_f64(a, "tail").unwrap_or(2.0), rate: opt_f64(a, "rate").unwrap_or(48000.0) as u32, wrap, pattern };
     let wav_bits = arg(a, "wavBits")
         .map(|value| match value.as_f64() {
             Some(16.0) => Ok(16),
@@ -794,7 +884,9 @@ pub fn import(app: &dyn Host, a: &Value) -> R<Value> {
         (None, Some(b)) => Some((0, b)),
         _ => None,
     };
-    let (s, c) = app.engine().import_audio(&paths, place).map_err(|e| e.to_string())?;
+    // `step: false`: the file is loaded for an edit that follows (a sampler channel), which is the undo step
+    let step = arg(a, "step").and_then(Value::as_bool).unwrap_or(true);
+    let (s, c) = app.engine().import_audio_with(&paths, place, step).map_err(|e| e.to_string())?;
     Ok(json!({ "sourceIds": s, "clipIds": c }))
 }
 
@@ -896,7 +988,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
             .or_else(|| files.iter().find(|f| stem(f).starts_with(&want) || f.name.to_lowercase().starts_with(&want)))
             .ok_or(format!("no standard-library sample `{k}`: try kick-808, snare-studio, hat-808-open, bass-808, marimba ... (the browser's Library tab lists them all)"))?;
         // the import adds the project source (or finds the one already there)
-        let (srcs, _) = e.import_audio(&[PathBuf::from(factory::lib_path(f.file))], None).map_err(|x| x.to_string())?;
+        let (srcs, _) = e.import_audio_with(&[PathBuf::from(factory::lib_path(f.file))], None, false).map_err(|x| x.to_string())?;
         p = e.project();
         let mut ch = Channel::sampler(p.next_id, f.name, factory::color(f), srcs[0]);
         ch.root = f.root;
@@ -1403,7 +1495,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         return Err(live_only_error(cmd));
     }
     match cmd {
-        "pitch_analyze" | "pitch_target" | "tune_ref" | "auto_vocal_plan" | "f0_model" => app.ensure_pitch_model(),
+        "pitch_analyze" | "pitch_target" | "tune_ref" | "auto_vocal_plan" | "auto_vocal" | "f0_model" => app.ensure_pitch_model(),
         c if crate::pitch_actions::COMMANDS.contains(&c) => app.ensure_pitch_model(),
         "vst3_params" | "vst3_set_param" | "plugin_params" | "plugin_set_param" => app.ensure_live_plugins(),
         _ => {}
@@ -1426,7 +1518,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","music_analyze","auto_vocal_plan","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1568,6 +1660,22 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         }
         "tune_ref" => tune_ref(app, a, if_revision).map(ok_rev),
         "f0_model" => Ok(json!(crate::models::status(e, app.model_error()))),
+        "f0_model_install" => {
+            // the download (~345 MB) is SHA-256 checked inside `install`; blocking is fine here —
+            // session requests run on their own thread (the app path streams progress events instead)
+            crate::models::install(|_, _| {})?;
+            match crate::models::activate(e) {
+                Ok(true) => {
+                    app.set_model_error(None);
+                    Ok(json!(crate::models::status(e, None)))
+                }
+                Ok(false) => Err("the model file is missing after the install".into()),
+                Err(m) => {
+                    app.set_model_error(Some(m.clone()));
+                    Err(m)
+                }
+            }
+        }
         "music_analyze" => {
             let cid = arg(a, "clipId").and_then(as_index);
             let ex = arg(a, "excludeFx").and_then(as_index);
@@ -1591,8 +1699,50 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
                 Some(v) => serde_json::from_value(v.clone()).map_err(|er| format!("BAD_ARGS: params: {er}"))?,
                 None => Default::default(),
             };
-            let (source, clip) = e.bake_rider(cid, &params).map_err(|x| x.to_string())?;
+            let (source, clip) = e.bake_rider(cid, &params, if_revision).map_err(|x| x.to_string())?;
             Ok(json!({ "clipId": clip, "sourceId": source, "revision": e.revision() }))
+        }
+        "auto_vocal" => {
+            let cid = need_u64(a, "clipId")?;
+            // the guard is checked at entry as well: a stale one refuses before the bake, not
+            // after half of the job is done
+            if let Some(r) = if_revision {
+                if e.revision() != r {
+                    return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
+                }
+            }
+            let insert = e.clip_insert(cid).ok_or("no such clip")?;
+            if insert == 0 {
+                return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
+            }
+            let style = match arg(a, "style").and_then(Value::as_str) {
+                Some("hard") => wave_engine::autovocal::Style::Hard,
+                _ => wave_engine::autovocal::Style::Natural,
+            };
+            let bake = !arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
+            let plan = e.auto_vocal_plan(cid, arg(a, "beatClipId").and_then(as_index), style, bake).map_err(|x| x.to_string())?;
+            // the rider is rendered into the audio instead of living on the insert (no playback
+            // delay); a clip that was baked before is not baked twice (same guard as the app)
+            let mut baked = None;
+            if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, cid)) {
+                // the engine checks the guard under the commit lock: a project that moved on
+                // while the rider rendered refuses the bake before a source is written
+                let (s, c) = e.bake_rider(cid, &rb.params, if_revision).map_err(|x| x.to_string())?;
+                baked = Some(json!({ "sourceId": s, "clipId": c }));
+            }
+            // the stage ids come from the snapshot below, so the apply is guarded on the
+            // revision read just before it even when the caller gave no guard: a concurrent
+            // edit then conflicts instead of silently overwriting one of those ids
+            let base = e.revision();
+            let (ops, fx_ids) = chain_ops(e, insert, &plan);
+            // our own bake moved the project one step past the caller's guard; a foreign change
+            // still conflicts (the entry check above refuses before anything is done)
+            let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
+            e.apply(&ops, false, guard).map_err(|x| x.to_string())?;
+            Ok(json!({
+                "revision": e.revision(), "clipId": cid, "insertId": insert, "style": plan.style,
+                "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
+            }))
         }
         "plugin_scan" => Ok(json!(app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
         "vst3_scan" => {
@@ -1658,6 +1808,25 @@ mod tests {
     use std::sync::Arc;
     use wave_engine::{Engine, NoPlugins, Project};
 
+    #[test]
+    fn save_new_version_counts_up_and_never_lands_on_an_existing_file() {
+        use super::next_version_path;
+        use std::path::{Path, PathBuf};
+        let free = |_: &Path| false;
+        let dir = Path::new("songs");
+        assert_eq!(next_version_path(&dir.join("Beat.synkopa"), free), dir.join("Beat_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_2.synkopa"), free), dir.join("Beat_3.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_19.wave"), free), dir.join("Beat_20.wave"));
+        // not a version number: a word, a bare number, a leading underscore
+        assert_eq!(next_version_path(&dir.join("Beat_final.synkopa"), free), dir.join("Beat_final_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("808.synkopa"), free), dir.join("808_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("_7.synkopa"), free), dir.join("_7_2.synkopa"));
+        // names in use are skipped
+        let used: Vec<PathBuf> = vec![dir.join("Beat_2.synkopa"), dir.join("Beat_3.synkopa")];
+        assert_eq!(next_version_path(&dir.join("Beat.synkopa"), |p| used.iter().any(|u| u == p)), dir.join("Beat_4.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_2.synkopa"), |p| used.iter().any(|u| u == p)), dir.join("Beat_4.synkopa"));
+    }
+
     fn tmp(name: &str) -> std::path::PathBuf {
         let d = std::env::temp_dir().join(format!("wave-stems-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -1677,7 +1846,7 @@ mod tests {
     }
 
     fn bounce(to: f64) -> Bounce {
-        Bounce { from: 0.0, to, tail: 0.0, rate: 48_000, wrap: false }
+        Bounce { from: 0.0, to, tail: 0.0, rate: 48_000, wrap: false, pattern: None }
     }
 
     #[test]
@@ -1901,3 +2070,7 @@ mod tests {
         assert!(parse_steps("", 1.0).unwrap().is_empty());
     }
 }
+
+#[cfg(test)]
+#[path = "autovocal_actions_tests.rs"]
+mod autovocal_tests;

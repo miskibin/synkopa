@@ -577,3 +577,57 @@ fn pattern_loop_skips_the_playlist_tracks_insert() {
     e.pattern_play(Some(1), 0.0, None).unwrap();
     assert!(run_rt(&mut rt, SR as usize / 2) < 1e-6, "a channel's own (muted) insert still applies");
 }
+
+/// Issue #125: a new project's Kick, Clap, Hat and Snare play into inserts 1-4, named after them
+/// (FL Studio's default template), so a fader there acts on the drum at once.
+#[test]
+fn the_starter_kit_plays_into_its_own_named_inserts() {
+    let p = Project::empty();
+    for (i, name) in ["Kick", "Clap", "Hat", "Snare"].into_iter().enumerate() {
+        let ch = p.channels.iter().find(|c| c.name == name).unwrap();
+        assert_eq!(ch.insert, Some(i as Id + 1), "{name}");
+        assert_eq!(p.inserts.iter().find(|m| m.id == i as Id + 1).unwrap().name, name);
+    }
+    assert!(p.tracks.iter().all(|t| t.insert == 0), "playlist tracks stay plain lanes");
+    // a loaded project keeps its own routing (the starter kit is not rerouted on load)
+    let mut q = p.clone();
+    q.channels[0].insert = None;
+    q.migrate();
+    assert_eq!(q.channels[0].insert, None);
+}
+
+/// Issue #125: PAT mode's export renders the current pattern alone, with an empty Playlist, through
+/// the channels' own inserts, and leaves the project as it was. The song of an empty Playlist is silence.
+#[test]
+fn a_pattern_exports_with_an_empty_playlist() {
+    let mut p = Project::empty();
+    p.inserts[0].fx.clear();
+    let kick = chan(&p, "Kick");
+    p.patterns[0].notes = vec![Note::trigger(kick, 0.0, None)];
+    p.patterns[0].fit_len();
+    assert!(p.clips.is_empty());
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let before = e.state();
+    let (from, to) = Engine::export_range(&before.project, false);
+    let song = e.render(from, to, 0.0, SR).unwrap();
+    assert!(rms(&song) < 1e-6, "the song of an empty Playlist is silence");
+    let pid = before.project.patterns[0].id;
+    assert_eq!(Engine::pattern_range(&before.project, pid), Some((0.0, 4.0)));
+    let no = std::sync::atomic::AtomicBool::new(false);
+    let pat = e.render_bounce(None, Some(pid), 0.0, 4.0, RenderTail::Seconds(0.0), SR, &no, &mut |_| {}).unwrap();
+    assert!(rms(&pat) > 1e-3, "the pattern sounds: {}", rms(&pat));
+    assert_eq!(pat.len(), 2 * (4.0 * 60.0 / 128.0 * SR as f64) as usize);
+    let after = e.state();
+    assert_eq!(after.revision, before.revision);
+    assert!(after.project.clips.is_empty(), "the export does not touch the arrangement");
+    // the kick's own insert is in the path: its fader down silences the export
+    let mut ins = after.project.inserts.iter().find(|m| m.id == 1).unwrap().clone();
+    ins.vol = 0.0;
+    e.apply(&[Op::PutInsert { insert: ins }], false, None).unwrap();
+    let quiet = e.render_bounce(None, Some(pid), 0.0, 4.0, RenderTail::Seconds(0.0), SR, &no, &mut |_| {}).unwrap();
+    assert!(rms(&quiet) < 1e-6, "Insert 1 carries the kick: {}", rms(&quiet));
+    // a stem of the pattern: only the insert it plays into has sound
+    let stems = Engine::stem_inserts(&pattern_project(e.project(), pid));
+    assert!(stems.iter().any(|(id, name)| *id == 1 && name == "Kick"), "{stems:?}");
+    assert!(e.render_bounce(None, Some(999_999), 0.0, 4.0, RenderTail::Seconds(0.0), SR, &no, &mut |_| {}).is_err());
+}

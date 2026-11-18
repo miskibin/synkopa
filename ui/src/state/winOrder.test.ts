@@ -89,6 +89,31 @@ describe('one stack for every floating window', () => {
   });
 });
 
+describe('F5 then F6 (#125)', () => {
+  it('brings back the Channel Rack alone, not the maximised Piano roll over the Browser; F7 brings the roll back as it was', async () => {
+    const { U, setU } = await import('../state/ui');
+    const A = await import('../state/actions');
+    const P = await import('../state/pattern');
+    const { setS } = await import('../state/store');
+    const { emptyProject } = await import('../lib/factory');
+    setS('project', emptyProject());
+    setU({ zTop: 1, plugs: [], editor: null, pitchEd: null, plugsHidden: false, tuckZ: 0, rollMax: false, rollFloat: null,
+      rackWin: { x: 0, y: 0, w: 600, h: 300, z: 1 }, rollWin: null, mixView: false, dock: { left: [], right: [], bottom: [] } });
+    const W = await import('../state/winOrder');
+    const shownFloating = () => W.shownFloating().filter(f => f.kind === 'rack' || f.kind === 'roll');
+    P.toggleRoll(); // F7: the Piano roll, full screen
+    expect(U.rollMax).toBe(true);
+    expect(shownFloating().map(f => f.kind).sort()).toEqual(['rack', 'roll']);
+    A.playlistFront(); // F5
+    expect(shownFloating()).toEqual([]);
+    P.toggleRack(); // F6
+    expect(shownFloating().map(f => f.kind)).toEqual(['rack']);
+    P.toggleRoll(); // F7
+    expect([...shownFloating()].sort((a, b) => b.z - a.z)[0]).toMatchObject({ kind: 'roll' }); // in front
+    expect(U.rollMax).toBe(true);
+  });
+});
+
 describe('the Mixer is a window like the others', () => {
   it('F9 shows, brings to front and hides it; floating, it is in the stack', async () => {
     const { U, setU } = await import('../state/ui');

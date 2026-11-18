@@ -6,6 +6,7 @@ let answer: 'save' | 'discard' | 'cancel' | 'busy' = 'discard';
 let recAnswer: 'restore' | 'discard' | 'later' = 'restore';
 let recAsked = 0;
 let recPath: string | null = null;
+let recProject: string | null = null;
 let editDuringConfirm: (() => Promise<void>) | undefined;
 vi.mock('../ui/Confirm', () => ({
   confirmUnsaved: async () => {
@@ -13,7 +14,7 @@ vi.mock('../ui/Confirm', () => ({
     await editDuringConfirm?.();
     return choice;
   },
-  confirmRecover: async (_ms: number, openPath: string | null = null) => { recAsked++; recPath = openPath; return recAnswer; },
+  confirmRecover: async (_ms: number, openPath: string | null = null, project: string | null = null) => { recAsked++; recPath = openPath; recProject = project; return recAnswer; },
 }));
 beforeAll(() => {
   const noop = () => {};
@@ -35,6 +36,7 @@ beforeEach(async () => {
   recAnswer = 'restore';
   recAsked = 0;
   recPath = null;
+  recProject = null;
   editDuringConfirm = undefined;
 });
 
@@ -214,7 +216,7 @@ describe('saving a project', () => {
   });
 });
 
-describe('crash recovery of a project that was never saved', () => {
+describe('crash recovery (the autosave)', () => {
   /** An unsaved edit, the autosave tick, then the app dies and starts again. */
   async function crashWithUnsavedWork() {
     await mock.applyOps([{ op: 'setBpm', bpm: 137 }]);
@@ -273,13 +275,35 @@ describe('crash recovery of a project that was never saved', () => {
     await A.offerRecovery();
     expect(recAsked).toBe(0);
   });
-  it('writes no copy for a saved project, and drops the copy once the project is saved', async () => {
+  it('drops the copy once the project is saved', async () => {
     await mock.applyOps([{ op: 'setBpm', bpm: 137 }]);
     store.replaceState(await mock.getState());
     expect(await mock.recoveryWrite()).toBe(true);
     await A.projectSave(false);
+    expect(await mock.recoveryWrite()).toBe(false); // nothing unsaved
     mock.simulateCrash();
     expect(await mock.recoveryList()).toEqual([]);
+  });
+  it('never saves a named project by itself: its autosave is a snapshot offered back as that project (#125)', async () => {
+    expect(await A.projectSave(false)).toBe(true);
+    const file = store.S.path!;
+    for (const bpm of [141, 147]) {
+      await mock.applyOps([{ op: 'setBpm', bpm }]);
+      store.replaceState(await mock.getState());
+      await A.recoveryTick();
+      expect(store.S.dirty).toBe(true); // the project file was not written
+    }
+    mock.simulateCrash();
+    store.replaceState(await mock.getState());
+    await A.offerRecovery();
+    expect(recProject).toBe(file);
+    expect(store.S.project.bpm).toBe(147);
+    expect(store.S.path).toBe(file);
+    expect(store.S.dirty).toBe(true);
+    // Save writes the recovered changes to the project without asking where
+    expect(await A.projectSave(false)).toBe(true);
+    expect(store.S.path).toBe(file);
+    expect(store.S.dirty).toBe(false);
   });
   it('opens the demo project in SONG mode and guards unsaved edits first', async () => {
     const pat = await import('./pattern');

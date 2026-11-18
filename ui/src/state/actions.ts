@@ -4,7 +4,8 @@ import { shownFloating } from './winOrder';
 import { be } from '../api/backend';
 import { t, tName } from '../lib/i18n';
 import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type AnyBuiltinKind, type PluginInfo, type Clip, type Fx, type Id, type Insert, type Op, type RecoveredProject, type Track } from '../api/types';
-import { clampMove, duplicateSpan, insertTrackOps, moveClips, muteOps, pasteClips, sliceClip, TOTAL } from '../lib/clipOps';
+import { clampMove, duplicateSpan, insertTrackOps, moveClips, muteOps, pasteClips, sliceClip, swapTrackOps, TOTAL } from '../lib/clipOps';
+import { parseViews, rememberView, viewFor } from '../lib/projView';
 import { clamp, fmtPos } from '../lib/format';
 import { loadPreset as loadPresetFx, newFx, presetInfo, presetList } from '../lib/presets';
 import { snapName, snapRes } from '../lib/snap';
@@ -280,11 +281,12 @@ export async function midiExport(pattern?: Id) {
     say(t('d.midi.exported', { path: r.out, n: r.notes, tracks: r.tracks }));
   } catch (e) { say(t('d.midi.fail', { err: String(e) })); }
 }
-export async function projectSave(saveAs = false): Promise<boolean> {
+export async function projectSave(saveAs = false, version = false): Promise<boolean> {
   flushNotebook();
   try {
-    const r = await enqueue(() => be().projectSave(saveAs));
+    const r = await enqueue(() => be().projectSave(saveAs, version));
     if (r.cancelled) return false; // the save dialog was dismissed: nothing was written
+    if (r.path) rememberProjView(r.path);
     say(t('d.act.saved', { path: r.path })); await resync(); return true;
   } catch (e) { say(t('d.act.savefail', { err: String(e) })); return false; }
 }
@@ -319,14 +321,15 @@ export async function offerRecovery() {
   let list: RecoveredProject[];
   try { list = await be().recoveryList(); } catch { return; }
   for (const r of list) {
-    const a = await confirmRecover(r.savedMs, S.path);
+    const a = await confirmRecover(r.savedMs, S.path, r.project ?? null);
     if (a === 'later') return;
     if (a === 'discard') { await be().recoveryDiscard(r.id).catch(e => say(t('d.act.err', { err: String(e) }))); continue; }
     if (!(await guardUnsaved(t('d.act.guard.open')))) return;
     try {
       const res = await enqueue(() => be().recoveryRestore(r.id));
       acceptReply(res.state); afterProjectLoad();
-      say(res.warnings.length ? t('d.act.openedwarn', { path: t('d.ui.unnamed'), n: res.warnings.length, first: res.warnings[0] }) : t('d.act.recovered'));
+      say(res.warnings.length ? t('d.act.openedwarn', { path: r.project ?? t('d.ui.unnamed'), n: res.warnings.length, first: res.warnings[0] })
+        : r.project ? t('d.act.recoveredNamed', { name: r.project.split(/[\\/]/).pop()! }) : t('d.act.recovered'));
       offerRelink();
     } catch (e) { say(t('d.act.recoverfail', { err: String(e) })); }
     return;
@@ -345,14 +348,21 @@ export function cancelExportOrClose() {
   }
   setU({ exportOpen: false, exportBusy: false });
 }
+const PROJ_VIEWS_KEY = 'wave.projViews';
+function loadProjViews() { try { return parseViews(localStorage.getItem(PROJ_VIEWS_KEY)); } catch { return []; } }
+/** Remember where the user is in the project just saved at `path` (see lib/projView.ts). */
+function rememberProjView(path: string) {
+  try { localStorage.setItem(PROJ_VIEWS_KEY, JSON.stringify(rememberView(loadProjViews(), path, { pat: U.pat, selCh: U.selCh, start: U.start }))); } catch { /* private window */ }
+}
 function afterProjectLoad() {
   clearPeaks();
   batch(() => {
-    setU({ sel: [], chSel: [], plugs: [], editor: null, start: 0, menu: null });
+    // back where this project was last saved (FL): its pattern, channel and start marker; else the first ones
+    const v = viewFor(loadProjViews(), S.path, S.project, TOTAL);
+    setU({ sel: [], chSel: [], plugs: [], editor: null, start: v.start, menu: null, mixMulti: [] });
     const m = S.project.inserts[1] ?? S.project.inserts[0];
     if (m) setU({ mixSel: m.id, fxSel: m.fx[0]?.id ?? null });
-    const p = S.project.patterns[0];
-    setU({ cur: p ? { kind: 'pat', ref: p.id, clipId: null } : null, pat: p?.id ?? null, selCh: S.project.channels?.[0]?.id ?? null });
+    setU({ cur: v.pat != null ? { kind: 'pat', ref: v.pat, clipId: null } : null, pat: v.pat, selCh: v.selCh });
   });
 }
 
@@ -526,7 +536,11 @@ export function toggleTrackSolo(i: number, add = false) {
 }
 export function toggleInsertMute(id: Id) {
   const m = S.project.inserts.find(x => x.id === id); if (!m) return;
-  setInsert(id, m.muted ? { muted: false } : { muted: true, solo: false }, 'Mute');
+  // a strip of the selected group mutes or unmutes the whole group
+  const group = selectedInserts(), ids = group.length > 1 && group.includes(id) ? group : [id];
+  const patch = m.muted ? { muted: false } : { muted: true, solo: false };
+  const ops = ids.map(x => insertOp(x, patch)).filter((o): o is Op => !!o);
+  commit(ops, 'Mute');
 }
 export function toggleInsertSolo(id: Id, add = false) {
   const m = S.project.inserts.find(x => x.id === id); if (!m || id === 0) return;
@@ -542,6 +556,16 @@ export function insertTrack(i: number) {
   commit(insertTrackOps(plain(S.project), i, allocId()), t('d.act.op.addtrack'));
 }
 export const addTrack = () => insertTrack(S.project.tracks.length);
+/** Move lane `i` one place up (`d` −1) or down (+1), with its clips. */
+export function moveTrack(i: number, d: -1 | 1) {
+  const ops = swapTrackOps(plain(S.project), i, i + d);
+  if (!ops.length) return;
+  const a = S.project.tracks[i].id, b = S.project.tracks[i + d].id, open = { a: U.takesOpen[a], b: U.takesOpen[b] };
+  commit(ops, t('d.act.op.movetrack'));
+  // ids stay with their slots, so what is keyed by a slot's id trades places with the lanes: the open take lanes
+  setU('takesOpen', { ...U.takesOpen, [a]: open.b, [b]: open.a });
+  say(t(d < 0 ? 'd.act.trackUp' : 'd.act.trackDown', { name: S.project.tracks[i + d]?.name ?? '' }));
+}
 
 // ---------- mixer ----------
 export function insertOp(id: Id, patch: Partial<Insert>): Op | null {
@@ -552,7 +576,32 @@ export function insertOp(id: Id, patch: Partial<Insert>): Op | null {
 export function setInsert(id: Id, patch: Partial<Insert>, label = t('d.act.mixer')) { const op = insertOp(id, patch); if (op) commit([op], label); }
 export function selectInsert(id: Id) {
   const m = S.project.inserts.find(x => x.id === id);
+  // a plain click on a strip outside the group drops the group; inside it, the group stays (to drag its faders)
+  if (U.mixMulti.length && !U.mixMulti.includes(id)) setU('mixMulti', []);
   if (m && U.mixSel !== id) setU({ mixSel: id, fxSel: m.fx[0]?.id ?? null });
+}
+/**
+ * The selected mixer strips: the current one first, then the rest of its group (Ctrl+Shift+click).
+ * `mixMulti` holds every member of the group, and the group only counts while the current strip is
+ * one of them: when something else moves the selection (a rack channel followed to its insert, an
+ * effect opened), that strip is alone and never drags a stale group with it.
+ */
+export function selectedInserts(): Id[] {
+  const ids = new Set(S.project.inserts.map(m => m.id));
+  const g = U.mixMulti.filter(id => ids.has(id));
+  return g.length > 1 && g.includes(U.mixSel) ? [U.mixSel, ...g.filter(id => id !== U.mixSel)] : [U.mixSel];
+}
+/** Ctrl+Shift+click on a strip (FL): add it to the selection, or take it out. */
+export function toggleInsertSelected(id: Id) {
+  const cur = selectedInserts();
+  if (!cur.includes(id)) setU('mixMulti', [...cur, id]);
+  else {
+    const rest = cur.filter(x => x !== id);
+    if (!rest.length) return; // the only selected strip stays selected
+    const next = S.project.inserts.find(m => m.id === rest[0]);
+    setU({ mixMulti: rest.length > 1 ? rest : [], ...(id === U.mixSel ? { mixSel: rest[0], fxSel: next?.fx[0]?.id ?? null } : {}) });
+  }
+  say(t('d.act.stripsSel', { n: selectedInserts().length }));
 }
 export function addInsert() {
   const id = allocId();
@@ -673,13 +722,15 @@ export function tuckBelow(z: number) {
   setU({ plugsHidden: true, tuckZ: U.plugsHidden ? Math.max(U.tuckZ, z) : z });
 }
 /**
- * A plain click in the workspace (Browser, a docked Mixer / Channel Rack / Piano roll) sends the floating
+ * A plain click in the workspace (Browser, a docked Channel Rack / Piano roll) sends the floating
  * windows behind it, like a click on the Playlist. It acts on release and only without a drag, so dragging
  * a sample from the Browser onto a floating Channel Rack keeps the rack; a window the click itself opens
  * (an effect slot) comes after `z` and stays in front.
  */
 export function tuckOnClick(e: PointerEvent) {
   if (e.button !== 0) return;
+  // the docked Mixer's effect windows belong to it: muting, selecting or adjusting a strip keeps the EQ you are listening to
+  if ((e.target as Element | null)?.closest?.('.mixdock')) return;
   const sx = e.clientX, sy = e.clientY, z = U.zTop;
   const done = (ev: PointerEvent) => {
     window.removeEventListener('pointerup', done, true); window.removeEventListener('pointercancel', done, true);

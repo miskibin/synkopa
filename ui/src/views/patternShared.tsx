@@ -42,7 +42,7 @@ export function useDataVersion() {
 
 /**
  * Keys typed while a pattern window has the focus never edit the playlist behind it: selection,
- * delete, clipboard and nudge shortcuts stop here (Space, Ctrl+Z, F-keys and Esc stay global).
+ * delete, clipboard, mute (Alt+M) and nudge shortcuts stop here (Space, Ctrl+Z, Ctrl+M = metronome, F-keys and Esc stay global).
  * `own` handles the window's own keys first.
  */
 export function guardKeys(e: KeyboardEvent, own?: (e: KeyboardEvent) => void) {
@@ -50,7 +50,7 @@ export function guardKeys(e: KeyboardEvent, own?: (e: KeyboardEvent) => void) {
   own?.(e);
   if (e.cancelBubble) return;
   const m = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-  if (e.key === 'Delete' || e.key === 'Backspace' || e.key.startsWith('Arrow') || (m && !e.shiftKey && 'abcdxvm'.includes(k) && k.length === 1)) { e.preventDefault(); e.stopPropagation(); }
+  if (e.key === 'Delete' || e.key === 'Backspace' || e.key.startsWith('Arrow') || (m && !e.shiftKey && 'abcdxv'.includes(k) && k.length === 1) || (e.altKey && !m && e.code === 'KeyM')) { e.preventDefault(); e.stopPropagation(); }
   // the playlist's tool letters: a window that does not use one must not switch the tool behind it
   else if (!m && !e.altKey && k.length === 1 && 'pbdtce'.includes(k)) e.stopPropagation();
 }
@@ -78,7 +78,7 @@ export function insTitle(c: Channel): string {
 }
 /** A channel's mixer box as an insert choice (the same one the channel window's MIXER picker makes). */
 export function chanInsertChoice(c: Channel): InsertChoice {
-  return { value: c.insert ?? null, nullLabel: t('b.cw.likeClipTrack'), ops: insert => [chanOp(c, { insert })], label: t('b.pe.mixCh'), wheelKey: 'cins' + c.id };
+  return { value: c.insert ?? null, nullLabel: t('b.cw.likeClipTrack'), ops: insert => [chanOp(c, { insert })], label: t('b.pe.mixCh'), wheelKey: 'cins' + c.id, free: { name: c.name, color: c.color } };
 }
 
 export function insertMenu(c: Channel, x: number, y: number) {
@@ -103,8 +103,8 @@ export function chanMenu(c: Channel, x: number, y: number, clipboardItems: MenuI
     { t: 'item', label: t('b.pe.fill2'), act: () => edit(fillEvery(pt.notes, c.id, steps, 2), t('b.pe.fill')) },
     { t: 'item', label: t('b.pe.fill4'), act: () => edit(fillEvery(pt.notes, c.id, steps, 4), t('b.pe.fill')) },
     { t: 'item', label: t('b.pe.fill8'), act: () => edit(fillEvery(pt.notes, c.id, steps, 8), t('b.pe.fill')) },
-    { t: 'item', label: t('b.pe.shiftL'), kbd: 'Shift+Alt+←', act: () => edit(rotate(pt.notes, c.id, steps, -1), t('b.pe.shiftSteps')) },
-    { t: 'item', label: t('b.pe.shiftR'), kbd: 'Shift+Alt+→', act: () => edit(rotate(pt.notes, c.id, steps, 1), t('b.pe.shiftSteps')) },
+    { t: 'item', label: t('b.pe.shiftL'), kbd: 'Shift+Ctrl+←', act: () => edit(rotate(pt.notes, c.id, steps, -1), t('b.pe.shiftSteps')) },
+    { t: 'item', label: t('b.pe.shiftR'), kbd: 'Shift+Ctrl+→', act: () => edit(rotate(pt.notes, c.id, steps, 1), t('b.pe.shiftSteps')) },
     { t: 'item', label: t('b.pe.clear'), disabled: !pt.notes.some(n => n.ch === c.id), act: () => edit(clearChannel(pt.notes, c.id), t('b.pe.clearCh')) },
     { t: 'sep' },
     { t: 'item', label: t('b.pe.preview'), kbd: t('b.pe.ctrlClick'), act: () => audition(c.id, undefined, 0.8, true) },

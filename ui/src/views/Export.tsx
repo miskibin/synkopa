@@ -7,12 +7,13 @@ import { be } from '../api/backend';
 import { t } from '../lib/i18n';
 import { baseName, fmtBytes } from '../lib/format';
 import {
-  depthText, exportBytes, exportOverall, exportRange, exportRemaining, exportSeconds, fmtExportLen, fmtMs, hasLoop, stemInserts, wavePath,
+  depthText, exportBytes, exportOverall, exportRange, exportRemaining, exportSeconds, fmtExportLen, fmtMs, hasLoop, patternProject, stemInserts, wavePath,
   type ExportEncoding,
 } from '../lib/export';
 import type { ExportAudioOptions, ExportProgress } from '../api/types';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
+import { modePattern, patMode, previewPattern } from '../state/pattern';
 import { Segmented } from '../ui/Knob';
 
 const TAILS = [0, 2, 8, 0] as const;
@@ -34,7 +35,17 @@ export function Export() {
 function ExportDialog() {
   const saved: Saved = (() => { try { return (JSON.parse(localStorage.getItem(FKEY) ?? '{}') ?? {}) as Saved; } catch { return {}; } })();
   const loopOk = () => hasLoop(S.project.loop);
-  const [useLoop, setUseLoop] = createSignal(false);
+  // FL's export modes: the pattern PAT mode plays, or the song (or its loop). The pattern is the
+  // default in PAT mode and while the Playlist is empty, where the song would be silence.
+  const pat = () => { const id = previewPattern(); return S.project.patterns.find(p => p.id === id) ?? modePattern() ?? null; };
+  const [kind, setKind] = createSignal<'pattern' | 'song' | 'loop'>(pat() && (patMode() || !S.project.clips.length) ? 'pattern' : 'song');
+  const rangeKind = () => kind() === 'pattern' ? (pat() ? 'pattern' : 'song') : kind() === 'loop' && !loopOk() ? 'song' : kind();
+  const useLoop = () => rangeKind() === 'loop';
+  const patId = () => rangeKind() === 'pattern' ? pat()!.id : null;
+  const kinds = () => [...(pat() ? ['pattern' as const] : []), 'song' as const, ...(loopOk() ? ['loop' as const] : [])];
+  const kindLabel = (k: 'pattern' | 'song' | 'loop') => t(k === 'pattern' ? 'a.ex.pattern' : k === 'loop' ? 'a.ex.loop' : 'a.ex.song');
+  /** Song chosen while the Playlist is empty: it would render silence, so the export waits for a choice. */
+  const songEmpty = () => rangeKind() !== 'pattern' && !S.project.clips.length;
   const [tailI, setTailI] = createSignal<0 | 1 | 2 | 3>(([0, 1, 2, 3] as const).find(i => i === saved.tail) ?? 1); // 2 s
   const [rateI, setRateI] = createSignal(Math.max(0, RATES.indexOf((saved.rate ?? 48000) as 48000)));
   const [mixMp3, setMixMp3] = createSignal(!!saved.mp3);
@@ -59,15 +70,18 @@ function ExportDialog() {
   const mp3 = () => stems() ? stemsMp3() : mixMp3();
   const setMp3 = (value: boolean) => { (stems() ? setStemsMp3 : setMixMp3)(value); remember(); };
   const wav = () => !mp3();
-  const canWrap = () => wav() && useLoop() && loopOk();
+  const canWrap = () => wav() && useLoop();
   const tailChoice = () => tailI() === WRAP && !canWrap() ? 1 : tailI();
   const tailSeconds = () => TAILS[tailChoice()];
   const enc = (): ExportEncoding => mp3() ? { format: 'mp3', kbps: KBPS[kbI()] } : { format: 'wav', bits: wavBits() };
   const encText = () => mp3() ? `MP3 ${KBPS[kbI()]} kbps` : depthText(wavBits()) + (dither() ? ' + dither' : '');
 
-  const stemNames = () => [...(master() ? ['Master'] : []), ...stemInserts(S.project).map(m => m.name.trim() || `Insert ${m.id}`)];
+  const stemNames = () => {
+    const id = patId(), p = id != null ? patternProject(S.project, id) : S.project;
+    return [...(master() ? ['Master'] : []), ...stemInserts(p).map(m => m.name.trim() || `Insert ${m.id}`)];
+  };
   const nFiles = () => stemNames().length;
-  const range = () => exportRange(S.project, useLoop() && loopOk());
+  const range = () => exportRange(S.project, useLoop(), patId());
   const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds());
   const bytes = () => exportBytes(seconds(), RATES[rateI()], enc()) * (stems() ? nFiles() : 1);
   const songName = () => (S.path ? baseName(S.path).replace(/\.(synkopa|wave)$/i, '') : 'Song') + '.' + (mp3() ? 'mp3' : 'wav');
@@ -121,10 +135,10 @@ function ExportDialog() {
   const close = () => { if (!busy()) setU('exportOpen', false); };
 
   const start = async () => {
-    if (busy() || (stems() && nFiles() === 0)) return;
+    if (busy() || (stems() && nFiles() === 0) || songEmpty()) return;
     setBusy(true); setU('exportBusy', true); setErr(null); setProg(null);
     try {
-      const common = { useLoop: useLoop() && loopOk(), tail: tailSeconds(), sampleRate: RATES[rateI()] };
+      const common = { useLoop: useLoop(), pattern: patId(), tail: tailSeconds(), sampleRate: RATES[rateI()] };
       const options: ExportAudioOptions = mp3()
         ? { ...common, format: 'mp3', mp3Kbps: KBPS[kbI()] }
         : { ...common, format: 'wav', wavBits: wavBits(), dither: dither(), wrapTail: tailChoice() === WRAP };
@@ -239,8 +253,8 @@ function ExportDialog() {
                     pick={i => { setMaster(i === 0); remember(); }} title={t('a.ex.masterTip')} />
                 </Show>
                 <label>{t('a.ex.range')}</label>
-                <Segmented options={loopOk() ? [t('a.ex.song'), t('a.ex.loop')] : [t('a.ex.song')]} value={() => (useLoop() && loopOk() ? 1 : 0)}
-                  pick={i => setUseLoop(i === 1)} title={loopOk() ? t('a.ex.rangeTip') : t('a.ex.rangeTipNoLoop')} />
+                <Segmented options={kinds().map(kindLabel)} value={() => kinds().indexOf(rangeKind())}
+                  pick={i => setKind(kinds()[i])} title={t('a.ex.rangeTip', { pattern: pat()?.name ?? '—' })} />
                 <label>{t('a.ex.tail')}</label>
                 <Segmented options={canWrap() ? [t('a.ex.cut'), '2 s', '8 s', t('a.ex.wrap')] : [t('a.ex.cut'), '2 s', '8 s']} value={tailChoice}
                   pick={i => { setTailI(i as 0 | 1 | 2 | 3); remember(); }} title={t(canWrap() ? 'a.ex.wrapTip' : 'a.ex.tailTip')} />
@@ -273,16 +287,23 @@ function ExportDialog() {
           </div>
           <div class="exsum mono" title={stems() ? t('a.ex.sumTipStems') : undefined}>
             <span>{stems() ? t('a.ex.sumFiles', { n: nFiles() }) : songName()}</span>
+            <Show when={patId() != null}><span title={t('a.ex.patternTip')}>{pat()!.name}</span></Show>
             <span>{fmtExportLen(seconds())}</span>
             <span>{RATES[rateI()] === 48000 ? '48 kHz' : '44.1 kHz'}</span>
             <span>{encText()}</span>
             <span>≈ {fmtBytes(bytes())}</span>
           </div>
-          <Show when={stems() && nFiles() === 0}><div class="note err" style={{ 'margin-bottom': '10px' }}>{t('a.ex.stemsNone')}</div></Show>
+          <Show when={songEmpty()}>
+            <div class="note err row" style={{ 'margin-bottom': '10px', gap: '8px', 'justify-content': 'space-between' }}>
+              <span>{pat() ? t('a.ex.songEmpty') : t('a.ex.songEmptyNoPat')}</span>
+              <Show when={pat()}><button class="smallbtn" onClick={() => setKind('pattern')}>{t('a.ex.usePattern', { name: pat()!.name })}</button></Show>
+            </div>
+          </Show>
+          <Show when={!songEmpty() && stems() && nFiles() === 0}><div class="note err" style={{ 'margin-bottom': '10px' }}>{t('a.ex.stemsNone')}</div></Show>
           <Show when={err()}><div class="note err" style={{ 'margin-bottom': '10px' }}>{err()}</div></Show>
           <div class="row" style={{ 'justify-content': 'flex-end', gap: '8px' }}>
             <button class="smallbtn" onClick={cancel}>{t('a.ex.cancel')}</button>
-            <button class="smallbtn primary" disabled={stems() && nFiles() === 0} onClick={() => void start()}>{stems() ? t('a.ex.goStems') : t('a.ex.go')}</button>
+            <button class="smallbtn primary" disabled={(stems() && nFiles() === 0) || songEmpty()} onClick={() => void start()}>{stems() ? t('a.ex.goStems') : t('a.ex.go')}</button>
           </div>
         </Show>
       </div>

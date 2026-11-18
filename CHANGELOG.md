@@ -7,6 +7,14 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Auto vocal from the command line.** `synkopa auto-vocal --clip N` measures a vocal take and puts
+  the tuned chain on its mixer insert in one call — the same chain the app's Auto vocal button
+  builds (pitch correction, vocal rider rendered into the audio, compressors, de-esser, reverb,
+  limiter), with `--style hard` for rap tuning, `--beat-clip` to take key and level from the
+  beat, and `--plan` to only print the proposal. It works without the app open
+  (`synkopa -p song.synkopa …`), so scripts and agents can tune vocals too. `synkopa f0-model --install`
+  downloads the RMVPE pitch model (after printing its licence note) and switches the pitch
+  detector to it.
 - **Add a playlist sound to the Channel Rack from its clip.** Dragging a sample into the Playlist
   plays it there directly (as before, without a rack entry); the audio clip's menu now offers
   "Add as sampler channel" to put the same sound on the rack and the keyboard in one click. The
@@ -27,6 +35,70 @@ shown in the app after an update and is published as the release notes (see
   close the clip's editor window when it opened, so closing the pitch editor left nothing. The
   editor now stays open underneath, and Esc closes the pitch editor first, then the editor —
   also stopping a solo preview the pitch editor left ringing.
+
+## 0.9.23 — 2026-11-18
+
+### Added
+- **Export a pattern on its own, as in FL Studio.** The Export dialog has a Pattern range next to
+  Song and Loop: it renders the current pattern the way PAT mode plays it, with an empty
+  Playlist too, and leaves the project as it is. It is the default in PAT mode and while the
+  Playlist is empty. Choosing Song with an empty Playlist now warns that the file would be
+  silence and offers to export the pattern instead (it used to write a silent file). Mix and
+  stems both work; the command line has `render --pattern`.
+- **Controls work like FL.** Ctrl+drag adjusts finely, Alt+click resets, and a control's
+  right-click menu has *Type in value*. Grabbing a knob or fader again right after a drag no
+  longer resets it.
+- **Mixer: select several tracks** with Ctrl+Shift+click; their faders and mutes move together.
+  A right-click (or Ctrl/Alt+click) on a mute switch solos, in the Mixer and on Playlist tracks.
+- **Playlist:** a slice dragged up or down cuts every clip it crosses; the paint tool paints
+  wherever the pointer goes, also leftwards and on other tracks; tracks can be moved up and down
+  (their clips and automation follow).
+- **Piano roll:** Shift+Up/Down moves notes a semitone, Ctrl+Up/Down an octave, Shift+Left/Right
+  a grid step; Ctrl+V pastes where the notes were copied; with nothing selected, Ctrl+B / Ctrl+C
+  and the arrows take every note; a note sounds as long as you hold it, at its velocity;
+  right-drag in the velocity lane draws a ramp.
+- **FL's shortcuts:** Ctrl+D deselects, Ctrl+M switches the metronome, Alt+M mutes the selected
+  clips, Ctrl+N saves a new version beside the project (Beat → Beat_2). New project is
+  Ctrl+Shift+N. Export in place is in the File menu (Ctrl+Alt+E).
+- **Synkopa remembers where you were:** a saved project reopens on its pattern, channel and start
+  marker, and the Browser keeps its open folders and scroll position.
+
+### Changed
+- **The autosave never writes over your project.** It used to save a saved project into its own
+  file every few minutes, so the version you saved yourself could be lost. Now it keeps a
+  recovery copy of the unsaved changes instead. If Synkopa closes unexpectedly, the next start
+  offers them back as that project, unsaved: save to keep them, or close without saving to keep
+  the file as you left it.
+- **A new project's Kick, Clap, Hat and Snare play into mixer inserts 1–4**, named after them,
+  like FL Studio's template, so a fader or effect there works on the drum straight away.
+- **The keyboard goes where you work.** A click in the Playlist takes the keyboard back from the
+  Browser's search box, so Space plays. Delete, Ctrl+X/C/V and the arrows edit clips only while
+  you work in the Playlist, never behind the Mixer or an editor.
+- **PAT mode plays the pattern through its channels' own inserts**, not through the effects of
+  the Playlist track its clip sits on. A press on the Playlist grid switches to SONG.
+- **Clicks follow FL:** the Channel Rack's left button lights steps and the right one clears
+  them; Up/Down pick the channel; two clicks on a channel name open and close its window. A
+  library sample plays on the press, from the top each time. Clicking the Browser or a docked
+  panel sends floating windows behind the workspace (F5 brings them back), one at a time.
+- **Ruler:** a click sets the start position, a drag draws the loop, Ctrl+drag moves the start
+  position.
+- **Lane heights are not undo steps** any more, and a right-click on empty Playlist space only
+  drops the selection.
+- **A new logo:** six staggered bars.
+
+### Fixed
+- Clicking the Mixer no longer hides open effect windows or the floating Mixer.
+- Piano roll: dragging an off-grid note up or down keeps its timing; changing the grid keeps the
+  note length; Delete and Ctrl+X only remove a selection; a click on empty grid deselects; a fast
+  velocity drag no longer skips notes. Notes drawn after a Channel Rack step stay steps, and
+  triplet hats stay steps in the rack.
+- Trimming a clip shorter than the grid no longer makes it longer.
+- Dropping samples on the Channel Rack is one undo step.
+- A click on the Playlist while playing no longer stops the view from following the playhead;
+  zooming no longer makes the view stutter between the zoom point and the playhead.
+- The sample editor stays open under its pitch editor; an audio clip's menu can add its sample
+  as a sampler channel.
+- Touching the sampler's envelope knobs no longer switches the envelope on by itself.
 
 ## 0.9.22 — 2026-11-17
 
