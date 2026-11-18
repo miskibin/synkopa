@@ -110,6 +110,8 @@ const FADER_H = 140;
 const FX_ROWS_FULL = 5;
 /** One effect row in a strip, its 2 px gap included. */
 const FX_ROW = 20;
+/** How far an empty effect area pulls the strip up (`.strip .sfx:empty` in styles.css). */
+const SFX_EMPTY_PULL = 6;
 
 /**
  * The insert's effects as rows, in the room a taller mixer leaves above the knobs (the strip below
@@ -120,7 +122,10 @@ const FX_ROW = 20;
 function StripFx(props: { m: Insert; full: boolean }) {
   let el!: HTMLDivElement;
   const size = useSize(() => el);
-  const room = () => Math.floor((size().h + 2) / FX_ROW);
+  // `.sfx:empty` pulls the strip 6 px up, which makes the empty box 6 px taller: measured as is,
+  // a mixer at just the wrong height fits a row, shows it, loses the 6 px, hides it… every frame
+  // (#160). The room is measured without that margin, so both states agree.
+  const room = () => Math.floor((size().h - (el?.firstElementChild ? 0 : SFX_EMPTY_PULL) + 2) / FX_ROW);
   const fit = () => { const r = room(), n = props.m.fx.length; return n + 1 <= r ? n : Math.max(0, r - 1); };
   const stop = (e: Event) => e.stopPropagation();
   return (

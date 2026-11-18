@@ -164,6 +164,24 @@ export function Playlist() {
    * big song). Where a full paint fits in a frame nothing changes: every step is painted sharp.
    */
   let zoomed = false, stretched = false, tileBw = 0, zoomAt = 0;
+  /**
+   * A zoom waiting for the next frame: zoom and scroll are applied together right before that
+   * frame paints. Applied in the input handler, the webview could show a frame between the two
+   * (WebKitGTK does not align wheel events with frames): the new scroll over the canvases still
+   * painted at the old zoom, so the view jumped sideways and back on every wheel step (#160).
+   * Several wheel steps in one frame add up here.
+   */
+  let pendingView: { bw: number; x: number; y: number } | null = null;
+  /** The view as it will be on the next frame (a queued zoom included). */
+  const viewNow = () => pendingView ?? { bw: U.bw, x: scrollEl.scrollLeft, y: scrollEl.scrollTop };
+  const queueView = (bw: number, x: number, y: number) => { pendingView = { bw, x: Math.max(0, x), y: Math.max(0, y) }; };
+  const applyView = () => {
+    const v = pendingView; if (!v) return;
+    pendingView = null;
+    if (v.bw !== U.bw) setU('bw', v.bw);
+    scrollEl.scrollLeft = v.x; scrollEl.scrollTop = v.y;
+    setScroll({ x: scrollEl.scrollLeft, y: scrollEl.scrollTop });
+  };
   /** Frame intervals after the last full paints (ms): their median says whether a full paint fits in a frame. */
   const paintGaps: number[] = [];
   let lastDrawAt = 0, paintedFull = false;
@@ -309,6 +327,7 @@ export function Playlist() {
   };
 
   const draw = (now: number) => {
+    applyView();
     if (U.mixView) return; // under the Mix view: nothing to paint (following catches up on the way back)
     if (paintedFull && lastDrawAt) { paintGaps.push(now - lastDrawAt); if (paintGaps.length > 5) paintGaps.shift(); }
     lastDrawAt = now; paintedFull = false;
@@ -442,10 +461,9 @@ export function Playlist() {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault(); holdFollow();
       const r = scrollEl.getBoundingClientRect(), mx = e.clientX - r.left - U.headW;
-      const beat = (scrollEl.scrollLeft + mx) / U.bw;
-      const bw = clamp(U.bw * (e.deltaY < 0 ? 1.15 : 1 / 1.15), A.BW_MIN, A.BW_MAX);
-      setU('bw', bw);
-      scrollEl.scrollLeft = beat * bw - mx;
+      const v = viewNow(), beat = (v.x + mx) / v.bw;
+      const bw = clamp(v.bw * (e.deltaY < 0 ? 1.15 : 1 / 1.15), A.BW_MIN, A.BW_MAX);
+      queueView(bw, beat * bw - mx, v.y);
     } else if (e.altKey) {
       e.preventDefault();
       const d = e.deltaY < 0 ? 6 : -6;
@@ -489,25 +507,23 @@ export function Playlist() {
   let lastPtr: { x: number; y: number } | null = null;
   /** Views to go back to with a plain Ctrl+right-click (saved before a range zoom, a preset or a fit). */
   const views: { bw: number; x: number; y: number }[] = [];
-  const pushView = () => { views.push({ bw: U.bw, x: scrollEl.scrollLeft, y: scrollEl.scrollTop }); if (views.length > 32) views.shift(); };
-  const setView = (bw: number, x: number, y = scrollEl.scrollTop) => {
+  const pushView = () => { views.push(viewNow()); if (views.length > 32) views.shift(); };
+  const setView = (bw: number, x: number, y = viewNow().y) => {
     holdFollow(); // every user zoom (pointer steps, presets, fit, zoom box) goes through here
-    setU('bw', clamp(bw, A.BW_MIN, A.BW_MAX));
-    scrollEl.scrollLeft = x; scrollEl.scrollTop = y;
-    syncScroll();
+    queueView(clamp(bw, A.BW_MIN, A.BW_MAX), x, y);
   };
   const viewW = () => Math.max(1, scrollEl.clientWidth - U.headW);
   /** Zoom to `bw` around the pointer when it is over the clips, else around the middle of the view. */
   const zoomTo = (bw: number) => {
-    const nb = clamp(bw, A.BW_MIN, A.BW_MAX); if (nb === U.bw) return;
+    const v = viewNow(), nb = clamp(bw, A.BW_MIN, A.BW_MAX); if (nb === v.bw) return;
     const r = viewRect(), p = lastPtr;
     const anchor = p && p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom ? p.x - r.left : viewW() / 2;
-    setView(nb, zoomScroll(scrollEl.scrollLeft, anchor, U.bw, nb));
+    setView(nb, zoomScroll(v.x, anchor, v.bw, nb), v.y);
   };
-  const barsInView = () => barsText(Math.max(1, Math.round(viewW() / U.bw / 4)));
+  const barsInView = () => barsText(Math.max(1, Math.round(viewW() / viewNow().bw / 4)));
   zoomImpl = {
-    step: f => zoomTo(U.bw * f),
-    preset: i => { const bw = ZOOM_PRESETS[i]; if (bw == null) return; if (bw !== U.bw) { pushView(); zoomTo(bw); } say(tl('a.pl.zoomPreset', { n: i + 1, bars: barsInView() })); },
+    step: f => zoomTo(viewNow().bw * f),
+    preset: i => { const bw = ZOOM_PRESETS[i]; if (bw == null) return; if (bw !== viewNow().bw) { pushView(); zoomTo(bw); } say(tl('a.pl.zoomPreset', { n: i + 1, bars: barsInView() })); },
     fit: () => {
       const span = fitSpan(songEnd(), 4, FIT_MIN_BEATS);
       pushView();
@@ -1310,9 +1326,7 @@ export function Playlist() {
   const ovChange = (r: ZRange) => {
     holdFollow();
     const bw = clamp(cw() / r.len, A.BW_MIN, A.BW_MAX);
-    if (bw !== U.bw) setU('bw', bw);
-    scrollEl.scrollLeft = Math.max(0, r.pos * bw);
-    syncScroll();
+    queueView(bw, Math.max(0, r.pos * bw), viewNow().y);
   };
   // FL: the vertical scrollbar zooms the lanes too — drag it to scroll, drag an end to make every
   // lane taller or shorter (they keep their proportions), Ctrl+wheel over it zooms. Its unit is the
