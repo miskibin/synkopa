@@ -107,7 +107,7 @@ fn a_clips_gain_automation_glides_without_steps() {
     let mut p = Project::empty();
     p.inserts[0].fx.clear();
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
     // gain ramps from +12 dB (v = 1) down to −24 dB (v = 0) over 4 beats
     let a = Automation {
         id: 9200,
@@ -224,7 +224,7 @@ fn an_edit_during_playback_keeps_the_automated_value() {
         m.fx.clear();
     }
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
     let a = Automation {
         id: 9500,
         name: "g".into(),

@@ -126,7 +126,7 @@ impl Host for Headless {
 
 impl wave_cli::Doc for Headless {
     fn call(&self, command: &str, args: &Value, if_revision: Option<u64>) -> Result<Value, String> {
-        let r = actions::control(self, command, args, if_revision);
+        let r = actions::control(self, command, args, if_revision, None);
         self.pump();
         r
     }

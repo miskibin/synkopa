@@ -130,8 +130,10 @@ export class MockBackend implements Backend {
   private revision = 1;
   private savedRev = 1;
   private path: string | null = null;
-  private undoStack: Project[] = [];
-  private redoStack: Project[] = [];
+  /** Undo steps: the project before the edit and what the edit was called (engine.rs `UndoStep`). */
+  private undoStack: { p: Project; label?: string }[] = [];
+  private redoStack: { p: Project; label?: string }[] = [];
+  private gestureLabel: string | undefined = undefined;
   private gesture: Project | null = null;
   /** A gesture's transient batches changed the project without a state event (engine.rs gesture_unreported). */
   private gestureUnreported = false;
@@ -208,6 +210,7 @@ export class MockBackend implements Backend {
   // ---------- state ----------
   private dto(): StateDto {
     return structuredClone({ project: this.p, revision: this.revision, canUndo: this.undoStack.length > 0, canRedo: this.redoStack.length > 0,
+      undoLabel: this.undoStack.at(-1)?.label ?? null, redoLabel: this.redoStack.at(-1)?.label ?? null,
       transport: this.tr, path: this.path, dirty: this.revision !== this.savedRev, audition: this.liveAudition(), missing: this.missing(), fxErrors: this.fxErrors() });
   }
   /**
@@ -236,10 +239,11 @@ export class MockBackend implements Backend {
   private changed() { this.revision++; this.emit('state', this.dto()); }
   /** engine.rs `import_base`: a file loaded for the next edit (and the revision it left) is undone with that edit. */
   private importBase: { rev: number; p: Project } | null = null;
-  private pushUndo(prev: Project) {
+  private pushUndo(prev: Project, label?: string) {
     const base = this.importBase; this.importBase = null;
     if (base && base.rev === this.revision) prev = base.p;
-    this.undoStack.push(prev); if (this.undoStack.length > 300) this.undoStack.shift(); this.redoStack = []; }
+    // engine.rs UNDO_LIMIT
+    this.undoStack.push({ p: prev, label }); if (this.undoStack.length > 200) this.undoStack.shift(); this.redoStack = []; }
 
   async getState() { return this.dto(); }
   async applyOps(ops: Op[], opts?: { label?: string; transient?: boolean }) {
@@ -273,14 +277,14 @@ export class MockBackend implements Backend {
       const changed = next.tracks.filter((t, i) => prev.tracks[i].h !== t.h);
       const sameLane = (a: Track, b: Track) => a.name === b.name
         || projectEq({ ...a, name: b.name, h: b.h } as unknown as Json, b as unknown as Json);
-      const carry = (states: Project[]) => {
+      const carry = (states: { p: Project; label?: string }[]) => {
         for (const now of changed) {
           let last: Track = now;
           for (let i = 0; i < states.length; i++) {
-            const t = states[i].tracks.find(x => x.id === now.id);
+            const t = states[i].p.tracks.find(x => x.id === now.id);
             if (!t || !sameLane(last, t)) break;
             last = t;
-            states[i] = { ...states[i], tracks: states[i].tracks.map(x => x.id === now.id ? { ...x, h: now.h } : x) };
+            states[i] = { ...states[i], p: { ...states[i].p, tracks: states[i].p.tracks.map(x => x.id === now.id ? { ...x, h: now.h } : x) } };
           }
         }
         return states;
@@ -288,21 +292,22 @@ export class MockBackend implements Backend {
       // nearest first: the undo stack's newest is last, the redo stack's next state is last
       this.undoStack = carry([...this.undoStack].reverse()).reverse();
       this.redoStack = carry([...this.redoStack].reverse()).reverse();
-      if (this.gesture) this.gesture = carry([this.gesture])[0];
+      if (this.gesture) this.gesture = carry([{ p: this.gesture }])[0].p;
       if (opts?.transient && this.gesture) { this.revision++; this.gestureUnreported = true; } else this.changed();
       return { revision: this.revision };
     }
     // like the engine: no state event per transient batch of a gesture (endGesture reports it)
     if (opts?.transient && this.gesture) { this.revision++; this.gestureUnreported = true; }
-    else { this.pushUndo(prev); this.changed(); }
+    else { this.pushUndo(prev, opts?.label); this.changed(); }
     return { revision: this.revision };
   }
-  async beginGesture() { this.gesture = structuredClone(this.p); }
+  async beginGesture(label?: string) { this.gesture = structuredClone(this.p); this.gestureLabel = label; }
   async endGesture() {
     const g = this.gesture; this.gesture = null;
     const unreported = this.gestureUnreported; this.gestureUnreported = false;
     if (g && JSON.stringify(g) !== JSON.stringify(this.p)) {
-      this.pushUndo(g);
+      this.pushUndo(g, this.gestureLabel);
+      this.gestureLabel = undefined;
       // pitch edits are rendered offline at the end of a gesture: the state event comes after the render
       const tuned = this.p.clips.some(c => { const o = g.clips.find(x => x.id === c.id); return JSON.stringify(o?.tune ?? null) !== JSON.stringify(c.tune ?? null); });
       if (tuned) { this.revision++; this.renderReady = performance.now() + 380; setTimeout(() => this.emit('state', this.dto()), 380); } else this.changed();
@@ -313,13 +318,13 @@ export class MockBackend implements Backend {
     }
   }
   async undo() {
-    const prev = this.undoStack.pop();
-    if (prev) { this.redoStack.push(this.p); this.p = prev; this.changed(); }
+    const step = this.undoStack.pop();
+    if (step) { this.redoStack.push({ p: this.p, label: step.label }); this.p = step.p; this.changed(); }
     return this.dto();
   }
   async redo() {
-    const next = this.redoStack.pop();
-    if (next) { this.undoStack.push(this.p); this.p = next; this.changed(); }
+    const step = this.redoStack.pop();
+    if (step) { this.undoStack.push({ p: this.p, label: step.label }); this.p = step.p; this.changed(); }
     return this.dto();
   }
 
@@ -396,7 +401,7 @@ export class MockBackend implements Backend {
   private settleRecTrack() {
     const id = this.recAdded; this.recAdded = null;
     if (id == null) return;
-    for (const snap of this.undoStack) dropEmptyTrack(snap, id);
+    for (const snap of this.undoStack) dropEmptyTrack(snap.p, id);
     if (dropEmptyTrack(this.p, id)) this.changed();
   }
   /** Peak-pair index where each pass after the first begins (100 pairs per second). */
@@ -743,13 +748,14 @@ export class MockBackend implements Backend {
     // like the engine (import_audio_with): one undo step, unless the caller loads the files for an edit
     // that follows; a new source then still clears redo
     const added = this.p.sources.length !== prev.sources.length;
+    const errors: { path: string; error: string }[] = [];
     const fold = a.step === false && !clipIds.length && added;
     if (!fold && (a.step !== false || clipIds.length)) this.pushUndo(prev);
     else if (added) this.redoStack = [];
     this.changed();
     // the edit that follows (the sampler channel) is the step, and it takes the source with it
     if (fold) this.importBase = { rev: this.revision, p: this.importBase && this.importBase.rev + 1 === this.revision ? this.importBase.p : prev };
-    return { sourceIds, clipIds };
+    return { sourceIds, clipIds, errors };
   }
   async pickAudioFiles(): Promise<string[] | null> {
     return new Promise(res => {

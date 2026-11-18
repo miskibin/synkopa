@@ -268,6 +268,10 @@ pub fn plugin_add(app: &dyn Host, insert_id: u64, format: &str, path: &str, cid:
     if format != PluginRef::VST3 && format != PluginRef::LV2 {
         return Err(format!("unknown plugin format `{format}` (vst3, lv2)"));
     }
+    // an LV2 plugin is named by its URI alone; a VST3 needs its module path to be unambiguous
+    if format == PluginRef::VST3 && path.is_empty() {
+        return Err("`path` is required for a VST3 plugin".into());
+    }
     let p = app.engine().project();
     if p.insert(insert_id).is_none() {
         return Err(format!("no insert {insert_id}"));
@@ -886,8 +890,8 @@ pub fn import(app: &dyn Host, a: &Value) -> R<Value> {
     };
     // `step: false`: the file is loaded for an edit that follows (a sampler channel), which is the undo step
     let step = arg(a, "step").and_then(Value::as_bool).unwrap_or(true);
-    let (s, c) = app.engine().import_audio_with(&paths, place, step).map_err(|e| e.to_string())?;
-    Ok(json!({ "sourceIds": s, "clipIds": c }))
+    let (s, c, errors) = app.engine().import_audio_with(&paths, place, step).map_err(|e| e.to_string())?;
+    Ok(json!({ "sourceIds": s, "clipIds": c, "errors": errors }))
 }
 
 // ---------------------------------------------------------------- missing audio
@@ -990,7 +994,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
             .or_else(|| factory::files().iter().find(exact))
             .ok_or(format!("no standard-library sample `{k}`: try kick-808, snare-studio, hat-808-open, bass-808, marimba ... (the browser's Library tab lists them all)"))?;
         // the import adds the project source (or finds the one already there)
-        let (srcs, _) = e.import_audio_with(&[PathBuf::from(factory::lib_path(f.file))], None, false).map_err(|x| x.to_string())?;
+        let (srcs, ..) = e.import_audio_with(&[PathBuf::from(factory::lib_path(f.file))], None, false).map_err(|x| x.to_string())?;
         p = e.project();
         let mut ch = Channel::sampler(p.next_id, f.name, factory::color(f), srcs[0]);
         ch.root = f.root;
@@ -1490,7 +1494,7 @@ pub fn tune_ref(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<u64> {
 }
 
 /// The CLI entry: one request → JSON data.
-pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -> R<Value> {
+pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, label: Option<&str>) -> R<Value> {
     let e = app.engine();
     let ok_rev = |r: u64| json!({ "revision": r });
     if !app.live() && LIVE_ONLY.contains(&cmd) {
@@ -1529,7 +1533,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         "apply" => {
             let ops: Vec<Op> =
                 serde_json::from_value(arg(a, "ops").cloned().unwrap_or(json!([]))).map_err(|er| format!("BAD_OPS: {er}"))?;
-            e.apply(&ops, false, if_revision).map(ok_rev).map_err(|er| er.to_string())
+            e.apply_labeled(&ops, false, if_revision, label).map(ok_rev).map_err(|er| er.to_string())
         }
         "undo" => Ok(json!({ "undone": e.undo() })),
         "redo" => Ok(json!({ "redone": e.redo() })),
@@ -1606,7 +1610,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
         "set_project" => {
             let p = arg(a, "project").cloned().ok_or("`project`: the whole project, as `context --full` gives it")?;
             let p = wave_engine::Project::from_json(p).map_err(|x| format!("BAD_PROJECT: {x}"))?;
-            e.set_project(p, if_revision).map(ok_rev).map_err(|x| x.to_string())
+            e.set_project(p, if_revision, label).map(ok_rev).map_err(|x| x.to_string())
         }
         "make_unique" => {
             let ids: Vec<u64> = arg(a, "clipIds")
@@ -1772,9 +1776,6 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             let guess = if cid.contains(":") { PluginRef::LV2 } else { PluginRef::VST3 };
             let format = if cmd == "vst3_add" { PluginRef::VST3 } else { arg(a, "format").and_then(Value::as_str).unwrap_or(guess) };
             let path = arg(a, "path").and_then(Value::as_str).unwrap_or("");
-            if format == PluginRef::VST3 && path.is_empty() {
-                return Err("`path` is required for a VST3 plugin".into());
-            }
             let (id, rev) = plugin_add(app, need_u64(a, "insertId")?, format, path, cid, None)?;
             Ok(json!({ "fxId": id, "revision": rev }))
         }

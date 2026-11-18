@@ -28,15 +28,29 @@ fn path() -> PathBuf {
 
 impl Settings {
     pub fn load() -> Self {
-        std::fs::read_to_string(path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+        let Ok(t) = std::fs::read_to_string(path()) else { return Self::default() }; // no settings yet
+        serde_json::from_str(&t).unwrap_or_else(|e| {
+            log::warn!("settings.json did not parse ({e}); starting with defaults");
+            Self::default()
+        })
     }
     pub fn save(&self) {
         let p = path();
         if let Some(d) = p.parent() {
             let _ = std::fs::create_dir_all(d);
         }
-        if let Ok(t) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(p, t);
+        let Ok(t) = serde_json::to_string_pretty(self) else {
+            log::warn!("could not serialize the settings");
+            return;
+        };
+        // write beside the file and rename: a crash mid-write must not lose the settings
+        let tmp = p.with_extension("json.tmp");
+        if let Err(e) = std::fs::write(&tmp, t) {
+            log::warn!("could not write the settings: {e}");
+            return;
+        }
+        if let Err(e) = std::fs::rename(&tmp, &p) {
+            log::warn!("could not replace the settings: {e}");
         }
     }
 }

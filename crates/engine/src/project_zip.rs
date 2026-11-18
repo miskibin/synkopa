@@ -138,7 +138,7 @@ mod tests {
         });
         project.inserts[0].fx.push(fx);
         let engine = Engine::new(project, Arc::new(NoPlugins));
-        let (imported, _) = engine.import_audio(&[first.clone(), second, first], Some((0, 0.0))).unwrap();
+        let (imported, ..) = engine.import_audio(&[first.clone(), second, first], Some((0, 0.0))).unwrap();
         engine.import_audio(&[PathBuf::from(factory::lib_path(factory::files()[2].file))], None).unwrap();
         engine.save(&project_file).unwrap();
         assert!(engine.open(&project_file).unwrap().is_empty());

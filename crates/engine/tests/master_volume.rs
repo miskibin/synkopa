@@ -59,7 +59,7 @@ fn the_master_volume_still_works_after_the_audio_device_changes() {
     peak(&mut rt, 40);
     let loud = peak(&mut rt, 200);
     assert!(loud > 0.01, "plays after the switch: {loud}");
-    e.begin_gesture();
+    e.begin_gesture(None);
     e.apply(&[master_with(&e, 0.0)], true, None).unwrap();
     e.end_gesture();
     assert_eq!(e.project().inserts.iter().find(|m| m.id == 0).unwrap().vol, 0.0, "the project took the new volume");

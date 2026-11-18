@@ -34,7 +34,7 @@ fn moved_project(tag: &str) -> (Arc<Engine>, tempfile::TempDir, Id) {
     let old = root.path().join("samples/Drums/kick.wav");
     write(&old, 1.0, 0.3);
     let e = Engine::new(dry(Project::empty()), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(std::slice::from_ref(&old), Some((0, 0.0))).unwrap();
+    let (srcs, ..) = e.import_audio(std::slice::from_ref(&old), Some((0, 0.0))).unwrap();
     let proj = root.path().join("songs/song.wave");
     std::fs::create_dir_all(proj.parent().unwrap()).unwrap();
     e.save(&proj).unwrap();
@@ -103,7 +103,7 @@ fn replacing_a_loaded_file_and_undoing_brings_the_old_audio_back() {
     write(&a, 1.0, 0.3);
     write(&b, 2.0, 0.1);
     let e = Engine::new(dry(Project::empty()), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&[a], Some((0, 0.0))).unwrap();
+    let (srcs, ..) = e.import_audio(&[a], Some((0, 0.0))).unwrap();
     let r = e.relink_sources(&[Relink { source_id: srcs[0], path: b.display().to_string() }]).unwrap();
     assert!(r[0].length_differs, "a 2 s file for a 1 s source is reported");
     assert!((level(&e) - 0.1).abs() < 0.02);
@@ -175,7 +175,7 @@ fn a_sampler_channel_of_a_relinked_source_plays_again() {
     let old = root.path().join("old/snare.wav");
     write(&old, 0.5, 0.4);
     let e = Engine::new(dry(Project::empty()), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(std::slice::from_ref(&old), None).unwrap();
+    let (srcs, ..) = e.import_audio(std::slice::from_ref(&old), None).unwrap();
     let proj = root.path().join("p.wave");
     e.save(&proj).unwrap();
     let new = root.path().join("new/snare.wav");

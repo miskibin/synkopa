@@ -2,10 +2,22 @@
 
 use super::*;
 
+/// A file of an import that did not load: which one, why. The files that did load answer
+/// as source ids (and clips, when placed).
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportFileError {
+    pub path: String,
+    pub error: String,
+}
+
+/// What an import loads: the new sources, the clips placed for them, the files that did not.
+pub type Imported = (Vec<Id>, Vec<Id>, Vec<ImportFileError>);
+
 impl Engine {
     /// Decodes files (slow; call off the UI thread) and adds them as sources, as one undo step.
     /// With `place`, also puts one clip per file on consecutive tracks starting there.
-    pub fn import_audio(&self, paths: &[PathBuf], place: Option<(u32, f64)>) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
+    pub fn import_audio(&self, paths: &[PathBuf], place: Option<(u32, f64)>) -> Result<Imported, EngineError> {
         self.import_audio_with(paths, place, true)
     }
 
@@ -14,9 +26,9 @@ impl Engine {
     /// it, a channel's sample replaced): that edit is the step, and Ctrl+Z after dropping a sample
     /// on the rack took two presses, one of which changed nothing you could see. A new source still
     /// clears redo, so ids only ever grow along the history.
-    pub fn import_audio_with(&self, paths: &[PathBuf], place: Option<(u32, f64)>, step: bool) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
+    pub fn import_audio_with(&self, paths: &[PathBuf], place: Option<(u32, f64)>, step: bool) -> Result<Imported, EngineError> {
         let mut loaded = vec![];
-        let mut errors = vec![];
+        let mut errors: Vec<ImportFileError> = vec![];
         // A file of the sample library is one source however often it is used (a sampler
         // channel and audio clips share it), stored by its portable `lib:` path.
         let known: HashMap<String, Id> = {
@@ -39,11 +51,15 @@ impl Engine {
             }
             match Audio::load_path(&stored, Path::new(".")) {
                 Ok(a) => loaded.push((p.clone(), stored, Some(a))),
-                Err(e) => errors.push(e),
+                Err(e) => {
+                    // the other files still import; the caller reports this one by path
+                    errors.push(ImportFileError { path: p.display().to_string(), error: e });
+                }
             }
         }
         if loaded.is_empty() {
-            return Err(EngineError::Msg(errors.join("; ")));
+            let why = errors.iter().map(|e| e.error.as_str()).collect::<Vec<_>>().join("; ");
+            return Err(EngineError::Msg(why));
         }
         // A cache hit from the scan can go stale before the commit (another open replaces
         // the project): such a sample is decoded here, outside the lock, and the commit is
@@ -85,9 +101,12 @@ impl Engine {
                 continue;
             }
             if !missing.is_empty() {
-                // still gone after a decode round: report it instead of a hollow success
+                // still gone after a decode round: report them instead of a hollow success
                 drop(c);
-                errors.push(last_error.unwrap_or_else(|| "a sample disappeared while it was imported".into()));
+                let why = last_error.clone().unwrap_or_else(|| "a sample disappeared while it was imported".into());
+                for stored in &missing {
+                    errors.push(ImportFileError { path: stored.clone(), error: why.clone() });
+                }
                 break;
             }
             // phase 2 — the commit: every file resolves, so this pass cannot stop halfway
@@ -170,7 +189,7 @@ impl Engine {
             }
             let added = c.project.sources.len() != before.sources.len();
             let fold = if step || !clip_ids.is_empty() {
-                push_undo(&mut c, before);
+                push_undo(&mut c, before, Some("Import audio".into()));
                 None
             } else if added {
                 c.redo.clear();
@@ -189,9 +208,9 @@ impl Engine {
             }
             self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
             self.changed(c);
-            return Ok((src_ids, clip_ids));
+            return Ok((src_ids, clip_ids, std::mem::take(&mut errors)));
         }
-        Err(EngineError::Msg(errors.join("; ")))
+        Err(EngineError::Msg(errors.iter().map(|e| e.error.as_str()).collect::<Vec<_>>().join("; ")))
     }
 
     /// Points sources at other files (slow: decodes them; call off the UI thread), as one undo
@@ -281,7 +300,7 @@ impl Engine {
             c.source_errors.remove(&id);
             out.push(Relinked { source_id: id, path, error: None, length_differs });
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Relink audio".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
@@ -439,7 +458,7 @@ impl Engine {
                 }
             };
             c.project = p;
-            push_undo(&mut c, before);
+            push_undo(&mut c, before, Some("Relink audio".into()));
             c.revision += 1;
             self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
             let rev = c.revision;

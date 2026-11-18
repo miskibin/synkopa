@@ -506,7 +506,7 @@ impl Engine {
             insert: None,
             root: crate::model::CLIP_ROOT,
         });
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Export in place".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, ..Default::default() });
         self.changed(c);
@@ -719,7 +719,7 @@ impl Engine {
             source_ids.push(source_id);
             clip_ids.push(clip_id);
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Extract stems".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, ..Default::default() });
         self.changed(c);

@@ -442,7 +442,7 @@ impl Engine {
             // a time-stretched bake holds the stretched audio: it plays as it is
             *x = Clip { source: id, offset, gain: 0.0, norm: false, rev: false, tune: None, stretch, resample, ..clip };
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Apply Vocal Rider".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);

@@ -30,6 +30,7 @@ mod takes;
 
 pub use analysis::PitchView;
 pub use graph::playback_latency;
+pub use import::{ImportFileError, Imported};
 use graph::{build_graph, build_timeline, c_watch, comp_audio, live_audition, mix_state, monitor_of, playback_latency_with, sample_audio};
 pub(crate) use project_files::project_document;
 use project_files::{audio_dir, fresh_path, load_library_sources, sanitize};
@@ -116,6 +117,11 @@ pub struct StateDto {
     pub revision: u64,
     pub can_undo: bool,
     pub can_redo: bool,
+    /// What the step Ctrl+Z would take back was called (the UI's drag name, a script's
+    /// `--label`): "Move clips", "synkopa watch: song.rs" — for the Edit menu.
+    pub undo_label: Option<String>,
+    /// Same for the step Ctrl+Shift+Z would redo.
+    pub redo_label: Option<String>,
     pub transport: TransportDto,
     pub path: Option<String>,
     pub dirty: bool,
@@ -327,12 +333,22 @@ struct Wires {
     max_block: usize,
 }
 
+/// One undo step: the project before the edit, and what the edit was called (the UI's drag
+/// name, a script's `--label`) — the Edit menu shows it.
+#[derive(Clone, PartialEq)]
+pub struct UndoStep {
+    pub project: Project,
+    pub label: Option<String>,
+}
+
 pub(crate) struct Core {
     project: Project,
-    undo: Vec<Project>,
-    redo: Vec<Project>,
+    undo: Vec<UndoStep>,
+    redo: Vec<UndoStep>,
     revision: u64,
     gesture: Option<Project>,
+    /// What the open gesture is called (the drag's label).
+    gesture_label: Option<String>,
     /// A transient edit inside the open gesture was not reported to listeners yet.
     gesture_unreported: bool,
     /// A file imported on the way to another edit (`import_audio_with`, `step` false): the
@@ -494,6 +510,7 @@ impl Engine {
             core: Mutex::new(Core {
                 project,
                 undo: vec![],
+                gesture_label: None,
                 redo: vec![],
                 revision: 1,
                 gesture: None,
@@ -685,6 +702,8 @@ impl Engine {
             revision: c.revision,
             can_undo: !c.undo.is_empty(),
             can_redo: !c.redo.is_empty(),
+            undo_label: c.undo.last().and_then(|s| s.label.clone()),
+            redo_label: c.redo.last().and_then(|s| s.label.clone()),
             transport: c.transport.clone(),
             path: c.path.as_ref().map(|p| p.display().to_string()),
             dirty: c.revision != c.saved_revision,
@@ -733,6 +752,12 @@ impl Engine {
     /// Applies a batch. `transient` edits (inside a gesture) do not create undo steps.
     /// With `if_revision`, fails if the project changed since that revision.
     pub fn apply(&self, ops: &[Op], transient: bool, if_revision: Option<u64>) -> Result<u64, EngineError> {
+        self.apply_labeled(ops, transient, if_revision, None)
+    }
+
+    /// [`Engine::apply`] where the edit is named: the name lands on the undo step and the
+    /// Edit menu shows it ("Move clips", a script's `--label`).
+    pub fn apply_labeled(&self, ops: &[Op], transient: bool, if_revision: Option<u64>, label: Option<&str>) -> Result<u64, EngineError> {
         let added: Vec<(&PluginRef, bool)> = ops
             .iter()
             .filter_map(|op| match op {
@@ -744,7 +769,7 @@ impl Engine {
         if !added.is_empty() {
             self.factory.vet(&added);
         }
-        self.apply_locked(self.core.lock(), ops, transient, if_revision)
+        self.apply_locked(self.core.lock(), ops, transient, if_revision, label.map(str::to_owned))
     }
 
     /// [`PluginFactory::vet`] for every hosted plugin of `p` (outside the lock).
@@ -763,6 +788,7 @@ impl Engine {
         ops: &[Op],
         transient: bool,
         if_revision: Option<u64>,
+        label: Option<String>,
     ) -> Result<u64, EngineError> {
         if let Some(r) = if_revision {
             if r != c.revision {
@@ -819,12 +845,12 @@ impl Engine {
             for now in &changed {
                 // undo: the newest snapshot is last; redo: the next state is last
                 for stack in [&mut core.undo, &mut core.redo] {
-                    carry_height(now, stack.iter_mut().rev());
+                    carry_height(now, stack.iter_mut().rev().map(|s| &mut s.project));
                 }
                 carry_height(now, core.gesture.iter_mut());
             }
         } else if let Some(before) = before {
-            push_undo(&mut c, before);
+            push_undo(&mut c, before, label);
         }
         c.revision += 1;
         self.sync(&mut c, d);
@@ -840,22 +866,24 @@ impl Engine {
         Ok(rev)
     }
 
-    pub fn begin_gesture(&self) {
+    pub fn begin_gesture(&self, label: Option<String>) {
         let mut c = self.core.lock();
         if c.gesture.is_none() {
             c.gesture = Some(c.project.clone());
+            c.gesture_label = label;
         }
     }
 
     pub fn end_gesture(&self) {
         let mut c = self.core.lock();
         let unreported = std::mem::take(&mut c.gesture_unreported);
+        let label = c.gesture_label.take();
         if let Some(g) = c.gesture.take() {
             if g != c.project {
                 // the gesture's start predates any file imported during it: that start is the
                 // state Ctrl+Z returns to, not the import's base (taken mid-gesture)
                 c.import_base = None;
-                push_undo(&mut c, g);
+                push_undo(&mut c, g, label);
                 // renders skipped during the drag (pitch edits) happen now
                 self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
                 self.changed(c);
@@ -869,10 +897,11 @@ impl Engine {
     pub fn undo(&self) -> bool {
         let mut c = self.core.lock();
         c.gesture = None;
+        c.gesture_label = None;
         c.gesture_unreported = false;
-        let Some(p) = c.undo.pop() else { return false };
-        let cur = std::mem::replace(&mut c.project, p);
-        c.redo.push(cur);
+        let Some(step) = c.undo.pop() else { return false };
+        let cur = std::mem::replace(&mut c.project, step.project);
+        c.redo.push(UndoStep { project: cur, label: step.label });
         let Core { sources, project, .. } = &mut *c;
         sources.reconcile(&project.sources);
         gc_sources(&mut c);
@@ -889,7 +918,7 @@ impl Engine {
     /// effects keep their DSP state by id, as after an undo. `Ok(revision)`; a project equal to
     /// the current one changes nothing. Refused while recording, or when `if_revision` is not
     /// the current revision.
-    pub fn set_project(&self, project: Project, if_revision: Option<u64>) -> Result<u64, EngineError> {
+    pub fn set_project(&self, project: Project, if_revision: Option<u64>, label: Option<&str>) -> Result<u64, EngineError> {
         let mut project = project;
         project.migrate();
         if project.inserts.first().map(|m| m.id) != Some(0) {
@@ -935,7 +964,7 @@ impl Engine {
         c.gesture = None;
         c.gesture_unreported = false;
         let before = std::mem::replace(&mut c.project, project);
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, label.map(str::to_owned));
         gc_sources(&mut c);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
@@ -947,10 +976,11 @@ impl Engine {
     pub fn redo(&self) -> bool {
         let mut c = self.core.lock();
         c.gesture = None;
+        c.gesture_label = None;
         c.gesture_unreported = false;
-        let Some(p) = c.redo.pop() else { return false };
-        let cur = std::mem::replace(&mut c.project, p);
-        c.undo.push(cur);
+        let Some(step) = c.redo.pop() else { return false };
+        let cur = std::mem::replace(&mut c.project, step.project);
+        c.undo.push(UndoStep { project: cur, label: step.label });
         let Core { sources, project, .. } = &mut *c;
         sources.reconcile(&project.sources);
         gc_sources(&mut c);
@@ -1160,7 +1190,7 @@ impl Engine {
         self.send_monitor(c);
         let Some(id) = c.rec_added.take() else { return };
         for snap in c.undo.iter_mut() {
-            drop_empty_track(snap, id);
+            drop_empty_track(&mut snap.project, id);
         }
         if drop_empty_track(&mut c.project, id) {
             c.revision += 1;
@@ -1280,7 +1310,7 @@ impl Engine {
             x.norm = false;
             x.rev = false;
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Trim clip".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
@@ -1345,7 +1375,7 @@ impl Engine {
                 x.track += 1;
             }
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Make unique".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, ..Default::default() });
         self.changed(c);
@@ -1550,7 +1580,7 @@ impl Engine {
             c.project.comps.retain(|x| x.id != comp.id);
             c.audition.remove(&comp.id);
         }
-        push_undo(&mut c, before);
+        push_undo(&mut c, before, Some("Flatten comp".into()));
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
@@ -1635,13 +1665,13 @@ fn carry_height<'a>(now: &Track, states: impl Iterator<Item = &'a mut Project>) 
     }
 }
 
-fn push_undo(c: &mut Core, before: Project) {
+fn push_undo(c: &mut Core, before: Project, label: Option<String>) {
     // a file imported for this edit (and nothing else since) is undone with it
     let before = match c.import_base.take() {
         Some((r, b)) if r == c.revision => b,
         _ => before,
     };
-    c.undo.push(before);
+    c.undo.push(UndoStep { project: before, label });
     if c.undo.len() > UNDO_LIMIT {
         c.undo.remove(0);
     }
@@ -1661,8 +1691,8 @@ fn gc_sources(c: &mut Core) {
             clips.extend(p.clips.iter().map(|x| x.id));
         };
         acc(&c.project);
-        for p in c.undo.iter().chain(c.redo.iter()) {
-            acc(p);
+        for s in c.undo.iter().chain(c.redo.iter()) {
+            acc(&s.project);
         }
         if let Some(g) = &c.gesture {
             acc(g);

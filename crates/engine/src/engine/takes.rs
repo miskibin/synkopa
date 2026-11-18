@@ -121,7 +121,7 @@ impl Engine {
         } else {
             Ok(())
         };
-        push_undo(c, before);
+        push_undo(c, before, Some("Record take".into()));
         c.revision += 1;
         self.sync(c, Dirty { timeline: true, ..Default::default() });
         written
@@ -305,7 +305,7 @@ impl Engine {
         let before = c.project.clone();
         match ops::apply_all(&mut c.project, &[Op::PutPattern { pattern: pat }]) {
             Ok(d) => {
-                push_undo(c, before);
+                push_undo(c, before, Some("Record notes".into()));
                 c.revision += 1;
                 self.sync(c, d);
             }
@@ -372,7 +372,7 @@ impl Engine {
             insert: None,
             root: crate::model::CLIP_ROOT,
         };
-        if let Err(e) = self.apply_locked(c, &[Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None) {
+        if let Err(e) = self.apply_locked(c, &[Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None, None) {
             log::error!("could not place the MIDI take: {e}");
         }
     }

@@ -37,7 +37,7 @@ fn engine(name: &str, set: impl Fn(&mut SamplerState), notes: &[(f32, f32, Optio
     p.bpm = 120.0;
     p.inserts[0].fx.clear();
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&[two_level_wav(name)], None).unwrap();
+    let (srcs, ..) = e.import_audio(&[two_level_wav(name)], None).unwrap();
     let mut q = e.project();
     let ch = q.alloc_id();
     let mut sampler = SamplerState::default();
@@ -572,14 +572,14 @@ fn library_samples_are_stored_by_a_portable_path_and_shared() {
     let dir = factory::install().unwrap();
     let file = dir.join("triangle.flac");
     assert!(file.is_file());
-    let (a, clips) = e.import_audio(std::slice::from_ref(&file), Some((2, 4.0))).unwrap();
+    let (a, clips, _) = e.import_audio(std::slice::from_ref(&file), Some((2, 4.0))).unwrap();
     let p = e.project();
     let src = p.sources.iter().find(|s| s.id == a[0]).unwrap();
     assert_eq!(src.path, "lib:Standard/triangle.flac");
     assert_eq!(src.name, "Triangle");
     assert_eq!(clips.len(), 1);
     // again (a sampler channel, another clip): the same source, not a copy
-    let (b, _) = e.import_audio(&[file], None).unwrap();
+    let (b, ..) = e.import_audio(&[file], None).unwrap();
     assert_eq!(b, a);
     assert_eq!(e.project().sources.len(), n + 1);
     // the saved file names no folder of this computer, and opens with its audio
@@ -769,7 +769,7 @@ fn an_audio_clip_plays_from_its_keyboard_relative_to_its_root() {
     p.bpm = 120.0;
     p.inserts[0].fx.clear();
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&[two_level_wav("cliproot")], None).unwrap();
+    let (srcs, ..) = e.import_audio(&[two_level_wav("cliproot")], None).unwrap();
     let clip = |root: u8, pitch: f32| Clip {
         id: 7,
         track: 0,
@@ -825,12 +825,12 @@ fn a_file_loaded_for_a_sampler_is_not_an_undo_step_of_its_own() {
     let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
     let clips_before = e.project().clips.len();
     // loaded for a sampler channel or a replaced sample: nothing to place, nothing to undo
-    let (srcs, clips) = e.import_audio_with(&[two_level_wav("noundo-a")], None, false).unwrap();
+    let (srcs, clips, ..) = e.import_audio_with(&[two_level_wav("noundo-a")], None, false).unwrap();
     assert!(clips.is_empty());
     assert!(!e.undo(), "a file loaded for another edit must not add an undo step");
     assert!(e.project().sources.iter().any(|s| s.id == srcs[0]), "the source stays for the edit that uses it");
     // placed on a track it is one step, undone together with its clip
-    let (_, clips) = e.import_audio(&[two_level_wav("noundo-b")], Some((0, 0.0))).unwrap();
+    let (_, clips, _) = e.import_audio(&[two_level_wav("noundo-b")], Some((0, 0.0))).unwrap();
     assert_eq!(clips.len(), 1);
     assert_eq!(e.project().clips.len(), clips_before + 1);
     assert!(e.undo());
@@ -856,7 +856,7 @@ fn undoing_a_sampler_made_from_a_file_also_removes_the_file() {
     let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
     let sources = e.project().sources.len();
     let channels = e.project().channels.len();
-    let (srcs, _) = e.import_audio_with(&[two_level_wav("fold-a")], None, false).unwrap();
+    let (srcs, ..) = e.import_audio_with(&[two_level_wav("fold-a")], None, false).unwrap();
     let id = e.project().next_id + 1;
     let ch = Channel::sampler(id, "Drop", "#69c3d6", srcs[0]);
     e.apply(&[Op::PutChannel { channel: ch, index: None }], false, None).unwrap();

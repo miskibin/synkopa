@@ -26,7 +26,7 @@ fn sources_the_history_aged_out_lose_their_audio() {
         paths.push(path);
     }
     let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&paths, None).unwrap();
+    let (srcs, ..) = e.import_audio(&paths, None).unwrap();
     let (gone, stays) = (srcs[0], srcs[1]);
     assert!(e.source_peaks(gone, false, false).is_some());
     e.apply(&[Op::RemoveSource { id: gone }], false, None).unwrap();

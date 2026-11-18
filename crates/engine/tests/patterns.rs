@@ -208,7 +208,7 @@ fn sampler_channel_plays_its_sample_at_the_note_pitch() {
     let wav = dir.join("a440.wav");
     sine_wav(&wav, 440.0);
     let e = Engine::new(Project::routed(), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&[wav], None).unwrap();
+    let (srcs, ..) = e.import_audio(&[wav], None).unwrap();
     let p = e.project();
     let id = p.next_id;
     let ch = Channel {
@@ -337,7 +337,7 @@ fn step_edits_undo_and_redo() {
     pat.notes.retain(|n| n.step != 0.0);
     e.apply(&[Op::PutPattern { pattern: pat.clone() }], false, None).unwrap();
     // a velocity drag: many transient edits, one undo step
-    e.begin_gesture();
+    e.begin_gesture(None);
     for v in [0.9, 0.7, 0.5] {
         pat.notes[0].v = v;
         e.apply(&[Op::PutPattern { pattern: pat.clone() }], true, None).unwrap();
@@ -424,7 +424,7 @@ fn save_and_open_round_trip() {
     let wav = dir.join("tone.wav");
     sine_wav(&wav, 330.0);
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
-    let (srcs, _) = e.import_audio(&[wav], None).unwrap();
+    let (srcs, ..) = e.import_audio(&[wav], None).unwrap();
     let p = e.project();
     let id = p.next_id;
     let ch = Channel {

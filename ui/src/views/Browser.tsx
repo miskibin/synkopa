@@ -71,7 +71,9 @@ export async function importFiles(paths: string[], at?: { track: number; beat: n
     const r = await be().importAudio({ paths, track: at?.track, beat: at?.beat });
     if (r.sourceIds.length) setU('cur', { kind: 'audio', ref: r.sourceIds[r.sourceIds.length - 1], clipId: null });
     if (r.clipIds.length) setU('sel', r.clipIds);
-    say(t('d.br.loaded', { names: paths.map(baseName).join(', ') }));
+    // the failed files are named, not swallowed: everything else imported
+    if (r.errors.length) say(t('d.br.partial', { names: r.errors.map(e => baseName(e.path)).join(', ') }));
+    else say(t('d.br.loaded', { names: paths.map(baseName).join(', ') }));
   } catch (err) { say(t('d.br.loadfail', { err: String(err) })); }
 }
 

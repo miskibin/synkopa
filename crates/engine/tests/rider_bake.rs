@@ -71,7 +71,7 @@ fn vocal_engine(tag: &str, secs: f64) -> (Arc<Engine>, Id, Id, PathBuf) {
     e.save(&dir.join("song.wave")).unwrap();
     let wav = dir.join("vocal.wav");
     wave_engine::sources::write_wav(&wav, &take(secs), SR).unwrap();
-    let (srcs, _) = e.import_audio(&[wav], Some((0, 0.0))).unwrap();
+    let (srcs, ..) = e.import_audio(&[wav], Some((0, 0.0))).unwrap();
     let p = e.project();
     let clip = p.clips.iter().find(|c| c.source == srcs[0]).unwrap().id;
     (e, clip, srcs[0], dir)

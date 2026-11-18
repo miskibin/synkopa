@@ -441,6 +441,10 @@ export interface TransportDto {
 
 export interface StateDto {
   project: Project; revision: number; canUndo: boolean; canRedo: boolean;
+  /** What the step Ctrl+Z would take back was called ("Move clips", a script's `--label`). */
+  undoLabel?: string | null;
+  /** Same for the step Ctrl+Shift+Z would redo. */
+  redoLabel?: string | null;
   transport: TransportDto; path: string | null; dirty: boolean;
   /** Comp id (as a string key) → take played instead of the comp. Live only, not undone. */
   audition?: Record<string, Id>;
@@ -597,7 +601,8 @@ export type SaveResult = { cancelled: true } | { cancelled?: false; path: string
 /** `project`: the file the unsaved changes belong to (absent: a project that was never saved). */
 export interface RecoveredProject { id: string; savedMs: number; project?: string }
 
-export interface ImportResult { sourceIds: Id[]; clipIds: Id[] }
+export interface ImportResult { sourceIds: Id[]; clipIds: Id[]; /** The files that did not load (the rest did). */
+  errors: { path: string; error: string }[] }
 
 /** One relink (`relinkSources`): `error` = why it was not done (the source is unchanged). */
 export interface Relinked { sourceId: Id; path: string; error: string | null; lengthDiffers: boolean }

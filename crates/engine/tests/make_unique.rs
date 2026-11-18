@@ -35,7 +35,7 @@ fn dry(mut p: Project) -> Project {
 fn setup(p: Project, tag: &str) -> (Arc<Engine>, PathBuf, Id, [Id; 3]) {
     let (dir, wav) = tone(tag);
     let e = Engine::new(dry(p), Arc::new(NoPlugins));
-    let (srcs, clips) = e.import_audio(&[wav], Some((0, 0.0))).unwrap();
+    let (srcs, clips, ..) = e.import_audio(&[wav], Some((0, 0.0))).unwrap();
     let a = e.project().clips.iter().find(|c| c.id == clips[0]).cloned().unwrap();
     let b = Clip { id: 70_001, start: 4.0, ..a.clone() };
     let c = Clip { id: 70_002, track: 1, ..a.clone() };

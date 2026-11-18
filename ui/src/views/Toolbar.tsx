@@ -304,8 +304,8 @@ function MenuBar() {
       ...(win ? [{ t: 'sep' } as MenuItem, { t: 'item', label: t('a.mn.exit'), glyph: G.exit, kbd: 'Alt+F4', act: () => void win.close() } as MenuItem] : []),
     ]],
     ['a.mn.edit', () => [
-      { t: 'item', label: t('a.mn.undo'), glyph: G.undo, kbd: 'Ctrl+Z', disabled: !S.canUndo, act: () => void A.undo() },
-      { t: 'item', label: t('a.mn.redo'), glyph: G.redo, kbd: 'Ctrl+Shift+Z', disabled: !S.canRedo, act: () => void A.redo() },
+      { t: 'item', label: S.undoLabel ? `${t('a.mn.undo')}: ${S.undoLabel}` : t('a.mn.undo'), glyph: G.undo, kbd: 'Ctrl+Z', disabled: !S.canUndo, act: () => void A.undo() },
+      { t: 'item', label: S.redoLabel ? `${t('a.mn.redo')}: ${S.redoLabel}` : t('a.mn.redo'), glyph: G.redo, kbd: 'Ctrl+Shift+Z', disabled: !S.canRedo, act: () => void A.redo() },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.cut'), glyph: G.cut, kbd: 'Ctrl+X', disabled: none(), act: A.cut },
       { t: 'item', label: t('a.mn.copy'), glyph: G.copy, kbd: 'Ctrl+C', disabled: none(), act: A.copy },

@@ -140,19 +140,20 @@ async fn get_state(app: St<'_>) -> R<StateDto> {
 }
 
 #[tauri::command]
-async fn apply_ops(app: St<'_>, ops: Vec<Op>, transient: Option<bool>) -> R<Value> {
-    let rev = app.engine.apply(&ops, transient.unwrap_or(false), None).map_err(es)?;
+async fn apply_ops(app: St<'_>, ops: Vec<Op>, transient: Option<bool>, label: Option<String>) -> R<Value> {
+    let rev = app.engine.apply_labeled(&ops, transient.unwrap_or(false), None, label.as_deref()).map_err(es)?;
     Ok(json!({ "revision": rev }))
 }
 
 #[tauri::command]
-async fn begin_gesture(app: St<'_>) -> R<()> {
-    app.engine.begin_gesture();
+async fn begin_gesture(app: St<'_>, label: Option<String>) -> R<()> {
+    app.engine.begin_gesture(label);
     Ok(())
 }
 
 #[tauri::command]
-async fn end_gesture(app: St<'_>) -> R<()> {
+async fn end_gesture(app: St<'_>, label: Option<String>) -> R<()> {
+    let _ = label; // already sent with begin_gesture; this one is ignored
     app.engine.end_gesture();
     Ok(())
 }
@@ -394,7 +395,7 @@ async fn fx_chain(app: St<'_>, cmd: String, args: Value) -> R<Value> {
         return Err(format!("not an FX chain command: {cmd}"));
     }
     let a = app.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None, None)).await.map_err(es)?
 }
 
 /// `midi_inspect` / `midi_import` / `midi_export` (`midi_actions.rs`), off the UI thread.
@@ -404,7 +405,7 @@ async fn midi(app: St<'_>, cmd: String, args: Value) -> R<Value> {
         return Err(format!("not a MIDI command: {cmd}"));
     }
     let a = app.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None, None)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1545,7 +1546,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
             let weak = Arc::downgrade(&a);
             let handler: Arc<wave_session::Handler> = Arc::new(move |req: &wave_session::Request| {
                 let Some(app) = weak.upgrade() else { return Err(wave_session::ErrorBody::new("GONE", "the app is closing")) };
-                let res = actions::control(app.as_ref(), &req.command, &req.args, req.if_revision);
+                let res = actions::control(app.as_ref(), &req.command, &req.args, req.if_revision, req.label.as_deref());
                 let rev = app.engine.revision();
                 res.map(|d| (d, rev)).map_err(|m| {
                     let code = m

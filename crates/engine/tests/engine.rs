@@ -42,7 +42,7 @@ fn undo_redo_and_gestures() {
     assert!(e.revision() > r0);
     // a fader drag: many transient ops, one undo step
     let mut t = e.project().tracks[0].clone();
-    e.begin_gesture();
+    e.begin_gesture(None);
     for k in 0..10 {
         t.vol = 0.5 + k as f32 * 0.01;
         e.apply(&[Op::PutTrack { track: t.clone() }], true, None).unwrap();
@@ -96,7 +96,7 @@ fn audio_clips_play_at_their_position() {
     let mut p = Project::routed();
     p.inserts[0].fx.clear(); // no limiter, so levels are exact
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
     assert_eq!(clips.len(), 1);
     let out = e.render(0.0, 8.0, 0.0, 48000).unwrap();
     let spb = 60.0 / 128.0;
@@ -533,8 +533,8 @@ fn music_analysis_excludes_vocal_insert_and_caches() {
     let tune = new_fx(9500, FxKind::Tune, p.bpm);
     p.inserts[2].fx.push(tune);
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (_, c1) = e.import_audio(&[c_wav], Some((0, 0.0))).unwrap();
-    let (_, c2) = e.import_audio(&[fs_wav], Some((1, 0.0))).unwrap();
+    let (_, c1, _) = e.import_audio(&[c_wav], Some((0, 0.0))).unwrap();
+    let (_, c2, _) = e.import_audio(&[fs_wav], Some((1, 0.0))).unwrap();
     let a1 = e.music_analysis(Some(c1[0]), None).unwrap();
     assert_eq!(a1.key.unwrap().root, 0);
     let a2 = e.music_analysis(Some(c2[0]), None).unwrap();
@@ -896,7 +896,7 @@ fn lone_audio_clip() -> (Arc<Engine>, Clip) {
     let tone: Vec<f32> = (0..24000).flat_map(|i| [(i as f32 * 0.0626).sin() * 0.5; 2]).collect();
     wave_engine::sources::write_wav(&wav, &tone, 48000).unwrap();
     let e = Engine::new(Project::routed(), Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((1, 0.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((1, 0.0))).unwrap();
     let c = e.project().clips.iter().find(|c| c.id == clips[0]).unwrap().clone();
     (e, c)
 }
@@ -1062,7 +1062,7 @@ fn lane_heights_are_view_state_not_undo_steps() {
     e.apply(&[Op::PutTrack { track: Track { muted: !t1.muted, ..t1.clone() } }], false, None).unwrap();
     let taller: Vec<Op> = e.project().tracks.iter().map(|t| Op::PutTrack { track: Track { h: t.h + 12.0, ..t.clone() } }).collect();
     e.apply(&taller, false, None).unwrap();
-    e.begin_gesture();
+    e.begin_gesture(None);
     let t0 = e.project().tracks[0].clone();
     e.apply(&[Op::PutTrack { track: Track { h: 140.0, ..t0 } }], true, None).unwrap();
     e.end_gesture();

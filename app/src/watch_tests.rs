@@ -31,7 +31,7 @@ fn serve(project: Project) -> (Arc<Headless>, wave_session::Server) {
     let host = Arc::new(Headless::new(project));
     let h = host.clone();
     let handler: Arc<wave_session::Handler> = Arc::new(move |req: &wave_session::Request| {
-        let res = crate::actions::control(h.as_ref(), &req.command, &req.args, req.if_revision);
+        let res = crate::actions::control(h.as_ref(), &req.command, &req.args, req.if_revision, req.label.as_deref());
         let rev = h.engine().revision();
         res.map(|d| (d, rev)).map_err(|m| {
             let code = m

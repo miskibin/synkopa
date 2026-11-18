@@ -17,6 +17,8 @@ export interface EngineState {
   revision: number;
   canUndo: boolean;
   canRedo: boolean;
+  undoLabel: string | null;
+  redoLabel: string | null;
   transport: TransportDto;
   path: string | null;
   dirty: boolean;
@@ -34,7 +36,7 @@ export interface EngineState {
 const emptyProject = (): Project => ({ version: 2, bpm: 128, tracks: [], inserts: [], patterns: [], sources: [], clips: [], loop: null, nextId: 1 });
 
 export const [S, setS] = createStore<EngineState>({
-  ready: false, project: emptyProject(), revision: 0, canUndo: false, canRedo: false,
+  ready: false, project: emptyProject(), revision: 0, canUndo: false, canRedo: false, undoLabel: null, redoLabel: null,
   transport: { playing: false, rec: false, monitor: false, metro: false, countIn: true, startBeat: 0, recAudio: true, recNotes: true, recQuantize: 0 },
   path: null, dirty: false, catalog: null, audition: {}, stretching: {}, missing: {}, fxErrors: {},
 });
@@ -128,7 +130,7 @@ export function replaceState(dto: StateDto) {
   batch(() => {
     setS('project', reconcile(fresh(dto.project), { key: 'id', merge: true }));
     bumpProject();
-    setS({ revision: dto.revision, canUndo: dto.canUndo, canRedo: dto.canRedo, path: dto.path, dirty: dto.dirty, ready: true });
+    setS({ revision: dto.revision, canUndo: dto.canUndo, canRedo: dto.canRedo, undoLabel: dto.undoLabel ?? null, redoLabel: dto.redoLabel ?? null, path: dto.path, dirty: dto.dirty, ready: true });
     setS('transport', reconcile(dto.transport));
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
@@ -141,7 +143,7 @@ export function replaceState(dto: StateDto) {
 /** Everything but the project (whose edits are already applied locally). */
 export function replaceMeta(dto: StateDto) {
   batch(() => {
-    setS({ revision: dto.revision, canUndo: dto.canUndo, canRedo: dto.canRedo, path: dto.path, dirty: dto.dirty, ready: true });
+    setS({ revision: dto.revision, canUndo: dto.canUndo, canRedo: dto.canRedo, undoLabel: dto.undoLabel ?? null, redoLabel: dto.redoLabel ?? null, path: dto.path, dirty: dto.dirty, ready: true });
     setS('transport', reconcile(dto.transport));
     setS('audition', reconcile(dto.audition ?? {}));
     setS('stretching', reconcile(stretchStatus(dto)));
