@@ -104,7 +104,7 @@ pub fn install() -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
-const COLORS: [(&str, &str); 11] = [
+const COLORS: [(&str, &str); 12] = [
     ("Kicks", "#4f8ef7"),
     ("Snares", "#d9678f"),
     ("Claps", "#d9678f"),
@@ -112,6 +112,7 @@ const COLORS: [(&str, &str); 11] = [
     ("Cymbals", "#e0a44a"),
     ("Toms", "#5aa9e6"),
     ("Percussion", "#5fbf8a"),
+    ("Bass", "#e06b55"),
     ("Tonal", "#7c8cf8"),
     ("Orchestra", "#c98a5a"),
     ("FX", "#b07cf0"),

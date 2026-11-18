@@ -273,16 +273,23 @@ PICKS = [
     ("brake-drum.flac", "Brake Drum", "Percussion", I + "Brake Drum/BrakeDrum1_Hammer_v3_rr1_Mid.wav", 2.0, 60),
     ("tambourine-hit.flac", "Tambourine Hit", "Percussion", "fs:219266", 1.2, 60),
     ("egg-shaker.flac", "Egg Shaker", "Percussion", "fs:199823", 0.5, 60),
+    # bass: the root key is measured (see `pitch`) so the piano plays them in tune
+    ("bass-808.flac", "808 Bass", "Bass", "808-bass/bass-tone100-decay100.wav", 3.0, None),
+    ("bass-808-short.flac", "808 Bass Short", "Bass", "808-bass/bass-tone75-decay75.wav", 1.2, None),
+    ("bass-808-deep.flac", "808 Bass Deep", "Bass", "808:bd8/BD0010.WAV", 3.0, None),
+    ("bass-808-mid.flac", "808 Bass Mid", "Bass", "808:bd8/BD5010.WAV", 3.0, None),
+    ("bass-808-punch.flac", "808 Bass Punch", "Bass", "808:bd8/BD7575.WAV", 1.5, None),
+    ("bass-808-drive.flac", "808 Bass Drive", "Bass", "808-bass/bass-tone100-decay100.wav", 3.0, None, {"drive": 14}),
+    ("bass-808-sorrow.flac", "808 Bass Sorrow", "Bass", "fs:514880", 3.0, None),
+    ("bass-808-sub.flac", "808 Bass Sub", "Bass", "fs:729532", 2.5, None),
+    ("bass-808-mpc.flac", "808 Bass MPC", "Bass", "fs:501761", 1.0, None),
+    ("bass-808-sine.flac", "808 Bass Sine", "Bass", SG + "kicks/sdbkit-sub-a.wav", 2.0, None),
+    ("bass-808-tr8.flac", "808 Bass TR-8", "Bass", TR8 + "BD/008_808_Bass_Drum_Long_2.wav", 5.0, None),
+    ("bass-808-spin.flac", "808 Bass Spin", "Bass", "fs:646403", 2.0, None),
     # tonal: the root key is measured (see `pitch`) so the piano plays them in tune
-    ("bass-808.flac", "808 Bass", "Tonal", "808-bass/bass-tone100-decay100.wav", 3.0, None),
-    ("bass-808-short.flac", "808 Bass Short", "Tonal", "808-bass/bass-tone75-decay75.wav", 1.2, None),
     ("marimba.flac", "Marimba", "Tonal", "marimba/marimba-C4-loud.wav", 2.5, 60),
     ("marimba-low.flac", "Marimba Low", "Tonal", "marimba/marimba-C2-loud.wav", 3.5, 36),
     ("glockenspiel.flac", "Glockenspiel", "Tonal", "glockenspiel/glockenspiel-C6-loud.wav", 3.0, 84),
-    ("bass-808-deep.flac", "808 Bass Deep", "Tonal", "808:bd8/BD0010.WAV", 3.0, None),
-    ("bass-808-mid.flac", "808 Bass Mid", "Tonal", "808:bd8/BD5010.WAV", 3.0, None),
-    ("bass-808-punch.flac", "808 Bass Punch", "Tonal", "808:bd8/BD7575.WAV", 1.5, None),
-    ("bass-808-drive.flac", "808 Bass Drive", "Tonal", "808-bass/bass-tone100-decay100.wav", 3.0, None, {"drive": 14}),
     ("vibraphone.flac", "Vibraphone", "Tonal", I + "Vibraphone/Hard Mallets/Vibes_hard_C3_v3_rr1_Main.wav", 4.0, 60, T),
     ("vibraphone-high.flac", "Vibraphone High", "Tonal", I + "Vibraphone/Hard Mallets/Vibes_hard_C5_v3_rr1_Main.wav", 3.0, 84, T),
     ("xylophone.flac", "Xylophone", "Tonal", I + "Xylophone/Hard Mallets/Xylo_Hard_C5_ff_01_far.wav", 1.5, 84, T),
@@ -295,12 +302,6 @@ PICKS = [
     ("fm-clav.flac", "FM Clav", "Tonal", "vcsl:Electrophones/TX81Z/Clavisynth/Clavisynth_C2_vl3.wav", 2.0, 48, T),
     ("pipe-organ.flac", "Pipe Organ", "Tonal", "vcsl:Aerophones/Edge-blown Aerophones/Pipe Organ/Loud/Rode_Man3Open_C3.wav", 3.0, 60, T),
     ("tenor-sax.flac", "Tenor Sax Staccato", "Tonal", "vcsl:Aerophones/Reed Aerophones/Tenor Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav", 1.5, 60, T),
-    ("bass-808-sorrow.flac", "808 Bass Sorrow", "Tonal", "fs:514880", 3.0, None),
-    ("bass-808-sub.flac", "808 Bass Sub", "Tonal", "fs:729532", 2.5, None),
-    ("bass-808-mpc.flac", "808 Bass MPC", "Tonal", "fs:501761", 1.0, None),
-    ("bass-808-sine.flac", "808 Bass Sine", "Tonal", SG + "kicks/sdbkit-sub-a.wav", 2.0, None),
-    ("bass-808-tr8.flac", "808 Bass TR-8", "Tonal", TR8 + "BD/008_808_Bass_Drum_Long_2.wav", 5.0, None),
-    ("bass-808-spin.flac", "808 Bass Spin", "Tonal", "fs:646403", 2.0, None),
     ("choir-shot.flac", "Choir Shot", "Tonal", "fs:240745", 2.0, 68, T),
     ("steel-drum.flac", "Steel Drum", "Tonal", "steeldrum:flac/SteelDrum_072__C5_3-2.flac", 2.5, 72, T),
     # orchestra: single notes are tuned, the stabs and hits are layers on C
@@ -620,7 +621,7 @@ def main():
     rows, total, kept = [], 0, 0
     for out, name, group, src, max_s, root, *rest in PICKS:
         opt = rest[0] if rest else {}
-        pitched = group == "Tonal" or isinstance(src, list) or bool(opt.get("tune") or opt.get("pitched"))
+        pitched = group in ("Bass", "Tonal") or isinstance(src, list) or bool(opt.get("tune") or opt.get("pitched"))
         if isinstance(src, list):
             x = layers(fetch, src)
         else:

@@ -140,7 +140,7 @@ export class MockBackend implements Backend {
   private srcMeta = new Map<Id, MockSource>();
   private takeN = 0;
   private kits = [
-    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_FILES.length, installed: true },
+    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion, bass, orchestra, tonal one-shots and effects that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_FILES.length, installed: true },
     { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
     { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
     { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },

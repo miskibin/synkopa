@@ -126,7 +126,7 @@ export const builtinGlyph = (inst: string): MenuGlyph => BUILTIN[inst] ?? INST_I
 
 const LIB_GROUP: Record<string, MenuGlyph> = {
   Kicks: g(faCircleDot), Snares: g(faDrum), Claps: g(faHandsClapping), Hats: g(faDrumSteelpan),
-  Cymbals: g(faCompactDisc), Toms: INST_ICONS.drums, Percussion: g(faHandFist), Tonal: g(faMusic),
+  Cymbals: g(faCompactDisc), Toms: INST_ICONS.drums, Percussion: g(faHandFist), Bass: INST_ICONS.bass, Tonal: g(faMusic),
   Orchestra: g(faWind), FX: INST_ICONS.fx, Loops: g(faRepeat),
 };
 /** Glyph for a standard-library sample group (by its id, not its translated name); other folders get the sample icon. */
@@ -141,7 +141,7 @@ const NAME_GLYPH: [RegExp, MenuGlyph][] = [
   [/hat|\bhh\b|\boh\b|\bch\b/i, LIB_GROUP.Hats],
   [/cymb|crash|ride|splash|china|talerz/i, LIB_GROUP.Cymbals],
   [/\btoms?\b/i, LIB_GROUP.Toms],
-  [/808|\bsub\b|bass|\bbas\b/i, INST_ICONS.bass],
+  [/808|\bsub\b|bass|\bbas\b/i, LIB_GROUP.Bass],
   [/perc|conga|bongo|shaker|tamb|cowbell|clave|triangle/i, LIB_GROUP.Percussion],
   [/orch|string|brass|violin|cello|horn|trumpet|smycz|flute|timpani/i, LIB_GROUP.Orchestra],
   [/\bfx\b|riser|sweep|impact|noise|whoosh|swell|uplift|downlift|efekt/i, LIB_GROUP.FX],

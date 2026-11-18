@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { LibFile } from '../api/types';
 import { FACTORY_FILES } from './factory';
+import { setLang } from './i18n';
 import { flatten, groupFiles, groupOpen, GHEAD_H, matches, OPEN_UP_TO, ROW_H, searchTerms, stepIndex, windowRange, type LibGroup } from './libraryView';
 import { libFileGlyph, libGlyph, libGroupGlyph } from '../ui/menuIcons';
 import { INST_ICONS } from '../ui/instIcons';
+import { libGroup } from '../state/library';
 
 const f = (name: string, group = ''): LibFile => ({ name, path: `/lib/${group}/${name}`, group });
 const std: LibFile[] = FACTORY_FILES.map(x => ({ name: x.name, path: x.file, group: x.group, root: x.root, pitched: x.pitched }));
@@ -33,12 +35,28 @@ describe('library search', () => {
     expect(groupFiles(std, searchTerms('808 bass')).flatMap(g => g.files).length).toBeGreaterThanOrEqual(6);
     expect(groupFiles(std, searchTerms('zzz'))).toEqual([]);
   });
+  it('keeps every 808 bass in Bass, and Polish Bas finds that group', () => {
+    const groups = groupFiles(std);
+    const bass = groups.find(g => g.name === 'Bass')!;
+    const tonal = groups.find(g => g.name === 'Tonal')!;
+    expect(bass.files.filter(x => x.name.startsWith('808 Bass'))).toHaveLength(12);
+    expect(tonal.files.some(x => x.name.startsWith('808 Bass'))).toBe(false);
+    setLang('pl');
+    try {
+      expect(libGroup('Bass')).toBe('Bas');
+      const found = groupFiles(std, searchTerms('bas'), libGroup);
+      expect(found.map(g => g.name)).toContain('Bass');
+      expect(found.find(g => g.name === 'Bass')!.files.filter(x => x.name.startsWith('808 Bass'))).toHaveLength(12);
+    } finally {
+      setLang('en');
+    }
+  });
 });
 
 describe('library groups', () => {
   it('keeps the order of the list and counts every file', () => {
     const groups = groupFiles(std);
-    expect(groups.map(g => g.name)).toEqual(['Kicks', 'Snares', 'Claps', 'Hats', 'Cymbals', 'Toms', 'Percussion', 'Tonal', 'Orchestra', 'FX', 'Loops']);
+    expect(groups.map(g => g.name)).toEqual(['Kicks', 'Snares', 'Claps', 'Hats', 'Cymbals', 'Toms', 'Percussion', 'Bass', 'Tonal', 'Orchestra', 'FX', 'Loops']);
     expect(groups.reduce((n, g) => n + g.total, 0)).toBe(std.length);
   });
   it('keeps every file of a huge folder: the list is virtualized, not cut', () => {
@@ -129,7 +147,7 @@ describe('library icons', () => {
   });
   it('lists which standard-library files play a note', () => {
     const pitched = std.filter(x => x.pitched).map(x => x.group);
-    expect(new Set(pitched)).toEqual(new Set(['Tonal', 'Orchestra']));
+    expect(new Set(pitched)).toEqual(new Set(['Bass', 'Tonal', 'Orchestra']));
     expect(std.find(x => x.name === 'Gong')?.pitched).toBe(false);
     expect(std.find(x => x.name === 'Orchestra Hit')?.pitched).toBe(true);
   });
