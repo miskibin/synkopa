@@ -437,12 +437,11 @@ mod tests {
 
     #[test]
     fn the_model_download_is_pinned() {
-        assert_eq!(MODEL_SHA256.len(), 64);
+        const { assert!(MODEL_SHA256.len() == 64 && MODEL_BYTES > 50_000_000 && MODEL_BYTES < 200_000_000) };
         assert!(MODEL_SHA256.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
         // a pre-release tag of its own: never `releases/latest`, which the app updater reads
         assert!(MODEL_URL.starts_with("https://github.com/miskibin/synkopa/releases/download/models-htdemucs-v"), "{MODEL_URL}");
-        assert!(MODEL_BYTES > 50_000_000 && MODEL_BYTES < 200_000_000);
-        assert!(default_threads() >= 2 && default_threads() <= 8);
+        assert!((2..=8).contains(&default_threads()));
     }
 
     #[test]
