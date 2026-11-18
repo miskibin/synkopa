@@ -161,6 +161,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   const hRange = (): ZRange => { const G = geo(); return { pos: G.sx / G.pps, len: gridW() / G.pps }; };
   const hLimits = () => ({ total: hTotal(), minLen: gridW() / (basePps() * Z_MAX), maxLen: gridW() / (basePps() * zMin()) });
   const applyH = (r: ZRange) => {
+    userScrolled(); // every user zoom of the time axis goes through here (scrollbar, PageUp/Down, presets, fit, zoom box)
     const zoom = clamp(gridW() / r.len / basePps(), zMin(), Z_MAX), pps = basePps() * zoom;
     setViewS(v => ({ ...v, zoom, sx: clamp(r.pos * pps, 0, maxSxAt(pps)) }));
   };
@@ -173,7 +174,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     followHold = true; say(t('b.pr.followPaused'));
   };
   /** The time scrollbar (scrolls or zooms by hand). */
-  const setH = (r: ZRange) => { userScrolled(); applyH(r); };
+  const setH = (r: ZRange) => applyH(r);
   const vRange = (): ZRange => { const G = geo(), h = Math.max(1, size().h); return { pos: G.sy / G.rowH, len: h / G.rowH }; };
   const vLimits = () => { const h = Math.max(1, size().h); return { total: 128, minLen: h / ROW_MAX, maxLen: h / rowMin() }; };
   const setV = (r: ZRange) => {
@@ -409,7 +410,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       applyH(fitRange(Math.max(0, s0), Math.max(0, s1), hLimits()));
       setV(fitRange(clamp(r0, 0, 128), clamp(r1, 0, 128), vLimits()));
     },
-    pushView, popView: () => viewBack.pop(), applyView: v => setViewS(v),
+    pushView, popView: () => viewBack.pop(), applyView: v => { if (v.sx !== view().sx || v.zoom !== view().zoom) userScrolled(); setViewS(v); },
     dbl: key => dblCheck(key),
     pan: e => (e ? pan(e) : false),
     setDragging: on => { dragging = on; },
@@ -455,6 +456,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       if (i >= 0) return velWheel(e, i);
     }
     if (e.ctrlKey || e.metaKey) {
+      userScrolled(); // a zoom moves the view as much as a scroll would
       const p = pos(e), z = clamp(view().zoom * Math.pow(1.0015, -d), zMin(), Z_MAX);
       const pps = basePps() * z;
       setViewS(v => ({ ...v, zoom: z, sx: clamp(p.step * pps - (p.x - KW), 0, maxSxAt(pps)) }));

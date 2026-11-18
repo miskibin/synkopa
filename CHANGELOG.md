@@ -4,6 +4,30 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Add a playlist sound to the Channel Rack from its clip.** Dragging a sample into the Playlist
+  plays it there directly (as before, without a rack entry); the audio clip's menu now offers
+  "Add as sampler channel" to put the same sound on the rack and the keyboard in one click. The
+  item is disabled when the rack already has a channel playing that sample.
+
+### Changed
+- **Dock guides only show where you point.** Moving a floating Channel Rack, Piano roll or Mixer
+  no longer covers the workspace with dock guides: the guide and the area the panel would take
+  appear only for the dock slot under the pointer, and a drop anywhere else keeps it floating.
+  The dock button, the title-bar right-click menu and View → Window layout dock as before.
+
+### Fixed
+- **Zooming no longer fights the playhead.** With Follow on and the song playing, every zoom
+  step (Ctrl+wheel, Page Up/Down, the presets, a zoom box, the scrollbar) now pauses following
+  instead of letting the view get yanked between the zoom's anchor and the playhead — the
+  left-and-right stutter while zooming is gone, in the Playlist and the Piano roll.
+- **Closing the pitch editor returns to the sampler.** The pitch editor of an audio clip used to
+  close the clip's editor window when it opened, so closing the pitch editor left nothing. The
+  editor now stays open underneath, and Esc closes the pitch editor first, then the editor —
+  also stopping a solo preview the pitch editor left ringing.
+
 ## 0.9.22 — 2026-11-17
 
 ### Added

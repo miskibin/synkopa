@@ -685,7 +685,9 @@ function PitchBody(props: { clipId: number }) {
   const solo = () => {
     if (previewing()) { void be().previewStop(); return; }
     const ts = tOfBeat(U.start), from = ts > t0() && ts < t1() ? ts : t0();
-    be().previewClip(c().id, from).catch(e => say(String(e?.message ?? e)));
+    // optimistic: telemetry reports the preview a frame later, and a close before that must still stop it
+    setU('previewing', true);
+    be().previewClip(c().id, from).catch(e => { setU('previewing', false); say(String(e?.message ?? e)); });
   };
   const resize = (e: PointerEvent) => {
     if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
