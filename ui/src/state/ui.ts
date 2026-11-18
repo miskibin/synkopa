@@ -55,6 +55,8 @@ export interface UiState {
   start: number; follow: boolean; alt: boolean;
   /** The Mixer is hidden: docked alone in its strip it is a thin handle (`paneSize.mix`: the size it opens to again). */
   mixMin: boolean; mixSel: Id; fxSel: Id | null; fxDrag: Id | null;
+  /** Mixer strips selected besides `mixSel` (Ctrl+Shift+click, FL): their faders and mutes move together. */
+  mixMulti: Id[];
   /** F9: the Mix view fills the workspace with the mixer (not saved: a launch starts in the arrange layout). */
   mixView: boolean;
   plugs: PlugWin[];
@@ -140,7 +142,7 @@ export const revealInPlaylist = (track: number, beat: number) => setRevealReq(r 
 export const [U, setU] = createStore<UiState>({
   tool: 'draw', snap: -1, bw: 22, sel: [], cur: { kind: 'pat', ref: 1, clipId: null },
   start: 0, follow: true, alt: false,
-  mixMin: false, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null,
+  mixMin: false, mixView: false, mixSel: 6, fxSel: 903, fxDrag: null, mixMulti: [],
   plugs: [], plugsHidden: false, tuckZ: 0, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
   openingProject: false,
   projectZipBusy: false,

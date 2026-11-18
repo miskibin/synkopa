@@ -728,7 +728,22 @@ impl Engine {
             return Ok(c.revision);
         }
         let in_gesture = transient && c.gesture.is_some();
-        if !in_gesture {
+        // Lane heights are how the Playlist is viewed, not what the song is: zooming the tracks
+        // is not an undo step (Ctrl+Z after it must take back the last edit, not the zoom). The
+        // height is saved with the song, so it is carried into the history instead: undoing an
+        // older edit keeps the lanes as they are now.
+        if only_track_heights(ops, &before, &c.project) {
+            let heights: HashMap<Id, f32> = c.project.tracks.iter().map(|t| (t.id, t.h)).collect();
+            let carry = |p: &mut Project| {
+                for t in &mut p.tracks {
+                    if let Some(h) = heights.get(&t.id) {
+                        t.h = *h;
+                    }
+                }
+            };
+            let core = &mut *c;
+            core.undo.iter_mut().chain(core.redo.iter_mut()).chain(core.gesture.iter_mut()).for_each(carry);
+        } else if !in_gesture {
             push_undo(&mut c, before);
         }
         c.revision += 1;
@@ -1107,9 +1122,18 @@ impl Engine {
 
     // ------------------------------------------------------------ audio sources
 
-    /// Decodes files (slow; call off the UI thread) and adds them as sources.
+    /// Decodes files (slow; call off the UI thread) and adds them as sources, as one undo step.
     /// With `place`, also puts one clip per file on consecutive tracks starting there.
     pub fn import_audio(&self, paths: &[PathBuf], place: Option<(u32, f64)>) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
+        self.import_audio_with(paths, place, true)
+    }
+
+    /// [`Engine::import_audio`] where the caller says whether the import is an undo step of its own.
+    /// `step` false is for a file loaded on the way to another edit (a sampler channel made from
+    /// it, a channel's sample replaced): that edit is the step, and Ctrl+Z after dropping a sample
+    /// on the rack took two presses, one of which changed nothing you could see. A new source still
+    /// clears redo, so ids only ever grow along the history.
+    pub fn import_audio_with(&self, paths: &[PathBuf], place: Option<(u32, f64)>, step: bool) -> Result<(Vec<Id>, Vec<Id>), EngineError> {
         let mut loaded = vec![];
         let mut errors = vec![];
         // A file of the sample library is one source however often it is used (a sampler
@@ -1211,7 +1235,11 @@ impl Engine {
                 clip_ids.push(cid);
             }
         }
-        push_undo(&mut c, before);
+        if step || !clip_ids.is_empty() {
+            push_undo(&mut c, before);
+        } else if c.project.sources.len() != before.sources.len() {
+            c.redo.clear();
+        }
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
         self.changed(c);
@@ -3530,6 +3558,20 @@ fn missing_sources(c: &Core) -> HashMap<Id, String> {
         .filter(|s| c.sources.get(s.id).is_none())
         .map(|s| (s.id, c.source_errors.get(&s.id).cloned().unwrap_or_else(|| format!("{}: not loaded", s.path))))
         .collect()
+}
+
+/// True when `ops` changed nothing but lane heights: every op puts a track, and `after` is
+/// `before` with other heights.
+fn only_track_heights(ops: &[Op], before: &Project, after: &Project) -> bool {
+    if ops.is_empty() || !ops.iter().all(|op| matches!(op, Op::PutTrack { .. })) || before.tracks.len() != after.tracks.len() {
+        return false;
+    }
+    let same_but_height = |a: &Track, b: &Track| {
+        let mut a = a.clone();
+        a.h = b.h;
+        a == *b
+    };
+    before.tracks.iter().zip(&after.tracks).all(|(a, b)| same_but_height(a, b))
 }
 
 fn push_undo(c: &mut Core, before: Project) {

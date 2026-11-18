@@ -124,6 +124,8 @@ export class MockBackend implements Backend {
   private undoStack: Project[] = [];
   private redoStack: Project[] = [];
   private gesture: Project | null = null;
+  /** A gesture's transient batches changed the project without a state event (engine.rs gesture_unreported). */
+  private gestureUnreported = false;
   private tr: TransportDto = { playing: false, rec: false, monitor: false, metro: false, countIn: true, startBeat: 0, recAudio: true, recNotes: true, recQuantize: 0 };
   private listeners = new Map<string, Set<(p: unknown) => void>>();
   private teleCb: ((b: ArrayBuffer) => void) | null = null;
@@ -243,19 +245,36 @@ export class MockBackend implements Backend {
       return { revision: this.revision };
     }
     this.p = next;
+    // like the engine (engine.rs only_track_heights): lane heights are view state — no undo step, and
+    // the history takes the new heights so undoing an older edit keeps the lanes as they are now
+    const heightsOnly = ops.every(op => op.op === 'putTrack') && prev.tracks.length === next.tracks.length
+      && prev.tracks.every((t, i) => projectEq({ ...t, h: next.tracks[i].h } as unknown as Json, next.tracks[i] as unknown as Json));
+    if (heightsOnly) {
+      const h = new Map(next.tracks.map(t => [t.id, t.h]));
+      const carry = (p: Project): Project => ({ ...p, tracks: p.tracks.map(t => (h.has(t.id) ? { ...t, h: h.get(t.id)! } : t)) });
+      this.undoStack = this.undoStack.map(carry); this.redoStack = this.redoStack.map(carry);
+      if (this.gesture) this.gesture = carry(this.gesture);
+      if (opts?.transient && this.gesture) { this.revision++; this.gestureUnreported = true; } else this.changed();
+      return { revision: this.revision };
+    }
     // like the engine: no state event per transient batch of a gesture (endGesture reports it)
-    if (opts?.transient && this.gesture) this.revision++;
+    if (opts?.transient && this.gesture) { this.revision++; this.gestureUnreported = true; }
     else { this.pushUndo(prev); this.changed(); }
     return { revision: this.revision };
   }
   async beginGesture() { this.gesture = structuredClone(this.p); }
   async endGesture() {
     const g = this.gesture; this.gesture = null;
+    const unreported = this.gestureUnreported; this.gestureUnreported = false;
     if (g && JSON.stringify(g) !== JSON.stringify(this.p)) {
       this.pushUndo(g);
       // pitch edits are rendered offline at the end of a gesture: the state event comes after the render
       const tuned = this.p.clips.some(c => { const o = g.clips.find(x => x.id === c.id); return JSON.stringify(o?.tune ?? null) !== JSON.stringify(c.tune ?? null); });
       if (tuned) { this.revision++; this.renderReady = performance.now() + 380; setTimeout(() => this.emit('state', this.dto()), 380); } else this.changed();
+    } else if (g && unreported) {
+      // like the engine (end_gesture, gesture_unreported): nothing to undo — dragged and back, or lane
+      // heights only — but listeners have not seen the revisions of the gesture's batches
+      this.emit('state', this.dto());
     }
   }
   async undo() {
@@ -654,7 +673,7 @@ export class MockBackend implements Backend {
 
   // ---------- catalog / audio files ----------
   async fxCatalog() { await delay(); return structuredClone(this.cat); }
-  async importAudio(a: { paths: string[]; track?: number; beat?: number }) {
+  async importAudio(a: { paths: string[]; track?: number; beat?: number; step?: boolean }) {
     await delay(30);
     const prev = structuredClone(this.p);
     const sourceIds: Id[] = [], clipIds: Id[] = [];
@@ -680,7 +699,10 @@ export class MockBackend implements Backend {
         this.p.clips.push(mkClip(cid, tr, a.beat, len, 'audio', id)); clipIds.push(cid);
       }
     });
-    if (clipIds.length) this.pushUndo(prev);
+    // like the engine (import_audio_with): one undo step, unless the caller loads the files for an edit
+    // that follows; a new source then still clears redo
+    if (a.step !== false || clipIds.length) this.pushUndo(prev);
+    else if (this.p.sources.length !== prev.sources.length) this.redoStack = [];
     this.changed();
     return { sourceIds, clipIds };
   }
@@ -1372,7 +1394,12 @@ export class MockBackend implements Backend {
     return { state: this.dto(), warnings: [] };
   }
   async takeProjectOpenRequests(): Promise<string[]> { return []; }
-  async projectSave(saveAs?: boolean): Promise<SaveResult> {
+  async projectSave(saveAs?: boolean, version?: boolean): Promise<SaveResult> {
+    // save new version: Name → Name_2 → Name_3 beside the current file (actions.rs next_version_path)
+    if (this.path && !saveAs && version) {
+      const m = /^(.*[\\/])?(.+?)(\.[^.\\/]+)?$/.exec(this.path)!, v = /^(.+)_(\d{1,6})$/.exec(m[2]);
+      this.path = (m[1] ?? '') + (v ? v[1] + '_' + Math.max(2, +v[2] + 1) : m[2] + '_2') + (m[3] ?? '.synkopa');
+    }
     if (!this.path || saveAs) {
       if (!this.dialog()) return { cancelled: true };
       this.path = 'C:\\Users\\michal\\Music\\Projekt ' + (1 + (this.revision % 9)) + '.synkopa';

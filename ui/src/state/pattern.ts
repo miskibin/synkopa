@@ -444,7 +444,7 @@ export function replaceChannel(c: Channel, pick: InstrumentPick) {
 export type SampleFile = Pick<LibFile, 'path'> & { root?: number };
 /** Imports files and waits until their sources are in the store (the import's state event may still be in flight). */
 async function importSources(paths: string[]): Promise<Id[]> {
-  const r = await be().importAudio({ paths });
+  const r = await be().importAudio({ paths, step: false }); // the channel made from them is the undo step
   for (let k = 0; k < 50 && !r.sourceIds.every(id => S.project.sources.some(s => s.id === id)); k++) await new Promise(res => setTimeout(res, 20));
   return r.sourceIds;
 }
@@ -507,7 +507,19 @@ export async function addSamplerFiles(files?: SampleFile[] | null, index?: () =>
     if (!list?.length) return;
     const ids = await importSources(list.map(f => f.path));
     const at = index?.();
-    ids.forEach((id, k) => addSampler(id, list[k]?.root, at != null ? at + k : undefined));
+    if (ids.length === 1) { addSampler(ids[0], list[0]?.root, at); return; }
+    // several files dropped at once are one edit: one Ctrl+Z takes them all back
+    const colors = channels().map(c => c.color); // each new channel its own colour, not all the next free one
+    const made = ids.flatMap((id, k) => {
+      const s = S.project.sources.find(x => x.id === id); if (!s) return [];
+      const clipRoot = S.project.clips.find(x => x.kind === 'audio' && x.ref === id && x.root != null)?.root;
+      const color = nextChannelColor(colors); colors.push(color);
+      return [{ ...samplerChannel(allocId(), s, list[k]?.root ?? clipRoot), color }];
+    });
+    if (!made.length) return;
+    commit(made.map((c, k) => chanOp(c, {}, at != null ? at + k : undefined)), t('b.st.addSampler'));
+    selectChannel(made[made.length - 1].id);
+    say(t('b.st.samplersSay', { n: made.length }));
   } catch (e) { say(t('b.st.samplerErr', { err: String(e) })); }
 }
 export async function cloneChannel(c: Channel) {

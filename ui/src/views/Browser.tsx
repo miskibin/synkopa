@@ -226,6 +226,18 @@ function AudioTab() {
 
 // ---------- library ----------
 const STD = 'k:' + STD_KIT;
+// The kits, folders and groups left open are remembered across restarts (FL's browser keeps its tree).
+const OPEN_KEY = 'wave.browser.open';
+function loadBrowserOpen(): { open: Record<string, boolean>; gopen: Record<string, boolean | undefined> } {
+  try {
+    const v = JSON.parse(localStorage.getItem(OPEN_KEY) ?? 'null') as { open?: unknown; gopen?: unknown } | null;
+    const flags = (o: unknown) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, x]) => typeof x === 'boolean')) as Record<string, boolean>;
+    return { open: flags(v?.open), gopen: flags(v?.gopen) };
+  } catch { return { open: {}, gopen: {} }; } // private window, or not JSON
+}
+function saveBrowserOpen() {
+  try { localStorage.setItem(OPEN_KEY, JSON.stringify({ open: lib.open, gopen: lib.gopen })); } catch { /* private window */ }
+}
 /**
  * `files` by list key (`k:<kit>`, `f:<folder>`); `open` = kits and folders shown open; `gopen` =
  * groups the user opened or closed while browsing, `sopen` = the same during the current search
@@ -237,7 +249,9 @@ const [lib, setLib] = createStore<{
   progress: Record<string, LibraryProgress | undefined>; loaded: boolean; error: string | null;
   /** the list was cut off at the folder walk's cap (the note under the list says so) */
   trunc: Record<string, boolean | undefined>;
-}>({ kits: [], folders: [], open: {}, files: {}, errs: {}, gopen: {}, sopen: {}, q: '', sel: null, progress: {}, loaded: false, error: null, trunc: {} });
+}>({ kits: [], folders: [], files: {}, errs: {}, sopen: {}, q: '', sel: null, progress: {}, loaded: false, error: null, trunc: {}, ...loadBrowserOpen() });
+/** Where the library list was scrolled to, so leaving the tab (Patterns, Audio) and coming back returns to the same place. */
+let libScroll = 0;
 const terms = createMemo(() => searchTerms(lib.q));
 const searching = () => terms().length > 0;
 /** Whole sections (STANDARD LIBRARY, KITS, FOLDERS) the user closed; in U so it survives a restart. A search opens everything it matched, like the groups inside a list. */
@@ -269,6 +283,7 @@ async function refreshLib() {
 function toggleOpen(key: string) {
   const open = !lib.open[key];
   setLib('open', key, open);
+  saveBrowserOpen();
   if (open) void ensure(key);
 }
 /** A search looks in everything that is installed, opened before or not. */
@@ -300,14 +315,10 @@ function startPreview(f: LibFile) {
   be().previewFile(f.path).catch(e => say(t('d.br.preverr', { err: String(e) })));
   say(t('d.br.prev', { name: f.name }));
 }
-function previewFile(f: LibFile) {
-  if (U.previewing && U.previewPath === f.path) { void be().previewStop(); setU('previewPath', null); return; }
-  startPreview(f);
-}
 
 /** ↑ ↓ walk the drawn rows (open groups, the search's matches) and play each; Enter makes a sampler channel. Works past the window: the walk follows the flat models, the lists scroll what is picked. */
 function onListKey(e: KeyboardEvent) {
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return; // Shift+arrows nudge clips: not this list's
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     const cur = walk.findIndex(r => r.f.path === lib.sel);
     e.preventDefault(); e.stopPropagation();
@@ -318,6 +329,9 @@ function onListKey(e: KeyboardEvent) {
     setLib('sel', r.f.path);
     revealAt(i);
     startPreview(r.f);
+  } else if (e.key === 'Escape' && U.previewing) {
+    e.preventDefault(); e.stopPropagation();
+    void be().previewStop(); setU('previewPath', null);
   } else if (e.key === 'Enter' && lib.sel) {
     const r = walk.find(x => x.f.path === lib.sel);
     if (!r) return;
@@ -431,7 +445,9 @@ function FileRow(props: { f: LibFile; sub: boolean }) {
       onPointerDown={e => {
         if (e.button !== 0) return;
         e.preventDefault(); setLib('sel', f.path); listEl?.focus({ preventScroll: true });
-        dragGhost(e, f.name, color ?? '#47b8a8', () => previewFile(f), (x, y, alt) => dropFiles([f], x, y, alt), sampleOver);
+        // FL: the press itself plays the sample, from the top every time (a second click never stops it; Esc does)
+        startPreview(f);
+        dragGhost(e, f.name, color ?? '#47b8a8', () => {}, (x, y, alt) => dropFiles([f], x, y, alt), sampleOver);
       }}>
       <span class="fico" style={{ color: color ?? 'var(--fg4)' }}><Glyph g={libFileGlyph(f)} size={11} /></span>
       <span class="ell nm">{f.name.replace(/\.[^.]+$/, '')}</span>
@@ -445,7 +461,7 @@ function GroupHead(props: { k: string; g: { name: string; total: number }; open:
   const choices = () => (searching() ? 'sopen' : 'gopen');
   return (
     <div class="grow" role="button" aria-expanded={props.open} title={t('d.br.group.tip', { n: props.g.total })} style={{ '--c': GROUP_COLOR.get(props.g.name) ?? 'var(--fg3)' }}
-      onClick={() => setLib(choices(), key(), !props.open)}>
+      onClick={() => { setLib(choices(), key(), !props.open); if (!searching()) saveBrowserOpen(); }}>
       <Chev open={props.open} />
       <span class="gico"><Glyph g={libGroupGlyph(props.g.name)} size={11} /></span>
       <span class="ell nm">{libGroup(props.g.name)}</span>
@@ -522,6 +538,18 @@ function LibraryTab() {
   onMount(() => {
     if (!lib.loaded) void refreshLib();
     void ensure(STD);
+    // kits and folders left open last time load their lists again (one that is gone simply shows nothing)
+    for (const [key, open] of Object.entries(lib.open)) if (open) void ensure(key);
+    // back where the list was: the rows come in over a few frames, so try until it fits
+    if (libScroll > 0) {
+      const want = libScroll; let tries = 0;
+      const back = () => {
+        if (!listEl || tries++ > 40) return;
+        listEl.scrollTop = want;
+        if (Math.abs(listEl.scrollTop - want) > 1) requestAnimationFrame(back);
+      };
+      requestAnimationFrame(back);
+    }
     let off: (() => void) | null = null;
     be().on('library-progress', p => {
       setLib('progress', p.id, p);
@@ -529,13 +557,15 @@ function LibraryTab() {
       else if (p.done >= p.total) { setLib('progress', p.id, undefined); void refreshLib(); say(t('d.br.installed', { id: p.id })); }
     }).then(u => { off = u; });
     const onScroll = () => bumpLayout(1);
+    const keepScroll = () => { if (listEl) libScroll = listEl.scrollTop; };
+    listEl?.addEventListener('scroll', keepScroll, { passive: true });
     listEl?.addEventListener('scroll', onScroll, { passive: true });
     // the content is observed too: a group or section opening ABOVE a list shifts it without a
     // scroll event, and every drawn window has to re-measure when that happens
     const ro = new ResizeObserver(onScroll);
     if (listEl) ro.observe(listEl);
     if (contentEl) ro.observe(contentEl);
-    onCleanup(() => { listEl?.removeEventListener('scroll', onScroll); ro.disconnect(); off?.(); });
+    onCleanup(() => { listEl?.removeEventListener('scroll', onScroll); listEl?.removeEventListener('scroll', keepScroll); ro.disconnect(); off?.(); });
   });
   // The keyboard walk: every drawn file in row order — the standard library, then the open
   // kits, then the open folders. `walkTick` covers a list's model changing (load, open, search).

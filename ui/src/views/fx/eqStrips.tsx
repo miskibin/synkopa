@@ -10,7 +10,7 @@ import { t as tr } from '../../lib/i18n';
 import { autoDisplay, isAutomated, paramMenu } from '../../state/automation';
 import { commit, Gesture, wheelEdit } from '../../state/edit';
 import { say, setU, U } from '../../state/ui';
-import { dblCheck, track } from '../../ui/drag';
+import { dblCheck, fineMul, track } from '../../ui/drag';
 import { MiniKnob } from '../../ui/Knob';
 import { bandColor } from './common';
 import { eqRange } from './eq';
@@ -78,12 +78,12 @@ function BandStrip(props: { fx: Fx; i: number; band: () => EqBand }) {
     if (e.button === 2) { e.preventDefault(); paramMenu(e.clientX, e.clientY, target('g'), resetGain, col()); return; }
     if (e.button !== 0) return;
     e.preventDefault();
-    if (dblCheck('eqfader' + fxId() + i())) { resetGain(); return; }
+    if (e.altKey || dblCheck('eqfader' + fxId() + i())) { resetGain(); return; }
     const h = Math.max(40, slot.getBoundingClientRect().height), r0 = range();
     let v = b().g, ly = e.clientY;
     const g = new Gesture(tr('c.eq.gain'));
     track(ev => {
-      v = clamp(v + (ly - ev.clientY) / h * 2 * r0 * (ev.shiftKey ? 0.2 : 1), -30, 30); ly = ev.clientY;
+      v = clamp(v + (ly - ev.clientY) / h * 2 * r0 * fineMul(ev), -30, 30); ly = ev.clientY;
       const op = edit(fxId(), i(), { g: Math.round(v * 10) / 10 }); if (op) g.update([op]);
       say(name() + ' · ' + dbText(v));
     }, () => g.end(), 'ns-resize');
@@ -155,12 +155,12 @@ function OutStrip(props: { fx: Fx }) {
     if (e.button === 2) { e.preventDefault(); paramMenu(e.clientX, e.clientY, target(), reset); return; }
     if (e.button !== 0) return;
     e.preventDefault();
-    if (dblCheck('eqout' + props.fx.id)) { reset(); return; }
+    if (e.altKey || dblCheck('eqout' + props.fx.id)) { reset(); return; }
     const h = Math.max(40, slot.getBoundingClientRect().height);
     let v = val(), ly = e.clientY;
     const g = new Gesture(label());
     track(ev => {
-      v = clamp(v + (ly - ev.clientY) / h * 2 * OUT_MAX * (ev.shiftKey ? 0.2 : 1), -OUT_MAX, OUT_MAX); ly = ev.clientY;
+      v = clamp(v + (ly - ev.clientY) / h * 2 * OUT_MAX * fineMul(ev), -OUT_MAX, OUT_MAX); ly = ev.clientY;
       const o = op(Math.round(v * 10) / 10); if (o) g.update([o]);
       say(label() + ' ' + dbText(v));
     }, () => g.end(), 'ns-resize');

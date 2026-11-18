@@ -257,3 +257,72 @@ describe('recording in the mock (like the engine)', () => {
     expect(await be.transportSet({ recNotes: false })).toMatchObject({ recAudio: false, recNotes: true });
   });
 });
+
+describe('lane heights are view state (engine.rs only_track_heights)', () => {
+  it('a vertical zoom or a lane resize adds no undo step and survives undoing an older edit', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const p0 = (await be.getState()).project, t1 = p0.tracks[1];
+    await be.applyOps([{ op: 'putTrack', track: { ...t1, muted: !t1.muted } }]);
+    await be.applyOps(p0.tracks.map(t => ({ op: 'putTrack' as const, track: { ...(t.id === t1.id ? { ...t, muted: !t1.muted } : t), h: t.h + 12 } })));
+    await be.beginGesture();
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: 140 } }], { transient: true });
+    await be.endGesture();
+    let s = await be.getState();
+    expect(s.project.tracks[0].h).toBe(140);
+    expect(s.project.tracks[2].h).toBe(p0.tracks[2].h + 12);
+    // one undo: the mute goes back, the lanes stay
+    await be.undo();
+    s = await be.getState();
+    expect(s.project.tracks[1].muted).toBe(t1.muted);
+    expect(s.project.tracks[0].h).toBe(140);
+    expect(s.project.tracks[2].h).toBe(p0.tracks[2].h + 12);
+    expect(s.canUndo).toBe(false);
+    await be.redo();
+    s = await be.getState();
+    expect(s.project.tracks[1].muted).toBe(!t1.muted);
+    expect(s.project.tracks[0].h).toBe(140);
+  });
+  it('a height change together with another change is an ordinary edit', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: t0.h + 20, name: 'Renamed' } }]);
+    expect((await be.getState()).canUndo).toBe(true);
+    await be.undo();
+    expect((await be.getState()).project.tracks[0]).toMatchObject({ h: t0.h, name: t0.name });
+  });
+});
+
+describe('import as an undo step (engine import_audio_with)', () => {
+  it('into the audio list it is one step; loaded for an edit that follows it is none, and redo is dropped', async () => {
+    const be = new MockBackend();
+    await be.projectNew();
+    const n = (await be.getState()).project.sources.length;
+    await be.importAudio({ paths: ['C:\\loops\\a.wav'] });
+    expect((await be.getState()).canUndo).toBe(true);
+    await be.undo();
+    expect((await be.getState()).project.sources).toHaveLength(n);
+    expect((await be.getState()).canRedo).toBe(true);
+    // for a sampler channel: no step of its own, and the stale redo (a project without the source) goes
+    await be.importAudio({ paths: ['C:\\loops\\b.wav'], step: false });
+    const s = await be.getState();
+    expect(s.project.sources).toHaveLength(n + 1);
+    expect(s.canUndo).toBe(false);
+    expect(s.canRedo).toBe(false);
+  });
+  it('a lane-height gesture reports its state when it ends, though it adds no undo step', async () => {
+    const be = new MockBackend();
+    await be.projectNew(true);
+    const states: number[] = [];
+    await be.on('state', s => states.push(s.revision));
+    const t0 = (await be.getState()).project.tracks[0];
+    await be.beginGesture();
+    await be.applyOps([{ op: 'putTrack', track: { ...t0, h: t0.h + 30 } }], { transient: true });
+    await be.endGesture();
+    await new Promise(r => setTimeout(r, 5));
+    expect(states.length).toBeGreaterThan(0);
+    expect((await be.getState()).canUndo).toBe(false);
+  });
+});

@@ -11,7 +11,7 @@ import * as A from '../../state/actions';
 import { commit, Gesture, wheelEdit } from '../../state/edit';
 import { findFx, plain } from '../../state/store';
 import { openMenu, say, setU, U, type MenuItem } from '../../state/ui';
-import { dblCheck, track } from '../../ui/drag';
+import { dblCheck, fineMul, track } from '../../ui/drag';
 import { NumField, parseNum } from '../../ui/Knob';
 import { bandColor } from './common';
 import { dbY, eqRange, EqViz, PLACE_SHORT, yDb } from './eq';
@@ -103,7 +103,7 @@ export function eqPointerDown(e: PointerEvent, cv: HTMLCanvasElement, fxId: Id, 
     const gain = hasGain(b0.type), mul = b0.type === 'tilt' ? 2 : 1;
     let g: Gesture | null = null;
     track(ev => {
-      const k = ev.shiftKey ? 0.2 : 1;
+      const k = fineMul(ev);
       if (!g) { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 2) return; g = new Gesture('Band EQ'); }
       const nf = clamp(x2f(x0 + (ev.clientX - sx) * k, W), 10, 22000);
       const ng = gain ? clamp(yDb(y0 + (ev.clientY - sy) * k, H, range) * mul, -30, 30) : b0.g;
@@ -126,7 +126,7 @@ export function eqPointerDown(e: PointerEvent, cv: HTMLCanvasElement, fxId: Id, 
     track(ev => {
       const d = ev.clientY - sy;
       if (!g) { if (Math.abs(d) < 3) return; g = new Gesture(tr('c.eq.newBand')); setU('eqSel', fxId, i); }
-      const gdb = clamp(-d / ((H / 2) * 0.86) * range * (ev.shiftKey ? 0.2 : 1), -30, 30);
+      const gdb = clamp(-d / ((H / 2) * 0.86) * range * fineMul(ev), -30, 30);
       const op = withBands(fxId, b => { if (b.length === i) b.push(newBand('peak', f, 0)); b[i] = { ...b[i], q: 4, g: Math.round(gdb * 10) / 10 }; });
       if (op) g.update([op]);
       say(tr('c.eq.onResonance', { n: i + 1, hz: hzText(f), note: noteName(hzToMidi(f)), db: dbText(gdb) }));

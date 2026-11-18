@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sketchProject, mockCatalog } from '../api/mockData';
 import { CLIP_GAIN_DB, KEYS_RELEASE, VOL_UNITY, type AutoTarget, type CurveShape, type Channel, type Clip, type Project } from '../api/types';
 import { applyAll } from './applyOps';
-import { createAutomationOps, curveAt, spansValue, denormalize, normalize, autoValueText, parseAutoValue, readTarget, sortPoints, targetKey, targetLabel, trackForAutomation, valueAt } from './automation';
+import { createAutomationOps, curveAt, spansValue, denormalize, normalize, autoValueText, parseAutoValue, readTarget, sortPoints, targetKey, targetLabel, trackForAutomation, valueAt, writeTargetOps } from './automation';
 import { newSynthChannel, synthParam } from './synth';
 import curvesJson from '../../../crates/engine/tests/fixtures/curves.json?raw';
 
@@ -179,5 +179,40 @@ describe('a target outside its automation clips (engine drive_value)', () => {
   });
   it('is null only without clips', () => {
     expect(spansValue([], 4)).toBeNull();
+  });
+});
+
+describe('typing a value into a control (writeTargetOps)', () => {
+  it('writes the value readTarget reads back, for every target the project holds', () => {
+    const p0 = project();
+    const ins = p0.inserts[1], fx = p0.inserts.flatMap(m => m.fx)[0];
+    const all: AutoTarget[] = [...targets, { kind: 'insertVol', id: ins.id }, { kind: 'insertPan', id: ins.id }, { kind: 'trackVol', id: p0.tracks[0].id }, { kind: 'mix', fxId: fx.id }];
+    for (const t of all) {
+      const cur = readTarget(p0, t) ?? denormalize(p0, cat, t, 0.5);
+      const want = denormalize(p0, cat, t, normalize(p0, cat, t, cur) > 0.5 ? 0.25 : 0.75);
+      const ops = writeTargetOps(p0, t, want);
+      expect(ops, targetKey(t)).not.toBeNull();
+      expect(readTarget(applyAll(p0, ops!), t), targetKey(t)).toBeCloseTo(want, 9);
+    }
+  });
+  it('leaves everything else in the edited object alone', () => {
+    const p0 = project(), ins = p0.inserts[1];
+    const p1 = applyAll(p0, writeTargetOps(p0, { kind: 'insertVol', id: ins.id }, 0.3)!);
+    expect({ ...p1.inserts.find(m => m.id === ins.id)!, vol: ins.vol }).toEqual(ins);
+  });
+  it('has nothing to write for a hosted plugin parameter, a missing target or a non-number', () => {
+    const p0 = project();
+    expect(writeTargetOps(p0, { kind: 'plugin', fxId: 1, paramId: 0 } as AutoTarget, 0.5)).toBeNull();
+    expect(writeTargetOps(p0, { kind: 'chanVol', id: 999999 }, 0.5)).toBeNull();
+    expect(writeTargetOps(p0, { kind: 'chanVol', id: 7001 }, NaN)).toBeNull();
+  });
+  it('round-trips the text a control shows: typing it back keeps the value', () => {
+    const p0 = project();
+    for (const t of targets) {
+      const v = 0.3, text = autoValueText(p0, cat, t, v).replace(/−/g, '-');
+      const back = parseAutoValue(p0, cat, t, text);
+      expect(back, targetKey(t) + ' ' + text).not.toBeNull();
+      expect(Math.abs(back! - v), targetKey(t) + ' ' + text).toBeLessThan(0.02);
+    }
   });
 });

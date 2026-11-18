@@ -68,7 +68,7 @@ interface WaveProps {
   previewPosition?: () => number | null;
   title: TranslationKey;
   drag: (handle: Handle) => (delta: number) => DragEdit | undefined;
-  reset?: (handle: Handle | undefined) => void;
+  reset?: (handle: Handle) => void;
 }
 
 function EditorFrame(props: {
@@ -107,7 +107,7 @@ function EditorFrame(props: {
         <span class="sub ell">{props.description}</span>
         <div style={{ flex: 1 }} />
         {props.header}
-        <button class="iconbtn" aria-label={t('b.cw.previewTitle')} title={t('b.cw.previewTitle')} onClick={() => props.wave.preview()}
+        <button class="iconbtn" aria-label={t('b.cw.previewTitle')} title={t('b.cw.previewTitle')} onClick={() => (props.channelId == null && U.previewing ? void be().previewStop() : props.wave.preview())}
           disabled={!props.wave.source()}>{props.channelId == null && U.previewing ? '■' : '▶'}</button>
         <button class="closebtn" aria-label={t('d.smp.close')} title={t('d.smp.close')} onClick={A.closeEditor}>×</button>
       </div>
@@ -245,7 +245,9 @@ function SampleWave(props: WaveProps) {
   };
 
   return (
-    <div ref={box} class="smpwave" title={t(props.title)} onPointerDown={down} onDblClick={e => props.reset?.(handleAt(e))}>
+    <div ref={box} class="smpwave" title={t(props.title)} onPointerDown={down}
+      // only on a marker: two clicks on the waveform are two auditions (FL), never a reset of the trim
+      onDblClick={e => { const h = handleAt(e); if (h) props.reset?.(h); }}>
       <canvas ref={canvas} />
       <Show when={props.source()}>
         <For each={HANDLES}>{handle => <div data-sample-handle={handle} title={t(HANDLE_LABELS[handle])}
@@ -311,7 +313,8 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
   // the sound (volume, pan, pitch, normalize, reverse) is the sample's: every clip of it follows (FL)
   const siblings = () => S.project.clips.filter(x => x.kind === 'audio' && x.ref === c().ref);
   const put = (patch: Partial<Clip>): Op => putSoundClips(siblings().map(x => plain(x)), plain(c()), patch);
-  const preview = () => U.previewing ? void be().previewStop() : void be().previewClip(c().id).catch(e => say(String(e)));
+  // every click on the waveform plays from the top (FL); the header's ■ stops
+  const preview = () => void be().previewClip(c().id).catch(e => say(String(e)));
   const previewPosition = () => {
     const f = tele.frame;
     if (!f.previewing || f.previewPos < 0) return null;
@@ -456,7 +459,7 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
       return { op: put({ [key]: value }), status: t(handle === 'start' ? 'b.sm.startSay' : 'b.sm.endSay', { pct: Math.round((reverse ? 1 - value : value) * 100) }) };
     };
   };
-  const reset = (handle: Handle | undefined) => {
+  const reset = (handle: Handle) => {
     if (handle === 'fadeIn' || handle === 'fadeOut') {
       if (fadeValue(handle)) commit([put({ [fadeKey[handle]]: 0 })], t(FADE_LABELS[handle]));
     } else if (s().start !== 0 || s().end !== 1) commit([put({ start: 0, end: 1 })], t('b.sm.region'));
@@ -527,12 +530,13 @@ const GRAPH_H = 112, GRAPH_PAD = 7;
 
 /**
  * The sampler's volume envelope page (FL Studio's Channel settings ▸ Volume): the Envelope switch, a
- * DAHDSR graph whose points and curves drag, and the same values on knobs. Any edit switches the
- * envelope on, so a control never changes something that is not heard.
+ * DAHDSR graph whose points and curves drag, and the same values on knobs. Only the switch turns the
+ * envelope on (FL); while it is off the graph is dimmed and the hint says the shape is not heard.
  */
 function EnvelopePanel(props: { id: string; name: () => string; color: () => string; s: () => SamplerState; put: (patch: Partial<SamplerState>) => Op }) {
   const s = props.s;
-  const edit = (patch: Partial<SamplerState>) => props.put({ ...patch, env: true });
+  // FL: the Envelope switch alone arms it. A knob turned while it is off only prepares the shape, so a one-shot is not cut short by a stray touch
+  const edit = (patch: Partial<SamplerState>) => props.put(patch);
   let box!: HTMLDivElement;
   const [width, setWidth] = createSignal(0);
   onMount(() => {

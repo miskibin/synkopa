@@ -122,6 +122,49 @@ export function readTarget(p: Project, t: AutoTarget): number | null {
   }
 }
 
+/**
+ * The ops that set the control to plain value `x` (the inverse of `readTarget`), or null when the
+ * project does not hold the value (a hosted plugin's parameter) or the target is gone.
+ */
+export function writeTargetOps(p: Project, t: AutoTarget, x: number): Op[] | null {
+  if (!isFinite(x)) return null;
+  const chan = (id: Id, f: (c: Channel) => Channel | null): Op[] | null => {
+    const c = chanOf(p, id), n = c && f(c);
+    return n ? [{ op: 'putChannel', channel: n }] : null;
+  };
+  const insert = (id: Id, patch: Partial<Project['inserts'][number]>): Op[] | null => {
+    const m = p.inserts.find(q => q.id === id);
+    return m ? [{ op: 'putInsert', insert: { ...m, ...patch } }] : null;
+  };
+  const fx = (id: Id, f: (fx: Project['inserts'][number]['fx'][number]) => Project['inserts'][number]['fx'][number] | null): Op[] | null => {
+    const ff = fxOf(p, id), n = ff && f(ff.f);
+    return ff && n ? [{ op: 'putFx', insertId: ff.m.id, fx: n }] : null;
+  };
+  switch (t.kind) {
+    case 'plugin': return null;
+    case 'mix': return fx(t.fxId, f => ({ ...f, mix: x }));
+    case 'insertVol': return insert(t.id, { vol: x });
+    case 'insertPan': return insert(t.id, { pan: x });
+    case 'trackVol': { const tr = p.tracks.find(q => q.id === t.id); return tr ? [{ op: 'putTrack', track: { ...tr, vol: x } }] : null; }
+    case 'chanVol': return chan(t.id, c => ({ ...c, vol: x }));
+    case 'chanPan': return chan(t.id, c => ({ ...c, pan: x }));
+    case 'clipGain': case 'clipPan': {
+      const c = clipOf(p, t.id);
+      return c ? [{ op: 'putClips', clips: [{ ...c, [t.kind === 'clipGain' ? 'gain' : 'pan']: x }] }] : null;
+    }
+    case 'keys': return chan(t.chanId, c => (c.kind === 'keys' ? { ...c, keys: { ...c.keys, [t.param]: x } } : null));
+    case 'synth': return chan(t.chanId, c => (c.kind === 'synth' ? { ...c, synth: { ...c.synth, params: { ...c.synth.params, [t.param]: x } } } : null));
+    case 'fx': {
+      const b = parseBandParam(t.param);
+      return fx(t.fxId, f => {
+        if (!b) return { ...f, params: { ...f.params, [t.param]: x } };
+        if (!f.bands?.[b.i]) return null;
+        return { ...f, bands: f.bands.map((band, i) => (i === b.i ? { ...band, [b.k]: x } : band)) };
+      });
+    }
+  }
+}
+
 /** `(e^(s·x) − 1) / (e^s − 1)`: 0 at 0, 1 at 1, slow start for s > 0, straight at s = 0. */
 const bend = (x: number, s: number) => (Math.abs(s) < 1e-6 ? x : Math.expm1(s * x) / Math.expm1(s));
 /** Steps of a `stairs` segment for `tension` −1..1: 2..16 (model.rs `stairs_of`). */
@@ -295,7 +338,7 @@ export function autoValueText(p: Project, cat: Catalog | null, t: AutoTarget, v:
     case 'clipGain': return dbText(x);
     case 'mix': return Math.round(x * 100) + '%';
     case 'synth': { const d = cat && synthParam(cat.synth, t.param); return d ? pFmt(d, x) : Math.round(v * 100) + '%'; }
-    case 'keys': return t.param === 'release' ? x.toFixed(2) + ' s' : Math.round(x * 100) + '%';
+    case 'keys': return t.param === 'release' ? Math.round(x) + ' ms' : Math.round(x) + '%'; // release is in ms, dynamics in percent (KEYS_RELEASE, KEYS_DYNAMICS)
     case 'plugin': return Math.round(x * 100) + '%';
     case 'fx': {
       const b = parseBandParam(t.param);

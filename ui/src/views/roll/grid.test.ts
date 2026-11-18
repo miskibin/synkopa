@@ -32,11 +32,11 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     gestures: RecGest[]; auditions: { key: number; vel: number }[]; typing: { on: boolean; key: number; vel: number }[];
     switched: number[]; props: number[]; zooms: { s0: number; s1: number; r0: number; r1: number }[];
     pushed: number; popped: number; drags: number; marq: unknown; ghost: unknown; chord: string;
-    propsOpen: boolean; stampType: string;
+    propsOpen: boolean; stampType: string; held: number | null;
   } = {
     says: [], sels: [], commits: [], gestures: [], auditions: [], typing: [],
     switched: [], props: [], zooms: [], pushed: 0, popped: 0, drags: 0, marq: null, ghost: null, chord: '', propsOpen: false,
-    stampType: 'min',
+    stampType: 'min', held: null,
   };
   const pat = { id: 7, name: 'P', color: '#fff', len: 64, notes } as unknown as Pattern;
   // the tools replace the whole notes array per op; the component's store does it at once —
@@ -96,6 +96,7 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
       return g;
     },
     audition: (key, vel) => rec.auditions.push({ key, vel }),
+    hold: (key, vel) => { rec.held = key; if (key != null) rec.auditions.push({ key, vel: vel ?? 1 }); },
     typingNote: (on, key, vel) => rec.typing.push({ on, key, vel }),
     say: msg => rec.says.push(msg),
     setMarq: m => { rec.marq = m; },
@@ -146,12 +147,26 @@ describe('draw tool', () => {
     expect(notesOf(g)).toEqual([{ ch: CH.id, step: 4, len: 2, p: 60, trig: false }]);
     expect(c.rec.sels.at(-1)).toEqual([0]);
     expect(c.rec.auditions).toEqual([{ key: 60, vel: 1 }]);
+    expect(c.rec.held).toBe(60); // it sounds while the button is down
     // the create hands its gesture to the move drag: a real move nudges, up closes the undo step
     c.drag()?.move(mv(c, at(4.4, 60)));
     c.drag()?.move(mv(c, at(6.4, 60)));
     expect(notesOf(g).at(-1)).toEqual({ ch: CH.id, step: 6, len: 2, p: 60, trig: false });
     c.drag()?.up(mv(c, at(6.4, 60)));
     expect(g.ended).toBe(1);
+    expect(c.rec.held).toBeNull(); // and stops with it
+  });
+
+  it('a note off the grid keeps its offset when dragged to another key or along the grid (FL)', () => {
+    const c = makeCtx([note(4.3, 60)]);
+    down(c, 0, at(4.6, 60));
+    c.drag()?.move(mv(c, at(4.6, 64)));
+    expect(c.live[0]).toMatchObject({ step: 4.3, p: 64 });
+    expect(c.rec.held).toBe(64); // the held audition follows the note
+    c.drag()?.move(mv(c, at(6.7, 64)));
+    expect(c.live[0].step).toBeCloseTo(6.3, 6);
+    c.drag()?.up(mv(c, at(6.7, 64)));
+    expect(c.rec.held).toBeNull();
   });
 
   it('Alt places the note free of the grid', () => {
@@ -173,7 +188,7 @@ describe('draw tool', () => {
     // the note's body: a move drag (the lead note is auditioned)
     down(c, 0, at(5, 60));
     c.drag()?.move(mv(c, at(8, 60)));
-    expect(c.live[0].step).toBe(7); // moveNotes snaps the first landing to the grid
+    expect(c.live[0].step).toBe(7); // moved by whole grid units
     c.drag()?.up(mv(c, at(8, 60)));
     // the drag-right edge (the last 6 px of the note): a resize drag
     const c2 = makeCtx([note(4, 60, 8)]);

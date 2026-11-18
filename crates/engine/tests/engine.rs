@@ -987,3 +987,37 @@ fn export_in_place_refuses_an_empty_or_silent_selection() {
     let cancel = std::sync::atomic::AtomicBool::new(true);
     assert!(matches!(e.export_in_place(&[c.id], 48000, &cancel, &mut |_| {}), Err(EngineError::Cancelled)));
 }
+
+#[test]
+fn lane_heights_are_view_state_not_undo_steps() {
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    let p0 = e.project();
+    let h0 = p0.tracks[0].h;
+    // an edit, then a vertical zoom (every lane taller), then a single lane resized in a gesture
+    let t1 = p0.tracks[1].clone();
+    e.apply(&[Op::PutTrack { track: Track { muted: !t1.muted, ..t1.clone() } }], false, None).unwrap();
+    let taller: Vec<Op> = e.project().tracks.iter().map(|t| Op::PutTrack { track: Track { h: t.h + 12.0, ..t.clone() } }).collect();
+    e.apply(&taller, false, None).unwrap();
+    e.begin_gesture();
+    let t0 = e.project().tracks[0].clone();
+    e.apply(&[Op::PutTrack { track: Track { h: 140.0, ..t0 } }], true, None).unwrap();
+    e.end_gesture();
+    assert_eq!(e.project().tracks[0].h, 140.0);
+    assert_eq!(e.project().tracks[2].h, p0.tracks[2].h + 12.0);
+    // one undo takes back the edit, not the zoom, and the lanes stay as they are now
+    assert!(e.undo());
+    let p = e.project();
+    assert_eq!(p.tracks[1].muted, t1.muted);
+    assert_eq!(p.tracks[0].h, 140.0);
+    assert_eq!(p.tracks[2].h, p0.tracks[2].h + 12.0);
+    assert!(!e.undo(), "the height changes added no undo steps");
+    // redo brings the edit back, still with the current heights
+    assert!(e.redo());
+    assert_eq!(e.project().tracks[1].muted, !t1.muted);
+    assert_eq!(e.project().tracks[0].h, 140.0);
+    // a height change together with anything else is an ordinary edit
+    let t0 = e.project().tracks[0].clone();
+    e.apply(&[Op::PutTrack { track: Track { h: h0, name: "Renamed".into(), ..t0 } }], false, None).unwrap();
+    assert!(e.undo());
+    assert_eq!(e.project().tracks[0].h, 140.0);
+}

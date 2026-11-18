@@ -590,6 +590,29 @@ pub fn safe_file_stem(name: &str) -> String {
     }
 }
 
+/// Where "save new version" writes next to `current`: `Beat.synkopa` → `Beat_2.synkopa`,
+/// `Beat_2` → `Beat_3` (FL Studio's Ctrl+N). A name already taken is skipped, so an earlier
+/// version is never overwritten; `taken` says whether a path exists.
+pub fn next_version_path(current: &Path, taken: impl Fn(&Path) -> bool) -> PathBuf {
+    let stem = current.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Song".into());
+    let ext = current.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_else(|| "synkopa".into());
+    // a trailing `_<number>` is the version; anything else (also `Beat_final`) starts at 2
+    let (base, from) = match stem.rsplit_once('_') {
+        Some((b, n)) if !b.is_empty() && !n.is_empty() && n.len() <= 6 && n.bytes().all(|c| c.is_ascii_digit()) => {
+            (b.to_string(), n.parse::<u32>().unwrap_or(1).saturating_add(1))
+        }
+        _ => (stem, 2),
+    };
+    let mut n = from.max(2);
+    loop {
+        let p = current.with_file_name(format!("{base}_{n}.{ext}"));
+        if !taken(&p) {
+            return p;
+        }
+        n = n.saturating_add(1);
+    }
+}
+
 /// File stems for `names` in one folder: made safe by [`safe_file_stem`] and made unique with a
 /// ` (2)`, ` (3)` suffix. Compared without regard to case, because Windows and macOS do.
 pub fn unique_file_stems(names: &[String]) -> Vec<String> {
@@ -845,7 +868,9 @@ pub fn import(app: &dyn Host, a: &Value) -> R<Value> {
         (None, Some(b)) => Some((0, b)),
         _ => None,
     };
-    let (s, c) = app.engine().import_audio(&paths, place).map_err(|e| e.to_string())?;
+    // `step: false`: the file is loaded for an edit that follows (a sampler channel), which is the undo step
+    let step = arg(a, "step").and_then(Value::as_bool).unwrap_or(true);
+    let (s, c) = app.engine().import_audio_with(&paths, place, step).map_err(|e| e.to_string())?;
     Ok(json!({ "sourceIds": s, "clipIds": c }))
 }
 
@@ -947,7 +972,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
             .or_else(|| files.iter().find(|f| stem(f).starts_with(&want) || f.name.to_lowercase().starts_with(&want)))
             .ok_or(format!("no standard-library sample `{k}`: try kick-808, snare-studio, hat-808-open, bass-808, marimba ... (the browser's Library tab lists them all)"))?;
         // the import adds the project source (or finds the one already there)
-        let (srcs, _) = e.import_audio(&[PathBuf::from(factory::lib_path(f.file))], None).map_err(|x| x.to_string())?;
+        let (srcs, _) = e.import_audio_with(&[PathBuf::from(factory::lib_path(f.file))], None, false).map_err(|x| x.to_string())?;
         p = e.project();
         let mut ch = Channel::sampler(p.next_id, f.name, factory::color(f), srcs[0]);
         ch.root = f.root;
@@ -1766,6 +1791,25 @@ mod tests {
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
     use wave_engine::{Engine, NoPlugins, Project};
+
+    #[test]
+    fn save_new_version_counts_up_and_never_lands_on_an_existing_file() {
+        use super::next_version_path;
+        use std::path::{Path, PathBuf};
+        let free = |_: &Path| false;
+        let dir = Path::new("songs");
+        assert_eq!(next_version_path(&dir.join("Beat.synkopa"), free), dir.join("Beat_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_2.synkopa"), free), dir.join("Beat_3.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_19.wave"), free), dir.join("Beat_20.wave"));
+        // not a version number: a word, a bare number, a leading underscore
+        assert_eq!(next_version_path(&dir.join("Beat_final.synkopa"), free), dir.join("Beat_final_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("808.synkopa"), free), dir.join("808_2.synkopa"));
+        assert_eq!(next_version_path(&dir.join("_7.synkopa"), free), dir.join("_7_2.synkopa"));
+        // names in use are skipped
+        let used: Vec<PathBuf> = vec![dir.join("Beat_2.synkopa"), dir.join("Beat_3.synkopa")];
+        assert_eq!(next_version_path(&dir.join("Beat.synkopa"), |p| used.iter().any(|u| u == p)), dir.join("Beat_4.synkopa"));
+        assert_eq!(next_version_path(&dir.join("Beat_2.synkopa"), |p| used.iter().any(|u| u == p)), dir.join("Beat_4.synkopa"));
+    }
 
     fn tmp(name: &str) -> std::path::PathBuf {
         let d = std::env::temp_dir().join(format!("wave-stems-{name}-{}", std::process::id()));

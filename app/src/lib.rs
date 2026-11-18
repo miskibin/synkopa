@@ -255,11 +255,13 @@ async fn watch_fx(app: St<'_>, ids: Vec<u64>) -> R<()> {
 // ---------------------------------------------------------------- audio sources
 
 #[tauri::command]
-async fn import_audio(app: St<'_>, paths: Vec<String>, track: Option<u32>, beat: Option<f64>) -> R<Value> {
+async fn import_audio(app: St<'_>, paths: Vec<String>, track: Option<u32>, beat: Option<f64>, step: Option<bool>) -> R<Value> {
     let a = app.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || actions::import(&*a, &json!({ "paths": paths, "track": track, "beat": beat })))
-        .await
-        .map_err(es)?
+    tauri::async_runtime::spawn_blocking(move || {
+        actions::import(&*a, &json!({ "paths": paths, "track": track, "beat": beat, "step": step.unwrap_or(true) }))
+    })
+    .await
+    .map_err(es)?
 }
 
 #[tauri::command]
@@ -723,17 +725,22 @@ async fn project_open(app: St<'_>, handle: AppHandle, path: Option<String>, if_r
 }
 
 #[tauri::command]
-async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>) -> R<Value> {
+async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>, version: Option<bool>) -> R<Value> {
     let cur = app.engine.state().path.map(PathBuf::from);
     let path = match (cur, save_as.unwrap_or(false)) {
+        // save new version: the next free `Name_N` beside the current file; the project then continues there
+        (Some(p), false) if version.unwrap_or(false) => Some(actions::next_version_path(&p, |q| q.exists())),
         (Some(p), false) => Some(p),
-        _ => handle
-            .dialog()
-            .file()
-            .add_filter("Synkopa project", &["synkopa", "wave"])
-            .set_file_name("Song.synkopa")
-            .blocking_save_file()
-            .and_then(|p| p.into_path().ok()),
+        (cur, _) => {
+            // start from the project's own name and folder, not a fixed "Song"
+            let mut dialog = handle.dialog().file().add_filter("Synkopa project", &["synkopa", "wave"]);
+            let name = cur.as_ref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned());
+            dialog = dialog.set_file_name(name.unwrap_or_else(|| "Song.synkopa".into()));
+            if let Some(dir) = cur.as_ref().and_then(|p| p.parent()).filter(|d| d.is_dir()) {
+                dialog = dialog.set_directory(dir);
+            }
+            dialog.blocking_save_file().and_then(|p| p.into_path().ok())
+        }
     };
     let Some(mut path) = path else { return Ok(json!({ "cancelled": true })) };
     if path.extension().is_none() {

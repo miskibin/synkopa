@@ -9,7 +9,7 @@ import { unwrap } from 'solid-js/store';
 import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, isStepOn, keyOf, notesText, rotate, setKeyAt, setStep, setVelAt, stepsOf, type ChannelClip } from '../lib/pattern';
+import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, notesText, rotate, setKeyAt, setStep, setVelAt, stepsOf, type ChannelClip } from '../lib/pattern';
 import { moveIndex, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
@@ -21,7 +21,7 @@ import {
 import { arrVersion, S } from '../state/store';
 import { ensurePluginScan } from '../state/pluginScan';
 import { say, setU, U } from '../state/ui';
-import { dblCheck, edgeScroller, track } from '../ui/drag';
+import { edgeScroller, track } from '../ui/drag';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { channelIcon, InstIcon } from '../ui/instIcons';
@@ -30,7 +30,7 @@ import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
 import { wheelInsert } from '../ui/InsertPicker';
 import { showInsert } from '../state/mixView';
-import { closeChannelWindow, toggleChannelWindow } from './ChannelWindow';
+import { toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
 import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
 
@@ -129,7 +129,9 @@ function Rack(props: { z: number; docked?: boolean }) {
       if (e.button === 0) { e.stopPropagation(); openRoll(c.id); }
       return;
     }
-    const on = e.button === 0 ? !isStepOn(unwrap(pt()).notes, c.id, step) : false;
+    // FL: the left button lights steps, the right one clears them. A left press on a lit step keeps it
+    // (and a drag from it paints, never erases a run you only meant to extend)
+    const on = e.button === 0;
     const g = new Gesture(on ? t('b.pe.gestSteps') : t('b.pe.gestDelSteps'));
     // freeze the grid (and the window's width) before the first step can make the pattern longer
     setHold({ cw: G.cw, steps: G.steps });
@@ -314,29 +316,51 @@ function Rack(props: { z: number; docked?: boolean }) {
       if (c) editClipboard(c, k);
       return;
     }
+    const shiftSteps = (d: number) => {
+      const c = selCh(); if (!c) return;
+      commit([putNotes(pt(), rotate(unwrap(pt()).notes, c.id, stepsOf(pt()), d))], t('b.pe.shiftSteps'));
+      say(c.name + ' · ' + t(d < 0 ? 'b.pe.shiftL' : 'b.pe.shiftR'));
+    };
+    // FL: Shift+Ctrl+← / → shifts the selected channel's steps by one, wrapping around the pattern
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault(); e.stopPropagation();
+      shiftSteps(e.key === 'ArrowLeft' ? -1 : 1);
+      return;
+    }
     if (e.ctrlKey || e.metaKey) return;
+    // FL: ↑ / ↓ select the channel above / below
+    if (!e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault(); e.stopPropagation();
+      const cs = chans(); if (!cs.length) return;
+      const cur = cs.findIndex(c => c.id === selCh()?.id);
+      const to = clamp(cur < 0 ? 0 : cur + (e.key === 'ArrowUp' ? -1 : 1), 0, cs.length - 1);
+      selectChannel(cs[to].id);
+      const top = to * RACK_ROW, h = size().h;
+      if (top < scroll().y) setScroll(s => ({ ...s, y: top }));
+      else if (top + RACK_ROW > scroll().y + h) setScroll(s => ({ ...s, y: Math.min(maxScroll().y, top + RACK_ROW - h) }));
+      return;
+    }
     if (e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault(); e.stopPropagation();
       moveChannel(e.key === 'ArrowUp' ? -1 : 1);
       return;
     }
-    // FL: Shift+Alt+← / → shifts the selected channel's steps by one, wrapping around the pattern
+    // the earlier binding of the same thing, kept for those used to it
     if (e.altKey && e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault(); e.stopPropagation();
-      const c = selCh(); if (!c) return;
-      const d = e.key === 'ArrowLeft' ? -1 : 1;
-      commit([putNotes(pt(), rotate(unwrap(pt()).notes, c.id, stepsOf(pt()), d))], t('b.pe.shiftSteps'));
-      say(c.name + ' · ' + t(d < 0 ? 'b.pe.shiftL' : 'b.pe.shiftR'));
+      shiftSteps(e.key === 'ArrowLeft' ? -1 : 1);
       return;
     }
     if (e.altKey) return;
     if (e.key.toLowerCase() === 'g') { e.preventDefault(); e.stopPropagation(); toggleGraph(); }
   };
   const notesCount = createMemo(() => { arrVersion(); return unwrap(pt()).notes.length; });
-  // wheel over the title bar: previous / next pattern, like the toolbar's pattern selector
+  // Shift+wheel over the title bar: previous / next pattern (FL). A plain wheel does nothing here, so
+  // scrolling the channel list and drifting onto the title bar no longer switches the pattern
   let headAcc = 0;
   const headWheel = (e: WheelEvent) => {
     if (e.defaultPrevented) return; // the swing field turns its own value
+    if (!e.shiftKey) return;
     e.preventDefault();
     headAcc += e.deltaY || e.deltaX;
     if (Math.abs(headAcc) < 40) return;
@@ -434,7 +458,7 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
     if (e.shiftKey) { e.stopPropagation(); return (e.ctrlKey || e.metaKey) ? toggleChannelSelected(c().id) : selectChannelRange(c().id); }
     selectChannel(c().id);
     if (e.ctrlKey || e.metaKey) { audition(c().id, undefined, 0.8, true); return; }
-    if (dblCheck('cname' + c().id)) { e.stopPropagation(); closeChannelWindow(); openRoll(c().id); return; }
+    // FL: every click opens / closes the channel's window; the Piano roll is F7, the mini roll or the menu
     toggleChannelWindow(c().id);
   };
   return (

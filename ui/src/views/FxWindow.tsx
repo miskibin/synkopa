@@ -560,7 +560,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
       return A.fxOp({ ...plain(f), params: { ...plain(f.params), pitch, formant } });
     };
     const tell = () => { const p = findFx(props.fxId)?.f.params; if (p) say('Voice · Pitch ' + (p.pitch ?? 0).toFixed(1) + ' st · Formant ' + (p.formant ?? 0).toFixed(1) + ' st'); };
-    if (dblCheck('voice' + props.fxId)) { const op = put(0, 0); if (op) commit([op], 'Pitch / Formant'); tell(); return; }
+    if (e.altKey || dblCheck('voice' + props.fxId)) { const op = put(0, 0); if (op) commit([op], 'Pitch / Formant'); tell(); return; }
     const g = new Gesture('Pitch / Formant');
     const r = cv.getBoundingClientRect();
     const at = (cx: number, cy: number) => {
@@ -579,7 +579,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     const pd = defOf(f, which); if (!pd) return;
     e.preventDefault();
     const name = t(which === 'lo' ? 'c.fx.half.edgeLo' : 'c.fx.half.edgeHi');
-    if (dblCheck('half' + which + props.fxId)) { const op = setParam(props.fxId, which, pd.def); if (op) commit([op], name); return; }
+    if (e.altKey || dblCheck('half' + which + props.fxId)) { const op = setParam(props.fxId, which, pd.def); if (op) commit([op], name); return; }
     const g = new Gesture(name);
     const r = cv.getBoundingClientRect();
     const at = (cx: number) => {
@@ -602,7 +602,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     const onF = x >= G.sx - 4;
     if (!onThr && !onF) return;
     e.preventDefault();
-    if (onThr && dblCheck('thr' + props.fxId)) { const op = setParam(props.fxId, 'thr', thrP.def); if (op) commit([op], t('c.fx.thr')); return; }
+    if (onThr && (e.altKey || dblCheck('thr' + props.fxId))) { const op = setParam(props.fxId, 'thr', thrP.def); if (op) commit([op], t('c.fx.thr')); return; }
     const g = new Gesture(onThr ? t('c.fx.thr') : t('c.fx.freq'));
     const r = cv.getBoundingClientRect();
     track(ev => {
@@ -622,7 +622,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     e.preventDefault();
     const id = which === 'pre' ? 'pre' : 'size', pd = defOf(f, id); if (!pd) return;
     const name = t(which === 'pre' ? 'c.verb.preName' : 'c.verb.decayName');
-    if (dblCheck('verb' + which + props.fxId)) { const op = setParam(props.fxId, id, pd.def); if (op) commit([op], name); return; }
+    if (e.altKey || dblCheck('verb' + which + props.fxId)) { const op = setParam(props.fxId, id, pd.def); if (op) commit([op], name); return; }
     const g = new Gesture(name), v = viz as ReverbViz, r = cv.getBoundingClientRect();
     v.drag = which; version++;
     const at = (cx: number) => {

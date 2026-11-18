@@ -191,3 +191,38 @@ export function applyProps(notes: readonly Note[], idx: readonly number[], chan:
   }
   return out;
 }
+
+/**
+ * Where pasted notes start (FL): at the step they were copied from, so a phrase lands on the same
+ * place in the bar of another pattern or channel. When that step is left of the view or past its
+ * first bar, the block moves by whole bars onto the first bar shown, keeping its place in the bar.
+ */
+export function pasteStart(from: number, viewPos: number, viewLen: number): number {
+  if (from >= viewPos - 1e-6 && from < viewPos + viewLen) return from;
+  return Math.max(0, from + Math.ceil((viewPos - from) / 16 - 1e-9) * 16);
+}
+
+/** Moves notes `idx` by `d` steps as one block (Shift+←/→), stopping at the pattern's start and end. */
+export function nudgeNotes(notes: readonly Note[], idx: readonly number[], d: number): Note[] {
+  if (!idx.length) return notes.slice();
+  const first = Math.min(...idx.map(i => notes[i].step)), last = Math.max(...idx.map(i => notes[i].step + (notes[i].trig ? 0 : notes[i].len)));
+  const by = Math.max(-first, Math.min(MAX_STEP - last, d));
+  const out = notes.slice();
+  for (const i of idx) out[i] = { ...notes[i], step: Math.round((notes[i].step + by) * 1e6) / 1e6 };
+  return out;
+}
+
+/**
+ * The velocity lane's stroke from `a` to `b` (steps, velocity 0..1): every note of channel `ch`
+ * starting between the two points (± `tol` steps) takes the line's value at its start. One call per
+ * pointer sample draws freehand without skipping notes on a fast drag; from the press point it is
+ * FL's right-drag ramp. With a selection only the selected notes change.
+ */
+export function velocityLine(notes: readonly Note[], ch: Id, sel: ReadonlySet<number>, a: { step: number; v: number }, b: { step: number; v: number }, tol: number): Note[] {
+  const lo = Math.min(a.step, b.step) - tol, hi = Math.max(a.step, b.step) + tol, span = b.step - a.step;
+  return notes.map((n, i) => {
+    if (n.ch !== ch || n.step < lo || n.step > hi || (sel.size && !sel.has(i))) return n;
+    const f = Math.abs(span) < 1e-9 ? 1 : Math.min(1, Math.max(0, (n.step - a.step) / span));
+    return { ...n, v: Math.round(Math.min(1, Math.max(0, a.v + (b.v - a.v) * f)) * 100) / 100 };
+  });
+}

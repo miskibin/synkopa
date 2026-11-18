@@ -1,7 +1,7 @@
 import { For, Show, createSignal, type JSX } from 'solid-js';
 import { clamp } from '../lib/format';
 import { t } from '../lib/i18n';
-import { dblCheck, track } from './drag';
+import { dblCheck, fineMul, track } from './drag';
 
 export interface KnobProps {
   /** Normalised position 0..1. */
@@ -37,7 +37,7 @@ const DIM: Record<KnobSize, { s: number; stroke: number; cap: number; ptr: numbe
   sm: { s: 26, stroke: 2.5, cap: 12, ptr: 5 },
 };
 
-/** Knob in three size tiers (see `KnobSize`): drag ↕ (Shift = fine), wheel, double-click = default, right-click = menu. */
+/** Knob in three size tiers (see `KnobSize`): drag ↕ (Ctrl or Shift = fine), wheel, double-click or Alt+click = default, right-click = menu. */
 export function Knob(p: KnobProps) {
   const d = () => DIM[p.size ?? 'md'];
   const geo = () => { const s = d().s, r = s / 2 - d().stroke / 2 - 1.5; return { s, c: s / 2, r, L: 2 * Math.PI * r * 0.75, C: 2 * Math.PI * r }; };
@@ -49,11 +49,11 @@ export function Knob(p: KnobProps) {
     if (e.button === 2) { e.preventDefault(); e.stopPropagation(); p.onMenu?.(e.clientX, e.clientY); return; }
     if (e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
-    if (dblCheck('knob' + p.key)) { p.onReset(); return; }
+    if (e.altKey || dblCheck('knob' + p.key)) { p.onReset(); return; }
     let t = clamp(p.t(), 0, 1), ly = e.clientY;
     p.onStart();
     track(ev => {
-      t = clamp(t + (ly - ev.clientY) / 150 * (ev.shiftKey ? 0.2 : 1), 0, 1); ly = ev.clientY;
+      t = clamp(t + (ly - ev.clientY) / 150 * fineMul(ev), 0, 1); ly = ev.clientY;
       p.onChange(t);
     }, () => p.onEnd(), 'ns-resize');
   };
@@ -89,10 +89,10 @@ export function MiniKnob(p: { t: () => number; key: string; title: string; color
     if (e.button === 2) { e.preventDefault(); p.onMenu?.(e.clientX, e.clientY); return; }
     if (e.button !== 0) return;
     e.preventDefault();
-    if (dblCheck('mk' + p.key)) { p.onReset(); return; }
+    if (e.altKey || dblCheck('mk' + p.key)) { p.onReset(); return; }
     let t = clamp(p.t(), 0, 1), ly = e.clientY;
     p.onStart();
-    track(ev => { t = clamp(t + (ly - ev.clientY) / 120 * (ev.shiftKey ? 0.2 : 1), 0, 1); ly = ev.clientY; p.onChange(t); }, () => p.onEnd(), 'ns-resize');
+    track(ev => { t = clamp(t + (ly - ev.clientY) / 120 * fineMul(ev), 0, 1); ly = ev.clientY; p.onChange(t); }, () => p.onEnd(), 'ns-resize');
   };
   const wheel = (e: WheelEvent) => {
     const d = e.deltaY || e.deltaX; if (!d) return;
@@ -147,7 +147,7 @@ export function NumField(p: {
     const v0 = p.value(), sy = e.clientY, sx = e.clientX;
     let started = false;
     track(ev => {
-      const d = ((ev.clientX - sx) + (sy - ev.clientY)) * (ev.shiftKey ? 0.2 : 1);
+      const d = ((ev.clientX - sx) + (sy - ev.clientY)) * fineMul(ev);
       if (!started) { if (Math.abs(d) < 2) return; started = true; p.apply(v0, 'begin'); }
       p.apply(p.drag(v0, d), 'move');
     }, () => { if (started) p.apply(p.value(), 'end'); }, 'ns-resize');

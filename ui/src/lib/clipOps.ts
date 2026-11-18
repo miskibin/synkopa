@@ -51,16 +51,20 @@ export function pasteClips(cb: Clip[], beat: number, track: number | null, nTrac
   }));
 }
 
-/** Resize from an edge. `srcLen` is the source length in beats (audio only; Infinity for patterns). */
+/**
+ * Resize from an edge. `srcLen` is the source length in beats (audio only; Infinity for patterns).
+ * `minL` is the shortest a trim leaves a clip, but a clip that is already shorter keeps its length
+ * as its floor: an edge never moves against the drag, so trimming a short clip cannot make it longer.
+ */
 export function resizeClip(o: Clip, edge: 'l' | 'r', target: number, minL: number, srcLen: number): Clip {
   const n = { ...o };
   if (edge === 'r') {
-    let len = Math.max(minL, target - o.start);
+    let len = Math.max(Math.min(minL, o.len), target - o.start);
     if (o.kind === 'audio' || o.kind === 'comp') len = Math.min(len, srcLen - o.offset);
     n.len = Math.min(len, TOTAL - o.start);
   } else {
     const lo = o.kind === 'audio' || o.kind === 'comp' ? o.start - o.offset : 0;
-    const ns = clamp(target, Math.max(0, lo), o.start + o.len - minL);
+    const ns = clamp(target, Math.max(0, lo), o.start + o.len - Math.min(minL, o.len));
     n.start = ns; n.offset = o.offset + (ns - o.start); n.len = o.len - (ns - o.start);
   }
   return n;
@@ -175,4 +179,45 @@ export function putSoundClips(clips: readonly Clip[], edited: Clip, patch: Parti
   if (!Object.keys(shared).length) return { op: 'putClips', clips: [self] };
   const others = clips.filter(c => c.id !== edited.id && c.kind === 'audio' && c.ref === edited.ref && SHARED_SOUND.some(k => k in shared && (c[k] ?? null) !== (shared[k] ?? null)));
   return { op: 'putClips', clips: [self, ...others.map(c => ({ ...c, ...shared }))] };
+}
+
+/**
+ * The slice tool dragged down or up across lanes (FL): every clip on tracks `t0`..`t1` that the
+ * beat `b` falls inside is cut there. Returns the clips to put (both halves of each), empty when
+ * the line crosses none.
+ */
+export function sliceAcross(clips: readonly Clip[], b: number, t0: number, t1: number, alloc: () => number): Clip[] {
+  const lo = Math.min(t0, t1), hi = Math.max(t0, t1);
+  return clips.filter(c => c.track >= lo && c.track <= hi).flatMap(c => sliceClip(c, b, alloc()) ?? []);
+}
+
+/**
+ * The paint tool's sweep (FL): the cells a drag from the first clip to (`beat`, `track`) passes that
+ * are still free. The grid is the first clip's own: cells are `len` wide and start at `first.start`,
+ * in both directions and on any lane. `taken` holds the cells already painted ("track:cell").
+ */
+export function paintCells(first: { start: number; len: number; track: number }, beat: number, track: number, nTracks: number, total: number, taken: ReadonlySet<string>): { track: number; start: number; key: string }[] {
+  const tr = Math.max(0, Math.min(nTracks - 1, track));
+  const cell = Math.floor((beat - first.start) / first.len + 1e-9), start = first.start + cell * first.len;
+  const key = tr + ':' + cell;
+  if (start < -1e-9 || start + first.len > total + 1e-9 || taken.has(key)) return [];
+  return [{ track: tr, start: Math.max(0, start), key }];
+}
+
+/**
+ * Move lane `i` to the place of lane `j` (its neighbour: Move up / Move down). Like `insertTrackOps`,
+ * the lanes swap what they hold and ids stay with their slots: names, colours, routing and heights
+ * trade places, the clips follow, and a volume automation keeps driving the track it was made for.
+ */
+export function swapTrackOps(p: Project, i: number, j: number): Op[] {
+  const a = p.tracks[i], b = p.tracks[j];
+  if (!a || !b || i === j) return [];
+  const ops: Op[] = [{ op: 'putTrack', track: { ...b, id: a.id } }, { op: 'putTrack', track: { ...a, id: b.id } }];
+  const moved = p.clips.filter(c => c.track === i || c.track === j).map(c => ({ ...c, track: c.track === i ? j : i }));
+  if (moved.length) ops.push({ op: 'putClips', clips: moved });
+  for (const au of p.automations ?? []) {
+    const t = au.target;
+    if (t.kind === 'trackVol' && (t.id === a.id || t.id === b.id)) ops.push({ op: 'putAutomation', automation: { ...au, target: { kind: 'trackVol', id: t.id === a.id ? b.id : a.id } } });
+  }
+  return ops;
 }

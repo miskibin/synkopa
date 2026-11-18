@@ -124,6 +124,14 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
     }, () => { if (g) g.end(); else h.seek(b0); }, edge === 'body' ? 'grabbing' : 'ew-resize');
     return;
   }
+  // FL: a plain press or drag moves the start position (it follows the pointer); a loop is drawn with
+  // Ctrl. A sloppy click used to leave a loop behind, as an undo step in the Playlist.
+  if (!(e.ctrlKey || e.metaKey)) {
+    let at = b0;
+    h.seek(b0);
+    tr(ev => { const b = snapAt(ev); if (b !== at) { at = b; h.seek(b); } }, () => {}, 'ew-resize');
+    return;
+  }
   let last: BeatRange | null = lp;
   tr(ev => {
     if (!g && Math.abs(ev.clientX - e.clientX) > 4) g = h.edit(t('a.pl.loop'));

@@ -6,11 +6,12 @@ import { createEffect, For, onCleanup, onMount, Show } from 'solid-js';
 import { be, isTauri } from './api/backend';
 import { baseName } from './lib/format';
 import { typingIn } from './lib/keys';
+import { awayZone, releasesFocus } from './lib/focusZone';
 import { snapRes } from './lib/snap';
 import * as A from './state/actions';
 import { findFx, S } from './state/store';
 import { swapTake } from './state/comp';
-import { closeMenu, docked, say, setU, tucked, U } from './state/ui';
+import { closeMenu, docked, openRename, say, setU, tucked, U } from './state/ui';
 import { ContextMenu } from './ui/Menu';
 import { osDragEnd, osDragOver, osDrop } from './views/Browser';
 import { FxWindow } from './views/FxWindow';
@@ -75,10 +76,21 @@ function plugRank(z: number) {
 function reclaimFocus(e: PointerEvent) {
   const ae = document.activeElement as HTMLElement | null, tg = e.target as HTMLElement;
   lastClickInWin = !!tg.closest('.win');
-  if (ae && ae !== document.body && ae.closest('.win') && !lastClickInWin && !typingIn(tg)) ae.blur();
+  // also from the Browser (its search box, its list) and from a toolbar button or dropdown: Space typed
+  // a space into the search, Enter pressed Record again
+  if (releasesFocus(ae, tg, ae === document.body)) ae!.blur();
+  const away = awayZone(tg);
+  if (away !== undefined) clipKeysAway = away;
 }
 /** The last click was in a floating window (an effect window's title bar takes no focus, so the focus alone does not tell). */
 let lastClickInWin = false;
+/**
+ * The panel the user last pressed in when it was not the Playlist (an effect window, the Mixer, the
+ * sample editor). While it is on screen the clip keys do nothing: Delete after turning a knob used
+ * to remove the clips still selected in the Playlist, often out of sight.
+ */
+let clipKeysAway: HTMLElement | null = null;
+const clipKeysBlocked = () => !!clipKeysAway && clipKeysAway.isConnected && clipKeysAway.getClientRects().length > 0;
 
 /** The channel the typing keyboard plays: the open channel window, the selected channel while the rack or the roll is open,
  * the channel feeding the top effect window's insert, the MIDI target, else the first instrument. */
@@ -134,7 +146,7 @@ function onKey(e: KeyboardEvent) {
       return void leaveMixView();
     }
     // the window in front closes, whichever kind it is (FL: Esc closes the focused window)
-    if (top) return closeFloating(top);
+    if (top) { clipKeysAway = null; return closeFloating(top); }
     if (U.compSel) return setU('compSel', null);
     return setU('sel', []);
   }
@@ -154,12 +166,20 @@ function onKey(e: KeyboardEvent) {
   if (e.key === 'F6') { e.preventDefault(); return toggleRack(); }
   // the pattern selector: F4 next empty pattern, F2 rename, numpad 1–9 / + / − pick
   if (e.key === 'F4') { e.preventDefault(); return nextEmptyPattern(); }
-  if (e.key === 'F2') { e.preventDefault(); const r = document.querySelector('[data-patsel]')?.getBoundingClientRect(); return renameCurrent(r?.left ?? window.innerWidth / 2, r ? r.bottom + 4 : 80); }
+  if (e.key === 'F2') {
+    e.preventDefault();
+    // FL: F2 renames what you are working on — the selected mixer track after a press in the Mixer, else the pattern
+    if (U.mixView || (clipKeysBlocked() && clipKeysAway!.closest('.mixdock, .mixview, .mixwin'))) {
+      const m = S.project.inserts.find(x => x.id === U.mixSel), r = document.querySelector('.strip[data-ins="' + U.mixSel + '"]')?.getBoundingClientRect();
+      if (m) return openRename(r?.left ?? window.innerWidth / 2, r ? r.top + 24 : 120, m.name, v => A.setInsert(m.id, { name: v }, tl('c.mix.undoName')));
+    }
+    const r = document.querySelector('[data-patsel]')?.getBoundingClientRect(); return renameCurrent(r?.left ?? window.innerWidth / 2, r ? r.bottom + 4 : 80);
+  }
   if (!m && !e.altKey && e.code === 'NumpadAdd') { e.preventDefault(); return stepPattern(1); }
   if (!m && !e.altKey && e.code === 'NumpadSubtract') { e.preventDefault(); return stepPattern(-1); }
   if (!m && !e.altKey && /^Numpad[1-9]$/.test(e.code)) { e.preventDefault(); return pickPatternNum(+e.code.slice(6)); }
   if (m && e.shiftKey && k === 'c') { e.preventDefault(); return clonePattern(); }
-  if (e.key === 'F5') { e.preventDefault(); return anyTucked() ? A.showPlugs() : A.playlistFront(); }
+  if (e.key === 'F5') { e.preventDefault(); clipKeysAway = null; return anyTucked() ? A.showPlugs() : A.playlistFront(); }
   if (e.key === 'F9') { e.preventDefault(); return toggleMixer(); }
   // FL: route the selected Channel Rack channels to the selected mixer insert (Shift: one per insert from it on)
   if (m && !e.altKey && e.code === 'KeyL') { e.preventDefault(); return routeSelectedChannels(U.mixSel, e.shiftKey); }
@@ -167,18 +187,30 @@ function onKey(e: KeyboardEvent) {
   if (m && e.altKey && !e.shiftKey && e.code === 'KeyE') { e.preventDefault(); return void A.exportInPlace(); }
   if (m && k === 'z') { e.preventDefault(); return void (e.shiftKey ? A.redo() : A.undo()); }
   if (m && k === 'y') { e.preventDefault(); return void A.redo(); }
-  if (m && k === 'n') { e.preventDefault(); return void A.projectNew(); }
+  // FL: Ctrl+N saves a new version (Beat → Beat_2) and carries on there; a new project is Ctrl+Shift+N
+  if (m && k === 'n') { e.preventDefault(); return void (e.shiftKey ? A.projectNew() : A.projectSave(false, true)); }
   if (m && k === 'o') { e.preventDefault(); return void A.projectOpen(); }
   if (m && k === 's') { e.preventDefault(); return void A.projectSave(e.shiftKey); }
   if (m && e.shiftKey && k === 'r') { e.preventDefault(); return setU('exportOpen', true); }
-  // the Mix view hides the Playlist: its clip keys must not edit an arrangement nobody sees
-  if (U.mixView && ((m && !e.altKey && 'abdcxvm'.includes(k)) || e.key === 'Delete' || e.key === 'Backspace' || (e.shiftKey && e.key.startsWith('Arrow')))) return;
+  // FL: Ctrl+M is the metronome, wherever the keyboard is
+  if (m && !e.altKey && !e.shiftKey && k === 'm') { e.preventDefault(); return void A.setTransportFlag('metro', !S.transport.metro); }
+  // the clip keys edit the Playlist only while you work there: not in the Mix view (which hides it), nor
+  // right after a press in an effect window, the Mixer or an editor (FL: keys go to the focused window)
+  const clipKey = (m && !e.altKey && 'abdcxv'.includes(k) && k.length === 1) || e.key === 'Delete' || e.key === 'Backspace' || (e.shiftKey && e.key.startsWith('Arrow')) || (e.altKey && !m && e.code === 'KeyM');
+  if (clipKey && (U.mixView || clipKeysBlocked())) {
+    e.preventDefault(); // also stops Ctrl+D / Ctrl+B reaching the browser (bookmarks)
+    if (!U.mixView && (U.sel.length || (m && (k === 'v' || k === 'a')))) say(tl('a.app.clipKeysAway'));
+    return;
+  }
   if (m && k === 'a') { e.preventDefault(); return A.selectAll(); }
-  if (m && (k === 'b' || k === 'd')) { e.preventDefault(); return A.duplicate(); } // Ctrl+B (FL) and Ctrl+D (Ableton/Reaper); preventDefault also stops the browser bookmark
+  if (m && k === 'b') { e.preventDefault(); return A.duplicate(); }
+  // FL: Ctrl+D deselects (it used to duplicate, which left a stray block of clips for an FL hand)
+  if (m && k === 'd') { e.preventDefault(); if (U.sel.length) { setU('sel', []); say(tl('a.app.deselected')); } return; }
   if (m && k === 'c') { e.preventDefault(); return A.copy(); }
   if (m && k === 'x') { e.preventDefault(); return A.cut(); }
   if (m && k === 'v') { e.preventDefault(); return A.paste(); }
-  if (m && k === 'm') { e.preventDefault(); return A.toggleMuteSel(); }
+  // FL: Alt+M mutes / unmutes the selected clips
+  if (e.altKey && !m && e.code === 'KeyM') { e.preventDefault(); return A.toggleMuteSel(); }
   if (m && (k === '=' || k === '+')) { e.preventDefault(); return A.zoomAt(1.25); }
   if (m && k === '-') { e.preventDefault(); return A.zoomAt(0.8); }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); return U.autoSel?.idx.length ? A.deleteAutoPoints() : A.delIds([...U.sel]); }
@@ -212,6 +244,14 @@ const onKeyUp = (e: KeyboardEvent) => {
 const onBlur = () => { if (U.alt) setU('alt', false); releaseAll(); };
 
 export function App() {
+  // Clips selected by something other than a press in the Playlist (Automate from a mixer fader, a
+  // dropped file, a finished take) are what the user now looks at: the clip keys go back to them
+  let selSeen = U.sel.join(',');
+  createEffect(() => {
+    const s = U.sel.join(',');
+    if (s !== selSeen && s) clipKeysAway = null;
+    selSeen = s;
+  });
   onMount(() => {
     startMidi();
     // the gear in a plugin window's header: Synkopa's own window for that plugin channel or effect

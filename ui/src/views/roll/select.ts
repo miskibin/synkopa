@@ -12,6 +12,8 @@ export function marqueeDrag(ctx: RollCtx, e: RollPtr, add: boolean) {
   // the box's anchor in content px: it stays on its notes while the view auto-scrolls
   const G0 = ctx.geo(), ax = p0.x + G0.sx, ay = p0.y + G0.sy;
   let moved = false;
+  // a plain press on empty grid drops the selection at once (FL): a click without a drag deselects too
+  if (!add && ctx.sel().size) ctx.setSel(new Set<number>());
   ctx.setMarq({ x0: p0.x, y0: p0.y, x1: p0.x, y1: p0.y });
   const run = (m: RollMove) => {
     const q = m.p, G = ctx.geo(), sx = ax - G.sx, sy = ay - G.sy;

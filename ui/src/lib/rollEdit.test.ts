@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Channel, Note } from '../api/types';
 import {
-  applyProps, fitRange, fmtStart, followPage, invertSelection, legato, MAX_STEP, notesOfKey, nudgeVelocity,
-  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
+  applyProps, fitRange, fmtStart, followPage, invertSelection, legato, MAX_STEP, notesOfKey, nudgeNotes, nudgeVelocity, pasteStart,
+  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, velocityLine, wheelNotches,
 } from './rollEdit';
 
 const CH = { id: 1, root: 60 } as Channel;
@@ -140,5 +140,50 @@ describe('note properties', () => {
   it('refuses to leave the song or the keys', () => {
     expect(applyProps(N, [0, 1], CH, { key: 125 })).toBeNull();
     expect(applyProps(N, [3], CH, { start: MAX_STEP - 1 })).toBeNull();
+  });
+});
+
+describe('paste and nudge (FL)', () => {
+  it('pastes at the step the notes were copied from while that is in view', () => {
+    expect(pasteStart(0, 0, 64)).toBe(0);
+    expect(pasteStart(20, 16, 64)).toBe(20);
+  });
+  it('moves the block by whole bars onto the first bar shown when its place is out of view', () => {
+    // copied from bar 1 beat 2, the view starts at bar 5: bar 5 beat 2
+    expect(pasteStart(4, 64, 64)).toBe(68);
+    // copied from bar 9, the view shows bars 1-4: bar 1, same place in the bar
+    expect(pasteStart(134, 0, 64)).toBe(6);
+    // a view starting mid-bar: the first place in the bar at or after it
+    expect(pasteStart(2, 20, 64)).toBe(34);
+  });
+  it('nudges the block by a grid step and stops at the start', () => {
+    const notes: Note[] = [{ ch: 1, step: 1, len: 1, p: 60 }, { ch: 1, step: 4.5, len: 2, p: 62 }, { ch: 2, step: 0, len: 1, p: 60 }];
+    expect(nudgeNotes(notes, [0, 1], 1).map(n => n.step)).toEqual([2, 5.5, 0]);
+    // the earliest note stops at 0, and the others keep their distance to it
+    expect(nudgeNotes(notes, [0, 1], -4).map(n => n.step)).toEqual([0, 3.5, 0]);
+    expect(nudgeNotes(notes, [], 1)).toEqual(notes);
+  });
+});
+
+describe('velocity lane strokes', () => {
+  const hats: Note[] = [0, 1, 2, 3, 4, 5, 6, 7].map(s => ({ ch: 1, step: s, len: 1, p: 60 }));
+  const none = new Set<number>();
+  it('a fast drag sets every note it passed, not only those under the samples', () => {
+    const out = velocityLine(hats, 1, none, { step: 0, v: 0.5 }, { step: 6, v: 0.5 }, 0.25);
+    expect(out.map(n => n.v)).toEqual([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, undefined]);
+  });
+  it('a ramp gives each note the line\'s value at its start, in either direction', () => {
+    const up = velocityLine(hats, 1, none, { step: 0, v: 0.2 }, { step: 4, v: 1 }, 0.25);
+    expect(up.slice(0, 5).map(n => n.v)).toEqual([0.2, 0.4, 0.6, 0.8, 1]);
+    const back = velocityLine(hats, 1, none, { step: 4, v: 1 }, { step: 0, v: 0.2 }, 0.25);
+    expect(back.slice(0, 5).map(n => n.v)).toEqual([0.2, 0.4, 0.6, 0.8, 1]);
+  });
+  it('a press without a move sets the note under it', () => {
+    expect(velocityLine(hats, 1, none, { step: 3.1, v: 0.3 }, { step: 3.1, v: 0.3 }, 0.25).map(n => n.v)).toEqual([undefined, undefined, undefined, 0.3, undefined, undefined, undefined, undefined]);
+  });
+  it('leaves other channels and, with a selection, unselected notes alone', () => {
+    const mixed: Note[] = [...hats.slice(0, 3), { ch: 2, step: 1, len: 1, p: 60 }];
+    const out = velocityLine(mixed, 1, new Set([0, 2]), { step: 0, v: 0.4 }, { step: 2, v: 0.4 }, 0.25);
+    expect(out.map(n => n.v)).toEqual([0.4, undefined, 0.4, undefined]);
   });
 });
