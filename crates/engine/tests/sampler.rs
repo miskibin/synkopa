@@ -748,7 +748,8 @@ fn the_mock_fixture_matches_the_engine() {
         .iter()
         .map(|f| serde_json::json!({ "file": f.file, "name": f.name, "group": f.group, "root": f.root, "pitched": f.pitched, "dur": f.dur, "ch": f.ch, "bytes": f.bytes.len(), "color": factory::color(f) }))
         .collect();
-    let want = serde_json::json!({ "kit": factory::KIT, "files": files, "empty": Project::empty(), "demo": Project::demo() });
+    let unlisted: Vec<_> = factory::files().iter().filter(|f| !f.is_listed()).map(|f| f.file).collect();
+    let want = serde_json::json!({ "kit": factory::KIT, "files": files, "unlisted": unlisted, "empty": Project::empty(), "demo": Project::demo() });
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/src/api/factory.json");
     if std::env::var_os("WAVE_UPDATE_FIXTURES").is_some() {
         std::fs::write(path, serde_json::to_string(&want).unwrap() + "\n").unwrap();

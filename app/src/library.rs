@@ -92,13 +92,12 @@ fn installed(k: &Kit) -> bool {
 
 /// The standard library first (always there), then the downloadable kits.
 pub fn kits() -> Vec<KitInfo> {
-    let f = wave_engine::factory::files();
     let standard = KitInfo {
         id: wave_engine::factory::KIT.into(),
         name: "Standard library".into(),
         description: "Drums, percussion, orchestra, tonal one-shots and effects that ship with Synkopa".into(),
-        bytes: f.iter().map(|x| x.bytes.len() as u64).sum(),
-        count: f.len(),
+        bytes: wave_engine::factory::files().iter().map(|f| f.bytes.len() as u64).sum(),
+        count: wave_engine::factory::listed_files().count(),
         installed: true,
     };
     let downloads = manifest().instruments.into_iter().map(|k| KitInfo {
@@ -118,8 +117,7 @@ fn standard_files() -> Result<Listing, String> {
         wave_engine::factory::install().map_err(|e| format!("could not write the standard library to {}: {e}", library_dir().display()))?;
     Ok(Listing {
         truncated: false,
-        files: wave_engine::factory::files()
-            .iter()
+        files: wave_engine::factory::listed_files()
             .map(|f| FileInfo {
                 name: f.name.into(),
                 path: dir.join(f.file).display().to_string(),

@@ -2,6 +2,8 @@ import { createSignal } from 'solid-js';
 import { be } from '../api/backend';
 import type { AudioConfig, AudioStatus } from '../api/types';
 import { t } from '../lib/i18n';
+import { notify } from './notice';
+import { setU } from './ui';
 
 /** What to tell the user when the audio status changes from `prev` to `next`; null = nothing new. */
 export function audioNotice(prev: AudioStatus | null, next: AudioStatus): string | null {
@@ -65,3 +67,37 @@ export async function applyAudioConfig(cfg: AudioConfig, recovering = false) {
 }
 
 export const switchToWasapi = () => applyAudioConfig(defaultAudioConfig('wasapi'), true);
+
+/** Why nothing can be heard (the output failed to open), or null when audio runs or is not known yet. */
+export function noAudioReason(s: AudioStatus | null): string | null {
+  if (!s || s.running) return null;
+  return s.error ?? s.unavailableOutput ?? null;
+}
+
+let audioTabWanted = false;
+/** Settings opens on the Audio tab once (after "Audio settings" on a notice). */
+export const takeAudioTabRequest = () => { const w = audioTabWanted; audioTabWanted = false; return w; };
+export function openAudioSettings() { audioTabWanted = true; setU('settings', true); }
+
+/**
+ * Play / pattern play while the output is not open: transport would start but nothing would
+ * move or sound, so say why and offer a retry (the device may be back) and the audio settings.
+ * Returns true when it warned.
+ */
+export function warnIfNoAudio(): boolean {
+  const s = audioStatus();
+  const why = noAudioReason(s);
+  if (!s || !why) return false;
+  const retry = async () => {
+    await applyAudioConfig({ host: s.host, output: s.output, input: s.input, sampleRate: s.sampleRate, bufferSize: s.bufferSize, inputChannel: s.inputChannel ?? null });
+    const now = audioStatus();
+    const still = noAudioReason(now);
+    if (still) notify(t('d.audio.play.err', { err: still }), [{ label: t('d.audio.play.settings'), act: openAudioSettings }], 12000);
+    else notify(t('d.audio.play.back'));
+  };
+  notify(t('d.audio.play.err', { err: why }), [
+    { label: t('d.audio.play.retry'), act: () => void retry() },
+    { label: t('d.audio.play.settings'), act: openAudioSettings },
+  ], 12000);
+  return true;
+}

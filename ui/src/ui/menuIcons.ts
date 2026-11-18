@@ -126,7 +126,7 @@ export const builtinGlyph = (inst: string): MenuGlyph => BUILTIN[inst] ?? INST_I
 
 const LIB_GROUP: Record<string, MenuGlyph> = {
   Kicks: g(faCircleDot), Snares: g(faDrum), Claps: g(faHandsClapping), Hats: g(faDrumSteelpan),
-  Cymbals: g(faCompactDisc), Toms: INST_ICONS.drums, Percussion: g(faHandFist), Tonal: g(faMusic),
+  Cymbals: g(faCompactDisc), Toms: INST_ICONS.drums, Percussion: g(faHandFist), 808: INST_ICONS.bass, Tonal: g(faMusic),
   Orchestra: g(faWind), FX: INST_ICONS.fx, Loops: g(faRepeat),
 };
 /** Glyph for a standard-library sample group (by its id, not its translated name); other folders get the sample icon. */

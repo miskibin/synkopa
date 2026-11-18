@@ -7,6 +7,8 @@ import { SAMPLE_ROOT, samplerDefault, VOL_UNITY, type Channel, type Id, type Pro
 export interface FactoryFile { file: string; name: string; group: string; root: number; pitched: boolean; dur: number; ch: number; bytes: number; color: string }
 export const FACTORY_KIT: string = data.kit;
 export const FACTORY_FILES: readonly FactoryFile[] = data.files;
+const unlisted = new Set(data.unlisted);
+export const FACTORY_LISTED_FILES = FACTORY_FILES.filter(f => !unlisted.has(f.file));
 export const LIB_SCHEME = 'lib:';
 export const libPath = (file: string) => `${LIB_SCHEME}${FACTORY_KIT}/${file}`;
 /** The standard-library file a stored path names (`lib:Standard/<file>`), if it is one. */

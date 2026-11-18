@@ -237,6 +237,10 @@ pub struct InsertRt {
     idle_at: usize,
     /// Set for the block just processed when the insert contributed nothing.
     idle: bool,
+    /// Something wrote into `l`/`r` this block (the chain, the fader, the PDC line, a track
+    /// or a send): they have to be zeroed before the next one. While nothing wrote, they are
+    /// known zeros and `gate` can skip its silence scan.
+    pub(crate) dirty: bool,
     /// Low-latency monitoring: this insert carries the live input of the armed track. Its
     /// effects with latency are skipped, its PDC delay runs *before* the chain (on the
     /// playback only, see `Graph::mon`) and the live input goes through undelayed.
@@ -298,6 +302,7 @@ impl InsertRt {
             parked: false,
             idle_at: usize::MAX,
             idle: false,
+            dirty: false,
             low_lat: false,
             level: 0,
             to_master: true,
@@ -341,6 +346,9 @@ impl InsertRt {
 
     /// Before the chain: the own input delayed to its slowest source, plus what was sent in.
     fn take_sends(&mut self, n: usize) {
+        // the input-delay ring re-emits what it held even after the input went silent: while
+        // it is not empty (or a send fed us) the buffer is not a known zero
+        self.dirty |= !self.in_dly.0.is_empty() || self.fed;
         self.in_dly.0.run(&mut self.l[..n]);
         self.in_dly.1.run(&mut self.r[..n]);
         if self.fed {
@@ -374,6 +382,12 @@ pub struct Graph {
     pub inserts: Vec<InsertRt>,
     pub tracks: Vec<TrackRt>,
     track_bufs: Vec<(Vec<f32>, Vec<f32>)>,
+    /// Which track buffers were written during the current block: they are zeroed before the
+    /// next one, and while a buffer was not written it is known zeros (readers can skip it).
+    track_dirty: Vec<bool>,
+    /// Block length of the block just rendered: dirty buffers are cleared over exactly this
+    /// range (a short block after a long one must not leave stale samples past its end).
+    cleared_n: usize,
     /// Track index whose insert receives the live input when monitoring.
     pub monitor_track: Option<usize>,
     /// Pre-chain PDC line of the low-latency monitored insert (`pdc` frames, see `InsertRt::low_lat`).
@@ -389,11 +403,14 @@ pub struct Graph {
 impl Graph {
     pub fn new(inserts: Vec<InsertRt>, tracks: Vec<TrackRt>, monitor_track: Option<usize>, max_block: usize) -> Self {
         let track_bufs = tracks.iter().map(|_| (vec![0.0; max_block], vec![0.0; max_block])).collect();
+        let track_dirty = vec![false; tracks.len()];
         let depth = inserts.iter().skip(1).map(|i| i.level).max().unwrap_or(0);
         Self {
             inserts,
             tracks,
             track_bufs,
+            track_dirty,
+            cleared_n: 0,
             monitor_track,
             mon: (Ring::default(), Ring::default()),
             mon_ins: None,
@@ -1632,14 +1649,27 @@ impl Rt {
         ahead: bool,
     ) {
         let sr = self.sr;
-        for (l, r) in self.graph.track_bufs.iter_mut() {
-            l[..n].fill(0.0);
-            r[..n].fill(0.0);
+        // only buffers written during the last block have to be cleared; while nothing wrote
+        // into a buffer it is known zeros, and its writers are the only ones who can say when
+        // that stopped being true (write-side, see the `dirty` flags). Clear exactly what the
+        // last block could have written: the current block's length would miss stale samples
+        // when a short block follows a long one.
+        let g = &mut *self.graph;
+        for (ti, (l, r)) in g.track_bufs.iter_mut().enumerate() {
+            if g.track_dirty[ti] {
+                l[..g.cleared_n].fill(0.0);
+                r[..g.cleared_n].fill(0.0);
+                g.track_dirty[ti] = false;
+            }
         }
-        for ins in self.graph.inserts.iter_mut() {
-            ins.l[..n].fill(0.0);
-            ins.r[..n].fill(0.0);
+        for ins in g.inserts.iter_mut() {
+            if ins.dirty {
+                ins.l[..g.cleared_n].fill(0.0);
+                ins.r[..g.cleared_n].fill(0.0);
+                ins.dirty = false;
+            }
         }
+        g.cleared_n = n;
         self.click[..n].fill(0.0);
 
         let bpm = self.timeline.bpm;
@@ -1710,12 +1740,13 @@ impl Rt {
                 }
             }
         }
-        // the clips of this block are mixed: the next one glides from what they played
-        for c in self.timeline.clips.iter_mut() {
-            c.gain0 = c.gain;
-            c.pan0 = c.pan;
-        }
         if self.playing {
+            // the clips of this block are mixed: the next one glides from what they played
+            // (stopped, nothing renders from the clips, so there is nothing to glide from)
+            for c in self.timeline.clips.iter_mut() {
+                c.gain0 = c.gain;
+                c.pan0 = c.pan;
+            }
             apply_automation(&mut self.timeline, &mut self.graph, &mut self.synths, block_beat);
         }
         let shared_beat = if self.playing { self.beat } else { block_beat };
@@ -1725,15 +1756,37 @@ impl Rt {
         // tempo-locked effects follow the pattern loop preview like the song
         let pat_ctx = if !self.playing && self.pat_play.is_some() { Some(self.pat_beat) } else { None };
         self.schedule_pattern(n, bps, spb);
-        self.voices.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &mut self.click[..n], &self.timeline.chans);
-        self.synths.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, bpm, self.pool.as_ref());
+        self.voices.render(
+            n,
+            &mut self.graph.track_bufs,
+            &mut self.graph.inserts,
+            &mut self.click[..n],
+            &self.timeline.chans,
+            &mut self.graph.track_dirty,
+        );
+        self.synths.render(
+            n,
+            &mut self.graph.track_bufs,
+            &mut self.graph.inserts,
+            &self.timeline.chans,
+            bpm,
+            self.pool.as_ref(),
+            &mut self.graph.track_dirty,
+        );
         if !self.plugs.is_empty() {
             let ctx = match pat_ctx {
                 Some(b) => ProcessCtx { sample_rate: sr, bpm, beat: b, playing: true },
                 None => ProcessCtx { sample_rate: sr, bpm, beat: block_beat, playing: self.playing },
             };
             let _no_denormals = crate::processor::NoDenormals::new();
-            self.plugs.render(n, &mut self.graph.track_bufs, &mut self.graph.inserts, &self.timeline.chans, &ctx);
+            self.plugs.render(
+                n,
+                &mut self.graph.track_bufs,
+                &mut self.graph.inserts,
+                &self.timeline.chans,
+                &ctx,
+                &mut self.graph.track_dirty,
+            );
         }
         // what this block played is where the next one glides from
         for c in self.timeline.chans.iter_mut() {
@@ -1775,6 +1828,7 @@ impl Rt {
             if self.monitor && mon_ins.is_none() {
                 if let Some(t) = self.graph.monitor_track {
                     if let Some((l, r)) = self.graph.track_bufs.get_mut(t) {
+                        self.graph.track_dirty[t] = true;
                         for i in 0..n.min(il.len()) {
                             l[i] += il[i];
                             r[i] += ir[i];
@@ -1788,10 +1842,12 @@ impl Rt {
         let g = &mut *self.graph;
         for (ti, t) in g.tracks.iter().enumerate() {
             let Some(ins) = g.inserts.get_mut(t.insert) else { continue };
-            if !t.on {
+            if !t.on || !g.track_dirty[ti] {
+                // a track that wrote nothing this block would only add its zeros
                 continue;
             }
             let (tl, tr) = &g.track_bufs[ti];
+            ins.dirty = true;
             for i in 0..n {
                 ins.l[i] += tl[i] * t.gain;
                 ins.r[i] += tr[i] * t.gain;
@@ -1800,6 +1856,7 @@ impl Rt {
         // monitoring with no track to monitor through (nothing armed or being recorded): dry on the master
         if self.monitor && g.monitor_track.is_none() {
             if let (Some((il, ir)), Some(m)) = (input, g.inserts.first_mut()) {
+                m.dirty = true;
                 for i in 0..n.min(il.len()) {
                     m.l[i] += il[i];
                     m.r[i] += ir[i];
@@ -1811,6 +1868,7 @@ impl Rt {
             // playback on the monitored insert is compensated before the chain; the live
             // input joins after the delay, scaled and muted by its track like the playback
             let ins = &mut g.inserts[k];
+            ins.dirty = true;
             g.mon.0.run(&mut ins.l[..n]);
             g.mon.1.run(&mut ins.r[..n]);
             if let (Some(t), Some((il, ir))) = (g.monitor_track.and_then(|t| g.tracks.get(t)).filter(|t| t.on), input) {
@@ -1868,6 +1926,7 @@ impl Rt {
             let (head, tail) = g.inserts.split_at_mut(1);
             let master = &mut head[0];
             for ins in tail.iter().filter(|i| !i.idle && i.to_master) {
+                master.dirty = true;
                 for i in 0..n {
                     master.l[i] += ins.l[i];
                     master.r[i] += ins.r[i];
@@ -2025,6 +2084,7 @@ impl Rt {
                     if i1 <= i0 {
                         continue;
                     }
+                    self.graph.track_dirty[c.track] = true;
                     let m = i1 - i0;
                     let (bl, br) = (&mut self.comp_l[..m], &mut self.comp_r[..m]);
                     bl.fill(0.0);
@@ -2051,6 +2111,7 @@ impl Rt {
                 ClipSrc::Audio(a) => match c.insert {
                     None => {
                         let Some((tl_l, tl_r)) = self.graph.track_bufs.get_mut(c.track) else { continue };
+                        self.graph.track_dirty[c.track] = true;
                         crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, &mut tl_l[at..at + n], &mut tl_r[at..at + n]);
                     }
                     // its own insert: past the track's insert, still muted and scaled by the track (as a routed channel)
@@ -2060,6 +2121,7 @@ impl Rt {
                             _ => continue,
                         };
                         let Some(ins) = self.graph.inserts.get_mut(k) else { continue };
+                        ins.dirty = true;
                         let (bl, br) = (&mut self.comp_l[..n], &mut self.comp_r[..n]);
                         bl.fill(0.0);
                         br.fill(0.0);
@@ -2184,6 +2246,8 @@ fn process_insert(
         ins.g_cur = if ins.on { ins.gain } else { 0.0 };
         return;
     }
+    // the chain, the fader or the PDC line writes into the buffer this block
+    ins.dirty = true;
     if gate == Gate::Run {
         run_chain(ins, n, ctx, watch, taps, shared);
     }
@@ -2270,7 +2334,10 @@ fn gate(ins: &mut InsertRt, n: usize, enabled: bool, watch: &[Id]) -> Gate {
     if !enabled {
         return Gate::Run;
     }
-    let silent = ins.l[..n].iter().all(|&x| x == 0.0) && ins.r[..n].iter().all(|&x| x == 0.0);
+    // scanning the full input of every insert every block is O(inserts × block) at any project
+    // size: while nothing wrote into the buffer it is known zeros, so only a written one (the
+    // `dirty` writers, see [`InsertRt`]) has to be scanned at all
+    let silent = if ins.dirty { ins.l[..n].iter().all(|&x| x == 0.0) && ins.r[..n].iter().all(|&x| x == 0.0) } else { true };
     if !silent {
         ins.quiet = 0;
         ins.parked = false;

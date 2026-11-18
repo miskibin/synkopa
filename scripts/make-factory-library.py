@@ -80,6 +80,35 @@ FREESOUND = {
     "347136": ("https://cdn.freesound.org/previews/347/347136_369949-hq.mp3", "NovaSoundTechnology", "Custom Mini Lex Trap Snare - Nova Sound"),
     "647745": ("https://cdn.freesound.org/previews/647/647745_9839964-hq.mp3", "harrisonlace", "clap_caviar.wav"),
     "703686": ("https://cdn.freesound.org/previews/703/703686_11532701-hq.mp3", "deadrobotmusic", "Drk Vox Loop [120bpm] [D Minor]"),
+    "542893": ("https://cdn.freesound.org/previews/542/542893_6414380-hq.mp3", "Rippleys_Circus", "Kick (19).wav"),
+    "508909": ("https://cdn.freesound.org/previews/508/508909_10137963-hq.mp3", "muffin3k", "Trap Kick 2"),
+    "542899": ("https://cdn.freesound.org/previews/542/542899_6414380-hq.mp3", "Rippleys_Circus", "Kick (4).wav"),
+    "421108": ("https://cdn.freesound.org/previews/421/421108_8323444-hq.mp3", "Nilzner", "Gucci Kick.wav"),
+    "666823": ("https://cdn.freesound.org/previews/666/666823_4819210-hq.mp3", "Johnnie_Holiday", "JH Trap Kick (F#).wav"),
+    "501553": ("https://cdn.freesound.org/previews/501/501553_10137963-hq.mp3", "muffin3k", "Trap Kick 1"),
+    "832660": ("https://cdn.freesound.org/previews/832/832660_17675683-hq.mp3", "CAT-FOX_ALEX", "Phonk Kick 4"),
+    "542877": ("https://cdn.freesound.org/previews/542/542877_6414380-hq.mp3", "Rippleys_Circus", "Kick (11).wav"),
+    "717631": ("https://cdn.freesound.org/previews/717/717631_15556857-hq.mp3", "nobody0101", "Short Kick"),
+    "691738": ("https://cdn.freesound.org/previews/691/691738_4819210-hq.mp3", "Johnnie_Holiday", "JH Kick 6 (F 100 bpm).wav"),
+    "866443": ("https://cdn.freesound.org/previews/866/866443_17675683-hq.mp3", "CAT-FOX_ALEX", "Rnb Kick 5"),
+    "836743": ("https://cdn.freesound.org/previews/836/836743_17675683-hq.mp3", "CAT-FOX_ALEX", "Phonk Kick 1"),
+    "704245": ("https://cdn.freesound.org/previews/704/704245_9839964-hq.mp3", "harrisonlace", "kick_uppercut.wav"),
+    "542889": ("https://cdn.freesound.org/previews/542/542889_6414380-hq.mp3", "Rippleys_Circus", "Kick (7).wav"),
+    "729513": ("https://cdn.freesound.org/previews/729/729513_15200476-hq.mp3", "James_KuKu", "Rough And Tumble - C"),
+    "729507": ("https://cdn.freesound.org/previews/729/729507_15200476-hq.mp3", "James_KuKu", "Oak - C"),
+    "729512": ("https://cdn.freesound.org/previews/729/729512_15200476-hq.mp3", "James_KuKu", "Poster - C"),
+    "729508": ("https://cdn.freesound.org/previews/729/729508_15200476-hq.mp3", "James_KuKu", "Outer Edge - C"),
+    "729468": ("https://cdn.freesound.org/previews/729/729468_15200476-hq.mp3", "James_KuKu", "Chill Blaster - C"),
+    "729491": ("https://cdn.freesound.org/previews/729/729491_15200476-hq.mp3", "James_KuKu", "Heartless - C"),
+    "729464": ("https://cdn.freesound.org/previews/729/729464_15200476-hq.mp3", "James_KuKu", "Box - C"),
+    "729490": ("https://cdn.freesound.org/previews/729/729490_15200476-hq.mp3", "James_KuKu", "Gucci Gang - C"),
+    "729484": ("https://cdn.freesound.org/previews/729/729484_15200476-hq.mp3", "James_KuKu", "Fort Night - C"),
+    "679775": ("https://cdn.freesound.org/previews/679/679775_4819210-hq.mp3", "Johnnie_Holiday", "Drill 808 bass (JH).wav"),
+    "679780": ("https://cdn.freesound.org/previews/679/679780_4819210-hq.mp3", "Johnnie_Holiday", "JH 808 2 C (1 sec).wav"),
+    "635285": ("https://cdn.freesound.org/previews/635/635285_11990934-hq.mp3", "1LOVE", "Cuff 808 [1lovewav]"),
+    "679781": ("https://cdn.freesound.org/previews/679/679781_4819210-hq.mp3", "Johnnie_Holiday", "JH 808 3 C (2 sec).wav"),
+    "679779": ("https://cdn.freesound.org/previews/679/679779_4819210-hq.mp3", "Johnnie_Holiday", "JH 808 1 C (0.5 sec).wav"),
+    "729480": ("https://cdn.freesound.org/previews/729/729480_15200476-hq.mp3", "James_KuKu", "Drop - C"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -145,9 +174,11 @@ PIZZ = [
 # (output file, display name, group, source, max seconds, root key[, options])
 # root key None = measured (`pitch`). Options: tune (resample so the note is exactly on the
 # root key given), soft (keep a quiet start: swells), drive (dB into a tanh saturator),
+# unlisted (keep embedded for saved projects, omit from the browser),
 # loop ((bpm, bars): a loop of that many bars, see the module comment; max seconds unused).
 T = {"tune": True}
 SOFT = {"soft": True}
+UNLISTED = {"unlisted": True}
 SG = "stargate:stargate-sample-pack/fugue-state-audio/drums/"
 TR8 = "mck:TR8/"
 
@@ -157,19 +188,33 @@ def loop(bpm, bars):
 PICKS = [
     ("kick-808.flac", "808 Kick", "Kicks", "808-kit/kick-tone50-decay50.wav", 1.2, 60),
     ("kick-808-short.flac", "808 Kick Short", "Kicks", "808-kit/kick-tone00-decay25.wav", 0.5, 60),
-    ("kick-808-tight.flac", "808 Kick Tight", "Kicks", "808-kit/kick-tone50-decay00.wav", 0.25, 60),
-    ("kick-808-bright.flac", "808 Kick Bright", "Kicks", "808-kit/kick-tone100-decay25.wav", 0.5, 60),
+    ("kick-808-tight.flac", "808 Kick Tight", "Kicks", "808-kit/kick-tone50-decay00.wav", 0.25, 60, UNLISTED),
+    ("kick-808-bright.flac", "808 Kick Bright", "Kicks", "808-kit/kick-tone100-decay25.wav", 0.5, 60, UNLISTED),
     ("kick-studio.flac", "Studio Kick", "Kicks", "studio-drums/kick-v4.wav", 0.9, 60),
-    ("kick-studio-soft.flac", "Studio Kick Soft", "Kicks", "studio-drums/kick-v3.wav", 0.9, 60),
+    ("kick-studio-soft.flac", "Studio Kick Soft", "Kicks", "studio-drums/kick-v3.wav", 0.9, 60, UNLISTED),
     ("kick-cajon.flac", "Cajon Kick", "Kicks", "percussion-fx/cajon-bass-v3.wav", 0.9, 60),
-    ("kick-808-long.flac", "808 Kick Long", "Kicks", "808:bd8/BD5075.WAV", 1.5, 60),
-    ("kick-808-boom.flac", "808 Kick Boom", "Kicks", "808:bd8/BD0010.WAV", 2.0, 60),
-    ("kick-808-deep.flac", "808 Kick Deep", "Kicks", "808:bd8/BD0075.WAV", 1.5, 60),
-    ("kick-808-punch.flac", "808 Kick Punch", "Kicks", "808:bd8/BD7550.WAV", 1.2, 60),
-    ("kick-808-click.flac", "808 Kick Click", "Kicks", "808:bd8/BD1000.WAV", 0.25, 60),
-    ("kick-trap.flac", "Trap Kick", "Kicks", "fs:353396", 0.8, 60),
-    ("kick-trap-knock.flac", "Trap Kick Knock", "Kicks", "fs:190942", 1.0, 60),
-    ("kick-trap-boom.flac", "Trap Kick Boom", "Kicks", "fs:240893", 1.6, 60),
+    ("kick-808-long.flac", "808 Kick Long", "Kicks", "808:bd8/BD5075.WAV", 1.5, 60, UNLISTED),
+    ("kick-808-boom.flac", "808 Kick Boom", "Kicks", "808:bd8/BD0010.WAV", 2.0, 60, UNLISTED),
+    ("kick-808-deep.flac", "808 Kick Deep", "Kicks", "808:bd8/BD0075.WAV", 1.5, 60, UNLISTED),
+    ("kick-808-punch.flac", "808 Kick Punch", "Kicks", "808:bd8/BD7550.WAV", 1.2, 60, UNLISTED),
+    ("kick-808-click.flac", "808 Kick Click", "Kicks", "808:bd8/BD1000.WAV", 0.25, 60, UNLISTED),
+    ("kick-trap.flac", "Trap Kick", "Kicks", "fs:353396", 0.8, 60, UNLISTED),
+    ("kick-trap-knock.flac", "Trap Kick Knock", "Kicks", "fs:190942", 1.0, 60, UNLISTED),
+    ("kick-trap-boom.flac", "Trap Kick Boom", "Kicks", "fs:240893", 1.6, 60, UNLISTED),
+    ("kick-trap-rack.flac", "Trap Kick Rack", "Kicks", "fs:542893", 0.5, 60),
+    ("kick-trap-knock-2.flac", "Trap Kick Knock 2", "Kicks", "fs:508909", 0.5, 60),
+    ("kick-trap-clip.flac", "Trap Kick Clip", "Kicks", "fs:542899", 0.5, 60),
+    ("kick-trap-hard.flac", "Trap Kick Hard", "Kicks", "fs:421108", 0.5, 60),
+    ("kick-trap-punch.flac", "Trap Kick Punch", "Kicks", "fs:666823", 0.5, 60),
+    ("kick-trap-top.flac", "Trap Kick Top", "Kicks", "fs:501553", 0.4, 60),
+    ("kick-trap-phonk.flac", "Trap Kick Phonk", "Kicks", "fs:832660", 0.5, 60),
+    ("kick-trap-tight.flac", "Trap Kick Tight", "Kicks", "fs:542877", 0.5, 60),
+    ("kick-trap-bounce.flac", "Trap Kick Bounce", "Kicks", "fs:717631", 0.5, 60),
+    ("kick-trap-stomp.flac", "Trap Kick Stomp", "Kicks", "fs:691738", 0.6, 60),
+    ("kick-trap-clean.flac", "Trap Kick Clean", "Kicks", "fs:866443", 0.5, 60),
+    ("kick-trap-brick.flac", "Trap Kick Brick", "Kicks", "fs:836743", 0.4, 60),
+    ("kick-trap-heavy.flac", "Trap Kick Heavy", "Kicks", "fs:704245", 0.5, 60),
+    ("kick-trap-dark.flac", "Trap Kick Dark", "Kicks", "fs:542889", 0.5, 60),
     ("snare-808.flac", "808 Snare", "Snares", "808-kit/snare-tone50-snap75.wav", 0.5, 60),
     ("snare-808-bright.flac", "808 Snare Bright", "Snares", "808-kit/snare-tone100-snap75.wav", 0.5, 60),
     ("snare-808-dark.flac", "808 Snare Dark", "Snares", "808-kit/snare-tone00-snap75.wav", 0.5, 60),
@@ -273,16 +318,38 @@ PICKS = [
     ("brake-drum.flac", "Brake Drum", "Percussion", I + "Brake Drum/BrakeDrum1_Hammer_v3_rr1_Mid.wav", 2.0, 60),
     ("tambourine-hit.flac", "Tambourine Hit", "Percussion", "fs:219266", 1.2, 60),
     ("egg-shaker.flac", "Egg Shaker", "Percussion", "fs:199823", 0.5, 60),
-    # tonal: the root key is measured (see `pitch`) so the piano plays them in tune
-    ("bass-808.flac", "808 Bass", "Tonal", "808-bass/bass-tone100-decay100.wav", 3.0, None),
-    ("bass-808-short.flac", "808 Bass Short", "Tonal", "808-bass/bass-tone75-decay75.wav", 1.2, None),
+    # Pitched 808s, using the measured root and octave.
+    ("bass-808.flac", "808 Bass", "808", "808-bass/bass-tone100-decay100.wav", 3.0, None),
+    ("bass-808-short.flac", "808 Bass Short", "808", "808-bass/bass-tone75-decay75.wav", 1.2, None),
+    ("bass-808-zay.flac", "808 Zay Warm", "808", "fs:729513", 2.5, 36),
+    ("bass-808-oak.flac", "808 Spinz Clean", "808", "fs:729507", 2.5, 36),
+    ("bass-808-opium.flac", "808 Opium Growl", "808", "fs:729512", 3, 36),
+    ("bass-808-mafia.flac", "808 Mafia Grit", "808", "fs:729508", 2.5, 24),
+    ("bass-808-clip.flac", "808 Distorted Clip", "808", "fs:729468", 2.5, 24),
+    ("bass-808-metro.flac", "808 Metro Deep", "808", "fs:729491", 3, 24),
+    ("bass-808-pierre.flac", "808 Pierre Short", "808", "fs:729464", 1.2, 24),
+    ("bass-808-roar.flac", "808 Overdrive Roar", "808", "fs:729490", 2.5, 24),
+    ("bass-808-rage.flac", "808 Rage Buzz", "808", "fs:729484", 2.5, 24),
+    ("bass-808-drill.flac", "808 Drill Glide", "808", "fs:679775", 2.5, 24),
+    ("bass-808-ctm.flac", "808 CTM Tight", "808", "fs:679780", 1.5, 36),
+    ("bass-808-cuff.flac", "808 Southside Dark", "808", "fs:635285", 3, 36),
+    ("bass-808-pure.flac", "808 Sub Pure", "808", "fs:679781", 2.5, 24),
+    ("bass-808-plugg.flac", "808 Plugg Short", "808", "fs:679779", 1.2, 24),
+    ("bass-808-tube.flac", "808 Dark Tube", "808", "fs:729480", 3, 24),
+    ("bass-808-deep.flac", "808 Bass Deep", "808", "808:bd8/BD0010.WAV", 3.0, None, UNLISTED),
+    ("bass-808-mid.flac", "808 Bass Mid", "808", "808:bd8/BD5010.WAV", 3.0, None, UNLISTED),
+    ("bass-808-punch.flac", "808 Bass Punch", "808", "808:bd8/BD7575.WAV", 1.5, None, UNLISTED),
+    ("bass-808-drive.flac", "808 Bass Drive", "808", "808-bass/bass-tone100-decay100.wav", 3.0, None, {"drive": 14, "unlisted": True}),
+    ("bass-808-sorrow.flac", "808 Bass Sorrow", "808", "fs:514880", 3.0, None, UNLISTED),
+    ("bass-808-sub.flac", "808 Bass Sub", "808", "fs:729532", 2.5, None, UNLISTED),
+    ("bass-808-mpc.flac", "808 Bass MPC", "808", "fs:501761", 1.0, None, UNLISTED),
+    ("bass-808-sine.flac", "808 Bass Sine", "808", SG + "kicks/sdbkit-sub-a.wav", 2.0, None, UNLISTED),
+    ("bass-808-tr8.flac", "808 Bass TR-8", "808", TR8 + "BD/008_808_Bass_Drum_Long_2.wav", 5.0, None, UNLISTED),
+    ("bass-808-spin.flac", "808 Bass Spin", "808", "fs:646403", 2.0, None, UNLISTED),
+    # Tonal instruments.
     ("marimba.flac", "Marimba", "Tonal", "marimba/marimba-C4-loud.wav", 2.5, 60),
     ("marimba-low.flac", "Marimba Low", "Tonal", "marimba/marimba-C2-loud.wav", 3.5, 36),
     ("glockenspiel.flac", "Glockenspiel", "Tonal", "glockenspiel/glockenspiel-C6-loud.wav", 3.0, 84),
-    ("bass-808-deep.flac", "808 Bass Deep", "Tonal", "808:bd8/BD0010.WAV", 3.0, None),
-    ("bass-808-mid.flac", "808 Bass Mid", "Tonal", "808:bd8/BD5010.WAV", 3.0, None),
-    ("bass-808-punch.flac", "808 Bass Punch", "Tonal", "808:bd8/BD7575.WAV", 1.5, None),
-    ("bass-808-drive.flac", "808 Bass Drive", "Tonal", "808-bass/bass-tone100-decay100.wav", 3.0, None, {"drive": 14}),
     ("vibraphone.flac", "Vibraphone", "Tonal", I + "Vibraphone/Hard Mallets/Vibes_hard_C3_v3_rr1_Main.wav", 4.0, 60, T),
     ("vibraphone-high.flac", "Vibraphone High", "Tonal", I + "Vibraphone/Hard Mallets/Vibes_hard_C5_v3_rr1_Main.wav", 3.0, 84, T),
     ("xylophone.flac", "Xylophone", "Tonal", I + "Xylophone/Hard Mallets/Xylo_Hard_C5_ff_01_far.wav", 1.5, 84, T),
@@ -295,12 +362,6 @@ PICKS = [
     ("fm-clav.flac", "FM Clav", "Tonal", "vcsl:Electrophones/TX81Z/Clavisynth/Clavisynth_C2_vl3.wav", 2.0, 48, T),
     ("pipe-organ.flac", "Pipe Organ", "Tonal", "vcsl:Aerophones/Edge-blown Aerophones/Pipe Organ/Loud/Rode_Man3Open_C3.wav", 3.0, 60, T),
     ("tenor-sax.flac", "Tenor Sax Staccato", "Tonal", "vcsl:Aerophones/Reed Aerophones/Tenor Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav", 1.5, 60, T),
-    ("bass-808-sorrow.flac", "808 Bass Sorrow", "Tonal", "fs:514880", 3.0, None),
-    ("bass-808-sub.flac", "808 Bass Sub", "Tonal", "fs:729532", 2.5, None),
-    ("bass-808-mpc.flac", "808 Bass MPC", "Tonal", "fs:501761", 1.0, None),
-    ("bass-808-sine.flac", "808 Bass Sine", "Tonal", SG + "kicks/sdbkit-sub-a.wav", 2.0, None),
-    ("bass-808-tr8.flac", "808 Bass TR-8", "Tonal", TR8 + "BD/008_808_Bass_Drum_Long_2.wav", 5.0, None),
-    ("bass-808-spin.flac", "808 Bass Spin", "Tonal", "fs:646403", 2.0, None),
     ("choir-shot.flac", "Choir Shot", "Tonal", "fs:240745", 2.0, 68, T),
     ("steel-drum.flac", "Steel Drum", "Tonal", "steeldrum:flac/SteelDrum_072__C5_3-2.flac", 2.5, 72, T),
     # orchestra: single notes are tuned, the stabs and hits are layers on C
@@ -620,7 +681,7 @@ def main():
     rows, total, kept = [], 0, 0
     for out, name, group, src, max_s, root, *rest in PICKS:
         opt = rest[0] if rest else {}
-        pitched = group == "Tonal" or isinstance(src, list) or bool(opt.get("tune") or opt.get("pitched"))
+        pitched = group in ("808", "Tonal") or isinstance(src, list) or bool(opt.get("tune") or opt.get("pitched"))
         if isinstance(src, list):
             x = layers(fetch, src)
         else:
@@ -664,6 +725,11 @@ def main():
         f.write("pub(super) const FILES: &[FactoryFile] = &[\n")
         for out, name, group, root, pitched, dur, ch in rows:
             f.write(f'    FactoryFile {{ file: "{out}", name: "{name}", group: "{group}", root: {root}, pitched: {pitched}, dur: {dur:.4f}, ch: {ch}, bytes: include_bytes!("../library/{out}") }},\n')
+        f.write("];\n")
+        f.write("\npub(super) const UNLISTED: &[&str] = &[\n")
+        for out, _, _, _, _, _, *rest in PICKS:
+            if rest and rest[0].get("unlisted"):
+                f.write(f'    "{out}",\n')
         f.write("];\n")
     print(f"{len(rows)} files ({kept} unchanged), {total / 1e6:.2f} MB")
 

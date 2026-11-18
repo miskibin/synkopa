@@ -31,6 +31,13 @@ pub struct FactoryFile {
     pub bytes: &'static [u8],
 }
 
+impl FactoryFile {
+    /// Older sounds can remain embedded for saved projects without crowding the browser.
+    pub fn is_listed(&self) -> bool {
+        !files::UNLISTED.contains(&self.file)
+    }
+}
+
 /// Folder of the standard library inside the sample library, and its `lib:` kit name.
 pub const KIT: &str = "Standard";
 /// Prefix of a portable library path.
@@ -43,6 +50,10 @@ const PEAK_DB: f32 = -1.0;
 
 pub fn files() -> &'static [FactoryFile] {
     files::FILES
+}
+
+pub fn listed_files() -> impl Iterator<Item = &'static FactoryFile> {
+    files().iter().filter(|f| f.is_listed())
 }
 
 pub fn file(name: &str) -> Option<&'static FactoryFile> {
@@ -104,7 +115,7 @@ pub fn install() -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
-const COLORS: [(&str, &str); 11] = [
+const COLORS: [(&str, &str); 12] = [
     ("Kicks", "#4f8ef7"),
     ("Snares", "#d9678f"),
     ("Claps", "#d9678f"),
@@ -112,6 +123,7 @@ const COLORS: [(&str, &str); 11] = [
     ("Cymbals", "#e0a44a"),
     ("Toms", "#5aa9e6"),
     ("Percussion", "#5fbf8a"),
+    ("808", "#7c8cf8"),
     ("Tonal", "#7c8cf8"),
     ("Orchestra", "#c98a5a"),
     ("FX", "#b07cf0"),
@@ -138,6 +150,18 @@ pub fn source(p: &mut Project, name: &str) -> Option<Id> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unlisted_samples_still_resolve_in_existing_projects() {
+        let listed: std::collections::HashSet<_> = listed_files().map(|f| f.file).collect();
+        assert!(listed.contains("kick-808-short.flac"));
+        assert!(listed.contains("bass-808-short.flac"));
+        assert!(!files::UNLISTED.is_empty());
+        for &name in files::UNLISTED {
+            assert!(!listed.contains(name));
+            assert!(embedded(&lib_path(name)).is_some());
+        }
+    }
 
     #[test]
     fn every_file_decodes_and_matches_its_table_entry() {

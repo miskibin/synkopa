@@ -722,6 +722,7 @@ impl SynthBank {
     /// insert input), scaled by its channel's gain and pan. With a `pool`, the instances
     /// render in parallel into their own buffers and are summed here in order: the same
     /// result as rendering them one after another.
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         n: usize,
@@ -730,6 +731,7 @@ impl SynthBank {
         chans: &[ChanRt],
         bpm: f64,
         pool: Option<&crate::pool::RtPool>,
+        track_dirty: &mut [bool],
     ) {
         if let Some(pool) = pool.filter(|_| self.insts.len() > 1 && n <= OUT_CAP) {
             pool.for_each_mut(&mut self.insts, &|_, s| {
@@ -753,8 +755,14 @@ impl SynthBank {
             });
             for s in self.insts.iter_mut().filter(|s| s.wrote) {
                 let out: Option<(&mut [f32], &mut [f32])> = match s.dest {
-                    Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| (&mut l[..], &mut r[..])),
-                    Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| (&mut i.l[..], &mut i.r[..])),
+                    Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| {
+                        track_dirty[t] = true;
+                        (&mut l[..], &mut r[..])
+                    }),
+                    Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| {
+                        i.dirty = true;
+                        (&mut i.l[..], &mut i.r[..])
+                    }),
                     _ => None,
                 };
                 if let Some((l, r)) = out {
@@ -769,18 +777,27 @@ impl SynthBank {
         for s in self.insts.iter_mut() {
             let (g, pan) = chans.iter().find(|c| c.id == s.chan).map(|c| (if c.on { c.gain } else { 0.0 }, c.pan)).unwrap_or((0.0, 0.0));
             let (pl, pr) = pan_gains(pan);
-            let out: Option<(&mut [f32], &mut [f32])> = match s.dest {
-                Some(Dest::Track(t)) => tracks.get_mut(t).map(|(l, r)| (&mut l[..], &mut r[..])),
-                Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| (&mut i.l[..], &mut i.r[..])),
+            // resolve the sink without marking: an idle instance advances its clock without
+            // calling it, so mark at the first actual write (like the pool path's `wrote`)
+            let out: Option<(&mut bool, &mut [f32], &mut [f32])> = match s.dest {
+                Some(Dest::Track(t)) => tracks.get_mut(t).and_then(|(l, r)| track_dirty.get_mut(t).map(|d| (d, &mut l[..], &mut r[..]))),
+                Some(Dest::Insert(k)) => inserts.get_mut(k).map(|i| (&mut i.dirty, &mut i.l[..], &mut i.r[..])),
                 _ => None,
             };
             match out {
-                Some((l, r)) => s.process(n, bpm, g * pl, g * pr, |o, a, b| {
-                    for i in 0..a.len() {
-                        l[o + i] += a[i];
-                        r[o + i] += b[i];
-                    }
-                }),
+                Some((dirty, l, r)) => {
+                    let mut marked = false;
+                    s.process(n, bpm, g * pl, g * pr, |o, a, b| {
+                        if !marked {
+                            *dirty = true;
+                            marked = true;
+                        }
+                        for i in 0..a.len() {
+                            l[o + i] += a[i];
+                            r[o + i] += b[i];
+                        }
+                    });
+                }
                 None => s.process(n, bpm, 0.0, 0.0, |_, _, _| {}),
             }
         }

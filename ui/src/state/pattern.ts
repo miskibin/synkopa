@@ -21,6 +21,7 @@ import { allocId, plain, plainNotes, S } from './store';
 import { curBeat, tele } from './telemetry';
 import { loopSpan, type BeatRange } from '../lib/patLoop';
 import { docked, say, setU, tucked, U } from './ui';
+import { warnIfNoAudio } from './audioWatch';
 import { markPlayCmd } from './telemetry';
 import { leaveMixView } from './mixView';
 import { planRoute, rangeSelect, toggleSelect } from '../lib/mixer';
@@ -576,6 +577,7 @@ export async function togglePreview(id: Id) {
   try {
     if (U.patPlaying && previewId === id) { await stopPreview(); say(t('b.st.prevStopped')); return; }
     previewId = id;
+    warnIfNoAudio();
     markPlayCmd();
     if (U.playing) setU('playing', false);
     // queued behind pending edits: a pattern made a moment ago must reach the engine first

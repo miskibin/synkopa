@@ -8,7 +8,7 @@ import type { Backend, EventMap, OsDropEvent } from './backend';
 import type { Json } from '../lib/projectEq';
 import { encodeFrame, SCOPE_LEN, SPEC_BANDS, type EncFx } from './telemetry';
 import { BUILTIN, demoProject, emptyProject, mockCatalog, sketchProject } from './mockData';
-import { FACTORY_FILES, FACTORY_KIT, factoryFile, LIB_SCHEME, libPath } from '../lib/factory';
+import { FACTORY_FILES, FACTORY_KIT, FACTORY_LISTED_FILES, factoryFile, LIB_SCHEME, libPath } from '../lib/factory';
 
 /** Reverb mix (%) the engine computes for the research plate at a -18 dB send (autovocal::reverb_mix_for_send). */
 const MOCK_REVERB_MIX = 37.2;
@@ -142,7 +142,7 @@ export class MockBackend implements Backend {
   private srcMeta = new Map<Id, MockSource>();
   private takeN = 0;
   private kits = [
-    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_FILES.length, installed: true },
+    { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_LISTED_FILES.length, installed: true },
     { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
     { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
     { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
@@ -1325,6 +1325,11 @@ export class MockBackend implements Backend {
   setWasapiOutputPresent(present: boolean) { this.wasapiOutputPresent = present; }
 
   /** Dev tools / tests: the device stops by itself and the audio thread reopens it, as in the app. */
+  /** Test hook: the output could not be opened (the engine's status after a WASAPI/ASIO open error); the next `audioSetConfig` opens it again. */
+  audioOpenFailed(err: string) {
+    this.audio = { ...this.audio, running: false, error: err };
+    this.emit('audio-status', { ...this.audio });
+  }
   audioDeviceLost(why = 'The requested device is no longer available') {
     this.audio = { ...this.audio, running: true, error: null, restarts: this.audio.restarts + 1, note: `Audio restarted by itself: ${why}.` };
     this.emit('audio-status', { ...this.audio });
@@ -1373,7 +1378,7 @@ export class MockBackend implements Backend {
   async libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles> {
     await delay(10);
     // the standard library is listed by its portable paths (the app lists where it is installed; importing either gives `lib:` sources)
-    if (q.kit === FACTORY_KIT) return { truncated: false, files: FACTORY_FILES.map(f => ({ name: f.name, path: libPath(f.file), group: f.group, root: f.root, ...(f.pitched ? { pitched: true } : {}) })) };
+    if (q.kit === FACTORY_KIT) return { truncated: false, files: FACTORY_LISTED_FILES.map(f => ({ name: f.name, path: libPath(f.file), group: f.group, root: f.root, ...(f.pitched ? { pitched: true } : {}) })) };
     const root = q.kit ? 'C:\\WAVE\\Library\\' + q.kit : q.folder ?? '';
     const groups: Record<string, string[]> = q.kit === 'wave-keys'
       ? { Pady: ['Warm Pad C', 'Glass Pad Am', 'Choir Pad F'], Akordy: ['Rhodes Chord 1', 'Rhodes Chord 2', 'Piano Stab'], Pętle: ['Keys Loop 120', 'Pad Loop Am-F'] }

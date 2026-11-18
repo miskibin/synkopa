@@ -10,6 +10,10 @@ shown in the app after an update and is published as the release notes (see
 - **Fixed velocity for the MIDI keyboard.** Settings → MIDI → Velocity: "Fixed" plays and
   records every key at one velocity (100 by default, any 1–127) however hard it is pressed —
   for keyboards without velocity or when you do not want it. "From keyboard" is the default.
+- **Play says why there is no sound.** When the audio output failed to open (a headset driver
+  error, an unplugged interface), pressing Play or playing a pattern shows a notice with the
+  reason, **Try again** (reopens the device) and **Audio settings**, instead of silently not
+  starting.
 - **Auto vocal from the command line.** `synkopa auto-vocal --clip N` measures a vocal take and puts
   the tuned chain on its mixer insert in one call — the same chain the app's Auto vocal button
   builds (pitch correction, vocal rider rendered into the audio, compressors, de-esser, reverb,

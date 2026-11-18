@@ -82,3 +82,28 @@ describe('audio that stops or returns by itself', () => {
     expect(audioStatus()).toBe(disconnected);
   });
 });
+
+describe('play while the output is not open', () => {
+  it('names the reason only when audio is known to be down', async () => {
+    const { noAudioReason } = await import('./audioWatch');
+    expect(noAudioReason(null)).toBeNull();
+    expect(noAudioReason(base)).toBeNull();
+    const err = 'Headphones: Failed to get audio client';
+    expect(noAudioReason({ ...base, running: false, error: err })).toBe(err);
+    expect(noAudioReason({ ...base, running: false, unavailableOutput: 'Focusrite USB ASIO' })).toBe('Focusrite USB ASIO');
+    // starting up, nothing failed: no warning
+    expect(noAudioReason({ ...base, running: false, unavailableOutput: null })).toBeNull();
+  });
+  it('shows a notice with a retry and the audio settings', async () => {
+    const { warnIfNoAudio } = await import('./audioWatch');
+    const { notice } = await import('./notice');
+    const be = new MockBackend();
+    await watchAudio(() => be.audioGetConfig(), cb => be.on('audio-status', cb), () => {});
+    expect(warnIfNoAudio()).toBe(false);
+    be.audioOpenFailed('Headphones: Failed to get audio client');
+    await tick();
+    expect(warnIfNoAudio()).toBe(true);
+    expect(notice()?.msg).toContain('Failed to get audio client');
+    expect(notice()?.actions.map(a => a.label)).toEqual(['Try again', 'Audio settings']);
+  });
+});
