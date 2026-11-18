@@ -31,414 +31,465 @@
 }
 </script>
 <link rel="icon" type="image/png" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
+  /* One reading column in first person. A light page, the logo's yellow for the one question the
+     page answers, and one playlist track colour per reason. Dark "screens" only where the app or
+     a terminal is shown. */
   :root {
-    --bg: #0b0d10; --bg2: #101318; --panel: #151920; --line: #232935; --line2: #2f3746;
-    --fg: #c9d1dc; --fg-hi: #f2f5f9; --fg-dim: #8b95a5; --blue: #4f8ef7; --blue-hi: #8fb6ff;
-    --amber: #e0a44a; --pink: #d9678f; --green: #4ec08a; --red: #e05263;
-    --sans: "Geist", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --mono: "Geist Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
+    color-scheme: light;
+    --face: #f5f6f9; --face-hi: #ffffff; --face-lo: #e4e7ee; --rule: #d2d7e0;
+    --ink: #14161b; --text: #2b3039; --dim: #5a6270;
+    --amber: #ffc832; --on-amber: #1b1503; --hot: #e5384b; --key: #ffffff;
+    --pink: #e0558a; --teal: #14a898; --blue: #3f73f0; --violet: #8463e6; --orange: #f08a2a;
+    --screen: #101317; --screen-fg: #d2d7df; --screen-dim: #75808e; --screen-line: #272d36;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
-  a { color: var(--blue-hi); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  img { max-width: 100%; height: auto; display: block; }
-  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  body { margin: 0; background: var(--face); color: var(--text); font: 17px/1.62 var(--sans); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 18px; }
+  a { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  code { font: 500 .88em var(--mono); color: var(--ink); background: var(--face-lo); padding: 1px 5px; border-radius: 3px; }
+  img { display: block; max-width: 100%; }
+  p { margin: 0; }
+  .label { font: 600 11.5px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
 
-  nav { position: sticky; top: 0; z-index: 10; background: rgba(11, 13, 16, .82); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-  nav .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
-  .brand { display: flex; align-items: center; gap: 10px; color: var(--fg-hi); font-weight: 700; letter-spacing: .12em; }
-  .brand img { width: 30px; height: 30px; }
-  nav .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
-  nav .links a { color: var(--fg-dim); }
-  nav .links a:hover { color: var(--fg-hi); text-decoration: none; }
+  header.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 0; }
+  header.top nav { display: flex; gap: 20px; margin-right: auto; font: 500 13px var(--mono); }
+  header.top nav a { color: var(--dim); text-decoration: none; }
+  header.top nav a:hover { color: var(--ink); }
+  .key { display: inline-flex; flex-direction: column; justify-content: center; min-height: 54px; padding: 7px 20px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--key); color: var(--ink); font: 600 16px/1.25 var(--sans); text-decoration: none; box-shadow: 0 3px 0 var(--ink); }
+  .key:hover { transform: translateY(1px); box-shadow: 0 2px 0 var(--ink); }
+  .key small { font: 500 11.5px var(--mono); opacity: .8; }
+  .key.amber { background: var(--amber); color: var(--on-amber); }
+  .key.sm { flex-direction: row; align-items: center; white-space: nowrap; min-height: 36px; padding: 0 14px; font-size: 14px; box-shadow: 0 2px 0 var(--ink); }
+  .keys { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
 
-  .btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 8px; font-weight: 600; font-size: 15px; border: 1px solid var(--line2); color: var(--fg-hi); background: var(--panel); }
-  .btn:hover { text-decoration: none; border-color: var(--blue); }
-  .btn.primary { background: var(--blue); border-color: var(--blue); color: #06101f; }
-  .btn.primary:hover { background: var(--blue-hi); }
-  .btn.small { height: 34px; padding: 0 14px; font-size: 13.5px; }
+  .hero { padding: 44px 0 60px; }
+  .mark { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 28px); }
+  .mark svg { flex: none; width: clamp(72px, 12vw, 132px); height: auto; padding: clamp(12px, 2vw, 22px); background: var(--ink); border-radius: 22%; }
+  h1 { margin: 0; font: 800 clamp(58px, 13vw, 150px)/.9 var(--display); letter-spacing: -.045em; color: var(--ink); }
+  .tag { max-width: 22em; margin-top: 26px; font: 600 clamp(22px, 3.1vw, 34px)/1.2 var(--display); letter-spacing: -.01em; color: var(--ink); text-wrap: balance; }
+  .tag mark { background: var(--amber); color: var(--on-amber); padding: 0 .14em; }
+  .hero .label { margin-top: 16px; }
 
-  header.hero { padding: 84px 0 0; text-align: center; background: radial-gradient(900px 420px at 50% -80px, rgba(79, 142, 247, .22), transparent 70%); }
-  .hero h1 { margin: 0 auto; max-width: 880px; font-size: clamp(38px, 6vw, 68px); line-height: 1.04; letter-spacing: -.03em; color: var(--fg-hi); }
-  .hero h1 em { font-style: normal; color: var(--blue); }
-  .hero p.lead { margin: 22px auto 0; max-width: 720px; font-size: 19px; color: var(--fg-dim); }
-  .hero .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
-  .hero .note { margin-top: 14px; font-size: 13px; color: var(--fg-dim); }
-  .shot { margin: 54px auto 0; max-width: 1160px; padding: 0 24px; }
-  .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--line2); box-shadow: 0 40px 120px rgba(0, 0, 0, .65), 0 0 0 1px rgba(79, 142, 247, .08); }
+  .ask { background: var(--amber); border-block: 2px solid var(--ink); padding: 52px 0 56px; }
+  .ask .label { color: var(--ink); }
+  .ask h2 { margin: 8px 0 0; font: 800 clamp(36px, 6.4vw, 78px)/.98 var(--display); letter-spacing: -.03em; max-width: none; }
+  .answer { max-width: 33em; margin-top: 24px; font: 500 clamp(18px, 2vw, 22px)/1.45 var(--display); color: var(--ink); }
+  .answer + .answer { margin-top: 12px; }
+  .body { max-width: 64ch; }
+  .body + .body { margin-top: 14px; }
 
-  section { padding: 96px 0 0; scroll-margin-top: 30px; }
-  h2 { margin: 0; font-size: clamp(28px, 3.6vw, 40px); letter-spacing: -.02em; color: var(--fg-hi); }
-  .kicker { font: 600 12.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
-  .sub { max-width: 720px; margin: 14px 0 0; color: var(--fg-dim); font-size: 17px; }
+  section { padding: 46px 0; border-top: 1px solid var(--rule); scroll-margin-top: 10px; }
+  .ask + .wrap > section:first-child { border-top: 0; }
+  h2 { margin: 6px 0 14px; font: 700 clamp(27px, 3.7vw, 42px)/1.06 var(--display); letter-spacing: -.02em; color: var(--ink); max-width: 20em; text-wrap: balance; }
+  .reason { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 0 20px; }
+  .reason > b { font: 800 84px/.8 var(--display); letter-spacing: -.05em; color: var(--c); }
+  .reason > div { min-width: 0; }
+  .reason .label::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 2px; background: var(--c); }
 
-  .tracks { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 18px; margin-top: 36px; }
-  .track { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-  .track h3 { margin: 0; color: var(--fg-hi); font-size: 18px; }
-  .track .meta { font: 500 12px var(--mono); color: var(--amber); letter-spacing: .06em; }
-  .track p { margin: 0; color: var(--fg-dim); font-size: 14.5px; flex: 1; }
-  .track audio { width: 100%; height: 38px; margin-top: 6px; color-scheme: dark; }
+  .rack { margin-top: 26px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--face-hi); box-shadow: 0 5px 0 var(--ink); overflow: hidden; }
+  .rack-top { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 12px 14px; border-bottom: 1px solid var(--rule); font: 500 12.5px var(--mono); color: var(--dim); }
+  .rack-top label { display: flex; align-items: center; gap: 6px; }
+  .rack-top input[type=number] { width: 62px; padding: 5px 6px; font: 600 13px var(--mono); color: var(--ink); background: var(--face); border: 1px solid var(--rule); border-radius: 3px; }
+  .rack-top input[type=range] { width: 90px; accent-color: var(--ink); }
+  #play { min-width: 100px; height: 36px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--amber); color: var(--on-amber); font: 600 13px var(--mono); cursor: pointer; }
+  #play[aria-pressed=true] { background: var(--ink); color: var(--key); }
+  #status { margin-left: auto; }
+  .rows { padding: 12px 14px; display: grid; gap: 6px; }
+  .row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .row > span { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+  .steps { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; }
+  .steps button { position: relative; height: 38px; padding: 0; border: 1px solid var(--rule); border-radius: 3px; background: var(--face); cursor: pointer; overflow: hidden; }
+  .steps button:nth-child(8n+5), .steps button:nth-child(8n+6), .steps button:nth-child(8n+7), .steps button:nth-child(8n+8) { background: var(--face-lo); }
+  .steps button:nth-child(4n+1):not(:first-child) { margin-left: 4px; }
+  .steps button i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--amber); border-top: 1px solid var(--ink); }
+  .steps button.now { border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+  .cmds { background: var(--screen); color: var(--screen-fg); padding: 14px; overflow-x: auto; font: 13px/1.9 var(--mono); }
+  .cmds div { white-space: nowrap; }
+  .cmds .d { color: var(--screen-dim); }
+  .cmds input { width: 20ch; padding: 1px 4px; font: inherit; color: var(--amber); background: transparent; border: 1px solid var(--screen-line); border-radius: 3px; }
+  .cmds input[aria-invalid=true] { border-color: var(--hot); color: var(--hot); }
+  .cap { margin-top: 16px; max-width: 76ch; font-size: 14.5px; color: var(--dim); }
+  .cap b { color: var(--ink); }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; margin-top: 40px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  .cell { background: var(--bg2); padding: 26px 24px; }
-  .cell h3 { margin: 0 0 8px; color: var(--fg-hi); font-size: 16.5px; }
-  .cell p { margin: 0; color: var(--fg-dim); font-size: 14.5px; }
-  .cell .dot { width: 8px; height: 8px; border-radius: 2px; margin-bottom: 14px; }
+  .screen { margin: 30px 0 0; border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--screen); box-shadow: 0 5px 0 var(--ink); }
+  .screen img { width: 100%; height: auto; }
+  .tape { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; align-items: center; margin-top: 22px; padding: 14px 16px; background: var(--face-hi); border: 1.5px solid var(--ink); border-radius: 8px; scroll-margin-top: 10px; }
+  .tape h3 { margin: 2px 0 2px; font: 700 20px var(--display); color: var(--ink); }
+  .tape p { font-size: 14.5px; }
+  .tape audio { width: 100%; height: 40px; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 26px; }
+  figure { margin: 0; }
+  .pair img { width: 100%; height: auto; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--screen); }
+  figcaption { margin-top: 10px; font-size: 14.5px; }
+  figcaption b { color: var(--ink); }
+  pre.term { margin: 24px 0 0; padding: 16px 18px; background: var(--screen); color: var(--screen-fg); border: 1.5px solid var(--ink); border-radius: 8px; overflow-x: auto; font: 13px/1.75 var(--mono); }
+  pre.term .d { color: var(--screen-dim); } pre.term .a { color: var(--amber); }
 
-  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-top: 36px; }
-  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  figure img { width: 100%; background: #0e1013; }
-  figcaption { padding: 14px 18px 18px; font-size: 14.5px; color: var(--fg-dim); }
-  figcaption b { display: block; color: var(--fg-hi); font-size: 15.5px; margin-bottom: 2px; }
+  .tw { overflow-x: auto; }
+  table { width: 100%; min-width: 560px; border-collapse: collapse; margin-top: 22px; font-size: 15px; }
+  th, td { padding: 10px 14px 10px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
+  thead th { font: 600 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  tbody th { color: var(--ink); font-weight: 600; }
+  td b { color: var(--ink); }
 
-  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: start; margin-top: 36px; }
-  pre { margin: 0; padding: 20px 22px; background: #0a0c0f; border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; font: 13.5px/1.7 var(--mono); color: #c9d1dc; }
-  pre .c { color: #5d6878; } pre .p { color: var(--green); } pre .s { color: var(--amber); }
-  ul.plain { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-  ul.plain li { padding-left: 22px; position: relative; color: var(--fg-dim); }
-  ul.plain li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--blue); }
-  ul.plain b { color: var(--fg-hi); font-weight: 600; }
+  .rel { margin-top: 26px; max-width: 760px; }
+  .rel .days { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; height: 138px; }
+  .rel .day { display: flex; flex-direction: column-reverse; gap: 4px; }
+  .rel .day i { display: block; height: 18px; background: var(--c); border: 1.5px solid var(--ink); border-radius: 3px; }
+  .rel .axis { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; margin-top: 8px; padding-top: 6px; border-top: 1.5px solid var(--ink); font: 500 11.5px var(--mono); color: var(--dim); }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; margin-top: 36px; }
-  .stat { border-left: 2px solid var(--blue); padding: 4px 0 4px 18px; }
-  .stat .n { font: 600 30px var(--mono); color: var(--fg-hi); letter-spacing: -.02em; }
-  .stat .l { color: var(--fg-dim); font-size: 14px; }
+  ul.no { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; max-width: 66ch; }
+  ul.no li { padding-left: 30px; position: relative; }
+  ul.no li::before { content: "×"; position: absolute; left: 0; top: -.28em; font: 800 26px var(--display); color: var(--hot); }
+  ul.no b { color: var(--ink); font-weight: 600; }
 
-  .get { margin-top: 96px; padding: 56px 32px; text-align: center; border: 1px solid var(--line2); border-radius: 16px; background: radial-gradient(700px 300px at 50% 0, rgba(79, 142, 247, .16), transparent 70%), var(--bg2); }
-  .get p { color: var(--fg-dim); max-width: 640px; margin: 14px auto 0; }
-  .get .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
-  .get pre { max-width: 560px; margin: 28px auto 0; text-align: left; }
+  .star { margin-top: 12px; padding: 38px 30px; background: var(--ink); color: #d5d9e0; border-radius: 10px; scroll-margin-top: 10px; }
+  .star .label { color: #9aa2ae; }
+  .star h2 { color: #fff; }
+  .star p { max-width: 60ch; }
+  .star .key { border-color: #fff; box-shadow: 0 3px 0 var(--amber); }
+  .star .key.ghost { background: transparent; color: #fff; box-shadow: none; }
+  .star :focus-visible { outline-color: var(--amber); }
+  .sign { margin-top: 18px; font: 600 18px var(--display); color: var(--ink); }
+  footer { padding: 26px 0 50px; font: 400 12.5px/1.6 var(--mono); color: var(--dim); }
 
-  footer { margin-top: 80px; padding: 34px 0 60px; border-top: 1px solid var(--line); color: var(--fg-dim); font-size: 13.5px; }
-  footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
-  .player { margin-top: 36px; background: var(--panel); border: 1px solid var(--line2); border-radius: 12px; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: center; }
-  .player h3 { margin: 4px 0 8px; color: var(--fg-hi); font-size: 22px; }
-  .player .meta { font: 500 12px var(--mono); color: var(--amber); letter-spacing: .06em; }
-  .player p { margin: 0; color: var(--fg-dim); font-size: 14.5px; }
-  .player audio { width: 100%; color-scheme: dark; }
-  .what { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; margin-top: 32px; }
-  .what h3 { margin: 0 0 6px; color: var(--fg-hi); font-size: 16.5px; }
-  .what p { margin: 0; color: var(--fg-dim); font-size: 15px; }
-  .tablewrap { margin-top: 36px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
-  table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
-  th, td { padding: 13px 18px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-  tr:last-child td, tr:last-child th { border-bottom: 0; }
-  thead th { background: var(--panel); color: var(--fg-hi); font-size: 15px; }
-  tbody th { color: var(--fg-dim); font-weight: 500; width: 24%; }
-  td { color: var(--fg); width: 38%; }
-  td.win { color: var(--fg-hi); box-shadow: inset 2px 0 0 var(--green); }
-  .steps { counter-reset: s; margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; }
-  .steps li { counter-increment: s; padding-left: 38px; position: relative; color: var(--fg-dim); }
-  .steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line2); color: var(--blue-hi); font: 600 12.5px/22px var(--mono); text-align: center; }
-  .steps b { color: var(--fg-hi); font-weight: 600; }
-  .gallery.small { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-  img.journey { margin-top: 32px; width: 100%; border-radius: 12px; }
-  ul.story { max-width: 820px; margin-top: 28px; }
-  h3.group { margin: 44px 0 0; color: var(--fg-hi); font-size: 19px; }
-  .video { position: relative; aspect-ratio: 16 / 9; margin-top: 32px; border: 1px solid var(--line2); border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 30px 90px rgba(0, 0, 0, .5); }
-  .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .video-link { margin: 12px 0 0; font-size: 13.5px; color: var(--fg-dim); }
-  @media (max-width: 820px) { .player { grid-template-columns: 1fr; } }
-  @media (max-width: 820px) { .split { grid-template-columns: 1fr; } nav .links a.opt { display: none; } header.hero { padding-top: 56px; } section { padding-top: 72px; } }
+  @media (max-width: 760px) {
+    body { font-size: 16px; }
+    header.top nav a.opt { display: none; }
+    .hero { padding: 26px 0 44px; }
+    .ask { padding: 38px 0 42px; }
+    .reason { grid-template-columns: 1fr; }
+    .reason > b { font-size: 60px; margin-bottom: 12px; }
+    .tape, .pair { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 44px minmax(0, 1fr); gap: 6px; }
+    .row > span { font-size: 10.5px; letter-spacing: 0; }
+    .steps { gap: 2px; } .steps button { height: 32px; } .steps button:nth-child(4n+1):not(:first-child) { margin-left: 2px; }
+    #status { margin-left: 0; flex-basis: 100%; }
+    .rel .days, .rel .axis { gap: 4px; } .rel .axis { font-size: 10px; }
+    .star { padding: 28px 20px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 </style>
 <script data-goatcounter="https://miskibin.goatcounter.com/count"
         async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
 
-<nav>
-  <div class="wrap">
-    <a class="brand" href="#top"><img src="img/icon.png" alt="">Synkopa</a>
-    <div class="links">
-      <a class="opt" href="#watch">Watch</a>
-      <a class="opt" href="#what">What it is</a>
-      <a class="opt" href="#listen">Listen</a>
-      <a class="opt" href="#features">Features</a>
-      <a class="opt" href="#plugins">Plugins</a>
-      <a class="opt" href="#agent">Agents</a>
-      <a class="opt" href="#compare">vs FL Studio</a>
-      <a class="opt" href="#community">Community</a>
-      <a href="https://github.com/miskibin/synkopa">GitHub</a>
-    </div>
-    <a class="btn primary small" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
-  </div>
-</nav>
-
-<header class="hero" id="top">
-  <div class="wrap">
-    <h1>Make the beat. <em>Skip the waiting.</em></h1>
-    <p class="lead">Synkopa is a fast, FL-Studio-style DAW with a Rust audio engine: playlist, piano roll, a mixer whose effects show you what they do, a synth, a sampled grand piano, recording with comping and pitch editing. Free and open source.</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/miskibin/synkopa/releases/latest">Download for Windows</a>
-      <a class="btn" href="https://github.com/miskibin/synkopa">Source on GitHub</a>
-    </div>
-    <div class="note">Windows installer with ASIO · Linux packages · AGPL-3.0</div>
-  </div>
-  <div class="shot"><img src="img/hero.png" alt="Synkopa: playlist with pattern and audio clips, automation, and the mixer" width="1920" height="1032"></div>
-</header>
-
-<section id="watch">
-  <div class="wrap">
-    <div class="kicker">Watch</div>
-    <h2>Synkopa on video</h2>
-    <div class="video">
-      <iframe src="https://www.youtube-nocookie.com/embed/wtuHDyIQpYk" title="Synkopa video on YouTube" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    </div>
-    <p class="video-link"><a href="https://www.youtube.com/watch?v=wtuHDyIQpYk" rel="noopener">Open on YouTube</a></p>
-  </div>
-</section>
-
-<section id="what">
-  <div class="wrap">
-    <div class="kicker">What it is</div>
-    <h2>A beat-making studio that an AI agent can work in with you</h2>
-    <p class="sub">Synkopa is a DAW: the program you make a whole track in, from the first drum pattern to the exported MP3. It follows the FL Studio way of working, so notes go into patterns in a channel rack, patterns and audio go onto a playlist, and everything runs through a mixer.</p>
-    <div class="what">
-      <div><h3>Who it is for</h3><p>People who make beats and record vocals over them, and who want a small, quick program instead of a large one.</p></div>
-      <div><h3>What is different</h3><p>The open project can be edited from a command line while you look at it. So an AI agent can really work in it: it writes parts, sets knobs and measures the result, and you undo whatever you do not like.</p></div>
-      <div><h3>Where it stands</h3><p>Version 0.9, free and open source, developed in the open with community contributors. It covers a complete beat and a vocal session, but it does not have the years of polish or the plugin collection of a commercial DAW; the <a href="#compare">comparison</a> says where.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="listen">
-  <div class="wrap">
-    <div class="kicker">Listen</div>
-    <h2>This beat was made by an AI agent, in Synkopa</h2>
-    <p class="sub">Nobody touched a mouse for it. An agent (Claude Code) chose the samples, wrote the patterns, programmed the 808 slides, set every knob and bounced the mix through the <code>synkopa</code> command line. It cannot hear, so it mixed by measurement.</p>
-    <div class="player">
-      <div>
-        <div class="meta">150 BPM · D# MINOR · TRAP · MADE BY AN AGENT</div>
-        <h3>Pazur Trap</h3>
-        <p>A melody loop, a distorted 808 with slides, trap drums and FX one-shots, the Synkopa Keys piano on top, saturators on the 808 and the kick. The screenshot at the top of this page is this project.</p>
-      </div>
-      <audio controls preload="none" src="audio/pazur-trap.mp3"></audio>
-    </div>
-    <div class="player" style="margin-top:18px">
-      <div>
-        <div class="meta">136 BPM · D# MINOR · DARK TRAP · THE BUILT-IN DEMO</div>
-        <h3>OBSIDIAN 2093</h3>
-        <p>The demo project that comes with Synkopa: File → Open demo project, then press Space. Layered drums, an 808, two stretched loops and three built-in synths, with Half-Speed, reverb and a low-pass automated on a bus. It uses only the standard library and the built-in effects, so it plays the same on your computer.</p>
-      </div>
-      <audio controls preload="none" src="audio/obsidian-2093.mp3"></audio>
-    </div>
-    <p class="sub" style="font-size:14.5px">It is a demo of the engine, not the ceiling. The beat uses a fraction of the app: no recording, no vocals, no pitch editing, no third-party plugins. A person at the keyboard, with or without an agent, can take the same tools much further.</p>
-  </div>
-</section>
-
-<section id="features">
-  <div class="wrap">
-    <div class="kicker">Features</div>
-    <h2>Everything a beat needs, nothing in the way</h2>
-    <div class="grid">
-      <div class="cell"><div class="dot" style="background:var(--blue)"></div><h3>Playlist and patterns</h3><p>Pattern, audio and automation clips on free lanes. Slice, fade, reverse, normalise and stretch audio, arrange with triplet grids, and undo edits.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--amber)"></div><h3>Channel Rack and piano roll</h3><p>Step sequencer with swing and velocity, chord tools and triplet note grids. Play and record from a computer or MIDI keyboard; import and export MIDI files.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--pink)"></div><h3>A mixer you can read</h3><p>Route inserts through buses and sends, save and load FX chains, and dock, float or maximize the mixer. Built-in effects show you what they do to the sound.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--green)"></div><h3>Built-in synth</h3><p>Two wavetable oscillators with unison, sub and noise, a multimode filter, two LFOs, a mod matrix and its own drive, chorus, delay and reverb. Factory presets from 808s to pads.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--amber)"></div><h3>Synkopa Keys</h3><p>A sampled concert grand as a channel: 30 recorded notes at three dynamics, a clickable keyboard, and it ships inside the installer.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--red)"></div><h3>Recording and comping</h3><p>Record over a loop and every pass becomes a take. Pick the best parts, crossfade them, flatten when you are done. Latency is measured, not guessed.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--blue)"></div><h3>Vocal tools</h3><p>A note-level pitch editor, Tune to Reference (pull a take onto a guide vocal), live pitch correction, a vocal rider, de-esser and denoiser, and a one-click vocal chain.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--green)"></div><h3>Third-party plugins and audio</h3><p>VST3 instruments and effects, plus LV2 effects on Linux. Compatible native plugin editors work on Windows and Linux. WASAPI and ASIO on Windows; ALSA and JACK on Linux.</p></div>
-      <div class="cell"><div class="dot" style="background:var(--pink)"></div><h3>Export and share</h3><p>Bounce mixes or stems to 16-/24-bit PCM or 32-bit float WAV, or MP3. Export a portable project ZIP with its samples and recordings.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="plugins">
-  <div class="wrap">
-    <div class="kicker">Plugins</div>
-    <h2>16 built-in effects, with live visualizations</h2>
-    <p class="sub">Built-in effects share familiar controls and visual feedback drawn from the audio passing through them. Below is a selection of actual instrument and effect windows; the animated ones were captured during playback. Third-party VST3 instruments and effects, and LV2 effects on Linux, can be loaded too.</p>
-    <h3 class="group">Instruments</h3>
-    <div class="gallery">
-      <figure><img src="img/synth.png" alt="Synth window" loading="lazy"><figcaption><b>Synth</b>Two wavetable oscillators with unison, sub and noise, a multimode filter, envelopes, two LFOs, a mod matrix and its own effects. 46 factory presets from 808s and reese basses to supersaws and pads.</figcaption></figure>
-      <figure><img src="img/keys.png" alt="Synkopa Keys window" loading="lazy"><figcaption><b>Synkopa Keys</b>A sampled concert grand: 30 recorded notes at three dynamics, with a keyboard you can play with the mouse. Lower on the key is a harder hit.</figcaption></figure>
-    </div>
-    <h3 class="group">Mixing</h3>
-    <div class="gallery small">
-      <figure><img src="img/eq-live.gif" alt="Parametric EQ window on the master, with the live spectrum moving under the curve" loading="lazy"><figcaption><b>Parametric EQ</b>Up to 24 bands, dynamic bands, mid/side placement and a live analyser, edited by dragging the curve.</figcaption></figure>
-      <figure><img src="img/comp-live.gif" alt="Compressor window on a drum loop, with the gain reduction drawn over the level history" loading="lazy"><figcaption><b>Compressor</b>The transfer curve with the threshold on it, next to the level history with the gain reduction drawn over it.</figcaption></figure>
-      <figure><img src="img/fet.png" alt="FET compressor window" loading="lazy"><figcaption><b>FET compressor</b>The fast, coloured one. A needle with real VU ballistics, peak bars and six seconds of gain-reduction history.</figcaption></figure>
-      <figure><img src="img/sat-live.gif" alt="Saturator on a drum bus, with the input/output trace and the added harmonics moving" loading="lazy"><figcaption><b>Saturator</b>Five voicings from tape to pentode. The live input/output trace rides the transfer curve, and the spectrum shows the harmonics the stage adds.</figcaption></figure>
-      <figure><img src="img/limit-live.gif" alt="Limiter on the master, with the gain reduction drawn over the level history" loading="lazy"><figcaption><b>Limiter</b>True-peak ceiling for the master, with the same curve and history view as the compressor.</figcaption></figure>
-      <figure><img src="img/delay.png" alt="Delay window" loading="lazy"><figcaption><b>Delay</b>Tempo-synced or free echo; the display shows each repeat and when it lands.</figcaption></figure>
-      <figure><img src="img/reverb-live.gif" alt="Reverb on a piano, with the tail drawn across time and frequency" loading="lazy"><figcaption><b>Reverb</b>Plate, room, hall and ambience with ducking, so the tail stays out of the way of the dry signal.</figcaption></figure>
-    </div>
-    <h3 class="group">Vocals</h3>
-    <div class="gallery small">
-      <figure><img src="img/pitch.png" alt="Pitch Correct window" loading="lazy"><figcaption><b>Pitch Correct</b>Live tuning to a key and scale, from natural to the hard robot effect, with the detected note and the correction on a dial.</figcaption></figure>
-      <figure><img src="img/voice.png" alt="Voice window" loading="lazy"><figcaption><b>Voice</b>Pitch and formant shifting on one pad: transpose, quantise or robot, and blend with the original for a harmony.</figcaption></figure>
-      <figure><img src="img/rider.png" alt="Vocal Rider window" loading="lazy"><figcaption><b>Vocal Rider</b>Rides the fader for you, word by word and phrase by phrase, and shows the moves it makes.</figcaption></figure>
-      <figure><img src="img/deesser.png" alt="De-esser window" loading="lazy"><figcaption><b>De-esser</b>Catches sibilance in a band you drag on the spectrum; every reduction is marked on the waveform.</figcaption></figure>
-      <figure><img src="img/denoiser.png" alt="Denoiser window" loading="lazy"><figcaption><b>Denoiser</b>Learns the noise in the gaps by itself and removes it; the display shows the profile and what is taken out.</figcaption></figure>
-    </div>
-  </div>
-</section>
-
-<section id="agent">
-  <div class="wrap">
-    <div class="kicker">You + an agent</div>
-    <h2>You and an AI agent work on the same project</h2>
-    <div class="split">
-      <div>
-        <p class="sub" style="margin-top:0">Synkopa installs a <code>synkopa</code> command that talks to the running app. An agent such as Claude Code uses it to edit the project you have open, while you watch and keep working.</p>
-        <ol class="steps">
-          <li><b>Ask in plain words.</b> "Write a hi-hat pattern with rolls for the drop", "the 808 is muddy, fix it", "level the vocal".</li>
-          <li><b>The agent reads the song.</b> <code>synkopa context</code> returns the project as JSON; <code>synkopa analyze</code> detects tempo and key.</li>
-          <li><b>It edits what you see.</b> Notes, clips, effects and knobs change on your screen. Every command is one step in your undo history.</li>
-          <li><b>It checks its own work.</b> <code>synkopa render</code> bounces offline and reports peak, level and clipping, so the agent can measure a mix it cannot hear.</li>
-          <li><b>You stay in charge.</b> Ctrl+Z removes anything, and <code>--if-revision</code> stops the agent from overwriting what you changed meanwhile.</li>
-        </ol>
-      </div>
-<pre><span class="c"># what an agent runs while you listen</span>
-<span class="p">$</span> synkopa context --pretty          <span class="c"># tracks, inserts, patterns, channels</span>
-<span class="p">$</span> synkopa bpm 150
-<span class="p">$</span> synkopa channels --keys            <span class="c"># add the Synkopa Keys piano</span>
-<span class="p">$</span> synkopa pattern --id 2 --ch hat --steps <span class="s">"x.x. x.x. x.x5 x.x9"</span>
-<span class="p">$</span> synkopa add-fx --insert 3 --type sat --preset 5
-<span class="p">$</span> synkopa set-param --fx 1203 --param drive --value 72
-<span class="p">$</span> synkopa render --out check.mp3 --from 0 --to 32
-{ <span class="s">"peakDbfs"</span>: -1.1, <span class="s">"rmsDbfs"</span>: -12.3, <span class="s">"clippedSamples"</span>: 0 }
-<span class="p">$</span> synkopa undo                      <span class="c"># or you press Ctrl+Z</span></pre>
-    </div>
-  </div>
-</section>
-
-<section id="extend">
-  <div class="wrap">
-    <div class="kicker">Extend it</div>
-    <h2>Missing a plugin? Have Claude Code write it</h2>
-    <div class="split">
-      <div>
-        <p class="sub" style="margin-top:0">Synkopa is open source and small enough for a coding agent to understand. A built-in plugin is a Rust DSP module, a table of parameters and a canvas drawing. Clone the repository, open it in Claude Code and describe the effect or instrument you want.</p>
-        <ul class="plain">
-          <li><b>It becomes a real plugin.</b> Your effect gets the same knobs, automation, presets, undo and command-line access as the built-in ones, with no plugin SDK in between.</li>
-          <li><b>This is how Synkopa itself grew.</b> The Synkopa Keys piano and the saturator's display on this page were written by an agent from a few sentences of description.</li>
-          <li><b>The tests keep it honest.</b> The engine has checks for clicks, aliasing, loudness and allocation in the audio callback, so the agent finds out when its plugin misbehaves.</li>
-        </ul>
-      </div>
-<pre><span class="p">$</span> git clone https://github.com/miskibin/synkopa
-<span class="p">$</span> cd synkopa &amp;&amp; claude
-
-<span class="c">&gt; Add a bitcrusher effect: bit depth, sample-rate
-  reduction and mix. Show the stepped waveform
-  against the input, like the saturator does.</span>
-
-<span class="c"># the agent writes the DSP, the parameters and the
-# display and runs the tests; after a rebuild the
-# effect is in the "Add effect" list</span>
-<span class="p">$</span> cd app &amp;&amp; cargo tauri dev</pre>
-    </div>
-  </div>
-</section>
-
-<section id="compare">
-  <div class="wrap">
-    <div class="kicker">Comparison</div>
-    <h2>Synkopa and FL Studio, side by side</h2>
-    <p class="sub">Synkopa borrows FL Studio's way of working, so that is the fair comparison. FL Studio is a mature product with more than twenty-five years behind it, and it wins on breadth. The green bar marks the stronger side of a row.</p>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th></th><th>Synkopa 0.9</th><th>FL Studio</th></tr></thead>
-        <tbody>
-          <tr><th>Price</th><td class="win">Free</td><td>About $99 to $450 depending on the edition, paid once, with free updates</td></tr>
-          <tr><th>Audio recording</th><td class="win">Included, with takes and comping</td><td>Needs the Producer edition or higher</td></tr>
-          <tr><th>Vocal pitch editing</th><td class="win">Included: note editor, live correction, Tune to Reference</td><td>NewTone and Pitcher come with the higher editions</td></tr>
-          <tr><th>Source code</th><td class="win">Open, AGPL-3.0</td><td>Closed</td></tr>
-          <tr><th>Working with an AI agent</th><td class="win">The agent edits the open project through the <code>synkopa</code> command and measures its own renders</td><td>No command line into the open project</td></tr>
-          <tr><th>Adding your own plugin</th><td class="win">Describe it to a coding agent; it is built into the app itself</td><td>Write a VST with a plugin SDK, or build one in Patcher</td></tr>
-          <tr><th>Built-in instruments and effects</th><td>Wavetable synth, sampled grand piano, sampler and 16 built-in effects</td><td class="win">More than a hundred across the editions</td></tr>
-          <tr><th>Third-party plugins</th><td>VST3 instruments and effects; LV2 effects on Linux; supported native editors on both platforms</td><td class="win">VST instruments and effects, and more formats</td></tr>
-          <tr><th>Platforms</th><td>Windows and Linux</td><td>Windows and macOS</td></tr>
-          <tr><th>Maturity</th><td>Young: version 0.9, growing with open-source contributors; expect rough edges</td><td class="win">Since 1998, with a large community, tutorials and sample packs</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="sub" style="font-size:13.5px">FL Studio details as of November 2026. Prices are approximate list prices and change with sales; see <a href="https://www.image-line.com/fl-studio/compare-editions/">Image-Line's edition comparison</a>. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.</p>
-  </div>
-</section>
-
-<section id="engine">
-  <div class="wrap">
-    <div class="kicker">Under the hood</div>
-    <h2>Performance is the first feature</h2>
-    <p class="sub">The audio callback never allocates, locks or touches a file. Moving a knob never rebuilds the graph. Every moving picture in the interface is drawn on canvas from one binary telemetry frame.</p>
-    <div class="stats">
-      <div class="stat"><div class="n">0</div><div class="l">allocations or locks in the audio callback</div></div>
-      <div class="stat"><div class="n">17 %</div><div class="l">of one core for 16 synth voices × 2 oscillators × 7 unison with every effect on, 48 kHz, 64-sample blocks</div></div>
-      <div class="stat"><div class="n">&gt; 60 dB</div><div class="l">alias-to-signal ratio of the synth's oscillators across the keyboard</div></div>
-      <div class="stat"><div class="n">Rust</div><div class="l">engine and shell (Tauri 2), SolidJS and canvas for the interface</div></div>
-    </div>
-  </div>
-</section>
-
-<section id="faq">
-  <div class="wrap">
-    <div class="kicker">Questions</div>
-    <h2>What people ask first</h2>
-    <div class="grid">
-      <div class="cell"><h3>Is it really free?</h3><p>Yes. There is one build, no paid edition and no account. The source is open under AGPL-3.0.</p></div>
-      <div class="cell"><h3>Can it replace FL Studio?</h3><p>For beats built with the built-in instruments, recordings, samples and compatible VST3 plugins, it may cover your workflow. FL Studio plugins and .flp projects are not supported.</p></div>
-      <div class="cell"><h3>Does it run on a Mac?</h3><p>No. Windows and Linux (deb, rpm, AppImage) only.</p></div>
-      <div class="cell"><h3>Which plugins does it load?</h3><p>VST3 instruments and effects on Windows and Linux, plus LV2 effects on Linux. Compatible native editors can open on both platforms; otherwise Synkopa shows plugin parameters. Plugin scans run separately, but processing is not sandboxed. No CLAP yet.</p></div>
-      <div class="cell"><h3>Can it open FL Studio projects?</h3><p>No. Bring stems or samples over; WAV, FLAC, OGG and MP3 import by drag and drop.</p></div>
-      <div class="cell"><h3>Do I need an AI agent?</h3><p>No. It is a normal DAW with a mouse and a keyboard. The <code>synkopa</code> command is there if you want an agent, or your own script, to work in the project.</p></div>
-      <div class="cell"><h3>Does it work with PipeWire?</h3><p>Yes. Pick JACK in Settings to use PipeWire's JACK at the server's rate and buffer, or use ALSA. Synkopa reopens the device if the audio server restarts.</p></div>
-      <div class="cell"><h3>Was AI used to build it?</h3><p>Yes, AI coding tools are used extensively alongside human contributors, code review and testing. The engine has tests for clicks, aliasing and loudness, plus a benchmark that counts audio-thread allocations.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="story">
-  <div class="wrap">
-    <div class="kicker">From the developer</div>
-    <h2>Why I built it (a person wrote this part)</h2>
-    <img class="journey" src="img/journey.svg" alt="From the first FL Studio in 2010, through music school, selling beats and DSP work at Nokia, to Synkopa in 2026" width="1160" height="320" loading="lazy">
-    <ul class="plain story">
-      <li><b>2010.</b> I downloaded FL Studio for the first time and started making music.</li>
-      <li><b>2015.</b> I started music school: cello, guitar and piano (graduated in 2019).</li>
-      <li><b>2016–2022.</b> I sold beats to underground rappers in Poland (pop, true school, trap, love songs).</li>
-      <li>Along the way I tried almost every genre (EDM, lo-fi, classical, my own pop songs), often with real instruments in my beats. I also run a YouTube channel and master the voice for it myself.</li>
-      <li><b>2022.</b> I joined Nokia, where I work on noise cancellation for telecom radios. That is a lot of DSP math, so I understand how sound works under the hood.</li>
-    </ul>
-    <p class="sub">My music and DSP experience gave Synkopa its starting point. It now grows through community contributions, code reviews and real user feedback, with AI tools helping us develop it.</p>
-    <p class="sub" style="color:var(--fg-hi)">I now use Synkopa for everything I used FL Studio for.</p>
-  </div>
-</section>
-
-<section id="community">
-  <div class="wrap">
-    <div class="kicker">Community</div>
-    <h2>Built in the open, together</h2>
-    <p class="sub">Synkopa is an open-source project. Contributors help build features, review architecture, fix bugs and make the workflow better for musicians.</p>
-    <p class="sub"><strong style="color:var(--fg-hi)">Special thanks to <a href="https://github.com/rebizu">@rebizu</a></strong> for the architecture review, engine/mock parity fixtures, the Piano Roll tool refactor and continued work on plugin usability.</p>
-    <p class="sub" style="font-size:14.5px"><a href="https://github.com/miskibin/synkopa/graphs/contributors">Meet the contributors</a> · <a href="https://github.com/miskibin/synkopa/issues">Report a bug or suggest a fix</a> · <a href="https://github.com/miskibin/synkopa/blob/main/CONTRIBUTING.md">Contribute to Synkopa</a></p>
-  </div>
-</section>
-
 <div class="wrap">
-  <div class="get" id="download">
-    <h2>Get Synkopa</h2>
-    <p>The Windows installer includes ASIO support and the Synkopa Keys piano. Linux packages are attached to the same release. Or build it yourself:</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/miskibin/synkopa/releases/latest">Download the latest release</a>
-      <a class="btn" href="https://github.com/miskibin/synkopa#build-from-source">Build from source</a>
+  <header class="top">
+    <nav aria-label="Sections">
+      <a class="opt" href="#try">Try it</a>
+      <a class="opt" href="#why">Why install it</a>
+      <a class="opt" href="#not">When not to</a>
+      <a class="opt" href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">Changelog</a>
+    </nav>
+    <a class="key sm" href="https://github.com/miskibin/synkopa">★ Star on GitHub<span data-stars></span></a>
+    <a class="key sm amber" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
+  </header>
+
+  <div class="hero" id="top">
+    <div class="mark">
+      <svg viewBox="298 268 658 796" aria-hidden="true">
+        <rect x="502" y="268" width="454" height="96" fill="#FDB400"/>
+        <rect x="298" y="408" width="578" height="96" fill="#FDB400"/>
+        <rect x="298" y="548" width="329" height="96" fill="#D0D0D0"/>
+        <rect x="598" y="688" width="358" height="96" fill="#D0D0D0"/>
+        <rect x="378" y="828" width="578" height="96" fill="#FDB400"/>
+        <rect x="298" y="968" width="436" height="96" fill="#FDB400"/>
+      </svg>
+      <h1>Synkopa</h1>
     </div>
-<pre><span class="p">$</span> pnpm --dir ui install
-<span class="p">$</span> cargo install tauri-cli --version <span class="s">"^2"</span>
-<span class="p">$</span> cd app &amp;&amp; cargo tauri dev</pre>
+    <p class="tag">A free, open-source DAW that works <mark>the FL Studio way.</mark></p>
+    <p class="label">Patterns · Channel Rack · piano roll · playlist · recording · vocal tuning</p>
+    <div class="keys">
+      <a class="key amber" href="https://github.com/miskibin/synkopa/releases/latest">Download for Windows<small><span data-ver>latest release</span> · installer with ASIO</small></a>
+      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download for Linux<small>deb · rpm · AppImage</small></a>
+      <a class="key" href="https://www.youtube.com/watch?v=wtuHDyIQpYk" rel="noopener">Watch the video<small>YouTube</small></a>
+    </div>
   </div>
 </div>
 
-<footer>
+<div class="ask">
   <div class="wrap">
-    <div>Synkopa is community-developed free software under AGPL-3.0. <a href="https://github.com/miskibin/synkopa">github.com/miskibin/synkopa</a></div>
-    <div>Synkopa Keys plays the Salamander Grand Piano V3 by Alexander Holm (CC-BY-3.0).</div>
+    <div class="label">The first comment under every post about Synkopa</div>
+    <h2>“Another FL&nbsp;Studio clone. Why?”</h2>
+    <p class="answer">Fair. The workflow is copied on purpose: patterns, Channel Rack, piano roll, playlist, down to right-click-deletes. I have made beats in FL Studio since 2010 and I did not want to relearn my hands.</p>
+    <p class="answer">The reasons to install it are the parts that are not copied. There are five. Each one is below with something you can click, hear or check.</p>
   </div>
-</footer>
+</div>
+
+<main class="wrap">
+
+<section id="try">
+  <div class="label">First, the copied part</div>
+  <h2>If you know FL Studio, you can already use this.</h2>
+  <p class="body">Click adds a step, right-click deletes it, Alt+wheel changes its velocity, Space plays. These are the same gestures as in the app, on TR-808 samples from its library.</p>
+  <div class="rack" id="rack">
+    <div class="rack-top">
+      <button id="play" type="button" aria-pressed="false">▶ Play</button>
+      <label for="bpm">BPM <input id="bpm" type="number" min="60" max="200" value="140"></label>
+      <label for="swing">Swing <input id="swing" type="range" min="0" max="100" value="0"><output id="swingv">0 %</output></label>
+      <span id="status">Space · click · right-click · Alt+wheel</span>
+    </div>
+    <div class="rows" id="rows"></div>
+    <div class="cmds" id="cmds"></div>
+  </div>
+  <p class="cap"><b>The dark strip is reason 3 arriving early.</b> Those are real <code>synkopa</code> commands for the pattern you see. Edit a step string and the grid follows. In the app a terminal does the same thing to the project on your screen.</p>
+
+  <figure class="screen"><img src="img/hero.png" width="1920" height="1032" alt="Synkopa with its demo project open: drum, 808 and melody patterns on the playlist, three automation clips, and the mixer docked below"></figure>
+  <div class="tape">
+    <div>
+      <div class="label">The project in this screenshot</div>
+      <h3>OBSIDIAN 2093</h3>
+      <p>It ships with the app: File → Open demo project. Built-in sounds and effects only, so it plays the same on your computer.</p>
+    </div>
+    <audio id="a-obsidian" controls preload="none" src="audio/obsidian-2093.mp3"></audio>
+  </div>
+</section>
+
+<section class="reason" id="why" style="--c:var(--pink)">
+  <b aria-hidden="true">1</b>
+  <div>
+    <div class="label">Reason one</div>
+    <h2>Nothing is locked behind an edition.</h2>
+    <p class="body">FL Studio sells four editions, and the cheapest one cannot record audio. Synkopa has one build and no account.</p>
+    <div class="tw"><table>
+      <thead><tr><th>You want to</th><th>Synkopa</th><th>FL Studio</th></tr></thead>
+      <tbody>
+        <tr><th>Record a vocal over the beat</th><td><b>Included</b>, with takes, comping and measured latency</td><td>Producer edition or higher</td></tr>
+        <tr><th>Fix its pitch note by note</th><td><b>Included</b>, plus live correction and Tune to Reference</td><td>NewTone and Pitcher, in the higher editions</td></tr>
+        <tr><th>Pay</th><td><b>Nothing</b></td><td>About $99 to $450</td></tr>
+        <tr><th>Read the source</th><td><b>AGPL-3.0</b>, on GitHub</td><td>Closed</td></tr>
+      </tbody>
+    </table></div>
+    <p class="cap">FL Studio details as of November 2026; see <a href="https://www.image-line.com/fl-studio/compare-editions/" rel="noopener">Image-Line's edition comparison</a>. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.</p>
+  </div>
+</section>
+
+<section class="reason" style="--c:var(--teal)">
+  <b aria-hidden="true">2</b>
+  <div>
+    <div class="label">Reason two</div>
+    <h2>It runs on Linux. Natively.</h2>
+    <p class="body">FL Studio has no Linux build. The usual open-source answer for the FL workflow is LMMS, which does not record audio. Synkopa is that workflow on Linux with recording: ALSA and JACK, including PipeWire's JACK, VST3 instruments and effects, LV2 effects, packaged as deb, rpm and AppImage.</p>
+    <p class="body">On Windows it speaks WASAPI and ASIO. There is no Mac build.</p>
+  </div>
+</section>
+
+<section class="reason" id="agent" style="--c:var(--blue)">
+  <b aria-hidden="true">3</b>
+  <div>
+    <div class="label">Reason three</div>
+    <h2>A terminal can play it. So can an AI agent.</h2>
+    <p class="body">Synkopa installs a <code>synkopa</code> command that edits the project you have open. Notes, clips, effects and knobs change on your screen, and every command is one step in your undo history. An agent cannot hear, so it bounces offline and reads the numbers back.</p>
+<pre class="term"><span class="d">$</span> synkopa context --pretty              <span class="d"># the song, as JSON</span>
+<span class="d">$</span> synkopa pattern --id 2 --ch hat --steps <span class="a">"x.x. x.x. x.x5 x.x9"</span>
+<span class="d">$</span> synkopa add-fx --insert 3 --type sat --preset 5
+<span class="d">$</span> synkopa render --out check.mp3 --from 0 --to 32
+{ "peakDbfs": -1.1, "rmsDbfs": -12.3, "clippedSamples": 0 }
+<span class="d">$</span> synkopa watch song.txt                <span class="d"># the file is the song: save, and the loop changes</span></pre>
+    <div class="tape" id="listen">
+      <div>
+        <div class="label">Nobody touched a mouse</div>
+        <h3>Pazur Trap</h3>
+        <p>An agent picked the samples, wrote the patterns, programmed the 808 slides and mixed by measurement. 150 BPM, D# minor.</p>
+      </div>
+      <audio id="a-pazur" controls preload="none" src="audio/pazur-trap.mp3"></audio>
+    </div>
+    <p class="cap">You do not need an agent. It is a normal DAW with a mouse and a keyboard. <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">Command line reference</a></p>
+  </div>
+</section>
+
+<section class="reason" id="plugins" style="--c:var(--violet)">
+  <b aria-hidden="true">4</b>
+  <div>
+    <div class="label">Reason four</div>
+    <h2>The effects show their work.</h2>
+    <p class="body">My day job is noise cancellation DSP for telecom radios. I wanted every built-in effect to draw what it does to the signal passing through it, with the same controls everywhere. These were captured while a beat played.</p>
+    <div class="pair">
+      <figure><img src="img/sat-live.gif" loading="lazy" alt="Saturator window while drums play"><figcaption><b>Saturator.</b> The trace is input against output. The pink layer in the spectrum is the harmonics it adds.</figcaption></figure>
+      <figure><img src="img/comp-live.gif" loading="lazy" alt="Compressor window on a drum bus"><figcaption><b>Compressor.</b> Level over time, with the gain reduction drawn in red from the top.</figcaption></figure>
+      <figure><img src="img/reverb-live.gif" loading="lazy" alt="Reverb window on a piano"><figcaption><b>Reverb.</b> Each line is the tail at a later moment. The orange surface is the decay the knobs ask for.</figcaption></figure>
+      <figure><img src="img/eq-live.gif" loading="lazy" alt="Parametric EQ with a live spectrum"><figcaption><b>EQ.</b> The spectrum before and after moves under the curve you drag.</figcaption></figure>
+    </div>
+    <p class="cap">16 effects, a wavetable synth, a sampled grand piano and a sampler are built in. The audio thread does not allocate or lock, and a benchmark checks that on every change. <a href="https://github.com/miskibin/synkopa/blob/main/docs/architecture.md">How it is put together</a></p>
+  </div>
+</section>
+
+<section class="reason" style="--c:var(--orange)">
+  <b aria-hidden="true">5</b>
+  <div>
+    <div class="label">Reason five</div>
+    <h2>It started in August 2026, and you can still change where it goes.</h2>
+    <p class="body">Each block below is one version in the <a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">changelog</a>: 26 of them in the nine days from 10 to 18 November 2026. An issue you open is read by the person who writes the code.</p>
+    <div class="rel" role="img" aria-label="Versions released per day, 10 to 18 November 2026: 4, 6, 4, 1, 1, 2, 2, 3, 3">
+      <div class="days" id="days"></div>
+      <div class="axis"><span>10 Nov</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span></div>
+    </div>
+    <p class="body" style="margin-top:24px">It is version 0.9, so expect rough edges. It is written with AI coding tools, by a musician who knows what the code is doing, together with contributors. Thank you <a href="https://github.com/rebizu">@rebizu</a> for the architecture reviews and the Piano Roll work, and <a href="https://github.com/miskibin/synkopa/graphs/contributors">everyone who has contributed</a>.</p>
+  </div>
+</section>
+
+<section id="not">
+  <div class="label">The other half of an honest answer</div>
+  <h2>Do not install it if</h2>
+  <ul class="no">
+    <li><b>you are on a Mac.</b> There is no macOS build.</li>
+    <li><b>your work lives in <code>.flp</code> files or FL's own plugins.</b> Neither opens here. Stems, samples and VST3 plugins do.</li>
+    <li><b>you write by launching clips.</b> There is no Session view.</li>
+    <li><b>you need twenty-five years of polish tonight.</b> FL Studio has it. This started in August 2026.</li>
+  </ul>
+</section>
+
+<div class="star" id="star">
+  <div class="label">If the beat made you nod</div>
+  <h2>A star is how a new DAW gets found.</h2>
+  <p>There is no marketing budget and nothing to buy. On GitHub, stars decide whether the next musician looking for a free FL-style DAW ever sees this one. It takes one click, and it tells me to keep going.</p>
+  <div class="keys">
+    <a class="key amber" href="https://github.com/miskibin/synkopa">★ Star Synkopa on GitHub</a>
+    <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download<small><span data-ver>latest release</span> · Windows · Linux</small></a>
+    <a class="key ghost" href="https://github.com/miskibin/synkopa/issues">Tell me what is missing</a>
+  </div>
+</div>
+<p class="sign"><a href="https://github.com/miskibin">@miskibin</a></p>
+</main>
+
+<footer class="wrap">Synkopa is community-developed free software under AGPL-3.0. <a href="https://github.com/miskibin/synkopa">github.com/miskibin/synkopa</a> · <a href="https://github.com/miskibin/synkopa#build-from-source">Build from source</a><br>TR-808 samples by Michael Fischer (CC0). Synkopa Keys plays the Salamander Grand Piano V3 by Alexander Holm (CC-BY-3.0).</footer>
+
+<script>
+(function () {
+  var ROWS = [
+    { id: 'kick',  name: 'Kick',  s: 'x... ..x. ..x. ....' },
+    { id: 'snare', name: 'Snare', s: '.... x... .... x...' },
+    { id: 'clap',  name: 'Clap',  s: '.... x... .... x..5' },
+    { id: 'hat',   name: 'Hat',   s: 'x.x. x.x. x.x5 x.x9' },
+    { id: 'open',  name: 'Open',  s: '.... ..x. .... ....' }
+  ];
+  var $ = function (id) { return document.getElementById(id); };
+  // The step-string format of `synkopa pattern --steps`: x = full velocity, 1-9 = 10-90 %, . = empty.
+  function parse(str) {
+    var t = str.replace(/\s+/g, '');
+    if (t.length !== 16 || /[^x.1-9]/.test(t)) return null;
+    return t.split('').map(function (c) { return c === 'x' ? 10 : c === '.' ? 0 : +c; });
+  }
+  function fmt(a) {
+    return a.map(function (v, i) { return (i && i % 4 === 0 ? ' ' : '') + (v === 10 ? 'x' : v === 0 ? '.' : v); }).join('');
+  }
+  var rowsEl = $('rows'), cmdsEl = $('cmds'), statusEl = $('status');
+  ROWS.forEach(function (r) {
+    r.v = parse(r.s); r.btn = [];
+    var row = document.createElement('div'); row.className = 'row';
+    var lab = document.createElement('span'); lab.textContent = r.name; row.appendChild(lab);
+    var steps = document.createElement('div'); steps.className = 'steps';
+    for (var i = 0; i < 16; i++) (function (i) {
+      var b = document.createElement('button'); b.type = 'button'; b.appendChild(document.createElement('i'));
+      b.addEventListener('click', function () { set(r, i, r.v[i] ? 0 : 10, true); });
+      b.addEventListener('contextmenu', function (e) { e.preventDefault(); set(r, i, 0); });
+      b.addEventListener('wheel', function (e) {
+        if (!e.altKey || !r.v[i]) return; e.preventDefault();
+        set(r, i, Math.max(1, Math.min(10, r.v[i] + (e.deltaY < 0 ? 1 : -1))), true);
+      }, { passive: false });
+      r.btn.push(b); steps.appendChild(b);
+    })(i);
+    row.appendChild(steps); rowsEl.appendChild(row);
+    var line = document.createElement('div');
+    var pre = document.createElement('span'); pre.innerHTML = '<span class="d">$</span> synkopa pattern --id 1 --ch ' + r.id + ' --steps "';
+    var inp = document.createElement('input'); inp.id = 'cmd-' + r.id; inp.spellcheck = false; inp.autocomplete = 'off';
+    inp.setAttribute('aria-label', r.name + ' step string: x full velocity, 1 to 9 for 10 to 90 percent, dot empty');
+    inp.addEventListener('input', function () {
+      var a = parse(inp.value); inp.setAttribute('aria-invalid', a ? 'false' : 'true');
+      if (a) { r.v = a; paint(r, false); }
+    });
+    inp.addEventListener('blur', function () { inp.value = fmt(r.v); inp.setAttribute('aria-invalid', 'false'); });
+    r.inp = inp; line.appendChild(pre); line.appendChild(inp); line.appendChild(document.createTextNode('"'));
+    cmdsEl.appendChild(line); paint(r, true);
+  });
+  function paint(r, text) {
+    r.v.forEach(function (v, i) {
+      r.btn[i].firstChild.style.height = v * 10 + '%';
+      r.btn[i].setAttribute('aria-pressed', v ? 'true' : 'false');
+      r.btn[i].setAttribute('aria-label', r.name + ' step ' + (i + 1) + (v ? ', velocity ' + v * 10 + ' %' : ', empty'));
+    });
+    if (text) r.inp.value = fmt(r.v);
+  }
+  function set(r, i, v, audition) { r.v[i] = v; paint(r, true); if (audition && v && !playing) ready().then(function () { hit(r, v, ctx.currentTime); }); }
+
+  var ctx, loading, bufs = {}, playing = false, step = 0, nextT = 0, timer, lit = -1;
+  function ready() {
+    if (loading) return loading;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { statusEl.textContent = 'This browser cannot play the samples. The grid still edits the commands.'; return (loading = Promise.reject()); }
+    ctx = new AC();
+    loading = Promise.all(ROWS.map(function (r) {
+      return fetch('audio/kit/' + r.id + '.mp3').then(function (x) { if (!x.ok) throw 0; return x.arrayBuffer(); })
+        .then(function (a) { return ctx.decodeAudioData(a); }).then(function (b) { bufs[r.id] = b; });
+    })).catch(function () { statusEl.textContent = 'The samples did not load. The grid still edits the commands.'; });
+    return loading;
+  }
+  function hit(r, v, t) {
+    if (!bufs[r.id]) return;
+    var s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = bufs[r.id]; g.gain.value = Math.pow(v / 10, 1.5) * 0.8; s.connect(g); g.connect(ctx.destination); s.start(t);
+  }
+  function light(i) {
+    if (lit >= 0) ROWS.forEach(function (r) { r.btn[lit].classList.remove('now'); });
+    lit = i; if (i >= 0) ROWS.forEach(function (r) { r.btn[i].classList.add('now'); });
+  }
+  // Notes are scheduled a little ahead on the audio clock; swing delays every odd 16th by up to half a step.
+  function tick() {
+    var bpm = Math.max(60, Math.min(200, +$('bpm').value || 140)), d = 60 / bpm / 4, sw = +$('swing').value / 100;
+    while (nextT < ctx.currentTime + 0.12) {
+      var t = nextT + (step % 2 ? sw * d * 0.5 : 0), s = step;
+      ROWS.forEach(function (r) { if (r.v[s]) hit(r, r.v[s], t); });
+      (function (s, t) { setTimeout(function () { if (playing) light(s); }, Math.max(0, (t - ctx.currentTime) * 1000)); })(s, t);
+      nextT += d; step = (step + 1) % 16;
+    }
+  }
+  function toggle() {
+    if (playing) { playing = false; clearInterval(timer); light(-1); btn(); return; }
+    ready().then(function () {
+      if (playing) return;
+      ctx.resume(); playing = true; step = 0; nextT = ctx.currentTime + 0.06; tick(); timer = setInterval(tick, 25); btn();
+    }, function () {});
+  }
+  function btn() { var p = $('play'); p.setAttribute('aria-pressed', playing ? 'true' : 'false'); p.textContent = playing ? '■ Stop' : '▶ Play'; }
+  $('play').addEventListener('click', toggle);
+  $('swing').addEventListener('input', function () { $('swingv').textContent = $('swing').value + ' %'; });
+  function typing(e) { var t = e.target.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'AUDIO' || t === 'A'; }
+  document.addEventListener('keydown', function (e) { if (e.code === 'Space' && !typing(e)) { e.preventDefault(); if (!e.repeat) toggle(); } });
+  document.addEventListener('keyup', function (e) { if (e.code === 'Space' && !typing(e)) e.preventDefault(); });
+  ['a-obsidian', 'a-pazur'].forEach(function (id) { $(id).addEventListener('play', function () { if (playing) toggle(); }); });
+
+  // Versions per day in CHANGELOG.md, 10-18 November 2026.
+  [4, 6, 4, 1, 1, 2, 2, 3, 3].forEach(function (n) {
+    var d = document.createElement('div'); d.className = 'day';
+    for (var k = 0; k < n; k++) d.appendChild(document.createElement('i'));
+    $('days').appendChild(d);
+  });
+
+  // Current version and star count from GitHub; the static text stays if the request fails.
+  function gh(path, done) {
+    fetch('https://api.github.com/repos/miskibin/synkopa' + path).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) done(j); }).catch(function () {});
+  }
+  gh('/releases/latest', function (j) {
+    if (!j.tag_name) return;
+    var when = j.published_at ? new Date(j.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    document.querySelectorAll('[data-ver]').forEach(function (el) { el.textContent = j.tag_name.replace(/^v/, '') + (when ? ' · ' + when : ''); });
+  });
+  gh('', function (j) {
+    if (typeof j.stargazers_count !== 'number') return;
+    document.querySelectorAll('[data-stars]').forEach(function (el) { el.textContent = ' · ' + j.stargazers_count; });
+  });
+})();
+</script>
 
 </body>
 </html>
