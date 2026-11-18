@@ -12,6 +12,8 @@ pub struct Settings {
     pub audio: AudioConfig,
     /// The MIDI keyboard to reopen at startup (`None` = no device).
     pub midi_device: Option<MidiDevice>,
+    /// The MIDI keyboard plays every key at this velocity (`None` = the keyboard's own).
+    pub midi_fixed_velocity: Option<u8>,
     pub folders: Vec<String>,
     pub last_project: Option<String>,
     /// The app version whose release notes were last shown (`None` = fresh install).

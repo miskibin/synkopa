@@ -4,7 +4,7 @@ import { be } from '../api/backend';
 import { PLUGIN_FORMAT_LABEL, type AudioConfig, type AudioDevices, type AudioHost, type AudioStatus, type CliStatus, type MidiDevice, type PluginInfo, type PluginScan } from '../api/types';
 import * as A from '../state/actions';
 import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, refreshAudioStatus, switchToWasapi } from '../state/audioWatch';
-import { keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget } from '../state/midi';
+import { DEFAULT_FIXED_VELOCITY, keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget, setMidiVelocity } from '../state/midi';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { Segmented } from '../ui/Knob';
@@ -321,6 +321,8 @@ function MidiSection() {
   onMount(refresh);
   const run = (p: Promise<void>) => { setErr(null); p.catch(e => setErr(String(e))); };
   const st = midiStatus;
+  /** The value "Fixed" comes back with after "From keyboard" (this visit). */
+  let lastFixed = st()?.fixedVelocity ?? DEFAULT_FIXED_VELOCITY;
   const pitched = () => (S.project.channels ?? []);
   const targetVal = () => (midiFollow() ? 'follow' : String(st()?.target ?? ''));
   const pickTarget = (v: string) => {
@@ -349,6 +351,24 @@ function MidiSection() {
           <option value="">{t('d.set.firstinst')}</option>
           <For each={pitched()}>{c => <option value={String(c.id)}>{c.name}</option>}</For>
         </select>
+        <label>{t('d.set.vel')}</label>
+        <div class="row" style={{ gap: '8px' }} title={t('d.set.vel.tip')}>
+          <select class="sel" style={{ flex: 1 }} value={st()?.fixedVelocity == null ? 'kbd' : 'fixed'}
+            onChange={e => run(setMidiVelocity(e.currentTarget.value === 'fixed' ? lastFixed : null))}>
+            <option value="kbd">{t('d.set.vel.kbd')}</option>
+            <option value="fixed">{t('d.set.vel.fixed')}</option>
+          </select>
+          <Show when={st()?.fixedVelocity != null}>
+            <input class="textin" type="number" min="1" max="127" step="1" style={{ width: '64px' }} value={st()!.fixedVelocity!}
+              aria-label={t('d.set.vel.fixed')}
+              onChange={e => {
+                const v = Math.round(+e.currentTarget.value);
+                if (!Number.isFinite(v)) { e.currentTarget.value = String(st()!.fixedVelocity); return; }
+                lastFixed = Math.min(127, Math.max(1, v)); e.currentTarget.value = String(lastFixed);
+                run(setMidiVelocity(lastFixed));
+              }} />
+          </Show>
+        </div>
         <label>{t('d.set.state')}</label>
         <span class="note mono row" style={{ gap: '6px' }}>
           <span class="midiled" classList={{ on: !!st()?.connected, hit: midiFlash() }} />

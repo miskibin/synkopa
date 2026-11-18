@@ -608,6 +608,16 @@ async fn midi_status(app: St<'_>) -> R<MidiStatus> {
     Ok(app.midi.status())
 }
 
+/// Plays every key at one velocity (`None` = the keyboard's own); saved and restored at startup.
+#[tauri::command]
+async fn midi_set_velocity(app: St<'_>, fixed: Option<u8>) -> R<MidiStatus> {
+    let st = app.midi.set_fixed_velocity(fixed);
+    let mut s = app.settings.lock();
+    s.midi_fixed_velocity = st.fixed_velocity;
+    s.save();
+    Ok(st)
+}
+
 /// Which Channel Rack channel (instrument) the keyboard plays; `None` = the first pitched one.
 #[tauri::command]
 async fn midi_set_target(app: St<'_>, channel: Option<u64>) -> R<MidiStatus> {
@@ -1260,6 +1270,7 @@ pub fn run(project_arg: Option<&str>) {
             midi_select_device,
             midi_status,
             midi_set_target,
+            midi_set_velocity,
             library_list,
             library_install,
             keys_status,
@@ -1431,6 +1442,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     keys::ensure(&app, app.engine.uses_keys());
     // reopen the saved keyboard (it may be unplugged: the status says so, and it opens when it returns)
     let a = app.clone();
+    a.midi.set_fixed_velocity(a.settings.lock().midi_fixed_velocity);
     std::thread::spawn(move || {
         let saved = a.settings.lock().midi_device.clone();
         if let Some(d) = saved {

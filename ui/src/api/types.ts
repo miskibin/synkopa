@@ -514,6 +514,8 @@ export interface MidiStatus {
   noteCount: number;
   /** Channel (instrument) the keyboard plays; null = the first pitched channel. */
   target: Id | null;
+  /** Every key plays at this velocity (1..127); null = the keyboard's own velocity. */
+  fixedVelocity: number | null;
 }
 /** Event `midi-note`: one key down/up as it happens. */
 export interface MidiNoteEvent { note: MidiLastNote; count: number }

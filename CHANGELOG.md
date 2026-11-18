@@ -7,6 +7,9 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Fixed velocity for the MIDI keyboard.** Settings → MIDI → Velocity: "Fixed" plays and
+  records every key at one velocity (100 by default, any 1–127) however hard it is pressed —
+  for keyboards without velocity or when you do not want it. "From keyboard" is the default.
 - **Auto vocal from the command line.** `synkopa auto-vocal --clip N` measures a vocal take and puts
   the tuned chain on its mixer insert in one call — the same chain the app's Auto vocal button
   builds (pitch correction, vocal rider rendered into the audio, compressors, de-esser, reverb,

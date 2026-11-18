@@ -156,6 +156,8 @@ export interface Backend {
   midiStatus(): Promise<MidiStatus>;
   /** Which channel (instrument) the keyboard plays (null = the first pitched channel). With a track armed and transport recording, played notes land as a pattern clip on that track. */
   midiSetTarget(channel: Id | null): Promise<MidiStatus>;
+  /** Plays every key at `fixed` (1..127), or at the keyboard's velocity (null); saved across sessions. */
+  midiSetVelocity(fixed: number | null): Promise<MidiStatus>;
   libraryList(): Promise<LibraryList>;
   libraryInstall(id: string): Promise<void>;
   /** Synkopa Keys: whether the piano's recordings are on this computer and loaded. */
@@ -361,6 +363,7 @@ export function tauriBackend(): Backend {
     midiSelectDevice: id => invoke('midi_select_device', { id }),
     midiStatus: () => invoke('midi_status'),
     midiSetTarget: channel => invoke('midi_set_target', { channel }),
+    midiSetVelocity: fixed => invoke('midi_set_velocity', { fixed }),
     libraryList: () => invoke('library_list'),
     libraryInstall: id => invoke('library_install', { id }),
     keysStatus: () => invoke('keys_status'),

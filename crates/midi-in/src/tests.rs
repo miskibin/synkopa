@@ -236,3 +236,34 @@ fn last_note_packing_round_trips() {
     }
     assert_eq!(unpack(0), (0, None));
 }
+
+#[test]
+fn a_fixed_velocity_replaces_the_keyboards_on_every_note_on() {
+    let r = rig();
+    *r.fake.ports.lock() = vec![dev("a", "Keys")];
+    r.input.select(Some("a"), None);
+    assert_eq!(r.input.status().fixed_velocity, None);
+    assert_eq!(r.input.set_fixed_velocity(Some(100)).fixed_velocity, Some(100));
+    r.fake.send(&[0x90, 60, 12]);
+    r.fake.send(&[0x90, 62, 127]);
+    r.fake.send(&[0x90, 60, 0]); // a note-on at 0 is still a release
+    r.fake.send(&[0x80, 62, 40]);
+    assert_eq!(
+        *r.msgs.lock(),
+        vec![
+            MidiMsg::NoteOn { ch: 0, key: 60, vel: 100 },
+            MidiMsg::NoteOn { ch: 0, key: 62, vel: 100 },
+            MidiMsg::NoteOff { ch: 0, key: 60 },
+            MidiMsg::NoteOff { ch: 0, key: 62 },
+        ]
+    );
+    // the activity readout shows what was played
+    r.fake.send(&[0x90, 64, 5]);
+    assert_eq!(r.input.status().last_note, Some(LastNote { key: 64, velocity: 100, on: true }));
+    // back to the keyboard's own; out-of-range values are clamped
+    assert_eq!(r.input.set_fixed_velocity(None).fixed_velocity, None);
+    r.fake.send(&[0x90, 65, 33]);
+    assert_eq!(r.msgs.lock().last(), Some(&MidiMsg::NoteOn { ch: 0, key: 65, vel: 33 }));
+    assert_eq!(r.input.set_fixed_velocity(Some(0)).fixed_velocity, Some(1));
+    assert_eq!(r.input.set_fixed_velocity(Some(200)).fixed_velocity, Some(127));
+}

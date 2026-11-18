@@ -4,7 +4,7 @@
 //! activity) is tested without hardware; [`MidirBackend`] is the real one.
 
 use std::any::Any;
-use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering::Relaxed};
 use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::Duration;
@@ -46,6 +46,9 @@ pub struct MidiStatus {
     pub note_count: u64,
     /// The engine channel the keyboard plays (`None` = first pitched channel).
     pub target: Option<u64>,
+    /// Every key plays at this velocity (1..127) whatever the keyboard sends; `None` = the
+    /// keyboard's own velocity.
+    pub fixed_velocity: Option<u8>,
 }
 
 /// What to tell the UI about a key event as it happens.
@@ -117,6 +120,8 @@ pub struct MidiInput {
     inner: Mutex<Inner>,
     /// Packed last key event: count in the top 40 bits, `on << 16 | key << 8 | velocity`.
     last: Arc<AtomicU64>,
+    /// The fixed note-on velocity (0 = the keyboard's own); read by the driver callback.
+    fixed: Arc<AtomicU8>,
 }
 
 fn pack(count: u64, n: LastNote) -> u64 {
@@ -143,6 +148,7 @@ impl MidiInput {
             hooks,
             inner: Mutex::new(Inner { wanted: None, open: None, error: None, target: None }),
             last: Arc::new(AtomicU64::new(0)),
+            fixed: Arc::new(AtomicU8::new(0)),
         });
         let weak: Weak<Self> = Arc::downgrade(&m);
         thread::Builder::new()
@@ -174,6 +180,7 @@ impl MidiInput {
             last_note,
             note_count,
             target: g.target,
+            fixed_velocity: Some(self.fixed.load(Relaxed)).filter(|v| *v > 0),
         }
     }
 
@@ -203,6 +210,13 @@ impl MidiInput {
         let mut g = self.inner.lock();
         g.target = target;
         self.status_of(&g)
+    }
+
+    /// Plays every key at `vel` (clamped to 1..127), or at the keyboard's velocity (`None`).
+    /// Takes effect on the next key, live and when recording.
+    pub fn set_fixed_velocity(&self, vel: Option<u8>) -> MidiStatus {
+        self.fixed.store(vel.map_or(0, |v| v.clamp(1, 127)), Relaxed);
+        self.status()
     }
 
     pub fn target(&self) -> Option<u64> {
@@ -253,7 +267,12 @@ impl MidiInput {
     }
 
     fn open_port(&self, g: &mut Inner, id: &str, dev: MidiDevice) {
-        let sink = CallbackState { message: self.hooks.message.clone(), note: self.hooks.note.clone(), last: self.last.clone() };
+        let sink = CallbackState {
+            message: self.hooks.message.clone(),
+            note: self.hooks.note.clone(),
+            last: self.last.clone(),
+            fixed: self.fixed.clone(),
+        };
         match self.backend.connect(id, Box::new(move |raw: &[u8]| sink.handle(raw))) {
             Ok(conn) => {
                 g.open = Some((dev, conn));
@@ -272,11 +291,18 @@ struct CallbackState {
     message: Arc<dyn Fn(MidiMsg) + Send + Sync>,
     note: Arc<dyn Fn(&MidiNoteEvent) + Send + Sync>,
     last: Arc<AtomicU64>,
+    fixed: Arc<AtomicU8>,
 }
 
 impl CallbackState {
     fn handle(&self, raw: &[u8]) {
-        let Some(m) = MidiMsg::parse(raw) else { return };
+        let Some(mut m) = MidiMsg::parse(raw) else { return };
+        if let MidiMsg::NoteOn { vel, .. } = &mut m {
+            match self.fixed.load(Relaxed) {
+                0 => {}
+                f => *vel = f,
+            }
+        }
         (self.message)(m);
         let n = match m {
             MidiMsg::NoteOn { key, vel, .. } => LastNote { key, velocity: vel, on: true },

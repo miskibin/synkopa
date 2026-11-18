@@ -161,7 +161,7 @@ export class MockBackend implements Backend {
   private wasapiOutputPresent = true;
 
   private midiPorts: MidiDevice[] = [{ id: 'mock-keys', name: 'Mock Keystation 61' }, { id: 'mock-pads', name: 'Mock Pad Controller' }];
-  private midi: MidiStatus = { connected: null, selected: null, error: null, lastNote: null, noteCount: 0, target: null };
+  private midi: MidiStatus = { connected: null, selected: null, error: null, lastNote: null, noteCount: 0, target: null, fixedVelocity: null };
 
   private clock: ReturnType<typeof setInterval>;
   constructor() {
@@ -1347,6 +1347,10 @@ export class MockBackend implements Backend {
     return { ...this.midi };
   }
   async midiStatus() { return { ...this.midi }; }
+  async midiSetVelocity(fixed: number | null) {
+    this.midi = { ...this.midi, fixedVelocity: fixed == null ? null : Math.min(127, Math.max(1, Math.round(fixed))) };
+    return { ...this.midi };
+  }
   async midiSetTarget(channel: Id | null) {
     this.midi = { ...this.midi, target: channel };
     this.emit('midi-status', { ...this.midi });

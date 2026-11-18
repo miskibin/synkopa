@@ -38,6 +38,9 @@ export function startMidi() {
 
 export async function selectMidiDevice(id: string | null) { setStatus(await be().midiSelectDevice(id)); }
 export async function setMidiTarget(ch: Id | null) { setStatus(await be().midiSetTarget(ch)); }
+/** FL's default note velocity (100 of 127). */
+export const DEFAULT_FIXED_VELOCITY = 100;
+export async function setMidiVelocity(fixed: number | null) { setStatus(await be().midiSetVelocity(fixed)); }
 export function setMidiFollow(on: boolean) {
   setFollowSig(on);
   try { localStorage.setItem(FOLLOW_KEY, on ? '1' : '0'); } catch { /* private window */ }
