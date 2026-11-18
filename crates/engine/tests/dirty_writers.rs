@@ -66,9 +66,12 @@ fn pattern_notes_mark_their_track() {
 fn routed_notes_mark_their_insert() {
     let mut p = Project::routed();
     p.inserts[0].fx.clear();
+    // playlist lanes play into the master (insert 0), so a bus is a genuinely different sink:
+    // if the direct-to-insert writer is missed, the notes die at the bus and the test fails
     let bus = p.inserts[1].id;
-    let mut kick = p.channels.iter().find(|c| c.name == "Kick").unwrap().clone();
-    kick.insert = Some(bus);
+    assert_ne!(p.tracks[1].insert, bus, "the fixture must not route track 1 through the bus under test");
+    let kick = p.channels.iter().find(|c| c.name == "Kick").unwrap().id;
+    p.channels.iter_mut().find(|c| c.id == kick).unwrap().insert = Some(bus);
     p.patterns = vec![Pattern {
         id: 1,
         name: "P".into(),
@@ -76,7 +79,7 @@ fn routed_notes_mark_their_insert() {
         len: 4.0,
         min_len: 4.0,
         swing: 0.0,
-        notes: vec![Note::new(kick.id, 0.0, 0.5, Some(60))],
+        notes: vec![Note::new(kick, 0.0, 0.5, Some(60))],
     }];
     p.clips = vec![clip(10, 1, 0.0, 4.0, 1)];
     let out = Engine::new(p, Arc::new(NoPlugins)).render(0.0, 4.0, 0.0, SR).unwrap();
@@ -87,9 +90,9 @@ fn routed_notes_mark_their_insert() {
 /// An audio clip is mixed into its track buffer by the clip mixer itself (not by a renderer).
 #[test]
 fn audio_clips_mark_their_track() {
-    let dir = std::env::temp_dir().join(format!("wave-dirty-audio-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let wav = dir.join("tone.wav");
+    // a directory the test owns: cleaned up on success and on failure alike
+    let dir = tempfile::tempdir().unwrap();
+    let wav = dir.path().join("tone.wav");
     let x: Vec<f32> = (0..SR as usize * 5)
         .flat_map(|i| {
             let v = (i as f32 * 220.0 * std::f32::consts::TAU / SR as f32).sin() * 0.5;
@@ -104,5 +107,4 @@ fn audio_clips_mark_their_track() {
     let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
     let hit = peak(&out, 0.5, 1.5);
     assert!(hit > 0.3, "audio clip on track 1 is silent (peak {hit}) — the clip mixer does not mark the track buffer");
-    let _ = std::fs::remove_dir_all(dir);
 }

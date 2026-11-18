@@ -385,6 +385,9 @@ pub struct Graph {
     /// Which track buffers were written during the current block: they are zeroed before the
     /// next one, and while a buffer was not written it is known zeros (readers can skip it).
     track_dirty: Vec<bool>,
+    /// Block length of the block just rendered: dirty buffers are cleared over exactly this
+    /// range (a short block after a long one must not leave stale samples past its end).
+    cleared_n: usize,
     /// Track index whose insert receives the live input when monitoring.
     pub monitor_track: Option<usize>,
     /// Pre-chain PDC line of the low-latency monitored insert (`pdc` frames, see `InsertRt::low_lat`).
@@ -407,6 +410,7 @@ impl Graph {
             tracks,
             track_bufs,
             track_dirty,
+            cleared_n: 0,
             monitor_track,
             mon: (Ring::default(), Ring::default()),
             mon_ins: None,
@@ -1647,22 +1651,25 @@ impl Rt {
         let sr = self.sr;
         // only buffers written during the last block have to be cleared; while nothing wrote
         // into a buffer it is known zeros, and its writers are the only ones who can say when
-        // that stopped being true (write-side, see the `dirty` flags)
+        // that stopped being true (write-side, see the `dirty` flags). Clear exactly what the
+        // last block could have written: the current block's length would miss stale samples
+        // when a short block follows a long one.
         let g = &mut *self.graph;
         for (ti, (l, r)) in g.track_bufs.iter_mut().enumerate() {
             if g.track_dirty[ti] {
-                l.fill(0.0);
-                r.fill(0.0);
+                l[..g.cleared_n].fill(0.0);
+                r[..g.cleared_n].fill(0.0);
                 g.track_dirty[ti] = false;
             }
         }
         for ins in g.inserts.iter_mut() {
             if ins.dirty {
-                ins.l.fill(0.0);
-                ins.r.fill(0.0);
+                ins.l[..g.cleared_n].fill(0.0);
+                ins.r[..g.cleared_n].fill(0.0);
                 ins.dirty = false;
             }
         }
+        g.cleared_n = n;
         self.click[..n].fill(0.0);
 
         let bpm = self.timeline.bpm;
