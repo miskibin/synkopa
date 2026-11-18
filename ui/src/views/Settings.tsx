@@ -3,7 +3,7 @@ import { ICONS } from '../ui/icons';
 import { be } from '../api/backend';
 import { PLUGIN_FORMAT_LABEL, type AudioConfig, type AudioDevices, type AudioHost, type AudioStatus, type CliStatus, type MidiDevice, type PluginInfo, type PluginScan } from '../api/types';
 import * as A from '../state/actions';
-import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, refreshAudioStatus, switchToWasapi } from '../state/audioWatch';
+import { applyAudioConfig, audioApplyError, audioBusy, audioStatus, refreshAudioStatus, switchToWasapi, takeAudioTabRequest } from '../state/audioWatch';
 import { keyName, midiFlash, midiFollow, midiStatus, selectMidiDevice, setMidiFollow, setMidiTarget } from '../state/midi';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
@@ -28,6 +28,7 @@ function SettingsDialog() {
   const [devs, setDevs] = createSignal<AudioDevices>({ outputs: [], inputs: [] });
   const [cli, setCli] = createSignal<CliStatus | null>(null);
   const [err, setErr] = createSignal<string | null>(null);
+  if (takeAudioTabRequest()) lastTab = 'audio';
   const [tab, setTab] = createSignal<Tab>(lastTab);
   const pickTab = (t: Tab) => { lastTab = t; setTab(t); };
   const cur = () => TABS.find(x => x.id === tab()) ?? TABS[0];

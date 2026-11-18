@@ -294,8 +294,8 @@ clip that hides N − 1 clips entirely (`lib/overlaps.ts`). Clicking such a clip
 the status line. The overlay is recomputed with the fades on clip edits and tile moves,
 never per frame.
 
-**The standard library** (`crates/engine/src/factory.rs`). 179 one-shots in eleven groups
-(kicks, snares, claps, hats, cymbals, toms, percussion, bass, tonal, orchestra, FX) and 11 melodic
+**The standard library** (`crates/engine/src/factory.rs`). 179 one-shots in ten groups
+(kicks, snares, claps, hats, cymbals, toms, percussion, tonal, orchestra, FX) and 11 melodic
 loops (group `Loops`) are embedded in the engine (`crates/engine/library`, 19.0 MB: FLAC
 one-shots, Ogg Vorbis loops). All are CC0 but one (the Unlicense); `THIRD_PARTY_NOTICES.md`
 credits each file from other authors than Versilian and the TR-808 set, and a test checks that

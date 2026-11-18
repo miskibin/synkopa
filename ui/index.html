@@ -8,7 +8,8 @@
     <!-- Painted before any script runs: the window shows this while the app loads its last project. -->
     <style>
       html, body { margin: 0; height: 100%; background: #0e1013; }
-      .boot { position: fixed; inset: 0; display: grid; place-items: center; }
+      .boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 28px; }
+      .boot svg { width: 72px; height: auto; }
       .boot i { display: block; width: 120px; height: 3px; border-radius: 3px; background: #232a34; overflow: hidden; }
       .boot i::after { content: ""; display: block; width: 40%; height: 100%; background: #8794a8; animation: boot 1.1s ease-in-out infinite; }
       @keyframes boot { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
@@ -16,7 +17,11 @@
     </style>
   </head>
   <body>
-    <div id="root"><div class="boot" role="progressbar" aria-label="Loading"><i></i></div></div>
+    <div id="root"><div class="boot" role="progressbar" aria-label="Loading Synkopa">
+      <!-- app/icons/synkopa-logo.svg, cropped to the bars -->
+      <svg viewBox="298 268 658 796" aria-hidden="true"><g fill="#FDB400"><rect x="502" y="268" width="454" height="96"/><rect x="298" y="408" width="578" height="96"/><rect x="378" y="828" width="578" height="96"/><rect x="298" y="968" width="436" height="96"/></g><g fill="#D0D0D0"><rect x="298" y="548" width="329" height="96"/><rect x="598" y="688" width="358" height="96"/></g></svg>
+      <i></i>
+    </div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

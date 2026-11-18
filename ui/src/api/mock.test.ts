@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { MockBackend } from './mock';
-import { demoProject, emptyProject, FACTORY_FILES, FACTORY_KIT, libPath } from '../lib/factory';
+import { demoProject, emptyProject, FACTORY_KIT, FACTORY_LISTED_FILES, factoryFile, libPath } from '../lib/factory';
 import { migrateProject } from '../lib/pattern';
 import type { ExportProgress, ExportStemsResult } from './types';
 
@@ -11,10 +11,15 @@ describe('standard library in the mock', () => {
   it('lists the standard library first, with groups and root keys', async () => {
     const be = new MockBackend();
     const { kits } = await be.libraryList();
-    expect(kits[0]).toMatchObject({ id: FACTORY_KIT, installed: true, count: FACTORY_FILES.length });
+    expect(kits[0]).toMatchObject({ id: FACTORY_KIT, installed: true, count: FACTORY_LISTED_FILES.length });
     const files = (await be.libraryFiles({ kit: FACTORY_KIT })).files;
-    expect(files).toHaveLength(FACTORY_FILES.length);
+    expect(files).toHaveLength(FACTORY_LISTED_FILES.length);
     expect(files.find(f => f.name === 'Marimba Low')).toMatchObject({ group: 'Tonal', root: 36, path: libPath('marimba-low.flac') });
+    expect(files.find(f => f.name === 'Trap Kick Rack')).toMatchObject({ group: 'Kicks', path: libPath('kick-trap-rack.flac') });
+    expect(files.find(f => f.name === '808 Zay Warm')).toMatchObject({ group: '808', root: 36, pitched: true, path: libPath('bass-808-zay.flac') });
+    const unlisted = libPath('bass-808-drive.flac');
+    expect(files.some(f => f.path === unlisted)).toBe(false);
+    expect(factoryFile(unlisted)).toMatchObject({ group: '808', name: '808 Bass Drive' });
   });
   it('keeps a library file as one source however often it is imported', async () => {
     const be = new MockBackend();
