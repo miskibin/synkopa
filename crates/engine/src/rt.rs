@@ -206,6 +206,11 @@ pub struct FxSlot {
     pub mix: f32,
     /// Wet scale for the bypass declick (`run_chain` ramps it over ~5 ms on a flip).
     fade: f32,
+    /// Weight of the dry path's latency delay in a bypass release: 1.0 keeps it delayed
+    /// (aligned with the still-late wet while the wet fades out), and `run_chain` ramps it
+    /// to 0 in a second declick once the wet is gone — dropping the delay in one step would
+    /// click (a phase jump of the whole latency).
+    dly_fade: f32,
     /// `None` = "take the running processor with this id from the current graph".
     pub proc: Option<Box<dyn Processor>>,
     pub params: Option<ParamBlock>,
@@ -232,6 +237,7 @@ impl FxSlot {
             bypass,
             mix,
             fade: if bypass { 0.0 } else { 1.0 },
+            dly_fade: if bypass { 0.0 } else { 1.0 },
             proc,
             params,
             dly_l: vec![0.0; latency],
@@ -248,6 +254,14 @@ impl FxSlot {
             *y = std::mem::replace(&mut self.dly_r[w], *y);
             self.dly_w = if w + 1 == n { 0 } else { w + 1 };
         }
+    }
+
+    /// Drops the dry-path delay line once its release is over: nothing reads it any more
+    /// (an un-bypass rebuild swaps in a fresh, zeroed one of the effect's latency).
+    fn clear_delay(&mut self) {
+        self.dly_l.clear();
+        self.dly_r.clear();
+        self.dly_w = 0;
     }
 }
 
@@ -1186,9 +1200,15 @@ impl Rt {
                             if let Some((st, old)) = found {
                                 let mut took = false;
                                 if slot.proc.is_none() {
-                                    slot.proc = old.proc.take();
-                                    slot.fade = old.fade;
-                                    took = true;
+                                    // "take the running processor with this id" — but a kind
+                                    // change under the same id is a different effect: the fresh
+                                    // one must play (a carried Comp would process a Fet slot)
+                                    if old.kind == slot.kind {
+                                        slot.proc = old.proc.take();
+                                        slot.fade = old.fade;
+                                        slot.dly_fade = if slot.bypass { old.dly_fade } else { 1.0 };
+                                        took = true;
+                                    }
                                 } else if old.kind == slot.kind && old.proc.is_some() {
                                     // a same-kind rebuild (a bypass flip, new params) keeps the
                                     // running processor: its tail must not die at the swap. The
@@ -1197,6 +1217,7 @@ impl Rt {
                                     // the fresh one.
                                     std::mem::swap(&mut slot.proc, &mut old.proc);
                                     slot.fade = old.fade;
+                                    slot.dly_fade = if slot.bypass { old.dly_fade } else { 1.0 };
                                     took = true;
                                 }
                                 if old.dly_l.len() == slot.dly_l.len() {
@@ -1204,6 +1225,19 @@ impl Rt {
                                     std::mem::swap(&mut slot.dly_r, &mut old.dly_r);
                                     slot.dly_w = old.dly_w;
                                     took = took || !slot.dly_l.is_empty();
+                                } else if slot.bypass
+                                    && (slot.fade > 0.0 || slot.dly_fade > 0.0)
+                                    && slot.dly_l.is_empty()
+                                    && !old.dly_l.is_empty()
+                                {
+                                    // a bypass ramp-out (or its release) with the wet still carried
+                                    // on: it stays late by the plugin's latency, so the dry path must
+                                    // stay delayed with it until the handoff is done — the rebuilt
+                                    // slot says 0 (a bypassed effect delays nothing once it is over)
+                                    std::mem::swap(&mut slot.dly_l, &mut old.dly_l);
+                                    std::mem::swap(&mut slot.dly_r, &mut old.dly_r);
+                                    slot.dly_w = old.dly_w;
+                                    took = true;
                                 }
                                 if took {
                                     carried = true;
@@ -2461,9 +2495,29 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
         // the wet path runs while it is audible or still ramping out: a bypassed slot whose
         // fade has reached 0 costs nothing again
         let fading = (!slot.bypass && slot.mix > 0.0005) || (slot.bypass && slot.fade > 0.0);
+        // the wet is gone, but the dry path still sits on the old latency: hand it back in a
+        // second declick (dropping the delay in one step would click with a phase jump)
+        let releasing = slot.bypass && slot.fade <= 0.0 && slot.dly_fade > 0.0 && delayed;
         if !slot.bypass && slot.mix <= 0.0005 && delayed {
             // fully dry: still late by the latency PDC is compensating for
             slot.delay_dry(&mut ins.l[..n], &mut ins.r[..n]);
+        } else if releasing {
+            ins.dry_l[..n].copy_from_slice(&ins.l[..n]);
+            ins.dry_r[..n].copy_from_slice(&ins.r[..n]);
+            slot.delay_dry(&mut ins.l[..n], &mut ins.r[..n]);
+            let mut w = slot.dly_fade;
+            for i in 0..n {
+                w -= declick;
+                if w < 0.0 {
+                    w = 0.0;
+                }
+                ins.l[i] += (ins.dry_l[i] - ins.l[i]) * (1.0 - w);
+                ins.r[i] += (ins.dry_r[i] - ins.r[i]) * (1.0 - w);
+            }
+            slot.dly_fade = w;
+            if w == 0.0 {
+                slot.clear_delay();
+            }
         } else if fading {
             if let Some(p) = slot.proc.as_mut() {
                 let mix = slot.mix.min(1.0);

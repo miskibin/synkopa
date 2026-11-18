@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockBackend } from '../api/mock';
 
 // The optimistic pass must know every op: one it misses shows nothing until the idle
@@ -14,8 +14,6 @@ beforeAll(() => {
 let mock: MockBackend;
 let store: typeof import('./store');
 let edit: typeof import('./edit');
-/** The mutating queue is serial and async: let it drain before reading the mock's truth. */
-const settle = () => new Promise(r => setTimeout(r, 10));
 beforeEach(async () => {
   vi.resetModules();
   const backend = await import('../api/backend');
@@ -24,6 +22,9 @@ beforeEach(async () => {
   edit = await import('./edit');
   await mock.projectOpen();
   store.replaceState(await mock.getState());
+});
+afterEach(() => {
+  mock.dispose(); // the backend's interval outlives resetModules otherwise
 });
 
 describe('optimistic editing covers every op', () => {
@@ -37,7 +38,7 @@ describe('optimistic editing covers every op', () => {
     expect(S.project.tracks.some(t => t.id === victim)).toBe(false); // gone locally, no engine reply yet
     expect(S.project.clips.some(c => onVictim.includes(c.id))).toBe(false); // the removed track's clips went with it
     for (const id of below) expect(S.project.clips.find(c => c.id === id)?.track).toBe(1);
-    await settle();
+    await edit.settled();
     expect((await mock.getState()).project.tracks.some(t => t.id === victim)).toBe(false); // the engine agrees
   });
 
@@ -50,7 +51,7 @@ describe('optimistic editing covers every op', () => {
     edit.commit([{ op: 'transformNotes', pattern: pat.id, verb: { kind: 'quantize', grid: 1 } }], 'test: quantize');
     const pt = S.project.patterns.find(x => x.id === pat.id)!;
     expect(Math.abs(pt.notes[0].step - 1)).toBeLessThan(1e-6); // snapped locally: the button feels instant
-    await settle();
+    await edit.settled();
     const engine = (await mock.getState()).project.patterns.find(x => x.id === pat.id)!;
     expect(Math.abs(engine.notes[0].step - 1)).toBeLessThan(1e-6);
   });
@@ -65,13 +66,32 @@ describe('optimistic editing covers every op', () => {
   it('pulls the engine state back when the engine refuses a gesture batch', async () => {
     const S = store.S;
     edit.commit([{ op: 'setKey', key: 3, scale: 2 }], 'test: set key');
-    await settle();
+    await edit.settled();
     const g = new edit.Gesture('test: refused drag');
     g.update([{ op: 'setKey', key: 5, scale: 9 }]); // the engine refuses: scale must be 0..4
     expect(S.project.scale).toBe(9); // applied locally…
     g.end();
-    await settle();
+    await edit.settled();
     expect(store.S.project.scale).toBe(2); // …but the engine's truth is back on screen
     expect((await import('./ui')).U.readout).toContain('scale must be 0..4');
+  });
+
+  it('repairs a refused frame even when the first state read fails', async () => {
+    edit.commit([{ op: 'setKey', key: 3, scale: 2 }], 'test: set key');
+    await edit.settled();
+    const g = new edit.Gesture('test: refused drag, backend down');
+    g.update([{ op: 'setKey', key: 5, scale: 9 }]);
+    g.end();
+    // the refusal's read-back itself fails once: the bounded retry must still repair the screen
+    vi.spyOn(mock, 'getState').mockRejectedValueOnce(new Error('backend down'));
+    await vi.waitFor(() => expect(store.S.project.scale).toBe(2), { timeout: 3000 });
+  });
+
+  it('refuses an out-of-range euclid size instead of allocating it', async () => {
+    const pat = store.S.project.patterns[0];
+    const before = JSON.stringify(pat.notes ?? []);
+    edit.commit([{ op: 'transformNotes', pattern: pat.id, verb: { kind: 'euclidFill', ch: 1, k: 4, n: 1e9 } }], 'test: huge euclid');
+    // refused before the transform allocates per slot: the notes stay as they were, at once
+    expect(JSON.stringify(store.S.project.patterns.find(x => x.id === pat.id)!.notes ?? [])).toBe(before);
   });
 });

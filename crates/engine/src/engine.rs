@@ -317,8 +317,9 @@ struct Core {
     path: Option<PathBuf>,
     saved_revision: u64,
     transport: TransportDto,
-    /// Effect ids the audio thread currently holds a processor for.
-    live_fx: HashSet<Id>,
+    /// Effect ids the audio thread currently holds a processor for, with their kind: a kind
+    /// change under the same id is a different effect, and its processor must be rebuilt.
+    live_fx: HashMap<Id, FxKind>,
     sent_params: HashMap<Id, (Option<ParamBlock>, f32)>,
     /// Warp maps the audio thread has, by effect id (a change is sent as `Cmd::FxData`).
     sent_maps: HashMap<Id, crate::model::WarpMaps>,
@@ -474,7 +475,7 @@ impl Engine {
                     rec_notes: true,
                     rec_quantize: 0.0,
                 },
-                live_fx: HashSet::new(),
+                live_fx: HashMap::new(),
                 sent_params: HashMap::new(),
                 sent_maps: HashMap::new(),
                 fx_errors: HashMap::new(),
@@ -591,7 +592,7 @@ impl Engine {
         let mut c = self.core.lock();
         // everything is rebuilt for the new rate: hosted plugins keep their state through the project
         self.snapshot_plugin_states(&mut c.project);
-        for id in c.live_fx.drain().collect::<Vec<_>>() {
+        for id in c.live_fx.drain().map(|(id, _)| id).collect::<Vec<_>>() {
             self.factory.release(id);
         }
         c.plugin_lat.clear();
@@ -2249,7 +2250,9 @@ impl Engine {
     pub fn new_project(&self, project: Project) -> Result<(), EngineError> {
         self.vet_project(&project);
         let mut c = self.core.lock();
-        if c.take.is_some() {
+        // a notes-only take lives outside `c.take`: it would otherwise finish into the new
+        // project (old track index, old channel id), after the reset already cleared recovery
+        if c.take.is_some() || self.midi_take.lock().rec.is_some() {
             return Err(EngineError::Msg("recording: stop it first".into()));
         }
         send(&mut c, Cmd::Stop);
@@ -2652,7 +2655,7 @@ impl Engine {
         rt.set_workers(self.render_workers.load(Relaxed));
         let mut errs = HashMap::new();
         let mut hosted = HashMap::new();
-        let graph = build_graph(&project, &HashSet::new(), sr, block, &*self.factory, false, &mut errs, &mut hosted);
+        let graph = build_graph(&project, &HashMap::new(), sr, block, &*self.factory, false, &mut errs, &mut hosted);
         let mut tl = build_timeline(&project, &mut |clip| store_snapshot.get(&clip.id).cloned(), &takes, &HashMap::new(), keys.as_ref());
         let wrap = matches!(tail, RenderTail::Wrap);
         let decay = matches!(tail, RenderTail::Decay { .. });
@@ -2811,8 +2814,11 @@ impl Engine {
         c.graph_deferred |= defer;
         if d.mixer && !defer {
             c.graph_deferred = false;
-            let now: HashSet<Id> = c.project.inserts.iter().flat_map(|m| m.fx.iter().map(|f| f.id)).collect();
-            for gone in c.live_fx.difference(&now).copied().collect::<Vec<_>>() {
+            // by id and kind: an id whose kind changed is a different effect, whose processor
+            // must be rebuilt, not carried (the builder only skips ids it holds as live)
+            let now: HashMap<Id, FxKind> = c.project.inserts.iter().flat_map(|m| m.fx.iter().map(|f| (f.id, f.kind))).collect();
+            let stale: Vec<Id> = c.live_fx.iter().filter_map(|(id, k)| (now.get(id) != Some(k)).then_some(*id)).collect();
+            for gone in stale {
                 self.factory.release(gone);
                 c.fx_errors.remove(&gone);
             }
@@ -2822,11 +2828,11 @@ impl Engine {
             graph.monitor_track = monitor_of(c);
             c.fx_errors = errs;
             c.plugin_lat = hosted;
-            c.live_fx = graph.inserts.iter().flat_map(|i| i.fx.iter().map(|s| s.id)).collect();
+            c.live_fx = graph.inserts.iter().flat_map(|i| i.fx.iter().map(|s| (s.id, s.kind))).collect();
             c.sent_params = c.project.inserts.iter().flat_map(|m| m.fx.iter()).map(|f| (f.id, fx_send(f))).collect();
             // fresh processors got their maps in `build_graph`; carried ones keep what they had
             let fresh: HashSet<Id> = graph.inserts.iter().flat_map(|i| i.fx.iter()).filter(|s| s.proc.is_some()).map(|s| s.id).collect();
-            c.sent_maps.retain(|id, _| now.contains(id) && !fresh.contains(id));
+            c.sent_maps.retain(|id, _| now.contains_key(id) && !fresh.contains(id));
             for f in c.project.inserts.iter().flat_map(|m| m.fx.iter()) {
                 if let (true, Some(m)) = (fresh.contains(&f.id), f.maps.as_ref()) {
                     c.sent_maps.insert(f.id, m.clone());
@@ -4386,7 +4392,7 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_graph(
     p: &Project,
-    live: &HashSet<Id>,
+    live: &HashMap<Id, FxKind>,
     sr: f32,
     max_block: usize,
     factory: &dyn PluginFactory,
@@ -4402,7 +4408,10 @@ pub(crate) fn build_graph(
         .map(|m| {
             m.fx.iter()
                 .map(|f| {
-                    if live.contains(&f.id) {
+                    // live by id *and* kind: the audio thread carries the running processor
+                    // over only for the same kind (see `Rt::apply`), so a kind change must
+                    // build fresh here, or the slot would sit without a processor
+                    if live.get(&f.id) == Some(&f.kind) {
                         None
                     } else if f.kind == FxKind::Plugin {
                         match factory.create(f.id, f.plugin.as_ref().unwrap(), sr, max_block, live_instances) {

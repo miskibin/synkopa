@@ -374,6 +374,9 @@ export class MockBackend implements Backend {
   private startRec(clipStart: number) {
     // the mock has no MIDI keyboard: with Audio unticked nothing is recorded
     if (!this.tr.recAudio) return;
+    // like the native engine: with no running audio device there is no take either, so a
+    // reset stays allowed (a take needs the input the device would deliver)
+    if (!this.audio.running) return;
     // like the engine: the armed track, else the first one with room, else a new track
     const lp = this.p.loop;
     const lap: [number, number] | null = lp && lp.b > lp.a && clipStart >= lp.a && clipStart < lp.b ? [lp.a, lp.b] : null;

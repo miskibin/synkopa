@@ -14,6 +14,8 @@ let inflight = 0;          // queued/unanswered mutating requests
 let gestures = 0;          // gestures between begin and end
 let lastReplyRev = 0;      // newest revision the engine reported for one of *our* batches
 let stash: StateDto | null = null;
+let recovery: Promise<void> | null = null; // a refusal's state read-back, while it runs
+let resyncTries = 0;       // read-back retries after the backend itself failed
 
 export const projectRevision = () => Math.max(S.revision, lastReplyRev);
 
@@ -78,9 +80,42 @@ export function acceptReply(dto: StateDto) {
   replaceState(dto);
 }
 
-export async function resync(err?: unknown) {
+export function resync(err?: unknown): Promise<void> {
   if (err) { console.warn('[wave] edit rejected:', err); say(tl('a.err', { e: String((err as Error)?.message ?? err) })); }
-  try { const dto = await be().getState(); lastReplyRev = dto.revision; stash = null; replaceState(dto); } catch (e) { console.error(e); }
+  recovery = (async () => {
+    try {
+      const dto = await be().getState();
+      resyncTries = 0;
+      if (dto.revision < S.revision) return; // a newer state is already on screen
+      lastReplyRev = dto.revision; stash = null; replaceState(dto);
+    } catch (e) {
+      // the read failed too: the refused frame must not stay on screen for ever, but a
+      // backend that errors on reads must not be spun against either — retry, bounded
+      console.error(e);
+      scheduleResync();
+    }
+  })();
+  return recovery;
+}
+
+function scheduleResync() {
+  if (resyncTries >= 4) return; // bounded: a backend that keeps failing is not spun against
+  resyncTries++;
+  setTimeout(() => {
+    // a live edit or gesture is working against its own state; its next reply repairs it.
+    // Checked here (retry time), not above: the failing read may race the gesture's own
+    // end_gesture, which is still in flight when the first read fails.
+    if (inflight > 0 || gestures > 0) return;
+    void resync();
+  }, 250);
+}
+
+/** Test hook: the mutating queue has drained and any refusal's read-back has landed. */
+export function settled(): Promise<void> {
+  return queue.then(
+    () => {},
+    () => {},
+  ).then(() => recovery ?? undefined).then(() => {});
 }
 
 /** One undo step: apply locally, send to the engine. */

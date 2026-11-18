@@ -412,3 +412,25 @@ fn a_new_project_is_refused_while_a_take_is_active() {
     e.new_project(Project::empty()).expect("the take is over: the reset must work");
     assert!(e.project().clips.is_empty() && e.project().bpm != 97.0, "the new project replaced the old one");
 }
+
+#[test]
+fn a_notes_only_take_refuses_new_project_too() {
+    // `play` starts a MIDI take with Notes on and Audio off: it lives outside the audio
+    // take, and a reset would let it finish into the new project (its old track index and
+    // channel id) — the same refusal must cover it, and the reset must work after Stop.
+    let mut p = armed();
+    p.bpm = 97.0;
+    let e = engine(p, "newproj-notes");
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.set_transport(None, Some(false), Some(true), None); // record on
+    e.set_rec_filter(Some(false), Some(true)); // notes only: no audio take, `c.take` stays None
+    e.play(0.0);
+    let mut at = 0;
+    feed(&mut rt, &mut at, BLOCK * 4, &|_| 0.0);
+    let refused = e.new_project(Project::empty()).unwrap_err();
+    assert!(refused.to_string().contains("recording"), "{refused}");
+    assert_eq!(e.project().bpm, 97.0, "the refused reset must leave the project alone");
+    e.stop();
+    e.new_project(Project::empty()).expect("the take is over: the reset must work");
+    assert!(e.project().bpm != 97.0, "the new project replaced the old one");
+}

@@ -26,6 +26,11 @@ fn longest_gap(x: &[f32]) -> usize {
     best
 }
 
+/// Loudest absolute difference between two equally long signals.
+fn max_diff(a: &[f32], b: &[f32]) -> f32 {
+    a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0, f32::max)
+}
+
 /// A steady 15 s tone (stereo) on tracks 2, 4 and 5 (never crossing zero for long), optionally a 1.6 s Rider
 /// on track 1; playing from 0 and run past the compensation delay.
 fn setup(rider: bool, tag: &str) -> (Arc<Engine>, Rt) {
@@ -108,4 +113,45 @@ fn a_latency_change_costs_at_most_the_change() {
     put(&e, 3, Fx { bypass: true, ..new_fx(9000, FxKind::Voice, bpm) });
     let gap = longest_gap(&run(&mut rt, SR as usize));
     assert!(gap < 4, "gap {gap} frames when the latency drops");
+}
+
+#[test]
+fn a_kind_change_under_one_id_builds_the_new_kind() {
+    // a reverb rings on the tone; the same effect id arrives with a new kind through a
+    // whole-project replace (`set_project` — the op layer refuses a kind change, but a
+    // project edited elsewhere does not). The de-esser must run from then on: the output
+    // matches a de-esser that was there all along — not a carried-over reverb processor,
+    // and not a slot left without a processor. (It is transparent on this tone: no
+    // reduction, only its look-ahead delay.)
+    let (e, mut rt) = setup(false, "kind");
+    let (e_ref, mut rt_ref) = setup(false, "kind-ref");
+    let bpm = e.project().bpm;
+    put(&e, 2, new_fx(7000, FxKind::Reverb, bpm));
+    let deess = || {
+        let mut f = new_fx(7000, FxKind::Deess, bpm);
+        f.params.insert("look".into(), 15.0);
+        f
+    };
+    put(&e_ref, 2, deess());
+    let before_e = run(&mut rt, SR as usize / 2);
+    let before_ref = run(&mut rt_ref, SR as usize / 2);
+    let differs = max_diff(&before_e, &before_ref);
+    assert!(differs > 0.01, "the reverb must be audible for the test to mean anything (diff {differs})");
+
+    let mut p = e.project();
+    let ins = p.tracks[2].insert;
+    let f = p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx.iter_mut().find(|f| f.id == 7000).unwrap();
+    f.kind = FxKind::Deess;
+    f.params = deess().params;
+    e.set_project(p, None).unwrap();
+
+    let mut settle = run(&mut rt, BLOCK);
+    let _ = run(&mut rt_ref, BLOCK);
+    settle.extend(run(&mut rt, SR as usize / 2)); // lines refill, envelopes converge
+    let _ = run(&mut rt_ref, SR as usize / 2);
+    let after_e = run(&mut rt, SR as usize / 2);
+    let after_ref = run(&mut rt_ref, SR as usize / 2);
+    let now_deess = max_diff(&after_e, &after_ref);
+    eprintln!("kind swap under one id: before {differs:.4}, after {now_deess:.6}");
+    assert!(now_deess < 1e-4, "the swapped effect must run as the new kind: diff {now_deess}");
 }

@@ -276,6 +276,11 @@ function applyInPlace(p: Project, op: Op) {
       const roots = (p.channels ?? []).map(c => ({ id: c.id, root: c.root ?? 60 }));
       // plain copies: `p` is a Solid draft here, and its proxies do not survive structuredClone
       const notes: Note[] = JSON.parse(JSON.stringify(pt.notes ?? []));
+      // generator sizes the engine refuses (bounded in ops.rs before anything allocates):
+      // refuse them here too, before the optimistic transform allocates per slot
+      const sizeOk = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 512;
+      if (op.verb.kind === 'euclidFill' && (!sizeOk(op.verb.k) || !sizeOk(op.verb.n))) return;
+      if (op.verb.kind === 'euclidDrums' && op.verb.voices.some(v => !sizeOk(v.k) || !sizeOk(v.n))) return;
       try { applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(16, Math.round(pt.len * 4))); } catch { return; }
       pt.notes = notes;
       const oldLen = pt.len;
