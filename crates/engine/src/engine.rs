@@ -253,6 +253,9 @@ struct RecBuf {
     peaks: Vec<f32>,
     peaks_sent: usize,
     acc: (f32, f32, usize),
+    /// The take reached [`TAKE_MAX_SECONDS`]: input is dropped from here on and the take
+    /// ends at the next housekeeping tick.
+    full: bool,
 }
 
 impl RecBuf {
@@ -280,6 +283,13 @@ impl RecBuf {
         }
     }
     fn push(&mut self, x: f32) {
+        if self.full {
+            return;
+        }
+        if self.frames() >= TAKE_MAX_SECONDS * self.sr as usize {
+            self.full = true;
+            return;
+        }
         if x.is_nan() {
             self.nans += 1;
             if self.nans.is_multiple_of(2) {
@@ -470,6 +480,10 @@ pub struct Engine {
 }
 
 const UNDO_LIMIT: usize = 200;
+/// Longest take kept in RAM (decoding an import stops at the same 30 minutes): recording
+/// buffers in memory, so an hour would hold ~1.4 GB. When a take reaches it, the take ends
+/// (as when the song reaches its end) and what was captured lands as the clip.
+const TAKE_MAX_SECONDS: usize = 30 * 60;
 
 impl Engine {
     pub fn new(mut project: Project, factory: Arc<dyn PluginFactory>) -> Arc<Self> {
@@ -791,6 +805,9 @@ impl Engine {
         // height is saved with the song, so it is carried into the history instead: undoing an
         // older edit keeps the lanes as they are now.
         let height_only = track_before.as_deref().filter(|tb| only_track_heights(ops, tb, &c.project.tracks));
+        if ops.iter().any(|op| matches!(op, Op::RemoveSource { .. })) {
+            gc_sources(&mut c);
+        }
         if let Some(tb) = height_only {
             // only the lanes whose height changed, and only into the same track: a track's id stays
             // with its slot when lanes swap (Move up / down), so the history is walked step by step
@@ -858,12 +875,12 @@ impl Engine {
         c.redo.push(cur);
         let Core { sources, project, .. } = &mut *c;
         sources.reconcile(&project.sources);
+        gc_sources(&mut c);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
         true
     }
-
     /// Replaces the whole project with `project` as one undo step, without stopping the
     /// transport (`synkopa watch`: a script's result, made on a copy, applied in one go). Audio
     /// already loaded for a source of the same id and file is kept; a new source's file is
@@ -919,6 +936,7 @@ impl Engine {
         c.gesture_unreported = false;
         let before = std::mem::replace(&mut c.project, project);
         push_undo(&mut c, before);
+        gc_sources(&mut c);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         let rev = c.revision;
@@ -935,6 +953,7 @@ impl Engine {
         c.undo.push(cur);
         let Core { sources, project, .. } = &mut *c;
         sources.reconcile(&project.sources);
+        gc_sources(&mut c);
         c.revision += 1;
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
@@ -1182,6 +1201,7 @@ impl Engine {
             peaks: vec![],
             peaks_sent: 0,
             acc: (0.0, 0.0, 0),
+            full: false,
         })
     }
 
@@ -1368,6 +1388,7 @@ impl Engine {
         }
         let shared = self.shared();
         let frame_parts;
+        let mut take_capped = false;
         {
             let mut guard = self.core.lock();
             let c = &mut *guard;
@@ -1385,6 +1406,7 @@ impl Engine {
                         for &x in a.iter().chain(b.iter()) {
                             t.push(x);
                         }
+                        take_capped = t.full;
                     }
                     chunk.commit_all();
                 }
@@ -1411,6 +1433,14 @@ impl Engine {
                 log::error!("{e}");
             }
             self.finish_midi_take();
+            let c = self.core.lock();
+            self.changed(c);
+        }
+        if take_capped {
+            // the take hit the RAM cap: it ends here (as at the song's end), the transport
+            // keeps rolling, further input is dropped
+            log::warn!("recording stopped at {} minutes: the take keeps what it captured", TAKE_MAX_SECONDS / 60);
+            self.finish_take();
             let c = self.core.lock();
             self.changed(c);
         }
@@ -1618,6 +1648,29 @@ fn push_undo(c: &mut Core, before: Project) {
     c.redo.clear();
 }
 
+/// Asks the source store to drop what no part of the history can reach: the project, its
+/// undo and redo snapshots, the open gesture. Rare and cheap (two id sets), and what keeps
+/// a long session's decoded audio bounded — a source whose every history entry has aged out
+/// of the undo limit holds its decoded audio and its relink parking for nothing.
+fn gc_sources(c: &mut Core) {
+    let mut sources: HashSet<Id> = HashSet::new();
+    let mut clips: HashSet<Id> = HashSet::new();
+    {
+        let mut acc = |p: &Project| {
+            sources.extend(p.sources.iter().map(|s| s.id));
+            clips.extend(p.clips.iter().map(|x| x.id));
+        };
+        acc(&c.project);
+        for p in c.undo.iter().chain(c.redo.iter()) {
+            acc(p);
+        }
+        if let Some(g) = &c.gesture {
+            acc(g);
+        }
+    }
+    c.sources.gc(&sources, &clips);
+}
+
 /// The channel the keyboard plays: the chosen one if it exists, else the first pitched
 /// channel, else the first channel.
 fn midi_channel(c: &Core) -> Option<Id> {
@@ -1677,3 +1730,39 @@ fn drop_empty_track(p: &mut Project, id: Id) -> bool {
     }
     true
 }
+
+
+#[cfg(test)]
+mod rec_cap_tests {
+    use super::*;
+
+    #[test]
+    fn a_take_stops_growing_at_the_ram_cap() {
+        let mut t = RecBuf {
+            track: 0,
+            start: 0.0,
+            skip: 0,
+            pdc: 0,
+            lap: None,
+            sr: 48000,
+            data: vec![],
+            marks: vec![],
+            nans: 0,
+            peaks: vec![],
+            peaks_sent: 0,
+            acc: (0.0, 0.0, 0),
+            full: false,
+        };
+        let cap = TAKE_MAX_SECONDS * 48000;
+        for _ in 0..(cap - 10) * 2 {
+            t.push(0.1);
+        }
+        assert_eq!(t.frames(), cap - 10);
+        for _ in 0..40 {
+            t.push(0.1);
+        }
+        assert!(t.full, "crossing the cap marks the take full");
+        assert_eq!(t.frames(), cap, "the take stops growing at the cap");
+    }
+}
+

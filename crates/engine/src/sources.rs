@@ -1,6 +1,6 @@
 //! Audio the project plays: decoded once, shared by `Arc` with the audio thread.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -133,6 +133,9 @@ type Variant = (u64, bool, bool);
 pub type AlignKey = (Variant, Variant, usize, usize);
 /// Alignments kept (each is a few floats per 5 ms of the take).
 const MAX_ALIGNMENTS: usize = 32;
+/// Audio parked by relinks, in bytes (least recently parked dropped first): about an hour of
+/// 48 kHz stereo per gigabyte, same budget as the stretch cache.
+const PARKED_CACHE_BYTES: usize = 1 << 30;
 
 /// Every loaded source, plus normalised/reversed variants built on demand.
 #[derive(Default)]
@@ -153,8 +156,14 @@ pub struct SourceStore {
     /// The path a relinked source's audio was decoded from (only relinked sources).
     origin: HashMap<u64, String>,
     /// Audio a relink replaced, by (source id, path), so undo and redo of a relink play the
-    /// file the restored path names. Holds one entry per relink made since the project opened.
-    parked: HashMap<(u64, String), Arc<Audio>>,
+    /// file the restored path names. Bounded in bytes ([`PARKED_CACHE_BYTES`], least recently
+    /// parked dropped first): an entry evicted before its undo makes the restored path play
+    /// silence (the source goes missing, as when a file never loaded).
+    parked: HashMap<(u64, String), (u64, Arc<Audio>)>,
+    /// Growing counter ordering the parked cache by age (the stretch cache's trick).
+    tick: u64,
+    /// Bytes of decoded audio the parked cache holds.
+    parked_bytes: usize,
 }
 
 /// (source id, identity of the audio before stretching, render ratio bits, `Clip::pitch` bits)
@@ -323,12 +332,33 @@ impl SourceStore {
     /// decoded from `old_path`, is kept for undo. Pitch renders of clips are redone.
     pub fn relink(&mut self, id: u64, old_path: &str, path: &str, audio: Arc<Audio>) {
         if let Some(prev) = self.audio.get(&id).cloned() {
-            self.parked.insert((id, old_path.to_string()), prev);
+            self.park(id, old_path, prev);
         }
         self.parked.remove(&(id, path.to_string()));
         self.insert(id, audio);
         self.origin.insert(id, path.to_string());
         self.tuned.clear();
+    }
+
+    /// Keeps an audio a relink replaced, so undo of the relink plays it again, under the
+    /// byte budget (least recently parked dropped first).
+    fn park(&mut self, id: u64, path: &str, audio: Arc<Audio>) {
+        self.tick += 1;
+        let t = self.tick;
+        self.parked_bytes += audio.data.len() * 4;
+        if let Some((_, old)) = self.parked.insert((id, path.to_string()), (t, audio)) {
+            self.parked_bytes -= old.data.len() * 4;
+        }
+        self.park_under(PARKED_CACHE_BYTES);
+    }
+
+    fn park_under(&mut self, cap: usize) {
+        while self.parked_bytes > cap && self.parked.len() > 1 {
+            let oldest = self.parked.iter().min_by_key(|(_, (t, _))| *t).map(|(k, _)| k.clone()).unwrap();
+            if let Some((_, a)) = self.parked.remove(&oldest) {
+                self.parked_bytes -= a.data.len() * 4;
+            }
+        }
     }
 
     /// After undo/redo: a relinked source whose path changed plays the audio of the path it
@@ -341,10 +371,10 @@ impl SourceStore {
                 continue;
             }
             if let Some(prev) = self.audio.get(&s.id).cloned() {
-                self.parked.insert((s.id, from), prev);
+                self.park(s.id, &from, prev);
             }
             match self.parked.remove(&(s.id, s.path.clone())) {
-                Some(a) => self.insert(s.id, a),
+                Some((_, a)) => self.insert(s.id, a),
                 None => self.forget(s.id),
             }
             self.origin.insert(s.id, s.path.clone());
@@ -353,6 +383,23 @@ impl SourceStore {
         if changed {
             self.tuned.clear();
         }
+    }
+
+    /// Drops everything kept for sources and clips no part of the history can reach any more
+    /// (`sources` and `clips` are every id the project, its undo and redo snapshots and the
+    /// open gesture hold): decoded audio, norm/reverse variants, analyses, relink parking.
+    /// History entries beyond the undo limit are gone, so what only they referenced is
+    /// unreachable and its room is freed; undoing to them is impossible anyway.
+    pub fn gc(&mut self, sources: &HashSet<u64>, clips: &HashSet<u64>) {
+        self.audio.retain(|k, _| sources.contains(k));
+        self.derived.retain(|k, _| sources.contains(&k.0));
+        self.analysis.retain(|k, _| sources.contains(&k.0));
+        self.content.retain(|k, _| sources.contains(&k.0));
+        self.aligned.retain(|k, _| sources.contains(&k.0 .0) && sources.contains(&k.1 .0));
+        self.music.retain(|k, _| sources.contains(&k.0));
+        self.origin.retain(|k, _| sources.contains(k));
+        self.parked.retain(|(id, _), _| sources.contains(id));
+        self.tuned.retain(|k, _| clips.contains(k));
     }
 
     /// Switches the pitch detector; every analysis (and what depends on it) is redone.
@@ -780,4 +827,54 @@ pub fn write_mp3(path: &Path, interleaved: &[f32], sr: u32, kbps: u32, title: Op
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     std::fs::write(path, out).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn audio(frames: usize) -> Arc<Audio> {
+        Arc::new(Audio::from_stereo(vec![0.0; frames * 2], 48000, 2))
+    }
+
+    #[test]
+    fn the_parked_cache_drops_the_oldest_first_under_its_budget() {
+        let mut s = SourceStore::default();
+        let one = audio(2).data.len() * 4;
+        for k in 0..4 {
+            s.park(1, &format!("p{k}"), audio(2));
+        }
+        assert_eq!(s.parked.len(), 4);
+        s.park_under(one * 2); // the two oldest go, the two newest stay
+        assert_eq!(s.parked.len(), 2);
+        assert!(s.parked.contains_key(&(1, "p2".into())) && s.parked.contains_key(&(1, "p3".into())));
+        // one entry survives even when it alone is over the budget
+        s.park_under(0);
+        assert_eq!(s.parked.len(), 1);
+    }
+
+    #[test]
+    fn gc_drops_only_what_no_history_can_reach() {
+        let mut s = SourceStore::default();
+        s.insert(1, audio(8));
+        s.insert(2, audio(8));
+        s.variant(1, true, false).unwrap();
+        s.origin.insert(2, "old".into());
+        s.audio.insert(3, audio(8)); // a source the project let go of long ago
+        s.tuned.insert(77, (0, audio(8)));
+        let sources: HashSet<u64> = [1, 2].into_iter().collect();
+        let clips: HashSet<u64> = [77].into_iter().collect();
+        s.gc(&sources, &clips);
+        assert!(s.get(1).is_some() && s.get(2).is_some());
+        assert!(s.get(3).is_none(), "audio of a source nothing references goes");
+        assert!(s.variant(1, true, false).is_some(), "variants of a reachable source stay");
+        assert_eq!(s.tuned.len(), 1);
+        // a reachable source's relink parking survives; unreachable parking goes with it
+        s.audio.insert(2, audio(8));
+        s.park(2, "p", audio(8));
+        s.park(3, "p", audio(8));
+        s.gc(&sources, &clips);
+        assert!(s.parked.contains_key(&(2, "p".into())));
+        assert!(!s.parked.contains_key(&(3, "p".into())));
+    }
 }
