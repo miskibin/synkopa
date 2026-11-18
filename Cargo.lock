@@ -5826,6 +5826,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wave-stems"
+version = "0.4.0"
+dependencies = [
+ "hound",
+ "ort",
+ "parking_lot",
+ "realfft",
+ "wave-audio-file",
+ "wave-rmvpe",
+]
+
+[[package]]
 name = "wave-stretch"
 version = "0.4.0"
 dependencies = [

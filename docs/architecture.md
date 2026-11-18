@@ -1125,6 +1125,18 @@ size, SHA-256 and licence link are constants in `crates/rmvpe`) to
 `<data>/Models/rmvpe.onnx`; `WAVE_RMVPE_MODEL` overrides the path.
 `crates/tune-bench` measures the whole pipeline (see `docs/cli.md`).
 
+## Stem separation (prototype)
+
+`crates/stems` splits a stereo mix into drums, bass, other and vocals with Demucs v4
+(HTDemucs, MIT code and weights) on the same ONNX Runtime as RMVPE. Not wired into the app
+yet. `scripts/export-htdemucs-onnx.py` exports the network without its STFT/iSTFT (ONNX has
+no complex tensors) and records the source names, rate and segment as model metadata; the
+crate does the STFT, iSTFT, the 7.8 s segments with 25 % triangular cross-fades and the mix
+normalisation exactly as `demucs.apply`/`demucs.separate` do (outputs match PyTorch to about
+3e-5), and streams finished frames to a sink, so memory is one segment per stem whatever the
+length. `cargo run -p wave-stems --release --example separate -- model.onnx mix.wav out/` is
+the headless entry point. The model is never committed: like RMVPE it will be downloaded.
+
 ## Updates and release notes
 
 The app updates itself from GitHub Releases (public repository: no token). See

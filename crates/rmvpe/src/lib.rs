@@ -62,13 +62,13 @@ pub fn ort_library() -> Option<PathBuf> {
 }
 
 #[cfg(target_os = "linux")]
-fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
+pub fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
     let lib = ort_library().ok_or("ONNX Runtime is not installed with this build of Synkopa (libonnxruntime.so.1)")?;
     ort::init_from(&lib).map_err(|e| format!("{}: {e}", lib.display()))
 }
 
 #[cfg(not(target_os = "linux"))]
-fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
+pub fn ort_init() -> Result<ort::environment::EnvironmentBuilder, String> {
     Ok(ort::init())
 }
 
