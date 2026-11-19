@@ -22,7 +22,9 @@
 //! library is never freed. The cost is address space the OS can page out.
 
 use std::collections::HashMap;
-use std::ffi::{c_void, OsStr};
+#[cfg(any(windows, target_os = "linux"))]
+use std::ffi::c_void;
+use std::ffi::OsStr;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};

@@ -260,7 +260,8 @@ mod tests {
         event_loop::uninstall();
     }
 
-    #[cfg(unix)]
+    // libc is a Linux dev-dependency: the run loop is Linux's (VST3 on macOS uses the system loop)
+    #[cfg(target_os = "linux")]
     #[test]
     fn a_registered_descriptor_reaches_the_plugin() {
         let lp = PollLoop::new();
