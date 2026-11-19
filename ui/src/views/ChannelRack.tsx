@@ -32,7 +32,7 @@ import { pickFreeInsert, wheelInsert } from '../ui/InsertPicker';
 import { showInsert } from '../state/mixView';
 import { toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo, laneColor } from './patternDraw';
-import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
+import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, PatternChip, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
 const RACK_ICON = 'M4 5h4v4H4z M10 5h4v4h-4z M16 5h4v4h-4z M4 15h4v4H4z M10 15h4v4h-4z M16 15h4v4h-4z';
@@ -372,10 +372,7 @@ function Rack(props: { z: number; docked?: boolean }) {
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>
         <span class="wintitle">Channel rack</span>
-        <button class="patname" title={t('b.rk.patTitle')} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4); }}>
-          <span class="sw" style={{ background: pt().color }} /><span class="ell">{pt().name}</span>
-          <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
-        </button>
+        <PatternChip pat={pt()} />
         <div class="bars" title={t('b.rk.barsTitle')}>
           <button disabled={pt().len <= 4} onClick={() => removeBar(pt())} title={t('b.pm.removeBarTitle')}>−</button>
           <span class="mono">{barsText(pt().len / 4)}</span>

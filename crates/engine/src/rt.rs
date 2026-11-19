@@ -2273,7 +2273,7 @@ fn play(
 ) {
     if ch.kind == VoiceKind::Synth {
         if let Some(s) = synths.get(ch.id) {
-            s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest);
+            s.note_pan(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest, pan);
         }
     } else if ch.kind == VoiceKind::Plugin {
         // the level on top goes to the instance's output, not into the velocity (a plugin's

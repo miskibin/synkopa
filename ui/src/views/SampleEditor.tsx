@@ -262,14 +262,14 @@ function SampleWave(props: WaveProps) {
 interface SampleKnobProps {
   id: string; label: TranslationKey; title?: TranslationKey; position: () => number; display: () => string;
   op: (position: number) => Op; wheelOp?: (position: number) => Op; zero?: number; defaultPosition: number;
-  target?: () => AutoTarget; color?: () => string; menuTip?: TranslationKey;
+  target?: () => AutoTarget; color?: () => string; arc?: string; menuTip?: TranslationKey;
 }
 
 function SampleKnob(props: SampleKnobProps) {
   let gesture: Gesture | null = null;
   const label = () => t(props.label);
   const reset = () => commit([props.op(props.defaultPosition)], label());
-  return <Knob key={props.id} label={label()} title={t(props.title ?? 'd.smp.knob.tip')}
+  return <Knob key={props.id} color={props.arc} label={label()} title={t(props.title ?? 'd.smp.knob.tip')}
     t={props.position} text={props.display} zero={props.zero == null ? undefined : () => props.zero!}
     automated={() => !!props.target && isAutomated(props.target())}
     onMenu={props.target || props.menuTip ? (x, y) => {
@@ -350,7 +350,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
     const v = () => autoDisplay(target()) ?? c()[key];
     return <SampleKnob id={id + key} label={gain ? 'd.smp.k.vol' : 'd.smp.k.pan'}
       position={() => (v() - lo) / (hi - lo)} display={() => gain ? dbText(v()) : panText(v())} zero={-lo / (hi - lo)}
-      defaultPosition={-lo / (hi - lo)} op={x => put({ [key]: lo + x * (hi - lo) })} target={target} color={() => src().color} />;
+      defaultPosition={-lo / (hi - lo)} op={x => put({ [key]: lo + x * (hi - lo) })} target={target} color={() => src().color} arc={gain ? undefined : 'var(--pan)'} />;
   };
   const fit = (b: number) => {
     const n = fitClip(plain(c()), b); if (!n) return;
@@ -497,9 +497,9 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
     fades={<FadeKnobs id={id} value={fadeValue} limit={fadeLimit} op={(k, v) => put({ [fadeKey[k]]: v })} title="b.sm.fadeTip" />}
     details={<>
       <div class="smprow">
-        <label class="smpcut" title={t('b.sm.cutTitle')}>
-          <span>{t('b.sm.cut')}</span>
-          <select class="sel" value={String(s().cut)} onChange={e => {
+        <label class="chip smpcut" title={t('b.sm.cutTitle')}>
+          {t('b.sm.cut')}
+          <select value={String(s().cut)} onChange={e => {
             const cut = +e.currentTarget.value;
             set({ cut }, 'b.sm.cut', cut ? t('b.sm.cutSay', { n: cut }) : t('b.sm.cutNoneSay'));
           }}>

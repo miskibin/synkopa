@@ -130,12 +130,12 @@ function Body(props: { w: Win; c: Channel }) {
   );
 }
 
-function ChannelKnob(props: { channel: Channel; lab: TranslationKey; undoLab: TranslationKey; position: () => number; text: () => string; patch: (v: number) => Partial<Channel>; def: number; zero?: number; target?: () => AutoTarget }) {
+function ChannelKnob(props: { channel: Channel; lab: TranslationKey; undoLab: TranslationKey; position: () => number; text: () => string; patch: (v: number) => Partial<Channel>; def: number; zero?: number; target?: () => AutoTarget; color?: string }) {
   const { lab, undoLab, position, text, patch, def, zero, target } = props;
   let g: Gesture | null = null;
   const reset = () => commit([chanOp(props.channel, patch(def))], t(undoLab));
   return (
-    <Knob key={'cw' + lab + props.channel.id} label={t(lab)} title={t('b.cw.knobTitle')} t={position} text={text}
+    <Knob key={'cw' + lab + props.channel.id} color={props.color} label={t(lab)} title={t('b.cw.knobTitle')} t={position} text={text}
       automated={() => !!target && isAutomated(target())}
       onMenu={(x, y) => target ? paramMenu(x, y, target(), reset, props.channel.color) : controlMenu(x, y, props.channel.name + ' · ' + t(lab), reset, t('a.au.noRoot'))}
       zero={zero != null ? () => zero : undefined}
@@ -156,7 +156,7 @@ export function ChannelLevelKnobs(props: { channel: Channel; sample?: boolean })
     <ChannelKnob channel={props.channel} lab={props.sample ? 'd.smp.k.vol' : 'b.cw.vol'} undoLab="b.cw.volCh" position={vol} text={() => volText(vol())}
       patch={t => ({ vol: Math.round(clamp(t, 0, 1) * 10000) / 10000 })} def={VOL_UNITY} target={volT} />
     <ChannelKnob channel={props.channel} lab={props.sample ? 'd.smp.k.pan' : 'b.cw.pan'} undoLab="b.cw.panCh" position={() => (pan() + 1) / 2} text={() => panText(pan())}
-      patch={t => ({ pan: Math.round(clamp(t * 2 - 1, -1, 1) * 100) / 100 })} def={0.5} zero={0.5} target={panT} />
+      patch={t => ({ pan: Math.round(clamp(t * 2 - 1, -1, 1) * 100) / 100 })} def={0.5} zero={0.5} target={panT} color="var(--pan)" />
   </>;
 }
 

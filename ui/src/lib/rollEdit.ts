@@ -174,8 +174,26 @@ export function readProps(notes: readonly Note[], idx: readonly number[], chan: 
  * notes keep their positions relative to each other). Returns null when a note would leave the
  * song or the keys 0..127 (nothing is changed then).
  */
+/** A typed pan: "C", "30R" / "R30", "30L" / "L30", or a signed percent (-100..100). → -1..1, null when it is none of these. */
+export function parsePan(text: string): number | null {
+  const s = text.trim().toUpperCase().replace(/%/g, '').replace(/\s+/g, '');
+  if (s === 'C' || s === '0') return 0;
+  const m = /^(?:([LR])(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)([LR])|([+-]?\d+(?:[.,]\d+)?))$/.exec(s);
+  if (!m) return null;
+  const side = m[1] ?? m[4], num = parseFloat((m[2] ?? m[3] ?? m[5]).replace(',', '.'));
+  const v = side ? (side === 'L' ? -num : num) : num;
+  return Math.abs(v) > 100 ? null : Math.round(v) / 100;
+}
+
+/** The pan the notes share (0 = centre), or null when they differ. */
+export function sharedPan(notes: readonly Note[], idx: readonly number[]): number | null {
+  let v: number | null = null;
+  for (const i of idx) { const p = notes[i]?.pan ?? 0; if (v == null) v = p; else if (Math.abs(v - p) > 1e-6) return null; }
+  return v ?? 0;
+}
+
 export function applyProps(notes: readonly Note[], idx: readonly number[], chan: Channel | undefined,
-  ch: { vel?: number; len?: number; start?: number; key?: number }): Note[] | null {
+  ch: { vel?: number; len?: number; start?: number; key?: number; pan?: number }): Note[] | null {
   const cur = readProps(notes, idx, chan);
   const dS = ch.start != null ? ch.start - cur.start : 0, dK = ch.key != null ? ch.key - cur.key : 0;
   const out = notes.slice();
@@ -187,6 +205,7 @@ export function applyProps(notes: readonly Note[], idx: readonly number[], chan:
     if (ch.len != null) m.trig = false;
     if (dK) m.p = key;
     if (ch.vel != null) m.v = ch.vel / 100;
+    if (ch.pan != null) { if (Math.abs(ch.pan) < 0.005) delete m.pan; else m.pan = ch.pan; }
     out[i] = m;
   }
   return out;
