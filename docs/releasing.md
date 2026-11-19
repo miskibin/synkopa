@@ -1,7 +1,8 @@
 # Releasing Synkopa
 
 A release is one commit; the workflow does the rest. Installed copies find it by themselves
-(Settings → General → Updates, or the button beside the menus) and show its notes.
+(downloading it in the background, then offering "Restart to update" under the menus) and
+show its notes after the restart.
 
 ## Each release
 

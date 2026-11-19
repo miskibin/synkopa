@@ -65,6 +65,7 @@ describe('What\'s new', () => {
     const { c } = make(a);
     await c.init();
     expect(c.state.news?.map(r => r.version)).toEqual(['0.9.3', '0.9.2']);
+    expect(c.state.newsFrom).toBe('0.9.0'); // "2 releases since 0.9.0"
     expect(store.get('wave.mock.seen')).toBe('0.9.0'); // not before it was shown
     await c.closeNews();
     expect(c.state.news).toBeNull();
@@ -96,6 +97,43 @@ describe('What\'s new', () => {
   });
 });
 
+describe('automatic updates', () => {
+  it('an automatic check downloads in the background and only then shows Restart to update', async () => {
+    let restarted = 0;
+    const { a } = api({ restart: () => { restarted++; } });
+    const { c, seen } = make(a);
+    await c.init();
+    await c.check(false);
+    expect(c.state.phase).toBe('ready');
+    expect(c.state.dialog).toBe(false);
+    expect(seen.some(s => s.phase === 'downloading' && s.quiet)).toBe(true); // no button while it downloads
+    expect(c.state.quiet).toBe(false);
+    expect(restarted).toBe(0); // never restarts by itself
+    await c.install();
+    expect(restarted).toBe(1);
+  });
+
+  it('a failed background download waits quietly and the next check tries again', async () => {
+    const { a } = api();
+    let fail = true;
+    const flaky: UpdatesApi = { ...a, updateDownload: async () => { if (fail) throw new Error('connection reset'); return a.updateDownload(); } };
+    const { c } = make(flaky);
+    await c.init();
+    await c.check(false);
+    expect(c.state.phase).toBe('available'); expect(c.state.dialog).toBe(false); expect(c.state.quiet).toBe(false);
+    fail = false;
+    await c.check(false);
+    expect(c.state.phase).toBe('ready'); expect(c.state.error).toBeNull();
+  });
+
+  it('with the switch off nothing is downloaded without a click', async () => {
+    const { a } = api();
+    const { c } = make(a); await c.init(); await c.setAuto(false);
+    await c.check(true);
+    expect(c.state.phase).toBe('available');
+  });
+});
+
 describe('update journey', () => {
   it('check → download with progress → restart only on install', async () => {
     const store = memoryStore();
@@ -103,6 +141,7 @@ describe('update journey', () => {
     const o = api({ store, restart: () => { restarted++; } });
     const { c, seen } = make(o.a);
     await c.init();
+    await c.setAuto(false);
     await c.check(false);
     expect(c.state.phase).toBe('available');
     expect(c.state.info?.version).toBe(MOCK_NEXT);
@@ -134,6 +173,8 @@ describe('update journey', () => {
     const { c } = make(a); await c.init();
     await c.check(true);
     expect(c.state.dialog).toBe(true);
+    expect(c.state.phase).toBe('ready'); // downloaded while the dialog showed the progress
+    expect(c.state.quiet).toBe(false);
     c.closeDialog();
     store.set('wave.mock.version', MOCK_NEXT);
     const u = make(a).c; await u.init();
@@ -153,7 +194,8 @@ describe('update journey', () => {
     const { a } = api();
     let ask = 0;
     const { c } = make(a, async () => { ask++; return false; });
-    await c.init(); await c.check(false); await c.start();
+    await c.init(); await c.check(false);
+    expect(c.state.phase).toBe('ready');
     await c.install();
     expect(ask).toBe(1);
     expect(c.state.phase).toBe('ready');
@@ -164,7 +206,7 @@ describe('update journey', () => {
     let fail = true;
     const flaky: UpdatesApi = { ...a, updateDownload: async () => { if (fail) throw new Error('signature mismatch'); return a.updateDownload(); }, updateInstall: async () => { if (fail) throw new Error('installer failed'); } };
     const { c } = make(flaky);
-    await c.init(); await c.check(false);
+    await c.init(); await c.setAuto(false); await c.check(false);
     await c.start();
     expect(c.state.phase).toBe('available'); expect(c.state.error).toMatch(/signature mismatch/);
     fail = false;
@@ -177,7 +219,7 @@ describe('update journey', () => {
 
   it('ignores calls that do not fit the phase (double clicks, install before download)', async () => {
     const { a } = api();
-    const { c } = make(a); await c.init();
+    const { c } = make(a); await c.init(); await c.setAuto(false);
     await c.install(); await c.start();
     expect(c.state.phase).toBe('idle');
     await c.check(false);

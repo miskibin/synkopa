@@ -699,7 +699,8 @@ select option { background: var(--bg4); color: var(--fg); }
 .pltools .snapsel { flex: 1; min-width: 84px; max-width: 110px; height: 26px; font-size: 11px; }
 .toolbar .panelbtn .lbl, .toolbar .typkb .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
 .tbmenu { display: flex; align-items: center; gap: 10px; height: 22px; min-width: 0; }
-.tbmenu .updchip { flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; }
+/* "Restart to update" is the one control the update needs: it never shrinks, the readout and hint before it do */
+.tbhint .updchip { flex: none; margin-left: auto; height: 16px; padding: 0 9px; border-radius: 8px; font-size: 10.5px; }
 .menubar { flex: none; display: flex; gap: 1px; margin-left: -7px; }
 .menubar.open { position: relative; z-index: 52; }
 .mbtn { height: 22px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); font: 500 12px var(--sans); cursor: default; }
@@ -1240,7 +1241,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .typoct { font-size: 9.5px; font-weight: 600; }
 
 /* updates: status-bar button, update / What's new dialogs, Settings rows */
-.updchip { position: relative; overflow: hidden; height: 16px; padding: 0 8px; border: 0; border-radius: 3px; background: var(--blue); color: var(--on-accent); font: 600 10px var(--mono); cursor: pointer; white-space: nowrap; }
+.updchip { position: relative; overflow: hidden; height: 20px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--blue); color: var(--on-accent); font: 600 11px var(--sans); cursor: pointer; white-space: nowrap; }
 .updchip:hover { filter: brightness(1.1); }
 .updchip.ready { background: var(--green); }
 .updchip.busy { background: var(--on-bg); color: var(--blue-hi); cursor: pointer; }
@@ -1270,6 +1271,47 @@ select option { background: var(--bg4); color: var(--fg); }
 .updrow { display: flex; gap: 10px; align-items: center; font: 500 11px var(--sans); color: var(--fg2); min-height: 24px; }
 .updrow b { font: 600 12px var(--mono); color: var(--fg-hi); }
 @media (prefers-reduced-motion: reduce) { .updbar i { transition: none; } }
+/* What's new: one release reads as a letter; several get a version rail beside a larger, scrolling body. */
+.dialog.newsdlg { width: min(640px, 92vw); max-height: min(760px, 88vh); padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; }
+.dialog.newsdlg.multi { width: min(900px, 94vw); height: min(760px, 88vh); }
+.newshd { display: flex; align-items: flex-start; gap: 12px; padding: 22px 26px 14px; }
+.newshd > div { flex: 1; min-width: 0; }
+.newshd h2 { margin: 0; font: 650 20px/1.25 var(--sans); letter-spacing: -.01em; color: var(--fg-hi); }
+.newssub { margin-top: 4px; font: 500 12px var(--sans); color: var(--fg4); }
+.newsx { width: 28px; height: 28px; margin: -4px -8px 0 0; border: 0; border-radius: 6px; background: transparent; color: var(--fg3); font-size: 18px; cursor: pointer; }
+.newsx:hover { background: var(--bg6); color: var(--fg-hi); }
+.newsmain { flex: 1; min-height: 0; display: flex; }
+.newsrail { flex: 0 0 168px; display: flex; flex-direction: column; gap: 2px; padding: 4px 10px 16px 18px; overflow: auto; }
+.newsrail button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--fg3); text-align: left; cursor: pointer; }
+.newsrail button b { font: 600 13px var(--mono); color: inherit; }
+.newsrail button span { font: 500 11px var(--sans); color: var(--fg5); }
+.newsrail button:hover { background: var(--bg6); color: var(--fg); }
+.newsrail button.on { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--fg-hi); }
+.newsrail button.on span { color: var(--blue-hi); }
+.newsbody { flex: 1; min-width: 0; overflow: auto; padding: 4px 26px 20px; scroll-behavior: smooth; }
+.newsdlg.multi .newsbody { padding-left: 14px; }
+.newsdlg .newsrel + .newsrel { margin-top: 34px; }
+.newsver { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.newsver b { font: 650 17px var(--sans); color: var(--fg-hi); }
+.newstag { padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue-hi); font: 600 10px var(--sans); letter-spacing: .04em; }
+.newsdate { margin-left: auto; font: 500 12px var(--sans); color: var(--fg5); }
+.notes.big { font: 400 13.5px/1.6 var(--sans); color: var(--fg2); user-select: text; }
+.notes.big h4 { display: inline-block; margin: 18px 0 6px; padding: 2px 8px; border-radius: 4px; background: var(--bg6); font: 650 10.5px var(--sans); letter-spacing: .08em; color: var(--fg3); }
+.notes.big h4:first-child { margin-top: 2px; }
+.notes.big h4.added { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.notes.big h4.changed { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue-hi); }
+.notes.big h4.fixed { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.notes.big h4.removed { background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+.notes.big ul { margin: 6px 0; padding-left: 18px; }
+.notes.big li { margin: 0 0 9px; padding-left: 2px; }
+.notes.big li::marker { color: var(--fg5); }
+.notes.big code { font-size: 12px; }
+.newsfoot { display: flex; align-items: center; gap: 10px; padding: 12px 20px 14px 26px; background: var(--bg3); }
+.newsfoot .smallbtn { height: 28px; padding: 0 14px; }
+.newsen { font: 400 11px var(--sans); color: var(--fg5); }
+@media (max-width: 640px) { .newsrail { display: none; } .newsdlg.multi .newsbody { padding-left: 26px; } }
+@media (prefers-reduced-motion: reduce) { .newsbody { scroll-behavior: auto; } }
+
 .pcbtn { display: inline-flex; align-items: center; gap: 5px; position: relative; }
 .pcbtn .pcon { width: 5px; height: 5px; border-radius: 50%; }
 .refnote.warn { color: var(--amber); }

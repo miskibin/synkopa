@@ -45,6 +45,12 @@ shown in the app after an update and is published as the release notes (see
   100 % wet plate for a send. The old presets keep their places.
 
 ### Changed
+- **Updates download by themselves.** A new version is fetched in the background while you work;
+  when it is ready, "Restart to update" appears under the menus and one click restarts into it
+  (after asking about unsaved changes). Turn it off in Settings → General → Updates.
+- **A roomier What's new.** After an update that skipped versions, the notes of each one open in
+  a larger window with the versions listed beside them; the text is bigger and Added, Changed and
+  Fixed are coloured.
 - **A calmer look.** Panels, mixer channels, windows and menus are told apart by their tone and a
   soft shadow instead of outlines; floating windows stand a step off the app behind them. Buttons
   and fields are filled blocks, so what can be clicked reads at a glance.

@@ -1,5 +1,5 @@
 // Update dialog, "What's new" dialog, the toolbar button and the Settings → Updates rows.
-import { createMemo, For, Match, Show, Switch } from 'solid-js';
+import { createMemo, createSignal, For, Match, onCleanup, Show, Switch } from 'solid-js';
 import { lang, t } from '../lib/i18n';
 import { parseNotes, type Block, type Inline } from '../lib/changelog';
 import type { Release } from '../lib/changelog';
@@ -21,17 +21,27 @@ const group = (blocks: Block[]): Group[] => {
   return out;
 };
 
+/** Added / Changed / Fixed / Removed headings get their own colour (Keep a Changelog's sections). */
+const kindOf = (h: string) => /^(added|new)/i.test(h) ? 'added' : /^(fixed|fix)/i.test(h) ? 'fixed' : /^(removed|deprecated)/i.test(h) ? 'removed' : /^(changed|improved)/i.test(h) ? 'changed' : '';
+
 /** Release notes: headings, bullets, **bold** and `code`. Built from text nodes only, never from HTML. */
-function Notes(p: { md: string | null }) {
+function Notes(p: { md: string | null; class?: string }) {
   const groups = createMemo(() => group(parseNotes(p.md ?? '')));
   return (
-    <div class="notes">
+    <div class={'notes ' + (p.class ?? '')}>
       <Show when={groups().length} fallback={<p class="muted">{t('d.upd.nonotes')}</p>}>
-        <For each={groups()}>{g => g.t === 'h' ? <h4>{g.s}</h4> : g.t === 'ul' ? <ul><For each={g.items}>{i => <li><Inl parts={i} /></li>}</For></ul> : <p><Inl parts={g.inl} /></p>}</For>
+        <For each={groups()}>{g => g.t === 'h' ? <h4 class={kindOf(g.s)}>{g.s}</h4> : g.t === 'ul' ? <ul><For each={g.items}>{i => <li><Inl parts={i} /></li>}</For></ul> : <p><Inl parts={g.inl} /></p>}</For>
       </Show>
     </div>
   );
 }
+
+/** `2026-11-19` as "19 Nov 2026" in the UI language; anything else as written. */
+const fmtDate = (d: string | null) => {
+  const m = d ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(d) : null;
+  if (!m) return d ?? '';
+  try { return new Intl.DateTimeFormat(lang() === 'pl' ? 'pl-PL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(+m[1], +m[2] - 1, +m[3])); } catch { return d ?? ''; }
+};
 
 const pct = () => { const s = upd(); return s.total > 0 ? Math.min(100, Math.floor(s.done * 100 / s.total)) : null; };
 
@@ -46,10 +56,17 @@ export function UpdateChip() {
       default: return t('d.upd.chip.installing');
     }
   };
+  // "Restart to update" restarts straight away (after the unsaved-changes question); the notes open after the restart.
+  const click = async () => {
+    if (s().phase !== 'ready') { openUpdateDialog(); return; }
+    await installUpdate();
+    if (upd().error) openUpdateDialog();
+  };
+  const tip = () => s().phase === 'ready' ? t('d.upd.chip.ready.tip', { v: s().info?.version ?? '' }) : t('d.upd.chip.tip');
   return (
-    <Show when={s().phase !== 'idle' && s().phase !== 'checking'}>
-      <button class="updchip" classList={{ ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }} title={t('d.upd.chip.tip')}
-        style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => openUpdateDialog()}>{label()}</button>
+    <Show when={s().phase !== 'idle' && s().phase !== 'checking' && !(s().phase === 'downloading' && s().quiet)}>
+      <button class="updchip" classList={{ ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }} title={tip()}
+        disabled={s().phase === 'installing'} style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => void click()}>{label()}</button>
     </Show>
   );
 }
@@ -107,30 +124,80 @@ function UpdateDialog() {
   );
 }
 
+/**
+ * What's new: the notes of every version since the one the user had. One release reads as a letter;
+ * several get a larger window with a list of versions to jump between (the one in view is marked).
+ */
 function WhatsNewDialog() {
+  return <Show when={upd().news}>{news => <WhatsNew news={news()} from={upd().newsFrom} />}</Show>;
+}
+
+function WhatsNew(p: { news: Release[]; from: string | null }) {
+  const multi = () => p.news.length > 1;
+  const [active, setActive] = createSignal(p.news[0]?.version ?? '');
+  let body!: HTMLDivElement;
+  const secs = new Map<string, HTMLElement>();
+  const spy = () => {
+    const top = body.getBoundingClientRect().top + 24;
+    let cur = p.news[0]?.version ?? '';
+    for (const r of p.news) { const el = secs.get(r.version); if (el && el.getBoundingClientRect().top <= top) cur = r.version; }
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 2) cur = p.news[p.news.length - 1].version;
+    setActive(cur);
+  };
+  const jump = (v: string) => {
+    const el = secs.get(v);
+    if (el) body.scrollTo({ top: el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 4, behavior: 'smooth' });
+    setActive(v);
+  };
+  onCleanup(() => secs.clear());
+  const sub = () => multi()
+    ? (p.from ? t('d.news.since', { n: p.news.length, v: p.from }) : t('d.news.count', { n: p.news.length }))
+    : [t('d.news.ver', { v: p.news[0].version }), fmtDate(p.news[0].date)].filter(Boolean).join(' · ');
   return (
-    <Show when={upd().news}>
-      {news => (
-        <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => void closeWhatsNew()}>
-          <div class="dialog upddlg" role="dialog" aria-modal="true" aria-label={t('d.news.title')} onPointerDown={e => e.stopPropagation()}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape' || e.key === 'Enter') void closeWhatsNew(); }}>
-            <div class="hd"><span>{t('d.news.title')}</span><button aria-label={t('d.upd.btn.close')} onClick={() => void closeWhatsNew()}>×</button></div>
-            <For each={news()}>{(r: Release) => (
-              <section class="newsrel">
-                <div class="updver"><b>{t('d.news.ver', { v: r.version })}</b><Show when={r.date}><span>{r.date}</span></Show></div>
-                <Notes md={r.notes} />
+    <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => void closeWhatsNew()}>
+      <div class="dialog newsdlg" classList={{ multi: multi() }} role="dialog" aria-modal="true" aria-label={t('d.news.title')} onPointerDown={e => e.stopPropagation()}
+        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') void closeWhatsNew(); }}>
+        <header class="newshd">
+          <div>
+            <h2>{t('d.news.title')}</h2>
+            <div class="newssub">{sub()}</div>
+          </div>
+          <button class="newsx" aria-label={t('d.upd.btn.close')} onClick={() => void closeWhatsNew()}>×</button>
+        </header>
+        <div class="newsmain">
+          <Show when={multi()}>
+            <nav class="newsrail" aria-label={t('d.news.versions')}>
+              <For each={p.news}>{(r, i) => (
+                <button classList={{ on: active() === r.version }} aria-current={active() === r.version ? 'true' : undefined} onClick={() => jump(r.version)}>
+                  <b>{r.version}</b>
+                  <span>{i() === 0 ? t('d.news.latest') : fmtDate(r.date)}</span>
+                </button>
+              )}</For>
+            </nav>
+          </Show>
+          <div class="newsbody" ref={body} onScroll={spy}>
+            <For each={p.news}>{(r, i) => (
+              <section class="newsrel" ref={el => secs.set(r.version, el)}>
+                <Show when={multi()}>
+                  <div class="newsver">
+                    <b>{t('d.news.ver', { v: r.version })}</b>
+                    <Show when={i() === 0}><span class="newstag">{t('d.news.latest')}</span></Show>
+                    <span class="newsdate">{fmtDate(r.date)}</span>
+                  </div>
+                </Show>
+                <Notes md={r.notes} class="big" />
               </section>
             )}</For>
-            <Show when={lang() === 'pl'}><div class="updmsg muted">{t('d.news.enonly')}</div></Show>
-            <div class="updfoot">
-              <ReleaseLink version={news()[0]?.version ?? null} />
-              <div style={{ flex: 1 }} />
-              <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => void closeWhatsNew()}>{t('d.news.ok')}</button>
-            </div>
           </div>
         </div>
-      )}
-    </Show>
+        <footer class="newsfoot">
+          <ReleaseLink version={active() || (p.news[0]?.version ?? null)} />
+          <Show when={lang() === 'pl'}><span class="newsen">{t('d.news.enonly')}</span></Show>
+          <div style={{ flex: 1 }} />
+          <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => void closeWhatsNew()}>{t('d.news.ok')}</button>
+        </footer>
+      </div>
+    </div>
   );
 }
 

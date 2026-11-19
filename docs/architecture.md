@@ -1196,11 +1196,15 @@ The app updates itself from GitHub Releases (public repository: no token). See
 * `ui/src/state/updateCtl.ts` is the state machine
   (`idle → available → downloading → ready → installing`); `state/updates.ts` is its signal.
   An automatic check (8 s after start, then every 6 h, can be switched off in Settings) never
-  opens a dialog, only a status-bar button; downloading happens in the background; the restart
-  needs a click and the unsaved-changes question.
+  opens a dialog: a release it finds is downloaded at once in the background (`quiet`, no button
+  meanwhile), and only then the status line shows "Restart to update", which restarts straight
+  away after the unsaved-changes question. A failed background download leaves an "Update x.y.z"
+  button and is retried by the next check. With the switch off nothing is checked or downloaded
+  without a click.
 * **What's new** reads the `CHANGELOG.md` bundled into the UI (`lib/changelog.ts`) and opens
   once at the first start of a new version, for every version since `seenVersion`. A fresh
-  install shows nothing; it can be reopened from Settings → General → Updates.
+  install shows nothing; it can be reopened from Settings → General → Updates. Several versions
+  get a larger window with a rail of versions that follows the scroll.
 * The updater is app-shell behaviour, not a project action, so it has no `synkopa` CLI command.
 
 ### Audio clips share their sample's sound; per-sample routing

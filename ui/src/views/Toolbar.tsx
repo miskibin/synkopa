@@ -165,7 +165,6 @@ export function Toolbar() {
             <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
           </button>
           <AskButton />
-          <UpdateChip />
           <MissingChip />
           {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
           <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
@@ -183,6 +182,8 @@ export function Toolbar() {
             <span class="tag9">IN</span>
             <div class="inmeter"><div ref={inEl} /></div>
           </div>
+          {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
+          <UpdateChip />
         </div>
       </div>
       <div class="tbmid" data-drag>
