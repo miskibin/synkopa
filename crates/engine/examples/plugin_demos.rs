@@ -207,7 +207,7 @@ fn slicer_demo(out: &Path) {
     q.bpm = p.bpm;
     q.inserts[0].fx.clear();
     let e2 = Engine::new(q, Arc::new(NoPlugins));
-    let (srcs, _) = e2.import_audio(&[wav], None).unwrap();
+    let (srcs, _, _) = e2.import_audio(&[wav], None).unwrap();
     let mut q = e2.project();
     let ch = q.alloc_id();
     let mut slices = vec![0.0f32];
