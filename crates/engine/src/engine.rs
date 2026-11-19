@@ -313,6 +313,11 @@ struct Wires {
     garbage: rtrb::Consumer<Garbage>,
     record: rtrb::Consumer<f32>,
     analyzer: Analyzer,
+    /// Mix assistant: the inserts' post-fader taps (by insert index) and the detector.
+    mask: Vec<rtrb::Consumer<f32>>,
+    detector: crate::masking::Detector,
+    /// Project revision the detector was last configured for.
+    mask_rev: u64,
     sr: f32,
     max_block: usize,
 }
@@ -467,6 +472,10 @@ pub struct Engine {
     transport_control: Mutex<()>,
     /// Threads an offline render may use for the insert chains.
     render_workers: std::sync::atomic::AtomicUsize,
+    /// The mix assistant listens while playing (`crate::masking`; on by default).
+    assist: AtomicBool,
+    /// What the mix assistant reports now.
+    collisions: Mutex<Vec<crate::masking::Collision>>,
 }
 
 const UNDO_LIMIT: usize = 200;
@@ -524,6 +533,8 @@ impl Engine {
             listeners: Mutex::new(vec![]),
             sink: Mutex::new(None),
             skip_silent: std::sync::atomic::AtomicBool::new(true),
+            assist: AtomicBool::new(true),
+            collisions: Mutex::new(vec![]),
             midi_fast: MidiFast {
                 live: AtomicBool::new(false),
                 chan: std::sync::atomic::AtomicU64::new(u64::MAX),
@@ -598,6 +609,14 @@ impl Engine {
             aout.push(b);
         }
         let shared = Arc::new(Shared::new());
+        shared.assist.store(self.assist.load(Relaxed), Relaxed);
+        let mut mask_tx = vec![];
+        let mut mask_rx = vec![];
+        for _ in 0..MAX_INSERTS {
+            let (a, b) = rtrb::RingBuffer::<f32>::new(crate::masking::MASK_TAP_CAPACITY);
+            mask_tx.push(a);
+            mask_rx.push(b);
+        }
         {
             // a punched-in take learns its start beat from the stream that is going away
             let mut c = self.core.lock();
@@ -614,6 +633,7 @@ impl Engine {
         // synth instances and insert chains spread over several cores while playing too
         rt.set_workers(self.render_workers.load(Relaxed));
         rt.set_midi_ring(midi_rx);
+        rt.set_mask_taps(mask_tx);
         *self.midi_fast.tx.lock() = Some(midi_tx);
         let mut c = self.core.lock();
         // everything is rebuilt for the new rate: hosted plugins keep their state through the project
@@ -635,6 +655,9 @@ impl Engine {
             garbage: gb_rx,
             record: rec_rx,
             analyzer: Analyzer::new(ain, aout, sample_rate),
+            mask: mask_rx,
+            detector: crate::masking::Detector::new(sample_rate),
+            mask_rev: 0,
             sr: sample_rate,
             max_block,
         });
@@ -1173,6 +1196,33 @@ impl Engine {
         })
     }
 
+    /// Turns the mix assistant on or off (on by default). Off, nothing is tapped or analysed
+    /// and nothing is reported.
+    pub fn set_mix_assistant(&self, on: bool) {
+        self.assist.store(on, Relaxed);
+        self.shared().assist.store(on, Relaxed);
+        if !on {
+            self.collisions.lock().clear();
+            if let Some(w) = self.core.lock().wires.as_mut() {
+                w.detector = crate::masking::Detector::new(w.sr);
+                w.mask_rev = 0;
+            }
+        }
+    }
+
+    pub fn mix_assistant(&self) -> bool {
+        self.assist.load(Relaxed)
+    }
+
+    /// What the mix assistant reports now (live: from what played since the stream started).
+    pub fn collisions(&self) -> Vec<crate::masking::Collision> {
+        if self.assist.load(Relaxed) {
+            self.collisions.lock().clone()
+        } else {
+            vec![]
+        }
+    }
+
     pub fn watch_fx(&self, ids: &[Id]) {
         let mut c = self.core.lock();
         c.watch = ids.iter().copied().take(WATCH_SLOTS).collect();
@@ -1373,6 +1423,18 @@ impl Engine {
                 Some(w.analyzer.analyze(&c_watch(&c.watch), &detail, &shared))
             };
             let w = c.wires.as_mut().unwrap();
+            if w.mask_rev != c.revision {
+                w.detector.configure(&c.project);
+                w.mask_rev = c.revision;
+            }
+            w.detector.drain(&mut w.mask);
+            let found = w.detector.collisions();
+            {
+                let mut now = self.collisions.lock();
+                if *now != found {
+                    *now = found;
+                }
+            }
             let sr = w.sr as u32;
             // drain recorded input
             let n = w.record.slots();
@@ -1415,7 +1477,8 @@ impl Engine {
         if let Some((ids, analysis, rec)) = frame_parts {
             let sink = self.sink.lock();
             if let Some(sink) = sink.as_ref() {
-                let frame = crate::telemetry::frame(tick, &shared, &ids, analysis.as_deref(), rec.as_ref());
+                let found = self.collisions.lock().clone();
+                let frame = crate::telemetry::frame(tick, &shared, &ids, analysis.as_deref(), rec.as_ref(), &found);
                 sink(frame);
             } else {
                 // still consume meters so the first frame after subscribing is fresh

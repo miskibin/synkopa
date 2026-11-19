@@ -114,6 +114,10 @@ export interface Backend {
   midiImport(args: MidiImportArgs): Promise<MidiImportResult>;
   /** Writes the song (pattern clips as placed) or one pattern as a .mid file. */
   midiExport(args: { out: string; pattern?: Id }): Promise<MidiExportResult>;
+  /** Mix assistant (app/src/mix_assist.rs): `mix_assistant` {on?} → {on}; `masking` {from?, to?, scan?}
+   *  → {collisions}; `unmask` {masker, protect, lo, hi, keyDb} → {fxId, insert, revision} (one undo
+   *  step); `mask_ignore` {a, b} → {revision}. */
+  mixAssist(cmd: 'mix_assistant' | 'masking' | 'unmask' | 'mask_ignore', args: Record<string, unknown>): Promise<Record<string, unknown>>;
   /** FX chain presets in the user's library, by name, and the folder they are kept in. */
   fxChains(): Promise<{ dir: string; presets: FxChainPreset[] }>;
   /** Saves the effects of `insert` as preset `name`; an existing name fails with `EXISTS:` unless `overwrite`. */
@@ -345,6 +349,7 @@ export function tauriBackend(): Backend {
       });
       return r == null ? null : Array.isArray(r) ? r[0] ?? null : r;
     },
+    mixAssist: (cmd, args) => invoke('mix_assist', { cmd, args }),
     fxChains: () => invoke('fx_chain', { cmd: 'fx_chains', args: {} }),
     fxChainSave: (insert, name, overwrite = false) => invoke('fx_chain', { cmd: 'fx_chain_save', args: { insert, name, overwrite } }),
     fxChainLoad: (insert, name, mode) => invoke('fx_chain', { cmd: 'fx_chain_load', args: { insert, name, mode } }),

@@ -511,21 +511,26 @@ pub(crate) fn build_graph(
     let order = crate::routing::order(p);
     let routes = crate::routing::latency(p, &order, &lat);
     let fed: Vec<bool> = (0..p.inserts.len()).map(|k| order.sends.iter().any(|v| v.iter().any(|s| s.0 == k))).collect();
+    let key_of = |t: usize, f: &crate::model::Fx| {
+        let k = f.key.and_then(|id| p.inserts.iter().position(|x| x.id == id))?;
+        order.keys.contains(&(k, t)).then_some(k)
+    };
     let inserts = p
         .inserts
         .iter()
         .zip(ins_state)
         .zip(procs)
         .map(|((m, (id, gain, pan, width, on)), procs)| {
+            let k = p.inserts.iter().position(|x| x.id == id).unwrap_or(0);
             let fx =
                 m.fx.iter()
                     .zip(procs)
                     .map(|(f, proc)| {
                         let params = if f.kind == FxKind::Plugin { None } else { Some(param_block(f)) };
                         FxSlot::new(f.id, f.kind, f.bypass, f.mix.clamp(0.0, 1.0), proc, params, fx_latency(f, sr, hosted))
+                            .with_key(key_of(k, f))
                     })
                     .collect();
-            let k = p.inserts.iter().position(|x| x.id == id).unwrap_or(0);
             let sends = order.sends[k].iter().zip(&routes.sends[k]).map(|(&(t, g), &d)| SendRt::new(t, p.inserts[t].id, g, d)).collect();
             InsertRt::new(id, gain, pan, width, on, fx, max_block).with_delay(routes.master[k]).with_routing(
                 order.level[k],
@@ -544,7 +549,10 @@ pub(crate) fn build_graph(
         .zip(track_state)
         .map(|(t, (gain, on))| TrackRt { insert: p.inserts.iter().position(|m| m.id == t.insert).unwrap_or(0), gain, on })
         .collect();
-    Graph::new(inserts, tracks, monitor_track(p), max_block).with_latency(routes.at_master, lat.first().copied().unwrap_or(0))
+    let sources: Vec<usize> = order.keys.iter().map(|e| e.0).collect();
+    Graph::new(inserts, tracks, monitor_track(p), max_block)
+        .with_latency(routes.at_master, lat.first().copied().unwrap_or(0))
+        .with_keys(&sources, max_block)
 }
 
 /// `takes`: loaded audio by source id of every comp take and sampler channel.

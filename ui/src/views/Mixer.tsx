@@ -27,6 +27,7 @@ import { openFxChains, saveFxChain } from './FxChains';
 import { useSize } from './patternShared';
 import { canSend, sendsOf, toMaster } from '../lib/routing';
 import { pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
+import { collisionText, fixCollision, ignoreCollision, maskedBy } from '../state/mixAssist';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -87,6 +88,21 @@ function openStripMenu(x: number, y: number, id: Id) {
     ...(id === 0 ? [] : sendItems(m)),
     ...(id === 0 ? [] : [{ t: 'sep' }, { t: 'item', label: tr('c.mix.removeInsert'), danger: true, act: () => A.removeInsert(id) }] as MenuItem[]),
   ], 330);
+}
+
+/** The mix assistant's dot: what this insert covers, and the two answers (make room / ignore). */
+function openMaskMenu(x: number, y: number, id: Id) {
+  const items: MenuItem[] = [{ t: 'title', label: tr('c.mask.title') }];
+  for (const c of maskedBy(id)) {
+    const other = S.project.inserts.find(m => m.id === c.protect);
+    const name = other ? other.name || insName(other) : '';
+    items.push(
+      { t: 'sec', label: collisionText(c) },
+      { t: 'item', label: tr('c.mask.fix', { b: name }), title: tr('c.mask.fixTip'), act: () => void fixCollision(c) },
+      { t: 'item', label: tr('c.mask.ignore'), title: tr('c.mask.ignoreTip'), act: () => void ignoreCollision(c) },
+    );
+  }
+  openMenu(x, y, items, 160);
 }
 
 /** "Send to ▸" (every other insert: checked = sends there, click = add / remove; greyed when it
@@ -250,6 +266,12 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
     <div class="strip" data-ins={m().id} style={{ '--c': m().color }} onPointerDown={select}
       classList={{ on: U.mixSel === m().id, multi: U.mixSel !== m().id && A.selectedInserts().includes(m().id), dimmed: !audible(), 'rt-ok': dropHere() === 'ok', 'rt-no': dropHere() === 'no', 'rt-to': sendsHere() }}>
       <div class="bar" style={{ background: m().color }} />
+      {/* the mix assistant: this insert covers another one (only while it does; nothing otherwise) */}
+      <Show when={maskedBy(m().id).length}>
+        <button class="maskdot" onPointerDown={stop} onDblClick={stop}
+          onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMaskMenu(r.left, r.bottom + 2, m().id); }}
+          title={maskedBy(m().id).map(collisionText).join('\n') + ' — ' + tr('c.mask.dotTip')} aria-label={tr('c.mask.title')} />
+      </Show>
       {/* one row: the insert's number and name (a default "Insert 7" is just its number), the effect count on the right */}
       <div class="nmrow" title={tName(label().full) + ' — ' + tr('c.mix.nameTip')} onDblClick={rename}>
         <Show when={label().num}><span class="num" classList={{ only: !label().name && (props.full || !sources()) }}>{label().num}</span></Show>

@@ -26,6 +26,11 @@ pub struct Order {
     pub level: Vec<usize>,
     /// The deepest level of a non-master insert (0 when nothing is routed between inserts).
     pub depth: usize,
+    /// Sidechains the graph honours, `(key index, index of the insert whose EQ listens)`. A
+    /// key carries no audio into the mix but orders the processing: the listening insert runs
+    /// at a deeper level than its key, so the key's output of this very block is ready. A key
+    /// that would close a loop with the sends (a hand-edited project) is left out.
+    pub keys: Vec<(usize, usize)>,
 }
 
 /// The sends of every insert as indices, without the invalid ones (see [`Order::sends`]),
@@ -80,8 +85,61 @@ pub fn order(p: &Project) -> Order {
             v.retain(|&(t, _)| t != stuck);
         }
     }
+    // sidechains: accepted one by one while they keep the graph acyclic, then the levels again
+    let mut keys: Vec<(usize, usize)> = vec![];
+    for (t, m) in p.inserts.iter().enumerate().skip(1) {
+        for f in &m.fx {
+            let Some(k) = f.key.and_then(idx).filter(|&k| k != 0 && k != t) else { continue };
+            if keys.contains(&(k, t)) {
+                continue;
+            }
+            if !path(&sends, &keys, t, k) {
+                keys.push((k, t));
+            }
+        }
+    }
+    if !keys.is_empty() {
+        let mut indeg = vec![0usize; n];
+        for v in &sends {
+            for &(t, _) in v {
+                indeg[t] += 1;
+            }
+        }
+        for &(_, t) in &keys {
+            indeg[t] += 1;
+        }
+        level.iter_mut().for_each(|l| *l = 0);
+        let mut queue: Vec<usize> = (1..n).filter(|&k| indeg[k] == 0).collect();
+        while let Some(k) = queue.pop() {
+            let next = sends[k].iter().map(|s| s.0).chain(keys.iter().filter(|e| e.0 == k).map(|e| e.1)).collect::<Vec<_>>();
+            for t in next {
+                level[t] = level[t].max(level[k] + 1);
+                indeg[t] -= 1;
+                if indeg[t] == 0 {
+                    queue.push(t);
+                }
+            }
+        }
+    }
     let depth = level.iter().skip(1).copied().max().unwrap_or(0);
-    Order { sends, level, depth }
+    Order { sends, level, depth, keys }
+}
+
+/// Whether `from` reaches `to` through sends and accepted sidechain edges (by index).
+fn path(sends: &[Vec<(usize, f32)>], keys: &[(usize, usize)], from: usize, to: usize) -> bool {
+    let mut stack = vec![from];
+    let mut seen = vec![false; sends.len()];
+    while let Some(x) = stack.pop() {
+        if x == to {
+            return true;
+        }
+        if std::mem::replace(&mut seen[x], true) {
+            continue;
+        }
+        stack.extend(sends[x].iter().map(|s| s.0));
+        stack.extend(keys.iter().filter(|e| e.0 == x).map(|e| e.1));
+    }
+    false
 }
 
 fn clamp_gain(g: f32) -> f32 {

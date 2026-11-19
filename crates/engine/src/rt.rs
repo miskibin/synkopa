@@ -57,6 +57,9 @@ pub struct Shared {
     take_lat_n: AtomicU32,
     /// Beat where input capture began (f64 bits; NaN until the audio thread has started it).
     rec_start: AtomicU64,
+    /// The mix assistant listens (`crate::masking`): while playing, every non-master insert's
+    /// post-fader output goes to its mask tap.
+    pub assist: AtomicBool,
 }
 
 /// A callback that took longer (seconds) than the audio it rendered lasts: the device played
@@ -87,6 +90,7 @@ impl Shared {
             finishing_take: AtomicBool::new(false),
             stopped_at_end: AtomicBool::new(false),
             in_level: AtomicU32::new(0),
+            assist: AtomicBool::new(true),
             cpu: AtomicU32::new(0),
             underruns: AtomicU32::new(0),
             preview_pos: AtomicU32::new((-1f32).to_bits()),
@@ -228,6 +232,9 @@ pub struct FxSlot {
     dly_l: Vec<f32>,
     dly_r: Vec<f32>,
     dly_w: usize,
+    /// Sidechain: index of the insert whose post-fader output (`Graph::keys`) this effect
+    /// listens to (`Processor::process_keyed`).
+    pub key: Option<usize>,
 }
 
 impl FxSlot {
@@ -253,7 +260,13 @@ impl FxSlot {
             dly_l: vec![0.0; latency],
             dly_r: vec![0.0; latency],
             dly_w: 0,
+            key: None,
         }
+    }
+
+    pub fn with_key(mut self, key: Option<usize>) -> Self {
+        self.key = key;
+        self
     }
 
     fn delay_dry(&mut self, l: &mut [f32], r: &mut [f32]) {
@@ -325,9 +338,14 @@ pub struct InsertRt {
     sr: Vec<f32>,
     /// The insert's own input, delayed to line up with the slowest insert sending into it.
     in_dly: (Ring, Ring),
-    /// The post-fader output the sends read (only with sends).
+    /// The post-fader output (before the latency compensation) that sends, sidechains and the
+    /// mix assistant read; written in blocks where `want_post`.
     post_l: Vec<f32>,
     post_r: Vec<f32>,
+    /// Some effect listens to this insert (`Graph::keys`).
+    pub is_key: bool,
+    /// `post_l`/`post_r` are needed this block.
+    want_post: bool,
 }
 
 /// One send of an insert: the target's index, its level (smoothed across a block) and the
@@ -379,8 +397,10 @@ impl InsertRt {
             sl: vec![],
             sr: vec![],
             in_dly: (Ring::default(), Ring::default()),
-            post_l: vec![],
-            post_r: vec![],
+            post_l: vec![0.0; max_block],
+            post_r: vec![0.0; max_block],
+            is_key: false,
+            want_post: false,
         }
     }
 
@@ -398,10 +418,6 @@ impl InsertRt {
     ) -> Self {
         self.level = level;
         self.to_master = to_master;
-        if !sends.is_empty() {
-            self.post_l = vec![0.0; max_block];
-            self.post_r = vec![0.0; max_block];
-        }
         self.sends = sends;
         self.fed = fed;
         if fed {
@@ -466,6 +482,9 @@ pub struct Graph {
     click: Ring,
     /// The deepest routing level of a non-master insert (`crate::routing::Order::depth`).
     pub depth: usize,
+    /// Per insert index: its post-fader output as a mono sidechain, filled right after its
+    /// level is processed (empty for inserts nothing listens to).
+    pub keys: Vec<Vec<f32>>,
 }
 
 impl Graph {
@@ -484,7 +503,20 @@ impl Graph {
             mon_ins: None,
             click: Ring::default(),
             depth,
+            keys: vec![],
         }
+    }
+
+    /// Allocates the sidechain buffers (call off the audio thread): `sources` = indices of
+    /// inserts some effect listens to.
+    pub fn with_keys(mut self, sources: &[usize], max_block: usize) -> Self {
+        self.keys = (0..self.inserts.len()).map(|k| if sources.contains(&k) { vec![0.0; max_block] } else { vec![] }).collect();
+        for &k in sources {
+            if let Some(ins) = self.inserts.get_mut(k) {
+                ins.is_key = true;
+            }
+        }
+        self
     }
 
     /// Allocates the latency lines (call off the audio thread): `pdc` = the delay every
@@ -1024,6 +1056,9 @@ pub struct Rt {
     dc: (f32, f32),
     dc_pos: usize,
     fade_pos: usize,
+    /// Mix assistant: per insert index, its post-fader mono output while playing
+    /// (`crate::masking`); empty = not listening.
+    mask_taps: Vec<rtrb::Producer<f32>>,
 }
 
 /// Declick ramp of a transport jump while sound is coming out.
@@ -1096,7 +1131,13 @@ impl Rt {
             dc: (0.0, 0.0),
             dc_pos: usize::MAX,
             fade_pos: usize::MAX,
+            mask_taps: vec![],
         }
+    }
+
+    /// The mix assistant's taps, one per insert index (master first; its tap stays unused).
+    pub fn set_mask_taps(&mut self, taps: Vec<rtrb::Producer<f32>>) {
+        self.mask_taps = taps;
     }
 
     /// Instant start for a live stream: after Play (a start, a seek, a jump of the start
@@ -2021,12 +2062,19 @@ impl Rt {
         if count > 0 {
             let (enabled, watch) = (self.skip_silent, &self.watch[..self.watch_n]);
             let aligned = ctx.playing || self.instant.is_none();
+            // the mix assistant hears what plays (song or pattern loop), not live auditions
+            let listen = ctx.playing && !self.mask_taps.is_empty() && self.shared.assist.load(Relaxed);
+            for ins in g.inserts.iter_mut() {
+                ins.want_post = !ins.sends.is_empty() || ins.is_key || listen;
+            }
             // level by level (`crate::routing`): an insert runs once everything sending into it
-            // has; the inserts of one level are independent of each other
+            // (and every insert it takes a sidechain from) has; the inserts of one level are
+            // independent of each other
             for lv in 0..=g.depth {
                 for ins in g.inserts.iter_mut().skip(1).filter(|i| i.level == lv) {
                     ins.take_sends(n);
                 }
+                let keys = &g.keys;
                 if let Some(pool) = self.pool.as_ref().filter(|_| count > 2) {
                     // the pool's threads take this level's chains one by one. A chain with a
                     // watched effect writes the analysis taps: this thread runs it.
@@ -2035,20 +2083,33 @@ impl Rt {
                     pool.for_each_mut(&mut g.inserts[1..], &|j, ins| {
                         if ins.level == lv && !watched(ins) {
                             let mut no_taps = Taps { input: Vec::new(), output: Vec::new() };
-                            process_insert(ins, j + 1, n, &ctx, aligned, enabled, &[], &mut no_taps, shared);
+                            process_insert(ins, j + 1, n, &ctx, aligned, enabled, &[], &mut no_taps, shared, keys);
                         }
                     });
                     if !watch.is_empty() {
                         for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
                             if insert.level == lv && watched(insert) {
-                                process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, shared);
+                                process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, shared, keys);
                             }
                         }
                     }
                 } else {
                     for (k, insert) in g.inserts.iter_mut().enumerate().skip(1) {
                         if insert.level == lv {
-                            process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared);
+                            process_insert(insert, k, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared, keys);
+                        }
+                    }
+                }
+                // sidechains of this level, for the deeper levels that listen to them
+                for (k, ins) in g.inserts.iter().enumerate().skip(1) {
+                    if ins.level == lv && ins.is_key {
+                        let key = &mut g.keys[k][..n];
+                        if ins.idle {
+                            key.fill(0.0);
+                        } else {
+                            for (i, x) in key.iter_mut().enumerate() {
+                                *x = 0.5 * (ins.post_l[i] + ins.post_r[i]);
+                            }
                         }
                     }
                 }
@@ -2065,7 +2126,19 @@ impl Rt {
                     master.r[i] += ins.r[i];
                 }
             }
-            process_insert(master, 0, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared);
+            process_insert(master, 0, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared, &g.keys);
+            if listen {
+                for (ins, tap) in g.inserts.iter().zip(self.mask_taps.iter_mut()).skip(1) {
+                    // a full ring drops the block (the detector only loses a little time)
+                    if let Ok(mut chunk) = tap.write_chunk(n) {
+                        let (a, b) = chunk.as_mut_slices();
+                        for (i, x) in a.iter_mut().chain(b.iter_mut()).enumerate() {
+                            *x = if ins.idle { 0.0 } else { 0.5 * (ins.post_l[i] + ins.post_r[i]) };
+                        }
+                        chunk.commit_all();
+                    }
+                }
+            }
         }
 
         // ---- out: master + click (delayed like the music) + preview
@@ -2371,6 +2444,7 @@ fn process_insert(
     watch: &[Id],
     taps: &mut Taps,
     shared: &Shared,
+    keys: &[Vec<f32>],
 ) {
     // also set here: offline renders run chains on worker threads, each with its own float mode
     let _no_denormals = crate::processor::NoDenormals::new();
@@ -2384,7 +2458,7 @@ fn process_insert(
     // the chain, the fader or the PDC line writes into the buffer this block
     ins.dirty = true;
     if gate == Gate::Run {
-        run_chain(ins, n, ctx, watch, taps, shared);
+        run_chain(ins, n, ctx, watch, taps, shared, keys);
     }
     // stereo width: M/S side gain, ramped across the block; exactly 1 is a bit-exact bypass
     if gate == Gate::Run && (ins.width != 1.0 || ins.w_cur != 1.0) {
@@ -2418,7 +2492,7 @@ fn process_insert(
         }
     }
     ins.g_cur = target;
-    if !ins.sends.is_empty() {
+    if ins.want_post {
         ins.post_l[..n].copy_from_slice(&ins.l[..n]);
         ins.post_r[..n].copy_from_slice(&ins.r[..n]);
     }
@@ -2531,7 +2605,7 @@ fn gate(ins: &mut InsertRt, n: usize, enabled: bool, watch: &[Id]) -> Gate {
     }
 }
 
-fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps: &mut Taps, shared: &Shared) {
+fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps: &mut Taps, shared: &Shared, keys: &[Vec<f32>]) {
     let low_lat = ins.low_lat;
     // bypass declick: the wet contribution ramps over ~5 ms in either direction, so flipping
     // bypass never cuts a ringing tail (or a fed delay line) in one sample
@@ -2583,7 +2657,10 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
                     ins.dry_l[..n].copy_from_slice(&ins.l[..n]);
                     ins.dry_r[..n].copy_from_slice(&ins.r[..n]);
                 }
-                p.process(&mut ins.l[..n], &mut ins.r[..n], ctx);
+                match slot.key.and_then(|k| keys.get(k)).filter(|key| key.len() >= n) {
+                    Some(key) => p.process_keyed(&mut ins.l[..n], &mut ins.r[..n], &key[..n], ctx),
+                    None => p.process(&mut ins.l[..n], &mut ins.r[..n], ctx),
+                }
                 // a misbehaving (hosted) effect must not poison the effects after it and the
                 // mix: a filter fed one NaN stays NaN for good
                 finite_or_silent(&mut ins.l[..n]);

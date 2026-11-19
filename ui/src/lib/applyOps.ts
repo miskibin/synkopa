@@ -4,7 +4,7 @@
 // error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
 import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
-import { forgetInsert, routingError } from './routing';
+import { forgetInsert, reaches, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
 import { applyPatternOp, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
 import { applyTransform } from './transforms';
@@ -94,6 +94,9 @@ export function applyOp(p: Project, op: Op): void {
       if (!p.inserts.some(m => m.id === op.id)) throw new OpError(`no insert with id ${op.id}`);
       p.inserts = p.inserts.filter(m => m.id !== op.id);
       forgetInsert(p, op.id);
+      // sidechains from it fall back to their own signal; ignored pairs with it go
+      for (const f of p.inserts.flatMap(m => m.fx)) if (f.key === op.id) delete f.key;
+      if (p.maskIgnore) { p.maskIgnore = p.maskIgnore.filter(q => q[0] !== op.id && q[1] !== op.id); if (!p.maskIgnore.length) delete p.maskIgnore; }
       for (const t of p.tracks) if (t.insert === op.id) t.insert = 0;
       // a clip routed there plays through its track again
       for (const c of p.clips) if (c.insert === op.id) delete (c as Partial<Clip>).insert; // the engine omits it (`skip_serializing_if`)
@@ -106,6 +109,14 @@ export function applyOp(p: Project, op: Op): void {
       if (fx.type === 'warp' && !fx.maps) throw new OpError('a Warp needs `maps` (see fx_catalog().warp for the factory slots)');
       if (fx.type !== 'warp' && fx.maps) throw new OpError('only a Warp has `maps`');
       for (const [k, v] of Object.entries(fx.params)) if (!isFinite(v)) throw new OpError(`parameter ${k} is not a number`);
+      if (fx.key != null) {
+        const k = fx.key;
+        if (fx.type !== 'eq') throw new OpError('only an EQ takes a sidechain (`key`)');
+        if (k === 0) throw new OpError('the master cannot be a sidechain: it is processed last');
+        if (k === op.insertId) throw new OpError("an EQ's sidechain is another insert (its own signal needs no `key`)");
+        if (!p.inserts.some(m => m.id === k)) throw new OpError(`no insert with id ${k}`);
+        if (reaches(p, op.insertId, k)) throw new OpError(`insert ${op.insertId} feeds insert ${k}: a sidechain from it would close a loop`);
+      }
       for (const m of p.inserts) {
         const j = m.fx.findIndex(f => f.id === fx.id);
         if (j < 0) continue;
@@ -163,6 +174,17 @@ export function applyOp(p: Project, op: Op): void {
     case 'setBpm':
       if (!(op.bpm >= 20 && op.bpm <= 999)) throw new OpError('bpm must be 20..999');
       p.bpm = op.bpm; return;
+    case 'setMaskIgnore': {
+      const out: [Id, Id][] = [];
+      for (const q of op.pairs) {
+        for (const id of q) if (id === 0 || !p.inserts.some(m => m.id === id)) throw new OpError(`mask ignore: insert ${id} is not a mixer insert`);
+        if (q[0] === q[1]) throw new OpError('mask ignore: a pair needs two different inserts');
+        const r: [Id, Id] = [Math.min(q[0], q[1]), Math.max(q[0], q[1])];
+        if (!out.some(x => x[0] === r[0] && x[1] === r[1])) out.push(r);
+      }
+      if (out.length) p.maskIgnore = out; else delete p.maskIgnore;
+      return;
+    }
     case 'setLoop':
       if (op.loop && !(op.loop.b > op.loop.a && op.loop.a >= 0)) throw new OpError('loop end must be after its start');
       p.loop = op.loop ? { ...op.loop } : null; return;

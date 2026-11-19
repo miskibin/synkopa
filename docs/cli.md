@@ -566,6 +566,29 @@ baked, the measured `analysis`, the `trackGainDb` level suggestion and `stages` 
 stage achieved). Slow: a few seconds per minute of audio. Works without the app
 (`synkopa -p song.synkopa auto-vocal --clip 412`), like every offline command.
 
+## Mix assistant
+
+```sh
+synkopa mix                           # collisions, worst first (0, 1, …)
+synkopa mix --from 64 --to 128        # only those 16 bars (offline pass)
+synkopa mix fix 0                     # fix collision 0
+synkopa mix ignore 1                  # stop reporting pair 1
+synkopa mix off                       # the app's live detector (on by default)
+```
+
+finds pairs of mixer inserts that cover each other: both loud in the same third-octave bands at
+the same time, sustained over bars (a kick and an 808 at 50 Hz). Inserts that feed each other
+(a kick and its drum bus) are never compared. Each collision names the **masker** (the steadier
+sound, which should give way), the **protect**ed insert and the range in Hz. In the app the
+detector listens while you play; on a project file, or with `--scan`, it renders the song (or
+`--from`/`--to`) once offline.
+
+`fix` adds an ordinary EQ to the end of the masker's chain: one bell over the range, flat until
+the protected insert gets loud there, then down by up to 6 dB (a dynamic band with a sidechain:
+`fx.key` = the protected insert, `bands[].dynamic.ext` = true). It shows in the chain and is
+edited, bypassed or removed like any EQ; a pair handled this way is not reported again.
+`ignore` keeps the pair out of the report (`project.maskIgnore`, undoable).
+
 ## FX chain presets
 
 ```sh

@@ -568,6 +568,45 @@ pub fn cases() -> Vec<Case> {
     c.push(("main", "setLoop sets the loop", vec![Op::SetLoop { range: Some(LoopRange { a: 4.0, b: 16.0 }) }]));
     c.push(("main", "setLoop clears the loop", vec![Op::SetLoop { range: None }]));
     c.push(("main", "setLoop refuses an empty loop", vec![Op::SetLoop { range: Some(LoopRange { a: 16.0, b: 4.0 }) }]));
+    // ---- mix assistant: sidechains and ignored pairs
+    let keyed = |key: Id| {
+        let mut f = eq_fx(950, vec![eq_band(60.0, 0.0)]);
+        if let Some(b) = f.bands.as_mut().and_then(|b| b.first_mut()) {
+            b.dynamic = Some(DynBand { range: -6.0, thr: -24.0, ext: true });
+        }
+        f.key = Some(key);
+        f
+    };
+    c.push(("main", "putFx adds an EQ with a sidechain", vec![Op::PutFx { insert_id: 2, fx: keyed(1), index: None }]));
+    c.push(("main", "putFx refuses the master as a sidechain", vec![Op::PutFx { insert_id: 2, fx: keyed(0), index: None }]));
+    c.push(("main", "putFx refuses its own insert as a sidechain", vec![Op::PutFx { insert_id: 2, fx: keyed(2), index: None }]));
+    c.push(("main", "putFx refuses a missing sidechain insert", vec![Op::PutFx { insert_id: 2, fx: keyed(77), index: None }]));
+    c.push((
+        "main",
+        "putFx refuses a sidechain on a delay",
+        vec![Op::PutFx { insert_id: 2, fx: Fx { key: Some(1), ..delay_fx(951, &[]) }, index: None }],
+    ));
+    c.push((
+        "main",
+        "putFx refuses a sidechain from an insert it feeds",
+        vec![
+            Op::PutInsert { insert: Insert { sends: vec![InsertSend { to: 1, gain: 1.0 }], ..base().inserts[2].clone() } },
+            Op::PutFx { insert_id: 2, fx: keyed(1), index: None },
+        ],
+    ));
+    c.push((
+        "main",
+        "removeInsert drops sidechains from it and its ignored pairs",
+        vec![Op::PutFx { insert_id: 2, fx: keyed(1), index: None }, Op::SetMaskIgnore { pairs: vec![[1, 2]] }, Op::RemoveInsert { id: 1 }],
+    ));
+    c.push(("main", "setMaskIgnore sorts and dedupes the pairs", vec![Op::SetMaskIgnore { pairs: vec![[2, 1], [1, 2]] }]));
+    c.push((
+        "main",
+        "setMaskIgnore clears the pairs",
+        vec![Op::SetMaskIgnore { pairs: vec![[1, 2]] }, Op::SetMaskIgnore { pairs: vec![] }],
+    ));
+    c.push(("main", "setMaskIgnore refuses the master", vec![Op::SetMaskIgnore { pairs: vec![[0, 1]] }]));
+    c.push(("main", "setMaskIgnore refuses a pair of one insert", vec![Op::SetMaskIgnore { pairs: vec![[1, 1]] }]));
     c.push((
         "main",
         "putComp replaces and normalises the regions",

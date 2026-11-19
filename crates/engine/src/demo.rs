@@ -39,6 +39,7 @@ fn base(names: &[&str], ins_names: &[&str]) -> Project {
         notebook: Notebook::default(),
         key: None,
         scale: 1,
+        mask_ignore: vec![],
         next_id: 1000,
     };
     for (i, name) in ins_names.iter().enumerate() {

@@ -66,6 +66,10 @@ pub struct Project {
     /// minor, 3 major pentatonic, 4 minor pentatonic). Meaningful once `key` is set.
     #[serde(default = "major_scale")]
     pub scale: u32,
+    /// Pairs of inserts the mix assistant no longer reports as masking each other
+    /// (`crate::masking`), either order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mask_ignore: Vec<[Id; 2]>,
     /// Next id handed out by [`Project::alloc_id`]. Ids are never reused.
     pub next_id: Id,
 }
@@ -197,6 +201,10 @@ pub struct Fx {
     /// Warp only: its time and volume map slots.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub maps: Option<WarpMaps>,
+    /// EQ only: the sidechain, an insert whose post-fader output drives the dynamic bands
+    /// marked `ext` (instead of this insert's own signal). Not the master, not its own insert.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key: Option<Id>,
 }
 
 /// Most slots of each Warp map bank.
@@ -297,6 +305,10 @@ pub struct DynBand {
     pub range: f64,
     /// dBFS.
     pub thr: f64,
+    /// The band listens to the effect's sidechain ([`Fx::key`]) instead of its own signal:
+    /// it ducks while the *other* insert is loud in the band (a kick clearing room in the bass).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ext: bool,
 }
 
 fn one() -> f32 {

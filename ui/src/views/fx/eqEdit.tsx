@@ -9,7 +9,8 @@ import { t as tr } from '../../lib/i18n';
 import { hzToMidi, noteName } from '../../lib/pitch';
 import * as A from '../../state/actions';
 import { commit, Gesture, wheelEdit } from '../../state/edit';
-import { findFx, plain } from '../../state/store';
+import { findFx, insName, plain, S } from '../../state/store';
+import { reaches } from '../../lib/routing';
 import { openMenu, say, setU, U, type MenuItem } from '../../state/ui';
 import { dblCheck, fineMul, track } from '../../ui/drag';
 import { NumField, parseNum } from '../../ui/Knob';
@@ -170,6 +171,38 @@ function dynField(fxId: Id, i: () => number, key: 'range' | 'thr') {
   };
 }
 
+/** What drives dynamic band `i`: its own signal, or the EQ's sidechain (another insert). Setting a
+ *  key sets `Fx.key` (one per EQ) and marks the band `ext`; back to its own signal, the key goes
+ *  when no other band listens to it. */
+function setBandKey(fxId: Id, i: number, key: Id | null) {
+  const ff = findFx(fxId); if (!ff?.f.bands?.[i]?.dynamic) return;
+  const fx = plain(ff.f) as Fx;
+  const b = fx.bands!;
+  b[i] = { ...b[i], dynamic: { ...b[i].dynamic!, ext: key != null } };
+  if (key != null) fx.key = key;
+  else if (!b.some(x => x.dynamic?.ext)) delete fx.key;
+  if (key == null) for (const x of b) if (x.dynamic && !x.dynamic.ext) delete x.dynamic.ext;
+  const op = A.fxOp(fx, ff.m.id);
+  if (op) commit([op], tr('c.eq.sidechain'));
+}
+
+function openKeyMenu(e: MouseEvent, fxId: Id, i: number) {
+  const ff = findFx(fxId); if (!ff) return;
+  const own = ff.m.id, cur = ff.f.bands?.[i]?.dynamic?.ext ? ff.f.key : undefined;
+  const items: MenuItem[] = [
+    { t: 'title', label: tr('c.eq.sidechain') },
+    { t: 'item', label: tr('c.eq.keyOwn'), checked: cur == null, act: () => setBandKey(fxId, i, null) },
+    { t: 'sep' },
+    ...S.project.inserts.filter(m => m.id !== 0 && m.id !== own).map(m => {
+      // the key is processed first: one that takes this insert's output would close a loop
+      const loop = reaches(S.project, own, m.id);
+      return { t: 'item' as const, label: insName(m), checked: cur === m.id, disabled: loop, title: loop ? tr('c.eq.keyLoop') : undefined,
+        act: () => setBandKey(fxId, i, m.id) };
+    }),
+  ];
+  openMenu(e.clientX, e.clientY, items, 320);
+}
+
 /** Below the graph only when the selected band is dynamic: its range and threshold (everything else
  * lives on the band bank, the graph and the band's right-click menu). */
 export function EqPanel(props: { fx: Fx }) {
@@ -186,6 +219,12 @@ export function EqPanel(props: { fx: Fx }) {
             drag={(v, d) => clamp(Math.round((v + d * 0.05) * 10) / 10, -30, 30)} apply={dynField(fxId(), si, 'range')} />
           <NumField label={tr('c.eq.thresh')} width={64} value={() => band().dynamic!.thr} text={v => Math.round(v) + ' dB'} parse={parseNum}
             drag={(v, d) => clamp(Math.round(v + d * 0.1), -80, 0)} apply={dynField(fxId(), si, 'thr')} />
+          {/* what drives it: its own level, or another insert's (the mix assistant's fixes listen to a kick) */}
+          <button class="smallbtn" title={tr('c.eq.sidechainTip')} onClick={e => openKeyMenu(e, fxId(), si())}>
+            {band().dynamic!.ext && props.fx.key != null
+              ? tr('c.eq.keyFrom', { name: (() => { const m = S.project.inserts.find(x => x.id === props.fx.key); return m ? insName(m) : '?'; })() })
+              : tr('c.eq.keyOwn')}
+          </button>
           <div style={{ flex: 1 }} />
           <button class="smallbtn" onClick={() => updBand(fxId(), si(), { dynamic: null }, tr('c.eq.dynBand'))}>{tr('c.eq.dynOff')}</button>
         </div>

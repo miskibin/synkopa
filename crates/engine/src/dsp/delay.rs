@@ -1060,6 +1060,7 @@ mod tests {
             bands: None,
             plugin: None,
             maps: None,
+            key: None,
         };
         let (l, _, _) = run(crate::catalog::param_block(&fx), |i| if i == 0 { (1.0, 1.0) } else { (0.0, 0.0) }, 48000, 140.0);
         let d = 300 * 48;

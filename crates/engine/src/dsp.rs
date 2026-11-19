@@ -227,6 +227,9 @@ pub struct Eq {
     last: Option<ParamBlock>,
     att: f32,
     rel: f32,
+    /// Release of sidechained bands: they follow the key's hits (a kick), so they let go in
+    /// ~25 ms instead of 80 (the 80 ms tail would hold a bass down long after the kick).
+    rel_key: f32,
     tick: usize,
 }
 
@@ -242,6 +245,7 @@ impl Default for Eq {
             last: None,
             att: 0.0,
             rel: 0.0,
+            rel_key: 0.0,
             tick: 0,
         }
     }
@@ -283,40 +287,9 @@ impl Eq {
     }
 }
 
-impl Processor for Eq {
-    fn prepare(&mut self, sr: f32, _max: usize) {
-        self.sr = sr;
-        self.gain.setup(sr, 20.0);
-        self.att = (-1.0 / (sr * 0.005)).exp();
-        self.rel = (-1.0 / (sr * 0.08)).exp();
-        if let Some(p) = self.last {
-            self.last = None;
-            self.set_params(&p);
-        }
-    }
-    fn set_params(&mut self, p: &ParamBlock) {
-        let first = self.last.is_none();
-        self.last = Some(*p);
-        self.out = db_to_gain(p.values[0]);
-        if first || self.gain.v < 1e-6 {
-            self.gain.v = self.out;
-        }
-        if self.sr <= 0.0 {
-            return;
-        }
-        self.p = p.bands;
-        self.n_on = 0;
-        for i in 0..EQ_BANDS {
-            if self.p[i].on {
-                self.n_on = i + 1;
-            }
-            let dyn_g = if self.p[i].dynamic { self.bands[i].dyn_g } else { 0.0 };
-            self.design(i, dyn_g);
-            let b = self.p[i];
-            self.bands[i].det.set(FilterType::Bandpass, self.sr, b.f, b.q.max(0.3), 0.0);
-        }
-    }
-    fn process(&mut self, l: &mut [f32], r: &mut [f32], _c: &ProcessCtx) {
+impl Eq {
+    /// The EQ; dynamic bands marked `ext` follow `key` (the sidechain) when there is one.
+    fn run(&mut self, l: &mut [f32], r: &mut [f32], key: Option<&[f32]>) {
         for i in 0..l.len() {
             let (mut a, mut b) = (l[i], r[i]);
             for k in 0..self.n_on {
@@ -326,15 +299,21 @@ impl Processor for Eq {
                 }
                 let st = &mut self.bands[k];
                 if bp.dynamic {
-                    let src = match bp.place {
-                        1 => a,
-                        2 => b,
-                        4 => (a - b) * 0.5,
-                        _ => (a + b) * 0.5,
+                    let (src, rel) = match (bp.ext, key) {
+                        (true, Some(key)) => (key[i], self.rel_key),
+                        _ => (
+                            match bp.place {
+                                1 => a,
+                                2 => b,
+                                4 => (a - b) * 0.5,
+                                _ => (a + b) * 0.5,
+                            },
+                            self.rel,
+                        ),
                     };
                     let d = st.det.tick(src);
                     let e = d * d;
-                    st.env = if e > st.env { e + (st.env - e) * self.att } else { e + (st.env - e) * self.rel };
+                    st.env = if e > st.env { e + (st.env - e) * self.att } else { e + (st.env - e) * rel };
                 }
                 let n = if bp.kind == 0 || bp.kind == 4 { bp.stages as usize } else { 1 };
                 let run = |f: &mut [Biquad; EQ_STAGES], mut x: f32| {
@@ -385,6 +364,48 @@ impl Processor for Eq {
                 }
             }
         }
+    }
+}
+
+impl Processor for Eq {
+    fn prepare(&mut self, sr: f32, _max: usize) {
+        self.sr = sr;
+        self.gain.setup(sr, 20.0);
+        self.att = (-1.0 / (sr * 0.005)).exp();
+        self.rel = (-1.0 / (sr * 0.08)).exp();
+        self.rel_key = (-1.0 / (sr * 0.025)).exp();
+        if let Some(p) = self.last {
+            self.last = None;
+            self.set_params(&p);
+        }
+    }
+    fn set_params(&mut self, p: &ParamBlock) {
+        let first = self.last.is_none();
+        self.last = Some(*p);
+        self.out = db_to_gain(p.values[0]);
+        if first || self.gain.v < 1e-6 {
+            self.gain.v = self.out;
+        }
+        if self.sr <= 0.0 {
+            return;
+        }
+        self.p = p.bands;
+        self.n_on = 0;
+        for i in 0..EQ_BANDS {
+            if self.p[i].on {
+                self.n_on = i + 1;
+            }
+            let dyn_g = if self.p[i].dynamic { self.bands[i].dyn_g } else { 0.0 };
+            self.design(i, dyn_g);
+            let b = self.p[i];
+            self.bands[i].det.set(FilterType::Bandpass, self.sr, b.f, b.q.max(0.3), 0.0);
+        }
+    }
+    fn process(&mut self, l: &mut [f32], r: &mut [f32], _c: &ProcessCtx) {
+        self.run(l, r, None);
+    }
+    fn process_keyed(&mut self, l: &mut [f32], r: &mut [f32], key: &[f32], _c: &ProcessCtx) {
+        self.run(l, r, Some(key));
     }
     fn reset(&mut self) {
         for st in self.bands.iter_mut() {
@@ -866,7 +887,7 @@ mod tests {
             q: 1.0,
             slope: 12,
             place: Placement::Stereo,
-            dynamic: Some(DynBand { range: -12.0, thr: -30.0 }),
+            dynamic: Some(DynBand { range: -12.0, thr: -30.0, ext: false }),
         };
         let sine = |a: f32| move |i: usize| (i as f32 * 1000.0 * std::f32::consts::TAU / 48000.0).sin() * a;
         let mut p = eq_with(vec![band]);
@@ -878,6 +899,47 @@ mod tests {
         let (quiet, _) = rms_after(&mut p, sine(0.005), sine(0.005));
         let (quiet_ref, _) = rms_after(&mut eq_with(vec![]), sine(0.005), sine(0.005));
         assert!(gain_to_db(quiet / quiet_ref).abs() < 0.5, "quiet changed: {}", gain_to_db(quiet / quiet_ref));
+    }
+
+    #[test]
+    fn a_sidechained_band_follows_the_key_not_its_own_signal() {
+        use crate::model::{BandType, DynBand, EqBand, Placement};
+        let band = EqBand {
+            on: true,
+            kind: BandType::Peak,
+            f: 60.0,
+            g: 0.0,
+            q: 1.0,
+            slope: 12,
+            place: Placement::Stereo,
+            dynamic: Some(DynBand { range: -6.0, thr: -30.0, ext: true }),
+        };
+        let ctx = ProcessCtx { sample_rate: 48000.0, ..Default::default() };
+        let tone = |i: usize| (i as f32 * 60.0 * std::f32::consts::TAU / 48000.0).sin() * 0.5;
+        // a loud bass with a silent key, then with a loud key in the band
+        let run = |key_amp: f32| {
+            let mut p = eq_with(vec![band]);
+            let mut e = 0f32;
+            for blk in 0..200 {
+                let range = blk * 256..blk * 256 + 256;
+                let mut l: Vec<f32> = range.clone().map(tone).collect();
+                let mut r = l.clone();
+                let key: Vec<f32> = range.map(|i| tone(i) * key_amp).collect();
+                p.process_keyed(&mut l, &mut r, &key, &ctx);
+                if blk > 150 {
+                    e += l.iter().map(|x| x * x).sum::<f32>();
+                }
+            }
+            e.sqrt()
+        };
+        let (_, reference) = (0, rms_after(&mut eq_with(vec![]), tone, tone).0);
+        let quiet_key = gain_to_db(run(0.0) / reference);
+        let loud_key = gain_to_db(run(1.0) / reference);
+        assert!(quiet_key.abs() < 0.3, "a loud bass is left alone while the key is silent: {quiet_key}");
+        assert!(loud_key < -5.0, "the key ducks the band: {loud_key}");
+        // without a sidechain connected the band falls back to its own signal
+        let (own, _) = rms_after(&mut eq_with(vec![band]), tone, tone);
+        assert!(gain_to_db(own / reference) < -5.0);
     }
 
     #[test]

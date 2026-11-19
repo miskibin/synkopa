@@ -135,12 +135,21 @@ impl Engine {
                 None => p,
             }
         };
-        self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress)
+        self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress, None)
     }
 
     /// Beat range of a pattern export: the whole pattern from its first beat (`None`: no such pattern).
     pub fn pattern_range(project: &Project, pattern: Id) -> Option<(f64, f64)> {
         project.patterns.iter().find(|p| p.id == pattern).map(|p| (0.0, p.len.max(BAR_BEATS)))
+    }
+
+    /// The mix assistant over `[from, to)` beats, offline (what a live run would report after
+    /// playing that span once): renders the project at 48 kHz and analyses every insert.
+    /// For the CLI and the agent API, where no stream is running.
+    pub fn masking_scan(&self, from: f64, to: f64, cancel: &AtomicBool) -> Result<Vec<crate::masking::Collision>, EngineError> {
+        let mut d = crate::masking::Detector::new(48000.0);
+        self.render_scoped(&|p| p, from, to, RenderTail::Seconds(0.0), 48000, cancel, &mut |_| {}, Some(&mut d))?;
+        Ok(d.collisions())
     }
 
     /// Renders what `scope` makes of the current project (a stem, the selected clips alone …).
@@ -154,6 +163,7 @@ impl Engine {
         sample_rate: u32,
         cancel: &AtomicBool,
         progress: &mut dyn FnMut(RenderProgress),
+        mut mask: Option<&mut crate::masking::Detector>,
     ) -> Result<Vec<f32>, EngineError> {
         if !from.is_finite() || !to.is_finite() || to <= from {
             return Err(EngineError::Msg("render range must be finite and `to` must be after `from`".into()));
@@ -225,6 +235,17 @@ impl Engine {
             keep.push((b, d));
         }
         let mut rt = Rt::new(sr, block, cmd_rx, gb_tx, Arc::new(Shared::new()), taps, rec_tx);
+        let mut mask_rx = vec![];
+        if let Some(d) = mask.as_deref_mut() {
+            d.configure(&project);
+            let mut tx = vec![];
+            for _ in 0..project.inserts.len() {
+                let (a, b) = rtrb::RingBuffer::<f32>::new(block * 2);
+                tx.push(a);
+                mask_rx.push(b);
+            }
+            rt.set_mask_taps(tx);
+        }
         rt.set_skip_silent(self.skip_silent.load(Relaxed));
         rt.set_workers(self.render_workers.load(Relaxed));
         let mut errs = HashMap::new();
@@ -313,6 +334,9 @@ impl Engine {
                 let k = play_frames.saturating_sub(done);
                 if k > 0 {
                     rt.process(&mut l[..k], &mut r[..k], None);
+                    if let Some(d) = mask.as_deref_mut() {
+                        d.drain(&mut mask_rx);
+                    }
                     keep(&mut out, done, &l[..k], &r[..k]);
                     done += k;
                     progress(RenderProgress::Rendering { done, total, peak: peak_of(&l[..k], &r[..k]), beat: beat_at(done) });
@@ -322,6 +346,9 @@ impl Engine {
                 continue;
             }
             rt.process(&mut l[..n], &mut r[..n], None);
+            if let Some(d) = mask.as_deref_mut() {
+                d.drain(&mut mask_rx);
+            }
             keep(&mut out, done, &l[..n], &r[..n]);
             done += n;
             // the discarded warm-up and delay-compensation frames do not reach the file
@@ -409,7 +436,7 @@ impl Engine {
             p
         };
         let tail = RenderTail::Decay { max: IN_PLACE_MAX_TAIL_S };
-        let data = self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress)?;
+        let data = self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress, None)?;
         // the render's own tempo turns its length into beats: the span plus the tail
         let len = ((data.len() / 2) as f64 / f64::from(sample_rate) * bpm / 60.0).max(to - from);
         let audio = Audio::from_stereo(data.clone(), sample_rate, 2);
@@ -787,6 +814,7 @@ pub fn pattern_project(mut p: Project, id: Id) -> Project {
 /// master is a plain unity sum (no effects, fader at 0 dB, centre, normal width). Inserts keep their
 /// effects so delay compensation stays the same as in the mix and every stem lines up.
 fn stem_project(mut p: Project, id: Id) -> Project {
+    let was_muted: Vec<Id> = p.inserts.iter().filter(|m| m.muted).map(|m| m.id).collect();
     for t in p.tracks.iter_mut() {
         t.solo = false;
     }
@@ -815,6 +843,29 @@ fn stem_project(mut p: Project, id: Id) -> Project {
         } else {
             m.muted = true;
         }
+    }
+    // sidechains the stem's effects listen to keep running, heard nowhere: the stem must sound
+    // as it does in the mix (an 808 ducked by the kick stays ducked in its stem)
+    let mut need: Vec<Id> = feeds.iter().copied().chain([id]).collect();
+    let mut silent: Vec<Id> = vec![];
+    let mut i = 0;
+    while i < need.len() {
+        let keys: Vec<Id> = p.insert(need[i]).map(|m| m.fx.iter().filter_map(|f| f.key).collect()).unwrap_or_default();
+        for k in keys {
+            let kfeeds = p.inserts.iter().filter(|m| m.id != 0 && crate::routing::reaches(&p, m.id, k)).map(|m| m.id);
+            for x in kfeeds.collect::<Vec<_>>() {
+                if !need.contains(&x) {
+                    need.push(x);
+                    silent.push(x);
+                }
+            }
+        }
+        i += 1;
+    }
+    for m in p.inserts.iter_mut().filter(|m| silent.contains(&m.id)) {
+        m.muted = was_muted.contains(&m.id);
+        m.master = false;
+        m.sends.retain(|s| silent.contains(&s.to));
     }
     p
 }

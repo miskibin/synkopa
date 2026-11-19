@@ -152,6 +152,11 @@ pub enum Op {
         #[serde(rename = "loop")]
         range: Option<LoopRange>,
     },
+    /// Replace the pairs of inserts the mix assistant does not report as masking each other
+    /// (`crate::masking`). Never touches the audio.
+    SetMaskIgnore {
+        pairs: Vec<[Id; 2]>,
+    },
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -373,6 +378,13 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             }
             p.inserts.retain(|m| m.id != *id);
             crate::routing::forget(p, *id);
+            // sidechains from it fall back to their own signal; ignored pairs with it go
+            for f in p.inserts.iter_mut().flat_map(|m| m.fx.iter_mut()) {
+                if f.key == Some(*id) {
+                    f.key = None;
+                }
+            }
+            p.mask_ignore.retain(|q| q[0] != *id && q[1] != *id);
             for t in &mut p.tracks {
                 if t.insert == *id {
                     t.insert = 0;
@@ -388,6 +400,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
         }
         Op::PutFx { insert_id, fx, index } => {
             validate_fx(fx)?;
+            validate_key(p, *insert_id, fx)?;
             if let Some((m, old)) = p.find_fx(fx.id) {
                 if m.id != *insert_id || old.kind != fx.kind {
                     return Err(OpError::Invalid(format!("effect {} cannot change insert or type; remove and add it", fx.id)));
@@ -398,8 +411,10 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     return Err(OpError::Invalid("a plugin slot cannot swap its plugin; remove and add it".into()));
                 }
                 // a parameter that changes the effect's latency (look-ahead) re-plans the PDC
-                let bypass_changed =
-                    old.bypass != fx.bypass || crate::catalog::latency(old, 48000.0) != crate::catalog::latency(fx, 48000.0);
+                // so does a new sidechain: it reorders the inserts (the key is processed first)
+                let bypass_changed = old.bypass != fx.bypass
+                    || old.key != fx.key
+                    || crate::catalog::latency(old, 48000.0) != crate::catalog::latency(fx, 48000.0);
                 let m = p.inserts.iter_mut().find(|m| m.id == *insert_id).unwrap();
                 let slot = m.fx.iter_mut().find(|f| f.id == fx.id).unwrap();
                 *slot = fx.clone();
@@ -896,6 +911,24 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             p.bpm = *bpm;
             d.timeline = true;
         }
+        Op::SetMaskIgnore { pairs } => {
+            let mut out: Vec<[Id; 2]> = vec![];
+            for q in pairs {
+                for id in q {
+                    if *id == 0 || p.insert(*id).is_none() {
+                        return Err(OpError::Invalid(format!("mask ignore: insert {id} is not a mixer insert")));
+                    }
+                }
+                if q[0] == q[1] {
+                    return Err(OpError::Invalid("mask ignore: a pair needs two different inserts".into()));
+                }
+                let q = [q[0].min(q[1]), q[0].max(q[1])];
+                if !out.contains(&q) {
+                    out.push(q);
+                }
+            }
+            p.mask_ignore = out;
+        }
         Op::SetLoop { range } => {
             if let Some(r) = range {
                 if !(r.b > r.a && r.a >= 0.0) {
@@ -1005,6 +1038,28 @@ fn validate_fx(fx: &Fx) -> Result<(), OpError> {
         if !v.is_finite() {
             return Err(OpError::Invalid(format!("parameter {k} is not a number")));
         }
+    }
+    Ok(())
+}
+
+/// A sidechain (`Fx::key`): only on an EQ, from another non-master insert that exists and
+/// that does not take this insert's output (the key is processed before the EQ's insert).
+fn validate_key(p: &Project, insert_id: Id, fx: &Fx) -> Result<(), OpError> {
+    let Some(k) = fx.key else { return Ok(()) };
+    if fx.kind != FxKind::Eq {
+        return Err(OpError::Invalid("only an EQ takes a sidechain (`key`)".into()));
+    }
+    if k == 0 {
+        return Err(OpError::Invalid("the master cannot be a sidechain: it is processed last".into()));
+    }
+    if k == insert_id {
+        return Err(OpError::Invalid("an EQ's sidechain is another insert (its own signal needs no `key`)".into()));
+    }
+    if p.insert(k).is_none() {
+        return Err(OpError::Missing { what: "insert", id: k });
+    }
+    if crate::routing::reaches(p, insert_id, k) {
+        return Err(OpError::Invalid(format!("insert {insert_id} feeds insert {k}: a sidechain from it would close a loop")));
     }
     Ok(())
 }

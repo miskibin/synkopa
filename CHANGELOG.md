@@ -7,6 +7,15 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Mix assistant.** While you play, Synkopa listens for mixer tracks that cover each other: both
+  loud in the same frequencies at the same time, bar after bar, like a kick and an 808 at 50 Hz.
+  Only then a small amber dot appears on the track that should give way; click it to **Make
+  room** or **Ignore this pair**. Make room adds an ordinary EQ that dips that range only while
+  the other track hits (a sidechained dynamic band), so the 808 keeps its weight between kicks.
+  Nothing else on screen changes, and you can switch it off in Settings ▸ Editing.
+- **Sidechain for dynamic EQ bands.** A dynamic band can listen to another mixer track instead of
+  its own signal (*Key* in the band's panel): duck a pad's mids under the vocal, or a bass under
+  the kick, only while they play.
 - **Find a command (Ctrl+K).** Type what you want to do; every menu command is there with its
   shortcut, what you have selected comes first, and a question that is not a command goes to Ask AI.
 - **Pan per note.** The Piano roll's lower lane switches between Velocity and Pan; drag to pan

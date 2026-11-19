@@ -5,6 +5,7 @@ import { setLang, type Lang } from '../lib/i18n';
 import { isTauri } from '../api/backend';
 import * as A from './actions';
 import { U } from './ui';
+import { setAssistant } from './mixAssist';
 
 export interface Prefs {
   /** interface language */
@@ -23,10 +24,12 @@ export interface Prefs {
   /** FL's CPU meter (load + underrun count) in the toolbar; off by default, the bar is short
    *  on room. The underrun count is always in Settings → Audio. */
   cpuMeter: boolean;
+  /** the mix assistant: while playing, inserts covering each other get a dot on their strip */
+  mixAssistant: boolean;
 }
 
 const KEY = 'wave.prefs';
-const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false };
+const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false, mixAssistant: true };
 
 function load(): Prefs {
   try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en' }; } catch { return { ...DEFAULTS }; }
@@ -53,6 +56,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 function applyPref(k: keyof Prefs, p: Prefs) {
   if (k === 'lang') setLang(p.lang);
   if (k === 'uiScale') void applyScale(p.uiScale);
+  if (k === 'mixAssistant') void setAssistant(p.mixAssistant);
   if (k === 'autosaveMin') {
     if (timer) clearInterval(timer);
     timer = null;

@@ -103,9 +103,9 @@ describe('telemetry decoder', () => {
   });
   it('carries the output underrun count last, like the engine, and reads 0 from older frames', () => {
     const base = { seq: 1, beat: 0, playing: false, recording: false, previewing: false, inLevel: 0, previewPos: -1, cpu: 0.5, ins: [], fx: [], rec: null };
-    // the same 56-byte layout crates/engine/tests/underruns.rs checks on the writer's side
+    // the same 60-byte layout crates/engine/tests/underruns.rs checks on the writer's side
     const buf = encodeFrame({ ...base, underruns: 2 });
-    expect(buf.byteLength).toBe(56);
+    expect(buf.byteLength).toBe(60);
     expect(new DataView(buf).getFloat64(44, true)).toBe(-1);
     expect(new DataView(buf).getUint32(52, true)).toBe(2);
     const d = new TelemetryDecoder();

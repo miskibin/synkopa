@@ -368,8 +368,18 @@ pub fn default_params(kind: FxKind) -> BTreeMap<String, f64> {
 
 /// A fresh built-in effect loaded with its first preset.
 pub fn new_fx(id: Id, kind: FxKind, bpm: f64) -> Fx {
-    let mut fx =
-        Fx { id, kind, bypass: false, mix: 1.0, preset: None, params: default_params(kind), bands: None, plugin: None, maps: None };
+    let mut fx = Fx {
+        id,
+        kind,
+        bypass: false,
+        mix: 1.0,
+        preset: None,
+        params: default_params(kind),
+        bands: None,
+        plugin: None,
+        maps: None,
+        key: None,
+    };
     if kind == FxKind::Eq {
         fx.bands = Some(default_bands());
     }
@@ -969,6 +979,7 @@ pub fn param_block(fx: &Fx) -> ParamBlock {
                 dynamic: b.dynamic.is_some(),
                 range: b.dynamic.map(|d| d.range.clamp(-30.0, 30.0) as f32).unwrap_or(0.0),
                 thr: b.dynamic.map(|d| d.thr.clamp(-80.0, 0.0) as f32).unwrap_or(0.0),
+                ext: b.dynamic.is_some_and(|d| d.ext),
             };
         }
     }

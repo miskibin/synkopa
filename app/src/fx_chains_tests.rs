@@ -55,6 +55,7 @@ fn with_chain() -> (Arc<Engine>, u64) {
             state: Some("c3RhdGU=".into()),
         }),
         maps: None,
+        key: None,
     };
     ops.extend([eq, comp, delay, vst].into_iter().map(|fx| Op::PutFx { insert_id: insert, fx, index: None }));
     e.apply(&ops, false, None).unwrap();

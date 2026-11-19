@@ -11,6 +11,7 @@ mod keys;
 mod library;
 mod links;
 mod midi_actions;
+mod mix_assist;
 mod models;
 mod pitch_actions;
 #[cfg(target_os = "linux")]
@@ -405,6 +406,16 @@ async fn trim_clip(app: St<'_>, clip_id: u64) -> R<Value> {
 async fn fx_chain(app: St<'_>, cmd: String, args: Value) -> R<Value> {
     if !fx_chains::COMMANDS.contains(&cmd.as_str()) {
         return Err(format!("not an FX chain command: {cmd}"));
+    }
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
+}
+
+/// Mix assistant (`mix_assist.rs`): switch, collisions, the fix, ignoring a pair.
+#[tauri::command]
+async fn mix_assist(app: St<'_>, cmd: String, args: Value) -> R<Value> {
+    if !mix_assist::COMMANDS.contains(&cmd.as_str()) {
+        return Err(format!("not a mix assistant command: {cmd}"));
     }
     let a = app.inner().clone();
     tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None)).await.map_err(es)?
@@ -1330,6 +1341,7 @@ pub fn run(project_arg: Option<&str>) {
             relink_search,
             midi,
             fx_chain,
+            mix_assist,
             flatten_comp,
             export_in_place,
             comp_audition,
