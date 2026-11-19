@@ -35,7 +35,7 @@ fn dry(mut p: Project) -> Project {
 fn setup(tag: &str, from_s: f64, to_s: f64, tweak: impl Fn(&mut Clip)) -> (Arc<Engine>, Id, Vec<f32>) {
     let (wav, data) = song(tag);
     let e = Engine::new(dry(Project::empty()), Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(&[wav], Some((1, 4.0))).unwrap();
+    let (_, clips, _) = e.import_audio(&[wav], Some((1, 4.0))).unwrap();
     let spb = 60.0 / e.project().bpm;
     let mut c = e.project().clips.iter().find(|c| c.id == clips[0]).cloned().unwrap();
     c.offset = from_s / spb;

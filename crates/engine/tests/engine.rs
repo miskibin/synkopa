@@ -986,7 +986,7 @@ fn one_bar_through(kind: FxKind, set: &[(&str, f64)]) -> (Arc<Engine>, Clip) {
     let tone: Vec<f32> = (0..bar).flat_map(|i| [(i as f32 * 0.0626).sin() * 0.5; 2]).collect();
     wave_engine::sources::write_wav(&wav, &tone, 48000).unwrap();
     let e = Engine::new(p, Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((1, 0.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((1, 0.0))).unwrap();
     let c = e.project().clips.iter().find(|c| c.id == clips[0]).unwrap().clone();
     let ins = e.project().tracks[c.track as usize].insert;
     let mut fx = new_fx(90_001, kind, e.project().bpm);
