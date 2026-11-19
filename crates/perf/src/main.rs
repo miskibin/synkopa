@@ -318,7 +318,7 @@ fn rt_run(e: &Arc<Engine>, block: usize, from: f64, secs: f64, tails: bool) -> V
         rt.process(&mut l, &mut r, None);
     }
     if tails {
-        e.stop();
+        let _ = e.stop();
     }
     let blocks = (secs * SR as f64 / block as f64) as usize;
     let mut times = Vec::with_capacity(blocks);
@@ -335,7 +335,7 @@ fn rt_run(e: &Arc<Engine>, block: usize, from: f64, secs: f64, tails: bool) -> V
     let period = block as f64 / SR as f64 * 1e6;
     let st = stats(times.clone());
     let silent = l.iter().chain(r.iter()).all(|x| *x == 0.0);
-    e.stop();
+    let _ = e.stop();
     drop(rt);
     json!({
         "block": block, "blocks": blocks, "block_us": st.json(), "deadline_us": r2(period),
@@ -803,7 +803,7 @@ fn bench_rt_under_edit(wave: &Path, quick: bool) -> Value {
     let r = sim.finish();
     out["audio_thread"] = r.json();
     out["audio_thread_control_no_edits"] = ctl_res.json();
-    e.stop();
+    let _ = e.stop();
     out
 }
 
@@ -902,7 +902,7 @@ fn bench_telemetry(wave: &Path, quick: bool) -> Value {
                              "apply_fader_ms_while_housekeeping": stats(t).json() });
     }
     e.set_frame_sink(None);
-    e.stop();
+    let _ = e.stop();
     let r = sim.finish();
     res["audio_thread"] = r.json();
     res

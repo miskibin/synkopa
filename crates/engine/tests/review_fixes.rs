@@ -2,6 +2,7 @@
 //! an open drag never leaks into a replaced project, stem context shrinks to the reopen
 //! limit, and a saved scratch take never replaces audio that is already there.
 
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -133,5 +134,149 @@ fn overlapping_copies_of_the_same_stem_each_publish_their_own_file() {
     let t2 = e.save_copy(&b);
     assert!(t1.is_ok() && t2.is_ok(), "{t1:?} / {t2:?}");
     assert!(a.is_file() && b.is_file());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+// ------------------------------------------------------------- round 2
+
+use std::sync::mpsc;
+use std::time::Duration;
+
+/// A hosted plugin whose latency report only answers after the test says so: the query is
+/// paused mid-flight, the plugin replaced, and the stale report must be discarded.
+struct BlockingLatency {
+    entered: mpsc::Sender<()>,
+    release: std::sync::Mutex<mpsc::Receiver<()>>,
+}
+impl PluginFactory for BlockingLatency {
+    fn create(&self, _: Id, _: &PluginRef, _: f32, _: usize, _: bool) -> Result<Box<dyn Processor>, String> {
+        Ok(Box::new(Fixed(128)))
+    }
+    fn latency(&self, _: Id) -> Option<usize> {
+        self.entered.send(()).ok()?;
+        let _ = self.release.lock().ok()?.recv_timeout(Duration::from_secs(5));
+        Some(512)
+    }
+}
+
+/// A processor with a fixed reported latency.
+struct Fixed(usize);
+impl Processor for Fixed {
+    fn prepare(&mut self, _: f32, _: usize) {}
+    fn process(&mut self, _: &mut [f32], _: &mut [f32], _: &ProcessCtx) {}
+    fn latency_samples(&self) -> usize {
+        self.0
+    }
+}
+
+fn plugin_fx(id: Id) -> Fx {
+    let mut f = catalog::new_fx(id, FxKind::Plugin, 120.0);
+    f.plugin = Some(PluginRef {
+        format: "lv2".into(),
+        path: "/usr/lib/lv2/delay.lv2".into(),
+        cid: "test".into(),
+        name: "Look-ahead".into(),
+        vendor: "Test".into(),
+        state: None,
+    });
+    f
+}
+
+#[test]
+fn a_plugin_replaced_during_a_latency_query_discards_the_stale_report() {
+    let (entered_tx, entered) = mpsc::channel();
+    let (release_tx, release) = mpsc::channel();
+    let factory = Arc::new(BlockingLatency { entered: entered_tx, release: std::sync::Mutex::new(release) });
+    let mut p = Project::sketch();
+    p.inserts[1].fx.push(plugin_fx(7000));
+    let e = Engine::new(p, factory.clone());
+    e.create_rt(48_000.0, 256);
+    let before = e.playback_latency();
+    assert!(before >= 128, "the instance's own latency is in the mix ({before})");
+
+    let e2 = e.clone();
+    let query = std::thread::spawn(move || e2.refresh_plugin_latency());
+    entered.recv_timeout(Duration::from_secs(5)).expect("the query reached the factory");
+    // the plugin is replaced while the query waits: its report would answer for the old one
+    release_tx.send(()).ok();
+    e.apply(&[Op::PutInsert { insert: plugin_insert(7001) }], false, None).unwrap();
+    let changed = query.join().unwrap();
+    assert!(!changed, "a report collected before the replacement must be discarded");
+    assert_eq!(e.playback_latency(), before, "the stale 512 never landed");
+}
+
+/// A whole insert carrying one plugin effect, for mixer-dirty edits in these tests.
+fn plugin_insert(id: Id) -> Insert {
+    let mut ins = Insert { id, name: format!("Bus {id}"), ..Project::sketch().inserts[1].clone() };
+    ins.fx = vec![plugin_fx(id)];
+    ins
+}
+
+#[test]
+fn relinking_during_extraction_rejects_the_placement_without_mutating() {
+    let (e, clip, dir) = engine_with_tone("relink-stems");
+    let region = e.stem_region(clip, 2.0).unwrap();
+    // swap the audio under the same source id while the separator "runs"
+    let other = dir.join("other.wav");
+    let tone: Vec<f32> = (0..22050).flat_map(|i| [(i as f32 * 0.02).sin(), 0.0]).collect();
+    wave_engine::sources::write_wav(&other, &tone, 44100).unwrap();
+    let src = e.project().clips.iter().find(|c| c.id == clip).unwrap().source;
+    e.relink_sources(&[Relink { source_id: src, path: other.display().to_string() }]).unwrap();
+    let stems = vec![StemFile {
+        label: "Drums".into(),
+        color: "#123456".into(),
+        path: dir.join("stem.wav"),
+        audio: wave_engine::sources::Audio::from_stereo(region.data[..4000].to_vec(), region.sr, 2),
+    }];
+    assert!(e.place_stems(&region, stems).is_err(), "stems of the old audio must not be placed");
+    assert!(!e.project().clips.iter().any(|c| c.id == clip && c.muted), "the clip stayed unmuted");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn apply_with_library_decodes_what_the_project_does_not_have() {
+    let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
+    let requested = |ids: &std::collections::HashMap<String, Id>| {
+        assert!(ids.contains_key("kick-808.flac"), "build must always see the requested sample");
+        Ok(vec![])
+    };
+    e.apply_with_library(&["kick-808.flac"], None, |_, ids| requested(ids)).unwrap();
+    assert!(e.project().sources.iter().any(|s| s.path.ends_with("kick-808.flac")));
+    // the sample leaves the project again (a watch would do the same): the next apply decodes
+    // it fresh and build still gets its id — the path a concurrent replacement takes
+    e.set_project(Project::empty(), None).unwrap();
+    e.apply_with_library(&["kick-808.flac"], None, |_, ids| requested(ids)).unwrap();
+    assert!(e.project().sources.iter().any(|s| s.path.ends_with("kick-808.flac")));
+}
+
+#[test]
+fn a_bare_relative_name_opens_against_the_working_directory() {
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    let name = "wave-fixes-bare.synkopa";
+    e.save(Path::new(name)).unwrap();
+    let e2 = Engine::new(Project::empty(), Arc::new(NoPlugins));
+    // a bare file name has an empty parent: media still resolves against "."
+    e2.open(Path::new(name)).unwrap();
+    assert!(e2.state().path.as_ref().is_some_and(|p| p.ends_with(name)));
+    let _ = std::fs::remove_file(name);
+}
+
+#[test]
+fn overlapping_copies_each_publish_their_own_snapshot() {
+    let e_a = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    let mut rich = Project::sketch();
+    rich.tracks[0].name = "MARKER-A".into();
+    let e_b = Engine::new(rich, Arc::new(NoPlugins));
+    let dir = std::env::temp_dir().join(format!("wave-fixes-copy2-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let a = dir.join("Song.synkopa");
+    let b = dir.join("Song.wave");
+    let (ra, rb) = (e_a.save_copy(&a), e_b.save_copy(&b));
+    assert!(ra.is_ok() && rb.is_ok(), "{ra:?} / {rb:?}");
+    // each call published its own project, not the other's snapshot
+    let doc_a = std::fs::read_to_string(&a).unwrap();
+    let doc_b = std::fs::read_to_string(&b).unwrap();
+    assert!(doc_a.contains("Drums") && !doc_a.contains("MARKER-A"), "A published A");
+    assert!(doc_b.contains("MARKER-A"), "B published B");
     let _ = std::fs::remove_dir_all(dir);
 }

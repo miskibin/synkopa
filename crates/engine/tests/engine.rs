@@ -194,7 +194,7 @@ fn live_rt_follows_edits_and_transport() {
     }
     rt.process(&mut l, &mut r, None);
     assert!(rms(&l) < 1e-6);
-    e.stop();
+    let _ = e.stop();
     assert!(!e.state().transport.playing);
 }
 
@@ -216,7 +216,7 @@ fn recording_lands_as_a_clip_on_the_armed_track() {
         rt.process(&mut l, &mut r, Some((&tone, &tone)));
         std::thread::sleep(std::time::Duration::from_micros(200)); // let housekeeping drain the ring
     }
-    e.stop();
+    let _ = e.stop();
     let p = e.project();
     let take = p.clips.iter().find(|c| c.kind == ClipKind::Audio).expect("no take clip");
     assert_eq!(take.track, 4);
@@ -262,7 +262,7 @@ fn opening_a_project_while_recording_keeps_the_take_in_its_project() {
     assert_eq!(error.to_string(), "recording: stop it first");
     assert!(e.state().transport.playing);
     assert!(e.state().path.is_none());
-    e.stop();
+    let _ = e.stop();
     assert_eq!(takes(&e).len(), 1);
     e.open(&path).unwrap();
     assert!(takes(&e).is_empty());
@@ -283,13 +283,13 @@ fn disarming_mid_take_keeps_it_and_keeps_playing() {
     assert!(e.state().transport.playing, "punch-out stopped the transport");
     // nothing more is captured after the punch-out
     feed(&mut rt, 0.5);
-    e.stop();
+    let _ = e.stop();
     assert_eq!(takes(&e).len(), 1);
     // and the next armed run records again
     e.set_transport(None, None, Some(true), None);
     e.play(0.0);
     feed(&mut rt, 0.5);
-    e.stop();
+    let _ = e.stop();
     // (recording over the first take turns both into takes of one comp)
     let p = e.project();
     assert_eq!(p.comps.len(), 1, "could not record after the punch-out");
@@ -314,7 +314,7 @@ fn restarting_the_audio_stream_mid_take_keeps_it() {
     e.play(0.0);
     assert!(e.state().transport.playing, "transport is stuck after the restart");
     feed(&mut rt, 0.5);
-    e.stop();
+    let _ = e.stop();
     assert_eq!(takes(&e).len(), 2);
 }
 

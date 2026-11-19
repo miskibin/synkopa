@@ -627,7 +627,9 @@ impl Engine {
         c.synths.clear();
         self.forget_plugs(&mut c);
         // the old stream is gone: keep what it captured instead of orphaning the take
-        self.finalize_take(&mut c);
+        if let Err(e) = self.finalize_take(&mut c) {
+            log::error!("{e}");
+        }
         c.wires = Some(Wires {
             cmds: cmd_tx,
             garbage: gb_rx,
@@ -970,7 +972,7 @@ impl Engine {
         self.changed(c);
     }
 
-    pub fn stop(&self) {
+    pub fn stop(&self) -> Result<TransportDto, EngineError> {
         let control = self.transport_control.lock();
         let mut c = self.core.lock();
         let drain = self.end_take(&mut c, true);
@@ -982,12 +984,16 @@ impl Engine {
         if let Some((shared, timeout)) = drain {
             wait_for_take_input(&shared, timeout);
         }
-        self.finish_take();
+        // the transport stops either way; a take that could not be written is the error the
+        // caller came here to hear about (the UI shows it where it shows every action error)
+        let written = self.finish_take();
         self.finish_midi_take();
         let mut c = self.core.lock();
         self.settle_rec_track(&mut c);
+        let t = c.transport.clone();
         drop(control);
         self.changed(c);
+        written.map(|_| t)
     }
 
     /// The recording filter: what a recording captures (the input's audio, keyboard notes).
@@ -1067,7 +1073,9 @@ impl Engine {
             if let Some((shared, timeout)) = drain {
                 wait_for_take_input(&shared, timeout);
             }
-            self.finish_take();
+            if let Err(e) = self.finish_take() {
+                log::error!("{e}");
+            }
             self.finish_midi_take();
             let mut c = self.core.lock();
             self.settle_rec_track(&mut c);
@@ -1373,7 +1381,9 @@ impl Engine {
                 let mut c = self.core.lock();
                 c.transport.playing = false;
             }
-            self.finish_take();
+            if let Err(e) = self.finish_take() {
+                log::error!("{e}");
+            }
             self.finish_midi_take();
             let c = self.core.lock();
             self.changed(c);

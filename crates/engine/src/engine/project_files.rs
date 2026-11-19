@@ -58,9 +58,8 @@ impl Engine {
         for s in p.sources.iter_mut().filter(|s| !s.path.starts_with(crate::factory::SCHEME)) {
             let sp = PathBuf::from(&s.path);
             if sp.starts_with(&scratch) {
-                let dst = unclaimed_path(&audio_dir, &sp);
                 std::fs::create_dir_all(&audio_dir).map_err(|e| e.to_string())?;
-                std::fs::copy(&sp, &dst).map_err(|e| format!("copying {}: {e}", sp.display()))?;
+                let dst = copy_no_replace(&sp, &audio_dir).map_err(|e| format!("copying {}: {e}", sp.display()))?;
                 let dst = dst.display().to_string();
                 moved.push((s.path.clone(), dst.clone()));
                 s.path = dst;
@@ -148,8 +147,10 @@ impl Engine {
         let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a Synkopa project: {e}"))?;
         p.migrate();
         // media paths are joined against the project's directory: that join must produce
-        // absolute paths even when the caller passed a relative one
-        let dir = std::path::absolute(path.parent().unwrap_or(Path::new("."))).map_err(|e| e.to_string())?;
+        // absolute paths even when the caller passed a relative one (or a bare file name,
+        // whose parent is the empty string, not ".")
+        let parent = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+        let dir = std::path::absolute(parent).map_err(|e| e.to_string())?;
         let mut warnings = vec![];
         let mut errors = HashMap::new();
         let mut store = SourceStore::default();
@@ -314,17 +315,24 @@ pub(crate) fn sanitize(s: &str) -> String {
     s.chars().map(|ch| if ch.is_alphanumeric() || ch == ' ' || ch == '-' || ch == '_' { ch } else { '_' }).collect()
 }
 
-/// Where to copy scratch file `src` inside `dir`: its own name, or `stem (2).ext` … when
-/// that file is already there. Two projects save `Take.wav` next to their own
-/// `Song Audio` too, so a move must never replace audio that is already there.
-fn unclaimed_path(dir: &Path, src: &Path) -> PathBuf {
+/// Copies scratch file `src` into `dir` under its own name — or `stem (2).ext` … — creating
+/// the destination exclusively, so a file that appears between the name check and the copy
+/// is never replaced: two projects save `Take.wav` next to their own `Song Audio` too.
+fn copy_no_replace(src: &Path, dir: &Path) -> Result<PathBuf, String> {
     let stem = src.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
-    let mut p = dir.join(format!("{stem}{ext}"));
-    let mut k = 2;
-    while p.exists() {
-        p = dir.join(format!("{stem} ({k}){ext}"));
-        k += 1;
+    let mut src_f = std::fs::File::open(src).map_err(|e| e.to_string())?;
+    for k in 1..10_000 {
+        let name = if k == 1 { format!("{stem}{ext}") } else { format!("{stem} ({k}){ext}") };
+        let p = dir.join(name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&p) {
+            Ok(mut dst) => {
+                std::io::copy(&mut src_f, &mut dst).map_err(|e| e.to_string())?;
+                return Ok(p);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.to_string()),
+        }
     }
-    p
+    Err("no free name for the recording".into())
 }

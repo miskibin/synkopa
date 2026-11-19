@@ -200,7 +200,7 @@ fn a_note_played_while_stopped_is_not_delayed_by_compensation() {
     // back on stop is a crossfade, not a jump: no sample steps by more than the music does
     e.play(0.0);
     run(&mut rt, SR as usize);
-    e.stop();
+    let _ = e.stop();
     let tail = run(&mut rt, BLOCK * 4);
     let step = tail.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0f32, f32::max);
     assert!(step < 0.5, "the stop jumped by {step}");

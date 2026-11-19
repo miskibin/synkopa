@@ -23,7 +23,7 @@ fn peak(rt: &mut Rt, blocks: usize) -> f32 {
 /// measurement), after a few blocks for the faders' smoothing.
 fn level(e: &Engine, rt: &mut Rt) -> f32 {
     peak(rt, 20);
-    e.stop();
+    let _ = e.stop();
     peak(rt, 20);
     e.play(0.0);
     peak(rt, 400)

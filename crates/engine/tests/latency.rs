@@ -221,7 +221,7 @@ fn record_hit(tag: &str, mid: bool) {
     out.extend(run(&mut rt, &mut at, hit + 20000 - heard5 / 2, &|f| if f == hit { 0.9 } else { 0.0 }));
     // the singer hears beat 5 when the take's `skip` assumes it
     assert_near(onset(&out, 0.3), heard5, "beat 5 heard when the take assumes it");
-    e.stop();
+    let _ = e.stop();
     let p = e.project();
     let clip = p.clips.iter().find(|c| c.kind == ClipKind::Audio && c.track == 0).expect("a take");
     assert!((clip.start - 4.0).abs() < 1e-9, "take starts at {}", clip.start);

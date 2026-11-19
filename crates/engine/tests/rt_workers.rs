@@ -164,7 +164,7 @@ fn play(workers: usize, blocks: usize, count: bool) -> (Vec<f32>, u64, usize) {
         out.extend_from_slice(&l);
         out.extend_from_slice(&r);
     }
-    e.stop();
+    let _ = e.stop();
     (out, allocs, pool_threads)
 }
 

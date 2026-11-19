@@ -51,11 +51,50 @@ impl Engine {
         let mut last_error = None;
         for _retry in 0..3 {
             let mut c = self.core.lock();
+            // phase 1 — pure lookup: is anything the scan cached no longer in the project?
+            // Nothing is mutated until every file resolves, so a retry never leaves partial
+            // additions (or duplicate ones) behind.
+            let mut missing = vec![];
+            for (_, stored, audio) in loaded.iter() {
+                if audio.is_some() {
+                    continue;
+                }
+                let live = c
+                    .project
+                    .sources
+                    .iter()
+                    .find(|s| s.path == *stored && s.path.starts_with(crate::factory::SCHEME))
+                    .map(|s| s.id)
+                    .is_some_and(|id| c.sources.get(id).is_some());
+                if !live {
+                    missing.push(stored.clone());
+                }
+            }
+            if !missing.is_empty() && _retry < 2 {
+                drop(c);
+                for stored in &missing {
+                    match Audio::load_path(stored, Path::new(".")) {
+                        Ok(a) => {
+                            if let Some((_, _, slot)) = loaded.iter_mut().find(|(_, s, _)| s == stored) {
+                                *slot = Some(a);
+                            }
+                        }
+                        Err(e) => last_error = Some(e),
+                    }
+                }
+                continue;
+            }
+            if !missing.is_empty() {
+                // still gone after a decode round: report it instead of a hollow success
+                drop(c);
+                errors.push(last_error.unwrap_or_else(|| "a sample disappeared while it was imported".into()));
+                break;
+            }
+            // phase 2 — the commit: every file resolves, so this pass cannot stop halfway
             let before = c.project.clone();
             let mut src_ids = vec![];
             let mut clip_ids = vec![];
             let bpm = c.project.bpm;
-            let mut missing = vec![];
             for (k, (path, stored, audio)) in loaded.iter_mut().enumerate() {
                 let reuse = c
                     .project
@@ -67,10 +106,7 @@ impl Engine {
                 let audio = audio.take();
                 let (id, seconds) = match (reuse, audio) {
                     (Some(r), _) => r,
-                    (_, None) => {
-                        missing.push(stored.clone());
-                        continue;
-                    }
+                    (_, None) => unreachable!("phase 1 resolved every cached sample"),
                     (_, Some(audio)) => {
                         let id = c.project.alloc_id();
                         let factory = crate::factory::embedded(stored);
@@ -132,26 +168,6 @@ impl Engine {
                     clip_ids.push(cid);
                 }
             }
-            if !missing.is_empty() && _retry < 2 {
-                drop(c);
-                for stored in &missing {
-                    match Audio::load_path(stored, Path::new(".")) {
-                        Ok(a) => {
-                            if let Some((_, _, slot)) = loaded.iter_mut().find(|(_, s, _)| s == stored) {
-                                *slot = Some(a);
-                            }
-                        }
-                        Err(e) => last_error = Some(e),
-                    }
-                }
-                continue;
-            }
-            if !missing.is_empty() {
-                // still gone after a decode round: report it instead of a hollow success
-                drop(c);
-                errors.push(last_error.unwrap_or_else(|| "a sample disappeared while it was imported".into()));
-                break;
-            }
             let added = c.project.sources.len() != before.sources.len();
             let fold = if step || !clip_ids.is_empty() {
                 push_undo(&mut c, before);
@@ -186,7 +202,7 @@ impl Engine {
     pub fn relink_sources(&self, items: &[Relink]) -> Result<Vec<Relinked>, EngineError> {
         let mut out = vec![];
         let mut loaded = vec![];
-        {
+        let at_rev = {
             let c = self.core.lock();
             for it in items {
                 let Some(s) = c.project.sources.iter().find(|s| s.id == it.source_id) else {
@@ -196,7 +212,8 @@ impl Engine {
                     return Err(EngineError::Msg(format!("{}: a library sample; install its kit instead", s.name)));
                 }
             }
-        }
+            c.revision
+        };
         for it in items {
             let p = PathBuf::from(&it.path);
             if !p.is_absolute() {
@@ -217,7 +234,9 @@ impl Engine {
             let why: Vec<String> = out.iter().filter_map(|r| r.error.clone()).collect();
             return Err(EngineError::Msg(why.join("; ")));
         }
-        self.commit_relinks(loaded, None).map(|mut relinked| {
+        // the relink belongs to the project it was validated on: an edit or open during the
+        // decode refuses it, so it cannot land on same-id sources of a replaced project
+        self.commit_relinks(loaded, Some(at_rev)).map(|mut relinked| {
             out.append(&mut relinked);
             out
         })
@@ -277,22 +296,19 @@ impl Engine {
         if !folder.is_dir() {
             return Err(EngineError::Msg(format!("{}: not a folder", folder.display())));
         }
-        let wanted: Vec<(Id, String, f64)> = {
+        // `wanted` and the revision it was scanned at come from one lock hold: the lengths
+        // the search validates against belong to exactly the revision the relink commits on
+        let (wanted, scan_rev): (Vec<(Id, String, f64)>, u64) = {
             let c = self.core.lock();
             let missing = missing_sources(&c);
-            c.project
+            let wanted = c
+                .project
                 .sources
                 .iter()
                 .filter(|s| missing.contains_key(&s.id) && !s.path.starts_with(crate::factory::SCHEME))
                 .map(|s| (s.id, s.path.clone(), s.dur))
-                .collect()
-        };
-        // the automatic relinks are bound to the project they were scanned for: if another
-        // open replaced it meanwhile, the caller searches again instead of pointing at ids
-        // that now mean something else
-        let scan_rev = {
-            let c = self.core.lock();
-            c.revision
+                .collect();
+            (wanted, c.revision)
         };
         let names: Vec<(Id, String)> = wanted.iter().map(|w| (w.0, w.1.clone())).collect();
         let found = crate::relink::search(folder, &names, crate::relink::Limits::default());

@@ -364,7 +364,7 @@ impl Engine {
         progress: &mut dyn FnMut(RenderProgress),
     ) -> Result<InPlace, EngineError> {
         let err = |m: &str| EngineError::Msg(m.into());
-        let (picked, from, to, bpm) = {
+        let (picked, from, to, bpm, at_rev) = {
             let c = self.core.lock();
             let picked: Vec<Clip> =
                 c.project.clips.iter().filter(|x| clip_ids.contains(&x.id) && x.kind != ClipKind::Auto).cloned().collect();
@@ -373,7 +373,7 @@ impl Engine {
             }
             let from = picked.iter().map(|x| x.start).fold(f64::INFINITY, f64::min);
             let to = picked.iter().map(|x| x.start + x.len).fold(f64::NEG_INFINITY, f64::max);
-            (picked, from, to, c.project.bpm)
+            (picked, from, to, c.project.bpm, c.revision)
         };
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
@@ -417,8 +417,12 @@ impl Engine {
             return Err(err("the selection renders silent: nothing to export"));
         }
         let mut c = self.core.lock();
-        // the project may have changed while the selection rendered: a clip that moved (or was
-        // deleted) must not be muted over a bounce that does not cover its new place
+        // the bounce answers for the project it rendered: any edit after the snapshot (a clip
+        // moved, its gain or sample changed, a track added) refuses the export — it must not
+        // mute clips over audio that is not theirs
+        if c.revision != at_rev {
+            return Err(err("the project changed while the selection was rendered; export it again"));
+        }
         for x in &picked {
             let now = c
                 .project
@@ -604,9 +608,7 @@ impl Engine {
         }
         // the written file is what `Audio::load` decodes again when the project reopens, and
         // that decode stops at STEMS_MAX_S: the context shrinks so the whole region fits
-        let context = context_s.min(((STEMS_MAX_S - (sb - sa)) / 2.0).max(0.0));
-        let a = ((sa - context).max(0.0) * sr) as usize;
-        let b = (((sb + context) * sr).ceil() as usize).min(audio.frames);
+        let (a, b) = stem_region_bounds(sa, sb, context_s, sr, audio.frames);
         Ok(StemRegion {
             data: audio.content()[a * 2..b * 2].to_vec(),
             sr: audio.sr,
@@ -815,4 +817,39 @@ fn stem_project(mut p: Project, id: Id) -> Project {
         }
     }
     p
+}
+
+/// The sample range [`Engine::stem_region`] cuts, in frames: the clip's span with up to
+/// `context_s` of context either side, clamped to the source and to what a reopen decodes
+/// (`STEMS_MAX_S`, in frames — rounding never grows the region past it).
+pub(crate) fn stem_region_bounds(sa: f64, sb: f64, context_s: f64, sr: f64, frames: usize) -> (usize, usize) {
+    let context = context_s.min(((STEMS_MAX_S - (sb - sa)) / 2.0).max(0.0)).max(0.0);
+    let max_frames = (STEMS_MAX_S * sr).floor() as usize;
+    let a = ((sa - context).max(0.0) * sr).floor() as usize;
+    let b = (((sb + context) * sr).ceil() as usize).min(frames).min(a.saturating_add(max_frames));
+    (a.min(b), b.max(a))
+}
+
+#[cfg(test)]
+mod stem_bounds_tests {
+    use super::*;
+
+    #[test]
+    fn the_region_never_exceeds_the_reopen_limit() {
+        let sr = 48_000.0;
+        let max = (STEMS_MAX_S * sr) as usize;
+        // a clip of exactly the limit: context must shrink to nothing on both sides
+        let (a, b) = stem_region_bounds(10.0, 10.0 + STEMS_MAX_S, 30.0, sr, 90_000_000);
+        assert_eq!(b - a, max, "exactly at the limit: no context, no frame over");
+        // a 2 s clip far into the source with an absurd context: the capped context fills the
+        // limit on both sides of the span
+        let (a, b) = stem_region_bounds(899.0, 901.0, 100_000.0, sr, 90_000_000);
+        assert_eq!(b - a, max, "span plus the capped context fills the limit");
+        // the source itself bounds the region
+        let (a, b) = stem_region_bounds(0.0, 1.0, 50.0, sr, 48_000);
+        assert_eq!((a, b), (0, 48_000));
+        // rounding up of the context's end cannot push past the limit
+        let (a, b) = stem_region_bounds(0.0, STEMS_MAX_S - 0.001, 0.001, sr, usize::MAX);
+        assert!(b - a <= max, "rounded region {} over {}", b - a, max);
+    }
 }

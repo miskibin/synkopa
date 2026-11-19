@@ -3,20 +3,23 @@
 use super::*;
 
 impl Engine {
-    pub(crate) fn finish_take(&self) {
+    /// Finishes the running take. `Err`: at least one recorded pass could not be written to
+    /// disk and is not in the project (passes that did write still landed, as one undo step).
+    pub(crate) fn finish_take(&self) -> Result<(), EngineError> {
         let shared = self.shared();
         let mut c = self.core.lock();
         if let Some(t) = c.take.as_mut() {
             t.resolve(&shared);
         }
-        self.finalize_take(&mut c);
+        let written = self.finalize_take(&mut c);
         if c.graph_deferred {
             self.sync(&mut c, Dirty { timeline: false, mixer: true, params: true });
         }
+        written
     }
 
-    pub(crate) fn finalize_take(&self, c: &mut Core) {
-        let Some(mut take) = c.take.take() else { return };
+    pub(crate) fn finalize_take(&self, c: &mut Core) -> Result<(), EngineError> {
+        let Some(mut take) = c.take.take() else { return Ok(()) };
         // whatever is still in the ring belongs to this recording
         if let Some(w) = c.wires.as_mut() {
             while let Ok(x) = w.record.pop() {
@@ -24,10 +27,10 @@ impl Engine {
             }
         }
         if take.start.is_nan() {
-            return; // punched in, but the audio thread never started capturing
+            return Ok(()); // punched in, but the audio thread never started capturing
         }
         if self.midi_take.lock().played {
-            return; // the armed track was played on a MIDI keyboard: this is a MIDI take
+            return Ok(()); // the armed track was played on a MIDI keyboard: this is a MIDI take
         }
         let spb = 60.0 / c.project.bpm;
         let sr = take.sr as f64;
@@ -63,12 +66,13 @@ impl Engine {
             passes.push((start, exact, &data[f0 * 2..f1 * 2]));
         }
         if passes.is_empty() {
-            return;
+            return Ok(());
         }
         let before = c.project.clone();
         let dir = audio_dir(c);
         let mut landed = vec![];
         let mut failed = 0usize;
+        let mut failures = vec![];
         for (start, exact, data) in passes {
             let mut data = data.to_vec();
             if let Some((_, frames)) = exact {
@@ -84,6 +88,7 @@ impl Engine {
                 // points at a missing file would only be discovered at the next save or
                 // reopen, while it plays from memory until then. Passes that did land stay.
                 log::error!("could not write recording {}: {e}", path.display());
+                failures.push(format!("{} ({e})", path.display()));
                 failed += 1;
                 continue;
             }
@@ -102,15 +107,24 @@ impl Engine {
             landed.push((id, start, exact.map_or(secs / spb, |(beats, _)| beats).min(TOTAL_BEATS - start)));
         }
         if landed.is_empty() {
-            return; // nothing landed: no undo step for a recording that never made it to disk
-        }
-        if failed > 0 {
-            log::error!("{failed} recording pass(es) could not be written and were not added");
+            // nothing landed: no undo step for a recording that never made it to disk
+            return Err(EngineError::Msg(format!("could not write the recording: {}", failures.join("; "))));
         }
         crate::comp::land_takes(&mut c.project, take.track as u32, &landed);
+        let written = if failed > 0 {
+            Err(EngineError::Msg(format!(
+                "could not write {} of {} recording pass(es): {}; the rest is in the project",
+                failed,
+                failed + landed.len(),
+                failures.join("; ")
+            )))
+        } else {
+            Ok(())
+        };
         push_undo(c, before);
         c.revision += 1;
         self.sync(c, Dirty { timeline: true, ..Default::default() });
+        written
     }
 
     // ------------------------------------------------------------ live MIDI
@@ -188,16 +202,19 @@ impl Engine {
             usize::MAX => None,
             i => Some(i),
         };
-        let (song, pat) = (self.shared().beat(), self.shared().pat_beat());
+        // one snapshot of the audio thread's position for the whole event: beats and the loop
+        // generation must answer for the same instant, and every recorder input below decides
+        // on that same generation (a recorder just armed — the audio thread still plays the
+        // previous loop — must not timestamp anything on the wrong loop)
+        let shared = self.shared();
+        let (gen, song, pat) = (shared.pat_gen(), shared.beat(), shared.pat_beat());
         match m {
             MidiMsg::NoteOn { key, vel, .. } => {
                 let Some(chan) = chan else { return };
                 mf.send(Cmd::MidiNote { chan, key, vel: MidiMsg::vel_gain(vel), on: true, ins });
                 let mut t = self.midi_take.lock();
                 let beat = t.beat(song, pat);
-                // a pattern recorder just armed (the audio thread still plays the previous
-                // loop) would timestamp this note on the wrong loop: let it sound, skip the take
-                let this_loop = t.pat.as_ref().is_none_or(|p| p.gen == self.shared().pat_gen());
+                let this_loop = t.pat.as_ref().is_none_or(|p| p.gen == gen);
                 if let Some((r, _, _)) = t.rec.as_mut() {
                     if this_loop {
                         r.note_on(beat, key, vel);
@@ -210,16 +227,22 @@ impl Engine {
                 mf.send(Cmd::MidiNote { chan, key, vel: 0.0, on: false, ins: None });
                 let mut t = self.midi_take.lock();
                 let beat = t.beat(song, pat);
+                let this_loop = t.pat.as_ref().is_none_or(|p| p.gen == gen);
                 if let Some((r, _, _)) = t.rec.as_mut() {
-                    r.note_off(beat, key);
+                    if this_loop {
+                        r.note_off(beat, key);
+                    }
                 }
             }
             MidiMsg::Sustain { down, .. } => {
                 mf.send(Cmd::MidiSustain(down));
                 let mut t = self.midi_take.lock();
                 let beat = t.beat(song, pat);
+                let this_loop = t.pat.as_ref().is_none_or(|p| p.gen == gen);
                 if let Some((r, _, _)) = t.rec.as_mut() {
-                    r.sustain(beat, down);
+                    if this_loop {
+                        r.sustain(beat, down);
+                    }
                 }
             }
             MidiMsg::PitchBend { value, .. } => mf.send(Cmd::MidiBend(MidiMsg::bend_semitones(value))),

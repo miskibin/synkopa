@@ -130,7 +130,7 @@ fn five_loop_passes_make_five_takes_and_the_newest_plays() {
         rt.process(&mut l[..n], &mut r[..n], Some((&inp, &inp)));
         done += n;
     }
-    e.stop();
+    let _ = e.stop();
     let p = e.project();
     assert_eq!(p.comps.len(), 1, "one take group");
     let comp = &p.comps[0];
@@ -188,7 +188,7 @@ fn recording_over_a_take_adds_a_take_instead_of_overwriting() {
         for _ in 0..(SR as usize / 256) {
             rt.process(&mut l, &mut r, Some((&tone, &tone)));
         }
-        e.stop();
+        let _ = e.stop();
     }
     let p = e.project();
     assert_eq!(p.clips.iter().filter(|c| c.kind == ClipKind::Audio).count(), 0, "the first take became part of the comp");
@@ -354,6 +354,6 @@ fn audition_plays_one_take_live_only() {
     }
     assert!((l[100] - 0.2).abs() < 1e-3, "back to the comp, got {}", l[100]);
     assert!(e.audition(9000, Some(1)).is_err());
-    e.stop();
+    let _ = e.stop();
     let _ = std::fs::remove_dir_all(dir);
 }
