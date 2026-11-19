@@ -318,8 +318,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <div class="cap" style={{ top: `calc(${1 - shownVol()} * (100% - 14px))` }}><div /></div>
         </div>
       </div>
+      <span class="db" classList={{ unity: Math.abs(shownVol() - VOL_UNITY) < 1e-4 }}>{volText(shownVol())}</span>
       <Show when={props.full}>
-        <span class="db">{volText(shownVol())}</span>
         <span class="route" title={route()}>{route()}</span>
         {/* routing (the cables below the strips): drag the dot onto another strip = a send; M = into the master */}
         <div class="rtport">

@@ -28,7 +28,7 @@ export interface RackGeo { cw: number; sx: number; sy: number; rh: number; steps
 const STEP_PAD = 2, STEP_VPAD = 5, STEP_R = 3;
 /** Unlit step colours: alternating groups of four (beats), like FL's. */
 function stepOff(s: number) {
-  return mix(T.fg5, Math.floor(s / 4) % 2 ? (theme.light ? 18 : 13) : (theme.light ? 30 : 24), T.bg2);
+  return mix(T.fg5, Math.floor(s / 4) % 2 ? (theme.light ? 14 : 9) : (theme.light ? 34 : 30), T.bg2);
 }
 /** A lit step: one neutral colour for every channel (the channel colour is the row's strip); velocity = brightness. */
 function stepOn(v: number, dim: boolean) {

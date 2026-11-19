@@ -58,7 +58,11 @@ export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, 
     g.fillStyle = T.fg4;
     for (let k = Math.max(0, Math.floor(x0 / stepPx)); k * stepPx <= x1; k++) {
       const label = rulerLabel(k * sub);
-      if (label) g.fillText(label, Math.round(k * stepPx) + 4, H - 11);
+      if (!label) continue;
+      // a 16th inside a beat shows only its own number, dimmer: the beat's label to its left already names the bar and beat
+      const six = sub < 1 ? k % 4 : 0;
+      g.fillStyle = six ? T.fg6 : T.fg4;
+      g.fillText(six ? String(six + 1) : label, Math.round(k * stepPx) + 4, H - 11);
     }
   }
   if (start != null) {

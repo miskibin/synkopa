@@ -1360,3 +1360,11 @@ select option { background: var(--bg4); color: var(--fg); }
 .unsafe { display: flex; align-items: flex-start; gap: 10px; }
 .unsafe > .note { flex: 1; min-width: 0; }
 .unsafe > button { flex: none; }
+
+/* round 4 */
+.strip .db.unity { color: var(--fg5); }
+.pstatus > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
+.pstatus > span:first-child { flex: none; }
+.setdlg .setpane .form { align-items: stretch; }
+.setdlg .setpane .form > * { display: flex; align-items: center; }
+.setdlg .setpane .form .lab { align-items: flex-start; justify-content: center; }
