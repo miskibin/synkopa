@@ -42,7 +42,7 @@ fn engine(name: &str, set: impl Fn(&mut SamplerState), notes: &[(f32, f32, Optio
     let ch = q.alloc_id();
     let mut sampler = SamplerState::default();
     set(&mut sampler);
-    let channel = Channel::new(ch, "Test", "#4f8ef7", ChannelSrc::Sample { source: srcs[0], sampler });
+    let channel = Channel::new(ch, "Test", "#4f8ef7", ChannelSrc::Sample { source: srcs[0], sampler, slices: vec![] });
     let pattern = Pattern {
         id: 1,
         name: "P".into(),
@@ -484,7 +484,10 @@ fn a_cut_group_silences_its_sounding_notes() {
         pat.notes.push(Note::new(other, 4.0, 16.0, None));
         e.apply(
             &[
-                Op::PutChannel { channel: Channel::new(other, "Other", "#fff", ChannelSrc::Sample { source: src, sampler }), index: None },
+                Op::PutChannel {
+                    channel: Channel::new(other, "Other", "#fff", ChannelSrc::Sample { source: src, sampler, slices: vec![] }),
+                    index: None,
+                },
                 Op::PutPattern { pattern: pat },
             ],
             false,
@@ -561,7 +564,7 @@ fn settings_survive_a_save_and_files_without_them_get_the_defaults() {
     // a channel written before the sampler had settings
     let old: Channel =
         serde_json::from_value(serde_json::json!({ "id": 7, "name": "Stab", "color": "#fff", "kind": "sample", "source": 3 })).unwrap();
-    assert_eq!(old.src, ChannelSrc::Sample { source: 3, sampler: SamplerState::default() });
+    assert_eq!(old.src, ChannelSrc::Sample { source: 3, sampler: SamplerState::default(), slices: vec![] });
 }
 
 #[test]
@@ -886,4 +889,42 @@ fn a_file_loaded_during_a_gesture_undoes_to_the_gestures_start() {
     assert!(e.undo());
     assert_eq!(e.project().inserts[0].vol, m.vol, "undo returns to the value before the drag");
     assert_eq!(e.project().sources, start.sources, "and the file loaded during it goes too");
+}
+
+/// The test channel cut into two slices at the middle of the file (loud half, quiet half).
+fn sliced(name: &str, notes: &[(f32, f32, Option<u8>)]) -> Vec<f32> {
+    let (e, ch) = engine(name, |_| {}, notes);
+    let mut c = e.project().channel(ch).unwrap().clone();
+    if let ChannelSrc::Sample { slices, .. } = &mut c.src {
+        *slices = vec![0.0, 0.5];
+    }
+    e.apply(&[Op::PutChannel { channel: c, index: None }], false, None).unwrap();
+    render(&e, 4.0)
+}
+
+#[test]
+fn slice_mode_plays_one_slice_per_key_at_the_files_pitch() {
+    // the root key plays slice 1 (the loud half) and stops at the next marker
+    let x = sliced("slice-root", &[(0.0, 8.0, Some(60))]);
+    assert!(peak_in(&x, 0.05, 0.45) > 0.7, "slice 1 is the loud half");
+    assert!(peak_in(&x, 0.52, 1.0) < 1e-3, "and ends where slice 2 starts");
+    // root + 1 plays slice 2 (the quiet half), not the loud one pitched up a semitone
+    let y = sliced("slice-two", &[(0.0, 8.0, Some(61))]);
+    assert!((peak_in(&y, 0.05, 0.45) - 0.1).abs() < 0.02, "slice 2: {}", peak_in(&y, 0.05, 0.45));
+    assert!(peak_in(&y, 0.52, 1.0) < 1e-3, "slice 2 ends with the file");
+    // its pitch is the file's: 440 Hz has ~ 220 zero crossings in 0.25 s
+    let seg = &y[(0.1 * SR as f64) as usize..(0.35 * SR as f64) as usize];
+    let zc = seg.windows(2).filter(|w| (w[0] < 0.0) != (w[1] < 0.0)).count();
+    assert!((210..=230).contains(&zc), "{zc} zero crossings");
+    // a key past the last slice plays nothing
+    let z = sliced("slice-none", &[(0.0, 8.0, Some(62))]);
+    assert!(peak(&z) < 1e-6);
+}
+
+#[test]
+fn a_new_slice_cuts_the_one_sounding() {
+    // slice 1 at 0, slice 2 an eighth note later: the loud half stops when the quiet one starts
+    let x = sliced("slice-cut", &[(0.0, 8.0, Some(60)), (2.0, 8.0, Some(61))]);
+    assert!(peak_in(&x, 0.05, 0.24) > 0.7);
+    assert!(peak_in(&x, 0.28, 0.6) < 0.15, "after the cut only slice 2 sounds: {}", peak_in(&x, 0.28, 0.6));
 }

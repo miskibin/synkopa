@@ -75,7 +75,7 @@ fn new_projects_start_with_the_starter_kit_as_samplers() {
     assert_eq!(p.channels.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Kick", "Clap", "Hat", "Snare"]);
     for (c, (file, _)) in p.channels.iter().zip(STARTER_KIT) {
         // every channel is a plain sampler of a standard-library file the project lists
-        let ChannelSrc::Sample { source, sampler } = c.src else { panic!("{} is not a sampler", c.name) };
+        let ChannelSrc::Sample { source, sampler, .. } = c.src else { panic!("{} is not a sampler", c.name) };
         assert_eq!(sampler, SamplerState::default());
         let src = p.sources.iter().find(|s| s.id == source).unwrap();
         assert_eq!(src.path, format!("lib:Standard/{file}"));
@@ -215,7 +215,7 @@ fn sampler_channel_plays_its_sample_at_the_note_pitch() {
         id,
         name: "A440".into(),
         color: "#47b8a8".into(),
-        src: ChannelSrc::Sample { source: srcs[0], sampler: SamplerState::default() },
+        src: ChannelSrc::Sample { source: srcs[0], sampler: SamplerState::default(), slices: vec![] },
         vol: VOL_UNITY,
         pan: 0.0,
         mute: false,
@@ -431,7 +431,7 @@ fn save_and_open_round_trip() {
         id,
         name: "Tone".into(),
         color: "#47b8a8".into(),
-        src: ChannelSrc::Sample { source: srcs[0], sampler: SamplerState::default() },
+        src: ChannelSrc::Sample { source: srcs[0], sampler: SamplerState::default(), slices: vec![] },
         vol: 0.6,
         pan: 0.25,
         mute: false,

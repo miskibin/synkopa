@@ -352,7 +352,7 @@ pub fn cases() -> Vec<Case> {
                 33,
                 "Kick",
                 "#d9678f",
-                ChannelSrc::Sample { source: 10, sampler: SamplerState { end: 0.0, ..SamplerState::default() } },
+                ChannelSrc::Sample { source: 10, sampler: SamplerState { end: 0.0, ..SamplerState::default() }, slices: vec![] },
             )),
             index: None,
         }],

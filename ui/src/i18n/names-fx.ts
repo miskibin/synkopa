@@ -224,4 +224,24 @@ export const names: Record<string, string> = {
   'Lo-fi — ciemny pokój': 'Lo-fi — dark room',
   'Kosmos — 18 s': 'Cosmos — 18 s',
   'Wysyłka — plate 100 %': 'Send — plate 100 %',
+  // stereo
+  'Bas w mono (120 Hz)': 'Bass mono (120 Hz)',
+  'Szerzej, bas w mono': 'Wider, bass mono',
+  'Mono → stereo (spread)': 'Mono → stereo (spread)',
+  'Wokal — dubel szeroki': 'Vocal — wide double',
+  'Pad — bardzo szeroko': 'Pad — extra wide',
+  'Węziej (70 %)': 'Narrower (70 %)',
+  // analyzer
+  'Streaming (−14 LUFS)': 'Streaming (−14 LUFS)',
+  'Głośno (−9 LUFS)': 'Loud (−9 LUFS)',
+  'Broadcast (−23 LUFS)': 'Broadcast (−23 LUFS)',
+  // multiband
+  'Domyślny — klej': 'Default — glue',
+  'Klasyczny OTT (100 %)': 'Classic OTT (100 %)',
+  'Hi-haty — chrupko': 'Hi-hats — crisp',
+  'Lead — gęsto': 'Lead — dense',
+  '808 — trzyma dół': '808 — hold the low end',
+  'Wokal — bliżej': 'Vocal — up front',
+  'Pad — powietrze': 'Pad — air',
+  'Master — lekko': 'Master — gentle',
 };

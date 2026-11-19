@@ -94,7 +94,7 @@ pub(crate) fn opt_f64(a: &Value, k: &str) -> Option<f64> {
 
 pub fn parse_kind(s: &str) -> R<FxKind> {
     serde_json::from_value(json!(s)).map_err(|_| {
-        format!("unknown effect type `{s}` (eq, comp, sat, delay, half, warp, chorus, phaser, reverb, limit, fet, deess, tune, denoise, voice, rider)")
+        format!("unknown effect type `{s}` (eq, comp, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, fet, deess, tune, denoise, voice, rider)")
     })
 }
 
@@ -849,7 +849,7 @@ pub fn schema() -> Value {
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
             "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
-            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60}, "index": null},
+            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
             "putSource": {"source": "rename/recolour an existing source"},
@@ -938,9 +938,9 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
     use wave_engine::ChannelSrc;
     let g = c.gain();
     let (kind, what) = match &c.src {
-        ChannelSrc::Sample { source, sampler } => (
+        ChannelSrc::Sample { source, sampler, slices } => (
             "sample",
-            json!({ "source": source, "sourceName": p.sources.iter().find(|s| s.id == *source).map(|s| s.name.clone()), "sampler": sampler }),
+            json!({ "source": source, "sourceName": p.sources.iter().find(|s| s.id == *source).map(|s| s.name.clone()), "sampler": sampler, "slices": slices }),
         ),
         ChannelSrc::Synth { synth } => ("synth", json!({ "preset": synth.preset })),
         ChannelSrc::Keys { keys } => ("keys", json!({ "release": keys.release, "dynamics": keys.dynamics })),

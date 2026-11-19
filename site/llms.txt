@@ -9,6 +9,7 @@ Facts, as of version 0.9 (November 2026):
 - Platforms: Windows (WASAPI, ASIO) and Linux (ALSA and JACK, including PipeWire's JACK; deb, rpm, AppImage). No macOS build.
 - Engine: Rust; the audio callback does not allocate, lock or do I/O. Interface: Tauri 2, SolidJS, canvas.
 - Built in: a wavetable synth, a sampled grand piano (Synkopa Keys), a sampler with a drum and tonal library, and 16 effects (dynamic EQ, compressor, FET compressor, saturator, delay, reverb, limiter, de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser).
+- Performance (measured 16 Nov 2026 against FL Studio 20.7.2 on the same PC, songs of matched size, medians): opening a large song 0.44 s vs 10.57 s, opening the piano roll 39 ms vs 639 ms, adding an effect and opening its window 59 ms vs 575 ms, startup 1.32 s vs 1.64 s, clip drag 17 ms vs 16 ms (FL slightly ahead), no audio dropouts in either during 10 minutes of editing. Method: https://github.com/miskibin/synkopa/blob/main/perf/realworld/README.md
 - Recording: loop recording with takes and comping, measured latency compensation, live monitoring.
 - Vocals: note-level pitch editor, live pitch correction, Tune to Reference, vocal rider.
 - Third-party plugins: VST3 instruments and effects on Windows and Linux, plus LV2 effects on Linux. Compatible native editors work on both platforms, otherwise Synkopa shows parameters. Plugin scanning runs out of process; plugin processing is not sandboxed. No CLAP or LV2 instruments.

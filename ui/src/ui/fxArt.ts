@@ -6,6 +6,23 @@ import type { FxKind } from '../api/types';
 const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" width="100%" height="100%">${body}</svg>`;
 
 export const FX_ART: Record<FxKind, string> = {
+  stereo: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FCE7F3"/>
+  <circle cx="40" cy="50" r="20" fill="#F9A8D4" opacity=".75"/>
+  <circle cx="60" cy="50" r="20" fill="#DB2777" opacity=".55"/>
+  <path d="M50 30v40" stroke="#831843" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M22 50h-6 M84 50h-6 M20 45l-5 5 5 5 M80 45l5 5-5 5" stroke="#BE185D" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`),
+  multiband: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FFEDD5"/>
+  <rect x="20" y="44" width="14" height="30" rx="3" fill="#FDBA74"/>
+  <rect x="43" y="30" width="14" height="44" rx="3" fill="#F97316"/>
+  <rect x="66" y="40" width="14" height="34" rx="3" fill="#C2410C"/>
+  <path d="M17 38h20 M40 26h20 M63 34h20" stroke="#7C2D12" stroke-width="3.5" stroke-linecap="round"/>`),
+  analyzer: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#E2E8F0"/>
+  <path d="M16 70c6-4 8-30 14-30s7 18 12 18 8-28 14-28 8 22 14 26 6 6 14 6" stroke="#334155" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M16 70c6-4 8-30 14-30s7 18 12 18 8-28 14-28 8 22 14 26 6 6 14 6V76H16z" fill="#94A3B8" opacity=".45"/>
+  <path d="M18 34h64" stroke="#EF4444" stroke-width="2.5" stroke-dasharray="4 4" stroke-linecap="round"/>`),
   chorus: svg(`
   <rect x="10" y="18" width="80" height="64" rx="12" fill="#E0F2FE"/>
   <path d="M16 38c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#7DD3FC" stroke-width="4" stroke-linecap="round" fill="none"/>

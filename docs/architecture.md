@@ -365,7 +365,10 @@ worker threads (`Engine::set_render_workers`), bit-identical to one thread.
 Effect types: `eq` (7 `bands`), `comp`, `sat` (character saturator, see
 `docs/saturator.md`), `delay` (echo with a processing loop, `docs/delay.md`), `half`, `warp`
 (time and volume maps, `maps: {time, vol}` slots, `docs/warp.md`), `chorus` (Chorus / Ensemble /
-Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/modulation.md`), `reverb`, `limit`,
+Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/modulation.md`), `stereo` (width,
+mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
+compression, the OTT sound, `dsp/multiband.rs`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
+field; the sound passes unchanged, `dsp/loudness.rs`), `reverb`, `limit`,
 `plugin` (a hosted VST3 or LV2 effect: `plugin: {format,path,cid,name,vendor,state}`, see
 [Hosted plugins](#hosted-plugins); files from before LV2 support say `vst3`, which still loads
 and is written back as `plugin`). Parameter ids, ranges and presets come from `fx_catalog` —
@@ -562,6 +565,19 @@ instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle; CI builds Synkopa 
 it on Windows and Linux), `crates/demo-synth` (its DSP: pitch, release, note ids, pedal, bend,
 wheel, voice stealing, state).
 
+### Sampler slice mode
+
+A sampler channel may carry `slices` (sorted fractions of its file in 0..1, at most 128, the first
+normally 0). While it does, key `root + i` plays slice `i` — from its marker to the next one, the
+last to the end of the file — at the file's pitch (plus the channel's transpose and fine tune); keys
+outside the slices play nothing, and a new slice note cuts the channel's sounding slice (5 ms, the
+cut-group fade). Envelope, reverse, fades and cut groups apply to each slice as to a region. The
+engine suggests slice points with `source_onsets` (`slices::onsets`, SuperFlux: log-filtered
+spectral flux with a maximum filter, local peaks above the local mean, each moved back to the
+start of its attack); the UI keeps the candidates above its Sensitivity threshold, so the knob never
+re-analyses. "Dump to pattern" writes one held note per slice at its time in the file at the
+project tempo (`ui/src/lib/slicer.ts`).
+
 ## Ops (`crates/engine/src/ops.rs`)
 
 All edits are "put" ops, applied atomically per batch:
@@ -734,7 +750,8 @@ u32 nIns  × { u32 insertId, f32 peakL, f32 peakR }            // linear peaks s
 u32 nFx   × { u32 fxId, f32 inPeak, f32 outPeak, f32 grDb,     // only watched fx (every frame, 60 Hz)
               f32 meters[32],                                   // per-type live readings, see "Effect meters"
               f32 specIn[128], f32 specOut[128],               // dBFS, 128 log bands 20 Hz..20 kHz (reverb: specOut = wet only)
-              f32 scopeIn[256], f32 scopeOut[256] }            // last samples, mono
+              f32 scopeIn[256], f32 scopeOut[256],             // last samples, mono
+              u32 nXy, f32 xy[2*nXy] }                          // stereo + analyzer only: newest output samples, L, R interleaved (≤ 1024 pairs)
 u32 rec             // 0, or 1 followed by:
     u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]   // new [min,max] pairs at 100/s
 f64 patBeat         // beats into the pattern the loop preview plays; −1 = stopped (decoders treat a missing field as −1)
@@ -760,6 +777,9 @@ u32 underruns       // output underruns since the engine started: callbacks slow
 | `half` | `[0]` position in the loop window 0..1, `[1]` 1 = slowing down (0 = stopped, or passing the input through until the first window after a playhead jump), `[2]`/`[3]` gains of read heads A/B (crossfade), `[4]` speed divisor (1.5 / 2 / 4), `[5]` window in beats, `[6]` crossfade ms (negative = before the window start, Percussive/FX), `[7]`/`[8]` band edges Hz (0 = that side not split). Zero latency; follows the song and the pattern loop preview (`ProcessCtx` carries the preview's beat) |
 | `chorus` | `[0]` LFO phase 0..1, `[1..4]` left voices' read delay ms, `[4..7]` right voices', `[7]` voices a side (2 Chorus, 3 Ensemble, 1 Vibrato), `[8]` rate Hz. Zero latency |
 | `phaser` | `[0]`/`[1]` the stages' break frequency left/right Hz, `[2]` stages, `[3]` LFO phase 0..1. Zero latency |
+| `stereo` | `[0]` correlation out, `[1]` balance −1 (left) … +1 (right), `[2]` side/mid dB out, `[3]` correlation below 120 Hz, `[4]` correlation in, `[5]` side/mid dB in, `[6]` bass mono crossover Hz, `[7]` 1 while there is bass to judge. Zero latency; the window also gets X/Y points (`xy`) |
+| `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |
+| `analyzer` | `[0]` momentary LUFS, `[1]` short-term LUFS, `[2]` integrated LUFS (−200 = not yet), `[3]` loudness range LU (−1 = not yet), `[4]` true-peak hold dBTP, `[5]` true peak of the last 100 ms, `[6]` correlation, `[7]` balance, `[8]` seconds measured, `[9]` side/mid dB. Integrated, range and the hold restart when playback starts. Zero latency; X/Y points and a long FFT (8192) for the bass bands of `specOut` |
 | `delay` | see `docs/delay.md`: `[0]`/`[1]` read heads L/R ms, `[2]` loop dBFS, `[3]` drive reduction dB, `[4]` LFO, `[5]` model, `[6]` wet dBFS, `[7]` set time ms. Zero latency |
 | `warp` | see `docs/warp.md`: `[0]` bar position (−1 stopped), `[1]`/`[2]` playing slots, `[3]`/`[4]` queued slots, `[5]` offset beats, `[6]` speed, `[7]` gain, `[9]` hold state, `[10]` buffered s. 2 samples latency, compensated by PDC; maps arrive through `Processor::swap_data` (`Cmd::FxData`) |
 

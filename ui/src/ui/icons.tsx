@@ -31,9 +31,12 @@ export const FXMETA: Record<FxKind, { icon: string; color: string; /** translati
   rider: { icon: 'M3 15c2 0 2-6 4-6s2 8 4 8 2-10 4-10 2 6 4 6h2 M3 12h18', color: '#e8c55a', tag: 'c.fxtag.leveling' },
   chorus: { icon: 'M2 9c2.5-4 5-4 7.5 0s5 4 7.5 0 3.5-2 5 0 M2 15c2.5-4 5-4 7.5 0s5 4 7.5 0 3.5-2 5 0', color: '#6cc4ff', tag: 'c.fxtag.chorus' },
   phaser: { icon: 'M2 12h3l2-5 2 10 2-10 2 10 2-10 2 10 2-5h3', color: '#c58cff', tag: 'c.fxtag.phaser' },
+  stereo: { icon: 'M12 4v16 M8.5 7.5L4 12l4.5 4.5 M15.5 7.5L20 12l-4.5 4.5', color: '#f58bd5', tag: 'c.fxtag.stereo' },
+  multiband: { icon: 'M5 20v-8 M12 20V7 M19 20v-6 M3 12h4 M10 7h4 M17 14h4 M5 4v3 M3.5 5.5L5 4l1.5 1.5', color: '#ff9e3d', tag: 'c.fxtag.multiband' },
+  analyzer: { icon: 'M3 17c2-1 2.5-9 4.5-9s2 6 4 6 2.5-9 4.5-9 2.5 8 5 9 M3 20.5h18', color: '#9fb4d0', tag: 'c.fxtag.analyzer' },
   plugin: { icon: ICONS.vst, color: '#9a8cf0', tag: 'c.fxtag.plugin' },
 };
-export const FX_ORDER = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'reverb', 'limit'] as const;
+export const FX_ORDER = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'multiband', 'reverb', 'limit', 'analyzer'] as const;
 export const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#e0a44a', '#9a8cf0', '#d9678f', '#8b93a1'];
 
 export function Icon(props: { d: string; size?: number; sw?: number }) {

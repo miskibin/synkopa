@@ -80,12 +80,26 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
   phaser: [choice('stages', 'Stages', 1, ['2', '4', '6', '8', '12']), choice('sync', 'Rate', 0, ['Hz', 'Tempo']), p('rate', 'Rate', 0.02, 10, 0.4, 'Hz', true),
     choice('div', 'Rate', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']), p('center', 'Center', 100, 8000, 800, 'Hz', true), p('depth', 'Depth', 0, 100, 70, '%'),
     p('fb', 'Feedback', -95, 95, 30, '%'), p('stereo', 'Stereo', 0, 180, 90, '°'), p('mix', 'Mix', 0, 100, 50, '%')],
+  // catalog.rs STEREO (dsp::stereo::idx order)
+  stereo: [p('width', 'Width', 0, 200, 100, '%'), p('spread', 'Spread', 0, 100, 0, '%'), choice('bass', 'Bass mono', 0, ['Off', 'On']),
+    p('bassf', 'Mono below', 40, 500, 120, 'Hz', true), p('gain', 'Gain', -60, 24, 0, 'dB'), p('pan', 'Pan', -100, 100, 0, '%'),
+    choice('invl', 'Invert L', 0, ['Off', 'On']), choice('invr', 'Invert R', 0, ['Off', 'On']), choice('swap', 'Swap L/R', 0, ['Off', 'On'])],
+  // catalog.rs ANALYZER
+  analyzer: [choice('target', 'Target', 1, ['Off', 'Streaming −14', 'Loud −9', 'Broadcast −23']), choice('slope', 'Slope', 2, ['0 dB', '3 dB', '4.5 dB'])],
+  // catalog.rs MULTIBAND (dsp::multiband::idx order)
+  multiband: [p('depth', 'Depth', 0, 100, 40, '%'), p('time', 'Time', 10, 1000, 100, '%', true), p('up', 'Upward', 0, 200, 100, '%'),
+    p('down', 'Downward', 0, 200, 100, '%'), p('in', 'In gain', -24, 24, 0, 'dB'), p('out', 'Out gain', -24, 24, 0, 'dB'),
+    p('xlo', 'Low / mid', 30, 1000, 88.3, 'Hz', true), p('xhi', 'Mid / high', 500, 16000, 2500, 'Hz', true),
+    p('gl', 'Low gain', -24, 24, 0, 'dB'), p('gm', 'Mid gain', -24, 24, 0, 'dB'), p('gh', 'High gain', -24, 24, 0, 'dB'),
+    p('dl', 'Low down thresh', -72, 0, -33.8, 'dB'), p('dm', 'Mid down thresh', -72, 0, -30.3, 'dB'), p('dh', 'High down thresh', -72, 0, -35.5, 'dB'),
+    p('ul', 'Low up thresh', -90, 0, -40.8, 'dB'), p('um', 'Mid up thresh', -90, 0, -41.8, 'dB'), p('uh', 'High up thresh', -90, 0, -40.8, 'dB')],
   half: [choice('speed', 'Speed', 1, ['1.5×', '2×', '4×']), choice('loop', 'Loop', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']),
     p('smooth', 'Smooth', -100, 100, 10, '%'), p('lo', 'Band low', 20, 20000, 20, 'Hz', true), p('hi', 'Band high', 20, 20000, 20000, 'Hz', true),
     choice('solo', 'Band solo', 0, ['Off', 'On']), p('mix', 'Mix', 0, 100, 100, '%')],
 };
 const NAMES: Record<AnyBuiltinKind, string> = { eq: 'Parametric EQ', comp: 'Compressor', sat: 'Saturator', delay: 'Delay', reverb: 'Reverb', limit: 'Limiter',
-  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser' };
+  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser',
+  stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband' };
 
 type BandEdit = [number, boolean | null, number | null, number | null, number | null];
 function eqp(name: string, out: number, edits: BandEdit[]): Preset {
@@ -118,7 +132,34 @@ const cho = (name: string, mode: number, rate: number, depth: number, delay: num
 const pha = (name: string, stages: number, rate: number, center: number, depth: number, fb: number, stereo: number, mix: number, kv: Record<string, number> = {}): Preset =>
   ({ name, params: { stages, rate, center, depth, fb, stereo, mix, ...kv } });
 
+/** catalog.rs stereo presets: (name, width, spread, bass mono, mono below). */
+const ste = (name: string, width: number, spread: number, bass: number, bassf: number): Preset => ({ name, params: { width, spread, bass, bassf } });
+/** catalog.rs multiband presets: (name, depth, time, up, down, in, out, low/mid, mid/high, band gains). */
+const mbp = (name: string, depth: number, time: number, up: number, down: number, inp: number, out: number, xlo: number, xhi: number, g: [number, number, number]): Preset =>
+  ({ name, params: { depth, time, up, down, in: inp, out, xlo, xhi, gl: g[0], gm: g[1], gh: g[2] } });
+
 const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
+  stereo: [
+    ste('Bez zmian', 100, 0, 0, 120),
+    ste('Bas w mono (120 Hz)', 100, 0, 1, 120),
+    ste('Szerzej, bas w mono', 140, 0, 1, 150),
+    ste('Mono → stereo (spread)', 100, 60, 1, 150),
+    ste('Wokal — dubel szeroki', 120, 35, 1, 200),
+    ste('Pad — bardzo szeroko', 170, 40, 1, 200),
+    ste('Węziej (70 %)', 70, 0, 0, 120),
+    ste('Mono', 0, 0, 0, 120),
+  ],
+  analyzer: [pr('Streaming (−14 LUFS)', { target: 1 }), pr('Głośno (−9 LUFS)', { target: 2 }), pr('Broadcast (−23 LUFS)', { target: 3 })],
+  multiband: [
+    mbp('Domyślny — klej', 40, 100, 100, 100, 0, 0, 88.3, 2500, [0, 0, 0]),
+    mbp('Klasyczny OTT (100 %)', 100, 100, 100, 100, 0, 0, 88.3, 2500, [0, 0, 0]),
+    mbp('Hi-haty — chrupko', 45, 40, 110, 90, 0, 0, 120, 3200, [-6, -1, 2]),
+    mbp('Lead — gęsto', 65, 80, 125, 110, 0, -1.5, 100, 2400, [-3, 1, 1.5]),
+    mbp('808 — trzyma dół', 40, 160, 40, 120, 0, 0, 90, 1200, [0, -1, -6]),
+    mbp('Wokal — bliżej', 25, 90, 90, 85, 0, 0, 110, 3000, [-6, 0, 1.5]),
+    mbp('Pad — powietrze', 50, 150, 140, 60, 0, -1, 150, 3500, [-3, -1, 2]),
+    mbp('Master — lekko', 12, 150, 55, 75, 0, 0, 95, 2800, [0, 0, 0]),
+  ],
   chorus: [
     cho('Klasyczny chorus', 0, 0.6, 40, 12, 0, 100, 20, 20000, 50),
     cho('Wokal — zagęszczenie', 0, 0.35, 18, 16, 0, 130, 150, 12000, 22),
@@ -261,7 +302,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
 };
 
 /** catalog.rs `BUILTIN` (also the order of the "add effect" menu). */
-export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'reverb', 'limit'];
+export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'analyzer'];
 
 export function mockCatalog(): Catalog {
   return {

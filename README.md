@@ -102,8 +102,8 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 | --- | --- |
 | **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
-| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a built-in drum and tonal library plus downloadable CC0 kits |
-| **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser; presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
+| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
+| **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser, stereo imager with bass mono, OTT-style multiband, loudness analyzer (LUFS, true peak); presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
 | **Plugins and audio** | VST3 effects and instruments; LV2 effects on Linux; native plugin editor windows on Windows and Linux where supported, otherwise Synkopa's parameter list; isolated scanning (plugin processing still runs inside Synkopa), plugin latency compensation; WASAPI and ASIO on Windows, ALSA and JACK, including PipeWire's JACK, on Linux |
@@ -123,7 +123,7 @@ than twenty-five years behind it and wins on breadth.
 | Audio recording | Included, with takes and comping | Producer edition or higher |
 | Vocal pitch editing | Included | NewTone and Pitcher come with the higher editions |
 | Working with an AI agent | The agent edits the open project and measures its own renders | No command line into the open project |
-| Built-in instruments and effects | Wavetable synth, sampled grand, sampler and 16 effects | More than a hundred across the editions |
+| Built-in instruments and effects | Wavetable synth, sampled grand, sampler and 19 effects | More than a hundred across the editions |
 | Third-party plugins | VST3 instruments and effects; LV2 effects on Linux; supported native plugin windows on Windows and Linux | VST instruments and effects, and more formats |
 | Platforms | Windows and Linux | Windows and macOS |
 | Maturity | Version 0.9, growing with open-source contributors; expect rough edges | Since 1998, large community, tutorials, sample packs |

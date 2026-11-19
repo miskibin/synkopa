@@ -6,25 +6,65 @@ shown in the app after an update and is published as the release notes (see
 
 ## Unreleased
 
-### Changed
-- **A clearer Reverb window.** The picture now shows what you hear: how long each frequency rings
-  (bass, middle and treble decay as one curve), with the tail's own spectrum live behind it and
-  the low and high cut shaded where the tail is filtered away. Drag the three dots up and down
-  and the cut lines sideways; below, the tail in time with the pre-delay to drag and the output
-  after the last hit.
-
 ### Added
 - **A new synth sound bank and a more Serum-like synth.** 50 new factory presets (808s, Reese,
   growl, FM and sync basses, acid, future and progressive plucks, supersaw and creamy mono leads,
   evolving pads, choir, FM keys and bells, organ, strings, flute, arps, lo-fi, risers and impacts).
   Six new wavetables you scan with Position (Basic, Formant, Harmonics, Sync, Growl, Comb), a Warp
   per oscillator (Sync, Bend, Asym, FM from the other oscillator), four Macros named after what they
-  drive (every preset puts its main moves on them), eight modulation slots and a Rise per LFO for
+  drive (nearly every preset puts its main moves on them), eight modulation slots and a Rise per LFO for
   delayed vibrato. The oscillator picture now shows the real wave. Old projects keep their sound;
   the old preset names are gone from the list.
+- **Find a command (Ctrl+K).** Type what you want to do; every menu command is there with its
+  shortcut, what you have selected comes first, and a question that is not a command goes to Ask AI.
+- **Pan per note.** The Piano roll's lower lane switches between Velocity and Pan; drag to pan
+  notes left and right, or type it in a note's properties. Plays on sampler, Synth and Synkopa Keys
+  channels (not on plugins).
+- **Stereo.** Width (0 % mono … 200 %), Spread to widen even a mono synth or vocal without any
+  loss when the song is summed to mono, Bass mono to keep everything under 120 Hz (or your
+  frequency) in the centre for clubs and phones, gain and balance; polarity and L/R swap under
+  Advanced. Its window shows the stereo field as a vectorscope with the correlation, the balance,
+  and whether your bass is mono.
+- **Multiband (OTT).** Upward and downward compression in three bands at once: Depth, Time,
+  Upward and Downward are all you need. Each band's level and how far it is lifted or pulled down
+  is drawn live; drag the threshold lines and the crossovers right in the display. Quiet room
+  noise is not pulled up into hiss, and Depth blends without the phasey dip a plain dry/wet has.
+- **Analyzer.** A meter for the master: short-term, integrated and momentary loudness (LUFS, to
+  the EBU R128 standard), loudness range, true peak, the loudness of the last 30 s against a
+  target, a spectrum whose bass is sharp enough to tell a 41 Hz kick from a 49 Hz 808 (hover it
+  to read the frequency and note), a vectorscope and the correlation. It tells you how much
+  streaming would turn the song down instead of telling you to hit a number.
+- **Slice mode for the sampler (chop a sample).** A new Slice page in the sampler's window cuts the
+  sample at its hits (Transients, with a Sensitivity knob that answers instantly) or into 4, 8, 16
+  or 32 equal parts (MPC chop). Click a slice to hear it, drag a marker to move it, double-click to
+  add or remove one. Each key from the root plays one slice at the sample's own pitch, and a new
+  slice cuts the one sounding. Dump to pattern writes one note per slice in the original timing,
+  so the pattern plays the sample back as it was at any tempo: move the notes to rechop it.
 - **Ten new Reverb presets:** rap vocal (short room), R&B hall, bright pop plate, snare plate,
   warm keys hall, EDM lead hall, ambient pad haze, lo-fi dark room, an 18-second "cosmos", and a
   100 % wet plate for a send. The old presets keep their places.
+
+### Changed
+- **A calmer look.** Panels, mixer channels, windows and menus are told apart by their tone and a
+  soft shadow instead of outlines; floating windows stand a step off the app behind them. Buttons
+  and fields are filled blocks, so what can be clicked reads at a glance.
+- **Piano roll bar, rebuilt.** Tools as one switch, Snap as a chip (with Auto), the song's key shown
+  as a badge with its scale on a small keyboard, and Humanize and the other note tools behind
+  "Tools" with icons and sliders. The Playlist bar is built from the same pieces.
+- **Playlist.** Track names are shown in full (the mixer insert sits beside the volume). Automation
+  clips read as curves. Audio clips show stretch, pitch and gain only when selected; a small dot
+  marks a clip that has any. A muted track's M stays lit while the rest of the track fades.
+- **Mixer.** A dB scale on the faders, the Master set apart, a grip on effect rows, and a "Route
+  selected here" button when Channel rack channels are selected.
+- **The effect picker opens in the middle of the app** instead of beside the pointer.
+- **Dim labels are easier to read** in the dark theme.
+- **Effect windows are tidier.** Each group of controls sits in its own frame, packed closer, and
+  the how-to line that took the bottom of every window now sits behind a ? in the title bar.
+- **A clearer Reverb window.** The picture now shows what you hear: how long each frequency rings
+  (bass, middle and treble decay as one curve), with the tail's own spectrum live behind it and
+  the low and high cut shaded where the tail is filtered away. Drag the three dots up and down
+  and the cut lines sideways; below, the tail in time with the pre-delay to drag and the output
+  after the last hit.
 
 ## 0.9.26 — 2026-11-19
 
