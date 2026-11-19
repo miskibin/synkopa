@@ -425,6 +425,11 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
       g.fillStyle = sel ? T.clipTextSel : T.clipText;
       ax += g.measureText(label).width + 5;
     }
+    // not selected: one quiet dot says "this clip is stretched, transposed or gained"; selecting it shows the numbers
+    if (isAudio && !sel && status0 == null && (st !== 1 || pt || c.gain)) {
+      g.globalAlpha *= 0.6; g.beginPath(); g.arc(ax + 1, cy + 8, 2, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = c.muted ? 0.38 : prevAlpha;
+    }
     if (isAudio && c.gain && sel) {
       g.font = MONO9; g.globalAlpha *= 0.85; g.fillText((c.gain >= 0 ? '+' : '') + c.gain.toFixed(1) + ' dB', ax, cy + 11);
       g.globalAlpha = c.muted ? 0.38 : prevAlpha;
