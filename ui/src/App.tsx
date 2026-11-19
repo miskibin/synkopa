@@ -328,8 +328,6 @@ export function App() {
         <Workspace />
         <Show when={U.mixView}><MixView /></Show>
       </div>
-      {/* status bar: the Toolbar renders its hint line here (what the last action did, what the tool does) */}
-      <div id="statusbar" class="statusbar" />
       {/* the editors float outside the window layer (own z order, see outerZ); F5 tucks them away too */}
       {/* each window steps behind the workspace on its own (`tucked`): it stays mounted, only not drawn */}
       <div class="outerwins">

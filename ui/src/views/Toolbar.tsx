@@ -6,7 +6,6 @@ import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
 import { prefs } from '../state/prefs';
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
-import { Portal } from 'solid-js/web';
 import { be } from '../api/backend';
 import { baseName, clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
 import { snapLabel } from '../lib/snap';
@@ -158,9 +157,16 @@ export function Toolbar() {
   const hint = () => t('a.tb.statusHint', { tool: t(TOOLS.find(x => x[0] === U.tool)![2]), hint: t(TOOL_HINT[U.tool]), snap: U.alt ? 'off' : snapLabel(U.snap, U.bw).replace('Snap: ', '') });
   return (
     <div class="toolbar" classList={{ native: !!win }} onMouseDown={dragDown}>
-      {/* left: the menus and the project. The hint line (what the last action did, what the tool does) is the window's status bar */}
-      <Portal mount={document.getElementById('statusbar')!}>
-        <div class="tbhint">
+      {/* left: the menus over the hint line (FL): what the last action did, and what the tool does */}
+      <div class="tbleft" data-drag>
+        <div class="tbmenu" data-drag>
+          <MenuBar />
+          <AskButton />
+          <UpdateChip />
+          <MissingChip />
+          <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
+        </div>
+        <div class="tbhint" data-drag>
           <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
           <span class="readout" data-readout title={U.readout}>{U.readout}</span>
           <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
@@ -173,15 +179,6 @@ export function Toolbar() {
             <span class="tag9">IN</span>
             <div class="inmeter"><div ref={inEl} /></div>
           </div>
-        </div>
-      </Portal>
-      <div class="tbleft" data-drag>
-        <div class="tbmenu" data-drag>
-          <MenuBar />
-          <AskButton />
-          <UpdateChip />
-          <MissingChip />
-          <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
         </div>
       </div>
       <div class="tbmid" data-drag>

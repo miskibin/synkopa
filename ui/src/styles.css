@@ -44,7 +44,7 @@ a { color: var(--blue); }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- toolbar ---------- */
-.toolbar { height: 42px; flex: none; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: center; column-gap: 14px; padding: 0 8px 0 10px; background: var(--bg5); border-bottom: 1px solid var(--sep); }
+.toolbar { height: 54px; flex: none; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: center; column-gap: 14px; padding: 0 8px 0 10px; background: var(--bg5); border-bottom: 1px solid var(--sep); }
 .ibtn { width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
 .ibtn:hover { background: var(--line); color: var(--fg-hi); }
 .ibtn.on { background: var(--line); }
@@ -677,11 +677,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar .projName .dirty { margin-left: 4px; color: var(--amber); }
 .toolbar.native { padding-right: 0; }
 /* left: menus over the hint line; middle: transport, centred in the window; right: editing tools and panels */
-.tbleft { min-width: 0; align-self: stretch; display: flex; align-items: center; }
-/* status bar: the hint line, along the bottom of the window */
-.statusbar { flex: none; height: 22px; display: flex; align-items: center; padding: 0 10px; background: var(--bg2); border-top: 1px solid var(--sep); min-width: 0; }
-.statusbar > div { display: contents; }
-.statusbar .tbhint { flex: 1; }
+.tbleft { min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
 /* the Playlist's tools and snap, left of its overview */
 .ovrow.tools { grid-template-columns: auto minmax(0, 1fr); height: 32px; padding: 3px 14px 3px 0; }
 .pltools { display: flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; box-sizing: border-box; }
@@ -753,8 +749,8 @@ select option { background: var(--bg4); color: var(--fg); }
 @container toolbar (max-width: 1812px) { .toolbar .loopText { display: none; } }
 @container toolbar (max-width: 1702px) { .toolbar .clockbox .tag9, .toolbar .typoct { display: none; } }
 @container toolbar (max-width: 1672px) { .toolbar .count, .toolbar .monbtn { display: none; } }
-@container toolbar (max-width: 1592px) { .toolbar .metrobtn, .toolbar .typkb { display: none; } }
-@container toolbar (max-width: 1400px) { .toolbar .panelbtn .lbl { display: none; } }
+@container toolbar (max-width: 1592px) { .toolbar .metrobtn, .toolbar .typkb, .toolbar .hinttxt { display: none; } }
+@container toolbar (max-width: 1480px) { .toolbar .panelbtn .lbl { display: none; } }
 @container toolbar (max-width: 1232px) { .toolbar .panelbtn { display: none; } }
 @container toolbar (max-width: 1372px) { .toolbar .tapbtn, .toolbar .mainvol, .toolbar .projName { display: none; } }
 /* the CPU meter (a Settings option, off by default) takes its room from these a step earlier */
