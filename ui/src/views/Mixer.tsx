@@ -107,6 +107,8 @@ function sendItems(m: Insert): MenuItem[] {
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
 /** Height (px) of a strip's meters and fader: the strip keeps it however tall the mixer is. */
 const FADER_H = 140;
+/** The fader's dB marks as [dB, fader position 0..1]; the gain law is 2t³ (`gainLin`), so 0 dB sits at 0.7937. */
+const FADER_MARKS: [number, number][] = [6, 0, -6, -12, -24, -48].map(db => [db, Math.cbrt(Math.pow(10, db / 20) / 2)]);
 /** Effect rows the maximized mixer always has room for (and the "+ effect" row after them). */
 const FX_ROWS_FULL = 5;
 /** One effect row in a strip, its 2 px gap included. */
@@ -309,7 +311,10 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         <div class="meter"><div ref={fr} /></div>
         <div class="fader" classList={{ auto: isAutomated(volT()) }} onPointerDown={faderDown} onWheel={wheel('vol')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.faderTip')}>
           <div class="fslot" />
-          <div class="unity" style={{ top: 'calc(0.2063 * (100% - 14px) + 7px)' }} />
+          {/* the dB scale: a tick per mark on every fader; the numbers on the master and under the pointer */}
+          <For each={FADER_MARKS}>{([db, t]) => (
+            <div class="tick" classList={{ u: db === 0 }} style={{ top: `calc(${1 - t} * (100% - 14px) + 7px)` }}><span>{db > 0 ? '+' + db : db === 0 ? '0' : String(-db)}</span></div>
+          )}</For>
           <div class="cap" style={{ top: `calc(${1 - shownVol()} * (100% - 14px))` }}><div /></div>
         </div>
       </div>
@@ -622,7 +627,12 @@ function MixHead() {
     <>
       <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)' }}><Icon d={MIX_ICON} size={12} /></span>
       <span class="wintitle">{tr('c.mv.mixer')}</span>
-      <span class="mvhint">{n() ? tr('c.mv.selHint', { n: n() }) : tr('c.mv.noSelHint')}</span>
+      {/* channels picked in the Channel rack can be sent to the selected insert from here (Ctrl+L); nothing picked, nothing shown */}
+      <Show when={n()}>
+        <button class="chip mvroute" title={tr('c.mv.selHint', { n: n() })} onPointerDown={e => e.stopPropagation()} onClick={e => routeSelectedChannels(U.mixSel, e.shiftKey)}>
+          {tr('c.mv.routeBtn', { n: n() })}<kbd>Ctrl L</kbd>
+        </button>
+      </Show>
     </>
   );
 }

@@ -1508,3 +1508,33 @@ button.chip { color: var(--fg); }
 .chip, .patwin .winhd .patname, .patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf, .laneswitch button:not(.on):not(:disabled), .lane .mini.route, .bmore .plus { background-color: color-mix(in srgb, var(--fg) 6%, transparent); }
 .chip:hover, .chip:focus-within, .chip.on, .patwin .winhd .patname:hover, .patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover, .lane .mini.route:hover { background-color: color-mix(in srgb, var(--fg) 13%, transparent); }
 .patwin .winhd .numf { cursor: ns-resize; }
+
+/* command palette */
+.cmdover { align-items: flex-start; padding-top: 14vh; }
+.cmddlg { width: min(580px, 92vw); padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 62vh; border-radius: 12px; }
+.cmdfind { flex: none; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-bottom: 1px solid var(--line); color: var(--fg4); }
+.cmdfind input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--fg-hi); font: 500 14px var(--sans); }
+.cmdfind input::placeholder { color: var(--fg5); }
+.cmdfind input::-webkit-search-cancel-button { display: none; }
+.cmddlg kbd, .cmdbtn kbd { flex: none; padding: 1px 6px; border: 1px solid var(--line2); border-radius: 4px; background: transparent; color: var(--fg4); font: 500 10px var(--sans); white-space: nowrap; }
+.cmdlist { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
+.cmd { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; cursor: pointer; }
+.cmd .path { flex: none; font: 500 11px var(--sans); color: var(--fg5); min-width: 46px; }
+.cmd .name { flex: 1; min-width: 0; font: 500 13px var(--sans); color: var(--fg); }
+.cmd.on { background: color-mix(in srgb, var(--blue) 24%, transparent); }
+.cmd.on .name { color: var(--fg-hi); }
+.cmd.dis { cursor: default; }
+.cmd.dis .name, .cmd.dis .path { color: var(--fg6); }
+.cmdnone { padding: 18px 10px; font: 13px var(--sans); color: var(--fg4); text-align: center; }
+.toolbar .cmdbtn { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 7px; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg3); cursor: pointer; }
+.toolbar .cmdbtn:hover { background: color-mix(in srgb, var(--fg) 13%, transparent); color: var(--fg-hi); }
+@container toolbar (max-width: 1300px) { .toolbar .cmdbtn kbd { display: none; } }
+
+/* mixer: fader dB scale, and the route button in the title bar */
+.fader .tick { position: absolute; left: 3px; right: 3px; height: 1px; background: color-mix(in srgb, var(--fg6) 55%, transparent); pointer-events: none; }
+.fader .tick.u { background: var(--fg5); }
+.fader .tick span { display: none; position: absolute; left: 24px; top: -5px; font: 500 8px/10px var(--mono); color: var(--fg5); }
+.strip[data-ins="0"] .tick span, .strip:hover .tick span { display: block; }
+.fader .tick.u span { color: var(--fg3); }
+.mvroute { height: 22px; margin-left: 10px; gap: 8px; color: var(--fg); font-size: 11.5px; }
+.mvroute kbd { padding: 0 5px; border: 1px solid var(--line2); border-radius: 4px; color: var(--fg4); font: 500 10px var(--sans); }
