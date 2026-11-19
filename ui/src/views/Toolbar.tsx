@@ -7,7 +7,7 @@ import { noteName } from '../lib/pitch';
 import { prefs } from '../state/prefs';
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import { be } from '../api/backend';
-import { baseName, clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
+import { clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
 import { snapLabel } from '../lib/snap';
 import * as A from '../state/actions';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -129,7 +129,6 @@ export function Toolbar() {
     ], 260);
   };
   const T = () => S.transport;
-  const projName = () => (S.path ? baseName(S.path) : t('a.tb.untitled'));
   // custom title bar: empty toolbar areas and the project name drag the window, 2× click maximises
   const win = be().win;
   const [maxed, setMaxed] = createSignal(false);
@@ -164,7 +163,8 @@ export function Toolbar() {
           <AskButton />
           <UpdateChip />
           <MissingChip />
-          <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
+          {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
+          <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
         </div>
         <div class="tbhint" data-drag>
           <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
@@ -217,9 +217,10 @@ export function Toolbar() {
       <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
       <div data-drag class="dragfill" />
       <Show when={prefs().cpuMeter}><CpuMeter /></Show>
-      <button class="ibtn typkb" classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
+      <button class="tbtn icon typkb" aria-pressed={typingOn()} classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
         onClick={() => setTypingOn(!typingOn())}>
         <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
+        <span class="lbl">{t('a.tb.typLabel')}</span>
         <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
       </button>
       <Show when={wins()}>

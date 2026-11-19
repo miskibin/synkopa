@@ -684,7 +684,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .pltools .seg { height: 26px; box-sizing: border-box; align-items: center; }
 .pltools .seg > button { width: 27px; height: 20px; }
 .pltools .snapsel { flex: 1; min-width: 84px; max-width: 110px; height: 26px; font-size: 11px; }
-.toolbar .panelbtn .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
+.toolbar .panelbtn .lbl, .toolbar .typkb .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
 .tbmenu { display: flex; align-items: center; gap: 10px; height: 22px; min-width: 0; }
 .tbmenu .updchip { flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; }
 .menubar { flex: none; display: flex; gap: 1px; margin-left: -7px; }
@@ -749,8 +749,10 @@ select option { background: var(--bg4); color: var(--fg); }
 @container toolbar (max-width: 1812px) { .toolbar .loopText { display: none; } }
 @container toolbar (max-width: 1702px) { .toolbar .clockbox .tag9, .toolbar .typoct { display: none; } }
 @container toolbar (max-width: 1672px) { .toolbar .count, .toolbar .monbtn { display: none; } }
-@container toolbar (max-width: 1592px) { .toolbar .metrobtn, .toolbar .typkb, .toolbar .hinttxt { display: none; } }
+@container toolbar (max-width: 1592px) { .toolbar .metrobtn, .toolbar .hinttxt { display: none; } }
 @container toolbar (max-width: 1480px) { .toolbar .panelbtn .lbl { display: none; } }
+/* the typing-piano button keeps its name longer than the panels: its icon alone was not found */
+@container toolbar (max-width: 1300px) { .toolbar .typkb .lbl { display: none; } }
 @container toolbar (max-width: 1232px) { .toolbar .panelbtn { display: none; } }
 @container toolbar (max-width: 1372px) { .toolbar .tapbtn, .toolbar .mainvol, .toolbar .projName { display: none; } }
 /* the CPU meter (a Settings option, off by default) takes its room from these a step earlier */
@@ -1194,8 +1196,6 @@ select option { background: var(--bg4); color: var(--fg); }
 .seg.patsong > button { width: auto; padding: 0 7px; font: 700 9.5px var(--mono); letter-spacing: .05em; color: var(--fg4); }
 .seg.patsong > button.pat.on { color: var(--amber); }
 .seg.patsong > button.song.on { color: var(--green); }
-.ibtn.typkb { width: auto; min-width: 28px; gap: 4px; padding: 0 6px; display: inline-flex; align-items: center; }
-.ibtn.typkb.on { color: var(--blue-hi); background: var(--on-bg); }
 .typoct { font-size: 9.5px; font-weight: 600; }
 
 /* updates: status-bar button, update / What's new dialogs, Settings rows */
