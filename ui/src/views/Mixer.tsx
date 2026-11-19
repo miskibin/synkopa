@@ -294,13 +294,13 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       <div class="row" style={{ gap: '2px', 'justify-content': 'center' }}>
         <MuteSolo class="mute" muted={m().muted} solo={m().solo} noSolo={m().id === 0} muteTip={tr('c.mix.muteTip')} soloTip={tr('c.mix.soloTip')}
           onMute={() => A.toggleInsertMute(m().id)} onSolo={add => A.toggleInsertSolo(m().id, add)} />
+        {/* the master's clip LED (its meter's red cap): latched over 0 dBFS, where an export clips */}
+        <Show when={m().id === 0}>
+          <button class="clipcap" classList={{ on: !!masterClip() }} onPointerDown={stop}
+            title={masterClipTip()}
+            onClick={() => resetMasterClip()}>{masterClip() ? '+' + masterClip()!.overDb.toFixed(1) : 'CLIP'}</button>
+        </Show>
       </div>
-      {/* the master's clip LED (its meter's red cap): latched over 0 dBFS, where an export clips */}
-      <Show when={m().id === 0}>
-        <button class="clipcap" classList={{ on: !!masterClip() }} onPointerDown={stop}
-          title={masterClipTip()}
-          onClick={() => resetMasterClip()}>{masterClip() ? '+' + masterClip()!.overDb.toFixed(1) : 'CLIP'}</button>
-      </Show>
       {/* docked, the fader keeps one height (a taller mixer shows effect rows above the knobs instead,
           StripFx); maximized, the effect rows have a fixed room (five and "+ effect") and the fader
           takes all the rest, for fine moves */}
@@ -380,7 +380,8 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
   };
   return (
     <div class="slot" classList={{ on: U.fxSel === f().id, drag: U.fxDrag === f().id }} onPointerDown={down} title={tr('c.mix.slotTip')}>
-      <span class="n">{props.n}</span>
+      {/* the row drags by its grip (and anywhere else on it): the order is the signal path */}
+      <span class="grip" aria-hidden="true"><svg width="8" height="14" viewBox="0 0 8 14"><g fill="currentColor"><circle cx="2" cy="2" r="1.2" /><circle cx="6" cy="2" r="1.2" /><circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" /><circle cx="2" cy="12" r="1.2" /><circle cx="6" cy="12" r="1.2" /></g></svg></span>
       <FxTile type={f().type} size={22} dim={f().bypass} />
       <div style={{ flex: 1, 'min-width': 0, display: 'flex', 'flex-direction': 'column', gap: '1px' }}>
         <span class="ell" style={{ font: '500 12px var(--sans)', color: f().bypass ? 'var(--fg4)' : 'var(--fg-hi)' }}>{A.fxName(f())}</span>
