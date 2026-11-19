@@ -30,6 +30,16 @@ jobs:
         with:
           projectPath: app
           args: --bundles app,dmg
+      # the app must start and stay up (a missing library or a crash at start fails here)
+      - name: Smoke test (starts and keeps running)
+        run: |
+          app=target/release/bundle/macos/Synkopa.app
+          codesign --verify --deep --strict "$app" && echo "signature ok"
+          "$app/Contents/MacOS/wave-app" > smoke.log 2>&1 &
+          pid=$!
+          sleep 20
+          if kill -0 $pid 2>/dev/null; then echo "still running after 20 s"; kill $pid; else echo "::error::the app exited"; cat smoke.log; exit 1; fi
+          tail -20 smoke.log
       - uses: actions/upload-artifact@v4
         with:
           name: synkopa-macos
