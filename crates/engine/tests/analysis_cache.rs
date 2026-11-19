@@ -19,7 +19,7 @@ fn engine_with_tone(name: &str) -> (Arc<Engine>, Id, std::path::PathBuf) {
         .collect();
     wave_engine::sources::write_wav(&wav, &tone, 44100).unwrap();
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
     (e, clips[0], dir)
 }
 

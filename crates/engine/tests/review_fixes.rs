@@ -21,7 +21,7 @@ fn engine_with_tone(name: &str) -> (Arc<Engine>, Id, std::path::PathBuf) {
         .collect();
     wave_engine::sources::write_wav(&wav, &tone, 44100).unwrap();
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
-    let (_, clips) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 4.0))).unwrap();
     (e, clips[0], dir)
 }
 
@@ -45,7 +45,7 @@ fn a_cancel_at_the_final_progress_frame_still_cancels() {
 #[test]
 fn an_open_drag_never_leaks_into_a_replaced_project() {
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
-    e.begin_gesture();
+    e.begin_gesture(None);
     let drag = Clip {
         id: 9100,
         track: 1,
@@ -245,7 +245,7 @@ fn apply_with_library_decodes_what_the_project_does_not_have() {
     assert!(e.project().sources.iter().any(|s| s.path.ends_with("kick-808.flac")));
     // the sample leaves the project again (a watch would do the same): the next apply decodes
     // it fresh and build still gets its id — the path a concurrent replacement takes
-    e.set_project(Project::empty(), None).unwrap();
+    e.set_project(Project::empty(), None, None).unwrap();
     e.apply_with_library(&["kick-808.flac"], None, |_, ids| requested(ids)).unwrap();
     assert!(e.project().sources.iter().any(|s| s.path.ends_with("kick-808.flac")));
 }

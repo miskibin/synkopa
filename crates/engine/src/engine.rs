@@ -30,8 +30,8 @@ mod takes;
 
 pub use analysis::PitchView;
 pub use graph::playback_latency;
-pub use import::{ImportFileError, Imported};
 use graph::{build_graph, build_timeline, c_watch, comp_audio, live_audition, mix_state, monitor_of, playback_latency_with, sample_audio};
+pub use import::{ImportFileError, Imported};
 pub(crate) use project_files::project_document;
 use project_files::{audio_dir, fresh_path, load_library_sources, sanitize};
 pub use project_files::{backup_path, scratch_dir};
@@ -1543,7 +1543,9 @@ impl Engine {
                 if let Some(t) = c.take.as_mut() {
                     t.resolve(&shared);
                 }
-                self.finalize_take(&mut c);
+                if let Err(e) = self.finalize_take(&mut c) {
+                    log::warn!("could not finish the capped take: {e}");
+                }
                 if c.graph_deferred {
                     self.sync(&mut c, Dirty { timeline: false, mixer: true, params: true });
                 }
@@ -1856,7 +1858,6 @@ fn drop_empty_track(p: &mut Project, id: Id) -> bool {
     true
 }
 
-
 #[cfg(test)]
 mod rec_cap_tests {
     use super::*;
@@ -1890,4 +1891,3 @@ mod rec_cap_tests {
         assert_eq!(t.frames(), cap, "the take stops growing at the cap");
     }
 }
-
