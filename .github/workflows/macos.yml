@@ -1,0 +1,33 @@
+name: macOS
+
+# Builds Synkopa on macOS (Apple Silicon) and uploads the .dmg as a workflow artifact.
+on:
+  push:
+    branches: [macos-build]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile everything (all errors at once)
+        run: cargo check --workspace --all-targets --keep-going
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: ui/pnpm-lock.yaml }
+      - run: pnpm --dir ui install --frozen-lockfile
+      - name: Synkopa Keys piano (bundled into the installer)
+        run: node scripts/fetch-keys.mjs
+      # without a tagName tauri-action only builds (nothing is published)
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --bundles app,dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synkopa-macos
+          path: target/release/bundle/dmg/*.dmg
