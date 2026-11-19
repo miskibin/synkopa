@@ -70,6 +70,8 @@ pub struct Voice {
     pub chan_id: Id,
     /// Note velocity (gain).
     vel: f32,
+    /// The note's own pan, added to its channel's (-1..=1).
+    pan: f32,
     /// Sampler: read position in source frames and step per output sample.
     pos: f64,
     rate: f64,
@@ -105,6 +107,7 @@ impl Voice {
             chan: NO_CHAN,
             chan_id: 0,
             vel: 1.0,
+            pan: 0.0,
             pos: 0.0,
             rate: 1.0,
             delay: 0,
@@ -188,7 +191,7 @@ impl VoicePool {
     pub fn note_on(&mut self, ch: &ChanRt, idx: usize, dest: Dest, key: u8, vel: f32) -> bool {
         // the same key struck again releases its previous note
         self.release_where(|v| v.held && v.chan_id == ch.id && v.key == key);
-        let Some(i) = self.note_slot(ch, idx, dest, 0, NoteEnd::Release(3600.0), key, vel, 1.0) else { return false };
+        let Some(i) = self.note_slot(ch, idx, dest, 0, NoteEnd::Release(3600.0), key, vel, 1.0, 0.0) else { return false };
         let v = &mut self.voices[i];
         v.held = true;
         v.key = key;
@@ -252,13 +255,24 @@ impl VoicePool {
     /// velocity 0..1 and `gain` level on top of it (the track gain when the channel skips the track).
     /// Returns false when nothing can play (a sampler channel without audio).
     #[allow(clippy::too_many_arguments)]
-    pub fn note(&mut self, ch: &ChanRt, idx: usize, dest: Dest, delay: u32, end: NoteEnd, key: u8, vel: f32, gain: f32) -> bool {
-        self.note_slot(ch, idx, dest, delay, end, key, vel, gain).is_some()
+    pub fn note(&mut self, ch: &ChanRt, idx: usize, dest: Dest, delay: u32, end: NoteEnd, key: u8, vel: f32, gain: f32, pan: f32) -> bool {
+        self.note_slot(ch, idx, dest, delay, end, key, vel, gain, pan).is_some()
     }
 
     /// Like [`Self::note`], returning the voice slot that was started.
     #[allow(clippy::too_many_arguments)]
-    fn note_slot(&mut self, ch: &ChanRt, idx: usize, dest: Dest, delay: u32, end: NoteEnd, key: u8, vel: f32, gain: f32) -> Option<usize> {
+    fn note_slot(
+        &mut self,
+        ch: &ChanRt,
+        idx: usize,
+        dest: Dest,
+        delay: u32,
+        end: NoteEnd,
+        key: u8,
+        vel: f32,
+        gain: f32,
+        pan: f32,
+    ) -> Option<usize> {
         let level = vel * gain;
         match ch.kind {
             VoiceKind::Sample => {
@@ -279,6 +293,7 @@ impl VoicePool {
                 v.pos = if m.reverse { hi - 1.0 } else { lo };
                 v.cut = m.cut;
                 v.key = key;
+                v.pan = pan;
                 Some(i)
             }
             VoiceKind::Keys => {
@@ -295,6 +310,7 @@ impl VoicePool {
                 let i = self.trigger(VoiceKind::Keys, dest, idx, ch.id, delay, end, hit * gain * KEYS_HEADROOM, rate);
                 self.voices[i].zone = zone;
                 self.voices[i].key = key;
+                self.voices[i].pan = pan;
                 Some(i)
             }
             VoiceKind::Synth | VoiceKind::Plugin | VoiceKind::Click { .. } => None,
@@ -360,6 +376,8 @@ impl VoicePool {
                     continue;
                 }
             };
+            // the note's own pan moves it from where the channel sits
+            let (pan, pan0) = ((pan + v.pan).clamp(-1.0, 1.0), (pan0 + v.pan).clamp(-1.0, 1.0));
             let (pl, pr) = pan_gains(pan);
             let (gl, gr) = (g * pl, g * pr);
             // an automated channel gain or pan glides from the previous block's value

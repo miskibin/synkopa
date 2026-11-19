@@ -653,6 +653,10 @@ pub struct Note {
     /// Velocity 0..1 (gain).
     #[serde(default = "one", skip_serializing_if = "is_one")]
     pub v: f32,
+    /// Pan of this note, -1 (left) ..= 1 (right), added to its channel's pan (FL's per-note
+    /// panning). Sampler and Synkopa Keys channels play it; Synth and plugin channels ignore it.
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
+    pub pan: f32,
     /// A step-sequencer trigger (FL Studio's zero-length step): a note-on without a note-off.
     /// A sampler plays its part to the end (or until a cut group or its own decay stops it),
     /// whatever its One-shot / Gate mode. Synth and Synkopa Keys channels hold it for `len`.
@@ -669,7 +673,7 @@ fn is_one(v: &f32) -> bool {
 impl Note {
     /// A held note: note-on at `step`, note-off `len` steps later.
     pub fn new(ch: Id, step: f32, len: f32, p: Option<u8>) -> Self {
-        Self { ch, step, len, p, v: 1.0, trig: Some(false) }
+        Self { ch, step, len, p, v: 1.0, trig: Some(false), pan: 0.0 }
     }
     /// A Channel Rack step: a trigger in one grid cell.
     pub fn trigger(ch: Id, step: f32, p: Option<u8>) -> Self {

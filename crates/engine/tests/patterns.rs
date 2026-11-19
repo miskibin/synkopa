@@ -389,6 +389,25 @@ fn channels_mute_solo_route_and_remove() {
     let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
     let r: Vec<f32> = out.as_chunks::<2>().0.iter().map(|f| f[1]).collect();
     assert!(rms(&left(&out)) > 0.01 && rms(&r) < 1e-9);
+    // a note's own pan is added to its channel's: hard-right notes on a hard-left channel sit in the middle
+    let mut pt = e.project().patterns[0].clone();
+    for n in pt.notes.iter_mut().filter(|n| n.ch == k) {
+        n.pan = 1.0;
+    }
+    e.apply(&[Op::PutPattern { pattern: pt.clone() }], false, None).unwrap();
+    let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
+    let r: Vec<f32> = out.as_chunks::<2>().0.iter().map(|f| f[1]).collect();
+    assert!(rms(&left(&out)) > 0.01 && (rms(&r) / rms(&left(&out)) - 1.0).abs() < 1e-3);
+    // on a centred channel they play on the right only
+    let mut kc = e.project().channel(k).unwrap().clone();
+    kc.pan = 0.0;
+    e.apply(&[Op::PutChannel { channel: kc, index: None }], false, None).unwrap();
+    let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
+    let r: Vec<f32> = out.as_chunks::<2>().0.iter().map(|f| f[1]).collect();
+    assert!(rms(&r) > 0.01 && rms(&left(&out)) < 1e-9);
+    // a pan outside -1..1 is refused
+    pt.notes[0].pan = 1.5;
+    assert!(e.apply(&[Op::PutPattern { pattern: pt }], false, None).is_err());
     // removing a channel removes its notes everywhere
     e.apply(&[Op::RemoveChannel { id: k }], false, None).unwrap();
     assert!(e.project().patterns[0].notes.iter().all(|n| n.ch != k));

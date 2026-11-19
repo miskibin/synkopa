@@ -673,6 +673,8 @@ pub struct NoteRt {
     pub chan: usize,
     pub key: u8,
     pub vel: f32,
+    /// The note's own pan (-1..=1), on top of the channel's. Sampler and Keys voices only.
+    pub pan: f32,
 }
 
 impl NoteRt {
@@ -1413,6 +1415,7 @@ impl Rt {
                             key,
                             vel,
                             1.0,
+                            0.0,
                             self.sr,
                         );
                     }
@@ -1574,6 +1577,7 @@ impl Rt {
                     nt.key,
                     nt.vel,
                     1.0,
+                    nt.pan,
                     self.sr,
                 );
             }
@@ -2156,6 +2160,7 @@ impl Rt {
                                     nt.key,
                                     nt.vel,
                                     gain,
+                                    nt.pan,
                                     self.sr,
                                 );
                             }
@@ -2247,6 +2252,7 @@ fn play(
     key: u8,
     vel: f32,
     gain: f32,
+    pan: f32,
     sr: f32,
 ) {
     if ch.kind == VoiceKind::Synth {
@@ -2260,7 +2266,7 @@ fn play(
             s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel, dest, gain);
         }
     } else {
-        voices.note(ch, idx, dest, delay, end, key, vel, gain);
+        voices.note(ch, idx, dest, delay, end, key, vel, gain, pan);
     }
 }
 

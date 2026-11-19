@@ -5,7 +5,7 @@ import { shadeBands, shadeUnit } from '../lib/gridShade';
 import type { Channel, Id, Note, Pattern } from '../api/types';
 import { t } from '../lib/i18n';
 import { mix } from '../lib/color';
-import { BEAT_GAP, gridW, inScale, keyOf, noteWidth, stepAt, stepSpans, stepX, velOf } from '../lib/pattern';
+import { BEAT_GAP, gridW, inScale, keyOf, noteWidth, stepAt, stepSpans, stepX, panOf, velOf } from '../lib/pattern';
 import { isBlack, noteName } from '../lib/pitch';
 import type { Layer } from '../ui/frameLoop';
 import { rgba, T, theme } from '../ui/theme';
@@ -116,6 +116,8 @@ export function drawRackHead(g: CanvasRenderingContext2D, W: number, H: number, 
 /** One velocity bar per note of the selected channel. `x0`: where step 0 is (px), `cw` px per step. */
 export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
   x0: number; cw: number; sx: number; steps: number; notes: { n: Note; i: number }[]; color: string; sel?: Set<number>; cells: boolean; muted: boolean; beatGap?: boolean;
+  /** What the bars show: velocity (from the floor), or the note's pan (from the centre line: up = right). */
+  mode?: 'vel' | 'pan';
 }) {
   g.clearRect(0, 0, W, H);
   const top = 6, bh = H - top - 3;
@@ -125,6 +127,7 @@ export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
   g.fillStyle = T.viz; g.fillRect(o.x0, 0, endX - o.x0, H);
   g.fillStyle = T.vizGrid2;
   for (const f of [0.25, 0.5, 0.75]) g.fillRect(o.x0, Math.round(top + bh * (1 - f)) + 0.5, endX - o.x0, 1);
+  if (o.mode === 'pan') { g.fillStyle = T.vizAxis; g.fillRect(o.x0, Math.round(top + bh / 2) + 0.5, endX - o.x0, 1); }
   g.fillStyle = T.vizAxis; g.fillRect(o.x0, top, endX - o.x0, 1);
   const spans = o.cells ? stepSpans(o.notes.map(x => x.n)) : [];
   o.notes.forEach(({ n, i }, k) => {
@@ -133,7 +136,17 @@ export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
     const w = o.cells ? Math.max(2, cw - 6) : Math.max(3, Math.min(8, n.len * o.cw - 2));
     const bx = o.cells ? x + (cw - w) / 2 : x;
     if (bx > W || bx + w < o.x0 - 4) return;
-    const y = top + bh * (1 - v), sel = !!o.sel?.has(i);
+    const sel = !!o.sel?.has(i);
+    if (o.mode === 'pan') {
+      // from the centre line: up = right, down = left; a centred note is a short tick on the line
+      const mid = top + bh / 2, y = mid - (bh / 2) * panOf(n);
+      g.fillStyle = rgba(o.color, (o.muted ? 0.35 : 0.75) * (sel ? 1.25 : 1));
+      g.fillRect(bx, Math.min(y, mid), w, Math.abs(y - mid));
+      g.fillStyle = sel ? T.fgHi : mix(o.color, 60, T.fgHi);
+      g.fillRect(bx, y - 1, w, 2);
+      return;
+    }
+    const y = top + bh * (1 - v);
     g.fillStyle = rgba(o.color, (o.muted ? 0.35 : 0.75) * (sel ? 1.25 : 1));
     g.fillRect(bx, y, w, top + bh - y);
     g.fillStyle = sel ? T.fgHi : mix(o.color, 60, T.fgHi);

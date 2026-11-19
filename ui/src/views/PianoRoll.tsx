@@ -15,14 +15,14 @@ import { drawRuler, rulerCursor, rulerDown, RULER_H, type RulerHost } from '../u
 import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
-import { clamp } from '../lib/format';
+import { clamp, panText } from '../lib/format';
 import { autoRollSnap, duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, SCALES, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
 import { NOTE_NAMES, noteName } from '../lib/pitch';
 
 /** The project key/scale as a setKey op (the roll header's key selectors commit it). */
 const setKeyOp = (key: number, scale: number) => ({ op: 'setKey' as const, key, scale });
 import {
-  applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, nudgeNotes, nudgeVelocity, pasteStart, velocityLine,
+  applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, nudgeNotes, nudgeVelocity, panLine, pasteStart, velocityLine,
   parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
 } from '../lib/rollEdit';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -108,6 +108,8 @@ function Roll(props: { z: number; docked?: boolean }) {
   const laneSize = useSize(() => laneWrap);
   // grid + lane together stay the same height whether the lane shows or not, so this does not flip back and forth
   const [laneOn, setLaneOn] = createSignal(true);
+  /** What the lane under the grid edits (FL's event editor target): the notes' velocity or their own pan. */
+  const [laneMode, setLaneMode] = createSignal<'vel' | 'pan'>('vel');
   createEffect(() => { const h = size().h; if (h > 0) setLaneOn(h + (untrack(laneOn) ? LANE_H : 0) >= LANE_SHOW_AT); });
   const data = useDataVersion();
   const layer = new Layer();
@@ -242,11 +244,11 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = laneCv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const G = geo();
-    drawLane(g, w, h, { x0: KW, cw: G.pps, sx: G.sx, steps: G.steps, notes: chanNotes(), color: ch().color, sel: sel(), cells: false, muted: ch().mute });
+    drawLane(g, w, h, { x0: KW, cw: G.pps, sx: G.sx, steps: G.steps, notes: chanNotes(), color: ch().color, sel: sel(), cells: false, muted: ch().mute, mode: lane() });
   };
   let rafMain = 0, rafVel = 0;
   createEffect(() => {
-    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    data(); sel(); laneMode(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
     if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
@@ -508,23 +510,28 @@ function Roll(props: { z: number; docked?: boolean }) {
       setViewS(v => ({ ...v, sx: clamp(v.sx + d, 0, maxSx()) }));
     } else { const rh = geo().rowH; setViewS(v => ({ ...v, sy: clamp(v.sy + d * 0.7, 0, maxSyAt(rh)) })); }
   };
+  // a note's own pan is played by sampler and Synkopa Keys channels; a synth or plugin channel has the lane on velocity only
+  const panPlays = () => ch().kind === 'sample' || ch().kind === 'keys';
+  const lane = () => (panPlays() ? laneMode() : 'vel');
   const laneDown = (e: PointerEvent) => {
     if (pan(e, false)) { dragging = true; return; } // middle-drag: scroll time, as on the grid
     if (e.button !== 0 && e.button !== 2) return;
     e.preventDefault();
     const r = laneCv.getBoundingClientRect();
     const at = (ev: PointerEvent) => { const G = geo(); return { step: (ev.clientX - r.left - KW + G.sx) / G.pps, v: clamp(1 - (ev.clientY - r.top - 6) / (r.height - 9), 0, 1) }; };
-    const g = new Gesture('Velocity');
+    const isPan = lane() === 'pan';
+    const g = new Gesture(isPan ? 'Pan' : 'Velocity');
     // FL: the left button draws freehand (every note the stroke passes, also on a fast drag), the right
     // one a straight ramp from where it went down. With a selection, only the selected notes.
     const ramp = e.button === 2, orig = notesRaw(), p0 = at(e);
     let notes = orig, prev = p0;
     const apply = (ev: PointerEvent) => {
       const q = at(ev), tol = Math.max(0.5, 5 / geo().pps);
-      notes = velocityLine(ramp ? orig : notes, ch().id, sel(), ramp ? p0 : prev, q, tol);
+      notes = (isPan ? panLine : velocityLine)(ramp ? orig : notes, ch().id, sel(), ramp ? p0 : prev, q, tol);
       prev = q;
       g.update([putNotes(pt(), notes)]);
-      say(ch().name + ' · velocity ' + (ramp ? Math.round(p0.v * 100) + '% → ' : '') + Math.round(q.v * 100) + '%');
+      if (isPan) say(ch().name + ' · pan ' + (ramp ? panText(p0.v * 2 - 1) + ' → ' : '') + panText(Math.abs(q.v * 2 - 1) < 0.05 ? 0 : q.v * 2 - 1));
+      else say(ch().name + ' · velocity ' + (ramp ? Math.round(p0.v * 100) + '% → ' : '') + Math.round(q.v * 100) + '%');
     };
     apply(e);
     track(apply, () => g.end(), ramp ? 'crosshair' : 'ns-resize');
@@ -860,7 +867,10 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div ref={laneWrap} class="lanecv">
           <canvas ref={laneCv} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', 'touch-action': 'none', cursor: 'ns-resize' }}
             onPointerDown={laneDown} onContextMenu={e => e.preventDefault()} />
-          <span class="lanetag tag9">VEL</span>
+          <div class="laneswitch" role="radiogroup" aria-label={t('b.pr.laneTarget')}>
+            <button role="radio" aria-checked={lane() === 'vel'} classList={{ on: lane() === 'vel' }} title={t('b.pr.laneVelTip')} onClick={e => { setLaneMode('vel'); backToRoll(e.currentTarget); }}>VEL</button>
+            <button role="radio" aria-checked={lane() === 'pan'} classList={{ on: lane() === 'pan' }} disabled={!panPlays()} title={t(panPlays() ? 'b.pr.lanePanTip' : 'b.pr.lanePanOff')} onClick={e => { setLaneMode('pan'); backToRoll(e.currentTarget); }}>PAN</button>
+          </div>
         </div>
       </div>
       <div class="pstatus mono">

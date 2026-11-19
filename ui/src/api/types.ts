@@ -151,7 +151,8 @@ export type Channel = {
  * `v` velocity 0..1 (absent = 1).
  */
 /** `trig` is true for a step trigger, false for a held note, absent on legacy notes. */
-export interface Note { ch: Id; step: number; len: number; p?: number; v?: number; trig?: boolean }
+/** `pan`: the note's own pan, -1..1, added to its channel's (absent = 0). Sampler and Synkopa Keys channels play it. */
+export interface Note { ch: Id; step: number; len: number; p?: number; v?: number; pan?: number; trig?: boolean }
 /** `len` in beats; `swing` 0..1 (absent = 0). Notes at or past `len` are kept but hidden and silent. */
 /**
  * `len` (beats) is derived by the engine: the end of the last note rounded up to a bar, at least

@@ -4373,6 +4373,7 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
                         chan: ci,
                         key: n.p.unwrap_or(p.channels[ci].root),
                         vel: n.v.clamp(0.0, 1.0),
+                        pan: n.pan.clamp(-1.0, 1.0),
                     })
                 })
                 .collect();

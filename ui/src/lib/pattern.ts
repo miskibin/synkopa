@@ -30,6 +30,8 @@ export function samplerError(s: SamplerState | undefined): string | null {
 }
 export const keyOf = (n: Note, c: Channel | undefined) => n.p ?? c?.root ?? SAMPLE_ROOT;
 export const velOf = (n: Note) => n.v ?? 1;
+/** A note's own pan, -1 (left) .. 1 (right); 0 when it has none. */
+export const panOf = (n: Note) => n.pan ?? 0;
 /** Number of 16ths in the pattern. */
 export const stepsOf = (p: Pattern) => Math.max(1, Math.round(p.len * 4));
 /** Channel Rack step grid: extra px between groups of four steps (beats), like FL's. */

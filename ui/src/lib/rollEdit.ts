@@ -226,3 +226,18 @@ export function velocityLine(notes: readonly Note[], ch: Id, sel: ReadonlySet<nu
     return { ...n, v: Math.round(Math.min(1, Math.max(0, a.v + (b.v - a.v) * f)) * 100) / 100 };
   });
 }
+
+/**
+ * The pan lane's stroke, as `velocityLine` but for the notes' own pan: `v` 0..1 is the lane's
+ * height (0 = hard left, 0.5 = centre, 1 = hard right). Near the middle it snaps to the centre.
+ */
+export function panLine(notes: readonly Note[], ch: Id, sel: ReadonlySet<number>, a: { step: number; v: number }, b: { step: number; v: number }, tol: number): Note[] {
+  const lo = Math.min(a.step, b.step) - tol, hi = Math.max(a.step, b.step) + tol, span = b.step - a.step;
+  return notes.map((n, i) => {
+    if (n.ch !== ch || n.step < lo || n.step > hi || (sel.size && !sel.has(i))) return n;
+    const f = Math.abs(span) < 1e-9 ? 1 : Math.min(1, Math.max(0, (n.step - a.step) / span));
+    const pan = Math.round((Math.min(1, Math.max(0, a.v + (b.v - a.v) * f)) * 2 - 1) * 100) / 100;
+    const { pan: _old, ...rest } = n;
+    return Math.abs(pan) < 0.05 ? rest : { ...rest, pan };
+  });
+}
