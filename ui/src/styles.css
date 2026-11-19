@@ -1476,3 +1476,19 @@ button.chip { color: var(--fg); }
 .laneswitch button { width: 40px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 6px; font-size: 8.5px; text-transform: uppercase; }
 .laneswitch button.vel.on { background: color-mix(in srgb, var(--blue) 22%, transparent); color: var(--blue-hi); }
 .laneswitch button.pan.on { background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--amber); }
+
+/* round 7: window-bar controls are chips like the editor bars (no boxes until hovered) */
+.patwin .winhd .patname, .patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf { border-color: transparent; background: transparent; transition: background .12s; }
+.patwin .winhd .patname:hover, .patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover { background: var(--bg4); border-color: transparent; }
+.patwin .winhd .numf { flex-direction: row; align-items: center; gap: 6px; height: 24px; box-sizing: border-box; padding: 0 8px; width: auto !important; }
+.patwin .winhd .numf .lab { display: inline-block; font: 500 11px var(--sans); letter-spacing: 0; color: var(--fg4); text-transform: lowercase; }
+.patwin .winhd .numf .lab::first-letter { text-transform: uppercase; }
+.patwin .winhd .numf .v { font: 600 11.5px var(--sans); }
+.patwin .winhd .bars > span { font: 600 11.5px var(--sans); color: var(--fg-hi); min-width: 44px; }
+.patwin .winhd .bars > button { color: var(--fg5); }
+/* mixer effect rows: the slot number, mix value and remove button appear with the pointer */
+.slot .n, .slot .slotmix .mono, .slot .xdel { opacity: 0; transition: opacity .12s; }
+.slot:hover .n, .slot.on .n, .slot:hover .slotmix .mono, .slot:hover .xdel, .slot.on .xdel { opacity: 1; }
+.patwin .winhd .chsel { appearance: none; -webkit-appearance: none; field-sizing: content; padding: 0 20px 0 8px; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 2.5l3 3 3-3' fill='none' stroke='%238a93a3' stroke-width='1.3'/%3E%3C/svg%3E") right 7px center no-repeat; }
+.patwin .winhd .chsel:hover { background-color: var(--bg4); }
+.patwin .winhd .chsel option { background: var(--bg4); color: var(--fg); }
