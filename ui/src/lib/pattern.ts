@@ -305,6 +305,8 @@ export const ROLL_SNAPS: [string, number][] = [
 export const ROLL_SNAPS_TRIPLET: [string, number][] = [['1/6', 8 / 3], ['1/12', 4 / 3], ['1/24', 2 / 3], ['1/48', 1 / 3]];
 /** The grid's name ('1/16', '1/12'), or undefined when `steps` is not one of the snap choices. */
 export const rollSnapName = (steps: number) => [...ROLL_SNAPS, ...ROLL_SNAPS_TRIPLET].find(x => Math.abs(x[1] - steps) < 1e-4)?.[0];
+/** The "auto" grid, in steps: the finest of 1/64 … 1/1 whose cell is at least 24 px wide at `pps` px a step. */
+export const autoRollSnap = (pps: number) => [0.25, 0.5, 1, 2, 4, 8, 16].find(u => u * pps >= 24) ?? 16;
 /** Round (or floor) `x` steps to the grid; `unit` 0 = free (1/128 resolution). */
 export function snapStep(x: number, unit: number, floor = false): number {
   if (!unit) return Math.round(x * 32) / 32;

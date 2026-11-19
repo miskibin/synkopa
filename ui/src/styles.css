@@ -1395,13 +1395,13 @@ select option { background: var(--bg4); color: var(--fg); }
 .lane .lvol .track { height: 2px; }
 
 /* piano roll bar: settings are quiet chips (dim name + value), not boxed form fields */
-.ptools .chip { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--fg4); font: 500 11.5px var(--sans); white-space: nowrap; cursor: pointer; transition: background .12s; }
-.ptools .chip:hover, .ptools .chip:focus-within, .ptools .chip.on { background: var(--bg5); }
-.ptools button.chip { color: var(--fg); }
-.ptools .chip select { appearance: none; -webkit-appearance: none; height: 24px; padding: 0 13px 0 0; border: 0; outline: 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 2.5l3 3 3-3' fill='none' stroke='%238a93a3' stroke-width='1.3'/%3E%3C/svg%3E") right center no-repeat; color: var(--fg-hi); font: 600 11.5px var(--sans); cursor: pointer; }
-.ptools .chip select { field-sizing: content; }
-.ptools .chip select + select { margin-left: 2px; }
-.ptools .chip select option, .ptools .chip select optgroup { background: var(--bg4); color: var(--fg); }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--fg4); font: 500 11.5px var(--sans); white-space: nowrap; cursor: pointer; transition: background .12s; }
+.chip:hover, .chip:focus-within, .chip.on { background: var(--bg5); }
+button.chip { color: var(--fg); }
+.chip select { appearance: none; -webkit-appearance: none; height: 24px; padding: 0 13px 0 0; border: 0; outline: 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 2.5l3 3 3-3' fill='none' stroke='%238a93a3' stroke-width='1.3'/%3E%3C/svg%3E") right center no-repeat; color: var(--fg-hi); font: 600 11.5px var(--sans); cursor: pointer; }
+.chip select { field-sizing: content; }
+.chip select + select { margin-left: 2px; }
+.chip select option, .chip select optgroup { background: var(--bg4); color: var(--fg); }
 .roll .ptools { gap: 6px; }
 .roll .ptools .seg.tools { margin-right: 4px; }
 
@@ -1425,3 +1425,16 @@ select option { background: var(--bg4); color: var(--fg); }
 .keypop .scalelist button { background: transparent; text-align: left; padding: 0 9px; font-weight: 500; }
 .keypop .rootgrid button:hover, .keypop .scalelist button:hover { background: var(--bg6); color: var(--fg-hi); }
 .keypop .rootgrid button.on, .keypop .scalelist button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+
+/* shared editor bar pieces in the Playlist header */
+.pltools .chip { height: 24px; padding: 0 6px 0 7px; font-size: 11px; }
+.pltools .chip select { font-size: 11px; height: 22px; }
+/* the note tools: a list with icons, the chosen one's settings below */
+.toolpop { width: 340px; }
+.toolpop .toolgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.toolpop .toolgrid button { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg3); font: 500 12px var(--sans); cursor: pointer; text-align: left; min-width: 0; }
+.toolpop .toolgrid button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolpop .toolgrid button svg { flex: none; color: var(--fg4); }
+.toolpop .toolgrid button:hover { background: var(--bg6); color: var(--fg-hi); }
+.toolpop .toolgrid button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+.toolpop .toolgrid button.on svg { color: var(--blue-hi); }

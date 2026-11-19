@@ -261,3 +261,14 @@ describe('triplet snap grids', () => {
     expect(rollSnapName(3)).toBeUndefined();
   });
 });
+
+describe('autoRollSnap', () => {
+  it('picks the finest grid whose cell is at least 24 px wide', async () => {
+    const { autoRollSnap } = await import('./pattern');
+    expect(autoRollSnap(46)).toBe(1);
+    expect(autoRollSnap(48)).toBe(0.5);
+    expect(autoRollSnap(100)).toBe(0.25);
+    expect(autoRollSnap(6)).toBe(4);
+    expect(autoRollSnap(0.5)).toBe(16);
+  });
+});
