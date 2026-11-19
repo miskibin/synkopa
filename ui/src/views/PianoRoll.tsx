@@ -128,11 +128,12 @@ function Roll(props: { z: number; docked?: boolean }) {
   const setField = (i: number, v: unknown) => setVals(xs => { const c = xs.slice(); c[i] = v; return c; });
   const [toolSeed, setToolSeed] = createSignal('');
   // the note tools (humanize, strum, ...) live in a popover: used now and then, they do not hold toolbar space
-  const [toolsOpen, setToolsOpen] = createSignal(false);
-  let toolMenu!: HTMLDivElement;
+  const [pop, setPop] = createSignal<'tools' | 'key' | null>(null);
+  const toolsOpen = () => pop() === 'tools', setToolsOpen = (f: boolean | ((v: boolean) => boolean)) => setPop((typeof f === 'function' ? f(toolsOpen()) : f) ? 'tools' : null);
+  let toolMenu!: HTMLDivElement, keyMenu!: HTMLDivElement;
   createEffect(() => {
-    if (!toolsOpen()) return;
-    const away = (e: PointerEvent) => { if (!toolMenu.contains(e.target as Node)) setToolsOpen(false); };
+    const open = pop(); if (!open) return;
+    const away = (e: PointerEvent) => { if (!(open === 'key' ? keyMenu : toolMenu).contains(e.target as Node)) setPop(null); };
     document.addEventListener('pointerdown', away, true);
     onCleanup(() => document.removeEventListener('pointerdown', away, true));
   });
@@ -146,6 +147,8 @@ function Roll(props: { z: number; docked?: boolean }) {
   const scaleIdx = () => pk().scale;
   const chansMap = createMemo(() => { arrVersion(); return new Map(unwrap(channels()).map(c => [c.id, c])); });
   const mask = () => scaleMask(scaleIdx());
+  /** A pitch class on the key badge's tiny keyboard: the root, a scale note, or outside the scale. */
+  const pcClass = (pc: number) => pc === root() ? 'root' : (mask() >> ((pc - root() + 12) % 12)) & 1 ? 'in' : 'out';
   /** After a pick in a toolbar list the keyboard goes back to the roll (arrows transpose, Delete deletes) instead of staying in the list. */
   const backToRoll = (el: HTMLElement) => el.closest<HTMLElement>('.win')?.focus({ preventScroll: true });
   /** Width of the note grid (px). */
@@ -749,15 +752,35 @@ function Roll(props: { z: number; docked?: boolean }) {
             </optgroup>
           </select>
         </label>
-        {/* the song's key (one for the whole project): shown as one quiet chip, changed here when needed */}
-        <label class="chip" title={S.project.key == null ? t('b.pe.keyAuto') : t('b.pe.keyScale')}>{t('b.pe.lblKey')}
-          <select value={String(root())} onChange={e => { commit([setKeyOp(+e.currentTarget.value, scaleIdx())], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
-            <For each={NOTE_NAMES}>{(n, i) => <option value={String(i())}>{n}</option>}</For>
-          </select>
-          <select value={String(scaleIdx())} onChange={e => { commit([setKeyOp(root(), +e.currentTarget.value)], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
-            <For each={SCALES}>{([l, id]) => <option value={String(id)}>{t(l)}</option>}</For>
-          </select>
-        </label>
+        {/* the song's key, always in view: a tiny keyboard marks the scale's notes (root brightest), the name beside it;
+            a click opens the root and scale pickers. One key for the whole project. */}
+        <div class="toolmenu" ref={keyMenu}>
+          <button class="keybadge" classList={{ on: pop() === 'key' }} aria-expanded={pop() === 'key'} title={S.project.key == null ? t('b.pe.keyAuto') : t('b.pr.songKeyTip')} onClick={() => setPop(v => v === 'key' ? null : 'key')}>
+            <svg class="minikeys" width="43" height="16" viewBox="0 0 43 16">
+              <For each={[0, 2, 4, 5, 7, 9, 11]}>{(pc, i) => <rect x={i() * 6 + 0.5} y="0.5" width="5" height="15" rx="1" class={pcClass(pc)} />}</For>
+              <For each={[[1, 0], [3, 1], [6, 3], [8, 4], [10, 5]]}>{([pc, i]) => <rect x={i * 6 + 4} y="0" width="4" height="9" rx="1" class={'bk ' + pcClass(pc)} />}</For>
+            </svg>
+            <span class="kname">{NOTE_NAMES[root()]} {t(SCALES.find(x => x[1] === scaleIdx())![0]).toLowerCase()}</span>
+            <Show when={S.project.key == null}><span class="kauto">auto</span></Show>
+            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+          </button>
+          <Show when={pop() === 'key'}>
+            <div class="toolpop keypop" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setPop(null); } }}>
+              <div class="tphd">{t('b.pr.songKey')}</div>
+              <div class="rootgrid" role="radiogroup">
+                <For each={NOTE_NAMES}>{(n, i) => (
+                  <button role="radio" aria-checked={root() === i()} classList={{ on: root() === i(), bk: n.length > 1 }} onClick={() => commit([setKeyOp(i(), scaleIdx())], t('b.pr.keySet'))}>{n}</button>
+                )}</For>
+              </div>
+              <div class="scalelist" role="radiogroup">
+                <For each={SCALES}>{([l, id]) => (
+                  <button role="radio" aria-checked={scaleIdx() === id} classList={{ on: scaleIdx() === id }} onClick={() => commit([setKeyOp(root(), id)], t('b.pr.keySet'))}>{t(l)}</button>
+                )}</For>
+              </div>
+              <div class="tpnote">{t('b.pr.songKeyNote')}</div>
+            </div>
+          </Show>
+        </div>
         <div style={{ flex: 1 }} />
         <Show when={vocals().length > 0 && chanNotes().length > 0}>
           <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pr.vocalTip')} onClick={vocalRef}>♪ {t('b.pr.vocal')}{vocals().length > 1 ? ' …' : ''}</button>

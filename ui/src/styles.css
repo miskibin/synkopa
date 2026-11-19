@@ -1404,3 +1404,24 @@ select option { background: var(--bg4); color: var(--fg); }
 .ptools .chip select option, .ptools .chip select optgroup { background: var(--bg4); color: var(--fg); }
 .roll .ptools { gap: 6px; }
 .roll .ptools .seg.tools { margin-right: 4px; }
+
+/* the key badge and its picker */
+.ptools .keybadge { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 9px 0 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg2); color: var(--fg4); cursor: pointer; transition: border-color .12s, background .12s; }
+.ptools .keybadge:hover, .ptools .keybadge.on { border-color: var(--line3); background: var(--bg5); }
+.keybadge .kname { font: 600 12px var(--sans); color: var(--fg-hi); white-space: nowrap; }
+.keybadge .kauto { font: 600 9px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--fg5); }
+.minikeys rect { fill: var(--bg7); }
+.minikeys rect.bk { fill: var(--bg0); stroke: var(--bg2); stroke-width: 1; }
+.minikeys rect.in { fill: color-mix(in srgb, var(--blue) 62%, var(--bg7)); }
+.minikeys rect.bk.in { fill: var(--blue); }
+.minikeys rect.root { fill: var(--fg-hi); }
+.toolpop.keypop { left: 0; right: auto; width: 268px; gap: 10px; }
+.toolpop .tphd { font: 600 12px var(--sans); color: var(--fg-hi); }
+.toolpop .tpnote { font: 11px/1.4 var(--sans); color: var(--fg5); }
+.keypop .rootgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.keypop .rootgrid button, .keypop .scalelist button { height: 28px; border: 0; border-radius: 6px; background: var(--bg2); color: var(--fg3); font: 600 11.5px var(--sans); cursor: pointer; }
+.keypop .rootgrid button.bk { background: var(--bg0); }
+.keypop .scalelist { display: flex; flex-direction: column; gap: 2px; }
+.keypop .scalelist button { background: transparent; text-align: left; padding: 0 9px; font-weight: 500; }
+.keypop .rootgrid button:hover, .keypop .scalelist button:hover { background: var(--bg6); color: var(--fg-hi); }
+.keypop .rootgrid button.on, .keypop .scalelist button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
