@@ -1438,3 +1438,12 @@ button.chip { color: var(--fg); }
 .toolpop .toolgrid button:hover { background: var(--bg6); color: var(--fg-hi); }
 .toolpop .toolgrid button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
 .toolpop .toolgrid button.on svg { color: var(--blue-hi); }
+
+/* note tool numbers: sliders */
+.toolpop .tpslide { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; align-items: baseline; font: 500 12px var(--sans); color: var(--fg3); }
+.toolpop .tpslide b { font: 600 11.5px var(--mono); color: var(--fg-hi); }
+.toolpop .tpslide input[type=range] { grid-column: 1 / -1; appearance: none; -webkit-appearance: none; width: 100%; height: 14px; margin: 0; background: transparent; cursor: ew-resize; }
+.toolpop .tpslide input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--blue) var(--p), var(--bg0) var(--p)); }
+.toolpop .tpslide input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: 50%; background: var(--fg-hi); border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.toolpop .tpslide input[type=range]:focus-visible { outline: 1px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
+.toolpop .tprow .textin { background: var(--bg1); border-color: var(--line); }

@@ -148,6 +148,9 @@ function Roll(props: { z: number; docked?: boolean }) {
   const scaleIdx = () => pk().scale;
   const chansMap = createMemo(() => { arrVersion(); return new Map(unwrap(channels()).map(c => [c.id, c])); });
   const mask = () => scaleMask(scaleIdx());
+  /** A tool field's name without its "(0..1)" range note: the slider shows the range. */
+  const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*$/, '');
+  const numText = (v: number, step: number) => v.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2);
   /** The grid in steps: the chosen one, or (auto) the finest that is still comfortably wide at this zoom. */
   const snapNow = () => (rollSnap() < 0 ? autoRollSnap(geo().pps) : rollSnap());
   /** A pitch class on the key badge's tiny keyboard: the root, a scale note, or outside the scale. */
@@ -794,10 +797,16 @@ function Roll(props: { z: number; docked?: boolean }) {
                   </button>
                 )}</For>
               </div>
-              <For each={TOOL_META[toolId()].fields}>{(f, i) => (
-                <label class="tprow"><span>{t(f.label)}</span>{f.kind === 'num' ? (
-                  <input class="textin" type="number" step="0.1" value={typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def} onInput={e => setField(i(), +e.currentTarget.value)} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }} />
-                ) : f.kind === 'select' ? (
+              <For each={TOOL_META[toolId()].fields}>{(f, i) => f.kind === 'num' ? (
+                // a number is a slider over its useful range, the value beside its name
+                <label class="tpslide" title={t(f.label)}>
+                  <span>{shortLabel(t(f.label))}</span><b>{numText(typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def, f.step)}</b>
+                  <input type="range" min={f.min} max={f.max} step={f.step} value={typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def}
+                    style={{ '--p': (((typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def) - f.min) / (f.max - f.min)) * 100 + '%' }}
+                    onInput={e => setField(i(), +e.currentTarget.value)} onDblClick={() => setField(i(), f.def)} />
+                </label>
+              ) : (
+                <label class="tprow"><span>{t(f.label)}</span>{f.kind === 'select' ? (
                   <select class="sel" value={String(vals()[i()] ?? f.def)} onChange={e => setField(i(), e.currentTarget.value)}>
                     <For each={f.options}>{o => <option value={o.v}>{t(o.l)}</option>}</For>
                   </select>
