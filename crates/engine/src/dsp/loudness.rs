@@ -173,8 +173,8 @@ impl Hist {
         let pct = |p: f64| {
             let want = ((n - 1) as f64 * p).round() as u64;
             let mut acc = 0u64;
-            for b in from..BINS {
-                acc += u64::from(self.count[b]);
+            for (b, &c) in self.count.iter().enumerate().skip(from) {
+                acc += u64::from(c);
                 if acc > want {
                     return ABS_GATE + (b as f64 + 0.5) * BIN_LU;
                 }
