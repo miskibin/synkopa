@@ -153,7 +153,9 @@ impl Engine {
         }
         // notes recorded over the loop so far join their pattern before it stops or restarts
         let recorded = self.finish_pat_take(&mut c);
-        send(&mut c, Cmd::PatPlay { id: pattern, from: from.max(0.0), range });
+        c.pat_gen += 1; // the recorder armed below accepts notes only once this loop is live
+        let gen = c.pat_gen;
+        send(&mut c, Cmd::PatPlay { id: pattern, from: from.max(0.0), range, gen });
         c.pat_loop = pattern.map(|id| (id, range));
         self.begin_pat_take(&mut c);
         if pattern.is_some() && c.transport.playing {
@@ -175,7 +177,9 @@ impl Engine {
         let mut c = self.core.lock();
         // notes recorded over the old range are folded into it before the range changes
         let recorded = self.finish_pat_take(&mut c);
-        send(&mut c, Cmd::PatRange(range));
+        c.pat_gen += 1;
+        let gen = c.pat_gen;
+        send(&mut c, Cmd::PatRange(range, gen));
         if let Some(p) = c.pat_loop.as_mut() {
             p.1 = range;
         }

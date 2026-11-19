@@ -68,6 +68,7 @@ impl Engine {
         let before = c.project.clone();
         let dir = audio_dir(c);
         let mut landed = vec![];
+        let mut failed = 0usize;
         for (start, exact, data) in passes {
             let mut data = data.to_vec();
             if let Some((_, frames)) = exact {
@@ -79,7 +80,12 @@ impl Engine {
             let name = format!("Take {n}");
             let path = fresh_path(&dir, &format!("{} {}", name, id));
             if let Err(e) = write_wav(&path, &data, take.sr) {
-                log::error!("could not write recording: {e}");
+                // a pass whose file did not land is not published either: a source that
+                // points at a missing file would only be discovered at the next save or
+                // reopen, while it plays from memory until then. Passes that did land stay.
+                log::error!("could not write recording {}: {e}", path.display());
+                failed += 1;
+                continue;
             }
             let audio = Audio::from_stereo(data, take.sr, 1);
             c.project.sources.push(Source {
@@ -94,6 +100,12 @@ impl Engine {
             });
             c.sources.insert(id, Arc::new(audio));
             landed.push((id, start, exact.map_or(secs / spb, |(beats, _)| beats).min(TOTAL_BEATS - start)));
+        }
+        if landed.is_empty() {
+            return; // nothing landed: no undo step for a recording that never made it to disk
+        }
+        if failed > 0 {
+            log::error!("{failed} recording pass(es) could not be written and were not added");
         }
         crate::comp::land_takes(&mut c.project, take.track as u32, &landed);
         push_undo(c, before);
@@ -183,9 +195,14 @@ impl Engine {
                 mf.send(Cmd::MidiNote { chan, key, vel: MidiMsg::vel_gain(vel), on: true, ins });
                 let mut t = self.midi_take.lock();
                 let beat = t.beat(song, pat);
+                // a pattern recorder just armed (the audio thread still plays the previous
+                // loop) would timestamp this note on the wrong loop: let it sound, skip the take
+                let this_loop = t.pat.as_ref().is_none_or(|p| p.gen == self.shared().pat_gen());
                 if let Some((r, _, _)) = t.rec.as_mut() {
-                    r.note_on(beat, key, vel);
-                    t.played = true;
+                    if this_loop {
+                        r.note_on(beat, key, vel);
+                        t.played = true;
+                    }
                 }
             }
             MidiMsg::NoteOff { key, .. } => {
@@ -227,13 +244,16 @@ impl Engine {
         }
         t.played = false;
         t.rec = Some((MidiRecorder::new(f64::NEG_INFINITY), usize::MAX, ch));
-        t.pat = Some(PatLoopRec { id, la, span: lb - la, prev: f64::NEG_INFINITY, laps: 0.0 });
+        t.pat = Some(PatLoopRec { id, la, span: lb - la, prev: f64::NEG_INFINITY, laps: 0.0, gen: c.pat_gen });
     }
 
     /// Ends a take over the pattern loop: the notes played join the pattern (one undo step).
     /// False when no such take runs.
     pub(crate) fn finish_pat_take(&self, c: &mut Core) -> bool {
-        let pb = self.shared().pat_beat();
+        let shared = self.shared();
+        // the playhead counts as this loop's end only while the audio thread plays it
+        let pb =
+            if shared.pat_gen() == self.midi_take.lock().pat.as_ref().map_or(0, |p| p.gen) { shared.pat_beat() } else { f64::NEG_INFINITY };
         let (rec, ch, mut pl) = {
             let mut t = self.midi_take.lock();
             let Some(pl) = t.pat.take() else { return false };

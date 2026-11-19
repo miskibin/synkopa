@@ -45,99 +45,137 @@ impl Engine {
         if loaded.is_empty() {
             return Err(EngineError::Msg(errors.join("; ")));
         }
-        let mut c = self.core.lock();
-        let before = c.project.clone();
-        let mut src_ids = vec![];
-        let mut clip_ids = vec![];
-        let bpm = c.project.bpm;
-        for (k, (path, stored, audio)) in loaded.into_iter().enumerate() {
-            let reuse =
-                c.project.sources.iter().find(|s| s.path == stored && s.path.starts_with(crate::factory::SCHEME)).map(|s| (s.id, s.dur));
-            let (id, seconds) = match (reuse, audio) {
-                (Some(r), _) if c.sources.get(r.0).is_some() => r,
-                (_, None) => continue,
-                (_, Some(audio)) => {
-                    let id = c.project.alloc_id();
-                    let factory = crate::factory::embedded(&stored);
-                    let name = match factory {
-                        Some(f) => f.name.to_string(),
-                        None => path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Audio".into()),
-                    };
-                    let colors = ["#69c3d6", "#47b8a8", "#5fbf8a", "#7c8cf8", "#e0a44a", "#9a8cf0", "#d9678f", "#5aa9e6"];
-                    let color = factory.map(crate::factory::color).unwrap_or(colors[c.project.sources.len() % colors.len()]).to_string();
-                    let seconds = audio.seconds();
-                    let src = Source {
-                        id,
-                        name,
-                        color,
-                        path: stored,
-                        dur: seconds,
-                        sr: audio.sr,
-                        ch: audio.channels,
-                        peak_db: crate::dsp::gain_to_db(audio.peak()),
-                    };
-                    c.sources.insert(id, Arc::new(audio));
-                    c.project.sources.push(src);
-                    (id, seconds)
+        // A cache hit from the scan can go stale before the commit (another open replaces
+        // the project): such a sample is decoded here, outside the lock, and the commit is
+        // retried — the import must never succeed having silently skipped a file.
+        let mut last_error = None;
+        for _retry in 0..3 {
+            let mut c = self.core.lock();
+            let before = c.project.clone();
+            let mut src_ids = vec![];
+            let mut clip_ids = vec![];
+            let bpm = c.project.bpm;
+            let mut missing = vec![];
+            for (k, (path, stored, audio)) in loaded.iter_mut().enumerate() {
+                let reuse = c
+                    .project
+                    .sources
+                    .iter()
+                    .find(|s| s.path == *stored && s.path.starts_with(crate::factory::SCHEME))
+                    .map(|s| (s.id, s.dur))
+                    .filter(|(id, _)| c.sources.get(*id).is_some());
+                let audio = audio.take();
+                let (id, seconds) = match (reuse, audio) {
+                    (Some(r), _) => r,
+                    (_, None) => {
+                        missing.push(stored.clone());
+                        continue;
+                    }
+                    (_, Some(audio)) => {
+                        let id = c.project.alloc_id();
+                        let factory = crate::factory::embedded(stored);
+                        let name = match factory {
+                            Some(f) => f.name.to_string(),
+                            None => path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "Audio".into()),
+                        };
+                        let colors = ["#69c3d6", "#47b8a8", "#5fbf8a", "#7c8cf8", "#e0a44a", "#9a8cf0", "#d9678f", "#5aa9e6"];
+                        let color =
+                            factory.map(crate::factory::color).unwrap_or(colors[c.project.sources.len() % colors.len()]).to_string();
+                        let seconds = audio.seconds();
+                        let src = Source {
+                            id,
+                            name,
+                            color,
+                            path: stored.clone(),
+                            dur: seconds,
+                            sr: audio.sr,
+                            ch: audio.channels,
+                            peak_db: crate::dsp::gain_to_db(audio.peak()),
+                        };
+                        c.sources.insert(id, Arc::new(audio));
+                        c.project.sources.push(src);
+                        (id, seconds)
+                    }
+                };
+                let len_beats = seconds / (60.0 / bpm);
+                src_ids.push(id);
+                if let Some((track, beat)) = place {
+                    let ntracks = c.project.tracks.len() as u32;
+                    if ntracks == 0 {
+                        continue;
+                    }
+                    let track = (track + k as u32).min(ntracks - 1);
+                    let cid = c.project.alloc_id();
+                    let start = beat.max(0.0);
+                    c.project.clips.push(Clip {
+                        id: cid,
+                        track,
+                        start,
+                        len: len_beats.min(TOTAL_BEATS - start).max(1.0 / 16.0),
+                        offset: 0.0,
+                        kind: ClipKind::Audio,
+                        source: id,
+                        muted: false,
+                        gain: 0.0,
+                        fade_in: 0.0,
+                        fade_out: 0.0,
+                        pan: 0.0,
+                        norm: false,
+                        rev: false,
+                        tune: None,
+                        stretch: 1.0,
+                        resample: false,
+                        pitch: 0.0,
+                        insert: None,
+                        root: crate::model::CLIP_ROOT,
+                    });
+                    clip_ids.push(cid);
                 }
-            };
-            let len_beats = seconds / (60.0 / bpm);
-            src_ids.push(id);
-            if let Some((track, beat)) = place {
-                let ntracks = c.project.tracks.len() as u32;
-                if ntracks == 0 {
-                    continue;
-                }
-                let track = (track + k as u32).min(ntracks - 1);
-                let cid = c.project.alloc_id();
-                let start = beat.max(0.0);
-                c.project.clips.push(Clip {
-                    id: cid,
-                    track,
-                    start,
-                    len: len_beats.min(TOTAL_BEATS - start).max(1.0 / 16.0),
-                    offset: 0.0,
-                    kind: ClipKind::Audio,
-                    source: id,
-                    muted: false,
-                    gain: 0.0,
-                    fade_in: 0.0,
-                    fade_out: 0.0,
-                    pan: 0.0,
-                    norm: false,
-                    rev: false,
-                    tune: None,
-                    stretch: 1.0,
-                    resample: false,
-                    pitch: 0.0,
-                    insert: None,
-                    root: crate::model::CLIP_ROOT,
-                });
-                clip_ids.push(cid);
             }
-        }
-        let added = c.project.sources.len() != before.sources.len();
-        let fold = if step || !clip_ids.is_empty() {
-            push_undo(&mut c, before);
-            None
-        } else if added {
-            c.redo.clear();
-            Some(before)
-        } else {
-            None
-        };
-        c.revision += 1;
-        if let Some(before) = fold {
-            // the edit that follows (the sampler channel) is the step, and it takes the source with it
-            let base = match c.import_base.take() {
-                Some((r, b)) if r + 1 == c.revision => b,
-                _ => before,
+            if !missing.is_empty() && _retry < 2 {
+                drop(c);
+                for stored in &missing {
+                    match Audio::load_path(stored, Path::new(".")) {
+                        Ok(a) => {
+                            if let Some((_, _, slot)) = loaded.iter_mut().find(|(_, s, _)| s == stored) {
+                                *slot = Some(a);
+                            }
+                        }
+                        Err(e) => last_error = Some(e),
+                    }
+                }
+                continue;
+            }
+            if !missing.is_empty() {
+                // still gone after a decode round: report it instead of a hollow success
+                drop(c);
+                errors.push(last_error.unwrap_or_else(|| "a sample disappeared while it was imported".into()));
+                break;
+            }
+            let added = c.project.sources.len() != before.sources.len();
+            let fold = if step || !clip_ids.is_empty() {
+                push_undo(&mut c, before);
+                None
+            } else if added {
+                c.redo.clear();
+                Some(before)
+            } else {
+                None
             };
-            c.import_base = Some((c.revision, base));
+            c.revision += 1;
+            if let Some(before) = fold {
+                // the edit that follows (the sampler channel) is the step, and it takes the source with it
+                let base = match c.import_base.take() {
+                    Some((r, b)) if r + 1 == c.revision => b,
+                    _ => before,
+                };
+                c.import_base = Some((c.revision, base));
+            }
+            self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
+            self.changed(c);
+            return Ok((src_ids, clip_ids));
         }
-        self.sync(&mut c, Dirty { timeline: true, ..Default::default() });
-        self.changed(c);
-        Ok((src_ids, clip_ids))
+        Err(EngineError::Msg(errors.join("; ")))
     }
 
     /// Points sources at other files (slow: decodes them; call off the UI thread), as one undo
@@ -179,8 +217,33 @@ impl Engine {
             let why: Vec<String> = out.iter().filter_map(|r| r.error.clone()).collect();
             return Err(EngineError::Msg(why.join("; ")));
         }
+        self.commit_relinks(loaded, None).map(|mut relinked| {
+            out.append(&mut relinked);
+            out
+        })
+    }
+
+    /// Commits already-decoded relinks as one undo step: the audio handed in is exactly the
+    /// audio that gets committed (a search's length check keeps ruling over what a re-decode
+    /// would find). `expect_rev`: the project revision the relinks were picked against —
+    /// a different project now refuses the whole batch, and the caller starts over.
+    fn commit_relinks(&self, loaded: Vec<(Id, String, Arc<Audio>)>, expect_rev: Option<u64>) -> Result<Vec<Relinked>, EngineError> {
         let mut c = self.core.lock();
+        for (id, ..) in &loaded {
+            let Some(s) = c.project.sources.iter().find(|s| s.id == *id) else {
+                return Err(EngineError::Msg(format!("no source {id}")));
+            };
+            if s.path.starts_with(crate::factory::SCHEME) {
+                return Err(EngineError::Msg(format!("{}: a library sample; install its kit instead", s.name)));
+            }
+        }
+        if let Some(r) = expect_rev {
+            if r != c.revision {
+                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
+            }
+        }
         let before = c.project.clone();
+        let mut out = vec![];
         for (id, path, audio) in loaded {
             // the source may have gone while the files decoded
             let Some(k) = c.project.sources.iter().position(|s| s.id == id) else {
@@ -224,10 +287,19 @@ impl Engine {
                 .map(|s| (s.id, s.path.clone(), s.dur))
                 .collect()
         };
+        // the automatic relinks are bound to the project they were scanned for: if another
+        // open replaced it meanwhile, the caller searches again instead of pointing at ids
+        // that now mean something else
+        let scan_rev = {
+            let c = self.core.lock();
+            c.revision
+        };
         let names: Vec<(Id, String)> = wanted.iter().map(|w| (w.0, w.1.clone())).collect();
         let found = crate::relink::search(folder, &names, crate::relink::Limits::default());
         let mut candidates = found.candidates;
-        let mut take = vec![];
+        // the decode that passed the length check is the decode that gets committed: a file
+        // changing under the search cannot smuggle a different length past it
+        let mut take: Vec<(Id, String, Arc<Audio>)> = vec![];
         let mut not_found = vec![];
         for (id, _, dur) in &wanted {
             let Some(list) = candidates.get(id) else {
@@ -238,11 +310,11 @@ impl Engine {
             // the length decides; a file that does not decode stays a candidate
             if let Ok(a) = Audio::load(Path::new(&best.path)) {
                 if crate::relink::same_length(*dur, a.seconds()) {
-                    take.push(Relink { source_id: *id, path: best.path.clone() });
+                    take.push((*id, best.path.clone(), Arc::new(a)));
                 }
             }
         }
-        let relinked = if take.is_empty() { vec![] } else { self.relink_sources(&take)? };
+        let relinked = if take.is_empty() { vec![] } else { self.commit_relinks(take, Some(scan_rev))? };
         for r in relinked.iter().filter(|r| r.error.is_none()) {
             candidates.remove(&r.source_id);
         }
@@ -271,61 +343,93 @@ impl Engine {
             let a = Audio::load_path(&path, Path::new(".")).map_err(EngineError::Msg)?;
             decoded.push((path, a));
         }
-        let mut c = self.core.lock();
-        if let Some(r) = if_revision {
-            if r != c.revision {
-                return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
+        // A sample that was loaded at the scan can be gone at commit time (another open
+        // replaced the project): it is decoded here, outside the lock, and the commit is
+        // retried — `build` must never see a map that lacks a file it asked for.
+        let mut last_error = None;
+        for _retry in 0..3 {
+            let mut c = self.core.lock();
+            if let Some(r) = if_revision {
+                if r != c.revision {
+                    return Err(EngineError::Msg(format!("{ERR_REVISION_CONFLICT} project is at revision {}, not {r}", c.revision)));
+                }
             }
-        }
-        let before = c.project.clone();
-        let mut ids: HashMap<String, Id> = HashMap::new();
-        for f in files {
-            let path = crate::factory::lib_path(f);
-            if let Some(s) = c.project.sources.iter().find(|s| s.path == path && c.sources.get(s.id).is_some()) {
-                ids.insert(f.to_string(), s.id);
+            let before = c.project.clone();
+            let mut ids: HashMap<String, Id> = HashMap::new();
+            for f in files {
+                let path = crate::factory::lib_path(f);
+                if let Some(s) = c.project.sources.iter().find(|s| s.path == path && c.sources.get(s.id).is_some()) {
+                    ids.insert(f.to_string(), s.id);
+                }
             }
-        }
-        let mut added = vec![];
-        for (path, audio) in decoded {
-            let Some(ff) = crate::factory::embedded(&path) else { continue };
-            if ids.contains_key(ff.file) {
+            // requested by file name and neither resolvable from the live project nor decoded
+            let missing: Vec<String> = files
+                .iter()
+                .map(|f| crate::factory::lib_path(f))
+                .filter(|path| match crate::factory::embedded(path).map(|ff| ff.file) {
+                    Some(n) if ids.contains_key(n) => false,
+                    _ => !decoded.iter().any(|(d, _)| d == path),
+                })
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect();
+            if !missing.is_empty() && _retry < 2 {
+                drop(c);
+                for path in &missing {
+                    match Audio::load_path(path, Path::new(".")) {
+                        Ok(a) => decoded.push((path.clone(), a)),
+                        Err(e) => last_error = Some(e),
+                    }
+                }
                 continue;
             }
-            let id = c.project.alloc_id();
-            c.project.sources.push(Source {
-                id,
-                name: ff.name.to_string(),
-                color: crate::factory::color(ff).to_string(),
-                path,
-                dur: audio.seconds(),
-                sr: audio.sr,
-                ch: audio.channels,
-                peak_db: crate::dsp::gain_to_db(audio.peak()),
-            });
-            c.sources.insert(id, Arc::new(audio));
-            ids.insert(ff.file.to_string(), id);
-            added.push(id);
-        }
-        let result = build(&c.project, &ids).map_err(EngineError::Msg).and_then(|ops| {
-            let mut p = c.project.clone();
-            ops::apply_all(&mut p, &ops).map(|_| p).map_err(EngineError::from)
-        });
-        let p = match result {
-            Ok(p) => p,
-            Err(e) => {
-                c.project = before;
-                for id in added {
-                    c.sources.audio.remove(&id);
-                }
-                return Err(e);
+            if !missing.is_empty() {
+                drop(c);
+                return Err(EngineError::Msg(last_error.unwrap_or_else(|| "a sample disappeared while it was loaded".into())));
             }
-        };
-        c.project = p;
-        push_undo(&mut c, before);
-        c.revision += 1;
-        self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
-        let rev = c.revision;
-        self.changed(c);
-        Ok(rev)
+            let mut added = vec![];
+            for (path, audio) in decoded {
+                let Some(ff) = crate::factory::embedded(&path) else { continue };
+                if ids.contains_key(ff.file) {
+                    continue;
+                }
+                let id = c.project.alloc_id();
+                c.project.sources.push(Source {
+                    id,
+                    name: ff.name.to_string(),
+                    color: crate::factory::color(ff).to_string(),
+                    path: path.clone(),
+                    dur: audio.seconds(),
+                    sr: audio.sr,
+                    ch: audio.channels,
+                    peak_db: crate::dsp::gain_to_db(audio.peak()),
+                });
+                c.sources.insert(id, Arc::new(audio));
+                ids.insert(ff.file.to_string(), id);
+                added.push(id);
+            }
+            let result = build(&c.project, &ids).map_err(EngineError::Msg).and_then(|ops| {
+                let mut p = c.project.clone();
+                ops::apply_all(&mut p, &ops).map(|_| p).map_err(EngineError::from)
+            });
+            let p = match result {
+                Ok(p) => p,
+                Err(e) => {
+                    c.project = before;
+                    for id in added {
+                        c.sources.audio.remove(&id);
+                    }
+                    return Err(e);
+                }
+            };
+            c.project = p;
+            push_undo(&mut c, before);
+            c.revision += 1;
+            self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
+            let rev = c.revision;
+            self.changed(c);
+            return Ok(rev);
+        }
+        unreachable!("the retry loop always returns or errors")
     }
 }

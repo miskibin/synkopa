@@ -7,6 +7,7 @@ impl Engine {
     /// Drops every plugin-instrument instance (the next sync makes new ones from the saved
     /// states). The audio thread's are removed by command (a rebuilt stream has none).
     pub(crate) fn forget_plugs(&self, c: &mut Core) {
+        c.plugin_gen += 1; // every hosted instance goes away; in-flight latency reports are stale
         for id in c.plugs.drain().map(|(id, _)| id).collect::<Vec<_>>() {
             self.factory.release(id);
             c.fx_errors.remove(&id);
@@ -47,6 +48,9 @@ impl Engine {
         c.graph_deferred |= defer;
         if d.mixer && !defer {
             c.graph_deferred = false;
+            // the rebuild can replace hosted instances: a latency report that was being
+            // collected while this runs belongs to the old instances (refresh_plugin_latency)
+            c.plugin_gen += 1;
             // by id and kind: an id whose kind changed is a different effect, whose processor
             // must be rebuilt, not carried (the builder only skips ids it holds as live)
             let now: HashMap<Id, FxKind> = c.project.inserts.iter().flat_map(|m| m.fx.iter().map(|f| (f.id, f.kind))).collect();
@@ -122,18 +126,23 @@ impl Engine {
     /// The factory is asked without the engine lock: it may wait for the UI thread.
     /// Returns whether anything changed.
     pub fn refresh_plugin_latency(&self) -> bool {
-        let ids: Vec<Id> = {
+        let (ids, gen): (Vec<Id>, u64) = {
             let c = self.core.lock();
             if c.wires.is_none() {
                 return false;
             }
-            c.plugin_lat.keys().copied().collect()
+            (c.plugin_lat.keys().copied().collect(), c.plugin_gen)
         };
         if ids.is_empty() {
             return false;
         }
         let now: Vec<(Id, usize)> = ids.into_iter().filter_map(|id| self.factory.latency(id).map(|l| (id, l))).collect();
         let mut c = self.core.lock();
+        // the query ran without the lock: if the instances were replaced meanwhile, the
+        // reports answer for the old ones — drop the whole batch, the next poll re-asks
+        if c.plugin_gen != gen {
+            return false;
+        }
         let mut changed = false;
         for (id, l) in now {
             if let Some(old) = c.plugin_lat.get_mut(&id) {

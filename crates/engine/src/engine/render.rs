@@ -340,6 +340,10 @@ impl Engine {
             let last = out.iter().rposition(|x| x.abs() >= DECAY_FLOOR).map_or(0, |i| i / 2 + 1);
             out.truncate(last.max(play_frames).min(out.len() / 2) * 2);
         }
+        // the final progress callback can still cancel: then the finished audio is not a result
+        if cancel.load(Relaxed) {
+            return Err(EngineError::Cancelled);
+        }
         Ok(out)
     }
 }
@@ -413,6 +417,19 @@ impl Engine {
             return Err(err("the selection renders silent: nothing to export"));
         }
         let mut c = self.core.lock();
+        // the project may have changed while the selection rendered: a clip that moved (or was
+        // deleted) must not be muted over a bounce that does not cover its new place
+        for x in &picked {
+            let now = c
+                .project
+                .clips
+                .iter()
+                .find(|y| y.id == x.id)
+                .ok_or(err("the selection changed while it was rendered (a clip was deleted); export it again"))?;
+            if now.start != x.start || now.len != x.len || now.track != x.track {
+                return Err(err("the selection changed while it was rendered (a clip moved); export it again"));
+            }
+        }
         let first = picked.iter().min_by(|a, b| a.track.cmp(&b.track).then(a.start.total_cmp(&b.start))).unwrap();
         let low = picked.iter().map(|x| x.track).max().unwrap();
         let name = match &picked[..] {
@@ -526,6 +543,9 @@ pub struct StemRegion {
     /// Where new media of this project are written (the project's audio folder, or the
     /// scratch folder of an unsaved project, which the first save moves next to it).
     pub dir: PathBuf,
+    /// The exact audio the region was cut from: a relink that swaps the file under the
+    /// same source id rejects the placement ([`Engine::place_stems`]).
+    pub source_audio: Arc<Audio>,
 }
 
 /// One separated stem for [`Engine::place_stems`]: its label ("Drums"), the WAV written to the
@@ -556,7 +576,7 @@ impl Engine {
     /// source's `Arc`.
     pub fn stem_region(&self, clip_id: Id, context_s: f64) -> Result<StemRegion, EngineError> {
         let err = |m: &str| EngineError::Msg(m.into());
-        let (clip, name, base, bpm, dir) = {
+        let (clip, name, base, bpm, dir, source_audio) = {
             let c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(err("no such clip"))?;
             if clip.kind != ClipKind::Audio {
@@ -566,7 +586,7 @@ impl Engine {
                 let why = c.source_errors.get(&clip.source).cloned().unwrap_or_else(|| "not loaded".into());
                 return Err(EngineError::Msg(format!("the clip's audio file is missing ({why}); relink it first")));
             };
-            (clip.clone(), clip_name(&c.project, &clip), base, c.project.bpm, audio_dir(&c))
+            (clip.clone(), clip_name(&c.project, &clip), base.clone(), c.project.bpm, audio_dir(&c), base)
         };
         let audio = if clip.norm || clip.rev { Arc::new(base.derived(clip.norm, clip.rev)) } else { base };
         let sr = f64::from(audio.sr);
@@ -582,8 +602,11 @@ impl Engine {
                 STEMS_MAX_S / 60.0
             )));
         }
-        let a = ((sa - context_s).max(0.0) * sr) as usize;
-        let b = (((sb + context_s) * sr).ceil() as usize).min(audio.frames);
+        // the written file is what `Audio::load` decodes again when the project reopens, and
+        // that decode stops at STEMS_MAX_S: the context shrinks so the whole region fits
+        let context = context_s.min(((STEMS_MAX_S - (sb - sa)) / 2.0).max(0.0));
+        let a = ((sa - context).max(0.0) * sr) as usize;
+        let b = (((sb + context) * sr).ceil() as usize).min(audio.frames);
         Ok(StemRegion {
             data: audio.content()[a * 2..b * 2].to_vec(),
             sr: audio.sr,
@@ -592,6 +615,7 @@ impl Engine {
             clip,
             name,
             dir,
+            source_audio,
         })
     }
 
@@ -624,6 +648,9 @@ impl Engine {
             || now.rev != region.clip.rev
             || sa < region.from_s - 1e-6
             || sb.min(region.source_s) > to_s + 1e-3
+            // a relink can swap the audio under the same source id: then the stems came
+            // out of audio the clip no longer plays
+            || !c.sources.get(region.clip.source).is_some_and(|a| Arc::ptr_eq(a, &region.source_audio))
         {
             return Err(err("the clip changed while its stems were extracted (another sample or region); extract them again"));
         }

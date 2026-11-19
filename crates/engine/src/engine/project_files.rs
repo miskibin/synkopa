@@ -13,7 +13,9 @@ impl Engine {
             return Err(EngineError::Msg("recording: stop it first".into()));
         }
         send(&mut c, Cmd::Stop);
-        send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None });
+        c.pat_gen += 1;
+        let gen = c.pat_gen;
+        send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None, gen });
         c.transport.playing = false;
         let mut project = project;
         project.migrate();
@@ -25,6 +27,10 @@ impl Engine {
         c.project = project;
         c.undo.clear();
         c.redo.clear();
+        // an open drag belongs to the replaced project: its snapshot must not land in the
+        // new one's undo stack at `end_gesture` (as after undo/redo)
+        c.gesture = None;
+        c.gesture_unreported = false;
         c.audition.clear();
         c.path = None;
         c.revision += 1;
@@ -42,27 +48,32 @@ impl Engine {
         self.snapshot_plugin_states(&mut c.project);
         let dir = path.parent().unwrap_or(Path::new("."));
         let mut p = c.project.clone();
-        // move recordings that live in the scratch folder next to the project
+        // move recordings that live in the scratch folder next to the project. The copy
+        // never replaces an existing file (two projects save `Take.wav` next to their own
+        // `Song Audio` too), and the live project learns the chosen path only after the
+        // document itself was written — a failed save must not re-point the audio.
         let audio_dir = dir.join(format!("{} Audio", path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()));
         let scratch = scratch_dir();
+        let mut moved: Vec<(String, String)> = vec![];
         for s in p.sources.iter_mut().filter(|s| !s.path.starts_with(crate::factory::SCHEME)) {
             let sp = PathBuf::from(&s.path);
             if sp.starts_with(&scratch) {
-                let dst = audio_dir.join(sp.file_name().unwrap_or_default());
+                let dst = unclaimed_path(&audio_dir, &sp);
                 std::fs::create_dir_all(&audio_dir).map_err(|e| e.to_string())?;
                 std::fs::copy(&sp, &dst).map_err(|e| format!("copying {}: {e}", sp.display()))?;
-                s.path = dst.display().to_string();
+                let dst = dst.display().to_string();
+                moved.push((s.path.clone(), dst.clone()));
+                s.path = dst;
             }
             if let Ok(rel) = Path::new(&s.path).strip_prefix(dir) {
                 s.path = rel.display().to_string();
             }
         }
         write_project_file(&p, path, true)?;
-        // keep absolute paths in memory
+        // keep absolute paths in memory, at exactly the paths the document names
         for s in c.project.sources.iter_mut() {
-            let sp = PathBuf::from(&s.path);
-            if sp.starts_with(&scratch) {
-                s.path = audio_dir.join(sp.file_name().unwrap_or_default()).display().to_string();
+            if let Some((_, dst)) = moved.iter().find(|(old, _)| *old == s.path) {
+                s.path = dst.clone();
             }
         }
         c.path = Some(path.to_path_buf());
@@ -107,19 +118,14 @@ impl Engine {
     /// Opens a copy written by [`Engine::save_copy`] as an unsaved project with unsaved
     /// changes: Save asks where to put it instead of overwriting the copy.
     pub fn open_recovered(&self, path: &Path) -> Result<Vec<String>, EngineError> {
-        self.open_recovered_for(path, None)
+        self.open_inner(path, None, Some(None))
     }
 
     /// [`Self::open_recovered`] of a copy of the project saved at `file`: the project is that
     /// file again, with the copy's changes unsaved, so Save writes them there and closing asks
     /// first. `None`: a project that was never saved (Save asks where to put it).
     pub fn open_recovered_for(&self, path: &Path, file: Option<&Path>) -> Result<Vec<String>, EngineError> {
-        let warnings = self.open(path)?;
-        let mut c = self.core.lock();
-        c.path = file.map(Path::to_path_buf);
-        c.revision += 1;
-        self.changed(c);
-        Ok(warnings)
+        self.open_inner(path, None, Some(file))
     }
 
     /// Loads a project file. Missing audio is reported, not fatal.
@@ -129,11 +135,21 @@ impl Engine {
 
     /// Checks the expected revision after decoding, before replacing the current project.
     pub fn open_at_revision(&self, path: &Path, if_revision: Option<u64>) -> Result<Vec<String>, EngineError> {
+        self.open_inner(path, if_revision, None)
+    }
+
+    /// One open path for all callers. `recovered`: the project opens from a recovery copy —
+    /// `None` for a never-saved one, `Some(file)` for a copy of `file` — and its final path
+    /// and unsaved state are installed in the same commit as the project, so no open in
+    /// between can take them. `None`: an ordinary open of `path` itself.
+    fn open_inner(&self, path: &Path, if_revision: Option<u64>, recovered: Option<Option<&Path>>) -> Result<Vec<String>, EngineError> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("not a Synkopa project: {e}"))?;
         let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a Synkopa project: {e}"))?;
         p.migrate();
-        let dir = path.parent().unwrap_or(Path::new("."));
+        // media paths are joined against the project's directory: that join must produce
+        // absolute paths even when the caller passed a relative one
+        let dir = std::path::absolute(path.parent().unwrap_or(Path::new("."))).map_err(|e| e.to_string())?;
         let mut warnings = vec![];
         let mut errors = HashMap::new();
         let mut store = SourceStore::default();
@@ -144,7 +160,7 @@ impl Engine {
                 let abs = if sp.is_absolute() { sp } else { dir.join(sp) };
                 s.path = abs.display().to_string();
             }
-            match Audio::load_path(&s.path, dir) {
+            match Audio::load_path(&s.path, &dir) {
                 Ok(a) => store.insert(s.id, Arc::new(a)),
                 Err(e) => {
                     errors.insert(s.id, e.clone());
@@ -166,7 +182,9 @@ impl Engine {
             }
         }
         send(&mut c, Cmd::Stop);
-        send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None });
+        c.pat_gen += 1;
+        let gen = c.pat_gen;
+        send(&mut c, Cmd::PatPlay { id: None, from: 0.0, range: None, gen });
         c.transport.playing = false;
         c.sources = store;
         c.source_errors = errors;
@@ -174,9 +192,20 @@ impl Engine {
         c.audition.clear();
         c.undo.clear();
         c.redo.clear();
-        c.path = Some(path.to_path_buf());
+        // an open drag belongs to the replaced project: its snapshot must not land in the
+        // new one's undo stack at `end_gesture` (as after undo/redo and in new_project)
+        c.gesture = None;
+        c.gesture_unreported = false;
+        c.path = match recovered {
+            Some(file) => file.map(Path::to_path_buf),
+            None => Some(path.to_path_buf()),
+        };
         c.revision += 1;
         c.saved_revision = c.revision;
+        if recovered.is_some() {
+            // the recovery copy's changes are unsaved: Save must ask where to put them
+            c.revision += 1;
+        }
         c.fx_errors.clear();
         // another project's channel may reuse an id: its plugin instruments start fresh
         self.forget_plugs(&mut c);
@@ -214,15 +243,21 @@ pub(crate) fn project_document(p: &Project) -> serde_json::Value {
 /// the file being replaced is kept as [`backup_path`] first; a failed backup never
 /// blocks the save.
 fn write_project_file(p: &Project, path: &Path, backup: bool) -> Result<(), EngineError> {
+    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let text = serde_json::to_string_pretty(&project_document(p)).map_err(|e| e.to_string())?;
-    let tmp = path.with_extension("wave.tmp");
+    // a unique temporary per call: two overlapping saves (`Song.synkopa` and `Song.wave`)
+    // must never share one, or the first could publish the second's snapshot
+    let tmp = path.with_extension(format!("tmp-{}-{}", std::process::id(), TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
     std::fs::write(&tmp, text).map_err(|e| e.to_string())?;
     if backup && path.is_file() {
         if let Err(e) = std::fs::copy(path, backup_path(path)) {
             log::warn!("could not keep a backup of {}: {e}", path.display());
         }
     }
-    std::fs::rename(&tmp, path).map_err(|e| e.to_string())?;
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e.to_string().into());
+    }
     Ok(())
 }
 
@@ -277,4 +312,19 @@ pub(crate) fn fresh_path(dir: &Path, stem: &str) -> PathBuf {
 
 pub(crate) fn sanitize(s: &str) -> String {
     s.chars().map(|ch| if ch.is_alphanumeric() || ch == ' ' || ch == '-' || ch == '_' { ch } else { '_' }).collect()
+}
+
+/// Where to copy scratch file `src` inside `dir`: its own name, or `stem (2).ext` … when
+/// that file is already there. Two projects save `Take.wav` next to their own
+/// `Song Audio` too, so a move must never replace audio that is already there.
+fn unclaimed_path(dir: &Path, src: &Path) -> PathBuf {
+    let stem = src.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = src.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+    let mut p = dir.join(format!("{stem}{ext}"));
+    let mut k = 2;
+    while p.exists() {
+        p = dir.join(format!("{stem} ({k}){ext}"));
+        k += 1;
+    }
+    p
 }

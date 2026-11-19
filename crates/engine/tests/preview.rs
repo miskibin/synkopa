@@ -134,13 +134,37 @@ fn pattern_play_stops_the_song_and_the_song_stops_the_pattern() {
     assert!(heard > 1e-3, "the pattern must sound on its own ({heard})");
     assert!(e.pattern_play(Some(999_999), 0.0, None).is_err(), "an unknown pattern is an error");
     assert!(e.pattern_play(Some(1), f64::NAN, None).is_err(), "a not-a-number position is an error");
-    e.pattern_play(None, 0.0, None).unwrap();
-    let mut after = 0f32;
+
+    // the other direction: starting the song ends the pattern loop at once. The sketch's
+    // own playlist clips keep sounding, so the published pattern playhead is the check.
+    e.play(0.0);
+    assert!(e.state().transport.playing, "the song is playing again");
+    rt.process(&mut l, &mut r, None); // the Play command takes effect on the next block
+    assert!(e.shared().pat_beat() < 0.0, "starting the song must stop the pattern loop");
     for _ in 0..80 {
         rt.process(&mut l, &mut r, None);
-        after = after.max(peak(&l));
+        assert!(e.shared().pat_beat() < 0.0, "the pattern loop came back under the song");
     }
-    assert!(after < 1e-6, "the pattern kept playing ({after})");
+
+    // and an explicit stop still ends a running loop
+    e.pattern_play(Some(1), 0.0, None).unwrap();
+    let mut heard = 0f32;
+    for _ in 0..40 {
+        rt.process(&mut l, &mut r, None);
+        heard = heard.max(peak(&l));
+    }
+    assert!(heard > 1e-3, "the restarted pattern must sound ({heard})");
+    e.pattern_play(None, 0.0, None).unwrap();
+    rt.process(&mut l, &mut r, None); // the stop takes effect on the next block
+    assert!(e.shared().pat_beat() < 0.0, "pattern_play(None) must stop the loop");
+    // the loop no longer schedules: no new kicks start, the last ones just ring out
+    let mut last = 0f32;
+    for _ in 0..120 {
+        rt.process(&mut l, &mut r, None);
+        last = peak(&l);
+        assert!(e.shared().pat_beat() < 0.0, "the pattern loop came back after the stop");
+    }
+    assert!(last < 1e-4, "nothing was still being scheduled ({last})");
 }
 
 #[test]
@@ -156,10 +180,17 @@ fn pattern_loop_range_validates_and_needs_a_loop() {
     e.pattern_play(Some(1), 0.0, None).unwrap();
     e.pattern_loop(Some((0.0, 2.0))).unwrap();
     let mut heard = 0f32;
-    for _ in 0..80 {
+    for _ in 0..40 {
         rt.process(&mut l, &mut r, None);
         heard = heard.max(peak(&l));
     }
     assert!(heard > 1e-3, "the loop keeps playing inside its range ({heard})");
+    // a range that excludes the playhead moves the playhead into the range
+    e.pattern_loop(Some((2.0, 4.0))).unwrap();
+    for _ in 0..10 {
+        rt.process(&mut l, &mut r, None);
+    }
+    let beat = e.shared().pat_beat();
+    assert!((2.0..4.0).contains(&beat), "the playhead must follow the new range, got {beat}");
     e.pattern_play(None, 0.0, None).unwrap();
 }

@@ -40,6 +40,9 @@ pub struct Shared {
     preview_pos: AtomicU32,
     /// Beats into the previewed pattern (f64 bits); negative when no pattern preview runs.
     pat_beat: AtomicU64,
+    /// Which loop the pattern playhead answers for (bumped on every PatPlay/PatRange): a
+    /// pattern recorder armed before the switch ignores beats of the loop still running.
+    pat_gen: AtomicU64,
     /// Per insert *index*: (L, R) peak since last read.
     meters: Vec<(AtomicU32, AtomicU32)>,
     gr: Vec<AtomicU32>,
@@ -88,6 +91,7 @@ impl Shared {
             underruns: AtomicU32::new(0),
             preview_pos: AtomicU32::new((-1f32).to_bits()),
             pat_beat: AtomicU64::new((-1f64).to_bits()),
+            pat_gen: AtomicU64::new(0),
             meters: (0..MAX_INSERTS).map(|_| (AtomicU32::new(0), AtomicU32::new(0))).collect(),
             gr: (0..WATCH_SLOTS).map(|_| AtomicU32::new(0)).collect(),
             fx_meters: (0..WATCH_SLOTS).map(|_| std::array::from_fn(|_| AtomicU32::new(0))).collect(),
@@ -134,6 +138,10 @@ impl Shared {
     /// Beats into the pattern the loop preview plays, or a negative number when it is stopped.
     pub fn pat_beat(&self) -> f64 {
         f64::from_bits(self.pat_beat.load(Relaxed))
+    }
+    /// Which loop the pattern playhead answers for (see [`Cmd::PatPlay`]).
+    pub fn pat_gen(&self) -> u64 {
+        self.pat_gen.load(Relaxed)
     }
     pub fn fx_meters(&self, slot: usize) -> [f32; METERS] {
         std::array::from_fn(|i| fget(&self.fx_meters[slot][i]))
@@ -880,15 +888,19 @@ pub enum Cmd {
         pattern: Option<Id>,
     },
     /// Loop one pattern on its own (`None` stops), from `from` beats into it, within `range`
-    /// (beats; `None` = the whole pattern). Exclusive with the song transport.
+    /// (beats; `None` = the whole pattern). Exclusive with the song transport. `gen`: the
+    /// loop's generation — the audio thread publishes it once this command runs, so a
+    /// pattern-recorder armed before the switch knows when its loop is live.
     PatPlay {
         id: Option<Id>,
         from: f64,
         range: Option<(f64, f64)>,
+        gen: u64,
     },
     /// The pattern loop's range changed while it plays (`None` = the whole pattern): the
-    /// position stays, or goes to the range's start when it falls outside it.
-    PatRange(Option<(f64, f64)>),
+    /// position stays, or goes to the range's start when it falls outside it. `gen` as in
+    /// [`Cmd::PatPlay`].
+    PatRange(Option<(f64, f64)>, u64),
     /// Live MIDI key down/up on a channel. It plays where the song plays the channel (its own
     /// insert, else the track of its pattern); `ins` (the armed track's insert) only for a
     /// channel the song does not play yet, else the master.
@@ -1495,7 +1507,8 @@ impl Rt {
                         self.trash(Garbage::Synth(old));
                     }
                 }
-                Cmd::PatPlay { id, from, range } => {
+                Cmd::PatPlay { id, from, range, gen } => {
+                    self.shared.pat_gen.store(gen, Relaxed);
                     if id.is_some() && self.playing {
                         self.stop(false);
                     }
@@ -1513,7 +1526,10 @@ impl Rt {
                         self.jump();
                     }
                 }
-                Cmd::PatRange(range) => self.pat_range = range,
+                Cmd::PatRange(range, gen) => {
+                    self.shared.pat_gen.store(gen, Relaxed);
+                    self.pat_range = range;
+                }
             }
         }
     }
