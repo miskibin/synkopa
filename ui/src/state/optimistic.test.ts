@@ -76,6 +76,40 @@ describe('optimistic editing covers every op', () => {
     expect((await import('./ui')).U.readout).toContain('scale must be 0..4');
   });
 
+  it('reapplies still-pending drag frames after a refused frame wipes them', async () => {
+    edit.commit([{ op: 'setKey', key: 3, scale: 2 }], 'test: set key');
+    await edit.settled();
+    const realApply = mock.applyOps.bind(mock);
+    const realGet = mock.getState.bind(mock);
+    let applyCalls = 0;
+    let getCalls = 0;
+    let releaseRead: () => void = () => {};
+    const readGate = new Promise<void>(r => { releaseRead = r; });
+    vi.spyOn(mock, 'applyOps').mockImplementation(async (ops, opts) => {
+      if (applyCalls++ === 0) throw new Error('scale must be 0..4'); // only the first frame refuses
+      return realApply(ops, opts);
+    });
+    // hold the refusal's state read open, so a newer frame can buffer while it is in flight
+    vi.spyOn(mock, 'getState').mockImplementation(async () => {
+      if (getCalls++ === 0) await readGate;
+      return realGet();
+    });
+    const g = new edit.Gesture('test: refused drag, newer frame buffered');
+    g.update([{ op: 'setKey', key: 5, scale: 9 }]); // frame A: refused engine-side
+    await new Promise(r => setTimeout(r, 0)); // the rAF flush: frame A refused, its read-back in flight
+    g.update([{ op: 'setKey', key: 3, scale: 3 }]); // frame B: valid, buffered while the read-back is in flight
+    expect(store.S.project.scale).toBe(3); // applied locally
+    releaseRead(); // the read-back lands now: it must not leave frame B off the screen
+    // asserted while the gesture is still open: reconciliation waits for the gesture to
+    // close, so a wiped preview could not silently repair itself here
+    await edit.settled();
+    expect(store.S.project.scale).toBe(3); // the still-pending frame is back on screen…
+    g.end();
+    await edit.settled();
+    expect(store.S.project.scale).toBe(3); // …and it stays
+    expect((await mock.getState()).project.scale).toBe(3); // the engine took the pending frame too
+  });
+
   it('repairs a refused frame even when the first state read fails', async () => {
     edit.commit([{ op: 'setKey', key: 3, scale: 2 }], 'test: set key');
     await edit.settled();

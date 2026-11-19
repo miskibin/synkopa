@@ -49,23 +49,31 @@ fn longest_zero_run(x: &[f32]) -> (usize, usize) {
 /// optionally through a reverb; the first second is played already. The `TempDir` guard
 /// must stay bound in the caller: it removes the fixture WAV when the test ends.
 fn setup(tag: &str, reverb: bool) -> (Arc<Engine>, Rt, tempfile::TempDir) {
+    setup_with(tag, reverb, 900, 27000, |_| {})
+}
+
+/// `setup` with a custom burst length and period: a long burst over a long period builds
+/// a reverb wet (and a diffuse tail) that is still loud when the burst ends, which is what
+/// a flip-in-a-dry-gap test needs to cut.
+fn setup_with(tag: &str, reverb: bool, burst: usize, period: usize, adjust: impl FnOnce(&mut Fx)) -> (Arc<Engine>, Rt, tempfile::TempDir) {
     let mut p = Project::routed();
     for m in p.inserts.iter_mut() {
         m.fx.clear();
     }
     if reverb {
         let ins = p.tracks[1].insert;
-        p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx.push(new_fx(7000, FxKind::Reverb, p.bpm));
+        let mut fx = new_fx(7000, FxKind::Reverb, p.bpm);
+        adjust(&mut fx);
+        p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx.push(fx);
     }
     let e = Engine::new(p, Arc::new(NoPlugins));
     let dir = tempfile::TempDir::with_prefix(format!("wave-declick-{tag}-")).expect("temp dir");
     let wav = dir.path().join("tone.wav");
-    // 900-sample bursts of 480 Hz (9 whole cycles, so both edges land on a zero crossing),
-    // every 27000 frames: dry gaps long enough to measure a tail in
-    let (period, burst) = (27000usize, 900usize);
+    // bursts of 480 Hz (whole cycles, so both edges land on a zero crossing): dry gaps
+    // long enough to measure a tail in
     let mut x = vec![0f32; SR as usize * 2 * 12];
     for start in (0..x.len()).step_by(period) {
-        for i in 0..burst {
+        for i in 0..burst.min(period).min(x.len() - start) {
             x[start + i] = 0.45 * (std::f32::consts::TAU * i as f32 / 100.0).sin();
         }
     }
@@ -126,12 +134,25 @@ fn bypass_ramps_to_dry_and_back_without_steps() {
     assert!(to_dry < 1e-4, "bypassed output did not reach the dry level: max diff {to_dry}");
     assert!(still_wet > 0.005, "bypassed output is still the wet signal (diff {still_wet}) — bypass is a no-op");
 
-    // and back on: smooth across the flip, and reverb tail energy returns in the gaps.
-    // (The processor intentionally does not run while fully bypassed, so its state has
-    // missed that input: a bit-comparison against the never-bypassed reference is
-    // impossible here — what must hold is that the tail is back, at a comparable level.)
+    // and back on, mid-burst (a real user re-enables while audio is playing; the processor
+    // intentionally does not run while bypassed, so into a quiet gap it would fade silence
+    // and only the next burst could tell wet from dry): smooth across the flip, and the
+    // reverb tail is back in the gaps at a comparable level. The three engines stay in
+    // frame lockstep while scanning for the burst.
+    let mut last = vec![0f32; BLOCK];
+    let mut burst = false;
+    for _ in 0..80 {
+        last = run(&mut rt, BLOCK);
+        run(&mut rt_wet, BLOCK);
+        run(&mut rt_dry, BLOCK);
+        if last.iter().fold(0.0f32, |a, &v| a.max(v.abs())) > 0.3 {
+            burst = true;
+            break;
+        }
+    }
+    assert!(burst, "no burst arrived to re-enable into");
     put(&e, 1, new_fx(7000, FxKind::Reverb, e.project().bpm));
-    let mut around = vec![*muted.last().unwrap()];
+    let mut around = vec![*last.last().unwrap()];
     around.extend(run(&mut rt, BLOCK * 2));
     let up = max_step(&around);
     run(&mut rt_wet, BLOCK * 2);
@@ -192,8 +213,8 @@ fn bypassing_a_latency_effect_stays_on_one_time_base_until_the_fade_is_done() {
     fx_wet.params.insert("look".into(), 15.0);
     put(&e_wet, 1, fx_wet);
     // the warm-up inside `setup` rendered 187 blocks; 130 more put the flip frame (81152)
-    // into the middle of a tone burst — flipping inside a gap would park the chain silent
-    // (silence skipping) and freeze the fade mid-state instead of exercising it
+    // into the middle of a tone burst — the flip-inside-a-gap case (silence skipping must
+    // not park the chain mid-fade) is pinned by the two `..._in_a_dry_gap` tests below
     const PRE: usize = 130 * BLOCK;
     let pre = run(&mut rt, PRE);
     let wet_pre = run(&mut rt_wet, PRE);
@@ -235,4 +256,84 @@ fn bypassing_a_latency_effect_stays_on_one_time_base_until_the_fade_is_done() {
     assert!(down < 0.08, "the latency handoff stepped the signal: jump {down}");
     assert!(to_wet > 0.005, "the output is still the wet signal (diff {to_wet}) — the bypass never landed");
     assert!(to_dry < 1e-4, "after the release the output must be exactly dry: diff {to_dry}");
+}
+
+#[test]
+fn bypass_in_a_dry_gap_fades_before_the_chain_parks() {
+    // Flipping bypass while the input is already silent: the reverb tail still rings and
+    // the ~5 ms ramp-out must play out before silence skipping parks the chain — parking
+    // at the flip would cut the ringing tail in one sample at a block boundary.
+    let (e, mut rt, _dir) = setup_with("gap-reverb", true, 40000, 60000, |_| {});
+    // run past a ~420 ms burst and stop at the first block whose input is exact silence
+    // (the burst ended inside the previous one): the reverb is still ringing the burst
+    // there, while the quiet is far below the ~3 s tail — so the chain is running and not
+    // parked (a parked one would pass for the wrong reason)
+    let mut pre: Vec<f32> = Vec::new();
+    let (mut loud, mut quiet_blocks) = (false, 0);
+    for _ in 0..300 {
+        let b = run(&mut rt, BLOCK);
+        let p = b.iter().fold(0.0f32, |a, &v| a.max(v.abs()));
+        pre.extend_from_slice(&b);
+        if p > 0.3 {
+            loud = true;
+            quiet_blocks = 0;
+        } else if loud {
+            quiet_blocks += 1;
+            if quiet_blocks == 1 {
+                break;
+            }
+        }
+    }
+    let level = pre.iter().fold(0.0f32, |a, &v| a.max(v.abs()));
+    let seam = pre.last().unwrap().abs();
+    assert!(level > 0.3, "no burst played for the test to flip in (peak {level})");
+    assert!(seam > 0.04, "the reverb must still ring in the first silent-input block (seam {seam})");
+
+    put(&e, 1, Fx { bypass: true, ..new_fx(7000, FxKind::Reverb, e.project().bpm) });
+    let mut around = vec![*pre.last().unwrap()];
+    around.extend(run(&mut rt, BLOCK * 3));
+    let down = max_step(&around);
+    eprintln!("gap bypass: jump {down:.4} (seam {seam:.4})");
+    // parking at the flip cuts the ring in one sample (a step of ~the whole seam); the
+    // ramp-out bounds the per-sample step well under half of it
+    assert!(down < seam * 0.5, "bypassing in a dry gap cut the ringing tail at a block boundary: jump {down}");
+
+    // settled: the fades are done, the chain parks, and the gap passes through as exact
+    // silence — a fade frozen part-way (or a chain that never settles) stays audible here.
+    // The window stays inside the inter-burst gap (a burst passes through loud).
+    let settled = run(&mut rt, BLOCK * 20);
+    let loudest = settled.iter().fold(0.0f32, |a, &v| a.max(v.abs()));
+    assert!(loudest < 1e-6, "the bypassed chain must settle to exact silence in the gap (peak {loudest})");
+}
+
+#[test]
+fn bypassing_a_latency_effect_in_a_dry_gap_finishes_the_release() {
+    // The same flip in a dry gap, on an effect with a look-ahead: after the ramp-out the
+    // dry path still sits on the old latency and must hand back in the second declick
+    // before the chain parks — parking between the two freezes the handoff and cuts the
+    // still-late ring at a block boundary.
+    let (e, mut rt, _dir) = setup("gap-deess", false);
+    let mut fx = new_fx(7001, FxKind::Deess, e.project().bpm);
+    fx.params.insert("look".into(), 15.0);
+    put(&e, 1, fx);
+    // run to just past a burst end: the input is already exact silence for those blocks,
+    // but the 720-frame look-ahead is still playing the burst's delayed tail, so the wet
+    // is loud and the chain is running (quiet 512 < the look-ahead)
+    let pre = run(&mut rt, 6900 + BLOCK * 2);
+    let level = pre.iter().fold(0.0f32, |a, &v| a.max(v.abs()));
+    assert!(level > 0.2, "the delayed burst tail must still sound in the gap for the test to mean anything (peak {level})");
+
+    let mut off = new_fx(7001, FxKind::Deess, e.project().bpm);
+    off.bypass = true;
+    off.params.insert("look".into(), 15.0);
+    put(&e, 1, off);
+    let mut around = vec![*pre.last().unwrap()];
+    around.extend(run(&mut rt, BLOCK * 3));
+    let down = max_step(&around);
+    eprintln!("gap latency bypass: jump {down:.4} (tail level {level:.4})");
+    assert!(down < 0.08, "bypassing a latency effect in a dry gap cut the still-late ring: jump {down}");
+
+    let settled = run(&mut rt, SR as usize / 5);
+    let loudest = settled.iter().fold(0.0f32, |a, &v| a.max(v.abs()));
+    assert!(loudest < 1e-6, "the bypassed chain must settle to exact silence in the gap (peak {loudest})");
 }

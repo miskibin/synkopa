@@ -2448,6 +2448,18 @@ fn gate(ins: &mut InsertRt, n: usize, enabled: bool, watch: &[Id]) -> Gate {
                 return Gate::Run;
             }
             if s.bypass {
+                // a bypass ramp-out — and the dry handoff after it — is still audible: the
+                // chain keeps running until both fades settle, whatever the tails say. The
+                // flip may land after the silence began, so the elapsed quiet does not cover
+                // the fade; parking here would freeze it mid-ramp and cut the wet (or the
+                // still-late dry) at a block boundary. run_chain only advances a slot's fades
+                // where it runs the slot at all (low-latency monitoring skips delayed slots),
+                // so a fade that cannot advance must not hold the chain awake either.
+                let delayed = !s.dly_l.is_empty();
+                let fading = (s.fade > 0.0 && s.proc.is_some()) || (s.dly_fade > 0.0 && delayed);
+                if fading && (!ins.low_lat || !delayed) {
+                    return Gate::Run;
+                }
                 continue;
             }
             tail = tail.saturating_add(s.dly_l.len());

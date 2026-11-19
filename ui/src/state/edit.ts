@@ -179,13 +179,18 @@ export class Gesture {
     }
   }
   private mark(k: string) { if (!this.order.includes(k)) this.order.push(k); }
-  private take(): Op[] {
+  /** The ops `take()` would send, without taking them. */
+  private peek(): Op[] {
     const ops: Op[] = [];
     for (const k of this.order) {
       if (k === 'clips') { if (this.putClips.size) ops.push({ op: 'putClips', clips: [...this.putClips.values()] }); }
       else if (k === 'remove') { if (this.removed.size) ops.push({ op: 'removeClips', ids: [...this.removed] }); }
       else { const op = this.other.get(k); if (op) ops.push(op); }
     }
+    return ops;
+  }
+  private take(): Op[] {
+    const ops = this.peek();
     this.putClips.clear(); this.removed.clear(); this.other.clear(); this.order = [];
     return ops;
   }
@@ -196,7 +201,14 @@ export class Gesture {
     this.busy = true;
     enqueue(() => be().applyOps(ops, { label: this.label, transient: true }))
       // a refused frame must not leave its local state on screen: pull the engine's truth, like commit()
-      .then(noteRev, e => resync(e))
+      .then(noteRev, e => resync(e).then(() => {
+        // the read-back put the engine's truth on screen — and with it wiped the frames that
+        // buffered while this one was in flight (each was applied locally from `update` but
+        // never sent). Reapply just those still-pending ops so the preview matches what the
+        // next flush sends; the refused ops themselves stay gone (they were taken to send).
+        const pending = this.peek();
+        if (pending.length) applyLocal(pending);
+      }))
       .finally(() => { this.busy = false; if (this.order.length) this.flush(); });
   }
 
