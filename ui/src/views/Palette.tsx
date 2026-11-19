@@ -2,6 +2,7 @@
 // knowing which menu holds it. It reads the app menus themselves, so a command added to a menu is
 // here too, with the same shortcut, the same disabled state and the same action.
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
+import { matchCommand } from '../lib/commandMatch';
 import { t, type TranslationKey } from '../lib/i18n';
 import type { MenuItem } from '../state/ui';
 import { Icon } from '../ui/icons';
@@ -19,13 +20,6 @@ function flatten(items: MenuItem[], path: string, out: Cmd[]) {
     if (it.t === 'item') out.push({ path, label: it.label, kbd: it.kbd, disabled: it.disabled, act: it.act });
     else if (it.t === 'sub') flatten(it.items, path + ' › ' + it.label, out);
   }
-}
-
-/** Every word of the query must be in the command's menu path or name; accents and case are ignored. */
-const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').toLowerCase();
-export function matchCommand(text: string, query: string): boolean {
-  const hay = fold(text);
-  return fold(query).split(/\s+/).filter(Boolean).every(w => hay.includes(w));
 }
 
 export function Palette() {

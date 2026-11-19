@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchCommand } from './Palette';
+import { matchCommand } from './commandMatch';
 
 describe('matchCommand', () => {
   it('needs every word of the query, in any order, ignoring case', () => {
