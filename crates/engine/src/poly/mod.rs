@@ -70,7 +70,7 @@ fn headroom(mode: f32) -> f32 {
 
 #[derive(Clone, Copy, Debug)]
 enum Ev {
-    On { key: u8, vel: f32, id: u32, live: bool },
+    On { key: u8, vel: f32, id: u32, live: bool, pan: f32 },
     Off { id: u32 },
 }
 
@@ -274,13 +274,18 @@ impl SynthInst {
 
     /// A sequenced note: starts `delay` samples from now, lasts `len` samples.
     pub fn note(&mut self, delay: u32, len: u32, key: u8, vel: f32, dest: Dest) {
+        self.note_pan(delay, len, key, vel, dest, 0.0);
+    }
+
+    /// [`Self::note`] with the note's own pan (-1 = left .. 1 = right), added to the patch's.
+    pub fn note_pan(&mut self, delay: u32, len: u32, key: u8, vel: f32, dest: Dest, pan: f32) {
         if self.events.len() + 2 > self.events.capacity() {
             return;
         }
         let id = self.new_id();
         let at = self.now + delay as u64;
         self.dest = Some(dest);
-        self.push(Event { at, ev: Ev::On { key, vel, id, live: false } });
+        self.push(Event { at, ev: Ev::On { key, vel, id, live: false, pan } });
         self.push(Event { at: at + len.max(1) as u64, ev: Ev::Off { id } });
     }
 
@@ -297,7 +302,7 @@ impl SynthInst {
         let id = self.new_id();
         self.live[k] = id;
         self.dest = Some(dest);
-        self.push(Event { at: self.now, ev: Ev::On { key, vel, id, live: true } });
+        self.push(Event { at: self.now, ev: Ev::On { key, vel, id, live: true, pan: 0.0 } });
     }
 
     pub fn key_up(&mut self, key: u8) {
@@ -379,7 +384,7 @@ impl SynthInst {
         self.rng
     }
 
-    fn note_start(&mut self, key: u8, vel: f32, id: u32, live: bool) {
+    fn note_start(&mut self, key: u8, vel: f32, id: u32, live: bool, pan: f32) {
         if !self.fresh {
             self.cur = self.target;
             self.fresh = true;
@@ -399,6 +404,7 @@ impl SynthInst {
             let from = if glide >= 1.0 { self.chord_from } else { None };
             let slot = self.free_slot();
             self.voices[slot].start(&p, id, key, vel, live, self.age, seed, from, glide);
+            self.voices[slot].npan = pan;
         } else {
             // mono / legato: one voice, a stack of held keys (last note wins)
             if let Some(i) = self.stack[..self.nstack].iter().position(|s| s.1 == id) {
@@ -439,6 +445,7 @@ impl SynthInst {
                     None
                 };
                 self.voices[0].start(&p, id, key, vel, live, self.age, seed, from, glide);
+                self.voices[0].npan = pan;
                 if sounding && amp > 0.002 {
                     self.voices[0].take_over(amp, menv, STEAL_S * self.sr);
                 }
@@ -509,7 +516,7 @@ impl SynthInst {
             }
             self.events.remove(0);
             match e.ev {
-                Ev::On { key, vel, id, live } => self.note_start(key, vel, id, live),
+                Ev::On { key, vel, id, live, pan } => self.note_start(key, vel, id, live, pan),
                 Ev::Off { id } => self.note_stop(id),
             }
         }

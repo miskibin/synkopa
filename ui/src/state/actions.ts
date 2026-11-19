@@ -53,7 +53,13 @@ export async function stop(rewind = false) {
   markPlayCmd();
   setU('playing', false);
   if (rewind) setU('start', 0);
-  try { await be().transportStop(); markPlayCmd(); setU('playing', false); setTransport({ playing: false }); } catch (e) { console.warn(e); }
+  try { await be().transportStop(); markPlayCmd(); setU('playing', false); setTransport({ playing: false }); }
+  catch (e) {
+    // the engine stopped anyway; the error is a recording it could not write to disk
+    setTransport({ playing: false });
+    notify(t('d.act.stoperr', { err: String(e) }));
+    return;
+  }
   if (again) return silence(rewind);
   say(rewind ? t('d.act.stop.rew') : 'Stop');
 }

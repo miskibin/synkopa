@@ -185,19 +185,19 @@ async fn transport_play(app: St<'_>, from_beat: f64) -> R<()> {
 #[tauri::command]
 async fn transport_stop(app: St<'_>) -> R<()> {
     let a = app.inner().clone();
-    let st = tauri::async_runtime::spawn_blocking(move || {
-        a.engine.stop().map(|_| {
-            let t = a.engine.state().transport;
-            (!t.rec && !t.monitor).then(|| a.audio.set_input(false))
-        })
+    let (written, st) = tauri::async_runtime::spawn_blocking(move || {
+        // the transport stops even when the take could not be written: the input is
+        // released either way, and only then is the write failure reported
+        let written = a.engine.stop();
+        let t = a.engine.state().transport;
+        (written, (!t.rec && !t.monitor).then(|| a.audio.set_input(false)))
     })
     .await
-    .map_err(es)?
     .map_err(es)?;
     if let Some(st) = st {
         *app.status.lock() = st;
     }
-    Ok(())
+    written.map(|_| ()).map_err(es)
 }
 
 #[tauri::command]

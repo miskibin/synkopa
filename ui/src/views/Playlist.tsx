@@ -1488,6 +1488,14 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
     }, () => g.end(), 'ew-resize');
   };
   const stop = (e: Event) => e.stopPropagation();
+  // tracks play into the master unless the user sends one to a mixer channel (lane menu); only then is it shown.
+  // It sits beside the volume, so the name has the whole first row; a track too low for a second row keeps it up there.
+  const route = () => (
+    <Show when={routeIdx() > 0}>
+              <button class="mini route" title={tl('a.pl.routeTip', { out: 'Insert ' + routeIdx() })} onPointerDown={stop} onClick={e => openRouteMenu(props.i, e.clientX, e.clientY)}
+                onDblClick={() => { closeMenu(); showInsert(t().insert ?? 0); }}>{'Ins ' + routeIdx()}</button>
+            </Show>
+  );
   return (
     <div class="lane" classList={{ armrec: t().arm && S.transport.rec, dimmed: !audible() }} style={{ height: t().h + 'px' }} onPointerDown={down}>
       <div class="stripe" style={{ background: t().color }} />
@@ -1507,11 +1515,7 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
                 <svg width="7" height="7" viewBox="0 0 8 8" style={{ transform: U.takesOpen[t().id] ? 'rotate(90deg)' : 'none' }}><path d="M2 1l4 3-4 3z" fill="currentColor" /></svg>{r().comp.takes.length}
               </button>
             )}</Show>
-            {/* tracks play into the master unless the user sends one to a mixer channel (lane menu); only then is it shown */}
-            <Show when={routeIdx() > 0}>
-              <button class="mini route" title={tl('a.pl.routeTip', { out: 'Insert ' + routeIdx() })} onPointerDown={stop} onClick={e => openRouteMenu(props.i, e.clientX, e.clientY)}
-                onDblClick={() => { closeMenu(); showInsert(t().insert ?? 0); }}>{'Ins ' + routeIdx()}</button>
-            </Show>
+            <Show when={t().h < 50}>{route()}</Show>
             <MuteSolo muted={t().muted} solo={t().solo} muteTip={tl('a.pl.muteTip')} soloTip={tl('a.pl.soloTip')}
               onMute={() => A.toggleTrackMute(props.i)} onSolo={add => A.toggleTrackSolo(props.i, add)} />
             {/* recordings go to the first free track (FL); only a track picked with "Record into this track" shows it */}
@@ -1531,6 +1535,7 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
               </div>
             </div>
             <span class="mono lvtxt" classList={{ unity: Math.abs(shownVol() - VOL_UNITY) < 1e-4 }}>{volText(shownVol())}</span>
+            {route()}
           </div>
         </Show>
       </div>

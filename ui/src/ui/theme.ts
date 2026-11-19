@@ -61,7 +61,7 @@ export const LIGHT: Tokens = {
   ink: '#151a21', pre: '#7f8894', post: '#2563d9', playhead: '#11161c', onFill: '#ffffff',
   grid: '#f6f7f9', gridBar: '#cfd5dc', gridBeat: '#e3e7ec', laneAlt: '#eff1f4', rulerBg: '#eceff3', rulerText: '#5d6672', clipBody: '#ffffff',
   shade: 'rgba(255,255,255,.62)',
-  keyW: '#ffffff', keyB: '#3a4049', keyWText: '#1a1e24', keyBText: '#eef1f4', onBand: '#0b1220', tint: 1.4,
+  keyW: '#eceff3', keyB: '#3a4049', keyWText: '#1a1e24', keyBText: '#eef1f4', onBand: '#0b1220', tint: 1.4,
   clipBase: '#ffffff', clipBodyPct: 16, clipHeadPct: 62, clipHeadSelPct: 100, clipHeadSelTo: '#000000',
   clipInkTo: '#000000', clipInkPct: 78, clipText: '#0f1318', clipTextSel: '#ffffff', laneArm: '#f7eef1', gridShade: 'rgba(0,0,0,.045)',
 };

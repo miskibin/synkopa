@@ -139,9 +139,11 @@ impl Shared {
     pub fn pat_beat(&self) -> f64 {
         f64::from_bits(self.pat_beat.load(Relaxed))
     }
-    /// Which loop the pattern playhead answers for (see [`Cmd::PatPlay`]).
+    /// Which loop the pattern playhead answers for (see [`Cmd::PatPlay`]). Read it before
+    /// [`Shared::pat_beat`]: once a generation is seen, the beat read after it belongs to
+    /// that loop (the audio thread publishes the loop's position before its generation).
     pub fn pat_gen(&self) -> u64 {
-        self.pat_gen.load(Relaxed)
+        self.pat_gen.load(Acquire)
     }
     pub fn fx_meters(&self, slot: usize) -> [f32; METERS] {
         std::array::from_fn(|i| fget(&self.fx_meters[slot][i]))
@@ -1513,7 +1515,6 @@ impl Rt {
                     }
                 }
                 Cmd::PatPlay { id, from, range, gen } => {
-                    self.shared.pat_gen.store(gen, Relaxed);
                     if id.is_some() && self.playing {
                         self.stop(false);
                     }
@@ -1530,10 +1531,23 @@ impl Rt {
                         self.shared.pat_beat.store(self.pat_beat.to_bits(), Relaxed);
                         self.jump();
                     }
+                    // last, and Release: a reader that sees this generation also sees the
+                    // new loop's position, never the previous loop's beat under the new name
+                    self.shared.pat_gen.store(gen, Release);
                 }
                 Cmd::PatRange(range, gen) => {
-                    self.shared.pat_gen.store(gen, Relaxed);
                     self.pat_range = range;
+                    // a position outside the new range moves to its start now (as the next
+                    // block would), so the beat published with the generation is in range
+                    let len = self.pat_play.and_then(|pid| self.timeline.pats.iter().find(|p| p.id == pid)).map(|p| p.len);
+                    if let Some(len) = len.filter(|l| *l > 0.0) {
+                        let (la, lb) = loop_span(range, len);
+                        if !(la..lb).contains(&self.pat_beat) {
+                            self.pat_beat = la;
+                            self.shared.pat_beat.store(self.pat_beat.to_bits(), Relaxed);
+                        }
+                    }
+                    self.shared.pat_gen.store(gen, Release);
                 }
             }
         }
@@ -2278,7 +2292,7 @@ fn play(
 ) {
     if ch.kind == VoiceKind::Synth {
         if let Some(s) = synths.get(ch.id) {
-            s.note(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest);
+            s.note_pan(delay, (end.seconds().unwrap_or_default().max(0.0) * sr) as u32, key, vel * gain, dest, pan);
         }
     } else if ch.kind == VoiceKind::Plugin {
         // the level on top goes to the instance's output, not into the velocity (a plugin's

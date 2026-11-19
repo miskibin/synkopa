@@ -327,7 +327,13 @@ fn copy_no_replace(src: &Path, dir: &Path) -> Result<PathBuf, String> {
         let p = dir.join(name);
         match std::fs::OpenOptions::new().write(true).create_new(true).open(&p) {
             Ok(mut dst) => {
-                std::io::copy(&mut src_f, &mut dst).map_err(|e| e.to_string())?;
+                if let Err(e) = std::io::copy(&mut src_f, &mut dst) {
+                    // a half-written copy (disk full) is not audio: it must not sit in the
+                    // project's audio folder claiming the name the next save would use
+                    drop(dst);
+                    let _ = std::fs::remove_file(&p);
+                    return Err(e.to_string());
+                }
                 return Ok(p);
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,

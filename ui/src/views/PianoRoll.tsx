@@ -23,7 +23,7 @@ import { NOTE_NAMES, noteName } from '../lib/pitch';
 const setKeyOp = (key: number, scale: number) => ({ op: 'setKey' as const, key, scale });
 import {
   applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, nudgeNotes, nudgeVelocity, panLine, pasteStart, velocityLine,
-  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches,
+  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, wheelNotches, parsePan, sharedPan,
 } from '../lib/rollEdit';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPattern, patFrom, patLoopOf, patMode, patPlayhead, patStartOf, putNotes, rollFront, selChan,
@@ -41,7 +41,7 @@ import { noteClip, setNoteClip } from '../state/noteClipboard';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawRollLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
-import { patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
+import { patGeom, PatternChip, useDataVersion, useSize } from './patternShared';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
 import { KW, type RollCtx, type RollPtr, type Tool } from './roll/types';
@@ -511,7 +511,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     } else { const rh = geo().rowH; setViewS(v => ({ ...v, sy: clamp(v.sy + d * 0.7, 0, maxSyAt(rh)) })); }
   };
   // a note's own pan is played by sampler and Synkopa Keys channels; a synth or plugin channel has the lane on velocity only
-  const panPlays = () => ch().kind === 'sample' || ch().kind === 'keys';
+  const panPlays = () => ch().kind !== 'plugin';
   const lane = () => (panPlays() ? laneMode() : 'vel');
   const laneDown = (e: PointerEvent) => {
     if (pan(e, false)) { dragging = true; return; } // middle-drag: scroll time, as on the grid
@@ -679,9 +679,10 @@ function Roll(props: { z: number; docked?: boolean }) {
   function PropsPop(pp: { idx: number[] }) {
     let box!: HTMLDivElement, first!: HTMLInputElement;
     const init = readProps(notesRaw(), pp.idx, unwrap(ch()));
-    const shown = { vel: init.vel == null ? '' : String(init.vel), start: fmtStart(init.start), len: init.len == null ? '' : fmtLen(init.len), key: noteName(init.key) };
+    const shown = { vel: init.vel == null ? '' : String(init.vel), start: fmtStart(init.start), len: init.len == null ? '' : fmtLen(init.len), key: noteName(init.key),
+      pan: (p => (p == null ? '' : panText(p)))(sharedPan(notesRaw(), pp.idx)) };
     const [err, setErr] = createSignal('');
-    const W = 236, H = (pp.idx.length > 1 ? 196 : 176) + (pp.idx.some(i => notesRaw()[i]?.trig) ? 27 : 0);
+    const W = 236, H = (pp.idx.length > 1 ? 196 : 176) + (pp.idx.some(i => notesRaw()[i]?.trig) ? 27 : 0) + (panPlays() ? 27 : 0);
     const place = () => {
       const n = notesRaw()[pp.idx[pp.idx.length - 1]], G = geo(), { w, h } = size();
       if (!n) return { left: 0, top: 0 };
@@ -693,7 +694,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const close = () => { const w = box.closest<HTMLElement>('.win'); setPropsFor(null); w?.focus({ preventScroll: true }); };
     const apply = () => {
       const val = (name: string) => (box.querySelector(`[name=${name}]`) as HTMLInputElement).value.trim();
-      const ch0: { vel?: number; len?: number; start?: number; key?: number } = {};
+      const ch0: { vel?: number; len?: number; start?: number; key?: number; pan?: number } = {};
       const bad = (msg: string, name: string) => { setErr(msg); say(msg); (box.querySelector(`[name=${name}]`) as HTMLInputElement).select(); };
       // a field left as shown (or empty when the notes differ) changes nothing
       const v = val('vel'), s = val('start'), l = val('len'), k = val('key');
@@ -701,6 +702,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       if (s && s !== shown.start) { const x = parseStart(s); if (x == null) return bad(t('b.pr.pBadStart'), 'start'); ch0.start = x; }
       if (l && l !== shown.len) { const x = parseLen(l); if (x == null) return bad(t('b.pr.pBadLen'), 'len'); ch0.len = x; }
       if (k && k !== shown.key) { const x = parseKey(k); if (x == null) return bad(t('b.pr.pBadKey'), 'key'); ch0.key = x; }
+      if (panPlays()) { const p = val('pan'); if (p && p !== shown.pan) { const x = parsePan(p); if (x == null) return bad(t('b.pr.pBadPan'), 'pan'); ch0.pan = x; } }
       if (!Object.keys(ch0).length) return close();
       const notes = applyProps(notesRaw(), pp.idx, unwrap(ch()), ch0);
       if (!notes) { setErr(t('b.pr.pRange')); say(t('b.pr.pRange')); return; }
@@ -710,7 +712,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       close();
     };
     onMount(() => setTimeout(() => { first.focus(); first.select(); }, 0));
-    const field = (name: 'vel' | 'start' | 'len' | 'key', label: string, tip: string | undefined, ref?: (el: HTMLInputElement) => void) => (
+    const field = (name: 'vel' | 'start' | 'len' | 'key' | 'pan', label: string, tip: string | undefined, ref?: (el: HTMLInputElement) => void) => (
       <label class="rpf" title={tip}>
         <span>{label}</span>
         <input ref={ref} name={name} value={shown[name]} placeholder={shown[name] ? '' : t(name === 'len' && pp.idx.every(i => notesRaw()[i]?.trig) ? 'b.pr.trigger' : 'b.pr.pMixed')} spellcheck={false} autocomplete="off" onInput={() => setErr('')} />
@@ -727,6 +729,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div class="mt">{pp.idx.length > 1 ? t('b.pr.props') + ' · ' + notesText(pp.idx.length) : t('b.pr.props')}</div>
         <Show when={pp.idx.length > 1}><div class="rpnote">{t('b.pr.propsN', { x: notesText(pp.idx.length) })}</div></Show>
         {field('vel', t('b.pr.pVel'), undefined, el => (first = el))}
+        <Show when={panPlays()}>{field('pan', t('b.pr.pPan'), t('b.pr.pPanTip'))}</Show>
         {field('start', t('b.pr.pStart'), t('b.pr.pStartTip'))}
         {field('len', t('b.pr.pLen'), t('b.pr.pLenTip'))}
         <Show when={pp.idx.some(i => notesRaw()[i]?.trig)}>
@@ -751,10 +754,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <select class="sel chsel" title={t('b.pr.chTitle')} value={String(ch().id)} style={{ color: ch().color }} onChange={e => { selectChannel(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
           <For each={channels()}>{c => <option value={String(c.id)}>{c.name}</option>}</For>
         </select>
-        <button class="patname" title={t('b.rk.patTitle')} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4); }}>
-          <span class="sw" style={{ background: pt().color }} /><span class="ell">{pt().name}</span>
-          <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
-        </button>
+        <PatternChip pat={pt()} />
       </>}>
     <div class="roll">
       <div class="ptools">

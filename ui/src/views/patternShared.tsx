@@ -237,3 +237,13 @@ export function patternMenu(x: number, y: number, showRack = false) {
 
 /** "3 notes · 2 bars" for status lines. */
 export const patSummary = () => { const pt = curPat(); return pt ? notesText(pt.notes.length) + ' · ' + barsText(pt.len / 4) : ''; };
+
+/** The pattern an editor window shows, as a chip: its colour and name; a click lists the patterns. One for the Channel rack and the Piano roll. */
+export function PatternChip(props: { pat: Pattern }) {
+  return (
+    <button class="patname" title={t('b.rk.patTitle')} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4); }}>
+      <span class="sw" style={{ background: props.pat.color }} /><span class="ell">{props.pat.name}</span>
+      <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+    </button>
+  );
+}

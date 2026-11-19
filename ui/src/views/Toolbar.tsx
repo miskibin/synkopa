@@ -531,24 +531,17 @@ function KeyCombo(props: { k: string }) {
 }
 
 export function Help() {
-  // 130-odd shortcuts: found by typing a word of the action ("mute") or the key ("ctrl+b"), not by reading the list
-  const [q, setQ] = createSignal('');
-  createEffect(() => { if (!U.help) setQ(''); });
-  const norm = (x: string) => x.toLowerCase().replace(/\s+/g, '');
-  const shown = () => { const n = norm(q()); return n ? shortcuts().filter(([a, k]) => norm(a).includes(n) || norm(k).includes(n)) : shortcuts(); };
+  // the list is for reading; finding a command by a word is the command palette's job (Ctrl+K), linked from the title
+  const close = () => setU('help', false);
   return (
     <Show when={U.help}>
-      <div class="overlay" onPointerDown={() => setU('help', false)}>
-        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); if (q()) setQ(''); else setU('help', false); } }}>
-          <div class="hd"><span>{t('a.tb.helpTitle')}</span><button aria-label={t('a.tb.close')} onClick={() => setU('help', false)}>×</button></div>
-          <div class="helpfind">
-            <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={14} />
-            <input class="textin" type="search" ref={el => queueMicrotask(() => el.focus())} value={q()} onInput={e => setQ(e.currentTarget.value)}
-              placeholder={t('a.tb.helpSearch')} aria-label={t('a.tb.helpSearch')} spellcheck={false} />
-            <span class="n mono">{shown().length} / {shortcuts().length}</span>
-          </div>
+      <div class="overlay" onPointerDown={close}>
+        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+          <div class="hd"><span>{t('a.tb.helpTitle')}</span>
+            <button class="chip helpcmd" onClick={() => { close(); setPaletteOpen(true); }}>{t('a.cmd.title')}<kbd>Ctrl K</kbd></button>
+            <button aria-label={t('a.tb.close')} onClick={close}>×</button></div>
           <div class="helplist">
-            <For each={shown()} fallback={<div class="hint helpnone">{t('a.tb.helpNone', { q: q() })}</div>}>
+            <For each={shortcuts()}>
               {([a, k]) => <div class="sc"><span class="a">{a}</span><span class="k">{k.split(' · ').map(x => <KeyCombo k={x} />)}</span></div>}
             </For>
           </div>

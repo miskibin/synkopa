@@ -308,6 +308,25 @@ fn a_patch_change_on_an_idle_instance_applies_at_once() {
     assert_eq!(a, b);
 }
 
+/// A sequenced note's own pan moves that note in the synth's stereo image.
+#[test]
+fn a_notes_pan_moves_it_left_or_right() {
+    let sr = SR as f32;
+    let patch = presets::all()[0].patch;
+    let energy = |pan: f32| {
+        let mut s = SynthInst::new(1, patch, sr);
+        s.note_pan(0, 9600, 48, 0.8, Dest::Click, pan);
+        let (l, r) = lab::run(&mut s, 0.3, sr);
+        (l.iter().map(|x| x * x).sum::<f32>(), r.iter().map(|x| x * x).sum::<f32>())
+    };
+    let (cl, cr) = energy(0.0);
+    let (rl, rr) = energy(1.0);
+    let (ll, lr) = energy(-1.0);
+    assert!(cl > 0.0 && cr > 0.0);
+    assert!(rr > rl * 2.0 && rl < cl * 0.5, "right: {rl} {rr} (centre {cl} {cr})");
+    assert!(ll > lr * 2.0 && lr < cr * 0.5, "left: {ll} {lr} (centre {cl} {cr})");
+}
+
 /// The in-browser mock backend serves the same synth catalog as the engine: a generated copy in
 /// ui/src/api/synthCatalog.ts. Regenerate with `WAVE_UPDATE_UI=1 cargo test -p wave-engine --test synth`.
 #[test]

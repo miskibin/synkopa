@@ -71,14 +71,13 @@ export function InsertPicker(props: InsertChoice & { title: string }) {
   // the select shows the old choice again: the store change re-renders it with the new one
   const wheel = (e: WheelEvent) => wheelInsert(props, e);
   return (
-    <>
-      <span class="tag9">MIXER</span>
-      <select class="sel inspick" value={props.value == null ? '' : String(props.value)} title={props.title}
+    <label class="chip inspick" title={props.title}>{t('a.mn.mixer')}
+      <select value={props.value == null ? '' : String(props.value)} title={props.title}
         onChange={e => { const v = e.currentTarget.value; if (v === 'free') { e.currentTarget.value = props.value == null ? '' : String(props.value); pickFreeInsert(props); } else pick(v === '' ? null : +v); }} onWheel={wheel}>
         <Show when={props.nullLabel != null}><option value="">{props.nullLabel}</option></Show>
         <Show when={props.free}><option value="free">{t('d.smp.freeOpt')}</option></Show>
         <For each={S.project.inserts.filter(m => props.master || m.id !== 0)}>{m => <option value={String(m.id)}>{insName(m)}</option>}</For>
       </select>
-    </>
+    </label>
   );
 }

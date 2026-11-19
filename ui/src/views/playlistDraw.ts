@@ -339,9 +339,13 @@ export function drawFades(g: CanvasRenderingContext2D, v: View, p: Project) {
       g.stroke();
     }
     if (v.editable && cw > 36) {
-      g.fillStyle = rgba(T.ink, 0.85);
-      g.beginPath(); g.roundRect(cx + fi - 1, by, 9, 9, [0, 0, 3, 0]); g.fill();
-      g.beginPath(); g.roundRect(cx + cw - fo - 8, by, 9, 9, [0, 0, 0, 3]); g.fill();
+      // the fade grips: full on a selected clip and on a fade that is set; otherwise a quiet corner mark
+      const on = v.sel.has(c.id);
+      g.fillStyle = rgba(T.ink, on || fi ? 0.85 : 0.28);
+      g.beginPath(); g.roundRect(cx + fi - 1, by, on || fi ? 9 : 6, on || fi ? 9 : 6, [0, 0, 3, 0]); g.fill();
+      g.fillStyle = rgba(T.ink, on || fo ? 0.85 : 0.28);
+      const ow = on || fo ? 9 : 6;
+      g.beginPath(); g.roundRect(cx + cw - fo - ow + 1, by, ow, ow, [0, 0, 0, 3]); g.fill();
     }
     g.restore();
   }
@@ -408,7 +412,8 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
     g.font = FONT; g.fillText(src.name, tx, cy + 11);
     let ax = tx + g.measureText(src.name).width + 5;
     const st = isAudio ? c.stretch ?? 1 : 1, pt = isAudio ? c.pitch ?? 0 : 0;
-    if (st !== 1 || pt) {
+    const status0 = v.stretching?.[c.id];
+    if ((st !== 1 || pt) && (sel || status0 != null)) {
       // the stretch factor and transposition; '…' while the render is not ready (the clip plays
       // resampled, at its own pitch, meanwhile), '!' when it failed; 'rs' = resampled on purpose
       const status = v.stretching?.[c.id];
@@ -420,7 +425,12 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
       g.fillStyle = sel ? T.clipTextSel : T.clipText;
       ax += g.measureText(label).width + 5;
     }
-    if (isAudio && c.gain) {
+    // not selected: one quiet dot says "this clip is stretched, transposed or gained"; selecting it shows the numbers
+    if (isAudio && !sel && status0 == null && (st !== 1 || pt || c.gain)) {
+      g.globalAlpha *= 0.6; g.beginPath(); g.arc(ax + 1, cy + 8, 2, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = c.muted ? 0.38 : prevAlpha;
+    }
+    if (isAudio && c.gain && sel) {
       g.font = MONO9; g.globalAlpha *= 0.85; g.fillText((c.gain >= 0 ? '+' : '') + c.gain.toFixed(1) + ' dB', ax, cy + 11);
       g.globalAlpha = c.muted ? 0.38 : prevAlpha;
     }

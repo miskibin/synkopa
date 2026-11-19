@@ -291,6 +291,8 @@ pub struct Ctx<'a> {
 #[derive(Clone)]
 pub struct Voice {
     pub on: bool,
+    /// The note's own pan (-1..1), added to the patch's pan.
+    pub npan: f32,
     pub note: u32,
     pub key: u8,
     pub vel: f32,
@@ -331,6 +333,7 @@ impl Default for Voice {
     fn default() -> Self {
         Self {
             on: false,
+            npan: 0.0,
             note: 0,
             key: 0,
             vel: 0.0,
@@ -701,7 +704,7 @@ impl Voice {
                 }
                 a *= self.fade;
             }
-            let pan = d[dst::PAN].clamp(-1.0, 1.0);
+            let pan = (d[dst::PAN] + self.npan).clamp(-1.0, 1.0);
             let (pl, pr) = (if pan > 0.0 { 1.0 - pan } else { 1.0 }, if pan < 0.0 { 1.0 + pan } else { 1.0 });
             l[i] += xl * a * pl;
             r[i] += xr * a * pr;

@@ -369,14 +369,7 @@ html.dragcur, html.dragcur * { cursor: var(--drag-cursor) !important; }
 .sc .gesture { font: 11.5px/1.4 var(--sans); color: var(--fg3); text-align: right; }
 /* shortcuts: the search stays put while the list scrolls under it */
 .helpdlg { width: min(760px, 92vw); max-height: 90vh; display: flex; flex-direction: column; }
-.helpfind { flex: none; position: relative; display: flex; align-items: center; margin-bottom: 10px; color: var(--fg4); }
-.helpfind > svg { position: absolute; left: 10px; pointer-events: none; }
-.helpfind .textin { flex: 1; height: 34px; padding: 0 64px 0 32px; border-radius: 6px; border-color: transparent; font-size: 13px; }
-.helpfind .textin:focus { border-color: var(--blue); }
-.helpfind .textin::-webkit-search-cancel-button { display: none; }
-.helpfind .n { position: absolute; right: 10px; font-size: 10px; color: var(--fg5); pointer-events: none; }
 .helplist { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); column-gap: 28px; align-content: start; padding: 0 12px 0 8px; margin: 0 -8px; }
-.helpnone { grid-column: 1 / -1; padding: 24px 0; text-align: center; }
 /* mixer: a pan or width readout at its default says nothing new, so it is quiet until the knob is moved */
 .strip .pantxt.def { color: var(--fg5); }
 .strip .pantxt:not(.def) { color: var(--fg-hi); }
@@ -1616,3 +1609,28 @@ button.chip { color: var(--fg); }
 .mini.m.on, .lane .mini.m.on, .strip .mini.m.on, .mini.m.rkm.on { background: color-mix(in srgb, var(--red) 34%, var(--bg4)); color: color-mix(in srgb, var(--red) 55%, #fff); font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, transparent); }
 /* the rack's idle M is as quiet as the others (an outline), so a lit one stands out */
 .mini.m.rkm:not(.on):not(.solo) { background: transparent; color: var(--fg4); box-shadow: inset 0 0 0 1px var(--line2); }
+
+/* ---- round 10 ---- */
+/* channel / sample windows: the insert picker and the cut group are chips, like Snap in the editors */
+.chanwin .chip.inspick, .chanwin .chip.smpcut { height: 24px; flex: none; }
+.chanwin .chip.inspick select { max-width: 150px; text-overflow: ellipsis; }
+.chanwin .chip.smpcut select { min-width: 0; }
+/* one "add" look: the effect chain's Add effect and the mixer's new insert */
+/* the effect chain's Add effect keeps its row; neutral, not the accent colour */
+.slot.addslot .addtile { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg2); }
+.slot.addslot:hover .addtile, .slot.addslot:hover span { color: var(--fg-hi) !important; }
+.addIns { align-self: flex-start; width: 26px; height: 22px; margin: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg2); font: 400 14px var(--sans); }
+.addIns:hover { background: color-mix(in srgb, var(--fg) 13%, transparent); color: var(--fg-hi); }
+/* ---- round 9 ---- */
+/* pattern cards: neutral like track headers (colour = the stripe, the icon and the preview); only the current one is tinted */
+.pitem { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.pitem:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.pitem.on { background: color-mix(in srgb, var(--c) 24%, var(--bg3)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent); }
+/* the track's insert sits on the volume row */
+.lane .body > .row .lvol { flex: 1; min-width: 0; }
+/* light themes: the fader cap needs an edge of its own on a near-white strip */
+:root[data-theme="light"] .fader .cap { box-shadow: 0 1px 3px var(--shadow), inset 0 0 0 1px var(--fg4); }
+:root[data-theme="light"] .fader .cap > div { background: var(--fg3); }
+/* shortcuts dialog: the way to the command palette sits in the title row */
+.helpdlg .hd .helpcmd { width: auto; height: 22px; margin-left: auto; margin-right: 8px; gap: 8px; font-size: 11.5px; color: var(--fg2); }
+.helpdlg .hd .helpcmd kbd { padding: 1px 6px; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg3); font: 600 10px var(--sans); }
