@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    env:
+      # ONNX Runtime's prebuilt library (stems, pitch) is built for macOS 13.4; linking for older fails
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
