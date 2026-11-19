@@ -1666,3 +1666,42 @@ button.chip { color: var(--fg); }
 .fxp-tile { border-color: transparent; background: var(--tone1); }
 .fxp-tile:hover, .fxp-tile.cur { border-color: transparent; background: var(--tone2); }
 .fxp-tile.focus { border-color: transparent; background: color-mix(in srgb, var(--blue) 16%, var(--tone1)); box-shadow: 0 0 0 1.5px var(--blue) inset; }
+
+/* ---- surfaces pass 2: the remaining outlines become tones ---- */
+:root { --well: color-mix(in srgb, var(--bg0) 55%, transparent); }
+:root[data-theme="light"] { --well: color-mix(in srgb, var(--bg0) 35%, transparent); }
+/* outlined buttons and fields: a tone block (focus keeps its ring) */
+.tapbtn, .presetbar, .tog, .mixctl, .nb-tog, .syn-preset .arrow, .syn-preset .name, .fxcl-q, .askq, .clipcap, .consent, .cins,
+.patname, .patwin .bars, .patselbtn, .patselarrow, .patselnew, .themecard, .themesys { border-color: transparent; }
+.tapbtn, .tog, .mixctl, .nb-tog, .syn-preset .arrow { background: var(--tone1); }
+.tapbtn:hover, .tog:hover, .mixctl:hover, .nb-tog:hover, .syn-preset .arrow:hover { background: var(--tone2); }
+.askq:focus, .fxcl-q:focus, .textin:focus { border-color: var(--blue); }
+/* segmented switches: a darker well, no rim */
+.seg2 { border-color: transparent; background: var(--well); }
+/* the app bar's pattern selector: one block, its parts told apart by a hair of the ground */
+.toolbar .patselbox { gap: 1px; }
+.patselbtn, .patselarrow, .patselnew { background: var(--well); }
+.patselarrow:hover, .patselnew:hover, .patselbtn:hover { background: var(--tone2); }
+/* popovers */
+.toolpop { border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, #000 22%, transparent), 0 12px 32px var(--shadow), var(--lift); }
+.toolpop .toolgrid { border-bottom: 0; }
+/* rules between sections and rows: spacing and tone do the job */
+.kit, .nb-tabs, .nb-bar, .nb-top, .syn-top, .setdlg .setph, .cmdfind, .fxp-ft, .fxcl-ft, .bmore, .syn-mrow,
+.upddlg .newsrel + .newsrel, .misslist, .misslist > li, .midilist, .midilist > li { border-color: transparent; }
+.nb-gutter, .fxp-presets, .setdlg .settabs, .chanwin .smpgrp + .smpgrp { border-color: transparent; }
+.setdlg .settabs, .fxp-presets { background: color-mix(in srgb, var(--bg0) 30%, transparent); }
+.cmdfind, .fxp-ft, .fxcl-ft { background: color-mix(in srgb, var(--bg0) 25%, transparent); }
+.misslist > li:nth-child(even), .midilist > li:nth-child(even) { background: var(--tone1); }
+.chanwin .smpgrp + .smpgrp { margin-left: 10px; }
+/* settings: each group is a tone card; its rows need no rules */
+.setdlg .setpane .form { border: 0; background: var(--tone1); }
+.setdlg .setpane .form > :nth-child(n+3) { border-top-color: transparent; }
+/* graphs and wells are darker than the panel already */
+.smpwin .smpwave, .smpwin .envgraph, .syn-plot { border-color: transparent; }
+/* synth: cards keep their coloured top line and lose the box */
+.syn-card { border-left-color: transparent; border-right-color: transparent; border-bottom-color: transparent; background: var(--tone1); }
+/* key caps: filled */
+.fxp-ft kbd, .cmddlg kbd, .cmdbtn kbd, .mvroute kbd { border: 0; background: var(--tone2); }
+/* a button on a tone card needs a step more to read as a button */
+.setdlg .setpane .form .tog, .setdlg .setpane .form .smallbtn { background: var(--tone2); }
+.setdlg .setpane .form .tog:hover, .setdlg .setpane .form .smallbtn:hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
