@@ -143,7 +143,7 @@ fn a_kind_change_under_one_id_builds_the_new_kind() {
     let f = p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx.iter_mut().find(|f| f.id == 7000).unwrap();
     f.kind = FxKind::Deess;
     f.params = deess().params;
-    e.set_project(p, None).unwrap();
+    e.set_project(p, None, None).unwrap();
 
     let mut settle = run(&mut rt, BLOCK);
     let _ = run(&mut rt_ref, BLOCK);
