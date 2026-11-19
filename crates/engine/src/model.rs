@@ -160,6 +160,12 @@ pub enum FxKind {
     Chorus,
     /// Swept all-pass stages with feedback (`dsp::modulation`).
     Phaser,
+    /// Width, mono-safe spread, bass mono, gain, balance, polarity (`dsp::stereo`).
+    Stereo,
+    /// Loudness, true peak, spectrum and stereo field; passes the sound unchanged (`dsp::loudness`).
+    Analyzer,
+    /// Three-band upward + downward compression, the "OTT" sound (`dsp::multiband`).
+    Multiband,
     /// A hosted plugin (VST3 or LV2, see [`PluginRef::format`]). Written as `"plugin"`;
     /// projects from before LV2 support say `"vst3"`, which still loads.
     #[serde(alias = "vst3")]
@@ -343,6 +349,8 @@ impl PluginRef {
 
 /// MIDI key at which a sampler channel plays its sample unpitched (C5 in FL's naming).
 pub const SAMPLE_ROOT: u8 = 60;
+/// Most slices a sampler channel holds (keys `root` … `root + 127` can reach them).
+pub const MAX_SLICES: usize = 128;
 
 /// Standard-library files of a new project's channels, and the channel names.
 pub const STARTER_KIT: [(&str, &str); 4] =
@@ -357,6 +365,12 @@ pub enum ChannelSrc {
         source: Id,
         #[serde(default)]
         sampler: SamplerState,
+        /// Slice mode (FL Studio's Slicex, Ableton Simpler's Slice): where each slice starts, as
+        /// sorted fractions of the file in 0..1. Key `root` plays slice 1, `root + 1` slice 2, …;
+        /// a slice plays to the next one (the last to the end of the file) at the file's pitch,
+        /// and a new slice cuts the one sounding. Empty = the sampler plays the region by pitch.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        slices: Vec<f32>,
     },
     /// The built-in polyphonic synthesizer (see `crate::poly`).
     Synth {
@@ -615,7 +629,7 @@ impl Channel {
     }
     /// A sampler channel playing `source` with the default settings.
     pub fn sampler(id: Id, name: &str, color: &str, source: Id) -> Self {
-        Self::new(id, name, color, ChannelSrc::Sample { source, sampler: SamplerState::default() })
+        Self::new(id, name, color, ChannelSrc::Sample { source, sampler: SamplerState::default(), slices: Vec::new() })
     }
     /// The source a sampler channel plays.
     pub fn sample_source(&self) -> Option<Id> {
@@ -1499,7 +1513,7 @@ impl Project {
             if let (Some(source), Some(f), Some(c)) = (source, f, p.channels.get_mut(i)) {
                 // the synthesised bass held its note; the drums rang out
                 let sampler = SamplerState { env: file == LEGACY[3].1, ..Default::default() };
-                c.src = ChannelSrc::Sample { source, sampler };
+                c.src = ChannelSrc::Sample { source, sampler, slices: Vec::new() };
                 c.root = f.root;
             }
         }

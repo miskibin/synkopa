@@ -1191,6 +1191,17 @@ impl Engine {
         c.sources.clip_source_audio(&clip, true, bpm).map(|a| a.peaks.clone())
     }
 
+    /// Candidate slice points of a source (see [`crate::slices::onsets`]). Slow on a long file
+    /// (tens of ms per minute of audio): call off the UI thread. The core lock is held only to
+    /// take the audio.
+    pub fn source_onsets(&self, id: Id) -> Option<Vec<crate::slices::Onset>> {
+        let audio = {
+            let mut c = self.core.lock();
+            c.sources.variant(id, false, false)?
+        };
+        Some(crate::slices::onsets(&audio))
+    }
+
     /// [min,max] pairs at 100/s for drawing.
     pub fn source_peaks(&self, id: Id, norm: bool, rev: bool) -> Option<Vec<f32>> {
         let mut c = self.core.lock();
@@ -1347,7 +1358,20 @@ impl Engine {
             let c = &mut *guard;
             let Some(w) = c.wires.as_mut() else { return };
             while w.garbage.pop().is_ok() {}
-            let analysis = if c.watch.is_empty() { None } else { Some(w.analyzer.analyze(&c_watch(&c.watch), &shared)) };
+            let analysis = if c.watch.is_empty() {
+                None
+            } else {
+                let detail: Vec<crate::analysis::Detail> = c
+                    .watch
+                    .iter()
+                    .map(|id| {
+                        crate::analysis::Detail::of(
+                            c.project.inserts.iter().flat_map(|m| m.fx.iter()).find(|f| f.id == *id).map(|f| f.kind),
+                        )
+                    })
+                    .collect();
+                Some(w.analyzer.analyze(&c_watch(&c.watch), &detail, &shared))
+            };
             let w = c.wires.as_mut().unwrap();
             let sr = w.sr as u32;
             // drain recorded input

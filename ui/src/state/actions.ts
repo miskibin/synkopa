@@ -719,7 +719,8 @@ export function stepPreset(fxId: Id, d: number) {
 }
 
 // ---------- windows ----------
-const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 700, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, delay: 760, warp: 820 };
+/** Default window width per effect type (the window opens at it, narrower on a small screen). */
+export const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 700, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700, stereo: 660, analyzer: 900, multiband: 720 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
 /** Playlist to the front: floating windows go behind it (they keep their place and state); docked panels stay. */
 /** F5 / a click on the Playlist: every floating window steps aside (effects, pattern windows, the sample, channel and pitch editors). */

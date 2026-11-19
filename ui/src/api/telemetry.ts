@@ -3,7 +3,8 @@
 //   u32 magic 'WAVT' · u32 seq · f64 beat · u8 flags · u8 pad · u16 pad
 //   f32 inLevel · f32 previewPos · f32 cpu
 //   u32 nIns × {u32 insertId, f32 peakL, f32 peakR}
-//   u32 nFx  × {u32 fxId, f32 inPeak, f32 outPeak, f32 grDb, f32 specIn[128], f32 specOut[128], f32 scopeIn[256], f32 scopeOut[256]}
+//   u32 nFx  × {u32 fxId, f32 inPeak, f32 outPeak, f32 grDb, f32 meters[32], f32 specIn[128], f32 specOut[128], f32 scopeIn[256], f32 scopeOut[256],
+//               u32 nXy, f32 xy[2*nXy] (interleaved L, R of the newest output samples; Stereo and Analyzer only)}
 //   u32 rec (0 | 1 + {u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]})
 //   f64 patBeat (beats into the pattern the loop preview plays; −1 = stopped; absent in old frames)
 //   u32 underruns (output underruns since the engine started: late callbacks + driver xruns; absent in old frames)
@@ -13,7 +14,9 @@
 export const MAGIC = 0x54564157;
 export const SPEC_BANDS = 128;
 export const SCOPE_LEN = 256;
-const FX_BYTES = 144 + 4 * (2 * SPEC_BANDS + 2 * SCOPE_LEN);
+const FX_BYTES = 148 + 4 * (2 * SPEC_BANDS + 2 * SCOPE_LEN);
+/** Most X/Y pairs the engine sends (analysis.rs `XY`). */
+export const XY_MAX = 1024;
 
 export interface FxFrame {
   id: number;
@@ -21,6 +24,8 @@ export interface FxFrame {
   /** per-type live readings (pitch, envelope, …), see docs/architecture.md */
   meters: Float32Array;
   specIn: Float32Array; specOut: Float32Array; scopeIn: Float32Array; scopeOut: Float32Array;
+  /** Interleaved L, R output samples for a vectorscope (`xyN` pairs valid; 0 for most effects). */
+  xy: Float32Array; xyN: number;
   /** Telemetry seq of the last analysis frame that carried this fx. */
   seq: number;
   /** performance.now() when that frame was decoded (for time-based, de-jittered scrolling). */
@@ -91,7 +96,7 @@ export class TelemetryDecoder {
         if (!e) {
           e = { id, inPeak: 0, outPeak: 0, grDb: 0, seq: 0, at: 0, meters: new Float32Array(32),
             specIn: new Float32Array(SPEC_BANDS), specOut: new Float32Array(SPEC_BANDS),
-            scopeIn: new Float32Array(SCOPE_LEN), scopeOut: new Float32Array(SCOPE_LEN) };
+            scopeIn: new Float32Array(SCOPE_LEN), scopeOut: new Float32Array(SCOPE_LEN), xy: new Float32Array(0), xyN: 0 };
           this.fx.set(id, e);
         }
         e.inPeak = v.getFloat32(o + 4, true);
@@ -103,6 +108,11 @@ export class TelemetryDecoder {
         o = readF32(v, o, e.specOut);
         o = readF32(v, o, e.scopeIn);
         o = readF32(v, o, e.scopeOut);
+        const nXy = Math.min(XY_MAX, v.getUint32(o, true)); o += 4;
+        if (o + nXy * 8 > buf.byteLength) return false;
+        if (e.xy.length < 2 * nXy) e.xy = new Float32Array(2 * XY_MAX);
+        for (let k = 0; k < 2 * nXy; k++) e.xy[k] = v.getFloat32(o + k * 4, true);
+        o += nXy * 8; e.xyN = nXy;
         e.seq = f.seq;
         e.at = typeof performance !== 'undefined' ? performance.now() : 0;
         f.fxIds.push(id);
@@ -143,6 +153,8 @@ function readF32(v: DataView, o: number, out: Float32Array): number {
 export interface EncFx {
   id: number; inPeak: number; outPeak: number; grDb: number; meters?: ArrayLike<number>;
   specIn: ArrayLike<number>; specOut: ArrayLike<number>; scopeIn: ArrayLike<number>; scopeOut: ArrayLike<number>;
+  /** interleaved L, R pairs */
+  xy?: ArrayLike<number>;
 }
 export interface EncFrame {
   seq: number; beat: number; playing: boolean; recording: boolean; previewing: boolean;
@@ -156,7 +168,8 @@ export interface EncFrame {
 
 export function encodeFrame(f: EncFrame): ArrayBuffer {
   const recBytes = f.rec ? 24 + f.rec.peaks.length * 4 : 0;
-  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + 4 + recBytes + 8 + 4;
+  const xyBytes = f.fx.reduce((a, e) => a + (e.xy?.length ?? 0) * 4, 0);
+  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + xyBytes + 4 + recBytes + 8 + 4;
   const buf = new ArrayBuffer(size);
   const v = new DataView(buf);
   v.setUint32(0, MAGIC, true);
@@ -176,6 +189,9 @@ export function encodeFrame(f: EncFrame): ArrayBuffer {
     o += 16;
     w(e.meters ?? [], 32);
     w(e.specIn, SPEC_BANDS); w(e.specOut, SPEC_BANDS); w(e.scopeIn, SCOPE_LEN); w(e.scopeOut, SCOPE_LEN);
+    const nXy = (e.xy?.length ?? 0) >> 1;
+    v.setUint32(o, nXy, true); o += 4;
+    if (nXy) w(e.xy!, 2 * nXy);
   }
   if (f.rec) {
     v.setUint32(o, 1, true); o += 4;

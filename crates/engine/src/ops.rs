@@ -469,11 +469,17 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             if c.root > 127 {
                 return Err(OpError::Invalid("channel root must be 0..127".into()));
             }
-            if let ChannelSrc::Sample { source, sampler } = &c.src {
+            if let ChannelSrc::Sample { source, sampler, slices } = &c.src {
                 if !p.sources.iter().any(|s| s.id == *source) {
                     return Err(OpError::Missing { what: "source", id: *source });
                 }
                 sampler.check().map_err(OpError::Invalid)?;
+                if slices.len() > crate::model::MAX_SLICES {
+                    return Err(OpError::Invalid(format!("at most {} slices", crate::model::MAX_SLICES)));
+                }
+                if slices.iter().any(|x| !(x.is_finite() && (0.0..1.0).contains(x))) || slices.windows(2).any(|w| w[0] >= w[1]) {
+                    return Err(OpError::Invalid("slices must be increasing fractions of the file in 0..1".into()));
+                }
             }
             if let ChannelSrc::Synth { synth } = &c.src {
                 for (k, v) in &synth.params {

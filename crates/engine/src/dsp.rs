@@ -6,10 +6,14 @@ pub mod delay;
 pub mod ducker;
 pub mod halftime;
 pub mod limiter_v2;
+pub mod loudness;
 pub mod modulation;
+pub mod multiband;
 pub mod reverb_v2;
 pub mod saturator;
+pub mod stereo;
 pub mod warp;
+pub mod xover;
 
 use crate::model::FxKind;
 use crate::processor::{ParamBlock, ProcessCtx, Processor};
@@ -45,6 +49,9 @@ pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
         FxKind::Warp => Box::new(warp::Warp::default()),
         FxKind::Chorus => Box::new(modulation::Chorus::default()),
         FxKind::Phaser => Box::new(modulation::Phaser::default()),
+        FxKind::Stereo => Box::new(stereo::Stereo::default()),
+        FxKind::Analyzer => Box::new(loudness::Loudness::default()),
+        FxKind::Multiband => Box::new(multiband::Multiband::default()),
         FxKind::Reverb => Box::new(reverb_v2::ReverbV2::default()),
         FxKind::Limit => Box::new(limiter_v2::LimiterV2::default()),
         FxKind::Fet => Box::new(crate::vocal::Fet::default()),

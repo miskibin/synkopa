@@ -270,6 +270,19 @@ async fn import_audio(app: St<'_>, paths: Vec<String>, track: Option<u32>, beat:
     .map_err(es)?
 }
 
+/// Candidate slice points of a source: [pos, strength] f32 pairs (see `slices::onsets`).
+#[tauri::command]
+async fn source_onsets(app: St<'_>, id: u64) -> R<Response> {
+    let e = app.engine.clone();
+    let o = tauri::async_runtime::spawn_blocking(move || e.source_onsets(id)).await.map_err(es)?.ok_or("no such source")?;
+    let mut b = Vec::with_capacity(o.len() * 8);
+    for x in o {
+        b.extend_from_slice(&x.pos.to_le_bytes());
+        b.extend_from_slice(&x.strength.to_le_bytes());
+    }
+    Ok(Response::new(b))
+}
+
 #[tauri::command]
 async fn source_peaks(app: St<'_>, id: u64, norm: Option<bool>, rev: Option<bool>) -> R<Response> {
     let p = app.engine.source_peaks(id, norm.unwrap_or(false), rev.unwrap_or(false)).ok_or("no such source")?;
@@ -1295,6 +1308,7 @@ pub fn run(project_arg: Option<&str>) {
             watch_fx,
             import_audio,
             source_peaks,
+            source_onsets,
             clip_peaks,
             pitch_analyze,
             pitch_target,

@@ -20,8 +20,10 @@ import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
 import { satDriveDb } from '../lib/saturator';
+import { onsetsFromPeaks } from '../lib/slicer';
 import { songEnd } from '../lib/export';
 import { eqCurve } from '../lib/eq';
+import { ATTACK as MB_ATTACK, BAND_IN_DB as MB_BAND_IN_DB, bandGain as mbBandGain, MAKEUP_DB as MB_MAKEUP_DB, RELEASE as MB_RELEASE } from '../lib/multiband';
 import { clamp, dbg } from '../lib/format';
 import { t } from '../lib/i18n';
 import { midiToHz, noteAt, scaleMask, simpleTarget, snapNote } from '../lib/pitch';
@@ -533,6 +535,7 @@ export class MockBackend implements Backend {
     const specIn = new Float32Array(SPEC_BANDS), specOut = new Float32Array(SPEC_BANDS);
     const scopeIn = new Float32Array(SCOPE_LEN), scopeOut = new Float32Array(SCOPE_LEN);
     const meters = new Float32Array(32);
+    let xy: Float32Array | undefined;
     let sim = this.sims.get(fx.id); if (!sim) { sim = newSim(); this.sims.set(fx.id, sim); }
     const dt = sim.t ? clamp(t - sim.t, 0, 0.25) : 1 / 30; sim.t = t;
     const voc = this.vocalFor(fx, ins, beat, t, playing);
@@ -660,6 +663,73 @@ export class MockBackend implements Backend {
         meters[2] = [2, 4, 6, 8, 12][Math.round(pr.stages ?? 1)] ?? 4; meters[3] = ph;
       }
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k];
+    } else if (fx.type === 'stereo' || fx.type === 'analyzer') {
+      // a beat with a centred kick and bass and a wide top, as X/Y points (analysis.rs XY) and the
+      // meters of dsp::stereo / dsp::loudness
+      const st = fx.type === 'stereo', w = st ? (pr.width ?? 100) / 100 : 1, sp = st ? (pr.spread ?? 0) / 100 : 0;
+      const bassMono = st && (pr.bass ?? 0) >= 0.5, n = 512, sr = 48000;
+      xy = new Float32Array(2 * n);
+      let ll = 0, rr = 0, lr = 0, il = 0, ir = 0, ilr = 0, bl = 0, br = 0, blr = 0;
+      for (let i = 0; i < n; i++) {
+        const tt = t + i / sr;
+        const bass = level * 0.5 * Math.sin(2 * Math.PI * 55 * tt) * (0.4 + 0.6 * pulse);
+        const top = level * 0.22 * (Math.random() - 0.5);
+        const side = level * 0.16 * (Math.sin(2 * Math.PI * 330 * tt) + (Math.random() - 0.5));
+        const lowSide = level * 0.08 * Math.sin(2 * Math.PI * 61 * tt);
+        const inL = bass + top + side + lowSide, inR = bass + top - side - lowSide;
+        const s2 = side * w + top * sp * 0.9, ls = bassMono ? 0 : lowSide * w;
+        const L = bass + top + s2 + ls, R = bass + top - s2 - ls;
+        xy[2 * i] = L; xy[2 * i + 1] = R;
+        ll += L * L; rr += R * R; lr += L * R; il += inL * inL; ir += inR * inR; ilr += inL * inR;
+        const bL = bass + ls, bR = bass - ls; bl += bL * bL; br += bR * bR; blr += bL * bR;
+      }
+      const corr = (a: number, b: number, c: number) => (a * b > 1e-12 ? clamp(c / Math.sqrt(a * b), -1, 1) : 1);
+      const smDb = (a: number, b: number, c: number) => { const m = a + b + 2 * c, s = a + b - 2 * c; return m + s > 1e-12 ? clamp(10 * Math.log10((Math.max(0, s) + 1e-12) / (Math.max(0, m) + 1e-12)), -60, 30) : -60; };
+      if (st) {
+        meters[0] = corr(ll, rr, lr); meters[1] = ll + rr > 1e-12 ? (rr - ll) / (rr + ll) : 0; meters[2] = smDb(ll, rr, lr);
+        meters[3] = corr(bl, br, blr); meters[4] = corr(il, ir, ilr); meters[5] = smDb(il, ir, ilr); meters[6] = pr.bassf ?? 120; meters[7] = level > 0 ? 1 : 0;
+        const g = (pr.gain ?? 0) <= -59.5 ? 0 : dbg(pr.gain ?? 0);
+        out = level * g;
+        for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + 20 * Math.log10(Math.max(1e-6, g));
+      } else {
+        // loudness: momentary follows the level, short-term and integrated are slow averages;
+        // integrated and the peak hold start over when playback starts (dsp::loudness)
+        if (playing && !sim.held) { sim.m = [0, 0, 0, 0, -200, 0]; }
+        sim.held = playing ? 1 : 0;
+        const mom = level > 0 ? lvDb - 7 + 2 * pulse : -200;
+        sim.center = sim.center ? sim.center + (Math.max(mom, -70) - sim.center) * Math.min(1, dt / 1.5) : Math.max(mom, -70);
+        if (playing && mom > -70) { sim.m[0] += Math.pow(10, mom / 10) * dt; sim.m[1] += dt; sim.m[2] = Math.max(sim.m[2], 0); }
+        const integ = sim.m[1] > 0.4 ? 10 * Math.log10(sim.m[0] / sim.m[1]) : -200;
+        sim.m[4] = playing ? Math.max(sim.m[4], lvDb + 0.6) : sim.m[4];
+        meters[0] = mom; meters[1] = level > 0 ? sim.center : -200; meters[2] = integ; meters[3] = sim.m[1] > 3 ? 6.5 : -1;
+        meters[4] = sim.m[4]; meters[5] = lvDb + 0.6; meters[6] = corr(ll, rr, lr); meters[7] = 0; meters[8] = sim.m[1]; meters[9] = smDb(ll, rr, lr);
+        for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k];
+      }
+    } else if (fx.type === 'multiband') {
+      // dsp::multiband: band level → gain computers → smoothed gain; meters [0..3] in, [3..6] gain, [6..9] out
+      const edges = [20, pr.xlo ?? 88.3, pr.xhi ?? 2500, 20000], inG = pr.in ?? 0, depth = (pr.depth ?? 40) / 100;
+      const time = (pr.time ?? 100) / 100;
+      const bandOf = (f: number) => (f < edges[1] ? 0 : f < edges[2] ? 1 : 2);
+      const gains = [0, 0, 0];
+      for (let b = 0; b < 3; b++) {
+        let e = 0;
+        for (let k = 0; k < SPEC_BANDS; k++) if (bandOf(BAND_F[k]) === b) e += Math.pow(10, specIn[k] / 10);
+        const lvl = level > 0 ? 10 * Math.log10(e + 1e-12) - 8 + inG + MB_BAND_IN_DB : -120;
+        const target = mbBandGain(b, lvl, pr);
+        const prev = sim.dyn[b];
+        const tau = (target < prev ? MB_ATTACK[b] : MB_RELEASE[b]) * time;
+        sim.dyn[b] = prev + (target - prev) * (1 - Math.exp(-dt / Math.max(1e-3, tau)));
+        gains[b] = sim.dyn[b];
+        meters[b] = Math.max(-120, lvl); meters[3 + b] = sim.dyn[b];
+        meters[6 + b] = Math.max(-120, lvl + sim.dyn[b] + MB_MAKEUP_DB[b] + (pr['g' + ['l', 'm', 'h'][b]] ?? 0) + (pr.out ?? 0));
+      }
+      meters[9] = edges[1]; meters[10] = edges[2];
+      for (let k = 0; k < SPEC_BANDS; k++) {
+        const b = bandOf(BAND_F[k]);
+        const wet = gains[b] + MB_MAKEUP_DB[b] + MB_BAND_IN_DB + inG + (pr['g' + ['l', 'm', 'h'][b]] ?? 0) + (pr.out ?? 0);
+        specOut[k] = specIn[k] + 20 * Math.log10(Math.max(1e-6, (1 - depth) + depth * dbg(wet)));
+      }
+      out = level * ((1 - depth) + depth * dbg((gains[0] + gains[1] + gains[2]) / 3 + 12));
     } else if (fx.type === 'delay') {
       // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms, [8] ducking dB
       const model = Math.round(pr.model ?? 1), base = delayMs(pr, this.p.bpm), lfo = Math.sin(t * 2 * Math.PI * (pr.rate ?? 0.5));
@@ -682,7 +752,7 @@ export class MockBackend implements Backend {
       scopeIn[i] = x;
       scopeOut[i] = fx.type === 'sat' ? Math.tanh(x * drive) / ((pr.auto ?? 1) ? drive : 0.6) * dbg(pr.out ?? 0) : x * dbg(gr);
     }
-    return { id: fx.id, inPeak: level, outPeak: out, grDb: gr, meters, specIn, specOut, scopeIn, scopeOut };
+    return { id: fx.id, inPeak: level, outPeak: out, grDb: gr, meters, specIn, specOut, scopeIn, scopeOut, xy };
   }
 
   /** vocal.rs `Tune::process`, stepped every 4 ms hop. */
@@ -758,6 +828,11 @@ export class MockBackend implements Backend {
       inp.onchange = () => res(inp.files && inp.files.length ? [...inp.files].map(f => f.name) : null);
       inp.click();
     });
+  }
+  /** engine `source_onsets`: the mock finds them in the peak envelope (lib/slicer `onsetsFromPeaks`). */
+  async sourceOnsets(id: Id) {
+    const o = onsetsFromPeaks(await this.sourcePeaks(id));
+    return Float32Array.from(o.flatMap(x => [x.pos, x.strength]));
   }
   async sourcePeaks(id: Id, norm?: boolean, rev?: boolean) {
     await delay(5);
