@@ -32,7 +32,15 @@ jobs:
           - os: ubuntu-22.04
             features: ""
             bundles: deb,rpm,appimage
+          # Apple Silicon, macOS 13.4+ (ONNX Runtime's prebuilt library needs it). Ad-hoc signed, not
+          # notarized: the first start needs System Settings → Privacy & Security → Open Anyway. No VST3
+          # hosting on macOS yet; the built-in instruments and effects all work.
+          - os: macos-latest
+            features: ""
+            bundles: app,dmg
     runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -55,6 +63,7 @@ jobs:
       - name: Synkopa Keys piano (bundled into the installer)
         run: node scripts/fetch-keys.mjs
       - name: Synkopa Demo Synth (VST3 instrument bundled into the installer)
+        if: runner.os != 'macOS'
         run: node scripts/build-demo-synth.mjs
       - name: ONNX Runtime (Linux; loaded at run time, bundled into the packages)
         if: runner.os == 'Linux'
@@ -100,6 +109,7 @@ jobs:
             * The Windows installer is built **with ASIO** (Settings → Audio → ASIO) and includes the Synkopa Keys piano.
             * Windows: there is no `.msi` any more. If you installed it from an `.msi`, uninstall it and install `Synkopa_…_x64-setup.exe` once; updates then arrive by themselves.
             * Linux: `.AppImage` (any distribution), `.deb` (Ubuntu, Debian, Mint) or `.rpm` (Fedora, openSUSE).
+            * macOS (Apple Silicon, 13.4 or newer): the `.dmg`. It is not notarized yet: the first time, open it, then System Settings → Privacy & Security → Open Anyway. VST3 plugins are not hosted on macOS yet.
             * The interface is English by default; Polish is in Settings.
             * The `synkopa` command line works after the first start (open a new terminal): `synkopa status`, `synkopa context` (the old `wave` name still works), see docs/cli.md.
             * VST3 effects: Add effect → VST3… (the first scan may take a while).
