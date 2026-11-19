@@ -1558,3 +1558,11 @@ button.chip { color: var(--fg); }
 .cmd.ask kbd { visibility: hidden; }
 .cmd.ask.on kbd { visibility: visible; }
 .cmdnone { padding: 14px 10px 4px; text-align: left; }
+
+.cmd .gl { width: 16px; flex: none; display: flex; justify-content: center; color: var(--fg4); }
+.cmd.on .gl { color: var(--blue-hi); }
+.cmd.dis .gl { color: var(--fg6); }
+.cmd .keys { flex: none; display: inline-flex; gap: 3px; }
+.cmd .keys kbd { min-width: 12px; padding: 1px 6px; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg3); font: 600 10px var(--sans); text-align: center; }
+.cmd.dis .keys kbd { color: var(--fg6); }
+.cmd.ask > svg { width: 16px; flex: none; }

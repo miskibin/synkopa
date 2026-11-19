@@ -7,7 +7,7 @@ import { matchCommand } from '../lib/commandMatch';
 import { t, type TranslationKey } from '../lib/i18n';
 import type { MenuItem } from '../state/ui';
 import { Icon } from '../ui/icons';
-import { APP_GLYPH } from '../ui/menuIcons';
+import { APP_GLYPH, menuGlyph, type MenuGlyph } from '../ui/menuIcons';
 import { askAbout } from './Ask';
 
 type MenuSource = [TranslationKey, () => MenuItem[]][];
@@ -17,11 +17,11 @@ export const setCommandMenus = (m: MenuSource) => { source = m; };
 export const [paletteOpen, setPaletteOpen] = createSignal(false);
 
 /** `menu`: the app menu it is in; `sub`: the submenu path inside it, if any. */
-interface Cmd { menu: string; sub: string; label: string; kbd?: string; disabled?: boolean; act: () => void }
+interface Cmd { menu: string; sub: string; label: string; glyph: MenuGlyph | null; kbd?: string; disabled?: boolean; act: () => void }
 
 function flatten(items: MenuItem[], menu: string, sub: string, out: Cmd[]) {
   for (const it of items) {
-    if (it.t === 'item') out.push({ menu, sub, label: it.label, kbd: it.kbd, disabled: it.disabled, act: it.act });
+    if (it.t === 'item') out.push({ menu, sub, label: it.label, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
     else if (it.t === 'sub') flatten(it.items, menu, sub ? sub + ' › ' + it.label : it.label, out);
   }
 }
@@ -79,10 +79,11 @@ export function Palette() {
                 <For each={items}>{({ c, i }) => (
                   <div class="cmd" role="option" aria-selected={at() === i} aria-disabled={c.disabled} classList={{ on: at() === i, dis: !!c.disabled }}
                     onPointerMove={() => setAt(i)} onClick={() => run(c)}>
+                    <span class="gl">{c.glyph && <svg width="14" height="14" viewBox={c.glyph.vb} aria-hidden="true"><path d={c.glyph.d} fill="currentColor" fill-rule={c.glyph.eo ? 'evenodd' : undefined} /></svg>}</span>
                     <span class="name ell">{c.label}</span>
                     <Show when={c.sub}><span class="badge">{c.sub}</span></Show>
                     <span class="fill" />
-                    <Show when={c.kbd}><kbd>{c.kbd}</kbd></Show>
+                    <Show when={c.kbd}><span class="keys"><For each={c.kbd!.split('+').map(x => x.trim()).filter(Boolean)}>{k => <kbd>{k}</kbd>}</For></span></Show>
                   </div>
                 )}</For>
               </>
