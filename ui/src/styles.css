@@ -360,18 +360,22 @@ html.dragcur, html.dragcur * { cursor: var(--drag-cursor) !important; }
 .dialog { padding: 18px 22px; background: var(--dialog-bg); border: 1px solid var(--line3); border-radius: 8px; box-shadow: 0 20px 48px var(--shadow); max-height: 80vh; overflow: auto; }
 .dialog .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font: 600 13px var(--sans); color: var(--fg-hi); }
 .dialog .hd button { border: 0; background: transparent; color: var(--fg3); cursor: pointer; font-size: 16px; }
-.sc { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); }
-.sc .a { font: 12px var(--sans); color: var(--fg); }
-.sc .a { flex: 1 1 45%; min-width: 0; }
-.sc .k { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; gap: 4px; max-width: 55%; }
-.sc kbd { font: 500 11px var(--mono); color: var(--fg-hi); padding: 1px 6px; border-radius: 4px; background: var(--bg0); box-shadow: inset 0 0 0 1px var(--line2); text-align: right; align-self: flex-start; }
+.sc { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 6px 8px; margin: 0 -8px; border-radius: 5px; }
+.sc:hover { background: var(--bg6); }
+.sc .a { flex: 1 1 45%; min-width: 0; font: 12px/1.4 var(--sans); color: var(--fg); }
+.sc .k { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 4px 10px; max-width: 55%; }
+.sc .combo { display: inline-flex; gap: 3px; white-space: nowrap; }
+.sc kbd { min-width: 20px; box-sizing: border-box; padding: 2px 6px; border-radius: 4px; background: var(--line); box-shadow: inset 0 -1px 0 var(--line3); color: var(--fg-hi); font: 500 10.5px var(--mono); text-align: center; }
+.sc .gesture { font: 11.5px/1.4 var(--sans); color: var(--fg3); text-align: right; }
 /* shortcuts: the search stays put while the list scrolls under it */
-.helpdlg { width: min(720px, 92vw); max-height: 90vh; display: flex; flex-direction: column; }
-.helpfind { flex: none; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.helpfind .textin { flex: 1; height: 30px; }
+.helpdlg { width: min(760px, 92vw); max-height: 90vh; display: flex; flex-direction: column; }
+.helpfind { flex: none; position: relative; display: flex; align-items: center; margin-bottom: 10px; color: var(--fg4); }
+.helpfind > svg { position: absolute; left: 10px; pointer-events: none; }
+.helpfind .textin { flex: 1; height: 34px; padding: 0 64px 0 32px; border-radius: 6px; border-color: transparent; font-size: 13px; }
 .helpfind .textin:focus { border-color: var(--blue); }
-.helpfind .n { flex: none; font-size: 10px; color: var(--fg4); }
-.helplist { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); column-gap: 24px; align-content: start; padding-right: 6px; }
+.helpfind .textin::-webkit-search-cancel-button { display: none; }
+.helpfind .n { position: absolute; right: 10px; font-size: 10px; color: var(--fg5); pointer-events: none; }
+.helplist { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); column-gap: 28px; align-content: start; padding: 0 12px 0 8px; margin: 0 -8px; }
 .helpnone { grid-column: 1 / -1; padding: 24px 0; text-align: center; }
 /* mixer: a pan or width readout at its default says nothing new, so it is quiet until the knob is moved */
 .strip .pantxt.def { color: var(--fg5); }

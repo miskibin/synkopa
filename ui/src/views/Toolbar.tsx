@@ -516,6 +516,21 @@ const shortcuts = (): [string, string][] => [
   [t('a.sc.105'), t('a.sc.106')],
 ];
 
+/**
+ * One alternative of a shortcut. A key combination ("Shift+Ctrl+L", "Ctrl + wheel") is drawn as key caps;
+ * a gesture described in words ("double-click an audio clip") stays plain text: a cap around a sentence reads as a button.
+ */
+function KeyCombo(props: { k: string }) {
+  // "Num + −" names two numpad keys, plus and minus: its "+" is a key, not a joiner
+  const parts = () => (props.k.startsWith('Num ') ? [props.k] : props.k.split('+').map(x => x.trim()).filter(Boolean));
+  const keys = () => parts().length > 0 && parts().every(x => x.length <= 9);
+  return (
+    <Show when={keys()} fallback={<span class="gesture">{props.k}</span>}>
+      <span class="combo"><For each={parts()}>{x => <kbd>{x}</kbd>}</For></span>
+    </Show>
+  );
+}
+
 export function Help() {
   // 130-odd shortcuts: found by typing a word of the action ("mute") or the key ("ctrl+b"), not by reading the list
   const [q, setQ] = createSignal('');
@@ -528,13 +543,14 @@ export function Help() {
         <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); if (q()) setQ(''); else setU('help', false); } }}>
           <div class="hd"><span>{t('a.tb.helpTitle')}</span><button aria-label={t('a.tb.close')} onClick={() => setU('help', false)}>×</button></div>
           <div class="helpfind">
+            <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={14} />
             <input class="textin" type="search" ref={el => queueMicrotask(() => el.focus())} value={q()} onInput={e => setQ(e.currentTarget.value)}
               placeholder={t('a.tb.helpSearch')} aria-label={t('a.tb.helpSearch')} spellcheck={false} />
             <span class="n mono">{shown().length} / {shortcuts().length}</span>
           </div>
           <div class="helplist">
             <For each={shown()} fallback={<div class="hint helpnone">{t('a.tb.helpNone', { q: q() })}</div>}>
-              {([a, k]) => <div class="sc"><span class="a">{a}</span><span class="k">{k.split(' · ').map(x => <kbd>{x}</kbd>)}</span></div>}
+              {([a, k]) => <div class="sc"><span class="a">{a}</span><span class="k">{k.split(' · ').map(x => <KeyCombo k={x} />)}</span></div>}
             </For>
           </div>
         </div>
