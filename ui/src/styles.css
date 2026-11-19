@@ -1705,3 +1705,8 @@ button.chip { color: var(--fg); }
 /* a button on a tone card needs a step more to read as a button */
 .setdlg .setpane .form .tog, .setdlg .setpane .form .smallbtn { background: var(--tone2); }
 .setdlg .setpane .form .tog:hover, .setdlg .setpane .form .smallbtn:hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+/* floating windows stand off the app: a step lighter than the panels behind, a wider shadow, a lit top edge */
+.win:not(.docked) { background: color-mix(in srgb, var(--bg7) 55%, var(--bg4)); box-shadow: 0 0 0 1px color-mix(in srgb, #000 42%, transparent), 0 10px 22px var(--shadow2), 0 28px 80px var(--shadow), inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent); }
+.win:not(.docked) > .winhd { background: color-mix(in srgb, var(--bg7) 70%, var(--fg) 5%); }
+:root[data-theme="light"] .win:not(.docked) { background: var(--bg7); box-shadow: 0 0 0 1px color-mix(in srgb, #000 14%, transparent), 0 10px 22px var(--shadow2), 0 28px 80px var(--shadow); }
+:root[data-theme="light"] .win:not(.docked) > .winhd { background: var(--bg5); }
