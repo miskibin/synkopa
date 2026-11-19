@@ -116,8 +116,6 @@ export function drawRackHead(g: CanvasRenderingContext2D, W: number, H: number, 
 /** One velocity bar per note of the selected channel. `x0`: where step 0 is (px), `cw` px per step. */
 export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
   x0: number; cw: number; sx: number; steps: number; notes: { n: Note; i: number }[]; color: string; sel?: Set<number>; cells: boolean; muted: boolean; beatGap?: boolean;
-  /** What the bars show: velocity (from the floor), or the note's pan (from the centre line: up = right). */
-  mode?: 'vel' | 'pan';
 }) {
   g.clearRect(0, 0, W, H);
   const top = 6, bh = H - top - 3;
@@ -127,7 +125,6 @@ export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
   g.fillStyle = T.viz; g.fillRect(o.x0, 0, endX - o.x0, H);
   g.fillStyle = T.vizGrid2;
   for (const f of [0.25, 0.5, 0.75]) g.fillRect(o.x0, Math.round(top + bh * (1 - f)) + 0.5, endX - o.x0, 1);
-  if (o.mode === 'pan') { g.fillStyle = T.vizAxis; g.fillRect(o.x0, Math.round(top + bh / 2) + 0.5, endX - o.x0, 1); }
   g.fillStyle = T.vizAxis; g.fillRect(o.x0, top, endX - o.x0, 1);
   const spans = o.cells ? stepSpans(o.notes.map(x => x.n)) : [];
   o.notes.forEach(({ n, i }, k) => {
@@ -137,21 +134,53 @@ export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
     const bx = o.cells ? x + (cw - w) / 2 : x;
     if (bx > W || bx + w < o.x0 - 4) return;
     const sel = !!o.sel?.has(i);
-    if (o.mode === 'pan') {
-      // from the centre line: up = right, down = left; a centred note is a short tick on the line
-      const mid = top + bh / 2, y = mid - (bh / 2) * panOf(n);
-      g.fillStyle = rgba(o.color, (o.muted ? 0.35 : 0.75) * (sel ? 1.25 : 1));
-      g.fillRect(bx, Math.min(y, mid), w, Math.abs(y - mid));
-      g.fillStyle = sel ? T.fgHi : mix(o.color, 60, T.fgHi);
-      g.fillRect(bx, y - 1, w, 2);
-      return;
-    }
     const y = top + bh * (1 - v);
     g.fillStyle = rgba(o.color, (o.muted ? 0.35 : 0.75) * (sel ? 1.25 : 1));
     g.fillRect(bx, y, w, top + bh - y);
     g.fillStyle = sel ? T.fgHi : mix(o.color, 60, T.fgHi);
     g.fillRect(bx, y - 1, w, 2);
   });
+}
+
+/** The colour of the Piano roll lane's handles: one per target, so the lane says what it edits. */
+export const laneColor = (mode: 'vel' | 'pan') => (mode === 'pan' ? T.amber : T.blue);
+
+/**
+ * The Piano roll's lane (FL's event editor): one handle per note of the channel — a stem from the
+ * base line to the value, a head, and a flag as long as the note. Velocity grows from the floor, pan
+ * from the centre line (up = right). Notes that start together (a chord) share a stem position; their
+ * flags differ by length, and with a selection the other notes fade and the selected ones are drawn
+ * last, in white: those are the ones a stroke changes.
+ */
+export function drawRollLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
+  x0: number; pps: number; sx: number; steps: number; notes: { n: Note; i: number }[]; sel: Set<number>; muted: boolean; mode: 'vel' | 'pan';
+}) {
+  g.clearRect(0, 0, W, H);
+  const top = 7, bh = H - top - 5, pan = o.mode === 'pan';
+  const endX = Math.min(W, o.x0 + o.steps * o.pps - o.sx);
+  g.fillStyle = T.vizPanel; g.fillRect(0, 0, W, H);
+  g.fillStyle = T.viz; g.fillRect(o.x0, 0, endX - o.x0, H);
+  g.fillStyle = T.vizGrid2;
+  for (const f of [0.25, 0.5, 0.75]) if (!(pan && f === 0.5)) g.fillRect(o.x0, Math.round(top + bh * (1 - f)) + 0.5, endX - o.x0, 1);
+  g.fillStyle = T.vizAxis; g.fillRect(o.x0, top, endX - o.x0, 1);
+  const base = pan ? Math.round(top + bh / 2) + 0.5 : top + bh;
+  g.fillRect(o.x0, base, endX - o.x0, 1);
+  if (pan) {
+    g.fillStyle = T.fg6; g.font = MONO8; g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText('R', o.x0 + 4, top + 7); g.fillText('L', o.x0 + 4, top + bh - 6);
+  }
+  const col = laneColor(o.mode), some = o.sel.size > 0;
+  const one = ({ n, i }: { n: Note; i: number }) => {
+    const x = Math.round(o.x0 + n.step * o.pps - o.sx), fw = Math.max(5, n.len * o.pps - 2);
+    if (x > W || x + fw < o.x0 - 4) return;
+    const sel = o.sel.has(i), y = pan ? base - (bh / 2) * panOf(n) : top + bh * (1 - velOf(n));
+    const a = (o.muted ? 0.45 : 1) * (some && !sel ? 0.5 : 1), c = sel ? T.fgHi : col;
+    g.fillStyle = rgba(c, 0.3 * a); g.fillRect(x, y - 1, fw, 2); // the flag: the note's length
+    g.fillStyle = rgba(c, 0.85 * a); g.fillRect(x, Math.min(y, base), 2, Math.abs(y - base)); // the stem
+    g.fillStyle = rgba(c, a); g.beginPath(); g.arc(x + 1, y, 3.2, 0, Math.PI * 2); g.fill(); // the head
+  };
+  for (const x of o.notes) if (!o.sel.has(x.i)) one(x);
+  for (const x of o.notes) if (o.sel.has(x.i)) one(x);
 }
 
 /**

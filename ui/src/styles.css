@@ -1470,3 +1470,9 @@ button.chip { color: var(--fg); }
 .laneswitch button:hover:not(:disabled) { color: var(--fg-hi); background: var(--bg5); }
 .laneswitch button.on { background: var(--bg6); color: var(--fg-hi); }
 .laneswitch button:disabled { opacity: .4; cursor: default; }
+
+/* lane switch: icon + name, each target in its own colour (the handles use the same) */
+.laneswitch { left: 4px; top: 8px; gap: 4px; }
+.laneswitch button { width: 40px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 6px; font-size: 8.5px; text-transform: uppercase; }
+.laneswitch button.vel.on { background: color-mix(in srgb, var(--blue) 22%, transparent); color: var(--blue-hi); }
+.laneswitch button.pan.on { background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--amber); }

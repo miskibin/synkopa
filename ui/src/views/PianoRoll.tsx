@@ -40,7 +40,7 @@ import { typingHeld } from '../state/typingKeys';
 import { noteClip, setNoteClip } from '../state/noteClipboard';
 import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
-import { drawLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
+import { drawRollLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
 import { patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
@@ -49,7 +49,7 @@ import { rollDown, rollMove } from './roll/grid';
 import { buildTransformOp, TOOL_META, type ToolId } from './roll/noteTools';
 import { STAMP_INVS, STAMP_TYPES } from './roll/stamp';
 
-const LANE_H = 76;
+const LANE_H = 92;
 /** Below this much room for the grid and the velocity lane together, the lane hides so the notes keep the space (Alt+wheel still sets velocity). */
 const LANE_SHOW_AT = 300;
 /** Steps past the pattern's end the roll lets you scroll to and draw in (the pattern grows). */
@@ -244,7 +244,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = laneCv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const G = geo();
-    drawLane(g, w, h, { x0: KW, cw: G.pps, sx: G.sx, steps: G.steps, notes: chanNotes(), color: ch().color, sel: sel(), cells: false, muted: ch().mute, mode: lane() });
+    drawRollLane(g, w, h, { x0: KW, pps: G.pps, sx: G.sx, steps: G.steps, notes: chanNotes(), sel: sel(), muted: ch().mute, mode: lane() });
   };
   let rafMain = 0, rafVel = 0;
   createEffect(() => {
@@ -535,6 +535,15 @@ function Roll(props: { z: number; docked?: boolean }) {
     };
     apply(e);
     track(apply, () => g.end(), ramp ? 'crosshair' : 'ns-resize');
+  };
+  const laneHover = (e: PointerEvent) => {
+    if (e.buttons) return;
+    const r = laneCv.getBoundingClientRect(), G = geo(), step = (e.clientX - r.left - KW + G.sx) / G.pps, tol = Math.max(0.25, 5 / G.pps);
+    const at = chanNotes().filter(x => Math.abs(x.n.step - step) <= tol).sort((a, b) => keyOf(b.n, ch()) - keyOf(a.n, ch()));
+    if (!at.length) return;
+    const val = (n: Note) => (lane() === 'pan' ? panText(n.pan ?? 0) : Math.round(velOf(n) * 100) + '%');
+    say(at.slice(0, 6).map(x => noteName(keyOf(x.n, ch())) + ' ' + val(x.n)).join(' · ') + (at.length > 6 ? ' …' : '')
+      + (at.length > 1 ? ' — ' + t(sel().size ? 'b.pr.laneSelOnly' : 'b.pr.laneAll') : ''));
   };
   // ---- "Vocal reference": the melody (the selection, else the channel's notes) becomes the target of a vocal sung over it
   const vocals = createMemo(() => { void arrVersion(); return vocalsUnder(S.project, pt().id); });
@@ -866,10 +875,14 @@ function Roll(props: { z: number; docked?: boolean }) {
       <div class="lanerow" style={{ height: LANE_H + 'px', display: laneOn() ? undefined : 'none' }}>
         <div ref={laneWrap} class="lanecv">
           <canvas ref={laneCv} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', 'touch-action': 'none', cursor: 'ns-resize' }}
-            onPointerDown={laneDown} onContextMenu={e => e.preventDefault()} />
-          <div class="laneswitch" role="radiogroup" aria-label={t('b.pr.laneTarget')}>
-            <button role="radio" aria-checked={lane() === 'vel'} classList={{ on: lane() === 'vel' }} title={t('b.pr.laneVelTip')} onClick={e => { setLaneMode('vel'); backToRoll(e.currentTarget); }}>VEL</button>
-            <button role="radio" aria-checked={lane() === 'pan'} classList={{ on: lane() === 'pan' }} disabled={!panPlays()} title={t(panPlays() ? 'b.pr.lanePanTip' : 'b.pr.lanePanOff')} onClick={e => { setLaneMode('pan'); backToRoll(e.currentTarget); }}>PAN</button>
+            onPointerDown={laneDown} onPointerMove={laneHover} onContextMenu={e => e.preventDefault()} />
+<div class="laneswitch" role="radiogroup" aria-label={t('b.pr.laneTarget')}>
+            <button role="radio" class="vel" aria-checked={lane() === 'vel'} classList={{ on: lane() === 'vel' }} title={t('b.pr.laneVelTip')} onClick={e => { setLaneMode('vel'); backToRoll(e.currentTarget); }}>
+              <Icon d="M5 20v-6 M12 20V9 M19 20V4" size={12} sw={2.4} /><span>{t('b.pr.laneVel')}</span>
+            </button>
+            <button role="radio" class="pan" aria-checked={lane() === 'pan'} classList={{ on: lane() === 'pan' }} disabled={!panPlays()} title={t(panPlays() ? 'b.pr.lanePanTip' : 'b.pr.lanePanOff')} onClick={e => { setLaneMode('pan'); backToRoll(e.currentTarget); }}>
+              <Icon d="M9 7l-5 5 5 5 M15 7l5 5-5 5" size={12} sw={2.4} /><span>{t('b.pr.lanePan')}</span>
+            </button>
           </div>
         </div>
       </div>
