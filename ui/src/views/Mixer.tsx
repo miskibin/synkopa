@@ -20,7 +20,7 @@ import { tele } from '../state/telemetry';
 import { openMenu, openRename, say, setU, U, type MenuItem } from '../state/ui';
 import { dblCheck, dragCursor, fineMul, track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
-import { FXMETA, FxTile, Icon } from '../ui/icons';
+import { FXMETA, FxTile, Icon, ICONS } from '../ui/icons';
 import { guessIcon, InstIcon, trackIcon } from '../ui/instIcons';
 import { openFxPicker } from './FxPicker';
 import { openFxChains, saveFxChain } from './FxChains';
@@ -600,7 +600,11 @@ function FxChain() {
           </div>
           <div style={{ flex: 1, 'min-height': 0, overflow: 'auto' }}>
             <For each={ins().fx}>{(f, i) => <FxSlot f={f} n={i() + 1} insId={ins().id} />}</For>
-            <button class="linkbtn add addfx" title={tr('c.mix.addFxTip')} onPointerDown={e => { if (e.button === 0) openFxMenu(e.clientX, e.clientY, ins().id); }}>{tr('c.mix.addFxLabel')}</button>
+            <div class="slot addslot" title={tr('c.mix.addFxTip')} onPointerDown={e => { if (e.button === 0) openFxMenu(e.clientX, e.clientY, ins().id); }}>
+              <span class="n">{ins().fx.length + 1}</span>
+              <span class="tile addtile"><Icon d={ICONS.plus} /></span>
+              <span style={{ flex: 1, font: '500 12px var(--sans)', color: 'var(--fg2)' }}>{tr('c.mix.addFxLabel')}</span>
+            </div>
           </div>
         </div>
       )}

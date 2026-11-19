@@ -1596,7 +1596,9 @@ button.chip { color: var(--fg); }
 .chanwin .chip.inspick select { max-width: 150px; text-overflow: ellipsis; }
 .chanwin .chip.smpcut select { min-width: 0; }
 /* one "add" look: the effect chain's Add effect and the mixer's new insert */
-.linkbtn.add.addfx { margin: 8px 0 8px 38px; }
+/* the effect chain's Add effect keeps its row; neutral, not the accent colour */
+.slot.addslot .addtile { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg2); }
+.slot.addslot:hover .addtile, .slot.addslot:hover span { color: var(--fg-hi) !important; }
 .addIns { align-self: flex-start; width: 26px; height: 22px; margin: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg2); font: 400 14px var(--sans); }
 .addIns:hover { background: color-mix(in srgb, var(--fg) 13%, transparent); color: var(--fg-hi); }
 /* ---- round 9 ---- */
