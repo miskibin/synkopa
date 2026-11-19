@@ -7,8 +7,8 @@ import { noteName } from '../lib/pitch';
 import { prefs } from '../state/prefs';
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import { be } from '../api/backend';
-import { baseName, clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
-import { autoSnap, SNAPS, snapLabel, snapName } from '../lib/snap';
+import { clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
+import { snapLabel } from '../lib/snap';
 import * as A from '../state/actions';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { S } from '../state/store';
@@ -21,7 +21,7 @@ import { dockMenu, resetLayout } from '../state/docking';
 import { midiFlash, midiStatus } from '../state/midi';
 import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
-import { Icon, ICONS } from '../ui/icons';
+import { Icon } from '../ui/icons';
 import { UpdateChip } from './Updates';
 import { AskButton, openAsk } from './Ask';
 import { MissingChip } from './MissingAudio';
@@ -129,7 +129,6 @@ export function Toolbar() {
     ], 260);
   };
   const T = () => S.transport;
-  const projName = () => (S.path ? baseName(S.path) : t('a.tb.untitled'));
   // custom title bar: empty toolbar areas and the project name drag the window, 2× click maximises
   const win = be().win;
   const [maxed, setMaxed] = createSignal(false);
@@ -164,13 +163,14 @@ export function Toolbar() {
           <AskButton />
           <UpdateChip />
           <MissingChip />
-          <span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + (S.dirty ? t('a.tb.unsavedChanges') : '')}>{projName()}<Show when={S.dirty}><span data-drag class="dirty">•</span></Show></span>
+          {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
+          <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
         </div>
         <div class="tbhint" data-drag>
           <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
-          <span data-drag class="readout" data-readout title={U.readout}>{U.readout}</span>
+          <span class="readout" data-readout title={U.readout}>{U.readout}</span>
           <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
-          <Show when={prefs().hints}><span data-drag class="hinttxt">{hint()}</span></Show>
+          <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
           {/* Record armed: where the recording goes (the first free track, a new one, the looping pattern) */}
           <Show when={T().rec}>
             <span class="recdest" title={recDest().tip}>● {recDest().label}</span>
@@ -198,6 +198,13 @@ export function Toolbar() {
         </button>
         <button class="count" classList={{ on: T().countIn }} title={t('a.tb.countTip')} onClick={() => void A.setTransportFlag('countIn', !T().countIn)}>1 BAR</button>
       </div>
+      {/* an input mode, like record and monitor: beside the transport, not among the panel buttons */}
+      <button class="tbtn icon typkb" aria-pressed={typingOn()} classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
+        onClick={() => setTypingOn(!typingOn())}>
+        <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
+        <span class="lbl">{t('a.tb.typLabel')}</span>
+        <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
+      </button>
       <MainVolume />
       <MasterOut />
       <div class="seg patsong" title={t('a.tb.patSongTip')}>
@@ -217,24 +224,6 @@ export function Toolbar() {
       <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
       <div data-drag class="dragfill" />
       <Show when={prefs().cpuMeter}><CpuMeter /></Show>
-      <button class="ibtn typkb" classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
-        onClick={() => setTypingOn(!typingOn())}>
-        <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
-        <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
-      </button>
-      <div class="seg tools">
-        <For each={TOOLS}>
-          {([id, key, title]) => (
-            <button classList={{ on: U.tool === id }} title={t(title) + ' (' + key + ') — ' + t(TOOL_HINT[id])} onClick={() => setU('tool', id)}>
-              <Icon d={ICONS[id]} sw={1.9} />
-            </button>
-          )}
-        </For>
-      </div>
-      {/* the select names the setting only ("Snap: auto"); what auto resolves to is in its tooltip and the hint line */}
-      <select class="sel snapsel" title={U.snap < 0 ? t('a.tb.snapTipAuto', { unit: snapName(autoSnap(U.bw)) }) : t('a.tb.snapTip')} value={String(U.snap)} onChange={e => A.setSnap(parseFloat(e.currentTarget.value))} data-snap>
-        <For each={SNAPS}>{([label, v]) => <option value={String(v)}>{v === 0 ? t('a.snap.off') : label}</option>}</For>
-      </select>
       <Show when={wins()}>
         <button class="tbtn icon winsbtn" classList={{ on: !anyTucked() }} onClick={() => (anyTucked() ? A.showPlugs() : A.playlistFront())}
           title={anyTucked() ? t('a.tb.showWins', { n: wins() }) : t('a.tb.hideWins')} aria-label={t('a.tb.windows', { n: wins() })}>
@@ -244,15 +233,19 @@ export function Toolbar() {
       {/* FL's window buttons: what is open is lit; a click brings a closed (or buried) window back */}
       <button class="tbtn icon panelbtn" classList={{ on: U.pickOpen }} onClick={() => setU('pickOpen', !U.pickOpen)} title={t('a.tb.browserTip')} aria-label={t('a.mn.browser')} aria-pressed={U.pickOpen}>
         <Icon d="M3 5h18v14H3z M9 5v14 M5 9h2 M5 12h2 M5 15h2" size={14} />
+        <span class="lbl">{t('a.mn.browser')}</span>
       </button>
       <button class="tbtn icon panelbtn" classList={{ on: !!U.rackWin }} onClick={toggleRackShown} title={t('a.tb.rackTip')} aria-label={t('a.mn.rack')} aria-pressed={!!U.rackWin}>
         <Icon d="M3 5h4v4H3z M10 5h4v4h-4z M17 5h4v4h-4z M3 15h4v4H3z M10 15h4v4h-4z M17 15h4v4h-4z" size={14} />
+        <span class="lbl">{t('a.mn.rack')}</span>
       </button>
       <button class="tbtn icon panelbtn" classList={{ on: !!U.rollWin }} onClick={toggleRollShown} title={t('a.tb.rollTip')} aria-label={t('a.mn.roll')} aria-pressed={!!U.rollWin}>
         <Icon d="M3 4h18v16H3z M3 9h18 M3 14h18 M7 6.5h5 M13 11.5h6 M5 16.5h7" size={14} />
+        <span class="lbl">{t('a.mn.roll')}</span>
       </button>
       <button class="tbtn icon panelbtn" classList={{ on: !U.mixMin }} onClick={toggleMixer} title={t('a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={!U.mixMin}>
         <Icon d="M5 21v-7M5 10V3M12 21v-9M12 8V3M19 21v-5M19 12V3M2 14h6M9 8h6M16 16h6" size={14} />
+        <span class="lbl">{t('a.mn.mixer')}</span>
       </button>
       <Show when={midiStatus()?.selected}>
         <button class="ibtn midibtn" onClick={() => setU('settings', true)}

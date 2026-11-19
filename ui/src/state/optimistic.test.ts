@@ -129,10 +129,10 @@ describe('optimistic editing covers every op', () => {
     let releaseEnd: () => void = () => {};
     const endGate = new Promise<void>(resolve => { releaseEnd = resolve; });
     let endStarted = false;
-    vi.spyOn(mock, 'endGesture').mockImplementation(async label => {
+    vi.spyOn(mock, 'endGesture').mockImplementation(async () => {
       endStarted = true;
       await endGate;
-      return realEnd(label);
+      return realEnd();
     });
     const getState = vi.spyOn(mock, 'getState').mockRejectedValueOnce(new Error('backend down'));
 
