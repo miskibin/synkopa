@@ -1537,7 +1537,7 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
                 <div class="thumb" style={{ left: shownVol() * 100 + '%' }} />
               </div>
             </div>
-            <span class="mono" style={{ width: '44px', flex: 'none', 'text-align': 'right', 'font-size': '9px', color: 'var(--fg4)' }}>{volText(shownVol())}</span>
+            <span class="mono lvtxt" classList={{ unity: Math.abs(shownVol() - VOL_UNITY) < 1e-4 }}>{volText(shownVol())}</span>
           </div>
         </Show>
       </div>

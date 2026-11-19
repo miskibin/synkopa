@@ -244,7 +244,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
     }, 'copy');
   };
   return (
-    <div class="strip" data-ins={m().id} onPointerDown={select}
+    <div class="strip" data-ins={m().id} style={{ '--c': m().color }} onPointerDown={select}
       classList={{ on: U.mixSel === m().id, multi: U.mixSel !== m().id && A.selectedInserts().includes(m().id), dimmed: !audible(), 'rt-ok': dropHere() === 'ok', 'rt-no': dropHere() === 'no', 'rt-to': sendsHere() }}>
       <div class="bar" style={{ background: m().color }} />
       {/* one row: the insert's number and name (a default "Insert 7" is just its number), the effect count on the right */}
