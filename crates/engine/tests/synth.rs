@@ -112,7 +112,7 @@ fn put_channel_validates_synth_params_and_takes_the_fast_path() {
 
 #[test]
 fn patterns_play_synth_channels_deterministically() {
-    let (p, _) = song("Supersaw Lead", &[(0.0, 4.0, 60), (4.0, 4.0, 64), (8.0, 8.0, 67)], 4.0);
+    let (p, _) = song("Supersaw Hymn", &[(0.0, 4.0, 60), (4.0, 4.0, 64), (8.0, 8.0, 67)], 4.0);
     let e = Engine::new(p, Arc::new(NoPlugins));
     let a = e.render(0.0, 4.0, 0.5, SR).unwrap();
     let b = e.render(0.0, 4.0, 0.5, SR).unwrap();
@@ -125,7 +125,7 @@ fn patterns_play_synth_channels_deterministically() {
 
 #[test]
 fn muting_a_synth_channel_silences_it() {
-    let (mut p, id) = song("Supersaw Lead", &[(0.0, 4.0, 60)], 2.0);
+    let (mut p, id) = song("Supersaw Hymn", &[(0.0, 4.0, 60)], 2.0);
     p.channels.iter_mut().find(|c| c.id == id).unwrap().mute = true;
     let x = Engine::new(p, Arc::new(NoPlugins)).render(0.0, 2.0, 0.2, SR).unwrap();
     assert_eq!(peak(&x), 0.0);
@@ -178,7 +178,10 @@ fn the_midi_keyboard_plays_a_synth_channel_and_parameter_edits_reach_it() {
 fn the_catalog_lists_sections_and_complete_presets() {
     let cat = catalog::catalog();
     let ids: Vec<&str> = cat.synth.sections.iter().map(|s| s.id).collect();
-    assert_eq!(ids, ["osc1", "osc2", "subnoise", "unison", "filter", "ampenv", "modenv", "lfo1", "lfo2", "matrix", "voice", "fx"]);
+    assert_eq!(
+        ids,
+        ["osc1", "osc2", "subnoise", "unison", "filter", "ampenv", "modenv", "lfo1", "lfo2", "matrix", "voice", "fx", "macros"]
+    );
     assert!(cat.synth.presets.len() >= 30);
     let mut names: Vec<&str> = cat.synth.presets.iter().map(|p| p.name).collect();
     names.sort();
@@ -192,7 +195,7 @@ fn the_catalog_lists_sections_and_complete_presets() {
             assert!(*v >= d.min && *v <= d.max, "{}: {k} = {v} out of range", p.name);
         }
     }
-    for c in ["808 Czysty", "808 Brudny"] {
+    for c in ["808 Głęboki", "808 Przester"] {
         assert!(names.contains(&c));
     }
     // the JSON the UI reads
@@ -234,7 +237,20 @@ fn stealing_retriggering_legato_and_preset_changes_do_not_click() {
     let sr = SR as f32;
     let ms = |x: f32| (x * sr / 1000.0) as u32;
     let all = presets::all();
-    for name in ["808 Czysty", "808 Brudny", "Supersaw Lead", "Bas Pluck", "Pluck Trap", "EP Klasyczny"] {
+    for name in [
+        "808 Głęboki",
+        "808 Przester",
+        "808 Ślizg",
+        "Supersaw Hymn",
+        "Growl Bas",
+        "FM Bas",
+        "Sync Bas",
+        "Bas Klik",
+        "Pluck Progressive",
+        "Lead Sync",
+        "EP FM",
+        "Pad Ruch",
+    ] {
         let i = all.iter().position(|p| p.name == name).unwrap();
         let (p, next) = (&all[i], &all[(i + 1) % all.len()]);
         let key = p.probe_key();
@@ -439,9 +455,10 @@ fn notes_of_a_chord_do_not_glide_from_each_other() {
     // poly glide used to slide every note of a chord from the note struck just before it
     // (a smeared, detuned chord); notes struck together now share the glide origin
     let sr = SR as f32;
-    let p = presets::all().into_iter().find(|p| p.name == "Supersaw Lead").unwrap();
+    let p = presets::all().into_iter().find(|p| p.name == "Supersaw Hymn").unwrap();
     let render = |glide: f32, spread: f32| {
         let mut q = p.patch;
+        q[ix::V_MODE] = 0.0;
         q[ix::V_GLIDE] = glide;
         let mut s = SynthInst::new(1, q, sr);
         for (i, k) in [60u8, 64, 67, 72].into_iter().enumerate() {
@@ -454,4 +471,66 @@ fn notes_of_a_chord_do_not_glide_from_each_other() {
     for spread in [0.0, 0.005] {
         assert_eq!(render(300.0, spread), render(0.0, spread), "spread {spread}");
     }
+}
+
+#[test]
+fn wavetables_scan_their_frames_and_the_catalog_draws_them() {
+    let cat = poly::catalog();
+    assert_eq!(cat.waves.len(), params::WAVES.len());
+    for (w, frames) in cat.waves.iter().enumerate() {
+        assert_eq!(frames.len(), tables::frames(w as u8), "wave {w}");
+        for f in frames {
+            assert_eq!(f.len(), 96);
+            let pk = f.iter().fold(0f32, |m, v| m.max(v.abs()));
+            assert!((0.7..=1.001).contains(&pk), "wave {w}: peak {pk}");
+        }
+    }
+    // Position moves through the frames: the start and the end of a table differ, and halfway
+    // between two frames is between them
+    let x0 = voice::render_osc(tables::HARMONICS, 0.0, 110.0, SR as f32, 4800);
+    let x1 = voice::render_osc(tables::HARMONICS, 1.0, 110.0, SR as f32, 4800);
+    let diff: f32 = x0.iter().zip(&x1).map(|(a, b)| (a - b).abs()).sum::<f32>() / x0.len() as f32;
+    assert!(diff > 0.1, "Harmonics: position 0 and 1 sound alike ({diff})");
+}
+
+#[test]
+fn warps_stay_clean_up_to_c6() {
+    // live phase warps cannot be band-limited exactly; the mip choice and the smooth warp curves
+    // keep them above 50 dB SNR to C6 (docs/synth.md: `synth_lab warps`)
+    for (mode, amt) in [(voice::warp::SYNC, 0.6), (voice::warp::BEND, 0.6), (voice::warp::ASYM, 1.0), (voice::warp::FM, 0.6)] {
+        for k in [36, 60, 84] {
+            let f = 440.0 * 2f64.powf((k as f64 - 69.0) / 12.0);
+            let x = voice::render_warped(tables::SAW, 0.0, mode, amt, f as f32, SR as f32, SR as usize);
+            let snr = lab::alias_snr(&x, f, SR as f64, 20000.0);
+            assert!(snr > 50.0, "warp {mode} key {k}: {snr:.1} dB");
+        }
+    }
+}
+
+#[test]
+fn an_lfo_rise_fades_its_depth_in_from_the_note_start() {
+    // vibrato (LFO 1 → pitch) with a 500 ms rise: 10–60 ms hold their pitch, later the
+    // pitch moves
+    let sr = SR as f32;
+    let mut p = params::defaults();
+    p[ix::O1_WAVE] = 0.0;
+    p[ix::L1_RATE] = 6.0;
+    p[ix::L1_RISE] = 500.0;
+    p[ix::M1_SRC] = 2.0;
+    p[ix::M1_DST] = 0.0;
+    p[ix::M1_AMT] = 2.0; // ±~1 st
+    let mut s = SynthInst::new(1, p, sr);
+    s.note(0, sr as u32, 69, 0.8, Dest::Click);
+    let (l, _) = lab::run(&mut s, 1.0, sr);
+    // period (zero-crossing spacing) spread in a window
+    let spread = |a: usize, b: usize| {
+        let z: Vec<usize> = (a + 1..b).filter(|&i| l[i - 1] <= 0.0 && l[i] > 0.0).collect();
+        let d: Vec<f32> = z.windows(2).map(|w| (w[1] - w[0]) as f32).collect();
+        let (lo, hi) = d.iter().fold((f32::MAX, 0f32), |(lo, hi), &v| (lo.min(v), hi.max(v)));
+        hi - lo
+    };
+    let early = spread((0.01 * sr) as usize, (0.06 * sr) as usize);
+    let late = spread((0.6 * sr) as usize, (0.9 * sr) as usize);
+    assert!(early <= 2.0, "pitch moves during the rise: {early}");
+    assert!(late >= 6.0, "no vibrato after the rise: {late}");
 }

@@ -1191,6 +1191,14 @@ select option { background: var(--bg4); color: var(--fg); }
 .syn-grid.osc .flt .syn-plot, .syn-grid.osc .amp .syn-plot, .syn-grid.mod .syn-plot { height: 96px; }
 .syn-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 12px; }
 .syn-sel { height: 22px; font-size: 11px; max-width: 140px; }
+.syn-mgrid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.syn-mgrid .syn-mrow:nth-child(2) { border-top: 0; }
+.syn-macros { display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg3); }
+.syn-macros .t { font: 700 10px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: #60a5fa; }
+.syn-macro .knob .lbl, .syn-macro .knob { max-width: 92px; }
+.syn-macro.free { opacity: .55; }
+.syn-warp { align-items: center; }
+.syn-off { opacity: .45; }
 .syn-mrow { display: grid; grid-template-columns: 18px 1fr 16px 1fr 1.4fr; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
 .syn-mrow:first-of-type { border-top: 0; }
 .syn-mrow.off { opacity: .55; }

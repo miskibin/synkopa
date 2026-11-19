@@ -14,7 +14,14 @@ const fn choice(id: &'static str, label: &'static str, def: f64, options: &'stat
     ParamDef { id, label, min: 0.0, max: (options.len() - 1) as f64, def, unit: "", log: false, options: Some(options) }
 }
 
-pub const WAVES: &[&str] = &["Sine", "Triangle", "Saw", "Square", "Hollow", "Air", "Digital", "Metal"];
+/// Oscillator waves: eight classic waves (two frames each, Shape morphs), then six wavetables
+/// (eight frames each, Shape is the wavetable position). See `tables`.
+pub const WAVES: &[&str] =
+    &["Sine", "Triangle", "Saw", "Square", "Hollow", "Air", "Digital", "Metal", "Basic", "Formant", "Harmonics", "Sync", "Growl", "Comb"];
+/// Oscillator warp (phase warps applied before the table read, see `voice::warp`). FM takes the
+/// other oscillator as the modulator (it may be silent: level 0 still runs it for FM).
+pub const WARPS1: &[&str] = &["Off", "Sync", "Bend", "Asym", "FM (osc 2)"];
+pub const WARPS2: &[&str] = &["Off", "Sync", "Bend", "Asym", "FM (osc 1)"];
 pub const LFO_WAVES: &[&str] = &["Sine", "Triangle", "Saw", "Square", "S&H"];
 /// LFO rate: free (Hz) or a note value at the project tempo.
 pub const SYNCS: &[&str] =
@@ -22,7 +29,21 @@ pub const SYNCS: &[&str] =
 /// Beats per LFO cycle for each [`SYNCS`] entry (0 = free).
 pub const SYNC_BEATS: [f32; 15] = [0.0, 16.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25, 0.125, 4.0 / 3.0, 2.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0, 1.5, 0.75];
 /// "LFO 1 × wheel": LFO 1 scaled by the mod wheel (vibrato that the wheel brings in).
-pub const SOURCES: &[&str] = &["Off", "Mod env", "LFO 1", "LFO 2", "Velocity", "Mod wheel", "Random", "Key", "LFO 1 × wheel"];
+pub const SOURCES: &[&str] = &[
+    "Off",
+    "Mod env",
+    "LFO 1",
+    "LFO 2",
+    "Velocity",
+    "Mod wheel",
+    "Random",
+    "Key",
+    "LFO 1 × wheel",
+    "Macro 1",
+    "Macro 2",
+    "Macro 3",
+    "Macro 4",
+];
 pub const DESTS: &[&str] = &[
     "Pitch",
     "Osc 1 pitch",
@@ -38,9 +59,13 @@ pub const DESTS: &[&str] = &[
     "Drive",
     "Amp",
     "Noise",
+    "Osc 1 warp",
+    "Osc 2 warp",
 ];
 /// What ±100 % of a matrix slot means for each destination (semitones, octaves, or 0..1 units).
-pub const DEST_SCALE: [f32; 14] = [48.0, 48.0, 48.0, 1.0, 1.0, 1.0, 1.0, 8.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+pub const DEST_SCALE: [f32; 16] = [48.0, 48.0, 48.0, 1.0, 1.0, 1.0, 1.0, 8.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+/// Mod matrix slots.
+pub const SLOTS: usize = 8;
 pub const FILTERS: &[&str] = &["LP 12", "LP 24", "BP", "HP", "Notch"];
 pub const MODES: &[&str] = &["Poly", "Mono", "Legato"];
 pub const DELAY_TIMES: &[&str] = &["1/16", "1/8T", "1/8", "1/8D", "1/4", "1/4D", "1/2"];
@@ -65,11 +90,15 @@ params! {
     O1_SHAPE = p("o1_shape", "Shape", 0.0, 100.0, 0.0, "%", false);
     O1_LEVEL = p("o1_level", "Level", 0.0, 100.0, 80.0, "%", false);
     O1_COARSE = p("o1_coarse", "Coarse", -24.0, 24.0, 0.0, "st", false);
+    O1_WARP = choice("o1_warp", "Warp", 0.0, WARPS1);
+    O1_WAMT = p("o1_wamt", "Warp amount", 0.0, 100.0, 0.0, "%", false);
     O2_WAVE = choice("o2_wave", "Wave", 2.0, WAVES);
     O2_SHAPE = p("o2_shape", "Shape", 0.0, 100.0, 0.0, "%", false);
     O2_LEVEL = p("o2_level", "Level", 0.0, 100.0, 0.0, "%", false);
     O2_COARSE = p("o2_coarse", "Coarse", -24.0, 24.0, 0.0, "st", false);
     O2_FINE = p("o2_fine", "Fine", -100.0, 100.0, 0.0, "ct", false);
+    O2_WARP = choice("o2_warp", "Warp", 0.0, WARPS2);
+    O2_WAMT = p("o2_wamt", "Warp amount", 0.0, 100.0, 0.0, "%", false);
     SUB_LEVEL = p("sub_level", "Sub", 0.0, 100.0, 0.0, "%", false);
     SUB_OCT = choice("sub_oct", "Sub octave", 0.0, &["-1 oct", "-2 oct"]);
     NOISE_LEVEL = p("noise_level", "Noise", 0.0, 100.0, 0.0, "%", false);
@@ -94,9 +123,11 @@ params! {
     L1_WAVE = choice("l1_wave", "Wave", 0.0, LFO_WAVES);
     L1_RATE = p("l1_rate", "Rate", 0.01, 30.0, 2.0, "Hz", true);
     L1_SYNC = choice("l1_sync", "Sync", 0.0, SYNCS);
+    L1_RISE = p("l1_rise", "Rise", 0.0, 4000.0, 0.0, "ms", false);
     L2_WAVE = choice("l2_wave", "Wave", 0.0, LFO_WAVES);
     L2_RATE = p("l2_rate", "Rate", 0.01, 30.0, 0.5, "Hz", true);
     L2_SYNC = choice("l2_sync", "Sync", 0.0, SYNCS);
+    L2_RISE = p("l2_rise", "Rise", 0.0, 4000.0, 0.0, "ms", false);
     M1_SRC = choice("m1_src", "Source", 0.0, SOURCES);
     M1_DST = choice("m1_dst", "Target", 7.0, DESTS);
     M1_AMT = p("m1_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
@@ -109,6 +140,18 @@ params! {
     M4_SRC = choice("m4_src", "Source", 0.0, SOURCES);
     M4_DST = choice("m4_dst", "Target", 9.0, DESTS);
     M4_AMT = p("m4_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
+    M5_SRC = choice("m5_src", "Source", 0.0, SOURCES);
+    M5_DST = choice("m5_dst", "Target", 7.0, DESTS);
+    M5_AMT = p("m5_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
+    M6_SRC = choice("m6_src", "Source", 0.0, SOURCES);
+    M6_DST = choice("m6_dst", "Target", 7.0, DESTS);
+    M6_AMT = p("m6_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
+    M7_SRC = choice("m7_src", "Source", 0.0, SOURCES);
+    M7_DST = choice("m7_dst", "Target", 7.0, DESTS);
+    M7_AMT = p("m7_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
+    M8_SRC = choice("m8_src", "Source", 0.0, SOURCES);
+    M8_DST = choice("m8_dst", "Target", 7.0, DESTS);
+    M8_AMT = p("m8_amt", "Amount", -100.0, 100.0, 0.0, "%", false);
     V_MODE = choice("v_mode", "Mode", 0.0, MODES);
     V_GLIDE = p("v_glide", "Glide", 0.0, 2000.0, 0.0, "ms", false);
     FX_DRIVE = p("fx_drive", "Drive", 0.0, 100.0, 0.0, "%", false);
@@ -119,6 +162,10 @@ params! {
     FX_REVERB = p("fx_reverb", "Reverb", 0.0, 100.0, 0.0, "%", false);
     FX_RSIZE = p("fx_rsize", "Decay", 0.3, 6.0, 1.8, "s", true);
     FX_OUT = p("fx_out", "Output", -30.0, 12.0, 0.0, "dB", false);
+    MACRO1 = p("macro1", "Macro 1", 0.0, 100.0, 0.0, "%", false);
+    MACRO2 = p("macro2", "Macro 2", 0.0, 100.0, 0.0, "%", false);
+    MACRO3 = p("macro3", "Macro 3", 0.0, 100.0, 0.0, "%", false);
+    MACRO4 = p("macro4", "Macro 4", 0.0, 100.0, 0.0, "%", false);
 }
 
 pub const COUNT: usize = ix::COUNT;
@@ -134,7 +181,7 @@ pub struct SectionDef {
 }
 
 /// (id, name, first param, last param + 1): the layout of the synth panel.
-const SECTIONS: [(&str, &str, usize, usize); 12] = [
+const SECTIONS: [(&str, &str, usize, usize); 13] = [
     ("osc1", "Osc 1", ix::O1_WAVE, ix::O2_WAVE),
     ("osc2", "Osc 2", ix::O2_WAVE, ix::SUB_LEVEL),
     ("subnoise", "Sub / Noise", ix::SUB_LEVEL, ix::UNI_VOICES),
@@ -146,7 +193,8 @@ const SECTIONS: [(&str, &str, usize, usize); 12] = [
     ("lfo2", "LFO 2", ix::L2_WAVE, ix::M1_SRC),
     ("matrix", "Mod matrix", ix::M1_SRC, ix::V_MODE),
     ("voice", "Voice", ix::V_MODE, ix::FX_DRIVE),
-    ("fx", "Effects", ix::FX_DRIVE, ix::COUNT),
+    ("fx", "Effects", ix::FX_DRIVE, ix::MACRO1),
+    ("macros", "Macros", ix::MACRO1, ix::COUNT),
 ];
 
 pub fn sections() -> Vec<SectionDef> {
@@ -210,6 +258,8 @@ mod tests {
         let total: usize = sections().iter().map(|s| s.params.len()).sum();
         assert_eq!(total, COUNT);
         assert_eq!(DESTS.len(), DEST_SCALE.len());
+        assert_eq!(ix::M1_SRC + 3 * SLOTS, ix::V_MODE, "matrix slots are contiguous");
+        assert_eq!(WARPS1.len(), WARPS2.len());
         assert_eq!(SYNCS.len(), SYNC_BEATS.len());
         assert_eq!(DELAY_TIMES.len(), DELAY_BEATS.len());
     }

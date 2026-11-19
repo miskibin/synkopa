@@ -3,7 +3,7 @@
 
 use std::f32::consts::{FRAC_PI_4, PI, SQRT_2};
 
-use super::params::{ix, Patch, DEST_SCALE};
+use super::params::{ix, Patch, DEST_SCALE, SLOTS};
 use super::tables::{self, Bank, HB_TAPS, SAW, SINE, SQUARE};
 
 pub const MAX_UNI: usize = 7;
@@ -17,7 +17,9 @@ pub mod src {
     pub const RANDOM: u8 = 6;
     pub const KEY: u8 = 7;
     pub const LFO1_WHEEL: u8 = 8;
-    pub const N: usize = 9;
+    /// Macro 1..4 are 9..12.
+    pub const MACRO1: u8 = 9;
+    pub const N: usize = 13;
 }
 pub mod dst {
     pub const PITCH: usize = 0;
@@ -34,7 +36,9 @@ pub mod dst {
     pub const DRIVE: usize = 11;
     pub const AMP: usize = 12;
     pub const NOISE: usize = 13;
-    pub const N: usize = 14;
+    pub const WARP1: usize = 14;
+    pub const WARP2: usize = 15;
+    pub const N: usize = 16;
 }
 
 // ---------------------------------------------------------------- envelope
@@ -252,6 +256,86 @@ impl Os2 {
     }
 }
 
+// ---------------------------------------------------------------- oscillator warp
+
+/// Warp modes (see `params::WARPS1`).
+pub mod warp {
+    pub const OFF: u8 = 0;
+    pub const SYNC: u8 = 1;
+    pub const BEND: u8 = 2;
+    pub const ASYM: u8 = 3;
+    pub const FM: u8 = 4;
+}
+
+/// Width of the window that softens the sync reset (a fraction of the master cycle).
+const SYNC_WIN: f32 = 0.035;
+/// Asym at 100 %: depth of each of its two sine phase-distortion stages.
+const ASYM_MAX: f32 = 0.95;
+/// Phase deviation of FM at 100 %, in cycles (peak index 2π).
+const FM_DEPTH: f32 = 1.0;
+
+/// How much faster than the oscillator's own pitch a warp reads its table at most (the mip
+/// level is chosen for that rate, so a warp never plays a harmonic above Nyquist from the
+/// table itself). `fm_ratio`: modulator / carrier frequency.
+#[inline(always)]
+fn warp_speed(mode: u8, a: f32, fm_ratio: f32) -> f32 {
+    match mode {
+        warp::SYNC => 1.0 + 7.0 * a,
+        warp::BEND => 1.0 + 2.0 * a,
+        warp::ASYM => {
+            let b = ASYM_MAX * a;
+            (1.0 + b) * (1.0 + b)
+        }
+        warp::FM => 1.0 + std::f32::consts::TAU * FM_DEPTH * a * fm_ratio,
+        _ => 1.0,
+    }
+}
+
+/// The table phase a warp reads at oscillator phase `ph` ∈ [0, 1), and the gain of that sample
+/// (the sync window). `m`: the FM modulator's value (−1..1); `dt`: the oscillator's phase step;
+/// `sine`: the sine table.
+#[inline(always)]
+fn warp_phase(mode: u8, a: f32, ph: f32, m: f32, dt: f32, sine: &[f32]) -> (f32, f32) {
+    match mode {
+        warp::SYNC => {
+            // hard sync to the oscillator's own cycle (slave ratio 1..8); the reset is softened
+            // by a short raised-cosine dip that deepens with the amount (a step at the reset
+            // would alias)
+            let q = ph * (1.0 + 7.0 * a);
+            let e = ph.min(1.0 - ph);
+            // at least eight samples wide: a narrower dip is itself a near-step and aliases
+            let win = SYNC_WIN.max(8.0 * dt);
+            let g = if e < win {
+                let w = tables::read(sine, 0.25 * e / win);
+                1.0 - (a * 6.0).min(1.0) * (1.0 - w * w)
+            } else {
+                1.0
+            };
+            (q - q.floor(), g)
+        }
+        warp::BEND => {
+            // cubic bend around the cycle's centre: content moves out to the cycle's ends
+            let x = 2.0 * ph - 1.0;
+            (0.5 + 0.5 * ((1.0 - a) * x + a * x * x * x), 1.0)
+        }
+        warp::ASYM => {
+            // phase distortion, twice: q = p + b·sin(2πp)/2π speeds the start of the cycle up
+            // (1 + b) and slows its end (1 − b), with a smooth phase curve (a kinked one, like
+            // the classic two-segment PD, aliases)
+            let b = ASYM_MAX * a * (1.0 / std::f32::consts::TAU);
+            let q1 = ph + b * tables::read(sine, ph);
+            let q1 = q1 - q1.floor();
+            let q = q1 + b * tables::read(sine, q1);
+            (q - q.floor(), 1.0)
+        }
+        warp::FM => {
+            let q = ph + a * FM_DEPTH * m;
+            (q - q.floor(), 1.0)
+        }
+        _ => (ph, 1.0),
+    }
+}
+
 // ---------------------------------------------------------------- the voice
 
 /// Detune positions of the unison voices (symmetric pairs, irregular so the beating does not
@@ -283,8 +367,10 @@ pub struct Ctx<'a> {
     pub bend: f32,
     pub amp: EnvCoef,
     pub menv: EnvCoef,
+    /// Macro 1..4, 0..1.
+    pub macros: [f32; 4],
     /// Active matrix slots: (source, destination, amount in destination units).
-    pub slots: [(u8, usize, f32); 4],
+    pub slots: [(u8, usize, f32); SLOTS],
     pub nslots: usize,
 }
 
@@ -303,16 +389,23 @@ pub struct Voice {
     st_target: f32,
     glide_step: f32,
     glide_left: u32,
+    /// Samples since the note started (the LFO rise; a legato slide keeps counting).
+    t: u32,
     // discrete settings captured when the note starts (changing them cannot click a ringing note)
     n_uni: usize,
     uni_row: usize,
     wave1: u8,
     wave2: u8,
+    warp1: u8,
+    warp2: u8,
     ftype: u8,
     sub_div: f32,
     drive_on: bool,
     ph1: [f32; MAX_UNI],
     ph2: [f32; MAX_UNI],
+    /// Last output of each unison copy of each oscillator (the FM modulator).
+    last1: [f32; MAX_UNI],
+    last2: [f32; MAX_UNI],
     ph_sub: f32,
     rng: u32,
     rnd: f32,
@@ -343,15 +436,20 @@ impl Default for Voice {
             st_target: 60.0,
             glide_step: 0.0,
             glide_left: 0,
+            t: 0,
             n_uni: 1,
             uni_row: 0,
             wave1: SAW,
             wave2: SAW,
+            warp1: warp::OFF,
+            warp2: warp::OFF,
             ftype: LP12,
             sub_div: 0.5,
             drive_on: false,
             ph1: [0.0; MAX_UNI],
             ph2: [0.0; MAX_UNI],
+            last1: [0.0; MAX_UNI],
+            last2: [0.0; MAX_UNI],
             ph_sub: 0.0,
             rng: 1,
             rnd: 0.0,
@@ -366,6 +464,13 @@ impl Default for Voice {
             fin_step: 0.0,
         }
     }
+}
+
+/// Smoothstep: the gain curve of the steal and take-over fades (a linear fade has a corner at
+/// each end, which a loud low note turns into an audible tick).
+#[inline(always)]
+fn smooth(x: f32) -> f32 {
+    x * x * (3.0 - 2.0 * x)
 }
 
 #[inline(always)]
@@ -399,14 +504,18 @@ impl<'a> Osc<'a> {
             let t1 = b.table(SAW, 0, j1);
             return Self { t00: t0, t01: t1, t10: t0, t11: t1, w, fm: 0.0, morph: false, pw: 0.5 - 0.45 * shape, pulse: true };
         }
-        let morph = shape > 1e-4;
+        // Shape is the position between the wave's frames: two frames morph, a wavetable scans
+        let pos = shape * (tables::frames(wave) - 1) as f32;
+        let f0 = (pos as usize).min(tables::frames(wave) - 1);
+        let fm = pos - f0 as f32;
+        let morph = fm > 1e-4;
         Self {
-            t00: b.table(wave, 0, j0),
-            t01: b.table(wave, 0, j1),
-            t10: b.table(wave, 1, j0),
-            t11: b.table(wave, 1, j1),
+            t00: b.table(wave, f0, j0),
+            t01: b.table(wave, f0, j1),
+            t10: b.table(wave, f0 + 1, j0),
+            t11: b.table(wave, f0 + 1, j1),
             w,
-            fm: shape,
+            fm,
             morph,
             pw: 0.5,
             pulse: false,
@@ -458,7 +567,7 @@ impl Voice {
         let mut rng = seed | 1;
         let row = (p[ix::UNI_VOICES] as usize).min(3);
         let n_uni = [1, 3, 5, 7][row];
-        let drive_mod = (0..4).any(|s| p[ix::M1_SRC + 3 * s] > 0.5 && p[ix::M1_DST + 3 * s] as usize == dst::DRIVE);
+        let drive_mod = (0..SLOTS).any(|s| p[ix::M1_SRC + 3 * s] > 0.5 && p[ix::M1_DST + 3 * s] as usize == dst::DRIVE);
         *self = Voice {
             on: true,
             note,
@@ -470,6 +579,8 @@ impl Voice {
             uni_row: row,
             wave1: p[ix::O1_WAVE] as u8,
             wave2: p[ix::O2_WAVE] as u8,
+            warp1: p[ix::O1_WARP] as u8,
+            warp2: p[ix::O2_WARP] as u8,
             ftype: p[ix::FLT_TYPE] as u8,
             sub_div: if p[ix::SUB_OCT] > 0.5 { 0.25 } else { 0.5 },
             drive_on: p[ix::FLT_DRIVE] > 0.0 || drive_mod,
@@ -480,7 +591,7 @@ impl Voice {
                 self.ph1[k] = xorshift(&mut rng) * 0.5 + 0.5;
                 self.ph2[k] = xorshift(&mut rng) * 0.5 + 0.5;
             }
-        } else if self.wave2 != SINE && self.wave2 != tables::TRI {
+        } else if self.wave2 != SINE && self.wave2 != tables::TRI && self.warp1 != warp::FM {
             // a single osc 1 starts at phase 0 (a clean, repeatable attack, 808s); osc 2 at a
             // random phase so two bright waves do not stack their edges note after note
             self.ph2[0] = xorshift(&mut rng) * 0.5 + 0.5;
@@ -555,7 +666,14 @@ impl Voice {
         let n = self.n_uni;
         let bend = if self.live { c.bend } else { 0.0 };
         let nlp_a = 1.0 - (-2.0 * PI * 1200.0 * inv_sr).exp();
-        let do2 = lvl2 > 0.0 || c.slots[..c.nslots].iter().any(|s| s.1 == dst::LVL2 && s.2 > 0.0);
+        let wamt1 = p[ix::O1_WAMT] * 0.01;
+        let wamt2 = p[ix::O2_WAMT] * 0.01;
+        let wmod1 = c.slots[..c.nslots].iter().any(|s| s.1 == dst::WARP1);
+        let wmod2 = c.slots[..c.nslots].iter().any(|s| s.1 == dst::WARP2);
+        let warp1 = if wamt1 > 0.0 || wmod1 { self.warp1 } else { warp::OFF };
+        let warp2 = if wamt2 > 0.0 || wmod2 { self.warp2 } else { warp::OFF };
+        // osc 2 runs when it is heard or when it is osc 1's FM modulator
+        let do2 = lvl2 > 0.0 || c.slots[..c.nslots].iter().any(|s| s.1 == dst::LVL2 && s.2 > 0.0) || warp1 == warp::FM;
         // filter damping and drive curve: per sample only when the matrix moves them
         let res_mod = c.slots[..c.nslots].iter().any(|s| s.1 == dst::RES);
         let drive_mod = c.slots[..c.nslots].iter().any(|s| s.1 == dst::DRIVE);
@@ -590,11 +708,23 @@ impl Voice {
         }
         let sine = b.table(SINE, 0, 0);
 
+        // LFO rise: each LFO's depth fades in over its rise time from the note's start
+        let rise = [p[ix::L1_RISE] * 0.001 * c.sr, p[ix::L2_RISE] * 0.001 * c.sr];
         for i in 0..l.len() {
+            self.t = self.t.saturating_add(1);
             let me = self.menv.tick(&c.menv);
             let ae = self.amp.tick(&c.amp);
             self.sources(c, i, &mut srcv);
             srcv[src::MOD_ENV as usize] = me;
+            for (j, r) in rise.iter().enumerate() {
+                if *r > 1.0 && (self.t as f32) < *r {
+                    let g = self.t as f32 / r;
+                    srcv[src::LFO1 as usize + j] *= g;
+                    if j == 0 {
+                        srcv[src::LFO1_WHEEL as usize] *= g;
+                    }
+                }
+            }
             let mut d = [0f32; dst::N];
             Self::matrix(c, &srcv, &mut d);
             if self.glide_left > 0 {
@@ -607,30 +737,20 @@ impl Voice {
             let note = self.st + bend + d[dst::PITCH];
             let dt_note = dt_a4 * ((note - 69.0) / 12.0).exp2();
 
-            // oscillators
+            // oscillators: osc 2 first (it is osc 1's FM modulator, same sample); osc 2's own FM
+            // reads osc 1 one sample late
             let dt1 = dt_note * ((c1 + d[dst::P1]) / 12.0).exp2();
-            let o1 = Osc::new(b, self.wave1, (sh1 + d[dst::SHAPE1]).clamp(0.0, 1.0), dt1 * rmax);
-            let (mut a1l, mut a1r) = (0.0, 0.0);
-            for k in 0..n {
-                let ph = self.ph1[k];
-                let s = o1.sample(ph);
-                a1l += s * gl[k];
-                a1r += s * gr[k];
-                let mut ph = ph + dt1 * ratio[k];
-                if ph >= 1.0 {
-                    ph -= 1.0;
-                }
-                self.ph1[k] = ph;
-            }
-            let g1 = (lvl1 + d[dst::LVL1]).clamp(0.0, 1.0);
-            let (mut xl, mut xr) = (a1l * g1, a1r * g1);
+            let dt2 = dt_note * ((c2 + d[dst::P2]) / 12.0).exp2();
+            let (mut xl, mut xr) = (0.0, 0.0);
             if do2 {
-                let dt2 = dt_note * ((c2 + d[dst::P2]) / 12.0).exp2();
-                let o2 = Osc::new(b, self.wave2, (sh2 + d[dst::SHAPE2]).clamp(0.0, 1.0), dt2 * rmax);
+                let wa = if wmod2 { (wamt2 + d[dst::WARP2]).clamp(0.0, 1.0) } else { wamt2 };
+                let o2 = Osc::new(b, self.wave2, (sh2 + d[dst::SHAPE2]).clamp(0.0, 1.0), dt2 * rmax * warp_speed(warp2, wa, dt1 / dt2));
                 let (mut a2l, mut a2r) = (0.0, 0.0);
                 for k in 0..n {
                     let ph = self.ph2[k];
-                    let s = o2.sample(ph);
+                    let (q, wg) = warp_phase(warp2, wa, ph, self.last1[k], dt2, sine);
+                    let s = o2.sample(q) * wg;
+                    self.last2[k] = s;
                     a2l += s * gl[k];
                     a2r += s * gr[k];
                     let mut ph = ph + dt2 * ratio[k];
@@ -643,6 +763,25 @@ impl Voice {
                 xl += a2l * g2;
                 xr += a2r * g2;
             }
+            let wa = if wmod1 { (wamt1 + d[dst::WARP1]).clamp(0.0, 1.0) } else { wamt1 };
+            let o1 = Osc::new(b, self.wave1, (sh1 + d[dst::SHAPE1]).clamp(0.0, 1.0), dt1 * rmax * warp_speed(warp1, wa, dt2 / dt1));
+            let (mut a1l, mut a1r) = (0.0, 0.0);
+            for k in 0..n {
+                let ph = self.ph1[k];
+                let (q, wg) = warp_phase(warp1, wa, ph, self.last2[k], dt1, sine);
+                let s = o1.sample(q) * wg;
+                self.last1[k] = s;
+                a1l += s * gl[k];
+                a1r += s * gr[k];
+                let mut ph = ph + dt1 * ratio[k];
+                if ph >= 1.0 {
+                    ph -= 1.0;
+                }
+                self.ph1[k] = ph;
+            }
+            let g1 = (lvl1 + d[dst::LVL1]).clamp(0.0, 1.0);
+            xl += a1l * g1;
+            xr += a1r * g1;
             if sub > 0.0 {
                 let s = tables::read(sine, self.ph_sub) * sub;
                 self.ph_sub += dt_note * self.sub_div;
@@ -694,7 +833,7 @@ impl Voice {
                     self.fin = 1.0;
                     self.fin_step = 0.0;
                 }
-                a *= self.fin;
+                a *= smooth(self.fin);
             }
             if self.fade_step > 0.0 {
                 self.fade -= self.fade_step;
@@ -702,7 +841,7 @@ impl Voice {
                     self.on = false;
                     break;
                 }
-                a *= self.fade;
+                a *= smooth(self.fade);
             }
             let pan = (d[dst::PAN] + self.npan).clamp(-1.0, 1.0);
             let (pl, pr) = (if pan > 0.0 { 1.0 - pan } else { 1.0 }, if pan < 0.0 { 1.0 + pan } else { 1.0 });
@@ -731,6 +870,7 @@ impl Voice {
         s[src::RANDOM as usize] = self.rnd;
         s[src::KEY as usize] = (self.key as f32 - 60.0) / 60.0;
         s[src::LFO1_WHEEL as usize] = c.lfo1[i] * c.wheel;
+        s[src::MACRO1 as usize..src::MACRO1 as usize + 4].copy_from_slice(&c.macros);
     }
 
     #[inline(always)]
@@ -742,8 +882,8 @@ impl Voice {
 }
 
 /// Active matrix slots from (source, destination, amount %), amounts in destination units.
-pub fn slots(m: &[(u8, usize, f32); 4]) -> ([(u8, usize, f32); 4], usize) {
-    let mut out = [(0u8, 0usize, 0f32); 4];
+pub fn slots(m: &[(u8, usize, f32); SLOTS]) -> ([(u8, usize, f32); SLOTS], usize) {
+    let mut out = [(0u8, 0usize, 0f32); SLOTS];
     let mut n = 0;
     for &(srcv, ds, amt) in m {
         let ds = ds.min(dst::N - 1);
@@ -759,13 +899,19 @@ pub fn slots(m: &[(u8, usize, f32); 4]) -> ([(u8, usize, f32); 4], usize) {
 /// One oscillator alone (the exact table/mip path a voice uses), for measurements: `n`
 /// samples of `wave` with `shape` 0..1 at `freq` Hz.
 pub fn render_osc(wave: u8, shape: f32, freq: f32, sr: f32, n: usize) -> Vec<f32> {
+    render_warped(wave, shape, warp::OFF, 0.0, freq, sr, n)
+}
+
+/// [`render_osc`] through a warp (FM: by a sine at the oscillator's own pitch).
+pub fn render_warped(wave: u8, shape: f32, mode: u8, amt: f32, freq: f32, sr: f32, n: usize) -> Vec<f32> {
     let b = tables::bank();
     let dt = freq / sr;
-    let o = Osc::new(b, wave, shape, dt);
+    let o = Osc::new(b, wave, shape, dt * warp_speed(mode, amt, 1.0));
     let mut ph = 0f32;
     let mut out = Vec::with_capacity(n);
     for _ in 0..n {
-        out.push(o.sample(ph));
+        let (q, g) = warp_phase(mode, amt, ph, (std::f32::consts::TAU * ph).sin(), dt, b.table(SINE, 0, 0));
+        out.push(o.sample(q) * g);
         ph += dt;
         if ph >= 1.0 {
             ph -= 1.0;

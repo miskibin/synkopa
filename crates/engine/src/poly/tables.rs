@@ -1,6 +1,8 @@
 //! Band-limited wavetables for the synth oscillators, generated once (never on the audio thread).
 //!
-//! Every wave has two frames (Shape morphs between them). Every frame is stored as a set of
+//! The first eight waves have two frames (Shape morphs between them); the wavetables after them
+//! ([`BASIC`] on) have [`WT_FRAMES`] frames each and Shape scans through them (the wavetable
+//! position), crossfading neighbouring frames. Every frame is stored as a set of
 //! mip levels: level `j` keeps harmonics `1..=harmonics(j)`, where the count falls by a third
 //! of an octave per level. At playback the oscillator picks the richest level whose top
 //! harmonic is still below Nyquist and crossfades it with the next poorer one, so no
@@ -10,7 +12,11 @@
 //! Third-octave spacing instead of the usual one level per octave: with whole octaves the
 //! safe level loses up to an octave of top harmonics (a saw at the bottom of a level's range
 //! stops at fs/4 = 12 kHz). With thirds the loss is at most a third of an octave (content
-//! above ~0.79·fs/2). Memory: 2 frames × 8 waves × 25 levels × 2049 floats ≈ 3.3 MB.
+//! above ~0.79·fs/2). Memory: (8 × 2 + 6 × 8) frames × 25 levels × 2049 floats ≈ 13 MB.
+//!
+//! The wavetables are defined by their spectra, so effects that alias when done live (hard sync,
+//! phase modulation, a formant sweep) are alias-free here: the [`SYNC`] table *is* a hard-synced
+//! saw at eight sync ratios, band-limited like every other frame.
 //!
 //! Harmonics are capped at [`MAX_H`] = 256 per 2048-sample table, so the table is at least
 //! 4× oversampled relative to its content and linear interpolation's images stay below
@@ -26,8 +32,11 @@ const STRIDE: usize = SIZE + 1;
 pub const MAX_H: usize = 256;
 /// Mip levels per octave.
 pub const LPO: f32 = 3.0;
-pub const N_WAVES: usize = 8;
+pub const N_WAVES: usize = 14;
+/// Frames of a classic wave (Sine … Metal).
 pub const FRAMES: usize = 2;
+/// Frames of a wavetable (Basic … Comb).
+pub const WT_FRAMES: usize = 8;
 
 pub const SINE: u8 = 0;
 pub const TRI: u8 = 1;
@@ -37,6 +46,27 @@ pub const HOLLOW: u8 = 4;
 pub const AIR: u8 = 5;
 pub const DIGITAL: u8 = 6;
 pub const METAL: u8 = 7;
+/// Sine → triangle → saw → square → narrow pulse.
+pub const BASIC: u8 = 8;
+/// Vowels A → E → I → O → U (formants on the harmonic series).
+pub const FORMANT: u8 = 9;
+/// Additive: a sine gaining harmonics up to a full saw.
+pub const HARMONICS: u8 = 10;
+/// A saw hard-synced to the fundamental, slave ratio 1 → 8.
+pub const SYNC: u8 = 11;
+/// Phase modulation of a sine by its own octave, index rising: hollow → snarling.
+pub const GROWL: u8 = 12;
+/// A saw through a moving comb (notches sweep the spectrum: a phaser that is part of the wave).
+pub const COMB: u8 = 13;
+
+/// Frames of `wave`.
+pub const fn frames(wave: u8) -> usize {
+    if wave >= BASIC {
+        WT_FRAMES
+    } else {
+        FRAMES
+    }
+}
 
 /// Halfband FIR for the 2× oversampled waveshapers: the odd taps h[±1], h[±3], … h[±15]
 /// (h[0] = 0.5, even taps 0). Kaiser-windowed sinc, β = 8, normalised for unity DC gain.
@@ -44,6 +74,8 @@ pub const HB_TAPS: usize = 8;
 
 pub struct Bank {
     levels: usize,
+    /// First frame of every wave (frames are stored wave after wave).
+    first: [usize; N_WAVES],
     harm: Vec<usize>,
     data: Vec<f32>,
     pub hb: [f32; HB_TAPS],
@@ -91,11 +123,14 @@ fn gauss(n: f64, c: f64, w: f64) -> f64 {
     (-((n - c) / w).powi(2) * 0.5).exp()
 }
 
-/// The two frames of every wave.
-fn spectra(wave: u8) -> [Spec; FRAMES] {
+/// The frames of every wave.
+fn spectra(wave: u8) -> Vec<Spec> {
+    if wave >= BASIC {
+        return (0..WT_FRAMES).map(|f| wt_frame(wave, f as f64 / (WT_FRAMES - 1) as f64)).collect();
+    }
     use std::f64::consts::PI;
     let saw = |n: usize| (2.0 / PI / n as f64, PI); // falling edge at the cycle start: rising ramp
-    match wave {
+    let two: [Spec; FRAMES] = match wave {
         SINE => [
             spec_fn(|n| (if n == 1 { 1.0 } else { 0.0 }, 0.0)),
             // a warm, slightly saturated sine (2nd–4th harmonics)
@@ -162,6 +197,79 @@ fn spectra(wave: u8) -> [Spec; FRAMES] {
                 (if SET.contains(&n) { 1.0 / (n as f64).powf(0.4) } else { 0.0 }, 2.0 * PI * hash(n, 4))
             }),
         ],
+    };
+    two.into()
+}
+
+/// One frame of a wavetable at position `x` ∈ [0, 1].
+fn wt_frame(wave: u8, x: f64) -> Spec {
+    use std::f64::consts::PI;
+    let tau = 2.0 * PI;
+    match wave {
+        BASIC => {
+            // sine, triangle, saw, square at x = 0, 2/7, 4/7, 6/7 (crossfaded in time), then
+            // the pulse narrows
+            let shape = |k: usize, t: f64| match k {
+                0 => (tau * t).sin(),
+                1 => 1.0 - 4.0 * ((t + 0.25).fract() - 0.5).abs(),
+                2 => 2.0 * (t + 0.5).fract() - 1.0,
+                _ => {
+                    if t < 0.5 {
+                        1.0
+                    } else {
+                        -1.0
+                    }
+                }
+            };
+            let y = x * 7.0;
+            if y > 6.0 {
+                let pw = 0.5 - 0.38 * (y - 6.0);
+                return spec_of(8192, move |t| if t < pw { 1.0 } else { -1.0 });
+            }
+            let (k, f) = ((y / 2.0).floor() as usize, (y / 2.0).fract());
+            spec_of(8192, move |t| shape(k, t) * (1.0 - f) + shape((k + 1).min(3), t) * f)
+        }
+        FORMANT => {
+            // formant pairs (F1, F2) in harmonics of a ~130 Hz voice: A E I O U
+            const V: [(f64, f64); 5] = [(6.0, 9.5), (3.3, 13.5), (2.2, 18.0), (3.5, 6.5), (2.6, 5.5)];
+            let y = x * 4.0;
+            let i = (y.floor() as usize).min(3);
+            let f = y - i as f64;
+            let (a, b) = (V[i], V[i + 1]);
+            let (f1, f2) = (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f);
+            spec_fn(|n| {
+                let m = n as f64;
+                let amp = (gauss(m, f1, 1.1) + 0.7 * gauss(m, f2, 1.8) + 0.25 * gauss(m, 2.0 * f2 + 4.0, 3.0) + 0.04) / m.powf(0.6);
+                (amp, if n % 2 == 0 { PI } else { 0.0 })
+            })
+        }
+        HARMONICS => {
+            // harmonics fade in one after another: x = 0 a sine, x = 1 a saw up to harmonic 64
+            let top = 64f64.powf(x);
+            spec_fn(|n| {
+                let m = n as f64;
+                let g = if m > 64.0 { 0.0 } else { (top - m + 1.0).clamp(0.0, 1.0) };
+                (g * 2.0 / PI / m, PI)
+            })
+        }
+        SYNC => {
+            let r = 1.0 + 7.0 * x;
+            // a slave saw reset every master cycle, over a quarter of the master's own ramp so
+            // the fundamental stays strong at high ratios
+            spec_of(8192, move |t| 0.75 * (2.0 * (t * r).fract() - 1.0) + 0.25 * (2.0 * t - 1.0))
+        }
+        GROWL => {
+            let idx = 0.3 + 5.5 * x * x;
+            spec_of(8192, move |t| (tau * t + idx * (tau * 2.0 * t).sin() + 0.3 * idx * (tau * 3.0 * t).sin()).sin())
+        }
+        _ => {
+            // COMB: a saw spectrum under an |cos| comb whose notch spacing shrinks along the table
+            let d = 2.0 + 14.0 * x;
+            spec_fn(|n| {
+                let m = n as f64;
+                (2.0 / PI / m * (0.15 + 0.85 * (PI * m / d).cos().abs()), PI)
+            })
+        }
     }
 }
 
@@ -203,7 +311,13 @@ impl Bank {
             levels += 1;
         }
         let harm: Vec<usize> = (0..levels).map(harmonics).collect();
-        let mut data = vec![0f32; N_WAVES * FRAMES * levels * STRIDE];
+        let mut first = [0usize; N_WAVES];
+        let mut total = 0;
+        for (w, f) in first.iter_mut().enumerate() {
+            *f = total;
+            total += frames(w as u8);
+        }
+        let mut data = vec![0f32; total * levels * STRIDE];
         let mut planner = RealFftPlanner::<f64>::new();
         let inv = planner.plan_fft_inverse(SIZE);
         let mut spec = inv.make_input_vec();
@@ -223,7 +337,7 @@ impl Bank {
                         let pk = out.iter().fold(0f64, |m, v| m.max(v.abs()));
                         gain = if pk > 0.0 { 1.0 / pk } else { 1.0 };
                     }
-                    let base = Self::offset_of(levels, w, f, j);
+                    let base = ((first[w as usize] + f) * levels + j) * STRIDE;
                     for i in 0..SIZE {
                         data[base + i] = (out[i] * gain) as f32;
                     }
@@ -231,11 +345,7 @@ impl Bank {
                 }
             }
         }
-        Bank { levels, harm, data, hb: kaiser_halfband() }
-    }
-
-    fn offset_of(levels: usize, wave: u8, frame: usize, level: usize) -> usize {
-        ((wave as usize * FRAMES + frame) * levels + level) * STRIDE
+        Bank { levels, first, harm, data, hb: kaiser_halfband() }
     }
 
     pub fn levels(&self) -> usize {
@@ -246,10 +356,26 @@ impl Bank {
         self.harm[level]
     }
 
+    /// One cycle of every frame of every wave at `points` points (the richest level, peak 1):
+    /// what the synth panel draws.
+    pub fn display(&self, points: usize) -> Vec<Vec<Vec<f32>>> {
+        (0..N_WAVES as u8)
+            .map(|w| {
+                (0..frames(w))
+                    .map(|f| {
+                        let t = self.table(w, f, 0);
+                        (0..points).map(|i| (read(t, i as f32 / points as f32) * 1000.0).round() / 1000.0).collect()
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
     /// The table of `wave`/`frame` at mip `level` (`SIZE + 1` samples, the last = the first).
     #[inline]
     pub fn table(&self, wave: u8, frame: usize, level: usize) -> &[f32] {
-        let o = Self::offset_of(self.levels, wave, frame, level);
+        let w = (wave as usize).min(N_WAVES - 1);
+        let o = ((self.first[w] + frame.min(frames(w as u8) - 1)) * self.levels + level) * STRIDE;
         &self.data[o..o + STRIDE]
     }
 

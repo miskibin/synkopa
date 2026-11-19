@@ -6,21 +6,21 @@ import { clampSynth, newSynthChannel, presetState, synthDefaults, synthParam, sy
 
 describe('synth catalog', () => {
   it('has the panel sections in order and complete presets', () => {
-    expect(cat.sections.map(s => s.id)).toEqual(['osc1', 'osc2', 'subnoise', 'unison', 'filter', 'ampenv', 'modenv', 'lfo1', 'lfo2', 'matrix', 'voice', 'fx']);
+    expect(cat.sections.map(s => s.id)).toEqual(['osc1', 'osc2', 'subnoise', 'unison', 'filter', 'ampenv', 'modenv', 'lfo1', 'lfo2', 'matrix', 'voice', 'fx', 'macros']);
     const n = synthParams(cat).length;
     expect(cat.presets.length).toBeGreaterThanOrEqual(30);
     for (const p of cat.presets) expect(Object.keys(p.params).length).toBe(n);
-    expect(cat.presets.some(p => p.name === '808 Czysty')).toBe(true);
+    expect(cat.presets.some(p => p.name === '808 Głęboki')).toBe(true);
     expect(mockCatalog().synth.presets.length).toBe(cat.presets.length);
   });
 });
 
 describe('synth channels', () => {
   it('a new channel plays its preset, basses at a low root', () => {
-    const c = newSynthChannel(cat, 7, '808 Czysty');
+    const c = newSynthChannel(cat, 7, '808 Głęboki');
     expect(c.kind).toBe('synth');
     if (c.kind !== 'synth') return;
-    expect(c.synth.preset).toBe('808 Czysty');
+    expect(c.synth.preset).toBe('808 Głęboki');
     expect(c.root).toBe(36);
     const blank = newSynthChannel(cat, 8, null);
     if (blank.kind === 'synth') expect(blank.synth.params).toEqual(synthDefaults(cat));
@@ -35,13 +35,13 @@ describe('synth channels', () => {
     expect(d.synth.params.amp_r).toBe(c.synth.params.amp_r);
     expect(clampSynth(synthParam(cat, 'o1_wave')!, 2.6)).toBe(3);
     expect(synthValue(cat, { preset: null, params: {} }, 'amp_s')).toBe(synthParam(cat, 'amp_s')!.def);
-    const e = withSynthPreset(cat, d, 'Supersaw Lead');
-    if (e.kind === 'synth') expect(e.synth).toEqual(presetState(cat, 'Supersaw Lead'));
+    const e = withSynthPreset(cat, d, 'Supersaw Hymn');
+    if (e.kind === 'synth') expect(e.synth).toEqual(presetState(cat, 'Supersaw Hymn'));
   });
 
   it('putChannel validates synth parameters like the engine', () => {
     const p = emptyProject();
-    const c = newSynthChannel(cat, p.nextId, 'Pluck Trap');
+    const c = newSynthChannel(cat, p.nextId, 'Pluck Future');
     expect(applyPatternOp(p, { op: 'putChannel', channel: c }, true)).toBe(true);
     expect(p.channels!.some(x => x.id === c.id)).toBe(true);
     const bad = structuredClone(c);

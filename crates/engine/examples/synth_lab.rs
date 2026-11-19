@@ -21,6 +21,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str).unwrap_or("") {
         "alias" => alias(),
+        "warps" => warps(),
         "levels" => levels(),
         "clicks" => clicks(),
         "cpu" => cpu(),
@@ -58,6 +59,34 @@ fn alias() {
         }
     }
     println!("| worst 24–108 | | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} |", worst[0], worst[1], worst[2], worst[3], worst[4]);
+}
+
+/// Alias SNR (≤ 20 kHz) of the wavetables across their positions and of every warp, worst
+/// over MIDI 36–96 (`synth_lab warps`).
+fn warps() {
+    println!("| wave / warp | pos 0 | pos 0.5 | pos 1 |");
+    println!("|---|---|---|---|");
+    let worst = |w: u8, sh: f32, mode: u8, amt: f32| {
+        (36..=96)
+            .step_by(4)
+            .map(|k| {
+                let f = mtof(k as f64);
+                let x = voice::render_warped(w, sh, mode, amt, f as f32, SR, SR as usize);
+                lab::alias_snr(&x, f, SR as f64, 20000.0)
+            })
+            .fold(f64::INFINITY, f64::min)
+    };
+    for (w, name) in [(8u8, "Basic"), (9, "Formant"), (10, "Harmonics"), (11, "Sync"), (12, "Growl"), (13, "Comb")] {
+        println!("| {name} | {:.1} | {:.1} | {:.1} |", worst(w, 0.0, 0, 0.0), worst(w, 0.5, 0, 0.0), worst(w, 1.0, 0, 0.0));
+    }
+    for (m, name) in [(1u8, "Sync"), (2, "Bend"), (3, "Asym"), (4, "FM")] {
+        println!(
+            "| saw + {name} warp (amt 0.25/0.6/1) | {:.1} | {:.1} | {:.1} |",
+            worst(2, 0.0, m, 0.25),
+            worst(2, 0.0, m, 0.6),
+            worst(2, 0.0, m, 1.0)
+        );
+    }
 }
 
 /// Loudness target per category (basses and pads a little lower).
@@ -469,10 +498,20 @@ fn demos(dir: &Path) {
         wave_engine::sources::write_wav(&probes.join(format!("{}.wav", slug(p.name))), &x, SR as u32).unwrap();
     }
     println!("probes: {}", probes.display());
+    // where each preset starts in its category's file (for listening notes)
+    let mut index = String::new();
     for cat in presets::CATEGORIES {
         let song = song_for(cat);
         let mut out: Vec<f32> = vec![];
         for p in all.iter().filter(|p| p.category == *cat) {
+            index.push_str(&format!(
+                "{:02}_{} {:>5.1}s {}
+",
+                presets::CATEGORIES.iter().position(|c| c == cat).unwrap() + 1,
+                slug(cat),
+                out.len() as f32 / 2.0 / SR,
+                p.name
+            ));
             let x = render_song(p.name, &song);
             out.extend_from_slice(&x);
             out.extend(std::iter::repeat_n(0.0, (SR * 0.5) as usize * 2));
@@ -485,4 +524,5 @@ fn demos(dir: &Path) {
         }
         write_mp3(dir, &format!("{:02}_{}", presets::CATEGORIES.iter().position(|c| c == cat).unwrap() + 1, slug(cat)), &out);
     }
+    std::fs::write(dir.join("index.txt"), index).unwrap();
 }

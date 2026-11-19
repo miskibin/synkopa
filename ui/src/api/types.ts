@@ -462,7 +462,11 @@ export interface Preset { name: string; params: Record<string, number>; bands?: 
 export interface SynthSection { id: string; name: string; params: ParamDef[] }
 /** A factory synth preset: `params` is the complete parameter set (every id). */
 export interface SynthPreset { name: string; category: string; params: Record<string, number> }
-export interface SynthCatalog { sections: SynthSection[]; categories: string[]; presets: SynthPreset[] }
+export interface SynthCatalog {
+  sections: SynthSection[]; categories: string[]; presets: SynthPreset[];
+  /** One cycle of every frame of every oscillator wave, `[wave][frame][point]` (peak 1): what the panel draws. */
+  waves: number[][][];
+}
 export interface Catalog {
   types: Partial<Record<FxKind, TypeDef>>;
   presets: Partial<Record<FxKind, Preset[]>>;

@@ -63,7 +63,7 @@ fn inspect_lists_parts_with_what_each_becomes() {
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[0]["name"], "Bass");
     assert_eq!(parts[0]["gmName"], "Fingered Bass");
-    assert_eq!(parts[0]["becomes"], json!({ "kind": "synth", "preset": "Bas Analog" }));
+    assert_eq!(parts[0]["becomes"], json!({ "kind": "synth", "preset": "Bas Ciepły" }));
     assert_eq!(parts[2]["drums"], true);
     assert_eq!(parts[2]["channel"], 10);
     let drums: Vec<&str> = parts[2]["becomes"]["drums"].as_array().unwrap().iter().map(|x| x["name"].as_str().unwrap()).collect();

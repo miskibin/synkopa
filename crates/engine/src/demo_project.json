@@ -806,7 +806,7 @@
      "v_glide": 80.0,
      "v_mode": 2.0
     },
-    "preset": "Reese Szeroki"
+    "preset": null
    },
    "vol": 0.6600000262260437
   },
@@ -881,7 +881,7 @@
      "v_glide": 0.0,
      "v_mode": 0.0
     },
-    "preset": "Dzwonek Ciepły"
+    "preset": null
    },
    "vol": 0.7400000095367432
   },
@@ -956,7 +956,7 @@
      "v_glide": 145.0,
      "v_mode": 2.0
     },
-    "preset": "Lead Gwizdek"
+    "preset": null
    },
    "vol": 0.6499999761581421
   }

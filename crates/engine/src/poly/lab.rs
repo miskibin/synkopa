@@ -138,7 +138,7 @@ pub fn probe_patch(patch: &Patch, key: u8, sr: f32) -> (Vec<f32>, Vec<f32>) {
 pub fn heaviest_patch() -> Patch {
     use super::params::ix;
     let mut p =
-        super::presets::all().into_iter().find(|p| p.name == "Supersaw Lead").map(|p| p.patch).unwrap_or_else(super::params::defaults);
+        super::presets::all().into_iter().find(|p| p.name == "Supersaw Hymn").map(|p| p.patch).unwrap_or_else(super::params::defaults);
     p[ix::UNI_VOICES] = 3.0;
     p[ix::O2_LEVEL] = 40.0;
     p[ix::FLT_TYPE] = 1.0;

@@ -395,26 +395,26 @@ pub fn instrument_for(program: Option<u8>, keys: bool) -> Instrument {
     match p {
         0..=3 if keys => Instrument::Keys,
         0..=3 => synth("Klawisz Miękki"),
-        4 | 5 => synth("EP Klasyczny"),
+        4 | 5 => synth("EP FM"),
         6 | 7 => synth("Klawisz Miękki"),
         11 => synth("Vibrafon"),
         12 | 13 => synth("Marimba"),
-        8..=15 => synth("Dzwonek Ciepły"),
+        8..=15 => synth("Dzwonek FM"),
         16..=23 => synth("Organy"),
-        24..=31 => synth("Pluck Ciepły"),
-        38 | 39 => synth("Bas Pluck"),
-        32..=37 => synth("Bas Analog"),
-        46 => synth("Pluck Szklany"),
+        24..=31 => synth("Pluck Nylon"),
+        38 | 39 => synth("Bas Klik"),
+        32..=37 => synth("Bas Ciepły"),
+        46 => synth("Pluck Szkło"),
         40..=51 => synth("Smyczki"),
-        52..=54 => synth("Pad Powietrzny"),
+        52..=54 => synth("Pad Chór"),
         55..=71 => synth("Brass"),
-        72..=79 => synth("Lead Gwizdek"),
-        81 => synth("Supersaw Lead"),
-        80..=87 => synth("Lead Ostry"),
+        72..=79 => synth("Flet"),
+        81 => synth("Supersaw Hymn"),
+        80..=87 => synth("Lead Kremowy"),
         88..=95 => synth("Pad Ciepły"),
         96..=103 => synth("Pad Ruch"),
-        104..=111 => synth("Pluck Ciepły"),
-        112..=119 => synth("Dzwonek Ciepły"),
+        104..=111 => synth("Pluck Nylon"),
+        112..=119 => synth("Dzwonek FM"),
         _ => synth("Szum Wiatru"),
     }
 }
@@ -629,7 +629,7 @@ mod tests {
     fn instruments_and_drums_map_both_ways() {
         assert_eq!(instrument_for(None, true), Instrument::Keys);
         assert_eq!(instrument_for(Some(0), false), Instrument::Synth { preset: "Klawisz Miękki" });
-        assert_eq!(instrument_for(Some(33), true), Instrument::Synth { preset: "Bas Analog" });
+        assert_eq!(instrument_for(Some(33), true), Instrument::Synth { preset: "Bas Ciepły" });
         let presets: Vec<&str> = crate::poly::presets::all().iter().map(|p| p.name).collect();
         for p in 0..=127u8 {
             if let Instrument::Synth { preset } = instrument_for(Some(p), false) {

@@ -202,7 +202,7 @@ synkopa channels --add snare-studio                  # a sampler of a standard-l
 synkopa channels --ch "Studio Snare" --param cut --value 1   # one sampler setting: start, end, reverse, norm, semi, fine, env, delay, attack, hold, decay, sustain, release, attackTension, decayTension, releaseTension, fadeInMs, fadeOutMs, cut
 synkopa channels --ch "Studio Snare" --param fadeOutMs --value 80   # fadeInMs and fadeOutMs in source milliseconds
 synkopa channels --sample 1001                       # a sampler channel playing source 1001
-synkopa channels --synth "808 Czysty"                # a synth channel with a factory preset ("" = blank patch)
+synkopa channels --synth "808 Głęboki"                # a synth channel with a factory preset ("" = blank patch)
 synkopa channels --ch 1005 --preset "Pad Ciepły"     # load a synth preset (ids/names in `synkopa catalog` → effects.synth)
 synkopa channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
 synkopa channels --keys                              # Synkopa Keys: the sampled grand piano (see docs/keys.md)

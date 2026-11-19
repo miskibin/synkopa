@@ -27,6 +27,9 @@ type Ctx = {
   menu: (id: string, x: number, y: number) => void;
 };
 
+/** First wavetable (Shape is its position), the saw and square waves (params::WAVES). */
+const WT_FIRST = 8, SAW = 2, SQUARE = 3;
+const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8];
 const C_OSC = '#a78bfa', C_FLT = '#f59e0b', C_ENV = '#34d399', C_LFO = '#60a5fa', C_FX = '#f472b6';
 type Tab = 'osc' | 'mod' | 'fx';
 const [lastTab, setLastTab] = createSignal<Tab>('osc');
@@ -92,6 +95,7 @@ function Panel(props: { cat: SynthCatalog; c: Channel }) {
           <K ctx={ctx} id="fx_out" label={t('b.sp.output')} />
         </div>
       </div>
+      <Macros ctx={ctx} />
       <Show when={lastTab() === 'osc'}><OscTab ctx={ctx} /></Show>
       <Show when={lastTab() === 'mod'}><ModTab ctx={ctx} /></Show>
       <Show when={lastTab() === 'fx'}><FxTab ctx={ctx} /></Show>
@@ -150,19 +154,25 @@ function ModTab(props: { ctx: Ctx }) {
       <For each={[1, 2]}>{n => (
         <Card title={'LFO ' + n} color={C_LFO} class={'lfo' + n} head={<Choice ctx={c} id={`l${n}_wave`} />}>
           <Plot draw={(g, w, h) => drawLfo(g, w, h, c.v(`l${n}_wave`))} deps={() => [c.v(`l${n}_wave`)]} />
-          <div class="syn-row"><K ctx={c} id={`l${n}_rate`} label={t('b.sp.rate')} color={C_LFO} /><Choice ctx={c} id={`l${n}_sync`} /></div>
+          <div class="syn-row">
+            <K ctx={c} id={`l${n}_rate`} label={t('b.sp.rate')} color={C_LFO} />
+            <K ctx={c} id={`l${n}_rise`} label={t('b.sp.rise')} color={C_LFO} />
+            <Choice ctx={c} id={`l${n}_sync`} />
+          </div>
         </Card>
       )}</For>
       <Card title={t('b.sp.matrix')} color={C_LFO} class="matrix">
-        <For each={[1, 2, 3, 4]}>{n => (
-          <div class="syn-mrow" classList={{ off: c.v(`m${n}_src`) === 0 }}>
-            <span class="slot">{n}</span>
-            <Choice ctx={c} id={`m${n}_src`} bare />
-            <span class="to">→</span>
-            <Choice ctx={c} id={`m${n}_dst`} bare />
-            <AmtBar ctx={c} id={`m${n}_amt`} />
-          </div>
-        )}</For>
+        <div class="syn-mgrid">
+          <For each={SLOTS}>{n => (
+            <div class="syn-mrow" classList={{ off: c.v(`m${n}_src`) === 0 }}>
+              <span class="slot">{n}</span>
+              <Choice ctx={c} id={`m${n}_src`} bare />
+              <span class="to">→</span>
+              <Choice ctx={c} id={`m${n}_dst`} bare />
+              <AmtBar ctx={c} id={`m${n}_amt`} />
+            </div>
+          )}</For>
+        </div>
       </Card>
     </div>
   );
@@ -188,12 +198,19 @@ function Osc(props: { ctx: Ctx; n: 1 | 2 }) {
   return (
     <Card title={t('b.sp.osc', { n: props.n })} color={C_OSC} class={'osc' + props.n} head={<Choice ctx={c} id={p + 'wave'} bare />}
       dim={c.v(p + 'level') <= 0}>
-      <Plot draw={(g, w, h) => drawOsc(g, w, h, c, props.n)} deps={() => [c.v(p + 'wave'), c.v(p + 'shape'), c.v(p + 'level'), c.v('uni_voices'), c.v('uni_detune')]} />
+      <Plot draw={(g, w, h) => drawOsc(g, w, h, c, props.n)}
+        deps={() => [c.v(p + 'wave'), c.v(p + 'shape'), c.v(p + 'level'), c.v(p + 'warp'), c.v(p + 'wamt'), c.v('o1_coarse'), c.v('o2_coarse'), c.v('o2_fine'), c.v('o1_wave'), c.v('o2_wave'), c.v('uni_voices'), c.v('uni_detune')]} />
       <div class="syn-row">
         <K ctx={c} id={p + 'level'} label={t('b.sp.level')} color={C_OSC} size="md" />
-        <K ctx={c} id={p + 'shape'} label={t('b.sp.shape')} color={C_OSC} />
+        <K ctx={c} id={p + 'shape'} label={c.v(p + 'wave') >= WT_FIRST ? t('b.sp.position') : t('b.sp.shape')} color={C_OSC} />
         <K ctx={c} id={p + 'coarse'} label={t('b.sp.coarse')} color={C_OSC} />
         <Show when={props.n === 2}><K ctx={c} id="o2_fine" label="Fine" color={C_OSC} /></Show>
+      </div>
+      <div class="syn-row syn-warp">
+        <Choice ctx={c} id={p + 'warp'} select />
+        <div classList={{ 'syn-off': c.v(p + 'warp') === 0 }} title={c.v(p + 'warp') === 0 ? t('b.sp.warpOff') : undefined}>
+          <K ctx={c} id={p + 'wamt'} label={t('b.sp.warp')} color={C_OSC} />
+        </div>
       </div>
     </Card>
   );
@@ -230,11 +247,11 @@ function K(props: { ctx: Ctx; id: string; label: string; color?: string; size?: 
   );
 }
 
-function Choice(props: { ctx: Ctx; id: string; bare?: boolean }) {
+function Choice(props: { ctx: Ctx; id: string; bare?: boolean; select?: boolean }) {
   const d = () => props.ctx.def(props.id);
   return (
     <Show when={d()?.options}>{opts => (
-      <Show when={opts().length <= 5} fallback={
+      <Show when={opts().length <= 5 && !props.select} fallback={
         <select class="sel syn-sel" classList={{ auto: props.ctx.auto(props.id) }} title={tName(d()!.label)} value={String(Math.round(props.ctx.v(props.id)))} onChange={e => props.ctx.set(props.id, +e.currentTarget.value)}
           onContextMenu={e => { e.preventDefault(); e.stopPropagation(); props.ctx.menu(props.id, e.clientX, e.clientY); }}>
           <For each={opts()}>{(o, i) => <option value={String(i())}>{tName(o)}</option>}</For>
@@ -269,6 +286,34 @@ function AmtBar(props: { ctx: Ctx; id: string }) {
   );
 }
 
+/** The four macros, on every tab. Each is named after what the matrix routes it to (Serum-style:
+ * a preset's main gestures on four knobs); an unrouted macro says how to route it. */
+function Macros(props: { ctx: Ctx }) {
+  const c = props.ctx;
+  const targets = (n: number) => {
+    const src = 8 + n, out: string[] = [];
+    for (const s of SLOTS) {
+      if (Math.round(c.v(`m${s}_src`)) !== src || c.v(`m${s}_amt`) === 0) continue;
+      const name = c.def(`m${s}_dst`)?.options?.[Math.round(c.v(`m${s}_dst`))];
+      if (name && !out.includes(tName(name))) out.push(tName(name));
+    }
+    return out;
+  };
+  return (
+    <div class="syn-macros">
+      <span class="t">{t('b.sp.macros')}</span>
+      <For each={[1, 2, 3, 4]}>{n => {
+        const tg = () => targets(n);
+        return (
+          <div class="syn-macro" classList={{ free: !tg().length }} title={tg().length ? `Macro ${n} → ${tg().join(', ')}` : t('b.sp.macroFree', { n })}>
+            <K ctx={c} id={`macro${n}`} label={tg().length ? tg()[0] + (tg().length > 1 ? ` +${tg().length - 1}` : '') : `Macro ${n}`} color={C_LFO} />
+          </div>
+        );
+      }}</For>
+    </div>
+  );
+}
+
 /** A canvas that redraws when its deps or the theme change. */
 function Plot(props: { draw: (g: CanvasRenderingContext2D, w: number, h: number) => void; deps: () => unknown[] }) {
   let cv!: HTMLCanvasElement;
@@ -296,19 +341,27 @@ function grid(g: CanvasRenderingContext2D, w: number, h: number, cols = 8, rows 
   g.stroke();
 }
 
-/** One cycle of wave `w` (0..7) at phase x ∈ [0,1), morphed by shape s ∈ [0,1] (display approximation). */
-function waveAt(w: number, s: number, x: number): number {
-  const TAU = Math.PI * 2;
-  switch (w) {
-    case 0: { const k = 0.5 - s * 0.45, p = x < k ? x / k * 0.5 : 0.5 + (x - k) / (1 - k) * 0.5; return Math.sin(TAU * p); }
-    case 1: { const k = 0.5 + s * 0.45; return x < k ? -1 + 2 * x / k : 1 - 2 * (x - k) / (1 - k); }
-    case 2: { const y = 1 - 2 * x; return Math.tanh(y * (1 + s * 4)) / Math.tanh(1 + s * 4); }
-    case 3: { const pw = 0.5 - s * 0.45; return x < pw ? 1 : -1; }
-    case 4: return (Math.sin(TAU * x) + 0.6 * Math.sin(TAU * 3 * x) * (0.4 + s) + 0.3 * Math.sin(TAU * 5 * x)) / 1.6;
-    case 5: { let y = 0; for (let k = 1; k <= 9; k++) y += Math.sin(TAU * k * x + k * k) / (k * (1.2 - s * 0.6)); return y * 0.55; }
-    case 6: { const steps = Math.round(16 - s * 12); return Math.round(Math.sin(TAU * x) * steps / 2) / (steps / 2); }
-    case 7: { let y = 0; for (const [f, a] of [[1, 1], [2.76, 0.6], [5.4, 0.4 + s * 0.4], [8.93, 0.25]] as const) y += a * Math.sin(TAU * f * x); return y / 2.2; }
-    default: return Math.sin(TAU * x);
+/** Wave `w` at shape/position `s` ∈ [0,1], phase x ∈ [0,1): the engine's own tables (`catalog.waves`),
+ * frames crossfaded like the oscillator; Square is a pulse of width 0.5 − 0.45·s made of two saws. */
+function tableAt(waves: number[][][], w: number, s: number, x: number): number {
+  const read = (f: number[], ph: number) => { const n = f.length, y = (ph - Math.floor(ph)) * n, i = Math.floor(y) % n, fr = y - Math.floor(y); return f[i] + (f[(i + 1) % n] - f[i]) * fr; };
+  if (w === SQUARE) { const saw = waves[SAW]?.[0]; return saw ? (read(saw, x) - read(saw, x + 0.5 - 0.45 * s)) * 0.5 : 0; }
+  const fr = waves[w]; if (!fr?.length) return 0;
+  const pos = s * (fr.length - 1), f0 = Math.min(fr.length - 1, Math.floor(pos)), k = pos - f0;
+  const a = read(fr[f0], x);
+  return k > 1e-4 ? a + (read(fr[Math.min(fr.length - 1, f0 + 1)], x) - a) * k : a;
+}
+
+/** A warp's table phase and gain at phase x (mirrors `voice::warp_phase`); `m` is the FM modulator. */
+function warpAt(mode: number, a: number, x: number, m: number): [number, number] {
+  const frac = (v: number) => v - Math.floor(v);
+  switch (mode) {
+    case 1: { const e = Math.min(x, 1 - x), win = 0.035, s = Math.sin(Math.min(1, e / win) * Math.PI / 2);
+      return [frac(x * (1 + 7 * a)), e < win ? 1 - Math.min(1, a * 6) * (1 - s * s) : 1]; }
+    case 2: { const y = 2 * x - 1; return [0.5 + 0.5 * ((1 - a) * y + a * y * y * y), 1]; }
+    case 3: { const b = 0.95 * a / (Math.PI * 2), q1 = frac(x + b * Math.sin(Math.PI * 2 * x)); return [frac(q1 + b * Math.sin(Math.PI * 2 * q1)), 1]; }
+    case 4: return [frac(x + a * m), 1];
+    default: return [x, 1];
   }
 }
 
@@ -317,9 +370,27 @@ function drawOsc(g: CanvasRenderingContext2D, w: number, h: number, c: Ctx, n: 1
   const p = 'o' + n + '_', wave = Math.round(c.v(p + 'wave')), s = c.v(p + 'shape') / 100, lvl = c.v(p + 'level') / 100;
   const voices = [1, 3, 5, 7][Math.round(c.v('uni_voices'))] ?? 1, det = c.v('uni_detune') / 100;
   const mid = h / 2, amp = (h / 2 - 6) * Math.max(0.15, lvl);
+  const waves = c.cat.waves ?? [];
+  const mode = Math.round(c.v(p + 'warp')), wa = c.v(p + 'wamt') / 100;
+  // FM: the other oscillator at its pitch ratio is the modulator
+  const o = n === 1 ? 'o2_' : 'o1_', ratio = Math.pow(2, ((n === 1 ? 1 : -1) * (c.v('o2_coarse') + c.v('o2_fine') / 100 - c.v('o1_coarse'))) / 12);
+  const ow = Math.round(c.v(o + 'wave')), os = c.v(o + 'shape') / 100;
+  const at = (x: number) => {
+    const [q, gain] = warpAt(mode, wa, x, mode === 4 ? tableAt(waves, ow, os, x * ratio) : 0);
+    return tableAt(waves, wave, s, q) * gain;
+  };
+  // a wavetable's neighbouring frames, faint behind the one that plays
+  const fr = wave === SQUARE ? 0 : (waves[wave]?.length ?? 0);
+  if (fr > 2) {
+    for (let f = 0; f < fr; f++) {
+      g.beginPath();
+      for (let i = 0; i <= w; i += 2) { const y = mid - tableAt(waves, wave, f / (fr - 1), (i / w * 2) % 1) * amp; i ? g.lineTo(i, y) : g.moveTo(i, y); }
+      g.strokeStyle = rgba(C_OSC, 0.07); g.lineWidth = 1; g.stroke();
+    }
+  }
   const path = (phase: number) => {
     g.beginPath();
-    for (let i = 0; i <= w; i++) { const x = ((i / w) * 2 + phase) % 1; const y = mid - waveAt(wave, s, x) * amp; i ? g.lineTo(i, y) : g.moveTo(i, y); }
+    for (let i = 0; i <= w; i++) { const x = ((i / w) * 2 + phase) % 1; const y = mid - at(x) * amp; i ? g.lineTo(i, y) : g.moveTo(i, y); }
   };
   // unison copies: faint, phase-spread by the detune
   for (let k = 1; k < voices; k++) { path(((k * 0.618) % 1) * det * 0.5); g.strokeStyle = rgba(C_OSC, 0.18); g.lineWidth = 1.5; g.stroke(); }

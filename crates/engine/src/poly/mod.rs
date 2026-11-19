@@ -173,7 +173,7 @@ pub struct SynthInst {
     rng: u32,
     /// Matrix routing as it sounds: (source, destination, amount %). A changed source or
     /// destination first fades the old routing out, then the new one in.
-    mslots: [(u8, usize, f32); 4],
+    mslots: [(u8, usize, f32); params::SLOTS],
     gain: (f32, f32),
     /// Output headroom as it sounds (glides when the voice mode changes, see [`POLY_HEADROOM`]).
     hr: f32,
@@ -221,7 +221,7 @@ impl SynthInst {
             bl: [0.0; CHUNK],
             br: [0.0; CHUNK],
             rng: 0x1234_5678 ^ (chan as u32).wrapping_mul(0x9E37_79B9) | 1,
-            mslots: [(0, 0, 0.0); 4],
+            mslots: [(0, 0, 0.0); params::SLOTS],
             gain: (0.0, 0.0),
             hr: headroom(patch[ix::V_MODE]),
             quiet: 0,
@@ -526,7 +526,7 @@ impl SynthInst {
     fn control(&mut self, m: usize, bpm: f64) {
         let sr = self.sr;
         let k_amt = 1.0 - (-(m as f32) / (0.004 * sr)).exp();
-        for s in 0..4 {
+        for s in 0..params::SLOTS {
             let t = (self.target[ix::M1_SRC + 3 * s] as u8, self.target[ix::M1_DST + 3 * s] as usize, self.target[ix::M1_AMT + 3 * s]);
             let st = &mut self.mslots[s];
             if !self.fresh || st.0 == 0 || (st.0 == t.0 && st.1 == t.1) {
@@ -600,6 +600,7 @@ impl SynthInst {
                 bend: self.bend,
                 amp: EnvCoef::new(c[ix::AMP_A], c[ix::AMP_D], c[ix::AMP_S] * 0.01, c[ix::AMP_R], self.sr),
                 menv: EnvCoef::new(c[ix::MOD_A], c[ix::MOD_D], c[ix::MOD_S] * 0.01, c[ix::MOD_R], self.sr),
+                macros: [c[ix::MACRO1] * 0.01, c[ix::MACRO2] * 0.01, c[ix::MACRO3] * 0.01, c[ix::MACRO4] * 0.01],
                 slots,
                 nslots,
             };
@@ -827,6 +828,9 @@ pub struct SynthCatalog {
     pub sections: Vec<params::SectionDef>,
     pub categories: &'static [&'static str],
     pub presets: Vec<SynthPreset>,
+    /// One cycle of every frame of every oscillator wave (`[wave][frame][point]`, 96 points,
+    /// peak 1): the panel draws the real tables, not an approximation.
+    pub waves: Vec<Vec<Vec<f32>>>,
 }
 
 pub fn catalog() -> SynthCatalog {
@@ -841,6 +845,7 @@ pub fn catalog() -> SynthCatalog {
                 params: PARAMS.iter().zip(p.patch.iter()).map(|(d, v)| (d.id, (*v as f64 * 1000.0).round() / 1000.0)).collect(),
             })
             .collect(),
+        waves: tables::bank().display(96),
     }
 }
 

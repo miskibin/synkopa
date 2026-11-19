@@ -14,6 +14,14 @@ shown in the app after an update and is published as the release notes (see
   after the last hit.
 
 ### Added
+- **A new synth sound bank and a more Serum-like synth.** 50 new factory presets (808s, Reese,
+  growl, FM and sync basses, acid, future and progressive plucks, supersaw and creamy mono leads,
+  evolving pads, choir, FM keys and bells, organ, strings, flute, arps, lo-fi, risers and impacts).
+  Six new wavetables you scan with Position (Basic, Formant, Harmonics, Sync, Growl, Comb), a Warp
+  per oscillator (Sync, Bend, Asym, FM from the other oscillator), four Macros named after what they
+  drive (every preset puts its main moves on them), eight modulation slots and a Rise per LFO for
+  delayed vibrato. The oscillator picture now shows the real wave. Old projects keep their sound;
+  the old preset names are gone from the list.
 - **Ten new Reverb presets:** rap vocal (short room), R&B hall, bright pop plate, snare plate,
   warm keys hall, EDM lead hall, ambient pad haze, lo-fi dark room, an 18-second "cosmos", and a
   100 % wet plate for a send. The old presets keep their places.
