@@ -1393,3 +1393,14 @@ select option { background: var(--bg4); color: var(--fg); }
 .lane .lvol .thumb { opacity: 0; transition: opacity .12s; }
 .lane:hover .lvol .thumb, .lane .lvol.auto .thumb { opacity: 1; }
 .lane .lvol .track { height: 2px; }
+
+/* piano roll bar: settings are quiet chips (dim name + value), not boxed form fields */
+.ptools .chip { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--fg4); font: 500 11.5px var(--sans); white-space: nowrap; cursor: pointer; transition: background .12s; }
+.ptools .chip:hover, .ptools .chip:focus-within, .ptools .chip.on { background: var(--bg5); }
+.ptools button.chip { color: var(--fg); }
+.ptools .chip select { appearance: none; -webkit-appearance: none; height: 24px; padding: 0 13px 0 0; border: 0; outline: 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 2.5l3 3 3-3' fill='none' stroke='%238a93a3' stroke-width='1.3'/%3E%3C/svg%3E") right center no-repeat; color: var(--fg-hi); font: 600 11.5px var(--sans); cursor: pointer; }
+.ptools .chip select { field-sizing: content; }
+.ptools .chip select + select { margin-left: 2px; }
+.ptools .chip select option, .ptools .chip select optgroup { background: var(--bg4); color: var(--fg); }
+.roll .ptools { gap: 6px; }
+.roll .ptools .seg.tools { margin-right: 4px; }

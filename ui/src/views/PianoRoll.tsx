@@ -740,25 +740,23 @@ function Roll(props: { z: number; docked?: boolean }) {
             </button>
           )}</For>
         </div>
-        <span class="toolname">{t(TOOLS.find(x => x.id === rollTool())!.label)}</span>
         <div class="vsep" />
-        <label class="plab">{t('b.pe.lblGrid')}
-          <select class="sel" title={t('b.pe.snapTitle')} value={String(rollSnap())} onChange={e => { setRollSnap(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
+        <label class="chip">{t('b.pe.lblGrid')}
+          <select title={t('b.pe.snapTitle')} value={String(rollSnap())} onChange={e => { setRollSnap(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
             <For each={ROLL_SNAPS}>{([l, v]) => <option value={String(v)}>{l}</option>}</For>
             <optgroup label={t('b.pe.snapTriplets')}>
               <For each={ROLL_SNAPS_TRIPLET}>{([l, v]) => <option value={String(v)}>{l}</option>}</For>
             </optgroup>
           </select>
         </label>
-        <label class="plab">{t('b.pe.lblKey')}
-          <span class="row" style={{ gap: '4px' }}>
-            <select class="sel" title={S.project.key == null ? t('b.pe.keyAuto') : t('b.pe.keyScale')} value={String(root())} onChange={e => { commit([setKeyOp(+e.currentTarget.value, scaleIdx())], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
-              <For each={NOTE_NAMES}>{(n, i) => <option value={String(i())}>{n}</option>}</For>
-            </select>
-            <select class="sel" value={String(scaleIdx())} onChange={e => { commit([setKeyOp(root(), +e.currentTarget.value)], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
-              <For each={SCALES}>{([l, id]) => <option value={String(id)}>{t(l)}</option>}</For>
-            </select>
-          </span>
+        {/* the song's key (one for the whole project): shown as one quiet chip, changed here when needed */}
+        <label class="chip" title={S.project.key == null ? t('b.pe.keyAuto') : t('b.pe.keyScale')}>{t('b.pe.lblKey')}
+          <select value={String(root())} onChange={e => { commit([setKeyOp(+e.currentTarget.value, scaleIdx())], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
+            <For each={NOTE_NAMES}>{(n, i) => <option value={String(i())}>{n}</option>}</For>
+          </select>
+          <select value={String(scaleIdx())} onChange={e => { commit([setKeyOp(root(), +e.currentTarget.value)], t('b.pr.keySet')); backToRoll(e.currentTarget); }}>
+            <For each={SCALES}>{([l, id]) => <option value={String(id)}>{t(l)}</option>}</For>
+          </select>
         </label>
         <div style={{ flex: 1 }} />
         <Show when={vocals().length > 0 && chanNotes().length > 0}>
@@ -768,7 +766,7 @@ function Roll(props: { z: number; docked?: boolean }) {
           <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pe.toNewPatTip')} onClick={e => { moveSelToPattern(); backToRoll(e.currentTarget); }}>{t('b.pe.toNewPat')}</button>
         </Show>
         <div class="toolmenu" ref={toolMenu}>
-          <button class="smallbtn" classList={{ on: toolsOpen() }} aria-expanded={toolsOpen()} title={t('b.pr.toolsTip')} onClick={() => setToolsOpen(v => !v)}>
+          <button class="chip" classList={{ on: toolsOpen() }} aria-expanded={toolsOpen()} title={t('b.pr.toolsTip')} onClick={() => setToolsOpen(v => !v)}>
             {t('b.pr.tools')}<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
           </button>
           <Show when={toolsOpen()}>
