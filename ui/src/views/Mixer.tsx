@@ -11,6 +11,7 @@ import { findPane } from '../lib/dock';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { presetInfo } from '../lib/presets';
 import * as A from '../state/actions';
+import { MuteSolo } from '../ui/MuteSolo';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { MiniKnob } from '../ui/Knob';
@@ -291,14 +292,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       </div>
       </div>
       <div class="row" style={{ gap: '2px', 'justify-content': 'center' }}>
-        <button class="mini m mute" classList={{ on: m().muted }} title={tr('c.mix.muteTip')}
-          // FL: a right-click, Ctrl+click or Alt+click on the mute switch solos
-          onPointerDown={e => { e.stopPropagation(); if (e.button === 2) { e.preventDefault(); A.toggleInsertSolo(m().id); } }}
-          onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={e => (e.ctrlKey || e.metaKey || e.altKey ? A.toggleInsertSolo(m().id) : A.toggleInsertMute(m().id))}>M</button>
-        <Show when={m().id !== 0}>
-          <button class="mini s mute" classList={{ on: m().solo }} title={tr('c.mix.soloTip')} onPointerDown={stop} onClick={e => A.toggleInsertSolo(m().id, e.ctrlKey || e.metaKey)}>S</button>
-        </Show>
+        <MuteSolo class="mute" muted={m().muted} solo={m().solo} noSolo={m().id === 0} muteTip={tr('c.mix.muteTip')} soloTip={tr('c.mix.soloTip')}
+          onMute={() => A.toggleInsertMute(m().id)} onSolo={add => A.toggleInsertSolo(m().id, add)} />
       </div>
       {/* the master's clip LED (its meter's red cap): latched over 0 dBFS, where an export clips */}
       <Show when={m().id === 0}>

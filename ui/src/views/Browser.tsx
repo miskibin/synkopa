@@ -587,6 +587,33 @@ function LibraryTab() {
   const removeFolder = async (p: string) => { try { setLib('folders', await be().libraryRemoveFolder(p)); setLib('files', 'f:' + p, undefined); setLib('trunc', 'f:' + p, undefined); setLib('open', 'f:' + p, false); saveBrowserOpen(); } catch (e) { say(String(e)); } };
   // browsing: every kit and folder; searching: the installed ones the search found something in
   const kits = () => lib.kits.filter(k => k.id !== STD_KIT && (!searching() || (k.installed && matchCount('k:' + k.id) > 0)));
+  const mine = () => kits().filter(k => k.installed || lib.progress[k.id]), avail = () => kits().filter(k => !k.installed && !lib.progress[k.id]);
+  const [moreOpen, setMoreOpen] = createSignal(false);
+  const kitRow = (k: Kit) => {
+              const prog = () => lib.progress[k.id], key = 'k:' + k.id;
+              return (
+                <div class="kit">
+                  <div class="top" classList={{ can: k.installed && !searching() }} role={k.installed ? 'button' : undefined} aria-expanded={k.installed ? isOpen(key) : undefined} onClick={() => k.installed && !searching() && toggleOpen(key)}>
+                    <Show when={k.installed} fallback={<span style={{ width: '12px', flex: 'none' }} />}><Chev open={isOpen(key)} /></Show>
+                    <span class="nm ell">{k.name}</span>
+                    <Show when={!k.installed && !prog()}><button class="smallbtn primary" onClick={e => { e.stopPropagation(); install(k); }}>{t('d.br.install')}</button></Show>
+                  </div>
+                  <Show when={!searching()}>
+                    <span class="desc" style={{ 'padding-left': '20px' }}>{k.description}</span>
+                    <span class="meta" style={{ 'padding-left': '20px' }}>{t('d.br.kitmeta', { n: k.count, size: fmtBytes(k.bytes) }) + (k.installed ? t('d.br.kitinst') : '')}</span>
+                  </Show>
+                  <Show when={prog()}>
+                    {p => (
+                      <div style={{ 'padding-left': '20px', display: 'flex', 'flex-direction': 'column', gap: '3px' }}>
+                        <div class="prog"><div style={{ width: clamp(p().total ? p().done / p().total : 0, 0, 1) * 100 + '%' }} /></div>
+                        <span class="meta">{p().error ? p().error : t('d.br.downloading', { n: Math.round(p().total ? p().done / p().total * 100 : 0) })}</span>
+                      </div>
+                    )}
+                  </Show>
+                  <Show when={k.installed && isOpen(key)}><div class="flist in"><FileList k={key} /></div></Show>
+                </div>
+              );
+            };
   const folders = () => lib.folders.filter(f => !searching() || matchCount('f:' + f) > 0);
   const stdShown = () => !searching() || !lib.files[STD] || matchCount(STD) > 0;
   const nothing = () => searching() && !!lib.files[STD] && !stdShown() && !kits().length && !folders().length;
@@ -621,40 +648,21 @@ function LibraryTab() {
             <div class="flist"><FileList k={STD} /></div>
           </Show>
         </Show>
-        <Show when={kits().length}>
+        <Show when={mine().length}>
           <div class="bhead top tog" role="button" aria-expanded={secOpen('kits')} title={t('d.br.sec.tip')} onClick={() => toggleSec('kits')}>
             <Chev open={secOpen('kits')} />
-            <span class="ell">{t('d.br.kits')}</span>
+            <span class="ell">{t('d.br.kitsMine')}</span>
           </div>
-          <Show when={secOpen('kits')}>
-          <For each={kits()}>
-            {k => {
-              const prog = () => lib.progress[k.id], key = 'k:' + k.id;
-              return (
-                <div class="kit">
-                  <div class="top" classList={{ can: k.installed && !searching() }} role={k.installed ? 'button' : undefined} aria-expanded={k.installed ? isOpen(key) : undefined} onClick={() => k.installed && !searching() && toggleOpen(key)}>
-                    <Show when={k.installed} fallback={<span style={{ width: '12px', flex: 'none' }} />}><Chev open={isOpen(key)} /></Show>
-                    <span class="nm ell">{k.name}</span>
-                    <Show when={!k.installed && !prog()}><button class="smallbtn primary" onClick={e => { e.stopPropagation(); install(k); }}>{t('d.br.install')}</button></Show>
-                  </div>
-                  <Show when={!searching()}>
-                    <span class="desc" style={{ 'padding-left': '20px' }}>{k.description}</span>
-                    <span class="meta" style={{ 'padding-left': '20px' }}>{t('d.br.kitmeta', { n: k.count, size: fmtBytes(k.bytes) }) + (k.installed ? t('d.br.kitinst') : '')}</span>
-                  </Show>
-                  <Show when={prog()}>
-                    {p => (
-                      <div style={{ 'padding-left': '20px', display: 'flex', 'flex-direction': 'column', gap: '3px' }}>
-                        <div class="prog"><div style={{ width: clamp(p().total ? p().done / p().total : 0, 0, 1) * 100 + '%' }} /></div>
-                        <span class="meta">{p().error ? p().error : t('d.br.downloading', { n: Math.round(p().total ? p().done / p().total * 100 : 0) })}</span>
-                      </div>
-                    )}
-                  </Show>
-                  <Show when={k.installed && isOpen(key)}><div class="flist in"><FileList k={key} /></div></Show>
-                </div>
-              );
-            }}
-          </For>
-          </Show>
+          <Show when={secOpen('kits')}><For each={mine()}>{kitRow}</For></Show>
+        </Show>
+        {/* kits not downloaded yet: used once in a while, so they wait behind one row at the end of the list */}
+        <Show when={!searching() && avail().length}>
+          <button class="bmore" aria-expanded={moreOpen()} onClick={() => setMoreOpen(v => !v)}>
+            <span class="plus" classList={{ open: moreOpen() }}>+</span>
+            <span class="ell">{t('d.br.more')}</span>
+            <span class="cnt">{avail().length}</span>
+          </button>
+          <Show when={moreOpen()}><For each={avail()}>{kitRow}</For></Show>
         </Show>
         <Show when={!searching() || folders().length}>
           <div class="bhead top tog" role="button" aria-expanded={secOpen('folders')} title={t('d.br.sec.tip')} onClick={() => toggleSec('folders')}>

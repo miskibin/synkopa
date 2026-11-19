@@ -16,6 +16,9 @@ export function PlaylistTools() {
       {/* the chip names the setting only ("Snap auto"); what auto resolves to is in its tooltip and the status line */}
       <ChipSelect label="Snap" title={U.snap < 0 ? t('a.tb.snapTipAuto', { unit: snapName(autoSnap(U.bw)) }) : t('a.tb.snapTip')} value={String(U.snap)}
         options={SNAPS.map(([label, v]) => [(v === 0 ? t('a.snap.off') : label).replace(/^Snap: /, ''), String(v)])} onChange={v => A.setSnap(parseFloat(v))} />
+      {/* what dragging a clip edge does (FL's stretch switch, Shift+M) */}
+      <ChipSelect label={t('a.pl.edges')} title={t(U.stretchMode ? 'a.pl.modeStretchTip' : 'a.pl.modeTrimTip')} value={U.stretchMode ? '1' : '0'}
+        options={[[t('a.pl.modeTrim'), '0'], [t('a.pl.modeStretch'), '1']]} onChange={v => { if ((v === '1') !== U.stretchMode) A.toggleStretchMode(); }} />
     </div>
   );
 }

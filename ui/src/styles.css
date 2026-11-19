@@ -1447,3 +1447,14 @@ button.chip { color: var(--fg); }
 .toolpop .tpslide input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: 50%; background: var(--fg-hi); border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .toolpop .tpslide input[type=range]:focus-visible { outline: 1px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
 .toolpop .tprow .textin { background: var(--bg1); border-color: var(--line); }
+
+/* round 6 */
+.ptools .chordname { align-self: center; font: 600 11px var(--sans); color: var(--acc2); }
+.chip select { text-transform: none; }
+
+/* library: kits to download wait behind one row */
+.bmore { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--fg4); font: 500 12px var(--sans); cursor: pointer; text-align: left; }
+.bmore:hover { background: var(--bg5); color: var(--fg-hi); }
+.bmore .plus { width: 16px; height: 16px; flex: none; border-radius: 4px; background: var(--bg6); color: var(--fg2); font: 500 13px/15px var(--sans); text-align: center; transition: transform .15s; }
+.bmore .plus.open { transform: rotate(45deg); }
+.bmore .cnt { margin-left: auto; font: 500 10px var(--mono); color: var(--fg5); }
