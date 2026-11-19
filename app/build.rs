@@ -10,7 +10,7 @@ fn main() {
     // (what `@available` compiles to), which lives in clang's runtime; rustc links without it.
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         let out = std::process::Command::new("xcrun").args(["clang", "--print-runtime-dir"]).output();
-        if let Ok(o) = out.filter(|o| o.status.success()) {
+        if let Some(o) = out.ok().filter(|o| o.status.success()) {
             let dir = String::from_utf8_lossy(&o.stdout).trim().to_string();
             println!("cargo:rustc-link-search=native={dir}");
             println!("cargo:rustc-link-lib=static=clang_rt.osx");
