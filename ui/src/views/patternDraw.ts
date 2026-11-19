@@ -143,7 +143,7 @@ export function drawLane(g: CanvasRenderingContext2D, W: number, H: number, o: {
 }
 
 /** The colour of the Piano roll lane's handles: one per target, so the lane says what it edits. */
-export const laneColor = (mode: 'vel' | 'pan') => (mode === 'pan' ? T.amber : T.blue);
+export const laneColor = (mode: 'vel' | 'pan') => (mode === 'pan' ? T.pan : T.blue);
 
 /**
  * The Piano roll's lane (FL's event editor): one handle per note of the channel — a stem from the

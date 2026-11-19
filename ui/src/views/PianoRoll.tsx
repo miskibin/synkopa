@@ -62,8 +62,8 @@ const ROLL_ICON = 'M4 4h16v16H4z M4 9h16 M4 14h16 M9 4v5 M15 14v6';
 const TOOLS: { id: Tool; key: string; label: Parameters<typeof t>[0]; icon: string; tip: Parameters<typeof t>[0] }[] = [
   { id: 'draw', key: 'p', label: 'b.pe.tool.draw', icon: 'M4 20l4.5-1L19 8.5 15.5 5 5 15.5z M13.5 7l3.5 3.5', tip: 'b.pe.tool.draw.tip' },
   { id: 'paint', key: 'b', label: 'b.pe.tool.paint', icon: 'M18 3l3 3-9 9-3-3z M9 12c-3 0-4 2-4 4s-1 3-2 4c4 0 8-1 8-5', tip: 'b.pe.tool.paint.tip' },
-  { id: 'select', key: 'e', label: 'b.pe.tool.select', icon: 'M4 4h4 M12 4h4 M20 4v4 M20 12v4 M20 20h-4 M12 20H8 M4 20v-4 M4 12V8', tip: 'b.pe.tool.select.tip' },
   { id: 'erase', key: 'd', label: 'b.pe.tool.erase', icon: 'M8 20h12 M4.5 15.5L14 6l5 5-7.5 7.5H8z', tip: 'b.pe.tool.erase.tip' },
+  { id: 'select', key: 'e', label: 'b.pe.tool.select', icon: 'M4 4h4 M12 4h4 M20 4v4 M20 12v4 M20 20h-4 M12 20H8 M4 20v-4 M4 12V8', tip: 'b.pe.tool.select.tip' },
   { id: 'stamp', key: 'c', label: 'b.pe.tool.stamp', icon: 'M5 14h3v6H5z M10.5 11h3v9h-3z M16 8h3v12h-3z', tip: 'b.pe.tool.stamp.tip' },
 ];
 

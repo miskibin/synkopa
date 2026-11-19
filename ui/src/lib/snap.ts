@@ -1,19 +1,20 @@
 import { t } from './i18n';
 
 // Grid snapping. `snap` is the select value: -1 = auto, 0 = off, otherwise beats.
+// Named as note values, like the Piano roll's grid: a beat is a quarter note, so 1/4 beat = 1/16.
 export const SNAPS: [string, number][] = [
-  ['Snap: auto', -1], ['Snap: off', 0], ['Snap: 1/16 beat', 1 / 16], ['Snap: 1/8 beat', 0.125], ['Snap: 1/4 beat', 0.25], ['Snap: 1/3 beat', 1 / 3],
-  ['Snap: 1/2 beat', 0.5], ['Snap: beat', 1], ['Snap: bar', 4],
+  ['Snap: auto', -1], ['Snap: off', 0], ['Snap: 1/64', 1 / 16], ['Snap: 1/32', 0.125], ['Snap: 1/16', 0.25], ['Snap: 1/12', 1 / 3],
+  ['Snap: 1/8', 0.5], ['Snap: 1/4', 1], ['Snap: bar', 4],
 ];
 
 export function snapName(u: number): string {
-  if (u === 1 / 16) return '1/16 beat';
-  if (u === 0.125) return '1/8 beat';
-  if (u === 0.25) return '1/4 beat';
-  if (Math.abs(u - 1 / 3) < 1e-6) return '1/3 beat';
-  if (u === 0.5) return '1/2 beat';
-  if (u === 1) return 'beat';
-  if (u === 2) return t('a.snap.beats2');
+  if (u === 1 / 16) return '1/64';
+  if (u === 0.125) return '1/32';
+  if (u === 0.25) return '1/16';
+  if (Math.abs(u - 1 / 3) < 1e-6) return '1/12';
+  if (u === 0.5) return '1/8';
+  if (u === 1) return '1/4';
+  if (u === 2) return '1/2';
   if (u === 4) return 'bar';
   return t('a.snap.offName');
 }

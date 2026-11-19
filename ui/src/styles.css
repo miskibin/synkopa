@@ -2,7 +2,7 @@
   --bg0: #0a0c0f; --bg1: #0e1013; --bg2: #111419; --bg3: #14181e; --bg4: #161a21; --bg5: #171b21; --bg6: #1c2128; --bg7: #1e242d;
   --line: #252b34; --line2: #2c333d; --line3: #2e3641;
   --fg: #d5dae2; --fg-hi: #f2f4f7; --fg2: #b4bac4; --fg3: #9aa2ad; --fg4: #7d8592; --fg5: #5c6573; --fg6: #4a5360;
-  --blue: #4f8ef7; --blue-hi: #8fb6ff; --green: #4ec08a; --amber: #e0a44a; --red: #e05263; --on-bg: #2f3a4b;
+  --blue: #4f8ef7; --blue-hi: #8fb6ff; --green: #4ec08a; --amber: #e0a44a; --pan: #b18cf5; --red: #e05263; --on-bg: #2f3a4b;
   --sel-bg: #232a33; --sel-bg2: #1f252e; --sel-ring: #3a4554; --drag-bg: #2a3240; --mixer-bg: #121519; --dialog-bg: #1a1f26;
   --on-accent: #0b1220; --on-warm: #12151a; --danger: #e8607a; --arm-bg: #1f1a1e; --playhead: #eef1f5;
   --knob-track: #2c333d; --knob-cap: #2c333d; --knob-ptr: #f2f4f7; --fader-cap: #c9ced6; --shadow: rgba(0,0,0,.55); --shadow2: rgba(0,0,0,.4);
@@ -16,7 +16,7 @@
   --bg0: #d9dde3; --bg1: #eef0f3; --bg2: #f6f7f9; --bg3: #f1f3f5; --bg4: #f7f8fa; --bg5: #e9ecf0; --bg6: #e2e6eb; --bg7: #ffffff;
   --line: #d3d8df; --line2: #c6ccd4; --line3: #bfc6cf;
   --fg: #2a3038; --fg-hi: #0f1318; --fg2: #3c444f; --fg3: #525b67; --fg4: #69727e; --fg5: #858d98; --fg6: #9aa1ab;
-  --blue: #2563d9; --blue-hi: #1f56c2; --green: #1f9461; --amber: #b9770f; --red: #cf2f45; --on-bg: #d6e3fb;
+  --blue: #2563d9; --blue-hi: #1f56c2; --green: #1f9461; --amber: #b9770f; --pan: #7446d6; --red: #cf2f45; --on-bg: #d6e3fb;
   --sel-bg: #dde6f6; --sel-bg2: #e4ebf7; --sel-ring: #9db6e6; --drag-bg: #cfdcf5; --mixer-bg: #e6e9ee; --dialog-bg: #ffffff;
   --on-accent: #ffffff; --on-warm: #ffffff; --danger: #c8223a; --arm-bg: #f7eef1; --playhead: #11161c;
   --knob-track: #cfd5dc; --knob-cap: #ffffff; --knob-ptr: #1a1e24; --fader-cap: #ffffff; --shadow: rgba(30,40,60,.22); --shadow2: rgba(30,40,60,.25);
@@ -1570,3 +1570,20 @@ button.chip { color: var(--fg); }
 .cmdsec { display: flex; align-items: center; gap: 7px; }
 .cmdsec .dot { width: 7px; height: 7px; flex: none; border-radius: 2px; }
 .cmd.danger .name, .cmd.danger .gl { color: var(--red); }
+
+/* ---- consistency pass ---- */
+/* pan has its own colour everywhere (mixer knob, rack knob, Piano roll lane); amber stays for solo, automation and warnings */
+.laneswitch button.pan.on { background: color-mix(in srgb, var(--pan) 22%, transparent); color: var(--pan); }
+.seg.patsong > button.pat.on { color: var(--blue-hi); }
+.pkeys .w.on, .pkeys .b.on { background: var(--blue); }
+/* the Channel rack's mute is the same M as on tracks and mixer strips: lit = muted; S (amber) while soloed */
+.mini.m.rkm { width: 18px; height: 16px; flex: none; margin: 0 1px; font-size: 9px; }
+.mini.m.rkm.solo { background: var(--amber); color: var(--on-warm); border-color: transparent; }
+.mini.m.rkm.quiet { opacity: .45; }
+/* one look for "add": a quiet chip with a plus */
+.linkbtn.add, .smallbtn.addch, .addTrack { display: inline-flex; align-items: center; width: auto; height: 22px; padding: 0 9px; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg2); font: 500 11.5px var(--sans); cursor: pointer; }
+.linkbtn.add:hover, .smallbtn.addch:hover, .addTrack:hover { background: color-mix(in srgb, var(--fg) 13%, transparent); color: var(--fg-hi); }
+.linkbtn.add::before { content: '+'; margin-right: 5px; font-weight: 400; }
+.addTrack { margin: 4px 8px; }
+/* one look for key caps: filled, no outline */
+.cmdbtn kbd, .mvroute kbd, .cmdfind kbd, .cmd.ask kbd { padding: 1px 6px; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg3); font: 600 10px var(--sans); }

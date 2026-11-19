@@ -162,7 +162,7 @@ function PatternsTab() {
     <div class="scroll">
       <div class="bhead">
         <span>{t('d.br.patCount', { n: S.project.patterns.length })}</span>
-        <button class="linkbtn" title={t('d.br.newpat.tip')} onClick={() => { newPattern(); showPatternWindow(); }}>{t('d.br.new')}</button>
+        <button class="linkbtn add" title={t('d.br.newpat.tip')} onClick={() => { newPattern(); showPatternWindow(); }}>{t('d.br.new')}</button>
       </div>
       <div class="plist">
         <For each={S.project.patterns}>
@@ -196,7 +196,7 @@ function AudioTab() {
     <div class="scroll">
       <div class="bhead">
         <span>{t('d.br.audioCount', { n: list().length })}</span>
-        <button class="linkbtn" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button>
+        <button class="linkbtn add" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button>
       </div>
       <Show when={list().length} fallback={<div class="bempty"><span>{t('d.br.audioEmpty')}</span><button class="smallbtn primary" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button></div>}>
         <div style={{ display: 'flex', 'flex-direction': 'column', padding: '4px 0' }}>
@@ -654,7 +654,7 @@ function LibraryTab() {
           <div class="bhead top tog" role="button" aria-expanded={secOpen('folders')} title={t('d.br.sec.tip')} onClick={() => toggleSec('folders')}>
             <Chev open={secOpen('folders')} />
             <span class="ell">{t('d.br.folders')}</span>
-            <button class="linkbtn" onClick={e => { e.stopPropagation(); void addFolder(); }} title={t('d.br.addfolder.tip')}>{t('d.br.add')}</button>
+            <button class="linkbtn add" onClick={e => { e.stopPropagation(); void addFolder(); }} title={t('d.br.addfolder.tip')}>{t('d.br.add')}</button>
           </div>
           <Show when={secOpen('folders')}>
           <For each={folders()} fallback={<div class="bnote">{t('d.br.addown')}</div>}>

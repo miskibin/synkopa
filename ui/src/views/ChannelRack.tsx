@@ -31,7 +31,7 @@ import { paneDock } from '../state/docking';
 import { pickFreeInsert, wheelInsert } from '../ui/InsertPicker';
 import { showInsert } from '../state/mixView';
 import { toggleChannelWindow } from './ChannelWindow';
-import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo } from './patternDraw';
+import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo, laneColor } from './patternDraw';
 import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, patternMenu, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
@@ -95,7 +95,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const p = unwrap(pt()), notes = c ? p.notes.map((n, i) => ({ n, i })).filter(x => x.n.ch === c.id) : [];
     const roll = !!c && rollRows().has(c.id);
-    if (mode === 'vel') drawLane(g, w, h, { x0: 0, cw: G.cw, sx: G.sx, steps: G.steps, notes, color: c?.color ?? '#4f8ef7', cells: !roll, beatGap: true, muted: !!c?.mute });
+    if (mode === 'vel') drawLane(g, w, h, { x0: 0, cw: G.cw, sx: G.sx, steps: G.steps, notes, color: laneColor('vel'), cells: !roll, beatGap: true, muted: !!c?.mute });
     else drawKeyGraph(g, w, h, { cw: G.cw, sx: G.sx, steps: G.steps, notes, color: c?.color ?? '#4f8ef7', root: c?.root ?? 60, span: KEY_SPAN, off: roll });
   });
   // playhead column: only when the step changes
@@ -468,15 +468,15 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
       onPointerDown={e => { if (e.button === 0 && !e.shiftKey) selectChannel(c().id); }}
       onContextMenu={e => props.onMenu(c(), e)}>
       <span class="cstrip" style={{ color: c().color }} title={t('b.rk.dragChannel')} onPointerDown={e => props.onMove(c(), e)} />
-      <button class="led" classList={{ on: !c().mute && (!anySolo() || c().solo), solo: c().solo }}
+      <button class="mini m rkm" classList={{ on: c().mute, solo: c().solo && !c().mute, quiet: anySolo() && !c().solo && !c().mute }}
         title={t('b.pe.ledTitle', { state: t(c().mute ? 'b.pe.ledMuted' : c().solo ? 'b.pe.ledSolo' : 'b.pe.ledActive') })}
         onPointerDown={e => {
           e.stopPropagation(); e.preventDefault();
           // FL: click = mute, Ctrl+click (or right-click) = solo
           if (e.button === 2 || (e.button === 0 && (e.ctrlKey || e.metaKey))) toggleChanSolo(c()); else if (e.button === 0) toggleChanMute(c());
         }}
-        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }} />
-      <MiniKnob key={'cp' + c().id} t={() => ((autoDisplay(panT()) ?? c().pan) + 1) / 2} title={t('b.pe.panTitle', { v: panText(autoDisplay(panT()) ?? c().pan) })}
+        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}>{c().solo && !c().mute ? 'S' : 'M'}</button>
+      <MiniKnob key={'cp' + c().id} color="var(--pan)" t={() => ((autoDisplay(panT()) ?? c().pan) + 1) / 2} title={t('b.pe.panTitle', { v: panText(autoDisplay(panT()) ?? c().pan) })}
         automated={() => isAutomated(panT())} onMenu={(x, y) => paramMenu(x, y, panT(), () => commit([panOp(0.5)], t('b.cw.panCh')), c().color)}
         onStart={() => { pg = new Gesture(t('b.cw.panCh')); }} onChange={v => { pg?.update([panOp(v)]); say(c().name + ' · pan ' + panText(v * 2 - 1)); }}
         onEnd={() => { pg?.end(); pg = null; }} onReset={() => commit([panOp(0.5)], t('b.cw.panCh'))}
