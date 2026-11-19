@@ -26,6 +26,7 @@ import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
 import { drawFades, drawGrid, drawOverlaps, type View } from './playlistDraw';
 import { drawRuler, rulerCursor, rulerDown as rulerPress, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
+import { PlaylistTools } from './PlaylistTools';
 import type { ZRange } from '../lib/zoomBar';
 import { laneOverlaps } from '../lib/overlaps';
 import { damageRects, followScroll, planTile, snapPx, type Rect, type Tile } from './playlistTile';
@@ -1363,7 +1364,8 @@ export function Playlist() {
 
   return (
     <div class="plwrap" onPointerDown={() => A.playlistFront()}>
-      <div class="ovrow" style={{ 'padding-left': U.headW + 'px' }}>
+      <div class="ovrow tools">
+        <PlaylistTools />
         <ZoomScrollbar orient="h" class="ov" range={ovView} limits={ovLimits} onChange={ovChange} title={tl('a.pl.ovTip')}
           paint={paintOverview} paintKey={ovVer} />
       </div>
