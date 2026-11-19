@@ -252,12 +252,12 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
   };
   onCleanup(() => setDrag(null));
 
-  // anchored at the slot, always fully on screen
+  // centred over the app, like the command palette: wherever it was opened from (a slot, a strip,
+  // the master), it is in the same place and never cut by a window edge
   const pos = () => {
     const vw = window.innerWidth, vh = window.innerHeight, m = 12;
     const w = Math.min(W, vw - 2 * m), h = Math.min(H, vh - 2 * m);
-    if (props.x < 0) return { left: (vw - w) / 2, top: Math.max(m, (vh - h) / 2.4), w, h };
-    return { left: Math.min(Math.max(m, props.x - w / 2), vw - w - m), top: Math.min(Math.max(m, props.y - h - 10 > m ? props.y - h - 10 : props.y + 10), vh - h - m), w, h };
+    return { left: (vw - w) / 2, top: Math.max(m, (vh - h) / 2.4), w, h };
   };
   const activeCat = () => CATS.find(c => c.id === cat())!;
 

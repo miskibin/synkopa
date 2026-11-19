@@ -1614,3 +1614,55 @@ button.chip { color: var(--fg); }
 /* shortcuts dialog: the way to the command palette sits in the title row */
 .helpdlg .hd .helpcmd { width: auto; height: 22px; margin-left: auto; margin-right: 8px; gap: 8px; font-size: 11.5px; color: var(--fg2); }
 .helpdlg .hd .helpcmd kbd { padding: 1px 6px; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg3); font: 600 10px var(--sans); }
+
+/* ---- surfaces pass: tones and shadows instead of edges ---- */
+/* A surface is told from its neighbour by its tone, and from what it floats over by its shadow.
+   Lines stay only where they carry data (grid, meters, focus rings, drop targets). */
+:root { --sep: transparent; --tone1: color-mix(in srgb, var(--fg) 5%, transparent); --tone2: color-mix(in srgb, var(--fg) 9%, transparent); --lift: 0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset; }
+:root[data-theme="light"] { --lift: 0 1px 0 color-mix(in srgb, #fff 70%, transparent) inset; }
+/* app bar and panel heads: a soft shadow onto what is below, no rule */
+.toolbar { border-bottom: 0; box-shadow: 0 1px 8px var(--shadow2); position: relative; z-index: 7; }
+.btabs, .ptools, .fxchain .hd, .winhd { border-bottom: 0; }
+.btabs { background: transparent; }
+/* playlist: the header column is one tone lighter than the grid and casts onto it; tracks are blocks with a hair of the darker ground between */
+.lanesCol { border-right: 0; background: var(--bg2); box-shadow: 4px 0 10px -4px var(--shadow2); }
+.plhead { border: 0; }
+.lane { border-bottom: 0; box-shadow: inset 0 -1px 0 var(--bg2); }
+/* mixer: strips are blocks on a darker ground; the selected one is lighter, not ringed */
+.mixer .strips { gap: 2px; }
+.mixer .strips .strip { width: 84px; }
+.strip { border-right: 0; border-radius: 0 0 6px 6px; }
+.strip.on { box-shadow: none; background: color-mix(in srgb, var(--blue) 9%, var(--bg6)); }
+.strip.multi { box-shadow: none; }
+.strip[data-ins="0"] { box-shadow: none; }
+.fxchain { border-left: 0; background: var(--bg5); box-shadow: -6px 0 12px -6px var(--shadow2); }
+.mixer.docked.side .fxchain { border-top: 0; }
+.slot { border-bottom: 0; border-radius: 6px; margin: 1px 4px; }
+.crow { border-bottom: 0; }
+/* floating things: shadow and a lit top edge, no outline */
+.win { border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, #000 28%, transparent), 0 18px 48px var(--shadow), var(--lift); }
+.win.docked { box-shadow: none; }
+.menu { border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, #000 22%, transparent), 0 12px 32px var(--shadow), var(--lift); }
+.dialog { border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, #000 22%, transparent), 0 24px 64px var(--shadow), var(--lift); }
+.dialog .sechd { border-top: 0; padding-top: 6px; margin-top: 14px; }
+/* controls: a tone, not an outline */
+.lane .mini.m:not(.on), .lane .mini.s:not(.on), .strip .mini.m:not(.on), .strip .mini.s:not(.on), .mini.m.rkm:not(.on):not(.solo) { background: var(--tone2); box-shadow: none; }
+.fxchain .hd .chainbtn { border: 0; height: 20px; padding: 0 8px; border-radius: 5px; background: var(--tone1); color: var(--fg2); }
+.fxchain .hd .chainbtn:hover { background: var(--tone2); }
+.ptools .keybadge { border: 0; background: var(--tone1); }
+.ptools .keybadge:hover, .ptools .keybadge.on { background: var(--tone2); }
+.chanwin .smptog { border: 0; background: var(--tone1); color: var(--fg2); }
+.chanwin .smptog:hover { background: var(--tone2); }
+.textin { border-color: transparent; }
+.strip .sfxr.add { box-shadow: none; background: var(--tone1); }
+.pitem.on { box-shadow: none; }
+/* effect picker: centred, a veil behind it, tiles told apart by tone */
+.fxpick-veil { background: color-mix(in srgb, var(--bg0) 55%, transparent); }
+.fxpick { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px color-mix(in srgb, #000 22%, transparent), 0 24px 64px var(--shadow), var(--lift); }
+.fxp-hd { border-bottom: 0; }
+.fxp-search { border-color: transparent; }
+.fxp-search:focus-within { border-color: var(--blue); }
+.fxp-rail { border-right: 0; background: color-mix(in srgb, var(--bg0) 30%, transparent); }
+.fxp-tile { border-color: transparent; background: var(--tone1); }
+.fxp-tile:hover, .fxp-tile.cur { border-color: transparent; background: var(--tone2); }
+.fxp-tile.focus { border-color: transparent; background: color-mix(in srgb, var(--blue) 16%, var(--tone1)); box-shadow: 0 0 0 1.5px var(--blue) inset; }
