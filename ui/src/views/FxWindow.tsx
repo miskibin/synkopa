@@ -38,6 +38,9 @@ import { halfHit, HalfViz, halfXf } from './fx/half';
 import { ChorusViz, PhaserViz } from './fx/modulation';
 import { warpDown, warpHover, WarpViz } from './fx/warp';
 import { onVoicePad, padParams, padToVoice, VoiceViz } from './fx/voice';
+import { StereoViz } from './fx/stereo';
+import { AnalyzerViz } from './fx/analyzer';
+import { dbOf, fOf, mbGeom, mbHit, MultibandViz } from './fx/multiband';
 
 
 function makeViz(f: Fx): Viz | null {
@@ -57,12 +60,13 @@ function makeViz(f: Fx): Viz | null {
     case 'warp': return new WarpViz();
     case 'chorus': return new ChorusViz();
     case 'phaser': return new PhaserViz();
+    case 'stereo': return new StereoViz();
+    case 'analyzer': return new AnalyzerViz();
+    case 'multiband': return new MultibandViz();
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 260, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220 };
-/** Default window widths per type (actions.openPlug). */
-export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 260, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, stereo: 250, analyzer: 360, multiband: 270 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -77,6 +81,9 @@ const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   voice: 'c.fx.hint.voice',
   chorus: 'c.fx.hint.chorus',
   phaser: 'c.fx.hint.phaser',
+  stereo: 'c.fx.hint.stereo',
+  analyzer: 'c.fx.hint.analyzer',
+  multiband: 'c.fx.hint.multiband',
 };
 
 /** Move a fixed window by its header. */
@@ -145,7 +152,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
 }
 
 /** Dry/wet of the effect (fx.mix), automatable. */
-const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp', 'chorus', 'phaser']);
+const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'analyzer', 'multiband']);
 function MixControl(props: { fx: Fx }) {
   const target = () => ({ kind: 'mix' as const, fxId: props.fx.id });
   const val = () => autoDisplay(target()) ?? props.fx.mix ?? 1;
@@ -361,6 +368,26 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.feedback', items: [{ id: 'fb', ends: ['c.fx.end.hollow', 'c.fx.end.resonant'] }] },
     { title: 'c.fx.sec.output', items: [{ id: 'mix' }] },
   ],
+  // first view: how wide, is the bass mono, level and balance; polarity and swap are repair tools
+  stereo: [
+    { title: 'c.fx.sec.stereo', items: [{ id: 'width', size: 'lg', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { id: 'spread' }] },
+    { title: 'c.fx.sec.bass', items: [{ stack: [{ id: 'bass', labels: ['c.fx.lab.bassStereo', 'Mono'], small: true }] }, { id: 'bassf', when: fx => (fx.params.bass ?? 0) >= 0.5 }] },
+    { title: 'c.fx.sec.output', items: [{ id: 'gain' }, { id: 'pan', ends: ['L', 'R'] }] },
+    { title: 'c.fx.sec.channels', adv: true, items: [{ stack: [{ id: 'invl', labels: ['L', 'Ø L'], small: true }, { id: 'invr', labels: ['R', 'Ø R'], small: true }] }, { stack: [{ id: 'swap', labels: ['L | R', 'R | L'], small: true }] }] },
+  ],
+  analyzer: [
+    { title: 'c.fx.sec.target', items: [{ stack: [{ id: 'target', labels: ['Off', 'Streaming −14', 'c.fx.lab.loud9', 'Broadcast −23'], small: true }] }] },
+    { title: 'c.fx.sec.spectrum', adv: true, items: [{ stack: [{ id: 'slope', small: true }] }] },
+  ],
+  // the four OTT controls first; the band levels and crossovers are under "Advanced", the
+  // thresholds are dragged in the display
+  multiband: [
+    { title: 'c.fx.sec.amount', items: [{ id: 'depth', size: 'lg' }, { id: 'time' }] },
+    { title: 'c.fx.sec.compression', items: [{ id: 'up', ends: ['0', '200%'] }, { id: 'down', ends: ['0', '200%'] }] },
+    { title: 'c.fx.sec.gain', items: [{ id: 'in' }, { id: 'out' }] },
+    { title: 'c.fx.sec.bands', adv: true, items: [{ id: 'gl', size: 'sm' }, { id: 'gm', size: 'sm' }, { id: 'gh', size: 'sm' }] },
+    { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
+  ],
   half: [
     { title: 'c.fx.sec.slowdown', items: [{ stack: [{ id: 'speed', labels: ['c.fx.lab.halfFifth', 'c.fx.lab.halfOctave', 'c.fx.lab.halfTwoOct'], small: true }, { id: 'loop', small: true }] }] },
     { title: 'c.fx.sec.transitions', items: [{ id: 'smooth', size: 'lg', ends: ['c.fx.end.percussive', 'c.fx.end.swell'] }] },
@@ -369,6 +396,8 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
   ],
 };
 
+/** The Multiband's thresholds: dragged in its display, not knobs. */
+const MB_THRESHOLDS = ['dl', 'dm', 'dh', 'ul', 'um', 'uh'];
 /** Chorus / Phaser: the LFO follows the tempo. */
 function synced(fx: Fx) { return (fx.params.sync ?? 0) >= 0.5; }
 /** The delay's model index (0 mono, 1 stereo, 2 ping-pong, 3 off). */
@@ -396,7 +425,8 @@ function Sections(props: { fx: Fx }) {
     lay.forEach(s => walk(s.items));
     const known = new Set(defs.map(p => p.id));
     // the tuner's key/scale/voice have their own row; Warp's slots are picked on its slot strip
-    const rest = defs.filter(p => !placed.has(p.id) && !(props.fx.type === 'tune' && ['key', 'scale', 'voice'].includes(p.id)) && !(props.fx.type === 'warp' && ['tslot', 'vslot'].includes(p.id)));
+    const rest = defs.filter(p => !placed.has(p.id) && !(props.fx.type === 'tune' && ['key', 'scale', 'voice'].includes(p.id)) && !(props.fx.type === 'warp' && ['tslot', 'vslot'].includes(p.id))
+      && !(props.fx.type === 'multiband' && MB_THRESHOLDS.includes(p.id)));
     // drop layout items the engine does not define (older catalog), then sections left empty
     const keep = (xs: Item[]): Item[] => xs.flatMap((x): Item[] => {
       if ('stack' in x) { const k = keep(x.stack); return k.length ? [{ stack: k }] : []; }
@@ -510,6 +540,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     else if (got.f.type === 'deess') deessDown(e, got.f);
     else if (got.f.type === 'voice') voiceDown(e);
     else if (got.f.type === 'half') halfDown(e, got.f);
+    else if (got.f.type === 'multiband') mbDown(e, got.f);
     else if (got.f.type === 'warp') warpDown(e, cv, props.fxId, viz as WarpViz, () => version++);
     else if (got.f.type === 'fet' && e.button === 0) {
       const m = fetModes.get(props.fxId) === 'out' ? 'gr' : 'out';
@@ -535,6 +566,13 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
       const v = viz as HalfViz, { x, y, W, H } = rel(e), on = halfHit(got.f, x, y, W, H);
       if (on !== v.hover) { v.hover = on; version++; }
       cv.style.cursor = on ? 'ew-resize' : 'default';
+    } else if (got.f.type === 'analyzer') {
+      const { x, y } = rel(e);
+      (viz as AnalyzerViz).hover = { x, y }; version++;
+    } else if (got.f.type === 'multiband') {
+      const v = viz as MultibandViz, { x, y, W, H } = rel(e), on = mbHit(got.f, x, y, W, H);
+      if (on !== v.hover) { v.hover = on; version++; }
+      cv.style.cursor = on ? (on[0] === 'x' ? 'ew-resize' : 'ns-resize') : 'default';
     } else if (got.f.type === 'voice') {
       const v = viz as VoiceViz, { x, y, W, H } = rel(e), on = onVoicePad(x, y, W, H);
       if (on !== v.hover) { v.hover = on; version++; }
@@ -548,6 +586,8 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     if (got.f.type === 'voice') { (viz as VoiceViz).hover = false; version++; }
     if (got.f.type === 'half') { (viz as HalfViz).hover = null; version++; }
     if (got.f.type === 'reverb') { (viz as ReverbViz).hover = null; version++; }
+    if (got.f.type === 'analyzer') { (viz as AnalyzerViz).hover = null; version++; }
+    if (got.f.type === 'multiband') { (viz as MultibandViz).hover = null; version++; }
     if (got.f.type === 'warp') { const w = viz as WarpViz; w.hover = null; w.hoverX = null; version++; }
   };
   /** Pad: click / drag sets Pitch and Formant together (one undo step), double click resets both. */
@@ -594,6 +634,29 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     };
     at(e.clientX);
     track(ev => at(ev.clientX), () => g.end(), 'ew-resize');
+  };
+  /** Multiband: drag a crossover sideways or a threshold up and down (one undo step); double-click = default. */
+  const mbDown = (e: PointerEvent, f: Fx) => {
+    if (e.button !== 0) return;
+    const { x, y, W, H } = rel(e), id = mbHit(f, x, y, W, H); if (!id) return;
+    const pd = defOf(f, id); if (!pd) return;
+    e.preventDefault();
+    const name = tName(pd.label);
+    if (e.altKey || dblCheck('mb' + id + props.fxId)) { const op = setParam(props.fxId, id, pd.def); if (op) commit([op], name); return; }
+    const g = new Gesture(name), v = viz as MultibandViz, r = cv.getBoundingClientRect(), G = mbGeom(r.width, r.height);
+    v.drag = id; version++;
+    track(ev => {
+      const cur = findFx(props.fxId)?.f; if (!cur) return;
+      let val: number;
+      if (id[0] === 'x') {
+        val = fOf(ev.clientX - r.left, G);
+        // the crossovers stay an octave apart
+        if (id === 'xlo') val = Math.min(val, (cur.params.xhi ?? 2500) / 2); else val = Math.max(val, (cur.params.xlo ?? 88.3) * 2);
+        val = Math.round(clamp(val, pd.min, pd.max) * 10) / 10;
+      } else val = Math.round(clamp(dbOf(ev.clientY - r.top, G), pd.min, pd.max) * 10) / 10;
+      const op = setParam(props.fxId, id, val); if (op) g.update([op]);
+      say(name + ': ' + fmtLong(pd, findFx(props.fxId)?.f.params[id] ?? val));
+    }, () => { g.end(); v.drag = null; version++; }, id[0] === 'x' ? 'ew-resize' : 'ns-resize');
   };
   const deessDown = (e: PointerEvent, f: Fx) => {
     if (e.button !== 0) return;

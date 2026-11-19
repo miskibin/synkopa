@@ -933,7 +933,9 @@ pub enum Garbage {
 }
 
 pub struct Taps {
+    /// mono (L+R)/2 into each watched effect
     pub input: Vec<rtrb::Producer<f32>>,
+    /// interleaved L, R out of each watched effect
     pub output: Vec<rtrb::Producer<f32>>,
 }
 
@@ -2575,8 +2577,8 @@ fn run_chain(ins: &mut InsertRt, n: usize, ctx: &ProcessCtx, watch: &[Id], taps:
         if let Some(w) = w {
             let wet = if slot.bypass { None } else { slot.proc.as_ref().and_then(|p| p.wet_tap()) };
             match wet {
-                Some(wet) if !wet.is_empty() => push_mono(&mut taps.output[w], wet),
-                _ => push_tap(&mut taps.output[w], &ins.l[..n], &ins.r[..n]),
+                Some(wet) if !wet.is_empty() => push_stereo(&mut taps.output[w], wet, wet),
+                _ => push_stereo(&mut taps.output[w], &ins.l[..n], &ins.r[..n]),
             }
             let gr = if slot.bypass { 0.0 } else { slot.proc.as_ref().map(|p| p.gain_reduction_db()).unwrap_or(0.0) };
             fset(&shared.gr[w], gr);
@@ -2600,12 +2602,15 @@ fn push_tap(p: &mut rtrb::Producer<f32>, l: &[f32], r: &[f32]) {
     }
 }
 
-fn push_mono(p: &mut rtrb::Producer<f32>, x: &[f32]) {
-    if p.slots() < x.len() {
+/// The output tap is stereo (interleaved L, R), for the windows that draw the stereo field.
+fn push_stereo(p: &mut rtrb::Producer<f32>, l: &[f32], r: &[f32]) {
+    let n = l.len().min(r.len());
+    if p.slots() < 2 * n {
         return;
     }
-    for &v in x {
-        let _ = p.push(v);
+    for i in 0..n {
+        let _ = p.push(l[i]);
+        let _ = p.push(r[i]);
     }
 }
 

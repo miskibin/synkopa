@@ -40,7 +40,10 @@ pub fn frame(
 ) -> Vec<u8> {
     let nfx = fx.map(|f| f.len()).unwrap_or(0);
     let mut w = W(Vec::with_capacity(
-        64 + insert_ids.len() * 12 + nfx * (144 + 4 * (128 * 2 + 256 * 2)) + rec.map(|r| r.4.len() * 4 + 32).unwrap_or(4),
+        64 + insert_ids.len() * 12
+            + nfx * (148 + 4 * (128 * 2 + 256 * 2))
+            + fx.map(|f| f.iter().map(|a| a.xy.len() * 4).sum::<usize>()).unwrap_or(0)
+            + rec.map(|r| r.4.len() * 4 + 32).unwrap_or(4),
     ));
     w.u32(MAGIC);
     w.u32(seq);
@@ -74,6 +77,9 @@ pub fn frame(
         w.f32s(&a.spec_out);
         w.f32s(&a.scope_in);
         w.f32s(&a.scope_out);
+        // X/Y points for a vectorscope (Stereo, Analyzer): count of L/R pairs, then the pairs
+        w.u32((a.xy.len() / 2) as u32);
+        w.f32s(&a.xy);
     }
     match rec {
         None => w.u32(0),

@@ -2964,7 +2964,20 @@ impl Engine {
             let c = &mut *guard;
             let Some(w) = c.wires.as_mut() else { return };
             while w.garbage.pop().is_ok() {}
-            let analysis = if c.watch.is_empty() { None } else { Some(w.analyzer.analyze(&c_watch(&c.watch), &shared)) };
+            let analysis = if c.watch.is_empty() {
+                None
+            } else {
+                let detail: Vec<crate::analysis::Detail> = c
+                    .watch
+                    .iter()
+                    .map(|id| {
+                        crate::analysis::Detail::of(
+                            c.project.inserts.iter().flat_map(|m| m.fx.iter()).find(|f| f.id == *id).map(|f| f.kind),
+                        )
+                    })
+                    .collect();
+                Some(w.analyzer.analyze(&c_watch(&c.watch), &detail, &shared))
+            };
             let w = c.wires.as_mut().unwrap();
             let sr = w.sr as u32;
             // drain recorded input

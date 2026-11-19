@@ -4,6 +4,24 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Stereo.** Width (0 % mono … 200 %), Spread to widen even a mono synth or vocal without any
+  loss when the song is summed to mono, Bass mono to keep everything under 120 Hz (or your
+  frequency) in the centre for clubs and phones, gain and balance; polarity and L/R swap under
+  Advanced. Its window shows the stereo field as a vectorscope with the correlation, the balance,
+  and whether your bass is mono.
+- **Multiband (OTT).** Upward and downward compression in three bands at once: Depth, Time,
+  Upward and Downward are all you need. Each band's level and how far it is lifted or pulled down
+  is drawn live; drag the threshold lines and the crossovers right in the display. Quiet room
+  noise is not pulled up into hiss, and Depth blends without the phasey dip a plain dry/wet has.
+- **Analyzer.** A meter for the master: short-term, integrated and momentary loudness (LUFS, to
+  the EBU R128 standard), loudness range, true peak, the loudness of the last 30 s against a
+  target, a spectrum whose bass is sharp enough to tell a 41 Hz kick from a 49 Hz 808 (hover it
+  to read the frequency and note), a vectorscope and the correlation. It tells you how much
+  streaming would turn the song down instead of telling you to hit a number.
+
 ## 0.9.26 — 2026-11-19
 
 ### Added

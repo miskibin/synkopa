@@ -160,6 +160,12 @@ pub enum FxKind {
     Chorus,
     /// Swept all-pass stages with feedback (`dsp::modulation`).
     Phaser,
+    /// Width, mono-safe spread, bass mono, gain, balance, polarity (`dsp::stereo`).
+    Stereo,
+    /// Loudness, true peak, spectrum and stereo field; passes the sound unchanged (`dsp::loudness`).
+    Analyzer,
+    /// Three-band upward + downward compression, the "OTT" sound (`dsp::multiband`).
+    Multiband,
     /// A hosted plugin (VST3 or LV2, see [`PluginRef::format`]). Written as `"plugin"`;
     /// projects from before LV2 support say `"vst3"`, which still loads.
     #[serde(alias = "vst3")]
