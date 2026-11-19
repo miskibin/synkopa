@@ -197,9 +197,10 @@ fn a_plugin_replaced_during_a_latency_query_discards_the_stale_report() {
     let e2 = e.clone();
     let query = std::thread::spawn(move || e2.refresh_plugin_latency());
     entered.recv_timeout(Duration::from_secs(5)).expect("the query reached the factory");
-    // the plugin is replaced while the query waits: its report would answer for the old one
-    release_tx.send(()).ok();
+    // the plugin is replaced while the query is parked in the factory (it holds no engine
+    // lock): the generation moves before the report can be collected, deterministically
     e.apply(&[Op::PutInsert { insert: plugin_insert(7001) }], false, None).unwrap();
+    release_tx.send(()).ok();
     let changed = query.join().unwrap();
     assert!(!changed, "a report collected before the replacement must be discarded");
     assert_eq!(e.playback_latency(), before, "the stale 512 never landed");
