@@ -124,3 +124,21 @@ fn the_menu_sees_what_each_step_was_called() {
     assert_eq!(e.state().undo_label, None);
     assert_eq!(e.state().redo_label, None);
 }
+
+#[test]
+fn a_frame_that_returns_to_the_start_still_syncs_the_graph() {
+    let (e, n, _) = engine();
+    let v0 = e.project().tracks[0].vol;
+    let rev0 = e.revision();
+    e.begin_gesture(Some("Fader".into()));
+    e.apply(&[vol(&e, v0 * 0.5 + 0.1)], true, None).unwrap();
+    let rev_mid = e.revision();
+    assert!(rev_mid > rev0, "the moved frame is a real edit");
+    // back to the fader's starting value: the project matches the gesture snapshot again,
+    // but the live graph was left at the moved value and still has to be repaired
+    e.apply(&[vol(&e, v0)], true, None).unwrap();
+    assert!(e.revision() > rev_mid, "the return frame syncs");
+    e.end_gesture();
+    assert!(!e.state().can_undo, "a drag back to its start is no undo step");
+    assert_eq!(n.load(Ordering::Relaxed), 1);
+}

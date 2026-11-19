@@ -279,14 +279,18 @@ function tauriWindow(): WindowCtl {
     onResized: async cb => (await w()).onResized(() => cb()),
     onCloseRequested: async cb => {
       const win = await w();
-      let closing = false;
+      // one guard at a time: a second close event while the save prompt is open is swallowed
+      // (the window stays open) instead of prompting again or destroying mid-prompt
+      let guarding = false;
       return win.onCloseRequested(async ev => {
-        if (closing) return;
         ev.preventDefault();
-        await cb(async () => {
-          closing = true;
-          await win.destroy();
-        });
+        if (guarding) return;
+        guarding = true;
+        try {
+          await cb(async () => { await win.destroy(); });
+        } finally {
+          guarding = false;
+        }
       });
     },
     setZoom: async z => {

@@ -496,6 +496,9 @@ pub struct Engine {
 }
 
 const UNDO_LIMIT: usize = 200;
+/// Counter for half-written trim/flatten side files (`.tmp-<pid>-<n>.wav`): the final name is
+/// only chosen under the commit lock, so two runs of the same operation cannot share a file.
+static SIDE_FILE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 /// Longest take kept in RAM (decoding an import stops at the same 30 minutes): recording
 /// buffers in memory, so an hour would hold ~1.4 GB. When a take reaches it, the take ends
 /// (as when the song reaches its end) and what was captured lands as the clip.
@@ -820,7 +823,9 @@ impl Engine {
         let d = ops::apply_all(&mut c.project, ops)?;
         let unchanged = match (&before, c.gesture.as_ref()) {
             (Some(b), _) => c.project == *b,
-            (None, Some(g)) => c.project == *g,
+            // a frame that returns the drag to where it started (fader A → B → A) matches the
+            // gesture snapshot again — but the live graph was left at B, so it still has to sync
+            (None, Some(g)) => c.project == *g && !c.gesture_unreported,
             (None, None) => false,
         };
         if unchanged {
@@ -895,17 +900,27 @@ impl Engine {
     }
 
     pub fn undo(&self) -> bool {
+        let need = {
+            let mut c = self.core.lock();
+            c.gesture = None;
+            c.gesture_label = None;
+            c.gesture_unreported = false;
+            let Some(step) = c.undo.pop() else { return false };
+            let cur = std::mem::replace(&mut c.project, step.project);
+            c.redo.push(UndoStep { project: cur, label: step.label });
+            let need = {
+                let Core { sources, project, .. } = &mut *c;
+                sources.reconcile(&project.sources)
+            };
+            gc_sources(&mut c);
+            c.revision += 1;
+            need
+        };
+        // a relink undone after its parked audio aged out: the file is decoded again, without
+        // the lock (a long file must not stall the engine)
+        let loaded = self.decode_again(need);
         let mut c = self.core.lock();
-        c.gesture = None;
-        c.gesture_label = None;
-        c.gesture_unreported = false;
-        let Some(step) = c.undo.pop() else { return false };
-        let cur = std::mem::replace(&mut c.project, step.project);
-        c.redo.push(UndoStep { project: cur, label: step.label });
-        let Core { sources, project, .. } = &mut *c;
-        sources.reconcile(&project.sources);
-        gc_sources(&mut c);
-        c.revision += 1;
+        self.adopt_redecoded(&mut c, loaded);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
         true
@@ -974,20 +989,59 @@ impl Engine {
     }
 
     pub fn redo(&self) -> bool {
+        let need = {
+            let mut c = self.core.lock();
+            c.gesture = None;
+            c.gesture_label = None;
+            c.gesture_unreported = false;
+            let Some(step) = c.redo.pop() else { return false };
+            let cur = std::mem::replace(&mut c.project, step.project);
+            c.undo.push(UndoStep { project: cur, label: step.label });
+            let need = {
+                let Core { sources, project, .. } = &mut *c;
+                sources.reconcile(&project.sources)
+            };
+            gc_sources(&mut c);
+            c.revision += 1;
+            need
+        };
+        let loaded = self.decode_again(need);
         let mut c = self.core.lock();
-        c.gesture = None;
-        c.gesture_label = None;
-        c.gesture_unreported = false;
-        let Some(step) = c.redo.pop() else { return false };
-        let cur = std::mem::replace(&mut c.project, step.project);
-        c.undo.push(UndoStep { project: cur, label: step.label });
-        let Core { sources, project, .. } = &mut *c;
-        sources.reconcile(&project.sources);
-        gc_sources(&mut c);
-        c.revision += 1;
+        self.adopt_redecoded(&mut c, loaded);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
         true
+    }
+
+    /// Decodes the (id, path) pairs [`SourceStore::reconcile`] could not restore from its
+    /// parking (the parked copy aged out of the budget) — without the engine lock. The
+    /// project may move on while a file decodes: [`Self::adopt_redecoded`] keeps only what
+    /// the project still wants.
+    fn decode_again(&self, need: Vec<(u64, String)>) -> Vec<(u64, String, Result<Audio, String>)> {
+        need.into_iter()
+            .map(|(id, path)| {
+                let r = Audio::load_path(&path, Path::new("."));
+                (id, path, r)
+            })
+            .collect()
+    }
+
+    /// Adopts what [`Self::decode_again`] brought back: the source plays the file again, or
+    /// (a file that no longer decodes) stays missing with the error surfaced.
+    fn adopt_redecoded(&self, c: &mut Core, loaded: Vec<(u64, String, Result<Audio, String>)>) {
+        for (id, path, r) in loaded {
+            if !c.project.sources.iter().any(|s| s.id == id && s.path == path) {
+                continue;
+            }
+            match c.sources.adopt(id, r) {
+                Ok(()) => {
+                    c.source_errors.remove(&id);
+                }
+                Err(e) => {
+                    c.source_errors.insert(id, e);
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------ transport
@@ -1261,11 +1315,13 @@ impl Engine {
 
     /// Replaces the clip's source by a new file holding only the clip's region. The copy
     /// and the WAV write run without the engine lock (a long region can take a while on
-    /// disk), so the UI keeps moving while the file is written; the clip and the bpm are
-    /// re-checked when the lock comes back and the trim refuses ("try again") if they
-    /// changed in the meantime.
+    /// disk), so the UI keeps moving while the file is written; when the lock comes back,
+    /// the clip, the bpm and the source's audio are re-checked and the trim refuses ("try
+    /// again") if any of them changed in the meantime. The id and the final name are only
+    /// taken then, from the project as it stands then, so an undo that rewinds ids while
+    /// the write is running cannot make a second trim collide with this one.
     pub fn trim_clip(&self, clip_id: Id) -> Result<Id, EngineError> {
-        let (clip, old, audio, bpm, a, b, id, path) = {
+        let (clip, old, audio, bpm, a, b, tmp) = {
             let mut c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
             if clip.kind != ClipKind::Audio {
@@ -1281,19 +1337,29 @@ impl Engine {
                 return Err(EngineError::Msg("the region is empty".into()));
             }
             let old = c.project.sources.iter().find(|s| s.id == clip.source).cloned().unwrap();
-            let id = c.project.alloc_id();
-            let path = fresh_path(&audio_dir(&c), &format!("{} trim {}", sanitize(&old.name), id));
-            (clip, old, audio, c.project.bpm, a, b, id, path)
+            let tmp = audio_dir(&c).join(format!(".tmp-{}-{}.wav", std::process::id(), SIDE_FILE.fetch_add(1, Relaxed)));
+            (clip, old, audio, c.project.bpm, a, b, tmp)
         };
         let data = audio.content()[a * 2..b * 2].to_vec();
-        write_wav(&path, &data, audio.sr)?;
+        write_wav(&tmp, &data, audio.sr)?;
         let new = Audio::from_stereo(data, audio.sr, audio.channels);
         let mut c = self.core.lock();
         let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
-        if now.as_ref() != Some(&clip) || c.project.bpm != bpm {
-            // the file is ours alone (its name carries the id): no trim, no file
-            let _ = std::fs::remove_file(&path);
-            return Err(EngineError::Msg("the clip changed while it was trimmed; try again".into()));
+        let same_audio = c.sources.variant(clip.source, clip.norm, clip.rev).is_some_and(|a| Arc::ptr_eq(&a, &audio));
+        if now.as_ref() != Some(&clip) || c.project.bpm != bpm || !same_audio {
+            // the half-written file is ours alone: no trim, no file
+            let _ = std::fs::remove_file(&tmp);
+            return Err(EngineError::Msg(if same_audio {
+                "the clip changed while it was trimmed; try again".into()
+            } else {
+                "the clip's audio changed while it was trimmed; try again".into()
+            }));
+        }
+        let id = c.project.alloc_id();
+        let path = fresh_path(&audio_dir(&c), &format!("{} trim {}", sanitize(&old.name), id));
+        if let Err(e) = std::fs::rename(&tmp, &path) {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(EngineError::Msg(format!("could not write the trimmed audio: {e}")));
         }
         let before = c.project.clone();
         c.project.sources.push(Source {
@@ -1468,11 +1534,21 @@ impl Engine {
         }
         if take_capped {
             // the take hit the RAM cap: it ends here (as at the song's end), the transport
-            // keeps rolling, further input is dropped
+            // keeps rolling, further input is dropped. Stop may have finalized it and a new
+            // take may have started while this lock was away: only a still-full one ends.
             log::warn!("recording stopped at {} minutes: the take keeps what it captured", TAKE_MAX_SECONDS / 60);
-            self.finish_take();
-            let c = self.core.lock();
-            self.changed(c);
+            let shared = self.shared();
+            let mut c = self.core.lock();
+            if c.take.as_ref().is_some_and(|t| t.full) {
+                if let Some(t) = c.take.as_mut() {
+                    t.resolve(&shared);
+                }
+                self.finalize_take(&mut c);
+                if c.graph_deferred {
+                    self.sync(&mut c, Dirty { timeline: false, mixer: true, params: true });
+                }
+                self.changed(c);
+            }
         }
         if let Some((ids, analysis, rec)) = frame_parts {
             let sink = self.sink.lock();
@@ -1512,11 +1588,12 @@ impl Engine {
     /// ordinary audio clip (gain, fades and pan stay on the clip). The take group goes
     /// when no other clip plays it. One undo step. The render and the WAV write run
     /// without the engine lock (a long comp takes a while), so the UI keeps moving; the
-    /// clip and its comp are re-checked when the lock comes back and the flatten refuses
-    /// ("try again") if either changed in the meantime.
+    /// clip, its comp, the tempo and the takes' audio are re-checked when the lock comes
+    /// back and the flatten refuses ("try again") if any of them changed in the meantime.
+    /// The id and the final name are only taken then, from the project as it stands then.
     pub fn flatten_comp(&self, clip_id: Id) -> Result<Id, EngineError> {
-        let (clip, comp, map, spb, sr, ch, frames, id, name, path) = {
-            let mut c = self.core.lock();
+        let (clip, comp, map, spb, sr, ch, frames, name, tmp) = {
+            let c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
             if clip.kind != ClipKind::Comp {
                 return Err(EngineError::Msg("only comp clips can be flattened".into()));
@@ -1533,23 +1610,34 @@ impl Engine {
             }
             // two guard frames: the playhead's beat may land a hair before the clip end
             let frames = frames + 2;
-            let id = c.project.alloc_id();
             let name = format!("{} (flat)", comp.name);
-            let path = fresh_path(&audio_dir(&c), &format!("{} flat {}", sanitize(&comp.name), id));
-            (clip, comp, map, spb, sr, ch, frames, id, name, path)
+            let tmp = audio_dir(&c).join(format!(".tmp-{}-{}.wav", std::process::id(), SIDE_FILE.fetch_add(1, Relaxed)));
+            (clip, comp, map, spb, sr, ch, frames, name, tmp)
         };
         let rt = crate::comp::build(&comp, spb, None, &map);
         let (mut l, mut r) = (vec![0f32; frames], vec![0f32; frames]);
         rt.render_add(clip.offset, 1.0 / (spb * sr as f64), &mut l, &mut r, spb);
         let data: Vec<f32> = l.iter().zip(&r).flat_map(|(a, b)| [*a, *b]).collect();
-        write_wav(&path, &data, sr)?;
+        write_wav(&tmp, &data, sr)?;
         let audio = Audio::from_stereo(data, sr, ch);
         let mut c = self.core.lock();
         let now = c.project.clips.iter().find(|x| x.id == clip_id).cloned();
-        if now.as_ref() != Some(&clip) || c.project.comp(clip.source) != Some(&comp) {
-            // the file is ours alone (its name carries the id): no flatten, no file
-            let _ = std::fs::remove_file(&path);
-            return Err(EngineError::Msg("the comp changed while it was flattened; try again".into()));
+        let now_map = comp_audio(&c.sources, std::slice::from_ref(&comp));
+        let takes_same = now_map.len() == map.len() && map.iter().all(|(k, a)| now_map.get(k).is_some_and(|b| Arc::ptr_eq(a, b)));
+        if now.as_ref() != Some(&clip) || c.project.comp(clip.source) != Some(&comp) || 60.0 / spb != c.project.bpm || !takes_same {
+            // the half-written file is ours alone: no flatten, no file
+            let _ = std::fs::remove_file(&tmp);
+            return Err(EngineError::Msg(if takes_same {
+                "the comp changed while it was flattened; try again".into()
+            } else {
+                "the comp's audio changed while it was flattened; try again".into()
+            }));
+        }
+        let id = c.project.alloc_id();
+        let path = fresh_path(&audio_dir(&c), &format!("{} flat {}", sanitize(&comp.name), id));
+        if let Err(e) = std::fs::rename(&tmp, &path) {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(EngineError::Msg(format!("could not write the flattened audio: {e}")));
         }
         let before = c.project.clone();
         c.project.sources.push(Source {
@@ -1671,11 +1759,18 @@ fn push_undo(c: &mut Core, before: Project, label: Option<String>) {
         Some((r, b)) if r == c.revision => b,
         _ => before,
     };
+    // history may drop its last reference to a source here (the oldest entry leaves the
+    // limit, redo goes): its decoded audio is collected now, not at some later undo
+    let evicted = c.undo.len() >= UNDO_LIMIT;
+    let redo_dropped = !c.redo.is_empty();
     c.undo.push(UndoStep { project: before, label });
     if c.undo.len() > UNDO_LIMIT {
         c.undo.remove(0);
     }
     c.redo.clear();
+    if evicted || redo_dropped {
+        gc_sources(c);
+    }
 }
 
 /// Asks the source store to drop what no part of the history can reach: the project, its

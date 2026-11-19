@@ -31,11 +31,13 @@ fn sources_the_history_aged_out_lose_their_audio() {
     assert!(e.source_peaks(gone, false, false).is_some());
     e.apply(&[Op::RemoveSource { id: gone }], false, None).unwrap();
     assert!(e.source_peaks(stays, false, false).is_some(), "a source still in the project keeps its audio");
-    // age every undo entry that still holds the removed source out of the undo limit
+    // age every undo entry that still holds the removed source out of the undo limit; the
+    // collection happens when the history drops the entry, not only at the next undo
     for k in 0..210 {
         e.apply(&[vol(&e, if k % 2 == 0 { 0.3 } else { 0.4 })], false, None).unwrap();
     }
-    e.undo(); // the store gc runs with the undo
+    assert!(e.source_peaks(gone, false, false).is_none(), "history eviction collects the audio itself");
+    e.undo(); // the store gc runs with the undo too
     assert!(e.source_peaks(gone, false, false).is_none(), "audio of a source no history entry references goes");
     assert!(e.source_peaks(stays, false, false).is_some(), "reachable audio stays");
     // and the project is none the wiser: undo and redo still work
