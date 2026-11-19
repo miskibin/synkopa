@@ -49,7 +49,7 @@ export const DARK: Tokens = {
   shade: 'rgba(0,0,0,.55)',
   keyW: '#c9ced6', keyB: '#20252d', keyWText: '#1a1e24', keyBText: '#e6e9ee', onBand: '#0b1220', tint: 1,
   clipBase: '#101318', clipBodyPct: 14, clipHeadPct: 42, clipHeadSelPct: 75, clipHeadSelTo: '#ffffff',
-  clipInkTo: '#ffffff', clipInkPct: 80, clipText: '#f2f4f7', clipTextSel: '#0b1220', laneArm: '#16121a', gridShade: 'rgba(255,255,255,.018)',
+  clipInkTo: '#ffffff', clipInkPct: 80, clipText: '#f2f4f7', clipTextSel: '#0b1220', laneArm: '#16121a', gridShade: 'rgba(255,255,255,.04)',
 };
 
 export const LIGHT: Tokens = {
@@ -63,7 +63,7 @@ export const LIGHT: Tokens = {
   shade: 'rgba(255,255,255,.62)',
   keyW: '#ffffff', keyB: '#3a4049', keyWText: '#1a1e24', keyBText: '#eef1f4', onBand: '#0b1220', tint: 1.4,
   clipBase: '#ffffff', clipBodyPct: 16, clipHeadPct: 62, clipHeadSelPct: 100, clipHeadSelTo: '#000000',
-  clipInkTo: '#000000', clipInkPct: 78, clipText: '#0f1318', clipTextSel: '#ffffff', laneArm: '#f7eef1', gridShade: 'rgba(0,0,0,.025)',
+  clipInkTo: '#000000', clipInkPct: 78, clipText: '#0f1318', clipTextSel: '#ffffff', laneArm: '#f7eef1', gridShade: 'rgba(0,0,0,.045)',
 };
 
 // ---- extra themes: generated from a hue/saturation for surfaces and an accent ----
@@ -127,7 +127,7 @@ const SLATE_T: Tokens = {
   shade: 'rgba(0,0,0,.45)',
   keyW: '#d5d9e0', keyB: '#2c313a', keyWText: '#15171c', keyBText: '#f6f8fb', onBand: '#15171c', tint: 1,
   clipBase: '#20242a', clipBodyPct: 22, clipHeadPct: 52, clipHeadSelPct: 78, clipHeadSelTo: '#ffffff',
-  clipInkTo: '#ffffff', clipInkPct: 85, clipText: '#f6f8fb', clipTextSel: '#15171c', laneArm: '#3a2c33', gridShade: 'rgba(255,255,255,.03)',
+  clipInkTo: '#ffffff', clipInkPct: 85, clipText: '#f6f8fb', clipTextSel: '#15171c', laneArm: '#3a2c33', gridShade: 'rgba(255,255,255,.05)',
 };
 const SLATE: ThemeDef = {
   id: 'slate', name: 'Łupek', light: false, t: SLATE_T, swatch: [SLATE_T.bg2, SLATE_T.bg6, SLATE_T.blue],
@@ -154,7 +154,7 @@ function midDarkTheme(id: string, name: string, h: number, s: number, accent: [s
     grid: L(20.5), gridBar: L(38), gridBeat: L(27), laneAlt: L(22), rulerBg: L(22), rulerText: F(68), clipBody: L(18),
     shade: 'rgba(0,0,0,.4)', keyW: F(87), keyB: L(22), keyWText: L(12.5), keyBText: F(98), onBand: L(12.5),
     clipBase: L(18), clipBodyPct: 24, clipHeadPct: 54, clipHeadSelPct: 80, clipText: F(98), clipTextSel: L(12.5),
-    laneArm: hsl(335, 12, 25), gridShade: 'rgba(255,255,255,.03)',
+    laneArm: hsl(335, 12, 25), gridShade: 'rgba(255,255,255,.05)',
   };
   const css: Css = {
     '--sel-bg': hsl(218, 14, 37), '--sel-bg2': hsl(218, 12, 32), '--sel-ring': hsl(218, 20, 59), '--drag-bg': hsl(218, 14, 42),
@@ -179,7 +179,7 @@ function midLightTheme(id: string, name: string, h: number, s: number, accent: [
     ink: F(6), pre: F(32), post: accent[0], playhead: F(4), onFill: '#ffffff',
     grid: L(82), gridBar: L(63), gridBeat: L(73.5), laneAlt: L(79.5), rulerBg: L(78.5), rulerText: F(26), clipBody: L(88),
     shade: 'rgba(200,205,212,.6)', keyW: L(94), keyWText: F(10), tint: 1.5,
-    clipBase: L(88), clipBodyPct: 22, clipHeadPct: 66, clipText: F(4), laneArm: hsl(340, 14, 80), gridShade: 'rgba(0,0,0,.035)',
+    clipBase: L(88), clipBodyPct: 22, clipHeadPct: 66, clipText: F(4), laneArm: hsl(340, 14, 80), gridShade: 'rgba(0,0,0,.055)',
   };
   const css: Css = {
     '--sel-bg': hsl(h, 30, 74), '--sel-bg2': hsl(h, 26, 77), '--sel-ring': hsl(218, 40, 57), '--drag-bg': hsl(h, 32, 70),
