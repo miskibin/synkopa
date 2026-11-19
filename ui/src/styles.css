@@ -1538,3 +1538,10 @@ button.chip { color: var(--fg); }
 .fader .tick.u span { color: var(--fg3); }
 .mvroute { height: 22px; margin-left: 10px; gap: 8px; color: var(--fg); font-size: 11.5px; }
 .mvroute kbd { padding: 0 5px; border: 1px solid var(--line2); border-radius: 4px; color: var(--fg4); font: 500 10px var(--sans); }
+/* fader scale, quieter: short marks beside the slot; only 0 dB is a full line */
+.fader .tick { left: 15px; right: auto; width: 4px; background: color-mix(in srgb, var(--fg6) 45%, transparent); }
+.fader .tick.u { left: 5px; width: 14px; background: var(--fg6); }
+.fader .tick span { left: 9px; color: var(--fg6); }
+.fader .tick.u span { left: 19px; color: var(--fg4); }
+/* the master stands apart from the inserts: its own panel, a gap after it */
+.strip[data-ins="0"] { margin-right: 10px; background: var(--bg5); border-right: 0; border-radius: 0 8px 8px 0; box-shadow: 1px 0 0 var(--line); }
