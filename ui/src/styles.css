@@ -1368,3 +1368,28 @@ select option { background: var(--bg4); color: var(--fg); }
 .setdlg .setpane .form { align-items: stretch; }
 .setdlg .setpane .form > * { display: flex; align-items: center; }
 .setdlg .setpane .form .lab { align-items: flex-start; justify-content: center; }
+
+/* round 5 */
+.toolmenu { position: relative; align-self: center; }
+.toolmenu > .smallbtn { display: inline-flex; align-items: center; gap: 6px; }
+.toolmenu > .smallbtn.on { background: var(--bg6); color: var(--fg-hi); }
+.toolpop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 232px; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg4); border: 1px solid var(--line2); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.toolpop .sel { width: 100%; height: 28px; }
+.toolpop .tprow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 500 12px var(--sans); color: var(--fg3); }
+.toolpop .tprow > span::first-letter { text-transform: uppercase; }
+.toolpop .tprow .textin, .toolpop .tprow .sel { width: 96px; height: 26px; }
+.toolpop .smallbtn.primary { height: 28px; margin-top: 2px; }
+.pstatus .hintlink { flex: none; height: 18px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--fg4); font: 500 11px var(--sans); cursor: pointer; }
+.pstatus .hintlink::before { content: '?'; display: inline-block; width: 13px; height: 13px; margin-right: 5px; border: 1px solid var(--line3); border-radius: 50%; font-size: 9px; line-height: 12px; text-align: center; }
+.pstatus .hintlink:hover { background: var(--bg5); color: var(--fg-hi); }
+.pstatus > span.hintshort { flex: 1 1 0; text-align: right; }
+.pstatus > span:last-child { color: inherit; }
+/* mixer strips: the pan / width numbers show once they say something (off centre, or the pointer is on the strip) */
+.strip .pantxt.def { visibility: hidden; }
+.strip:hover .pantxt.def { visibility: visible; }
+/* playlist lanes: the routing chip reads as a quiet tag, the volume thumb shows on hover */
+.lane .mini.route { color: var(--fg5); border-color: transparent; font-weight: 500; }
+.lane .mini.route:hover { color: var(--fg-hi); }
+.lane .lvol .thumb { opacity: 0; transition: opacity .12s; }
+.lane:hover .lvol .thumb, .lane .lvol.auto .thumb { opacity: 1; }
+.lane .lvol .track { height: 2px; }

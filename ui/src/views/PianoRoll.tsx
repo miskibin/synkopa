@@ -30,7 +30,7 @@ import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPat
   selectChannel, setPatLoop, setPatStart, toggleRollMax,
 } from '../state/pattern';
 import { arrVersion, S } from '../state/store';
-import { openMenu, say, U } from '../state/ui';
+import { openMenu, say, setU, U } from '../state/ui';
 import { selectionSpan, vocalsUnder } from '../lib/melody';
 import { fmtPos } from '../lib/format';
 import { openPitchEditor, seekSong, switchMode } from '../state/actions';
@@ -127,6 +127,15 @@ function Roll(props: { z: number; docked?: boolean }) {
   const [vals, setVals] = createSignal<unknown[]>(TOOL_META.humanize.fields.map(f => f.def));
   const setField = (i: number, v: unknown) => setVals(xs => { const c = xs.slice(); c[i] = v; return c; });
   const [toolSeed, setToolSeed] = createSignal('');
+  // the note tools (humanize, strum, ...) live in a popover: used now and then, they do not hold toolbar space
+  const [toolsOpen, setToolsOpen] = createSignal(false);
+  let toolMenu!: HTMLDivElement;
+  createEffect(() => {
+    if (!toolsOpen()) return;
+    const away = (e: PointerEvent) => { if (!toolMenu.contains(e.target as Node)) setToolsOpen(false); };
+    document.addEventListener('pointerdown', away, true);
+    onCleanup(() => document.removeEventListener('pointerdown', away, true));
+  });
   const applyTool = () => {
     const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, ch().id, sel());
     commit([op], t(TOOL_META[toolId()].label));
@@ -758,28 +767,33 @@ function Roll(props: { z: number; docked?: boolean }) {
         <Show when={sel().size > 0}>
           <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pe.toNewPatTip')} onClick={e => { moveSelToPattern(); backToRoll(e.currentTarget); }}>{t('b.pe.toNewPat')}</button>
         </Show>
-        <label class="plab" title={t('b.pr.toolsTip')}>
-          {t('b.pr.tools')}
-          <span class="row" style={{ gap: '4px', 'align-items': 'center' }}>
-            <select class="sel" value={toolId()} onChange={e => { const id = e.currentTarget.value as ToolId; setToolId(id); setVals(TOOL_META[id].fields.map(f => f.def)); backToRoll(e.currentTarget); }}>
-              <For each={Object.keys(TOOL_META) as ToolId[]}>{v => <option value={v}>{t(TOOL_META[v].label)}</option>}</For>
-            </select>
-            <For each={TOOL_META[toolId()].fields}>{(f, i) => f.kind === 'num' ? (
-              <input class="textin" style={{ width: '52px' }} title={t(f.label)} type="number" step="0.1" value={typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def} onInput={e => setField(i(), +e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
-            ) : f.kind === 'select' ? (
-              <select class="sel" title={t(f.label)} value={String(vals()[i()] ?? f.def)} onChange={e => { setField(i(), e.currentTarget.value); backToRoll(e.currentTarget); }}>
-                <For each={f.options}>{o => <option value={o.v}>{t(o.l)}</option>}</For>
+        <div class="toolmenu" ref={toolMenu}>
+          <button class="smallbtn" classList={{ on: toolsOpen() }} aria-expanded={toolsOpen()} title={t('b.pr.toolsTip')} onClick={() => setToolsOpen(v => !v)}>
+            {t('b.pr.tools')}<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+          </button>
+          <Show when={toolsOpen()}>
+            <div class="toolpop" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setToolsOpen(false); } }}>
+              <select class="sel" value={toolId()} onChange={e => { const id = e.currentTarget.value as ToolId; setToolId(id); setVals(TOOL_META[id].fields.map(f => f.def)); }}>
+                <For each={Object.keys(TOOL_META) as ToolId[]}>{v => <option value={v}>{t(TOOL_META[v].label)}</option>}</For>
               </select>
-            ) : (
-              <label class="plab" style={{ gap: '2px' }} title={t(f.label)}>
-                <input type="checkbox" checked={vals()[i()] !== false} onInput={e => setField(i(), e.currentTarget.checked)} />
-                <span style={{ 'font-size': '11px' }}>{t(f.label)}</span>
+              <For each={TOOL_META[toolId()].fields}>{(f, i) => (
+                <label class="tprow"><span>{t(f.label)}</span>{f.kind === 'num' ? (
+                  <input class="textin" type="number" step="0.1" value={typeof vals()[i()] === 'number' ? (vals()[i()] as number) : f.def} onInput={e => setField(i(), +e.currentTarget.value)} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }} />
+                ) : f.kind === 'select' ? (
+                  <select class="sel" value={String(vals()[i()] ?? f.def)} onChange={e => setField(i(), e.currentTarget.value)}>
+                    <For each={f.options}>{o => <option value={o.v}>{t(o.l)}</option>}</For>
+                  </select>
+                ) : (
+                  <input type="checkbox" checked={vals()[i()] !== false} onInput={e => setField(i(), e.currentTarget.checked)} />
+                )}</label>
+              )}</For>
+              <label class="tprow" title={t('b.pr.seedTip')}><span>{t('b.pr.seed')}</span>
+                <input class="textin" type="number" step="1" value={toolSeed()} onInput={e => setToolSeed(e.currentTarget.value)} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }} />
               </label>
-            )}</For>
-            <input class="textin" style={{ width: '64px' }} title={t('b.pr.seedTip')} placeholder={t('b.pr.seed')} type="number" step="1" value={toolSeed()} onInput={e => setToolSeed(e.currentTarget.value)} onKeyDown={e => e.stopPropagation()} />
-            <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pr.applyTip')} onClick={e => { applyTool(); backToRoll(e.currentTarget); }}>{t('b.pr.apply')}</button>
-          </span>
-        </label>
+              <button class="smallbtn primary" title={t('b.pr.applyTip')} onClick={e => { applyTool(); backToRoll(e.currentTarget); }}>{t('b.pr.apply')}</button>
+            </div>
+          </Show>
+        </div>
         <Show when={rollTool() === 'stamp'}>
           <label class="plab">{t('b.pr.stamp.type')}
             <span class="row" style={{ gap: '4px' }}>
@@ -828,7 +842,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <Show when={hoverChord()}>
           <span title={t('b.pr.chordTitle')} style={{ color: 'var(--acc2)' }}>{hoverChord()}</span>
         </Show>
-        <span class="rollhint" title={t('b.pr.keysTip')}>{t('b.pe.rollHint')}</span>
+        <button class="hintlink" title={t('b.pr.keysTip')} onClick={() => setU('help', true)}>{t('a.mn.shortcuts')}</button>
       </div>
     </div>
     </PanelFrame>

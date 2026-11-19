@@ -47,7 +47,7 @@ export const DARK: Tokens = {
   ink: '#f2f4f7', pre: '#9aa2ad', post: '#8fb6ff', playhead: '#eef1f5', onFill: '#0b1220',
   grid: '#111419', gridBar: '#232a33', gridBeat: '#1a1f27', laneAlt: '#13171c', rulerBg: '#14181e', rulerText: '#7d8592', clipBody: '#101318',
   shade: 'rgba(0,0,0,.55)',
-  keyW: '#c9ced6', keyB: '#20252d', keyWText: '#1a1e24', keyBText: '#e6e9ee', onBand: '#0b1220', tint: 1,
+  keyW: '#9aa1ad', keyB: '#1b1f26', keyWText: '#1a1e24', keyBText: '#e6e9ee', onBand: '#0b1220', tint: 1,
   clipBase: '#101318', clipBodyPct: 14, clipHeadPct: 42, clipHeadSelPct: 75, clipHeadSelTo: '#ffffff',
   clipInkTo: '#ffffff', clipInkPct: 80, clipText: '#f2f4f7', clipTextSel: '#0b1220', laneArm: '#16121a', gridShade: 'rgba(255,255,255,.04)',
 };

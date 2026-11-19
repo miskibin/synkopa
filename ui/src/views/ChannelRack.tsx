@@ -427,7 +427,8 @@ function Rack(props: { z: number; docked?: boolean }) {
           </div>
         <div class="pstatus mono">
           <span>{t('b.rk.status', { ch: chans().length, notes: notesText(notesCount()), bars: barsText(pt().len / 4) })}</span>
-          <span>{t('b.rk.hint')}</span>
+          <span class="hintshort">{t('b.rk.hintShort')}</span>
+          <button class="hintlink" onClick={() => setU('help', true)}>{t('a.mn.shortcuts')}</button>
         </div>
       </div>
     </PanelFrame>
