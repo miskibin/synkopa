@@ -112,21 +112,35 @@ fn strength(x: &[f32], sr: f32) -> (Vec<f32>, usize) {
 /// Where the attack of a hit found near sample `at` starts in the waveform.
 fn attack_start(x: &[f32], at: usize, sr: f32) -> usize {
     let ms = (sr / 1000.0).max(1.0) as usize;
-    // the analysis frame is centred, so it sees an attack up to half a window (23 ms) early
-    let from = at.saturating_sub(10 * ms);
+    // the analysis frame is centred (it can see an attack up to half a window, 23 ms, early) and
+    // the maximum filter can make it a few ms late: look on both sides
+    let from = at.saturating_sub(25 * ms);
     let to = (at + 35 * ms).min(x.len());
-    if to <= from + ms {
+    if to <= from + 4 * ms {
         return at.min(x.len().saturating_sub(1));
     }
+    // level per quarter millisecond (peak over the next millisecond)
+    let step = (ms / 4).max(1);
     let level = |i: usize| x[i..(i + ms).min(x.len())].iter().fold(0f32, |m, v| m.max(v.abs()));
-    let peak = (from..to).step_by(ms).map(level).fold(0f32, f32::max);
-    // what was already sounding (a tail, a pad) is not the attack: measure the rise above it
-    let bg = (from..to).step_by(ms).take(5).map(level).fold(f32::MAX, f32::min);
-    if peak <= 1e-6 || peak <= bg * 1.2 {
+    let pts: Vec<(usize, f32)> = (from..to).step_by(step).map(|i| (i, level(i))).collect();
+    let (pk, peak) = pts.iter().enumerate().fold((0, 0f32), |b, (k, &(_, v))| if v > b.1 { (k, v) } else { b });
+    if peak <= 1e-6 {
         return at;
     }
-    let rise = (from..to).step_by(ms / 4 + 1).find(|&i| level(i) > bg + 0.25 * (peak - bg)).unwrap_or(at);
-    rise.saturating_sub(ms)
+    // the quietest point before the peak is where the previous sound had faded most: the attack
+    // rises from there (a tail or a pad underneath is not part of it)
+    let (vk, valley) = pts[..=pk].iter().enumerate().fold((0, f32::MAX), |b, (k, &(_, v))| if v <= b.1 { (k, v) } else { b });
+    if peak <= valley * 1.2 {
+        return at;
+    }
+    // walk back from the peak while the level is still above the rise threshold: the attack
+    // closest to the peak, never a bump of the tail before it
+    let thr = valley + 0.15 * (peak - valley);
+    let mut k = pk;
+    while k > vk && pts[k - 1].1 > thr {
+        k -= 1;
+    }
+    pts[k].0.saturating_sub(ms)
 }
 
 /// Candidate slice points of `a`, in order, strongest = 1. A slice at the very start is not

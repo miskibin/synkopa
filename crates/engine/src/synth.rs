@@ -172,6 +172,9 @@ fn release(v: &mut Voice) {
 const CUT_SECONDS: f32 = 0.006;
 /// Fade at a trimmed edge of a sample, where the waveform does not start or end at zero.
 const EDGE_SECONDS: f32 = 0.0015;
+/// Fades at the start and the end of a slice, seconds.
+const SLICE_HEAD_SECONDS: f32 = 0.0004;
+const SLICE_TAIL_SECONDS: f32 = 0.005;
 
 impl VoicePool {
     pub fn new(sr: f32) -> Self {
@@ -488,6 +491,11 @@ impl VoicePool {
                 let cut = fall(CUT_SECONDS, sr);
                 // a trimmed or reversed part starts and ends inside the waveform: fade its edges
                 let edge = EDGE_SECONDS * sr;
+                // a slice ends inside a sound (a kick's tail): a longer fade than the start's, which
+                // must keep the attack sharp
+                let edge_tail = if slice.is_some() { SLICE_TAIL_SECONDS * sr } else { edge };
+                // and its start a shorter one than a trimmed region's: the attack is right there
+                let edge_head = if slice.is_some() { SLICE_HEAD_SECONDS * sr } else { edge };
                 let note_edge = (edge.min(v.len as f32)).recip();
                 let (edge_in, edge_out) = (slice.is_some() || m.reverse || m.start > 0.0, slice.is_some() || m.reverse || m.end < 1.0);
                 let step = v.rate * bend as f64;
@@ -527,8 +535,8 @@ impl VoicePool {
                     let mut fade = shape * v.env;
                     let from_start = if m.reverse { hi - 1.0 - v.pos } else { v.pos - lo };
                     let to_end = if m.reverse { v.pos - lo } else { hi - v.pos };
-                    let edge_start = if edge_in { (t / edge).min(1.0) } else { 1.0 };
-                    let edge_end = if edge_out { (to_end / step.max(1e-9) / edge as f64).min(1.0) as f32 } else { 1.0 };
+                    let edge_start = if edge_in { (t / edge_head).min(1.0) } else { 1.0 };
+                    let edge_end = if edge_out { (to_end / step.max(1e-9) / edge_tail as f64).min(1.0) as f32 } else { 1.0 };
                     let fade_start = if in_scale > 0.0 { (from_start * in_scale).clamp(0.0, 1.0) as f32 } else { 1.0 };
                     let fade_end = if out_scale > 0.0 {
                         let remaining = if m.reverse { to_end } else { to_end - 1.0 };

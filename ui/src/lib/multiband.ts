@@ -6,8 +6,8 @@ export const MAKEUP_DB = [16.8, 12.2, 16.8];
 const DOWN_SLOPE = [1 / 66.7 - 1, 1 / 66.7 - 1, -1];
 const UP_SLOPE = 1 - 1 / 4.17;
 const KNEE = 6;
-const UP_CAP = 24;
-const FLOOR = -66, FLOOR_FADE = 18;
+const UP_CAP = 18;
+const FLOOR = -60, FLOOR_FADE = 18;
 /** Base attack / release (s) at Time = 100 %. */
 export const ATTACK = [0.0478, 0.0224, 0.0135];
 export const RELEASE = [0.282, 0.282, 0.132];

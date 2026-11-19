@@ -5,7 +5,7 @@
 //! Ozone Imager stops at the same point).
 //!
 //! **Spread** widens what width cannot: a mono source has no side to scale. A copy of the mid
-//! (high-passed at 150 Hz) runs through a short sparse FIR of ±1 impulses spread over 1.5–18 ms
+//! (high-passed at 250 Hz, low-passed at 9 kHz) runs through a short FIR of 48 ±1 impulses over 0.8–12 ms with a 5 ms decay
 //! (velvet noise: decorrelated from the input, with no audible echo or comb of its own) and is
 //! added to the side only. L = M + d and R = M − d, so L + R = 2M: summed to mono the spread
 //! cancels exactly, which a Haas delay or an L/R all-pass widener cannot promise.
@@ -39,11 +39,17 @@ pub mod idx {
     pub const SWAP: usize = 8;
 }
 
-/// Taps of the spread's decorrelation FIR.
-const TAPS: usize = 16;
-/// Its span, seconds.
-const SPAN_LO: f32 = 0.0015;
-const SPAN_HI: f32 = 0.018;
+/// Taps of the spread's decorrelation FIR: dense and short, so it reads as width, not as a small
+/// room (a sparse 16-tap kernel over 18 ms was heard as a metallic, flammy halo on drums).
+const TAPS: usize = 48;
+/// Its span, seconds, and the decay of the taps' level.
+const SPAN_LO: f32 = 0.0008;
+const SPAN_HI: f32 = 0.012;
+const SPAN_DECAY: f32 = 0.005;
+/// The spread leaves the low end alone below this, and darkens above `SPREAD_LP` (a bright
+/// decorrelated copy sounds tinny on hats and snare wires).
+const SPREAD_HP: f32 = 250.0;
+const SPREAD_LP: f32 = 9000.0;
 /// Correlation and level meters integrate over about this long.
 const METER_S: f32 = 0.3;
 
@@ -144,6 +150,7 @@ pub struct Stereo {
     split: [Lr4; 2],
     // spread
     hp: Biquad,
+    lp: Biquad,
     line: Vec<f32>,
     mask: usize,
     w: usize,
@@ -178,6 +185,7 @@ impl Default for Stereo {
             xo_hz: 120.0,
             split: [Lr4::default(); 2],
             hp: Biquad::default(),
+            lp: Biquad::default(),
             line: vec![],
             mask: 0,
             w: 0,
@@ -195,19 +203,25 @@ impl Default for Stereo {
 /// Positions (log-spaced with a fixed jitter) and signs of the decorrelation taps, normalised so
 /// the FIR passes white noise at unity power. Deterministic: the same session sounds the same.
 fn velvet(sr: f32) -> ([usize; TAPS], [f32; TAPS]) {
-    const SIGNS: u16 = 0b1011_0010_1110_0101;
-    const JITTER: [f32; TAPS] = [0.31, -0.22, 0.12, -0.41, 0.27, 0.05, -0.33, 0.19, -0.08, 0.36, -0.17, 0.24, -0.29, 0.11, -0.38, 0.15];
+    // a fixed pseudo-random sequence (same every session): signs and a jitter of each tap's time
+    let mut seed = 0x2545_f491u32;
+    let mut rnd = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        seed as f32 / u32::MAX as f32
+    };
     let mut pos = [0usize; TAPS];
     let mut g = [0f32; TAPS];
     let ratio = SPAN_HI / SPAN_LO;
     let mut e = 0.0;
     for i in 0..TAPS {
-        let u = (i as f32 + 0.5 + 0.8 * JITTER[i]) / TAPS as f32;
+        let u = (i as f32 + 0.5 + 0.8 * (rnd() - 0.5)) / TAPS as f32;
         let t = SPAN_LO * ratio.powf(u.clamp(0.0, 1.0));
         pos[i] = ((t * sr) as usize).max(1);
-        // later taps a little quieter: a short decay sounds smoother than a flat burst
-        let amp = (-(t - SPAN_LO) / 0.025).exp();
-        g[i] = if SIGNS >> i & 1 == 1 { amp } else { -amp };
+        // later taps quieter: a fast decay sounds like width, a flat burst like a room
+        let amp = (-(t - SPAN_LO) / SPAN_DECAY).exp();
+        g[i] = if rnd() < 0.5 { amp } else { -amp };
         e += amp * amp;
     }
     let norm = 1.0 / e.sqrt();
@@ -231,7 +245,8 @@ impl Processor for Stereo {
         let (p, g) = velvet(self.sr);
         self.taps = p;
         self.tap_g = g;
-        self.hp.set(FilterType::Highpass, self.sr, 150.0, 0.707, 0.0);
+        self.hp.set(FilterType::Highpass, self.sr, SPREAD_HP, 0.707, 0.0);
+        self.lp.set(FilterType::Lowpass, self.sr, SPREAD_LP, 0.707, 0.0);
         for f in &mut self.low_lp {
             f.set(FilterType::Lowpass, self.sr, 120.0, 0.707, 0.0);
         }
@@ -245,7 +260,9 @@ impl Processor for Stereo {
     fn set_params(&mut self, p: &ParamBlock) {
         let v = &p.values;
         self.width.target = (v[idx::WIDTH] / 100.0).clamp(0.0, 2.0);
-        self.spread.target = (v[idx::SPREAD] / 100.0).clamp(0.0, 1.0);
+        // squared: the first half of the knob is subtle (70 % was heard as far too much)
+        let sp = (v[idx::SPREAD] / 100.0).clamp(0.0, 1.0);
+        self.spread.target = sp * sp;
         let bass_on = v[idx::BASS] >= 0.5;
         self.bass.target = if bass_on { 1.0 } else { 0.0 };
         self.xo.target = self.bass.target;
@@ -310,7 +327,7 @@ impl Processor for Stereo {
             let m = 0.5 * (a + b);
             let s = 0.5 * (a - b);
             // spread: a decorrelated copy of the mid, into the side only
-            let mh = self.hp.tick(m);
+            let mh = self.lp.tick(self.hp.tick(m));
             self.line[self.w] = mh;
             let mut d = 0.0;
             for t in 0..TAPS {
@@ -355,6 +372,7 @@ impl Processor for Stereo {
             s.clear();
         }
         self.hp.reset();
+        self.lp.reset();
         for f in &mut self.low_lp {
             f.reset();
         }

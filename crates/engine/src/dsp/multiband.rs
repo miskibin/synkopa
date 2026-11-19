@@ -10,7 +10,7 @@
 //! other — loud, bright and in your face.
 //!
 //! Two things OTT is known for are fixed here:
-//! * the upward gain is capped (+24 dB) and fades to nothing below a floor (−66 dBFS in the
+//! * the upward gain is capped (+18 dB) and fades to nothing below a floor (−60 dBFS in the
 //!   band), so silence and room noise between phrases are not pulled up into hiss, and a note
 //!   after silence does not start with a jump of +40 dB;
 //! * attack and release are in seconds at every sample rate (OTT counts part of its release in
@@ -65,8 +65,8 @@ const BAND_IN_DB: f32 = 5.2;
 /// quieter (measured, `calib` below). Everything above −30 dBFS lands near −13 dBFS RMS.
 pub const MAKEUP_DB: [f32; BANDS] = [16.8, 12.2, 16.8];
 /// Largest upward gain, dB, and the band level below which it fades out.
-const UP_CAP: f32 = 24.0;
-const FLOOR: f32 = -66.0;
+const UP_CAP: f32 = 18.0;
+const FLOOR: f32 = -60.0;
 const FLOOR_FADE: f32 = 18.0;
 /// RMS detector time, seconds.
 const RMS_S: f32 = 0.005;

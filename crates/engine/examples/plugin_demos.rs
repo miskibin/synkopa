@@ -186,19 +186,82 @@ fn slicer_demo(out: &Path) {
         kept.len(),
         off.iter().map(|x| x.round() as i32).collect::<Vec<_>>()
     );
-    // re-chop: play the slices in reverse order, each at its own length
-    let mut starts = vec![0usize];
-    starts.extend(kept.iter().map(|p| (*p as f64 * audio.frames as f64) as usize));
-    starts.push(audio.frames);
-    let mut chop = Vec::with_capacity(stem.len());
-    for w in starts.windows(2).rev() {
-        let (a, b) = (w[0], w[1]);
-        let n = b - a;
-        for i in 0..n {
-            let g = (i as f32 / 44.0).min(1.0) * ((n - i) as f32 / 132.0).min(1.0);
-            chop.push(stem[2 * (a + i)] * g);
-            chop.push(stem[2 * (a + i) + 1] * g);
-        }
+    // is each marker before its attack? level in the 3 ms before it against the peak after it
+    let mono: Vec<f32> = stem.chunks(2).map(|c| 0.5 * (c[0] + c[1])).collect();
+    let ms = SR as usize / 1000;
+    let pre: Vec<String> = kept
+        .iter()
+        .map(|pos| {
+            let i = (*pos as f64 * mono.len() as f64) as usize;
+            let before = mono[i.saturating_sub(3 * ms)..i].iter().fold(0f32, |m, v| m.max(v.abs()));
+            let after = mono[i..(i + 20 * ms).min(mono.len())].iter().fold(0f32, |m, v| m.max(v.abs()));
+            format!("{:.0}%", 100.0 * before / after.max(1e-9))
+        })
+        .collect();
+    println!("level just before each marker vs its hit: {pre:?}");
+    // re-chop through the sampler's slice mode: the stem on a sampler channel, its slices played
+    // in reverse order, each for its own length (what "Dump to pattern" + moving notes gives)
+    let wav = out.join("drum_stem.wav");
+    wave_engine::sources::write_wav(&wav, &stem, SR).unwrap();
+    let mut q = Project::empty();
+    q.bpm = p.bpm;
+    q.inserts[0].fx.clear();
+    let e2 = Engine::new(q, Arc::new(NoPlugins));
+    let (srcs, _) = e2.import_audio(&[wav], None).unwrap();
+    let mut q = e2.project();
+    let ch = q.alloc_id();
+    let mut slices = vec![0.0f32];
+    slices.extend(kept.iter().copied());
+    let channel = wave_engine::Channel::new(
+        ch,
+        "Chop",
+        "#4f8ef7",
+        wave_engine::ChannelSrc::Sample { source: srcs[0], sampler: Default::default(), slices: slices.clone() },
+    );
+    let steps_per_s = p.bpm / 60.0 * 4.0;
+    let mut t = 0.0f64;
+    let mut notes = vec![];
+    for k in (0..slices.len()).rev() {
+        let len_s = (slices.get(k + 1).copied().unwrap_or(1.0) - slices[k]) as f64 * secs;
+        notes.push(wave_engine::Note::new(ch, (t * steps_per_s) as f32, (len_s * steps_per_s) as f32, Some(60 + k as u8)));
+        t += len_s;
     }
+    let beats = to - from;
+    let pattern = wave_engine::Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: beats, min_len: beats, notes, swing: 0.0 };
+    let mut clip = e2.project().clips.first().cloned();
+    let _ = clip.take();
+    let clip = wave_engine::Clip {
+        id: 2,
+        track: 0,
+        start: 0.0,
+        len: beats,
+        offset: 0.0,
+        kind: wave_engine::ClipKind::Pat,
+        source: 1,
+        muted: false,
+        gain: 0.0,
+        fade_in: 0.0,
+        fade_out: 0.0,
+        pan: 0.0,
+        norm: false,
+        rev: false,
+        tune: None,
+        stretch: 1.0,
+        resample: false,
+        pitch: 0.0,
+        insert: None,
+        root: 60,
+    };
+    e2.apply(
+        &[
+            wave_engine::Op::PutChannel { channel, index: None },
+            wave_engine::Op::PutPattern { pattern },
+            wave_engine::Op::PutClips { clips: vec![clip] },
+        ],
+        false,
+        None,
+    )
+    .unwrap();
+    let chop = e2.render(0.0, beats, 0.0, SR).unwrap();
     write(&out.join("slicer_drums.wav"), &[stem, chop]);
 }
