@@ -24,6 +24,7 @@ import { addFrameTask } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { UpdateChip } from './Updates';
 import { AskButton, openAsk } from './Ask';
+import { setCommandMenus, setPaletteOpen } from './Palette';
 import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
@@ -160,6 +161,9 @@ export function Toolbar() {
       <div class="tbleft" data-drag>
         <div class="tbmenu" data-drag>
           <MenuBar />
+          <button class="cmdbtn" title={t('a.cmd.title') + ' (Ctrl+K)'} aria-label={t('a.cmd.title')} onClick={() => setPaletteOpen(true)}>
+            <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
+          </button>
           <AskButton />
           <UpdateChip />
           <MissingChip />
@@ -338,12 +342,14 @@ function MenuBar() {
     ]],
     ['a.mn.help', () => [
       { t: 'item', label: t('d.ask.menu'), glyph: G.ask, kbd: 'F1', act: openAsk },
+      { t: 'item', label: t('a.cmd.title'), glyph: G.shortcuts, kbd: 'Ctrl+K', act: () => setPaletteOpen(true) },
       { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.updates'), glyph: G.updates, act: () => void checkUpdates() },
       { t: 'item', label: t('a.mn.whatsNew'), glyph: G.whatsNew, act: () => void showWhatsNew() },
     ]],
   ];
+  setCommandMenus(menus);
   const show = (i: number, el: HTMLElement) => {
     const r = el.getBoundingClientRect();
     closeMenu(); // remount: an open panel keeps the position it was mounted at

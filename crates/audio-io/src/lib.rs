@@ -210,7 +210,7 @@ fn focusrite_unavailable(cfg: &AudioConfig) -> AudioStatus {
 fn finish_interrupted_audio(engine: &Engine) {
     // Save the part of the take already captured and prevent a subsequent
     // switch from silently routing recording or monitoring to another mic.
-    engine.stop();
+    let _ = engine.stop();
     engine.set_transport(None, None, Some(false), Some(false));
 }
 

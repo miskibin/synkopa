@@ -153,7 +153,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             for part in &parts {
                 if part.channel == DRUM_CHANNEL {
                     for n in &part.notes {
-                        notes.push(Note { ch: drum_ch[&n.key], step: steps(n.start), len: steps(n.len).max(0.01), p: None, v: vel(n.vel), trig: Some(false) });
+                        notes.push(Note { ch: drum_ch[&n.key], step: steps(n.start), len: steps(n.len).max(0.01), p: None, v: vel(n.vel), trig: Some(false), pan: 0.0 });
                     }
                     continue;
                 }
@@ -169,7 +169,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 ops.push(Op::PutChannel { channel: ch, index: None });
                 channels.push(cid);
                 for n in &part.notes {
-                    notes.push(Note { ch: cid, step: steps(n.start), len: steps(n.len).max(0.01), p: Some(n.key), v: vel(n.vel), trig: Some(false) });
+                    notes.push(Note { ch: cid, step: steps(n.start), len: steps(n.len).max(0.01), p: Some(n.key), v: vel(n.vel), trig: Some(false), pan: 0.0 });
                 }
             }
             let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
@@ -232,6 +232,7 @@ fn import_into(app: &dyn Host, parts: &[&midi_file::Part], into: &Value, if_revi
     }
     let added = part.notes.len();
     pat.notes.extend(part.notes.iter().map(|n| Note {
+        pan: 0.0,
         ch,
         step: steps(n.start),
         len: steps(n.len).max(0.01),

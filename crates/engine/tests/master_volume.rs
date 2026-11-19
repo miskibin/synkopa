@@ -54,7 +54,7 @@ fn the_master_volume_still_works_after_the_audio_device_changes() {
     // another device: a new stream at another rate replaces the first one mid-session
     drop(rt0);
     let mut rt = e.create_rt(44100.0, 512);
-    e.stop();
+    let _ = e.stop();
     e.play(0.0);
     peak(&mut rt, 40);
     let loud = peak(&mut rt, 200);

@@ -11,6 +11,7 @@ import { findPane } from '../lib/dock';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { presetInfo } from '../lib/presets';
 import * as A from '../state/actions';
+import { MuteSolo } from '../ui/MuteSolo';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { autoDisplay, isAutomated, paramMenu } from '../state/automation';
 import { MiniKnob } from '../ui/Knob';
@@ -106,6 +107,8 @@ function sendItems(m: Insert): MenuItem[] {
 /** One insert's strip. `full`: in the Mix view (with the level readout and what plays through it); docked it stays lean. */
 /** Height (px) of a strip's meters and fader: the strip keeps it however tall the mixer is. */
 const FADER_H = 140;
+/** The fader's dB marks as [dB, fader position 0..1]; the gain law is 2t³ (`gainLin`), so 0 dB sits at 0.7937. */
+const FADER_MARKS: [number, number][] = [6, 0, -6, -12, -24, -48].map(db => [db, Math.cbrt(Math.pow(10, db / 20) / 2)]);
 /** Effect rows the maximized mixer always has room for (and the "+ effect" row after them). */
 const FX_ROWS_FULL = 5;
 /** One effect row in a strip, its 2 px gap included. */
@@ -271,7 +274,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         <div class="pandial" classList={{ auto: isAutomated(panT()) }} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
           <svg width="30" height="30" viewBox="0 0 30 30" style={{ position: 'absolute', inset: 0 }}>
             <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--knob-track)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': '51.84px 69.12px' }} />
-            <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--blue)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': pan().dash, 'stroke-dashoffset': pan().off }} />
+            <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--pan)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': pan().dash, 'stroke-dashoffset': pan().off }} />
           </svg>
           <div class="pcap" />
           <div class="pptr" style={{ transform: `rotate(${pan().angle}deg)` }} />
@@ -291,21 +294,15 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       </div>
       </div>
       <div class="row" style={{ gap: '2px', 'justify-content': 'center' }}>
-        <button class="mini m mute" classList={{ on: m().muted }} title={tr('c.mix.muteTip')}
-          // FL: a right-click, Ctrl+click or Alt+click on the mute switch solos
-          onPointerDown={e => { e.stopPropagation(); if (e.button === 2) { e.preventDefault(); A.toggleInsertSolo(m().id); } }}
-          onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={e => (e.ctrlKey || e.metaKey || e.altKey ? A.toggleInsertSolo(m().id) : A.toggleInsertMute(m().id))}>M</button>
-        <Show when={m().id !== 0}>
-          <button class="mini s mute" classList={{ on: m().solo }} title={tr('c.mix.soloTip')} onPointerDown={stop} onClick={e => A.toggleInsertSolo(m().id, e.ctrlKey || e.metaKey)}>S</button>
+        <MuteSolo class="mute" muted={m().muted} solo={m().solo} noSolo={m().id === 0} muteTip={tr('c.mix.muteTip')} soloTip={tr('c.mix.soloTip')}
+          onMute={() => A.toggleInsertMute(m().id)} onSolo={add => A.toggleInsertSolo(m().id, add)} />
+        {/* the master's clip LED (its meter's red cap): latched over 0 dBFS, where an export clips */}
+        <Show when={m().id === 0}>
+          <button class="clipcap" classList={{ on: !!masterClip() }} onPointerDown={stop}
+            title={masterClipTip()}
+            onClick={() => resetMasterClip()}>{masterClip() ? '+' + masterClip()!.overDb.toFixed(1) : 'CLIP'}</button>
         </Show>
       </div>
-      {/* the master's clip LED (its meter's red cap): latched over 0 dBFS, where an export clips */}
-      <Show when={m().id === 0}>
-        <button class="clipcap" classList={{ on: !!masterClip() }} onPointerDown={stop}
-          title={masterClipTip()}
-          onClick={() => resetMasterClip()}>{masterClip() ? '+' + masterClip()!.overDb.toFixed(1) : 'CLIP'}</button>
-      </Show>
       {/* docked, the fader keeps one height (a taller mixer shows effect rows above the knobs instead,
           StripFx); maximized, the effect rows have a fixed room (five and "+ effect") and the fader
           takes all the rest, for fine moves */}
@@ -314,7 +311,10 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         <div class="meter"><div ref={fr} /></div>
         <div class="fader" classList={{ auto: isAutomated(volT()) }} onPointerDown={faderDown} onWheel={wheel('vol')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.faderTip')}>
           <div class="fslot" />
-          <div class="unity" style={{ top: 'calc(0.2063 * (100% - 14px) + 7px)' }} />
+          {/* the dB scale: a tick per mark on every fader; the numbers on the master and under the pointer */}
+          <For each={FADER_MARKS}>{([db, t]) => (
+            <div class="tick" classList={{ u: db === 0 }} style={{ top: `calc(${1 - t} * (100% - 14px) + 7px)` }}><span>{db > 0 ? '+' + db : db === 0 ? '0' : String(-db)}</span></div>
+          )}</For>
           <div class="cap" style={{ top: `calc(${1 - shownVol()} * (100% - 14px))` }}><div /></div>
         </div>
       </div>
@@ -385,7 +385,8 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
   };
   return (
     <div class="slot" classList={{ on: U.fxSel === f().id, drag: U.fxDrag === f().id }} onPointerDown={down} title={tr('c.mix.slotTip')}>
-      <span class="n">{props.n}</span>
+      {/* the row drags by its grip (and anywhere else on it): the order is the signal path */}
+      <span class="grip" aria-hidden="true"><svg width="8" height="14" viewBox="0 0 8 14"><g fill="currentColor"><circle cx="2" cy="2" r="1.2" /><circle cx="6" cy="2" r="1.2" /><circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" /><circle cx="2" cy="12" r="1.2" /><circle cx="6" cy="12" r="1.2" /></g></svg></span>
       <FxTile type={f().type} size={22} dim={f().bypass} />
       <div style={{ flex: 1, 'min-width': 0, display: 'flex', 'flex-direction': 'column', gap: '1px' }}>
         <span class="ell" style={{ font: '500 12px var(--sans)', color: f().bypass ? 'var(--fg4)' : 'var(--fg-hi)' }}>{A.fxName(f())}</span>
@@ -626,7 +627,12 @@ function MixHead() {
     <>
       <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)' }}><Icon d={MIX_ICON} size={12} /></span>
       <span class="wintitle">{tr('c.mv.mixer')}</span>
-      <span class="mvhint">{n() ? tr('c.mv.selHint', { n: n() }) : tr('c.mv.noSelHint')}</span>
+      {/* channels picked in the Channel rack can be sent to the selected insert from here (Ctrl+L); nothing picked, nothing shown */}
+      <Show when={n()}>
+        <button class="chip mvroute" title={tr('c.mv.selHint', { n: n() })} onPointerDown={e => e.stopPropagation()} onClick={e => routeSelectedChannels(U.mixSel, e.shiftKey)}>
+          {tr('c.mv.routeBtn', { n: n() })}<kbd>Ctrl L</kbd>
+        </button>
+      </Show>
     </>
   );
 }

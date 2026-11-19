@@ -12,7 +12,7 @@ import { PROGRESSION_TEMPLATES } from '../../lib/transforms';
 export type ToolId = 'humanize' | 'quantize' | 'euclid' | 'strum' | 'drums' | 'melody' | 'chord' | 'progression';
 
 export type ToolField =
-  | { kind: 'num'; label: TranslationKey; def: number }
+  | { kind: 'num'; label: TranslationKey; def: number; min: number; max: number; step: number }
   | { kind: 'select'; label: TranslationKey; def: string; options: { v: string; l: TranslationKey }[] }
   | { kind: 'check'; label: TranslationKey; def: boolean };
 
@@ -27,31 +27,31 @@ export const TEMPLATE_OPTIONS: { v: string; l: TranslationKey }[] = [
 ];
 
 /** Each note tool declares its own controls: a number, a select or a checkbox per param. */
-export const TOOL_META: Record<ToolId, { label: TranslationKey; fields: ToolField[] }> = {
-  humanize: { label: 'b.pr.tool.humanize', fields: [
-    { kind: 'num', label: 'b.pr.tool.humanizeA', def: 0.3 }, { kind: 'num', label: 'b.pr.tool.humanizeB', def: 0.2 },
+export const TOOL_META: Record<ToolId, { label: TranslationKey; icon: string; fields: ToolField[] }> = {
+  humanize: { label: 'b.pr.tool.humanize', icon: 'M3 12c2-7 4-7 6 0s4 7 6 0 4-7 6 0', fields: [
+    { kind: 'num', label: 'b.pr.tool.humanizeA', def: 0.3, min: 0, max: 1, step: 0.05 }, { kind: 'num', label: 'b.pr.tool.humanizeB', def: 0.2, min: 0, max: 1, step: 0.05 },
   ] },
-  quantize: { label: 'b.pr.tool.quantize', fields: [
-    { kind: 'num', label: 'b.pr.tool.quantizeA', def: 1 }, { kind: 'num', label: 'b.pr.tool.quantizeB', def: 1 },
+  quantize: { label: 'b.pr.tool.quantize', icon: 'M5 4v16 M12 4v16 M19 4v16 M5 9h4 M12 15h4', fields: [
+    { kind: 'num', label: 'b.pr.tool.quantizeA', def: 1, min: 0.5, max: 8, step: 0.5 }, { kind: 'num', label: 'b.pr.tool.quantizeB', def: 1, min: 0, max: 1, step: 0.05 },
   ] },
-  euclid: { label: 'b.pr.tool.euclid', fields: [
-    { kind: 'num', label: 'b.pr.tool.euclidA', def: 4 }, { kind: 'num', label: 'b.pr.tool.euclidB', def: 16 },
+  euclid: { label: 'b.pr.tool.euclid', icon: 'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16 M12 4h.01 M19 16h.01 M5 16h.01', fields: [
+    { kind: 'num', label: 'b.pr.tool.euclidA', def: 4, min: 1, max: 32, step: 1 }, { kind: 'num', label: 'b.pr.tool.euclidB', def: 16, min: 1, max: 64, step: 1 },
   ] },
-  strum: { label: 'b.pr.tool.strum', fields: [
-    { kind: 'num', label: 'b.pr.tool.strumA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.strumB', def: 0.05 },
+  strum: { label: 'b.pr.tool.strum', icon: 'M4 18h7 M8 12h7 M12 6h7', fields: [
+    { kind: 'num', label: 'b.pr.tool.strumA', def: 0.5, min: 0, max: 4, step: 0.05 }, { kind: 'num', label: 'b.pr.tool.strumB', def: 0.05, min: -0.5, max: 0.5, step: 0.01 },
   ] },
-  drums: { label: 'b.pr.tool.drums', fields: [
-    { kind: 'num', label: 'b.pr.tool.drumsA', def: 4 }, { kind: 'num', label: 'b.pr.tool.drumsB', def: 16 },
+  drums: { label: 'b.pr.tool.drums', icon: 'M4 9a8 3 0 1 0 16 0a8 3 0 1 0-16 0 M4 9v7a8 3 0 0 0 16 0V9', fields: [
+    { kind: 'num', label: 'b.pr.tool.drumsA', def: 4, min: 1, max: 32, step: 1 }, { kind: 'num', label: 'b.pr.tool.drumsB', def: 16, min: 1, max: 64, step: 1 },
   ] },
-  melody: { label: 'b.pr.tool.melody', fields: [
-    { kind: 'num', label: 'b.pr.tool.melodyA', def: 0.5 }, { kind: 'num', label: 'b.pr.tool.melodyB', def: 2 },
+  melody: { label: 'b.pr.tool.melody', icon: 'M9 18V6l10-2v12 M9 18a3 2.5 0 1 1-6 0a3 2.5 0 1 1 6 0 M19 16a3 2.5 0 1 1-6 0a3 2.5 0 1 1 6 0', fields: [
+    { kind: 'num', label: 'b.pr.tool.melodyA', def: 0.5, min: 0, max: 1, step: 0.05 }, { kind: 'num', label: 'b.pr.tool.melodyB', def: 2, min: 1, max: 8, step: 1 },
   ] },
-  chord: { label: 'b.pr.tool.chord', fields: [
+  chord: { label: 'b.pr.tool.chord', icon: 'M6 7h12 M6 12h12 M6 17h12', fields: [
     { kind: 'select', label: 'b.pr.tool.chordH', def: 'diatonic', options: HARMONY_OPTIONS },
   ] },
-  progression: { label: 'b.pr.tool.progression', fields: [
+  progression: { label: 'b.pr.tool.progression', icon: 'M4 8h3 M4 12h3 M4 16h3 M10.5 6h3 M10.5 10h3 M10.5 14h3 M17 9h3 M17 13h3 M17 17h3', fields: [
     { kind: 'select', label: 'b.pr.tool.progTpl', def: 'pop', options: TEMPLATE_OPTIONS },
-    { kind: 'num', label: 'b.pr.tool.progBars', def: 4 },
+    { kind: 'num', label: 'b.pr.tool.progBars', def: 4, min: 1, max: 32, step: 1 },
     { kind: 'check', label: 'b.pr.tool.progVl', def: true },
   ] },
 };

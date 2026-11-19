@@ -189,6 +189,7 @@ export function applyOp(p: Project, op: Op): void {
         if (!(isFinite(n.step) && n.step >= 0 && isFinite(n.len) && n.len > 0)) throw new OpError(`pattern ${op.pattern}: a note has an invalid step/len`);
         const vel = n.v ?? 1;
         if (!(isFinite(vel) && vel >= 0 && vel <= 1)) throw new OpError('note velocity `v` must be 0..1');
+        if (!(isFinite(n.pan ?? 0) && Math.abs(n.pan ?? 0) <= 1)) throw new OpError('note pan `pan` must be -1..1');
         if (n.p != null && !(Number.isInteger(n.p) && n.p >= 0 && n.p <= 127)) throw new OpError('note key `p` must be 0..127');
       }
       const known = new Set((p.channels ?? []).map(c => c.id));

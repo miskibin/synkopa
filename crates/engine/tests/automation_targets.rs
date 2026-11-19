@@ -359,7 +359,7 @@ fn live_playback_before_the_automation_clip_follows_it_on_every_pass() {
         e.play(0.0);
         let p = run(&mut rt, first_beats);
         assert!(p < 1e-4, "pass {pass}: the channels played before the automation clip (peak {p})");
-        e.stop();
+        let _ = e.stop();
         run(&mut rt, 4);
     }
 }

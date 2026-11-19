@@ -148,7 +148,7 @@ pub fn base() -> Project {
                 4.0,
                 vec![
                     Note::new(30, 0.0, 1.0, None),
-                    Note { ch: 30, step: 4.0, len: 1.0, p: None, v: 0.8, trig: Some(true) },
+                    Note { ch: 30, step: 4.0, len: 1.0, p: None, v: 0.8, trig: Some(true), pan: 0.0 },
                     Note::new(31, 4.0, 4.0, Some(57)),
                     Note::new(31, 8.0, 4.0, Some(60)),
                     Note::new(31, 12.0, 4.0, Some(62)),

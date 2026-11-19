@@ -119,7 +119,7 @@ fn a_recorded_take_becomes_a_pattern_clip_on_the_armed_track() {
     run(&mut rt, beat(1.0)); // 6.0
     e.midi_event(on(52)); // still held at stop
     run(&mut rt, beat(0.5)); // 6.5
-    e.stop();
+    let _ = e.stop();
     let p = e.project();
     let clip = p.clips.iter().find(|c| c.kind == ClipKind::Pat).expect("a pattern clip");
     assert_eq!(clip.track, 2);
@@ -151,7 +151,7 @@ fn nothing_played_adds_nothing() {
     e.set_transport(None, Some(false), Some(true), None);
     e.play(0.0);
     run(&mut rt, SR as usize / 2);
-    e.stop();
+    let _ = e.stop();
     assert!(e.project().clips.is_empty());
 }
 
@@ -166,7 +166,7 @@ fn not_armed_or_not_recording_plays_but_does_not_record() {
     run(&mut rt, 1000);
     e.midi_event(on(45));
     assert!(run(&mut rt, 4000) > 0.0);
-    e.stop();
+    let _ = e.stop();
     assert!(e.project().clips.is_empty());
 }
 
@@ -387,7 +387,7 @@ fn the_computer_keyboard_records_a_midi_take_in_the_song() {
     run(&mut rt, beat(1.0));
     e.typing_note(ch, 64, 0.0, false);
     run(&mut rt, beat(0.5));
-    e.stop();
+    let _ = e.stop();
     let p = e.project();
     let clip = p.clips.iter().find(|c| c.kind == ClipKind::Pat).expect("a MIDI take clip");
     let pat = p.patterns.iter().find(|x| x.id == clip.source).unwrap();
@@ -411,7 +411,7 @@ fn starting_the_song_ends_a_pat_mode_take_and_lands_its_notes() {
     e.play(0.0);
     assert!(e.state().transport.playing, "the song starts instead of being refused");
     assert_eq!(e.project().patterns[0].notes.len(), 2, "the loop's notes joined the pattern");
-    e.stop();
+    let _ = e.stop();
 }
 
 #[test]
@@ -424,7 +424,7 @@ fn a_pattern_loop_cannot_start_during_a_notes_only_song_recording() {
     e.set_transport(None, Some(false), Some(true), None);
     e.play(0.0);
     assert!(e.pattern_play(Some(pid), 0.0, None).is_err(), "the song take keeps running");
-    e.stop();
+    let _ = e.stop();
 }
 
 #[test]

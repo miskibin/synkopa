@@ -180,7 +180,7 @@ fn live_playback_renders_the_stretch_in_the_background() {
         rt.process(&mut l, &mut r, None);
         out.extend_from_slice(&l);
     }
-    e.stop();
+    let _ = e.stop();
     let f = freq(&out, sec(0.4), sec(1.5));
     assert!((f - 440.0).abs() < 5.0, "live playback at {f} Hz");
 }

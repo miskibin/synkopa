@@ -49,6 +49,7 @@ import { toggleNotebook } from './state/notebook';
 import { clonePattern, closeRack, closeRoll, nextEmptyPattern, patMode, pickPatternNum, rackFloating, rollFloating, stepPattern, toggleRack, toggleRoll } from './state/pattern';
 import { anyTucked, mixFloating, topFloating, win, type Floating } from './state/winOrder';
 import { Help, Toolbar, TOOLS } from './views/Toolbar';
+import { Palette, setPaletteOpen } from './views/Palette';
 
 /** Closes one floating window. */
 function closeFloating(f: Floating) {
@@ -220,6 +221,7 @@ function onKey(e: KeyboardEvent) {
   if (m && k === '-') { e.preventDefault(); return A.zoomAt(0.8); }
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); return U.autoSel?.idx.length ? A.deleteAutoPoints() : A.delIds([...U.sel]); }
   if (e.key === 'Home') { e.preventDefault(); return A.seek(0); }
+  if (m && k === 'k') { e.preventDefault(); return setPaletteOpen(v => !v); }
   if (e.key === '?') return setU('help', !U.help);
   if (m && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && swapTake(e.key === 'ArrowUp' ? -1 : 1)) { e.preventDefault(); return; }
   if (e.shiftKey && e.key.startsWith('Arrow')) {
@@ -346,6 +348,7 @@ export function App() {
       <Show when={U.ghost}>{g => <div class="ghost" style={{ left: g().x + 'px', top: g().y + 'px', 'box-shadow': `inset 0 0 0 1px ${g().color},0 6px 16px rgba(0,0,0,.45)` }}>{g().name}</div>}</Show>
       <ContextMenu />
       <Help />
+      <Palette />
       <ConfirmDialog />
       <Export />
       <Settings />

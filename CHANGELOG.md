@@ -27,10 +27,18 @@ shown in the app after an update and is published as the release notes (see
   add or remove one. Each key from the root plays one slice at the sample's own pitch, and a new
   slice cuts the one sounding. Dump to pattern writes one note per slice in the original timing,
   so the pattern plays the sample back as it was at any tempo: move the notes to rechop it.
+- **Ten new Reverb presets:** rap vocal (short room), R&B hall, bright pop plate, snare plate,
+  warm keys hall, EDM lead hall, ambient pad haze, lo-fi dark room, an 18-second "cosmos", and a
+  100 % wet plate for a send. The old presets keep their places.
 
 ### Changed
 - **Effect windows are tidier.** Each group of controls sits in its own frame, packed closer, and
   the how-to line that took the bottom of every window now sits behind a ? in the title bar.
+- **A clearer Reverb window.** The picture now shows what you hear: how long each frequency rings
+  (bass, middle and treble decay as one curve), with the tail's own spectrum live behind it and
+  the low and high cut shaded where the tail is filtered away. Drag the three dots up and down
+  and the cut lines sideways; below, the tail in time with the pre-delay to drag and the output
+  after the last hit.
 
 ## 0.9.26 — 2026-11-19
 

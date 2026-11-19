@@ -11,6 +11,7 @@ import { clampMove, moveClips, paintCells, placeClipCopy, resizeClip, resizeClip
 import { clamp, fmtPos, volText } from '../lib/format';
 import { snapFloor, snapRes, snapRound } from '../lib/snap';
 import * as A from '../state/actions';
+import { MuteSolo } from '../ui/MuteSolo';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { peaksVersion } from '../state/peaks';
 import { allocId, anyTrackSolo, arrVersion, clipSrcLen, onArrangementChange, plain, S, srcLenBeats, srcOf } from '../state/store';
@@ -1375,12 +1376,6 @@ export function Playlist() {
         <div style={{ width: U.headW + gridW() + 'px', position: 'relative' }}>
           <div class="rulerRow">
             <div class="plhead" style={{ width: U.headW + 'px' }}>
-              {/* what dragging a clip edge does (FL's stretch switch, Shift+M) */}
-              <div class="seg rsz" role="radiogroup" aria-label={tl('a.pl.resizeMode')}>
-                <button role="radio" aria-checked={!U.stretchMode} classList={{ on: !U.stretchMode }} title={tl('a.pl.modeTrimTip')} onClick={() => { if (U.stretchMode) A.toggleStretchMode(); }}>{tl('a.pl.modeTrim')}</button>
-                <button role="radio" aria-checked={U.stretchMode} classList={{ on: U.stretchMode }} title={tl('a.pl.modeStretchTip')} onClick={() => { if (!U.stretchMode) A.toggleStretchMode(); }}>{tl('a.pl.modeStretch')}</button>
-              </div>
-              <span class="mono" style={{ 'font-size': '10px', color: 'var(--fg5)', 'min-width': 0, overflow: 'hidden', 'white-space': 'nowrap', 'margin-left': '6px' }}>{S.project.tracks.length} tr</span>
             </div>
             <div style={{ position: 'relative', width: gridW() + 'px', height: '26px', flex: 'none' }}>
               <div class="phtile"><div ref={phRuler} class="phead" style={{ height: '26px' }} /></div>
@@ -1517,12 +1512,8 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
               <button class="mini route" title={tl('a.pl.routeTip', { out: 'Insert ' + routeIdx() })} onPointerDown={stop} onClick={e => openRouteMenu(props.i, e.clientX, e.clientY)}
                 onDblClick={() => { closeMenu(); showInsert(t().insert ?? 0); }}>{'Ins ' + routeIdx()}</button>
             </Show>
-            <button class="mini m" classList={{ on: t().muted }} title={tl('a.pl.muteTip')}
-          // FL: a right-click, Ctrl+click or Alt+click on the mute switch solos
-          onPointerDown={e => { e.stopPropagation(); if (e.button === 2) { e.preventDefault(); A.toggleTrackSolo(props.i); } }}
-          onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={e => (e.ctrlKey || e.metaKey || e.altKey ? A.toggleTrackSolo(props.i) : A.toggleTrackMute(props.i))}>M</button>
-            <button class="mini s" classList={{ on: t().solo }} title={tl('a.pl.soloTip')} onPointerDown={stop} onClick={e => A.toggleTrackSolo(props.i, e.ctrlKey || e.metaKey)}>S</button>
+            <MuteSolo muted={t().muted} solo={t().solo} muteTip={tl('a.pl.muteTip')} soloTip={tl('a.pl.soloTip')}
+              onMute={() => A.toggleTrackMute(props.i)} onSolo={add => A.toggleTrackSolo(props.i, add)} />
             {/* recordings go to the first free track (FL); only a track picked with "Record into this track" shows it */}
             <Show when={t().arm}>
               <button class="mini r on" title={tl('a.pl.armedTip')} onPointerDown={stop} onClick={() => A.armTrack(props.i)}>

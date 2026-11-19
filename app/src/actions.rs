@@ -1538,8 +1538,10 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
             Ok(json!({ "playing": true }))
         }
         "stop" => {
-            e.stop();
-            Ok(json!({ "playing": false }))
+            // the transport stops either way; a recording that could not be written comes
+            // back as the action's error, so the UI can tell the user
+            let t = e.stop().map_err(|e| e.to_string())?;
+            Ok(json!({ "playing": false, "transport": t }))
         }
         "render" => render(app, a),
         "export_project_zip" => export_project_zip(e, Path::new(need_str(a, "out")?), if_revision),

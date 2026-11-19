@@ -195,7 +195,7 @@ export function renameCurrent(x: number, y: number) {
 
 
 /** What can be done to one pattern: rename, clone, split by channel, length, colour, delete. */
-function patItems(p: Pattern, x: number, y: number): MenuItem[] {
+export function patItems(p: Pattern, x: number, y: number): MenuItem[] {
   const last = S.project.patterns.length < 2;
   return [
     { t: 'item', label: t('b.pm.rename'), kbd: p.id === curPat()?.id ? 'F2' : undefined, act: () => openRename(x, y, p.name, v => renamePattern(p, v)) },

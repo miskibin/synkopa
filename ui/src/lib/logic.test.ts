@@ -9,7 +9,6 @@ import { exportRange, exportSeconds, fmtExportLen, songEnd } from './export';
 import { fmtClock, fmtPos, panText, TapTracker, volText } from './format';
 import { loadPreset, newFx, paramsMatch, presetInfo, presetList, pFmt, pNorm, pVal, resolvePreset } from './presets';
 import { autoSnap, snapFloor, snapLabel, snapRes, snapRound } from './snap';
-import { t } from './i18n';
 
 const cat = mockCatalog();
 const clip = (o: Partial<Clip>): Clip => ({ id: 1, track: 0, start: 0, len: 4, offset: 0, kind: 'pat', ref: 1, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...o });
@@ -46,13 +45,13 @@ describe('snap', () => {
     expect(autoSnap(80)).toBe(0.125);
     expect(autoSnap(160)).toBe(1 / 16);
     expect(autoSnap(1024)).toBe(1 / 16);
-    expect(snapLabel(-1, 160)).toBe('Snap: auto · 1/16 beat');
-    expect(snapLabel(0.125, 22)).toBe('Snap: 1/8 beat');
+    expect(snapLabel(-1, 160)).toBe('Snap: auto · 1/64');
+    expect(snapLabel(0.125, 22)).toBe('Snap: 1/32');
   });
   it('labels show the resolved auto unit', () => {
-    expect(snapLabel(-1, 22)).toBe('Snap: auto · 1/2 beat');
-    expect(snapLabel(-1, 60)).toBe('Snap: auto · 1/4 beat');
-    expect(snapLabel(-1, 5)).toBe('Snap: auto · ' + t('a.snap.beats2'));
+    expect(snapLabel(-1, 22)).toBe('Snap: auto · 1/8');
+    expect(snapLabel(-1, 60)).toBe('Snap: auto · 1/16');
+    expect(snapLabel(-1, 5)).toBe('Snap: auto · 1/2');
     expect(snapLabel(4, 22)).toBe('Snap: bar');
   });
   it('rounds and floors', () => {

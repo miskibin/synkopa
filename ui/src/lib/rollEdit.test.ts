@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Channel, Note } from '../api/types';
 import {
   applyProps, fitRange, fmtStart, followPage, invertSelection, legato, MAX_STEP, notesOfKey, nudgeNotes, nudgeVelocity, pasteStart,
-  parseKey, parseLen, parseStart, parseVel, quantizeStarts, readProps, velocityLine, wheelNotches,
+  parseKey, parseLen, parseStart, parseVel, panLine, quantizeStarts, readProps, velocityLine, wheelNotches,
 } from './rollEdit';
 
 const CH = { id: 1, root: 60 } as Channel;
@@ -185,5 +185,22 @@ describe('velocity lane strokes', () => {
     const mixed: Note[] = [...hats.slice(0, 3), { ch: 2, step: 1, len: 1, p: 60 }];
     const out = velocityLine(mixed, 1, new Set([0, 2]), { step: 0, v: 0.4 }, { step: 2, v: 0.4 }, 0.25);
     expect(out.map(n => n.v)).toEqual([0.4, undefined, 0.4, undefined]);
+  });
+});
+
+describe('panLine', () => {
+  const hats: Note[] = [0, 2, 4].map(step => ({ ch: 1, step, len: 1 }));
+  it('sets the notes own pan from the lane height and snaps the middle to centre', () => {
+    const right = panLine(hats, 1, new Set(), { step: 0, v: 1 }, { step: 4, v: 1 }, 0.25);
+    expect(right.map(n => n.pan)).toEqual([1, 1, 1]);
+    const ramp = panLine(hats, 1, new Set(), { step: 0, v: 0 }, { step: 4, v: 1 }, 0.25);
+    expect(ramp.map(n => n.pan)).toEqual([-1, undefined, 1]);
+    // back to the middle: the field goes away (a centred note stores no pan)
+    expect('pan' in panLine(right, 1, new Set(), { step: 0, v: 0.5 }, { step: 4, v: 0.5 }, 0.25)[0]).toBe(false);
+  });
+  it('leaves other channels and unselected notes alone', () => {
+    const mixed: Note[] = [{ ch: 1, step: 0, len: 1 }, { ch: 2, step: 0, len: 1 }, { ch: 1, step: 1, len: 1 }];
+    const out = panLine(mixed, 1, new Set([0]), { step: 0, v: 0 }, { step: 2, v: 0 }, 0.25);
+    expect(out.map(n => n.pan)).toEqual([-1, undefined, undefined]);
   });
 });

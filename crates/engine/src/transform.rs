@@ -254,6 +254,7 @@ pub fn euclidean_fill(notes: &mut Vec<Note>, ch: Id, k: u32, n: u32, rotate: i32
     for (i, on) in onsets.iter().enumerate() {
         if *on {
             notes.push(Note {
+                pan: 0.0,
                 ch,
                 step: i as f32 * slot,
                 len: slot.clamp(0.25, 1.0),
@@ -328,7 +329,7 @@ pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, de
                 continue;
             }
             let midi = (48 + key as i32 + degrees[d as usize] as i32) as u8;
-            notes.push(Note { ch, step: (bar * 16 + slot) as f32, len, p: Some(midi), v: 0.8, trig: Some(false) });
+            notes.push(Note { ch, step: (bar * 16 + slot) as f32, len, p: Some(midi), v: 0.8, trig: Some(false), pan: 0.0 });
         }
     }
 }
@@ -540,7 +541,7 @@ pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degree
         let mut ps = chd.clone();
         ps.sort_unstable();
         for p in ps {
-            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75, trig: Some(false) });
+            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75, trig: Some(false), pan: 0.0 });
         }
     }
 }
@@ -602,7 +603,7 @@ pub fn chord(notes: &mut Vec<Note>, all: &[Note], key_scale: Option<(u8, u32)>, 
                 .chain(all.iter())
                 .any(|x| x.step == step && x.p.or_else(|| roots.iter().find(|(id, _)| *id == x.ch).map(|(_, r)| *r)) == Some(p))
             {
-                notes.push(Note { ch: cid, step, len, p: Some(p), v: vel, trig: Some(false) });
+                notes.push(Note { ch: cid, step, len, p: Some(p), v: vel, trig: Some(false), pan: 0.0 });
             }
         }
     }
@@ -617,7 +618,7 @@ mod tests {
     use super::*;
 
     fn note(ch: Id, step: f32, v: f32) -> Note {
-        Note { ch, step, len: 1.0, p: Some(60), v, trig: Some(false) }
+        Note { ch, step, len: 1.0, p: Some(60), v, trig: Some(false), pan: 0.0 }
     }
 
     #[test]
@@ -667,16 +668,16 @@ mod tests {
     #[test]
     fn scale_aware_quantize_snaps_pitch_into_the_scale() {
         // C major: the C# is equidistant from C and D; pitch::snap keeps the lower
-        let a = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false) }];
+        let a = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false), pan: 0.0 }];
         quantize(a, 1.0, 1.0, Some((0, 1)), &[(1, 60)]);
         assert_eq!(a[0].p, Some(60));
         // the D# is equidistant from D and E; pitch::snap keeps the lower
-        let b = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(63), v: 0.8, trig: Some(false) }];
+        let b = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(63), v: 0.8, trig: Some(false), pan: 0.0 }];
         quantize(b, 1.0, 1.0, Some((0, 1)), &[(1, 60)]);
         assert_eq!(b[0].p, Some(62));
         // every out-of-scale chromatic note ties between its in-scale neighbours;
         // pitch::snap keeps the lower — F# (66) lands on F (65)
-        let c = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(66), v: 0.8, trig: Some(false) }];
+        let c = &mut [Note { ch: 1, step: 4.0, len: 1.0, p: Some(66), v: 0.8, trig: Some(false), pan: 0.0 }];
         quantize(c, 1.0, 1.0, Some((0, 1)), &[(1, 60)]);
         assert_eq!(c[0].p, Some(65));
     }
@@ -687,7 +688,7 @@ mod tests {
         let h = &mut [note(1, 4.0, 0.02)];
         humanize(h, 0.0, 0.0, &mut SplitMix64::new(9));
         assert_eq!(h[0].v, 0.02);
-        let s = &mut [note(1, 4.0, 0.02), Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.02, trig: Some(false) }];
+        let s = &mut [note(1, 4.0, 0.02), Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.02, trig: Some(false), pan: 0.0 }];
         strum(s, 0.25, 0.0);
         assert!(s.iter().all(|n| n.v == 0.02));
         // and a full nudge still stays inside 0..=1
@@ -699,11 +700,11 @@ mod tests {
     #[test]
     fn scale_aware_quantize_stays_in_midi_range() {
         // C# major pentatonic (key 1, scale 3): 127 would snap up to 128
-        let a = &mut [Note { ch: 1, step: 0.0, len: 1.0, p: Some(127), v: 0.8, trig: Some(false) }];
+        let a = &mut [Note { ch: 1, step: 0.0, len: 1.0, p: Some(127), v: 0.8, trig: Some(false), pan: 0.0 }];
         quantize(a, 1.0, 1.0, Some((1, 3)), &[]);
         assert_eq!(a[0].p, Some(125));
         // the bottom edge: 0 (C) in B major pentatonic (B C# D# F# G#) — nearest in-range is 1
-        let b = &mut [Note { ch: 1, step: 0.0, len: 1.0, p: Some(0), v: 0.8, trig: Some(false) }];
+        let b = &mut [Note { ch: 1, step: 0.0, len: 1.0, p: Some(0), v: 0.8, trig: Some(false), pan: 0.0 }];
         quantize(b, 1.0, 1.0, Some((11, 3)), &[]);
         assert_eq!(b[0].p, Some(1));
         // everywhere in range, the bounded snap agrees with pitch::snap
@@ -749,8 +750,8 @@ mod tests {
     fn strum_spreads_a_chord_by_pitch() {
         let notes = &mut [
             note(1, 4.0, 0.8),
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false) },
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         strum(notes, 0.25, 0.05);
         // array positions stay, offsets follow pitch rank: lowest starts first
@@ -797,8 +798,8 @@ mod tests {
     fn strum_groups_nonadjacent_same_step_notes() {
         let notes = &mut [
             note(1, 4.0, 0.8),
-            Note { ch: 1, step: 8.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false) },
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 8.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         strum(notes, 0.25, 0.0);
         // the two step-4 notes form one chord (lowest first) even though they are
@@ -882,12 +883,12 @@ mod tests {
     #[test]
     fn chord_harmonizes_diatonic_triads_and_skips_out_of_scale_roots() {
         // E3 in A natural minor is degree v: E G B
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false), pan: 0.0 }];
         chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [52, 55, 59]);
         // a chromatic root stays unharmonized — diatonic mode leaves passing notes alone
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false) }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(61), v: 0.8, trig: Some(false), pan: 0.0 }];
         chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         assert_eq!(notes.len(), 1);
     }
@@ -895,7 +896,7 @@ mod tests {
     #[test]
     fn chord_harmonizes_named_types_by_interval_anywhere() {
         // C#3 + minor 7th = C#m7, spelled by the table whatever the project key is
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8, trig: Some(false) }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: Some(49), v: 0.8, trig: Some(false), pan: 0.0 }];
         chord(notes, &notes.clone(), Some(a_minor()), "min7", &[(1, 60)]);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [49, 52, 56, 59]);
@@ -906,8 +907,8 @@ mod tests {
         // E3 (ch 1) and B3 (ch 2) share step 0; groups are (channel, step), so both are
         // roots — but E's chord must not double the B that is already sounding
         let notes = &mut vec![
-            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) },
-            Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 2, step: 0.0, len: 2.0, p: Some(59), v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60), (2, 60)]);
         // E gains G (B exists → skipped); B (degree ii°) gains D and F
@@ -920,9 +921,9 @@ mod tests {
     #[test]
     fn chord_ignores_steps_that_already_hold_a_chord() {
         let notes = &mut vec![
-            Note { ch: 1, step: 0.0, len: 1.0, p: Some(52), v: 0.8, trig: Some(false) },
-            Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8, trig: Some(false) },
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(52), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 1, step: 0.0, len: 1.0, p: Some(55), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60)]);
         // step 0 has two notes (not a single root) and stays; step 4 becomes Am (+C, +E)
@@ -936,7 +937,7 @@ mod tests {
     fn chord_resolves_a_missing_pitch_to_the_channel_root() {
         // the root note keeps `p: None` (it still follows the channel root); the added
         // tones are spelled out explicitly
-        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8, trig: Some(false) }];
+        let notes = &mut vec![Note { ch: 1, step: 0.0, len: 1.0, p: None, v: 0.8, trig: Some(false), pan: 0.0 }];
         chord(notes, &notes.clone(), Some(a_minor()), "maj", &[(1, 60)]);
         assert_eq!(notes[0].p, None);
         let ps: Vec<u8> = notes.iter().skip(1).map(|n| n.p.unwrap()).collect();
@@ -948,8 +949,8 @@ mod tests {
         // ch 2 has `p: None` with root 59 (B3) — it sounds B3 without spelling it, so
         // E3's chord must not add an explicit B3
         let notes = &mut vec![
-            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false) },
-            Note { ch: 2, step: 0.0, len: 2.0, p: None, v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 0.0, len: 2.0, p: Some(52), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 2, step: 0.0, len: 2.0, p: None, v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         chord(notes, &notes.clone(), Some(a_minor()), "diatonic", &[(1, 60), (2, 59)]);
         assert_eq!(notes.len(), 5); // E gains G only; B (implicit) gains D and F
@@ -1052,8 +1053,8 @@ mod tests {
         assert_eq!(q[0].step, 4.0);
         let s = &mut [
             note(1, 4.0, 0.8),
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false) },
-            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false) },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(64), v: 0.8, trig: Some(false), pan: 0.0 },
+            Note { ch: 1, step: 4.0, len: 1.0, p: Some(57), v: 0.8, trig: Some(false), pan: 0.0 },
         ];
         strum(s, 0.25, 0.05);
         // array positions stay; the lowest pitch starts first, each next +width

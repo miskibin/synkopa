@@ -227,6 +227,7 @@ pub fn layout(notes: &[RecNote], ch: Id, beats_per_bar: f64) -> Option<RecordedC
     let notes = notes
         .iter()
         .map(|n| Note {
+            pan: 0.0,
             ch: n.ch.unwrap_or(ch),
             step: ((n.start - start) * STEPS_PER_BEAT) as f32,
             len: (((n.end - n.start) * STEPS_PER_BEAT) as f32).max(MIN_NOTE_STEPS),
@@ -252,6 +253,7 @@ pub fn fold_loop(notes: &[RecNote], ch: Id, la: f64, span: f64) -> Vec<Note> {
             let at = la + (n.start - la).rem_euclid(span);
             let len = (n.end - n.start).clamp(0.0, span);
             Note {
+                pan: 0.0,
                 ch: n.ch.unwrap_or(ch),
                 step: (at * STEPS_PER_BEAT) as f32,
                 len: ((len * STEPS_PER_BEAT) as f32).max(MIN_NOTE_STEPS),
@@ -421,7 +423,7 @@ mod tests {
         assert_eq!(c.start, 4.0);
         assert_eq!(c.len, 4.0); // up to 6.25 → 2.25 beats in → one bar
         assert_eq!(c.notes.len(), 2);
-        assert_eq!(c.notes[0], Note { ch: 7, step: 2.0, len: 2.0, p: Some(60), v: 1.0, trig: Some(false) });
+        assert_eq!(c.notes[0], Note { ch: 7, step: 2.0, len: 2.0, p: Some(60), v: 1.0, trig: Some(false), pan: 0.0 });
         assert_eq!(c.notes[1].step, 4.0);
         assert_eq!(c.notes[1].len, 5.0);
         assert!((c.notes[1].v - 64.0 / 127.0).abs() < 1e-6);

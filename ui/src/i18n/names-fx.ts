@@ -213,6 +213,17 @@ export const names: Record<string, string> = {
   'Wir stereo': 'Stereo swirl',
   'Pusty (ujemny feedback)': 'Hollow (negative feedback)',
   'Pad — przemiatanie (2 takty)': 'Pad sweep (2 bars)',
+  // reverb (added presets)
+  'Wokal — rap, krótko': 'Vocal — rap, short',
+  'Wokal — R&B, hala': 'Vocal — R&B hall',
+  'Wokal — pop, jasny plate': 'Vocal — pop, bright plate',
+  'Werbel — plate': 'Snare plate',
+  'Klawisze — ciepła hala': 'Keys — warm hall',
+  'Lead — EDM, hala': 'Lead — EDM hall',
+  'Pad — ambientowa mgła': 'Pad — ambient haze',
+  'Lo-fi — ciemny pokój': 'Lo-fi — dark room',
+  'Kosmos — 18 s': 'Cosmos — 18 s',
+  'Wysyłka — plate 100 %': 'Send — plate 100 %',
   // stereo
   'Bas w mono (120 Hz)': 'Bass mono (120 Hz)',
   'Szerzej, bas w mono': 'Wider, bass mono',
@@ -233,5 +244,4 @@ export const names: Record<string, string> = {
   'Wokal — bliżej': 'Vocal — up front',
   'Pad — powietrze': 'Pad — air',
   'Master — lekko': 'Master — gentle',
-
 };

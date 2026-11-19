@@ -41,7 +41,7 @@ fn stopped_while_ringing(e: &Engine) -> Box<dyn FnMut() -> (Vec<f32>, Vec<f32>)>
     for _ in 0..(2 * SR as usize / BLOCK) {
         run();
     }
-    e.stop();
+    let _ = e.stop();
     for _ in 0..(SR as usize / 20 / BLOCK) {
         run();
     }
