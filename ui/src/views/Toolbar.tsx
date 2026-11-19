@@ -198,6 +198,13 @@ export function Toolbar() {
         </button>
         <button class="count" classList={{ on: T().countIn }} title={t('a.tb.countTip')} onClick={() => void A.setTransportFlag('countIn', !T().countIn)}>1 BAR</button>
       </div>
+      {/* an input mode, like record and monitor: beside the transport, not among the panel buttons */}
+      <button class="tbtn icon typkb" aria-pressed={typingOn()} classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
+        onClick={() => setTypingOn(!typingOn())}>
+        <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
+        <span class="lbl">{t('a.tb.typLabel')}</span>
+        <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
+      </button>
       <MainVolume />
       <MasterOut />
       <div class="seg patsong" title={t('a.tb.patSongTip')}>
@@ -217,12 +224,6 @@ export function Toolbar() {
       <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
       <div data-drag class="dragfill" />
       <Show when={prefs().cpuMeter}><CpuMeter /></Show>
-      <button class="tbtn icon typkb" aria-pressed={typingOn()} classList={{ on: typingOn() }} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
-        onClick={() => setTypingOn(!typingOn())}>
-        <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
-        <span class="lbl">{t('a.tb.typLabel')}</span>
-        <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
-      </button>
       <Show when={wins()}>
         <button class="tbtn icon winsbtn" classList={{ on: !anyTucked() }} onClick={() => (anyTucked() ? A.showPlugs() : A.playlistFront())}
           title={anyTucked() ? t('a.tb.showWins', { n: wins() }) : t('a.tb.hideWins')} aria-label={t('a.tb.windows', { n: wins() })}>
