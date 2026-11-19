@@ -1,11 +1,14 @@
 // The command palette (Ctrl+K): every menu command, found by typing what you want to do instead of
 // knowing which menu holds it. It reads the app menus themselves, so a command added to a menu is
-// here too, with the same shortcut, the same disabled state and the same action.
+// here too, with the same shortcut, the same disabled state and the same action. A question that is
+// not a command goes to "Ask AI" (the Ask dialog, with the text filled in).
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { matchCommand } from '../lib/commandMatch';
 import { t, type TranslationKey } from '../lib/i18n';
 import type { MenuItem } from '../state/ui';
 import { Icon } from '../ui/icons';
+import { APP_GLYPH } from '../ui/menuIcons';
+import { askAbout } from './Ask';
 
 type MenuSource = [TranslationKey, () => MenuItem[]][];
 let source: MenuSource = [];
@@ -13,12 +16,13 @@ let source: MenuSource = [];
 export const setCommandMenus = (m: MenuSource) => { source = m; };
 export const [paletteOpen, setPaletteOpen] = createSignal(false);
 
-interface Cmd { path: string; label: string; kbd?: string; disabled?: boolean; act: () => void }
+/** `menu`: the app menu it is in; `sub`: the submenu path inside it, if any. */
+interface Cmd { menu: string; sub: string; label: string; kbd?: string; disabled?: boolean; act: () => void }
 
-function flatten(items: MenuItem[], path: string, out: Cmd[]) {
+function flatten(items: MenuItem[], menu: string, sub: string, out: Cmd[]) {
   for (const it of items) {
-    if (it.t === 'item') out.push({ path, label: it.label, kbd: it.kbd, disabled: it.disabled, act: it.act });
-    else if (it.t === 'sub') flatten(it.items, path + ' › ' + it.label, out);
+    if (it.t === 'item') out.push({ menu, sub, label: it.label, kbd: it.kbd, disabled: it.disabled, act: it.act });
+    else if (it.t === 'sub') flatten(it.items, menu, sub ? sub + ' › ' + it.label : it.label, out);
   }
 }
 
@@ -27,14 +31,25 @@ export function Palette() {
   const [at, setAt] = createSignal(0);
   let list!: HTMLDivElement;
   // read the menus when the palette opens: disabled states are those of this moment
-  const all = createMemo(() => { const out: Cmd[] = []; if (paletteOpen()) for (const [name, items] of source) flatten(items(), t(name), out); return out; });
-  const shown = createMemo(() => all().filter(c => matchCommand(c.path + ' ' + c.label, q())));
+  const all = createMemo(() => { const out: Cmd[] = []; if (paletteOpen()) for (const [name, items] of source) flatten(items(), t(name), '', out); return out; });
+  const shown = createMemo(() => all().filter(c => matchCommand(c.menu + ' ' + c.sub + ' ' + c.label, q())));
+  /** The commands by menu, each with its place in the flat list the arrow keys walk. */
+  const groups = createMemo(() => {
+    const by = new Map<string, { c: Cmd; i: number }[]>();
+    shown().forEach((c, i) => { if (!by.has(c.menu)) by.set(c.menu, []); by.get(c.menu)!.push({ c, i }); });
+    return [...by.entries()];
+  });
+  // typed text can always be asked instead: the last row, and the only one when no command matches
+  const asks = () => q().trim() !== '';
+  const rows = () => shown().length + (asks() ? 1 : 0);
   createEffect(() => { if (!paletteOpen()) setQ(''); });
   createEffect(() => { q(); setAt(0); });
   const close = () => setPaletteOpen(false);
   const run = (c: Cmd | undefined) => { if (!c || c.disabled) return; close(); c.act(); };
+  const ask = () => { const text = q().trim(); close(); askAbout(text); };
+  const enter = () => (at() < shown().length ? run(shown()[at()]) : asks() ? ask() : undefined);
   const move = (d: number) => {
-    const n = shown().length; if (!n) return;
+    const n = rows(); if (!n) return;
     setAt(i => (i + d + n) % n);
     queueMicrotask(() => list?.querySelector('.on')?.scrollIntoView({ block: 'nearest' }));
   };
@@ -44,7 +59,7 @@ export function Palette() {
     if (e.key === 'Escape') { e.preventDefault(); if (q()) setQ(''); else close(); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
-    else if (e.key === 'Enter') { e.preventDefault(); run(shown()[at()]); }
+    else if (e.key === 'Enter') { e.preventDefault(); enter(); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); close(); }
   };
   return (
@@ -58,16 +73,32 @@ export function Palette() {
             <kbd>Esc</kbd>
           </div>
           <div class="cmdlist" ref={list} role="listbox">
-            <For each={shown()} fallback={<div class="cmdnone">{t('a.cmd.none', { q: q() })}</div>}>
-              {(c, i) => (
-                <div class="cmd" role="option" aria-selected={at() === i()} aria-disabled={c.disabled} classList={{ on: at() === i(), dis: !!c.disabled }}
-                  onPointerMove={() => setAt(i())} onClick={() => run(c)}>
-                  <span class="path">{c.path}</span>
-                  <span class="name ell">{c.label}</span>
-                  <Show when={c.kbd}><kbd>{c.kbd}</kbd></Show>
-                </div>
-              )}
-            </For>
+            <For each={groups()}>{([menu, items]) => (
+              <>
+                <div class="cmdsec">{menu}</div>
+                <For each={items}>{({ c, i }) => (
+                  <div class="cmd" role="option" aria-selected={at() === i} aria-disabled={c.disabled} classList={{ on: at() === i, dis: !!c.disabled }}
+                    onPointerMove={() => setAt(i)} onClick={() => run(c)}>
+                    <span class="name ell">{c.label}</span>
+                    <Show when={c.sub}><span class="badge">{c.sub}</span></Show>
+                    <span class="fill" />
+                    <Show when={c.kbd}><kbd>{c.kbd}</kbd></Show>
+                  </div>
+                )}</For>
+              </>
+            )}</For>
+            <Show when={asks()}>
+              <Show when={!shown().length}><div class="cmdnone">{t('a.cmd.none', { q: q().trim() })}</div></Show>
+              <div class="cmdsec">{t('a.cmd.askSec')}</div>
+              <div class="cmd ask" role="option" aria-selected={at() === shown().length} classList={{ on: at() === shown().length }}
+                onPointerMove={() => setAt(shown().length)} onClick={ask}>
+                <svg width="14" height="14" viewBox={APP_GLYPH.ask.vb} aria-hidden="true"><path d={APP_GLYPH.ask.d} fill="currentColor" /></svg>
+                <span class="name ell">{t('a.cmd.ask', { q: q().trim() })}</span>
+                <span class="badge ai">AI</span>
+                <span class="fill" />
+                <kbd>Enter</kbd>
+              </div>
+            </Show>
           </div>
         </div>
       </div>

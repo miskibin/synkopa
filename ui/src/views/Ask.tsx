@@ -26,6 +26,8 @@ export const openAsk = () => {
   setOpen(true);
   if (version == null) be().appInfo().then(i => { version = i.version; }).catch(() => {});
 };
+/** Opens the Ask dialog with `text` as the question (the command palette's "Ask AI"): the user reads where it goes and sends it there. */
+export const askAbout = (text: string) => { setQuestion(text); openAsk(); };
 export const toggleAsk = () => (open() ? setOpen(false) : openAsk());
 const close = () => { if (!busy()) setOpen(false); };
 

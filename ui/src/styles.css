@@ -1545,3 +1545,16 @@ button.chip { color: var(--fg); }
 .fader .tick.u span { left: 19px; color: var(--fg4); }
 /* the master stands apart from the inserts: its own panel, a gap after it */
 .strip[data-ins="0"] { margin-right: 10px; background: var(--bg5); border-right: 0; border-radius: 0 8px 8px 0; box-shadow: 1px 0 0 var(--line); }
+
+/* palette: sections per menu, badges, Ask AI */
+.cmdsec { padding: 10px 10px 4px; font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg5); }
+.cmdsec:first-child { padding-top: 4px; }
+.cmd .name { flex: 0 1 auto; }
+.cmd .fill { flex: 1; }
+.cmd .badge { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg4); font: 500 10px var(--sans); white-space: nowrap; }
+.cmd .badge.ai { background: color-mix(in srgb, var(--blue) 26%, transparent); color: var(--blue-hi); font-weight: 600; }
+.cmd.ask { color: var(--blue-hi); }
+.cmd.ask .name { color: var(--fg-hi); }
+.cmd.ask kbd { visibility: hidden; }
+.cmd.ask.on kbd { visibility: visible; }
+.cmdnone { padding: 14px 10px 4px; text-align: left; }
