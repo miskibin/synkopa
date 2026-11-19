@@ -20,6 +20,11 @@ show its notes after the restart.
 * Windows: `WAVE_<v>_x64-setup.exe` (NSIS). No `.msi`: it was the same app a second time, and
   the updater installs the NSIS one anyway (`updaterJsonPreferNsis`).
 * Linux: `.AppImage` (any distribution; the most downloaded), `.deb` and `.rpm`.
+* macOS (Apple Silicon, 13.4 or newer): `Synkopa_<v>_aarch64.dmg`, plus the `.app.tar.gz` the
+  updater installs. 13.4 is what ONNX Runtime's prebuilt library (stems, pitch) needs; `app/build.rs`
+  links clang's runtime for it. The app is ad-hoc signed, not notarized (that needs an Apple
+  Developer account): the first start asks for System Settings → Privacy & Security → Open Anyway.
+  VST3 plugins are not hosted on macOS yet. `.github/workflows/macos.yml` builds it on demand.
 * A `.sig` beside each (the updater's signature) and `latest.json`.
 
 The bundle list is `bundles` in the matrix of `.github/workflows/release.yml`. Every installer

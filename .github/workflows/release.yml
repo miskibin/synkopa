@@ -34,7 +34,7 @@ jobs:
             bundles: deb,rpm,appimage
           # Apple Silicon, macOS 13.4+ (ONNX Runtime's prebuilt library needs it). Ad-hoc signed, not
           # notarized: the first start needs System Settings → Privacy & Security → Open Anyway. No VST3
-          # hosting on macOS yet; the built-in instruments and effects all work.
+          # hosting on macOS yet (the VST3 host and plugin windows are Windows/Linux only).
           - os: macos-latest
             features: ""
             bundles: app,dmg
