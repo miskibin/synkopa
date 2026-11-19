@@ -535,6 +535,10 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
             ),
         ],
         FxKind::Reverb => {
+            let with = |mut p: Preset, kv: &[(&'static str, f64)]| {
+                p.params.extend(kv.iter().copied());
+                p
+            };
             let rv = |name, size, pre, lo, hi, width, mix, tone, space, duck, bass| {
                 pr(
                     name,
@@ -562,6 +566,17 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
                 rv("Ballada — długi plate", 2.4, 40.0, 350.0, 6000.0, 100.0, 18.0, -30.0, 0.0, 6.0, 0.8),
                 rv("Bębny — pokój", 0.7, 0.0, 150.0, 9000.0, 80.0, 12.0, 0.0, 1.0, 0.0, 1.0),
                 rv("Wysyłka — hala 100 %", 2.2, 20.0, 200.0, 7000.0, 100.0, 100.0, -10.0, 2.0, 0.0, 0.9),
+                // added later: kept after the first seven so saved effects keep their preset number
+                rv("Wokal — rap, krótko", 0.5, 10.0, 400.0, 7500.0, 80.0, 10.0, 0.0, 1.0, 5.0, 0.7),
+                rv("Wokal — R&B, hala", 2.6, 45.0, 250.0, 6500.0, 100.0, 16.0, -20.0, 2.0, 5.0, 0.8),
+                rv("Wokal — pop, jasny plate", 1.8, 60.0, 350.0, 9000.0, 100.0, 18.0, 25.0, 0.0, 6.0, 0.7),
+                rv("Werbel — plate", 1.1, 0.0, 250.0, 9000.0, 100.0, 20.0, 10.0, 0.0, 0.0, 0.9),
+                rv("Klawisze — ciepła hala", 2.2, 20.0, 200.0, 5500.0, 100.0, 22.0, -30.0, 2.0, 0.0, 1.1),
+                rv("Lead — EDM, hala", 3.5, 30.0, 300.0, 9000.0, 100.0, 25.0, 10.0, 2.0, 6.0, 0.9),
+                with(rv("Pad — ambientowa mgła", 8.0, 60.0, 200.0, 7000.0, 100.0, 35.0, -10.0, 2.0, 0.0, 1.0), &[("mod", 80.0), ("early", 20.0)]),
+                rv("Lo-fi — ciemny pokój", 1.0, 15.0, 300.0, 3500.0, 100.0, 25.0, -60.0, 1.0, 0.0, 1.0),
+                with(rv("Kosmos — 18 s", 18.0, 80.0, 250.0, 6000.0, 100.0, 40.0, -20.0, 2.0, 0.0, 0.9), &[("mod", 100.0), ("early", 10.0)]),
+                rv("Wysyłka — plate 100 %", 1.5, 20.0, 300.0, 8000.0, 100.0, 100.0, 0.0, 0.0, 0.0, 0.8),
             ]
         }
         FxKind::Limit => vec![

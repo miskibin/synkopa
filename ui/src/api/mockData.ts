@@ -194,8 +194,13 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
     ['Vocal Hall', 2.0, 35, 250, 6500, 100, 14, -20, 2, 4, 0.8], ['Ambience', 0.4, 0, 200, 9000, 100, 12, 10, 3, 0, 1.0],
     ['Ballada — długi plate', 2.4, 40, 350, 6000, 100, 18, -30, 0, 6, 0.8], ['Bębny — pokój', 0.7, 0, 150, 9000, 80, 12, 0, 1, 0, 1.0],
     ['Wysyłka — hala 100 %', 2.2, 20, 200, 7000, 100, 100, -10, 2, 0, 0.9],
-  ] as [string, ...number[]][]).map(([name, size, pre, lo, hi, width, mix, tone, space, duck, bass]) =>
-    pr(name, { size, pre, lo, hi, width, mix, tone, space, duck, early: 50, bass, mod: 50 })),
+    ['Wokal — rap, krótko', 0.5, 10, 400, 7500, 80, 10, 0, 1, 5, 0.7], ['Wokal — R&B, hala', 2.6, 45, 250, 6500, 100, 16, -20, 2, 5, 0.8],
+    ['Wokal — pop, jasny plate', 1.8, 60, 350, 9000, 100, 18, 25, 0, 6, 0.7], ['Werbel — plate', 1.1, 0, 250, 9000, 100, 20, 10, 0, 0, 0.9],
+    ['Klawisze — ciepła hala', 2.2, 20, 200, 5500, 100, 22, -30, 2, 0, 1.1], ['Lead — EDM, hala', 3.5, 30, 300, 9000, 100, 25, 10, 2, 6, 0.9],
+    ['Pad — ambientowa mgła', 8.0, 60, 200, 7000, 100, 35, -10, 2, 0, 1.0, 80, 20], ['Lo-fi — ciemny pokój', 1.0, 15, 300, 3500, 100, 25, -60, 1, 0, 1.0],
+    ['Kosmos — 18 s', 18, 80, 250, 6000, 100, 40, -20, 2, 0, 0.9, 100, 10], ['Wysyłka — plate 100 %', 1.5, 20, 300, 8000, 100, 100, 0, 0, 0, 0.8],
+  ] as [string, ...number[]][]).map(([name, size, pre, lo, hi, width, mix, tone, space, duck, bass, mod, early]) =>
+    pr(name, { size, pre, lo, hi, width, mix, tone, space, duck, early: early ?? 50, bass, mod: mod ?? 50 })),
   limit: [
     pr('Bezpieczny', { gain: 0, ceil: -1 }), pr('Streaming −1 dBTP', { gain: 4, ceil: -1, rel: 80 }),
     pr('Głośny master', { gain: 7, ceil: -1, rel: 120 }), pr('Bardzo głośny', { gain: 10, ceil: -0.5, rel: 150, look: 5 }),

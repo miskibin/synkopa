@@ -28,8 +28,7 @@ import { EqViz } from './fx/eq';
 import { EqStrips } from './fx/eqStrips';
 import { EqPanel, eqHover, eqLeave, eqPointerDown, eqWheel } from './fx/eqEdit';
 import { fetModes, FetViz } from './fx/fet';
-import { ReverbViz, verbHit, verbLayout } from './fx/reverb';
-import { decayAt } from '../lib/reverbSpace';
+import { ReverbViz, verbDrag, verbHit, verbLayout, type VerbHandle } from './fx/reverb';
 import { SatViz } from './fx/satDelay';
 import { DelayViz } from './fx/delay';
 import { TuneViz } from './fx/tune';
@@ -60,7 +59,7 @@ function makeViz(f: Fx): Viz | null {
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 260, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220 };
 /** Default window widths per type (actions.openPlug). */
 export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700 };
 
@@ -528,7 +527,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     } else if (got.f.type === 'reverb') {
       const v = viz as ReverbViz, { x, y, W, H } = rel(e), on = verbHit(got.f, x, y, W, H);
       if (on !== v.hover) { v.hover = on; version++; }
-      cv.style.cursor = on ? 'ew-resize' : 'default';
+      cv.style.cursor = on ? VERB_CURSOR[on] : 'default';
     } else if (got.f.type === 'warp') {
       if (warpHover(e, cv, props.fxId, viz as WarpViz)) version++;
     } else if (got.f.type === 'half') {
@@ -616,27 +615,24 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     }, () => g.end(), onThr ? 'ns-resize' : 'ew-resize');
     if (onF && !onThr) { const op = setParam(props.fxId, 'freq', Math.round(clamp(deessXf(x, W, H), frP.min, frP.max))); if (op) g.update([op]); }
   };
-  /** Reverb envelope: drag PRE (pre-delay) or the tail's end (decay), one undo step; double-click = default. */
+  /** Reverb display: drag a decay dot (bass, decay, treble) up and down, a cut line or PRE sideways; one undo step, double-click = default. */
   const verbDown = (e: PointerEvent, f: Fx) => {
     if (e.button !== 0) return;
     const { x, y, W, H } = rel(e), which = verbHit(f, x, y, W, H); if (!which) return;
     e.preventDefault();
-    const id = which === 'pre' ? 'pre' : 'size', pd = defOf(f, id); if (!pd) return;
-    const name = t(which === 'pre' ? 'c.verb.preName' : 'c.verb.decayName');
+    const L0 = verbLayout(W, H, f);
+    const id = verbDrag(which, L0, x, y, f.params).id, pd = defOf(f, id); if (!pd) return;
+    const name = tName(pd.label);
     if (e.altKey || dblCheck('verb' + which + props.fxId)) { const op = setParam(props.fxId, id, pd.def); if (op) commit([op], name); return; }
     const g = new Gesture(name), v = viz as ReverbViz, r = cv.getBoundingClientRect();
     v.drag = which; version++;
-    const at = (cx: number) => {
+    // map through the layout the user saw at the start of the drag: the axes would rescale under the pointer
+    track(ev => {
       const cur = findFx(props.fxId)?.f; if (!cur) return;
-      // map through the layout the user sees at the start of the drag: the axis would rescale under the pointer
-      const tm = L0.xt(cx - r.left);
-      const val = which === 'pre' ? Math.round(clamp(tm * 1000, pd.min, pd.max)) : Math.round(decayAt(cur.params, tm) * 100) / 100;
-      const op = setParam(props.fxId, id, clamp(val, pd.min, pd.max)); if (op) g.update([op]);
-      const nv = findFx(props.fxId)?.f.params[id] ?? val;
-      say(name + ': ' + (which === 'pre' ? Math.round(nv) + ' ms' : nv.toFixed(2) + ' s'));
-    };
-    const L0 = verbLayout(W, H, f);
-    track(ev => at(ev.clientX), () => { g.end(); v.drag = null; version++; }, 'ew-resize');
+      const nv = verbDrag(which, L0, ev.clientX - r.left, ev.clientY - r.top, cur.params);
+      const op = setParam(props.fxId, nv.id, clamp(nv.value, pd.min, pd.max)); if (op) g.update([op]);
+      say(name + ': ' + pFmt(pd, findFx(props.fxId)?.f.params[nv.id] ?? nv.value));
+    }, () => { g.end(); v.drag = null; version++; }, VERB_CURSOR[which]);
   };
   const wheel = (e: WheelEvent) => {
     const got = ff(); if (!got || !viz) return;
@@ -645,6 +641,8 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
   return <canvas ref={cv} class="vizcv" data-viz={props.fxId} style={{ height: props.height + 'px', cursor: viz?.cursor ?? 'default' }}
     onPointerDown={down} onPointerMove={move} onPointerLeave={leave} onWheel={wheel} onContextMenu={e => e.preventDefault()} />;
 }
+
+const VERB_CURSOR: Record<VerbHandle, string> = { pre: 'ew-resize', lo: 'ew-resize', hi: 'ew-resize', size: 'ns-resize', bass: 'ns-resize', tone: 'ns-resize' };
 
 /** The option of an enumeration parameter its normalized value selects. */
 const nearestOption = (p: PluginParam) =>

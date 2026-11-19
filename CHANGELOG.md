@@ -4,6 +4,20 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Changed
+- **A clearer Reverb window.** The picture now shows what you hear: how long each frequency rings
+  (bass, middle and treble decay as one curve), with the tail's own spectrum live behind it and
+  the low and high cut shaded where the tail is filtered away. Drag the three dots up and down
+  and the cut lines sideways; below, the tail in time with the pre-delay to drag and the output
+  after the last hit.
+
+### Added
+- **Ten new Reverb presets:** rap vocal (short room), R&B hall, bright pop plate, snare plate,
+  warm keys hall, EDM lead hall, ambient pad haze, lo-fi dark room, an 18-second "cosmos", and a
+  100 % wet plate for a send. The old presets keep their places.
+
 ## 0.9.26 — 2026-11-19
 
 ### Added
