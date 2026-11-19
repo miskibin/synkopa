@@ -1,6 +1,7 @@
 // Canvas rendering of the pattern windows: the Channel Rack step grid and graph editor, the
 // velocity lane and the piano roll. Static parts (cell backgrounds, key rows, grid lines, the keyboard) are cached
 // offscreen in `Layer`s keyed by geometry and theme; notes are drawn on top on change only.
+import { shadeBands, shadeUnit } from '../lib/gridShade';
 import type { Channel, Id, Note, Pattern } from '../api/types';
 import { t } from '../lib/i18n';
 import { mix } from '../lib/color';
@@ -194,6 +195,12 @@ function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, r
   // vertical lines: the snap grid's own lines (16ths, triplets, ... when there is room), then
   // beats and bars over them. A grid of a beat or longer shows 16ths, like 1/16.
   const s0 = Math.max(0, Math.floor(G.sx / G.pps)), s1 = Math.ceil((G.sx + W - G.kw) / G.pps);
+  // every other beat (bar when zoomed out) a shade lighter, over the key rows and under the lines (4 steps = a beat)
+  g.fillStyle = T.gridShade;
+  for (const [b, n] of shadeBands(s0 / 4, s1 / 4, shadeUnit(G.pps * 4))) {
+    const xa = Math.max(G.kw, Math.round(rollX(G, b * 4))), xb = Math.round(rollX(G, (b + n) * 4));
+    if (xb > xa) g.fillRect(xa, 0, xb - xa, H);
+  }
   const u = grid > 0 && grid < 4 ? grid : 1;
   if (u * G.pps >= 7) {
     g.fillStyle = T.vizGrid;

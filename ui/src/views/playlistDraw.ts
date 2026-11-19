@@ -1,5 +1,6 @@
 // Canvas rendering of the playlist: lanes, grid, clips (pattern notes / waveforms), the
 // recording clip. Only the visible window is drawn; everything is in grid coordinates.
+import { shadeBands, shadeUnit } from '../lib/gridShade';
 import type { Automation, Channel, Clip, Comp, Id, Note, Pattern, Project, Source, Take, Track } from '../api/types';
 import { keyOf } from '../lib/pattern';
 import { valueAt } from '../lib/automation';
@@ -138,10 +139,10 @@ export function drawGrid(g: CanvasRenderingContext2D, v: View, p: Project, rec: 
     g.fillRect(x0, b - 1, W, 1);
   });
   const gridBottom = Math.min(y1, tops[tops.length - 1]);
-  // 2-bar shading
+  // every other bar (beat when zoomed far in, 4 bars when zoomed out) a shade lighter: odd and even are told apart at a glance
   const b0 = Math.floor(x0 / bw), b1 = Math.ceil(x1 / bw);
   g.fillStyle = T.gridShade;
-  for (let b = Math.floor(b0 / 8) * 8; b <= b1; b += 8) g.fillRect(b * bw, y0, 4 * bw, gridBottom - y0);
+  for (const [b, n] of shadeBands(b0, b1, shadeUnit(bw, 48))) g.fillRect(Math.round(b * bw), y0, Math.round((b + n) * bw) - Math.round(b * bw), gridBottom - y0);
   // sub-beat lines follow the active snap
   const sr = snapRes(v.snap, bw), u = sr > 0 && sr < 1 ? sr : 0.25;
   const stepCol = sr > 0 && sr < 1 && sr * bw >= 6 ? T.gridBeat : bw >= 36 ? T.gridBeat : null;
