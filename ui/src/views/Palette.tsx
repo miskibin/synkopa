@@ -8,7 +8,12 @@ import { t, type TranslationKey } from '../lib/i18n';
 import type { MenuItem } from '../state/ui';
 import { Icon } from '../ui/icons';
 import { APP_GLYPH, menuGlyph, type MenuGlyph } from '../ui/menuIcons';
+import * as A from '../state/actions';
+import { curPat } from '../state/pattern';
+import { S } from '../state/store';
+import { setU, U } from '../state/ui';
 import { askAbout } from './Ask';
+import { patItems } from './patternShared';
 
 type MenuSource = [TranslationKey, () => MenuItem[]][];
 let source: MenuSource = [];
@@ -16,12 +21,12 @@ let source: MenuSource = [];
 export const setCommandMenus = (m: MenuSource) => { source = m; };
 export const [paletteOpen, setPaletteOpen] = createSignal(false);
 
-/** `menu`: the app menu it is in; `sub`: the submenu path inside it, if any. */
-interface Cmd { menu: string; sub: string; label: string; glyph: MenuGlyph | null; kbd?: string; disabled?: boolean; act: () => void }
+/** `menu`: the app menu it is in (or the context section); `sub`: the submenu path inside it, if any. */
+interface Cmd { danger?: boolean; menu: string; sub: string; label: string; glyph: MenuGlyph | null; kbd?: string; disabled?: boolean; act: () => void }
 
 function flatten(items: MenuItem[], menu: string, sub: string, out: Cmd[]) {
   for (const it of items) {
-    if (it.t === 'item') out.push({ menu, sub, label: it.label, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
+    if (it.t === 'item') out.push({ menu, sub, label: it.label, danger: it.danger, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
     else if (it.t === 'sub') flatten(it.items, menu, sub ? sub + ' › ' + it.label : it.label, out);
   }
 }
@@ -31,7 +36,28 @@ export function Palette() {
   const [at, setAt] = createSignal(0);
   let list!: HTMLDivElement;
   // read the menus when the palette opens: disabled states are those of this moment
-  const all = createMemo(() => { const out: Cmd[] = []; if (paletteOpen()) for (const [name, items] of source) flatten(items(), t(name), '', out); return out; });
+  const all = createMemo(() => {
+    const out: Cmd[] = []; if (!paletteOpen()) return out;
+    // first, what can be done with what is selected right now: the Playlist selection, the current pattern
+    for (const [name, , items] of context()) flatten(items, name, '', out);
+    for (const [name, items] of source) flatten(items(), t(name), '', out);
+    return out;
+  });
+  /** The context sections as [title, colour of its dot, commands]. */
+  const context = (): [string, string, MenuItem[]][] => {
+    const out: [string, string, MenuItem[]][] = [];
+    if (U.sel.length) out.push([t('a.cmd.ctxSel', { n: U.sel.length }), 'var(--blue)', [
+      { t: 'item', label: t('a.mn.copy'), kbd: 'Ctrl+C', act: () => void A.copy() },
+      { t: 'item', label: t('a.mn.cut'), kbd: 'Ctrl+X', act: () => void A.cut() },
+      { t: 'item', label: t('a.cmd.muteSel'), kbd: 'Alt+M', act: () => void A.toggleMuteSel() },
+      { t: 'item', label: t('a.cmd.deselect'), kbd: 'Ctrl+D', act: () => setU('sel', []) },
+      { t: 'item', label: t('a.mn.del'), kbd: 'Del', danger: true, act: () => void A.delIds([...U.sel]) },
+    ]]);
+    const p = S.project.patterns.length ? curPat() : null;
+    if (p) out.push([t('a.cmd.ctxPat', { name: p.name }), p.color, patItems(p, window.innerWidth / 2 - 120, 160)]);
+    return out;
+  };
+  const dotOf = (menu: string) => context().find(c => c[0] === menu)?.[1];
   const shown = createMemo(() => all().filter(c => matchCommand(c.menu + ' ' + c.sub + ' ' + c.label, q())));
   /** The commands by menu, each with its place in the flat list the arrow keys walk. */
   const groups = createMemo(() => {
@@ -75,9 +101,9 @@ export function Palette() {
           <div class="cmdlist" ref={list} role="listbox">
             <For each={groups()}>{([menu, items]) => (
               <>
-                <div class="cmdsec">{menu}</div>
+                <div class="cmdsec"><Show when={dotOf(menu)}>{c => <span class="dot" style={{ background: c() }} />}</Show>{menu}</div>
                 <For each={items}>{({ c, i }) => (
-                  <div class="cmd" role="option" aria-selected={at() === i} aria-disabled={c.disabled} classList={{ on: at() === i, dis: !!c.disabled }}
+                  <div class="cmd" role="option" aria-selected={at() === i} aria-disabled={c.disabled} classList={{ on: at() === i, dis: !!c.disabled, danger: !!c.danger }}
                     onPointerMove={() => setAt(i)} onClick={() => run(c)}>
                     <span class="gl">{c.glyph && <svg width="14" height="14" viewBox={c.glyph.vb} aria-hidden="true"><path d={c.glyph.d} fill="currentColor" fill-rule={c.glyph.eo ? 'evenodd' : undefined} /></svg>}</span>
                     <span class="name ell">{c.label}</span>

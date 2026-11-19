@@ -1566,3 +1566,7 @@ button.chip { color: var(--fg); }
 .cmd .keys kbd { min-width: 12px; padding: 1px 6px; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--fg) 9%, transparent); color: var(--fg3); font: 600 10px var(--sans); text-align: center; }
 .cmd.dis .keys kbd { color: var(--fg6); }
 .cmd.ask > svg { width: 16px; flex: none; }
+
+.cmdsec { display: flex; align-items: center; gap: 7px; }
+.cmdsec .dot { width: 7px; height: 7px; flex: none; border-radius: 2px; }
+.cmd.danger .name, .cmd.danger .gl { color: var(--red); }
