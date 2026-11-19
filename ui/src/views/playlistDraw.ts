@@ -391,9 +391,12 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
   g.save();
   if (c.muted) g.globalAlpha = 0.38;
   g.beginPath(); g.roundRect(cx, cy, cw, ch, 3); g.clip();
-  g.fillStyle = mix(color, T.clipBodyPct, T.clipBase); g.fillRect(cx, cy, cw, ch);
+  // an automation clip is a curve, not a block of material: a faint body and no header band (its
+  // name sits on the body), so the filled area under the curve is what reads; notes and audio keep the band
+  const isAuto = c.kind === 'auto';
+  g.fillStyle = mix(color, isAuto ? T.clipBodyPct * 0.4 : T.clipBodyPct, T.clipBase); g.fillRect(cx, cy, cw, ch);
   // header
-  g.fillStyle = sel ? mix(color, T.clipHeadSelPct, T.clipHeadSelTo) : mix(color, T.clipHeadPct, T.clipBase); g.fillRect(cx, cy, cw, 15);
+  if (!isAuto || sel) { g.fillStyle = sel ? mix(color, T.clipHeadSelPct, T.clipHeadSelTo) : mix(color, T.clipHeadPct, T.clipBase); g.fillRect(cx, cy, cw, 15); }
   const ink = mix(color, T.clipInkPct, T.clipInkTo);
   const isAudio = c.kind === 'audio';
   const vis0 = Math.max(cx, vx0), vis1 = Math.min(cx + cw, vx1);
@@ -418,7 +421,7 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
       ax += g.measureText(label).width + 5;
     }
     if (isAudio && c.gain) {
-      g.font = MONO9; g.globalAlpha *= 0.65; g.fillText((c.gain >= 0 ? '+' : '') + c.gain.toFixed(1) + ' dB', ax, cy + 11);
+      g.font = MONO9; g.globalAlpha *= 0.85; g.fillText((c.gain >= 0 ? '+' : '') + c.gain.toFixed(1) + ' dB', ax, cy + 11);
       g.globalAlpha = c.muted ? 0.38 : prevAlpha;
     }
   }
@@ -492,9 +495,11 @@ function drawEnvelope(g: CanvasRenderingContext2D, v: View, c: Clip, a: Automati
   g.beginPath(); g.moveTo(x0, by + bh);
   for (const [x, y] of line) g.lineTo(x, y);
   g.lineTo(x1, by + bh); g.closePath();
-  g.fillStyle = rgba(color, 0.22); g.fill();
+  // the area under the curve: strongest at the curve, fading to the floor
+  const grad = g.createLinearGradient(0, by, 0, by + bh); grad.addColorStop(0, rgba(color, 0.42)); grad.addColorStop(1, rgba(color, 0.08));
+  g.fillStyle = grad; g.fill();
   g.beginPath(); line.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-  g.strokeStyle = ink; g.lineWidth = 1.5; g.stroke();
+  g.strokeStyle = ink; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
   const focus = v.env?.clip === c.id ? v.env : null;
   const sel = v.autoSel?.clip === c.id ? new Set(v.autoSel.idx) : null;
   const hov = focus?.hover;

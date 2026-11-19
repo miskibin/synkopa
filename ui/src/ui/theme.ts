@@ -41,7 +41,7 @@ export interface Tokens {
 export const DARK: Tokens = {
   bg0: '#0a0c0f', bg1: '#0e1013', bg2: '#111419', bg3: '#14181e', bg4: '#161a21', bg5: '#171b21', bg6: '#1c2128', bg7: '#1e242d',
   line: '#252b34', line2: '#2c333d', line3: '#2e3641',
-  fg: '#d5dae2', fgHi: '#f2f4f7', fg2: '#b4bac4', fg3: '#9aa2ad', fg4: '#7d8592', fg5: '#5c6573', fg6: '#4a5360',
+  fg: '#d5dae2', fgHi: '#f2f4f7', fg2: '#b4bac4', fg3: '#9aa2ad', fg4: '#8a93a1', fg5: '#727c8c', fg6: '#5e6877',
   blue: '#4f8ef7', blueHi: '#8fb6ff', green: '#4ec08a', amber: '#e0a44a', pan: '#b18cf5', red: '#e05263', onBg: '#2f3a4b',
   viz: '#0c0e12', vizPanel: '#101318', vizGrid: '#161b22', vizGrid2: '#20262f', vizAxis: '#2a313b', vizLabel: '#4a5360',
   ink: '#f2f4f7', pre: '#9aa2ad', post: '#8fb6ff', playhead: '#eef1f5', onFill: '#0b1220',
