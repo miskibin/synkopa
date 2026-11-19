@@ -517,13 +517,25 @@ const shortcuts = (): [string, string][] => [
 ];
 
 export function Help() {
+  // 130-odd shortcuts: found by typing a word of the action ("mute") or the key ("ctrl+b"), not by reading the list
+  const [q, setQ] = createSignal('');
+  createEffect(() => { if (!U.help) setQ(''); });
+  const norm = (x: string) => x.toLowerCase().replace(/\s+/g, '');
+  const shown = () => { const n = norm(q()); return n ? shortcuts().filter(([a, k]) => norm(a).includes(n) || norm(k).includes(n)) : shortcuts(); };
   return (
     <Show when={U.help}>
       <div class="overlay" onPointerDown={() => setU('help', false)}>
-        <div class="dialog" style={{ width: 'min(680px,92vw)', 'max-height': '90vh', 'overflow-y': 'auto' }} onPointerDown={e => e.stopPropagation()}>
-          <div class="hd"><span>{t('a.tb.helpTitle')}</span><button onClick={() => setU('help', false)}>×</button></div>
-          <div style={{ display: 'grid', 'grid-template-columns': 'repeat(auto-fit,minmax(280px,1fr))', 'column-gap': '24px' }}>
-            <For each={shortcuts()}>{([a, k]) => <div class="sc"><span class="a">{a}</span><span class="k">{k}</span></div>}</For>
+        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); if (q()) setQ(''); else setU('help', false); } }}>
+          <div class="hd"><span>{t('a.tb.helpTitle')}</span><button aria-label={t('a.tb.close')} onClick={() => setU('help', false)}>×</button></div>
+          <div class="helpfind">
+            <input class="textin" type="search" ref={el => queueMicrotask(() => el.focus())} value={q()} onInput={e => setQ(e.currentTarget.value)}
+              placeholder={t('a.tb.helpSearch')} aria-label={t('a.tb.helpSearch')} spellcheck={false} />
+            <span class="n mono">{shown().length} / {shortcuts().length}</span>
+          </div>
+          <div class="helplist">
+            <For each={shown()} fallback={<div class="hint helpnone">{t('a.tb.helpNone', { q: q() })}</div>}>
+              {([a, k]) => <div class="sc"><span class="a">{a}</span><span class="k">{k.split(' · ').map(x => <kbd>{x}</kbd>)}</span></div>}
+            </For>
           </div>
         </div>
       </div>

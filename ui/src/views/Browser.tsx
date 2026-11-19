@@ -198,7 +198,7 @@ function AudioTab() {
         <span>{t('d.br.audioCount', { n: list().length })}</span>
         <button class="linkbtn" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button>
       </div>
-      <Show when={list().length} fallback={<div class="bnote">{t('d.br.audioEmpty')}</div>}>
+      <Show when={list().length} fallback={<div class="bempty"><span>{t('d.br.audioEmpty')}</span><button class="smallbtn primary" title={t('d.br.import.tip')} onClick={importBtn}>{t('d.br.import')}</button></div>}>
         <div style={{ display: 'flex', 'flex-direction': 'column', padding: '4px 0' }}>
           <For each={list()}>
             {s => (

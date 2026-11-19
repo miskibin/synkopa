@@ -276,7 +276,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <div class="pcap" />
           <div class="pptr" style={{ transform: `rotate(${pan().angle}deg)` }} />
         </div>
-        <span class="pantxt">{panText(shownPan())}</span>
+        <span class="pantxt" classList={{ def: Math.abs(shownPan()) < 1e-4 }}>{panText(shownPan())}</span>
       </div>
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
         <div class="pandial wdial" onPointerDown={widDown} onWheel={widWheel} onContextMenu={e => e.preventDefault()} title={tr('c.mix.widthTip')}>
@@ -287,7 +287,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <div class="pcap" />
           <div class="pptr" style={{ transform: `rotate(${widArc().angle}deg)` }} />
         </div>
-        <span class="pantxt">{widText(wid())}</span>
+        <span class="pantxt" classList={{ def: widText(wid()) === widText(1) }}>{widText(wid())}</span>
       </div>
       </div>
       <div class="row" style={{ gap: '2px', 'justify-content': 'center' }}>
