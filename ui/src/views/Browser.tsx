@@ -648,22 +648,8 @@ function LibraryTab() {
             <div class="flist"><FileList k={STD} /></div>
           </Show>
         </Show>
-        <Show when={mine().length}>
-          <div class="bhead top tog" role="button" aria-expanded={secOpen('kits')} title={t('d.br.sec.tip')} onClick={() => toggleSec('kits')}>
-            <Chev open={secOpen('kits')} />
-            <span class="ell">{t('d.br.kitsMine')}</span>
-          </div>
-          <Show when={secOpen('kits')}><For each={mine()}>{kitRow}</For></Show>
-        </Show>
-        {/* kits not downloaded yet: used once in a while, so they wait behind one row at the end of the list */}
-        <Show when={!searching() && avail().length}>
-          <button class="bmore" aria-expanded={moreOpen()} onClick={() => setMoreOpen(v => !v)}>
-            <span class="plus" classList={{ open: moreOpen() }}>+</span>
-            <span class="ell">{t('d.br.more')}</span>
-            <span class="cnt">{avail().length}</span>
-          </button>
-          <Show when={moreOpen()}><For each={avail()}>{kitRow}</For></Show>
-        </Show>
+        {/* installed kits sit in the list like the library's own groups: no section header */}
+        <For each={mine()}>{kitRow}</For>
         <Show when={!searching() || folders().length}>
           <div class="bhead top tog" role="button" aria-expanded={secOpen('folders')} title={t('d.br.sec.tip')} onClick={() => toggleSec('folders')}>
             <Chev open={secOpen('folders')} />
@@ -686,6 +672,13 @@ function LibraryTab() {
           </Show>
         </Show>
         <div class="bnote">{t('d.br.libnote')}</div>
+        {/* kits not downloaded yet: used once in a while, so they wait behind one row at the end of the list */}
+        <Show when={!searching() && avail().length}>
+          <button class="bmore" aria-expanded={moreOpen()} aria-label={t('d.br.more')} title={t('d.br.more')} onClick={() => setMoreOpen(v => !v)}>
+            <span class="plus" classList={{ open: moreOpen() }}>+</span>
+          </button>
+          <Show when={moreOpen()}><For each={avail()}>{kitRow}</For></Show>
+        </Show>
         </div>
       </div>
     </>

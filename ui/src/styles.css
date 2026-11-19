@@ -1458,3 +1458,8 @@ button.chip { color: var(--fg); }
 .bmore .plus { width: 16px; height: 16px; flex: none; border-radius: 4px; background: var(--bg6); color: var(--fg2); font: 500 13px/15px var(--sans); text-align: center; transition: transform .15s; }
 .bmore .plus.open { transform: rotate(45deg); }
 .bmore .cnt { margin-left: auto; font: 500 10px var(--mono); color: var(--fg5); }
+
+.bmore { justify-content: center; height: 30px; border-top: 0; }
+.bmore .plus { width: 20px; height: 20px; line-height: 19px; font-size: 15px; background: transparent; color: var(--fg4); }
+.bmore:hover { background: transparent; }
+.bmore:hover .plus { background: var(--bg6); color: var(--fg-hi); }
