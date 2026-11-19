@@ -21,6 +21,16 @@ shown in the app after an update and is published as the release notes (see
   target, a spectrum whose bass is sharp enough to tell a 41 Hz kick from a 49 Hz 808 (hover it
   to read the frequency and note), a vectorscope and the correlation. It tells you how much
   streaming would turn the song down instead of telling you to hit a number.
+- **Slice mode for the sampler (chop a sample).** A new Slice page in the sampler's window cuts the
+  sample at its hits (Transients, with a Sensitivity knob that answers instantly) or into 4, 8, 16
+  or 32 equal parts (MPC chop). Click a slice to hear it, drag a marker to move it, double-click to
+  add or remove one. Each key from the root plays one slice at the sample's own pitch, and a new
+  slice cuts the one sounding. Dump to pattern writes one note per slice in the original timing,
+  so the pattern plays the sample back as it was at any tempo: move the notes to rechop it.
+
+### Changed
+- **Effect windows are tidier.** Each group of controls sits in its own frame, packed closer, and
+  the how-to line that took the bottom of every window now sits behind a ? in the title bar.
 
 ## 0.9.26 — 2026-11-19
 

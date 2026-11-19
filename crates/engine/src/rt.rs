@@ -769,6 +769,9 @@ pub struct ChanRt {
     /// and how it is played.
     pub sample: Option<Arc<Audio>>,
     pub smp: SmpRt,
+    /// Slice mode: where each slice starts (fractions of the file, increasing), see
+    /// `ChannelSrc::Sample::slices`. `None` = the sampler plays its region by pitch.
+    pub slices: Option<Arc<[f32]>>,
     /// Synkopa Keys channels: the piano (`None` until it is loaded: the channel is silent),
     /// the release time in seconds and the velocity → level amount 0..1.
     pub keys: Option<Arc<crate::keys::KeysBank>>,

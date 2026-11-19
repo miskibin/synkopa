@@ -20,6 +20,7 @@ import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
 import { satDriveDb } from '../lib/saturator';
+import { onsetsFromPeaks } from '../lib/slicer';
 import { songEnd } from '../lib/export';
 import { eqCurve } from '../lib/eq';
 import { ATTACK as MB_ATTACK, BAND_IN_DB as MB_BAND_IN_DB, bandGain as mbBandGain, MAKEUP_DB as MB_MAKEUP_DB, RELEASE as MB_RELEASE } from '../lib/multiband';
@@ -827,6 +828,11 @@ export class MockBackend implements Backend {
       inp.onchange = () => res(inp.files && inp.files.length ? [...inp.files].map(f => f.name) : null);
       inp.click();
     });
+  }
+  /** engine `source_onsets`: the mock finds them in the peak envelope (lib/slicer `onsetsFromPeaks`). */
+  async sourceOnsets(id: Id) {
+    const o = onsetsFromPeaks(await this.sourcePeaks(id));
+    return Float32Array.from(o.flatMap(x => [x.pos, x.strength]));
   }
   async sourcePeaks(id: Id, norm?: boolean, rev?: boolean) {
     await delay(5);

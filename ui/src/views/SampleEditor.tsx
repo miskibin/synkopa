@@ -28,6 +28,7 @@ import { chanHeardInsert, ChannelLevelKnobs } from './ChannelWindow';
 import { outerZ } from '../state/winOrder';
 import { moveWindow } from './FxWindow';
 import { PitchCorrectButton } from './PitchCorrectButton';
+import { SlicePanel } from './SlicePanel';
 
 type SampleChannel = Extract<Channel, { kind: 'sample' }>;
 type Fade = 'fadeIn' | 'fadeOut';
@@ -81,6 +82,8 @@ function EditorFrame(props: {
   pitch: JSX.Element; level: JSX.Element; fades: JSX.Element; details: JSX.Element;
   /** A sampler's volume envelope: a second page, behind Sample | Envelope tabs (FL's SMP and INS pages). */
   envelope?: { on: () => boolean; page: () => JSX.Element };
+  /** A sampler's slice mode: a third page (FL Slicex, Simpler's Slice); `on` while the channel has slices. */
+  slices?: { on: () => boolean; page: () => JSX.Element };
   /** The keyboard at the bottom (FL Channel settings): plays the sample; right-click a key sets its root. */
   keys: { player: KeyPlayer; root: () => number; setRoot: (key: number) => void };
 }) {
@@ -114,14 +117,22 @@ function EditorFrame(props: {
       </div>
       <Show when={props.envelope}>{env => (
         <div class="seg smptabs" role="tablist" aria-label={t('b.sm.tabs')}>
-          <button role="tab" aria-selected={!envPage()} classList={{ on: !envPage() }} onClick={() => setEnvPage(false)}>{t('b.sm.tabSample')}</button>
-          <button role="tab" aria-selected={envPage()} classList={{ on: envPage() }} onClick={() => setEnvPage(true)}
+          <button role="tab" aria-selected={page() === 'sample'} classList={{ on: page() === 'sample' }} onClick={() => setPage('sample')}>{t('b.sm.tabSample')}</button>
+          <button role="tab" aria-selected={page() === 'env'} classList={{ on: page() === 'env' }} onClick={() => setPage('env')}
             title={t(env().on() ? 'b.sm.tabEnvOn' : 'b.sm.tabEnvOff')}>
             {t('b.sm.tabEnv')}<i class="envdot" classList={{ lit: env().on() }} />
           </button>
+          <Show when={props.slices}>{sl => (
+            <button role="tab" aria-selected={page() === 'slice'} classList={{ on: page() === 'slice' }} onClick={() => setPage('slice')}
+              title={t(sl().on() ? 'd.sl.tabOn' : 'd.sl.tabOff')}>
+              {t('d.sl.tab')}<i class="envdot" classList={{ lit: sl().on() }} />
+            </button>
+          )}</Show>
         </div>
       )}</Show>
-      <Show when={props.envelope && envPage()} fallback={<>
+      <Show when={props.slices && page() === 'slice'}>{props.slices!.page()}</Show>
+      <Show when={!(props.slices && page() === 'slice')}>
+      <Show when={props.envelope && page() === 'env'} fallback={<>
         <SampleWave {...props.wave} />
         <div class="chsrc">
           <span class="ell" title={props.wave.source()?.path ?? ''}>{baseName(props.wave.source()?.path ?? '') || t('b.cw.noFile')}</span>
@@ -141,6 +152,7 @@ function EditorFrame(props: {
         </div>
         {props.details}
       </>}>{props.envelope!.page()}</Show>
+      </Show>
       <div class="pkhead">
         <span>{t('b.pk.root')}</span>
         <b class="mono">{noteName(props.keys.root())}</b>
@@ -510,6 +522,7 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
       </div>
     </>}
     envelope={{ on: () => s().env, page: () => <EnvelopePanel id={id} name={() => c().name} color={() => c().color} s={s} put={put} /> }}
+    slices={{ on: () => !!c().slices?.length, page: () => <SlicePanel channel={c} source={src} /> }}
     keys={{
       player: { ch: c().id },
       root: () => c().root,
@@ -518,8 +531,8 @@ function ChannelSample(props: { channel: () => SampleChannel }) {
   />;
 }
 
-/** Which page of a sampler's editor is open: the sample, or its volume envelope (FL's SMP and INS pages). */
-const [envPage, setEnvPage] = createSignal(false);
+/** Which page of a sampler's editor is open: the sample, its volume envelope (FL's SMP and INS pages) or its slices. */
+const [page, setPage] = createSignal<'sample' | 'env' | 'slice'>('sample');
 
 const STAGE_LABELS = {
   delay: ['b.sm.delay', 'b.sm.delayTitle'], attack: ['b.sm.attack', 'b.sm.attackTitle'], hold: ['b.sm.hold', 'b.sm.holdTitle'],

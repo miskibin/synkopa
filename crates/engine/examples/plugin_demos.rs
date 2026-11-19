@@ -139,4 +139,66 @@ fn main() {
         mono_mix.chunks(2).zip(spread.chunks(2)).map(|(a, b)| (a[0] - 0.5 * (b[0] + b[1])).abs()).fold(0f32, f32::max)
     });
     write(&out.join("stereo_spread.wav"), &[mono_mix, spread]);
+    slicer_demo(out);
+}
+
+/// Slicer check on real drums: the demo's drum stem, sliced at its transients; prints where the
+/// slices fall against the 16th grid, and writes the loop then a re-chopped version.
+fn slicer_demo(out: &Path) {
+    let e = Engine::new(demo_project(), Arc::new(NoPlugins));
+    let p = e.project();
+    let names: Vec<String> = p.inserts.iter().map(|m| m.name.clone()).collect();
+    println!("inserts: {names:?}");
+    let ins = p
+        .inserts
+        .iter()
+        .find(|m| m.name == "Drum Bus")
+        .or_else(|| p.inserts.iter().find(|m| m.name.to_lowercase().contains("kick")))
+        .unwrap();
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let (from, to) = (64.0, 72.0);
+    let mut stem = e.render_stem(ins.id, from, to, 0.0, SR, &cancel).unwrap();
+    // + hats and snares if they have their own inserts
+    for m in p
+        .inserts
+        .iter()
+        .filter(|m| ins.name != "Drum Bus" && ["hat", "snare", "clap", "perc", "tops"].iter().any(|k| m.name.to_lowercase().contains(k)))
+    {
+        let s = e.render_stem(m.id, from, to, 0.0, SR, &cancel).unwrap();
+        for (a, b) in stem.iter_mut().zip(s) {
+            *a += b;
+        }
+    }
+    let audio = wave_engine::sources::Audio::from_stereo(stem.clone(), SR, 2);
+    let onsets = wave_engine::slices::onsets(&audio);
+    let secs = audio.frames as f64 / SR as f64;
+    let spb = 60.0 / p.bpm;
+    let kept: Vec<f32> = onsets.iter().filter(|o| o.strength > 0.08).map(|o| o.pos).collect();
+    let mut off = vec![];
+    for pos in &kept {
+        let beat = *pos as f64 * secs / spb;
+        let grid = (beat * 4.0).round() / 4.0;
+        off.push((beat - grid) * spb * 1000.0);
+    }
+    println!(
+        "bpm {}, {} slices; offsets from the 16th grid (ms): {:?}",
+        p.bpm,
+        kept.len(),
+        off.iter().map(|x| x.round() as i32).collect::<Vec<_>>()
+    );
+    // re-chop: play the slices in reverse order, each at its own length
+    let mut starts = vec![0usize];
+    starts.extend(kept.iter().map(|p| (*p as f64 * audio.frames as f64) as usize));
+    starts.push(audio.frames);
+    let mut chop = Vec::with_capacity(stem.len());
+    for w in starts.windows(2).rev() {
+        let (a, b) = (w[0], w[1]);
+        let n = b - a;
+        for i in 0..n {
+            let g = (i as f32 / 44.0).min(1.0) * ((n - i) as f32 / 132.0).min(1.0);
+            chop.push(stem[2 * (a + i)] * g);
+            chop.push(stem[2 * (a + i) + 1] * g);
+        }
+    }
+    write(&out.join("slicer_drums.wav"), &[stem, chop]);
 }

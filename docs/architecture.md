@@ -565,6 +565,19 @@ instrument when `WAVE_VST3_TEST_INSTRUMENT` names its bundle; CI builds Synkopa 
 it on Windows and Linux), `crates/demo-synth` (its DSP: pitch, release, note ids, pedal, bend,
 wheel, voice stealing, state).
 
+### Sampler slice mode
+
+A sampler channel may carry `slices` (sorted fractions of its file in 0..1, at most 128, the first
+normally 0). While it does, key `root + i` plays slice `i` — from its marker to the next one, the
+last to the end of the file — at the file's pitch (plus the channel's transpose and fine tune); keys
+outside the slices play nothing, and a new slice note cuts the channel's sounding slice (5 ms, the
+cut-group fade). Envelope, reverse, fades and cut groups apply to each slice as to a region. The
+engine suggests slice points with `source_onsets` (`slices::onsets`, SuperFlux: log-filtered
+spectral flux with a maximum filter, local peaks above the local mean, each moved back to the
+start of its attack); the UI keeps the candidates above its Sensitivity threshold, so the knob never
+re-analyses. "Dump to pattern" writes one held note per slice at its time in the file at the
+project tempo (`ui/src/lib/slicer.ts`).
+
 ## Ops (`crates/engine/src/ops.rs`)
 
 All edits are "put" ops, applied atomically per batch:

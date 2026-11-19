@@ -1929,6 +1929,17 @@ impl Engine {
     }
 
     /// [min,max] pairs at 100/s for drawing.
+    /// Candidate slice points of a source (see [`crate::slices::onsets`]). Slow on a long file
+    /// (tens of ms per minute of audio): call off the UI thread. The core lock is held only to
+    /// take the audio.
+    pub fn source_onsets(&self, id: Id) -> Option<Vec<crate::slices::Onset>> {
+        let audio = {
+            let mut c = self.core.lock();
+            c.sources.variant(id, false, false)?
+        };
+        Some(crate::slices::onsets(&audio))
+    }
+
     pub fn source_peaks(&self, id: Id, norm: bool, rev: bool) -> Option<Vec<f32>> {
         let mut c = self.core.lock();
         c.sources.variant(id, norm, rev).map(|a| a.peaks.clone())
@@ -4341,17 +4352,19 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
                 _ => None,
             };
             let (keys_release, keys_dynamics) = ks.map(|k| (k.release / 1000.0, k.dynamics / 100.0)).unwrap_or((0.35, 1.0));
-            let smp = match c.src {
-                ChannelSrc::Sample { source, sampler } => {
-                    SmpRt::new(&sampler, p.sources.iter().find(|s| s.id == source).map(|s| s.peak_db))
-                }
-                _ => SmpRt::default(),
+            let (smp, slices) = match &c.src {
+                ChannelSrc::Sample { source, sampler, slices } => (
+                    SmpRt::new(sampler, p.sources.iter().find(|s| s.id == *source).map(|s| s.peak_db)),
+                    if slices.is_empty() { None } else { Some(Arc::<[f32]>::from(slices.as_slice())) },
+                ),
+                _ => (SmpRt::default(), None),
             };
             ChanRt {
                 id: c.id,
                 kind,
                 sample,
                 smp,
+                slices,
                 keys: ks.and(keys.cloned()),
                 keys_release,
                 keys_dynamics,

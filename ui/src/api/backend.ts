@@ -57,6 +57,8 @@ export interface Backend {
   /** Native "open files" dialog for audio; null when cancelled. */
   pickAudioFiles(): Promise<string[] | null>;
   sourcePeaks(id: Id, norm?: boolean, rev?: boolean): Promise<Float32Array>;
+  /** Candidate slice points of a source (the sampler's slice mode): [position 0..1, strength 0..1] pairs. */
+  sourceOnsets(id: Id): Promise<Float32Array>;
   /** Like sourcePeaks, but of what the clip actually plays (norm/rev/pitch edits applied); whole source length. */
   clipPeaks(clipId: Id): Promise<Float32Array>;
   /** Pitch curve, levels and note segmentation of an audio clip's source (seconds of the source). */
@@ -315,6 +317,7 @@ export function tauriBackend(): Backend {
       return r == null ? null : Array.isArray(r) ? r : [r];
     },
     sourcePeaks: async (id, norm, rev) => toF32(await invoke('source_peaks', { id, norm: !!norm, rev: !!rev })),
+    sourceOnsets: async id => toF32(await invoke('source_onsets', { id })),
     clipPeaks: async clipId => toF32(await invoke('clip_peaks', { clipId })),
     pitchAnalyze: clipId => invoke('pitch_analyze', { clipId }),
     pitchTarget: (clipId, reference) => invoke('pitch_target', { clipId, reference: reference ?? null }),

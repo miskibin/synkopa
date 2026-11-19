@@ -95,7 +95,12 @@ pub struct Voice {
     /// own time at which a note of that group cuts it (`u32::MAX` = not cut).
     cut: u8,
     cut_at: u32,
+    /// Sampler in slice mode: the slice this note plays ([`NO_SLICE`] = the channel's region).
+    slice: u16,
 }
+
+/// A sampler voice that plays the channel's region, not a slice.
+const NO_SLICE: u16 = u16::MAX;
 
 impl Voice {
     fn dead() -> Self {
@@ -120,6 +125,7 @@ impl Voice {
             env: 1.0,
             cut: 0,
             cut_at: u32::MAX,
+            slice: NO_SLICE,
         }
     }
 }
@@ -264,7 +270,25 @@ impl VoicePool {
             VoiceKind::Sample => {
                 let a = ch.sample.as_ref()?;
                 let m = &ch.smp;
-                let rate = a.sr as f64 / self.sr as f64 * 2f64.powf((key as f64 - ch.root as f64) / 12.0) * m.rate;
+                // slice mode: the key picks the slice (root = the first), the pitch stays the file's
+                let slice = match &ch.slices {
+                    Some(sl) => {
+                        let i = key as i32 - ch.root as i32;
+                        if i < 0 || i as usize >= sl.len() {
+                            return None;
+                        }
+                        // a new slice cuts the one sounding (chops play one at a time, as on an MPC)
+                        for v in self.voices.iter_mut().filter(|v| {
+                            v.alive && v.kind == VoiceKind::Sample && v.chan_id == ch.id && v.slice != NO_SLICE && v.cut_at == u32::MAX
+                        }) {
+                            v.cut_at = v.t.saturating_add(delay.saturating_sub(v.delay));
+                        }
+                        i as u16
+                    }
+                    None => NO_SLICE,
+                };
+                let pitch = if slice == NO_SLICE { key as f64 - ch.root as f64 } else { 0.0 };
+                let rate = a.sr as f64 / self.sr as f64 * 2f64.powf(pitch / 12.0) * m.rate;
                 // a note of a cut group silences what the group is playing, when it starts
                 if m.cut != 0 {
                     for v in
@@ -274,11 +298,15 @@ impl VoicePool {
                     }
                 }
                 let i = self.trigger(VoiceKind::Sample, dest, idx, ch.id, delay, end, level, rate);
-                let (lo, hi) = region(m.start, m.end, a.frames);
+                let (lo, hi) = match &ch.slices {
+                    Some(sl) if slice != NO_SLICE => slice_region(sl, slice, a.frames),
+                    _ => region(m.start, m.end, a.frames),
+                };
                 let v = &mut self.voices[i];
                 v.pos = if m.reverse { hi - 1.0 } else { lo };
                 v.cut = m.cut;
                 v.key = key;
+                v.slice = slice;
                 Some(i)
             }
             VoiceKind::Keys => {
@@ -350,7 +378,7 @@ impl VoicePool {
                         c.pan,
                         c.gain0 * on,
                         c.pan0,
-                        c.sample.as_deref().map(|a| (a, c.smp)),
+                        c.sample.as_deref().map(|a| (a, c.smp, c.slices.as_deref())),
                         c.keys.as_deref().map(|b| (b, c.keys_release)),
                     )
                 }
@@ -427,11 +455,16 @@ impl VoicePool {
                 continue;
             }
             if v.kind == VoiceKind::Sample {
-                let Some((a, m)) = sample else {
+                let Some((a, m, slices)) = sample else {
                     v.alive = false;
                     continue;
                 };
-                let (lo, hi) = region(m.start, m.end, a.frames);
+                // a slice whose markers moved or vanished while it played: the channel's region
+                let slice = slices.filter(|sl| (v.slice as usize) < sl.len());
+                let (lo, hi) = match slice {
+                    Some(sl) => slice_region(sl, v.slice, a.frames),
+                    None => region(m.start, m.end, a.frames),
+                };
                 let (del, att, hold, dec, rel) = (m.delay * sr, m.attack * sr, m.hold * sr, m.decay * sr, m.release * sr);
                 // the envelope's level `t` samples into the note, before its note-off
                 let held = |t: f32| -> f32 {
@@ -456,7 +489,7 @@ impl VoicePool {
                 // a trimmed or reversed part starts and ends inside the waveform: fade its edges
                 let edge = EDGE_SECONDS * sr;
                 let note_edge = (edge.min(v.len as f32)).recip();
-                let (edge_in, edge_out) = (m.reverse || m.start > 0.0, m.reverse || m.end < 1.0);
+                let (edge_in, edge_out) = (slice.is_some() || m.reverse || m.start > 0.0, slice.is_some() || m.reverse || m.end < 1.0);
                 let step = v.rate * bend as f64;
                 let span = (hi - lo - 1.0).max(0.0);
                 let fade_in = (m.fade_in * a.sr as f64).min(span);
@@ -565,6 +598,13 @@ fn fall(seconds: f32, sr: f32) -> f32 {
 
 /// The frames `[lo, hi)` a sampler plays: fractions of the file, at least one frame.
 #[inline]
+/// Frames of slice `i`: from its marker to the next one (the last one to the end of the file).
+fn slice_region(slices: &[f32], i: u16, frames: usize) -> (f64, f64) {
+    let i = i as usize;
+    let end = slices.get(i + 1).copied().unwrap_or(1.0);
+    region(slices[i], end, frames)
+}
+
 fn region(start: f32, end: f32, frames: usize) -> (f64, f64) {
     let n = frames as f64;
     let lo = (start as f64 * n).floor().clamp(0.0, (n - 1.0).max(0.0));

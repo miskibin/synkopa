@@ -119,6 +119,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
               <span class="sub">{insName(m())}</span>
               <Show when={fx().bypass}><span class="bypasstag">BYPASS</span></Show>
               <div style={{ flex: 1 }} />
+              <HintIcon fx={fx()} />
               {/* effects with their own wet/dry knob don't need a second one in the header */}
               <Show when={!OWN_MIX.has(fx().type) || (fx().mix ?? 1) !== 1}><MixControl fx={fx()} /></Show>
               <Show when={!isVst() && presetList(S.catalog, fx().type).length}>
@@ -244,7 +245,10 @@ function Ctl(props: { fx: Fx; id: string; ends?: [string, string]; danger?: numb
   );
 }
 
-function Hint(props: { fx: Fx }) { return <span class="hint">{HINTS[props.fx.type] ? t(HINTS[props.fx.type]!) : ''}</span>; }
+/** How to use the window, behind a "?" in the header (hover or focus): there when wanted, never taking room. */
+function HintIcon(props: { fx: Fx }) {
+  return <Show when={HINTS[props.fx.type]}>{k => <span class="fxhint" tabIndex={0} role="note" aria-label={t(k())} data-tip={t(k())}>?</span>}</Show>;
+}
 /** Layout entries starting with `c.` are translation keys, anything else ("C3", "2×") is shown as is. */
 const L = (s: string) => (s.startsWith('c.') ? t(s as TranslationKey) : s);
 
@@ -443,8 +447,7 @@ function Sections(props: { fx: Fx }) {
       <For each={shown()}>
         {(sec, i) => (
           <>
-            <Show when={i() > 0}><div class="vline" /></Show>
-            <div class="fxsec">
+            <div class="fxsec" classList={{ adv: !!sec.adv }}>
               <div class="fxsec-h">{L(sec.title)}</div>
               <div class="fxsec-b"><For each={sec.items}>{it => <LayoutItem fx={props.fx} it={it} />}</For></div>
             </div>
@@ -456,7 +459,6 @@ function Sections(props: { fx: Fx }) {
         <button class="smallbtn advbtn" classList={{ on: adv() }} title={t('c.fx.advTip')}
           onClick={() => setAdvOpen(m => ({ ...m, [props.fx.id]: !adv() }))}>{adv() ? t('c.fx.less') : t('c.fx.advanced')}</button>
       </Show>
-      <Hint fx={props.fx} />
     </div>
   );
 }

@@ -133,7 +133,8 @@ export const samplerDefault = (): SamplerState => ({
  * VST3 instrument (`plugin`; its sound, parameters and editor are the plugin's, `state` is saved with the project).
  */
 export type ChannelSrc =
-  | { kind: 'sample'; source: Id; sampler: SamplerState }
+  /** `slices`: slice mode, where each slice starts (increasing fractions of the file); absent = off. */
+  | { kind: 'sample'; source: Id; sampler: SamplerState; slices?: number[] }
   | { kind: 'synth'; synth: SynthState }
   | { kind: 'keys'; keys: KeysState }
   | { kind: 'plugin'; plugin: PluginRef };
