@@ -23,14 +23,14 @@ import { openStems } from '../state/stems';
 import { dblCheck, dragCursor, edgeScroller, fineMul, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
-import { addFrameTask, fitCanvas, fonts, shiftCanvas, snapshotCanvas } from '../ui/frameLoop';
+import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
 import { drawFades, drawGrid, drawOverlaps, type View } from './playlistDraw';
 import { drawRuler, rulerCursor, rulerDown as rulerPress, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
 import { PlaylistTools } from './PlaylistTools';
 import type { ZRange } from '../lib/zoomBar';
 import { laneOverlaps } from '../lib/overlaps';
-import { damageRects, followScroll, planTile, type Rect, type Tile } from './playlistTile';
+import { damageRects, followScroll, planTile, snapPx, type Rect, type Tile } from './playlistTile';
 import { autoDisplay, autoTweak, isAutomated, paramMenu } from '../state/automation';
 import { autoValueText, parseAutoValue, cyclesOf, stairsOf } from '../lib/automation';
 import { addPoint, deletePoints, dragTension, hitEnv, insetGeom, movePoints, pointsInBox, setShape, type EnvHit } from '../lib/envEdit';
@@ -207,20 +207,13 @@ export function Playlist() {
    */
   let damage: Rect[] = [];
   /**
-   * Zoom on a view too heavy to repaint within a frame: the last sharp paint (`snap`, drawn at
-   * `tileBw` px per beat over `snapTile`) is drawn stretched to the new zoom into the tile, and the
-   * view is repainted sharp once the zoom has settled, or as soon as the stretched snapshot no
-   * longer covers the view or is off by more than 2×. Without it every wheel step waited for a full
-   * paint of all the waveforms in view (a zoom at ~20 fps on a big song). Where a full paint fits
-   * in a frame nothing changes: every step is painted sharp.
-   * The stretch is a canvas blit, not a CSS `scaleX` on the canvas: WebKitGTK re-rasterises a layer
-   * whose scale changes lazily and showed the Playlist blank for several frames, and the scale
-   * (about the canvas's centre) left part of the view uncovered (#228).
+   * Zoom on a view too heavy to repaint within a frame: the tile (drawn at `tileBw` px per beat) is
+   * stretched to the new zoom on the compositor and repainted sharp once the zoom has settled, or
+   * as soon as the stretched tile no longer covers the view or is off by more than 2×. Without it
+   * every wheel step waited for a full paint of all the waveforms in view (a zoom at ~20 fps on a
+   * big song). Where a full paint fits in a frame nothing changes: every step is painted sharp.
    */
   let zoomed = false, stretched = false, tileBw = 0, zoomAt = 0;
-  let snap: HTMLCanvasElement | null = null, snapTile: Tile | null = null;
-  /** Drops the snapshot: a full tile of pixels is not kept between zoom gestures. */
-  const dropSnap = () => { if (snap) snap.width = snap.height = 0; snapTile = null; };
   /**
    * A zoom waiting for the next frame: zoom and scroll are applied together right before that
    * frame paints. Applied in the input handler, the webview could show a frame between the two
@@ -413,32 +406,17 @@ export function Playlist() {
     const sx = scrollEl.scrollLeft, sy = scrollEl.scrollTop, W = cw(), H = ch();
     if (zoomed) {
       zoomed = false; zoomAt = now;
-      if (tile && tileBw && !dirtyGrid && heavyPaint()) {
-        // the first step of a gesture keeps the last sharp paint to stretch from
-        if (!stretched) { snap = snapshotCanvas(gridCv, snap); snapTile = tile; }
-        stretched = true;
-      } else dirtyGrid = true;
+      if (tile && tileBw && !dirtyGrid && heavyPaint()) stretched = true; else dirtyGrid = true;
     }
-    if (stretched && snap && snapTile) {
-      const k = U.bw / tileBw, s = snapTile, x0 = s.x * k, x1 = (s.x + s.w) * k;
-      const covers = x0 <= sx + 0.5 && (x1 >= sx + W - 0.5 || x1 >= gridW() - 1) && s.y <= sy + 0.5 && (s.y + s.h >= sy + H - 0.5 || s.y + s.h >= gridH() - 1);
-      if (dirtyGrid || damage.length || !covers || k > 2 || k < 0.5 || now - zoomAt > ZOOM_SETTLE_MS) { stretched = false; dirtyGrid = true; dropSnap(); }
+    if (stretched && tile) {
+      const k = U.bw / tileBw, x0 = tile.x * k, x1 = (tile.x + tile.w) * k;
+      const covers = x0 <= sx + 0.5 && (x1 >= sx + W - 0.5 || x1 >= gridW() - 1) && tile.y <= sy + 0.5 && (tile.y + tile.h >= sy + H - 0.5 || tile.y + tile.h >= gridH() - 1);
+      if (dirtyGrid || damage.length || !covers || k > 2 || k < 0.5 || now - zoomAt > ZOOM_SETTLE_MS) { stretched = false; dirtyGrid = true; }
       else {
-        // the last sharp pixels at the new zoom, in a tile placed for the new view; the fades,
-        // ruler, overview and playhead are cheap and stay exact
-        const t = planTile(null, sx, sy, W, H, gridW(), gridH(), dpr).tile;
-        fitCanvas(gridCv, t.w, t.h);
-        const g = gridCv.getContext('2d')!;
-        g.save();
-        g.setTransform(1, 0, 0, 1, 0, 0);
-        g.fillStyle = T.grid; g.fillRect(0, 0, gridCv.width, gridCv.height);
-        g.imageSmoothingEnabled = true;
-        g.drawImage(snap, 0, 0, snap.width, snap.height, (x0 - t.x) * dpr, (s.y - t.y) * dpr, snap.width * k, snap.height);
-        g.restore();
-        placeTile(t);
-        tile = t;
-        paintFade(t, dpr);
-        paintRuler(t, dpr);
+        // the same pixels at the new zoom; ruler, overview and playhead are cheap and stay exact
+        gridCv.style.transform = fadeCv.style.transform = `translate(${x0}px, ${tile.y}px) scaleX(${k})`;
+        const rt: Tile = { x: snapPx(Math.max(0, sx - 96), dpr), y: 0, w: Math.min(gridW(), W + 192), h: 26 };
+        paintRuler(rt, dpr);
         if (dirtyOv) { dirtyOv = false; bumpOv(); }
         placePlayhead(beat);
         return;
@@ -463,35 +441,33 @@ export function Playlist() {
         for (const r of rects!) paintGrid(g, v, t, r, dpr, rec);
       }
       dirtyGrid = false;
-      if (full || moved) { placeTile(t); dirtyFade = true; }
+      if (full || moved) {
+        gridCv.style.width = fadeCv.style.width = t.w + 'px';
+        gridCv.style.height = fadeCv.style.height = t.h + 'px';
+        gridCv.style.transform = fadeCv.style.transform = `translate(${t.x}px, ${t.y}px)`;
+        dirtyFade = true;
+      }
       tile = t;
     }
-    if (dirtyFade) paintFade(t, dpr);
+    // fades and the loop range: an overlay, so dragging them repaints no clip
+    if (dirtyFade) {
+      dirtyFade = false;
+      fitCanvas(fadeCv, t.w, t.h);
+      const g = fadeCv.getContext('2d')!;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, fadeCv.width, fadeCv.height);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const P = rawOf(S.project);
+      if (P.loop) { g.fillStyle = rgba(T.green, 0.05); g.fillRect(P.loop.a * U.bw - t.x, 0, (P.loop.b - P.loop.a) * U.bw, Math.min(t.h, gridH() - t.y)); }
+      const fv = at(frameView(), t, { x: 0, y: 0, w: t.w, h: t.h });
+      drawFades(g, fv, P);
+      // stacked clips: recomputed with the overlay, i.e. on clip edits and tile moves, never per frame
+      drawOverlaps(g, fv, P, laneOverlaps(P.clips));
+    }
     // the ruler is cheap: redrawn whole whenever its tile moves
     if (dirtyRuler || !rulerTile || rulerTile.x !== t.x || rulerTile.w !== t.w) paintRuler(t, dpr);
     if (dirtyOv) { dirtyOv = false; bumpOv(); }
     placePlayhead(beat);
-  };
-  /** Puts both grid canvases over tile `t` (grid coordinates). */
-  const placeTile = (t: Tile) => {
-    gridCv.style.width = fadeCv.style.width = t.w + 'px';
-    gridCv.style.height = fadeCv.style.height = t.h + 'px';
-    gridCv.style.transform = fadeCv.style.transform = `translate(${t.x}px, ${t.y}px)`;
-  };
-  /** Fades and the loop range: an overlay, so dragging them repaints no clip. */
-  const paintFade = (t: Tile, dpr: number) => {
-    dirtyFade = false;
-    fitCanvas(fadeCv, t.w, t.h);
-    const g = fadeCv.getContext('2d')!;
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, fadeCv.width, fadeCv.height);
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const P = rawOf(S.project);
-    if (P.loop) { g.fillStyle = rgba(T.green, 0.05); g.fillRect(P.loop.a * U.bw - t.x, 0, (P.loop.b - P.loop.a) * U.bw, Math.min(t.h, gridH() - t.y)); }
-    const fv = at(frameView(), t, { x: 0, y: 0, w: t.w, h: t.h });
-    drawFades(g, fv, P);
-    // stacked clips: recomputed with the overlay, i.e. on clip edits and tile moves, never per frame
-    drawOverlaps(g, fv, P, laneOverlaps(P.clips));
   };
   const paintRuler = (t: Tile, dpr: number) => {
     dirtyRuler = false;

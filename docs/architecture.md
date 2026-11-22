@@ -479,7 +479,10 @@ Synkopa's window instead. Closing Synkopa's window leaves the plugin's open.
   (`GDK_BACKEND=x11`, set at start by `plugin_loop::prefer_x11`, as Bitwig, REAPER and Ardour run):
   an X11 window cannot stay above a native Wayland window, and every click on Synkopa sent the
   plugin windows behind it. `WAVE_WAYLAND=1`, or a `GDK_BACKEND` the user set, keeps native
-  Wayland. The header's pin keeps a window above every other application's too
+  Wayland. At the same start `plugin_loop::webkit_renderer` sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+  unless the user set it (`0` keeps DMA-BUF): with WebKitGTK's DMA-BUF renderer the Playlist's
+  scroll position reached the screen frames after its canvases during a slow zoom, so the view
+  jumped sideways or showed blank strips (#228). The header's pin keeps a window above every other application's too
   (`_NET_WM_STATE_ABOVE`; `HWND_TOPMOST` on Windows). Scale: `Xft.dpi`. No X display
   (`DISPLAY` unset) makes `app_info.pluginEditors` false with the reason.
 * **The UI thread's loop.** Linux has no global event loop, so the app installs GTK's glib loop

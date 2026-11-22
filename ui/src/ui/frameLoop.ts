@@ -77,21 +77,6 @@ export function shiftCanvas(cv: HTMLCanvasElement, dx: number, dy: number) {
   g.restore();
 }
 
-/**
- * Copies `src` whole into `dst` (resized to match): a snapshot that later frames can redraw from.
- * Returns `dst`, created when null.
- */
-export function snapshotCanvas(src: HTMLCanvasElement, dst: HTMLCanvasElement | null): HTMLCanvasElement {
-  const d = dst ?? document.createElement('canvas');
-  if (d.width !== src.width || d.height !== src.height) { d.width = src.width; d.height = src.height; }
-  const g = d.getContext('2d')!;
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  g.globalCompositeOperation = 'copy';
-  g.drawImage(src, 0, 0);
-  g.globalCompositeOperation = 'source-over';
-  return d;
-}
-
 /** Bumped when web fonts finish loading, so canvases drawn with fallback glyphs redraw. */
 export const fonts = { epoch: 0 };
 if (typeof document !== 'undefined' && document.fonts) {

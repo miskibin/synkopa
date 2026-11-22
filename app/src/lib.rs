@@ -1306,6 +1306,9 @@ pub fn run(project_arg: Option<&str>) {
     // plugin windows are X11: keep them above Synkopa's window under Wayland too
     #[cfg(target_os = "linux")]
     plugin_loop::prefer_x11();
+    // WebKitGTK's DMA-BUF renderer lets the Playlist's scroll lag its canvases while zooming
+    #[cfg(target_os = "linux")]
+    plugin_loop::webkit_renderer();
     let boot = boot::Boot::new();
     boot.mark("run() entered");
     let setup_boot = boot.clone();
