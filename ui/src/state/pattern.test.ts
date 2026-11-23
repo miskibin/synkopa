@@ -145,3 +145,17 @@ describe('double-click shows the insert in the mixer', () => {
     expect(ui.U.mixMin).toBe(true);
   });
 });
+
+describe('Channel Rack step spacing', () => {
+  it('widens the gaps between step buttons, not the buttons, and sizes the rack to match', async () => {
+    const prefs = await import('./prefs');
+    const at = (s: 'normal' | 'roomy' | 'wide') => { prefs.setPref('rackSpacing', s); return { cw: P.stepW(), pad: P.stepPad(), w: P.rackWidthFor(16, 0) }; };
+    const n = at('normal'), r = at('roomy'), w = at('wide');
+    for (const g of [n, r, w]) expect(g.cw - 2 * g.pad).toBe(16);
+    expect([n.pad, r.pad, w.pad]).toEqual([2, 4, 6]);
+    expect(n.w).toBeLessThan(r.w);
+    expect(r.w).toBeLessThan(w.w);
+    prefs.setPref('rackSpacing', 'normal');
+    expect(P.stepW()).toBe(n.cw);
+  });
+});

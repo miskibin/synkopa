@@ -13,7 +13,7 @@ import { track } from '../ui/drag';
 import type { MenuItem } from './ui';
 import { docked, openMenu, say, setU, U } from './ui';
 import { leaveMixView, mixFloated, mixFront, showMixer } from './mixView';
-import { curPat, openRack, openRoll, patWinFloated, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, rollMoved, STEP_W } from './pattern';
+import { curPat, openRack, openRoll, patWinFloated, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, rollMoved, stepW } from './pattern';
 import { rackDockFitWidth } from '../lib/rack';
 import { stepsOf } from '../lib/pattern';
 
@@ -97,7 +97,7 @@ function readGuides(id: PaneId): Guide[] {
   }
   // a rack docked at its automatic width (0) is as wide as the pattern's steps (PatDock)
   const want = { ...U.paneSize[id] };
-  if (id === 'rack' && !want.w) { const pt = curPat(); want.w = rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); }
+  if (id === 'rack' && !want.w) { const pt = curPat(); want.w = rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: stepW(), pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); }
   return dockGuides(stage, center, panes, { row, col, drag: id, want });
 }
 

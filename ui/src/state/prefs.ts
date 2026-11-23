@@ -26,13 +26,15 @@ export interface Prefs {
   cpuMeter: boolean;
   /** open the app in full screen (F11 toggles it any time) */
   startFullscreen: boolean;
+  /** room between the Channel Rack's step buttons (state/pattern.ts RACK_SPACINGS) */
+  rackSpacing: 'normal' | 'roomy' | 'wide';
 }
 
 const KEY = 'wave.prefs';
-const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false, startFullscreen: false };
+const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false, startFullscreen: false, rackSpacing: 'normal' };
 
 function load(): Prefs {
-  try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en' }; } catch { return { ...DEFAULTS }; }
+  try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en', rackSpacing: ['roomy', 'wide'].includes(v.rackSpacing) ? v.rackSpacing : 'normal' }; } catch { return { ...DEFAULTS }; }
 }
 
 const [prefs, setPrefsSig] = createSignal<Prefs>(DEFAULTS);

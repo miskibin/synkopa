@@ -10,7 +10,7 @@ import { t } from '../lib/i18n';
 import { clamp } from '../lib/format';
 import { PLAYLIST_MIN_H, PLAYLIST_MIN_W, SPLIT } from '../lib/layout';
 import { dim, fitStrips, PANE_MIN, PANE_MIN_LEN, side, splitShares, type DockPane, type Edge, type PaneId } from '../lib/dock';
-import { channels, closeRack, closeRoll, curPat, newPattern, openRack, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, selChan, STEP_W } from '../state/pattern';
+import { channels, closeRack, closeRoll, curPat, newPattern, openRack, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, selChan, stepW } from '../state/pattern';
 import { rackDockFitWidth } from '../lib/rack';
 import { stepsOf } from '../lib/pattern';
 import { setU, U } from '../state/ui';
@@ -34,7 +34,7 @@ export function Workspace() {
   let col!: HTMLDivElement, row!: HTMLDivElement;
   const colSize = useSize(() => col), rowSize = useSize(() => row);
   // until the user drags its splitter, a rack docked on a side is as wide as the pattern's steps
-  const autoW = () => { const pt = curPat(); return rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); };
+  const autoW = () => { const pt = curPat(); return rackDockFitWidth(pt ? stepsOf(pt) : 16, { left: RACK_LEFT, cw: stepW(), pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W }); };
 
   const views = (edge: Edge): StripView[] => U.dock[edge].map((s, si) => {
     const panes = s.map((p, at) => ({ p, at })).filter(x => paneOpen(x.p.id));

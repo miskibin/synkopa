@@ -13,6 +13,7 @@ import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { Segmented } from '../ui/Knob';
 import { prefs, resetPrefs, setPref } from '../state/prefs';
+import { RACK_SPACINGS, type RackSpacing } from '../state/pattern';
 import { setTheme, THEMES, themeMode, themeName, type ThemeDef } from '../ui/theme';
 import { mix } from '../lib/color';
 import { t } from '../lib/i18n';
@@ -239,6 +240,7 @@ const OnOff = (p: { on: () => boolean; set: (v: boolean) => void; title?: string
 const serverFixed = (host: string) => host === 'jack';
 const AUTOSAVE = [0, 1, 2, 5, 10];
 const SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+const RACK_SPACING_KEYS = Object.keys(RACK_SPACINGS) as RackSpacing[];
 
 function GeneralSection() {
   return (
@@ -327,6 +329,10 @@ function LookSection() {
         <Row label={t('d.set.scale')} desc={t('d.set.scale.tip')}>
           <Segmented options={SCALES.map(z => Math.round(z * 100) + '%')} value={() => SCALES.indexOf(prefs().uiScale)}
             pick={i => setPref('uiScale', SCALES[i])} />
+        </Row>
+        <Row label={t('d.set.rackspacing')} desc={t('d.set.rackspacing.tip')}>
+          <Segmented options={RACK_SPACING_KEYS.map(k => t(`d.set.rackspacing.${k}`))} value={() => RACK_SPACING_KEYS.indexOf(prefs().rackSpacing)}
+            pick={i => setPref('rackSpacing', RACK_SPACING_KEYS[i])} />
         </Row>
         <Row label={t('d.set.clipicons')} desc={t('d.set.clipicons.tip')}><OnOff on={() => prefs().clipIcons} set={v => setPref('clipIcons', v)} /></Row>
         <Row label={t('d.set.fullscreen')} desc={t('d.set.fullscreen.tip')}><OnOff on={() => prefs().startFullscreen} set={v => setPref('startFullscreen', v)} /></Row>

@@ -15,7 +15,7 @@ import { noteName } from '../lib/pitch';
 import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
 import { commit, Gesture } from '../state/edit';
 import {
-  addBar, RACK_MIN_W, STEP_W, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
+  addBar, RACK_MIN_W, stepPad, stepW, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
   rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, stepPattern, toggleChanMute, toggleChanSolo,
   rackChannels, rackFilter, setRackFilter,
 } from '../state/pattern';
@@ -76,11 +76,11 @@ function Rack(props: { z: number; docked?: boolean }) {
   // While steps are being painted the grid keeps its step width and count: the first step in the
   // greyed bar makes the pattern a bar longer, and a grid that refitted at once would slide under
   // the pointer (the rest of the run landed in the wrong columns). It refits on release.
-  const [hold, setHold] = createSignal<{ cw: number; steps: number } | null>(null);
+  const [hold, setHold] = createSignal<{ cw: number; pad: number; steps: number } | null>(null);
   const geo = (): RackGeo => {
     const end = stepsOf(pt()), h = hold(), steps = h ? h.steps : Math.min(TOTAL_BEATS * 4, end + 16);
-    const cw = h ? h.cw : STEP_W;
-    return { cw, sx: scroll().x, sy: scroll().y, rh: RACK_ROW, steps, end, rows: chans().length };
+    const cw = h ? h.cw : stepW(), pad = h ? h.pad : stepPad();
+    return { cw, pad, sx: scroll().x, sy: scroll().y, rh: RACK_ROW, steps, end, rows: chans().length };
   };
   // the grid's own height: the add-channel row below the channels scrolls with them
   const contentH = () => (chans().length + 1) * RACK_ROW;
@@ -149,7 +149,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     const on = e.button === 0;
     const g = new Gesture(on ? t('b.pe.gestSteps') : t('b.pe.gestDelSteps'));
     // freeze the grid (and the window's width) before the first step can make the pattern longer
-    setHold({ cw: G.cw, steps: G.steps });
+    setHold({ cw: G.cw, pad: G.pad, steps: G.steps });
     let notes = setStep(rawOf(pt()).notes, c.id, step, on);
     g.update([putNotes(pt(), notes)]);
     if (on) audition(c.id, undefined, 0.8);

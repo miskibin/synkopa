@@ -31,9 +31,19 @@ import { planRoute, rangeSelect, toggleSelect } from '../lib/mixer';
 export const RACK_LEFT = 212, RACK_HEAD = 34, RACK_ROW = 32;
 /** Frame around the step grid (px): left of the first step and right of the last; above and below the rows. */
 export const RACK_PAD_X = 10, RACK_PAD_Y = 8;
-/** Step button width in the Channel Rack (px). Fixed: resizing the window shows more or fewer
- *  steps (the grid scrolls) instead of stretching or squeezing them. */
-export const STEP_W = 20;
+/**
+ * Channel Rack step cell width and the inset of its button (px), per the "Step spacing" setting.
+ * Every spacing keeps a 16 px button; only the gap between neighbours grows (4 / 8 / 12 px).
+ * Fixed per setting: resizing the window shows more or fewer steps (the grid scrolls) instead of
+ * stretching or squeezing them.
+ */
+export const RACK_SPACINGS = { normal: { cw: 20, pad: 2 }, roomy: { cw: 24, pad: 4 }, wide: { cw: 28, pad: 6 } } as const;
+export type RackSpacing = keyof typeof RACK_SPACINGS;
+const spacing = () => RACK_SPACINGS[prefs().rackSpacing] ?? RACK_SPACINGS.normal;
+/** Step cell width in the Channel Rack (px). */
+export const stepW = () => spacing().cw;
+/** Inset of a step button inside its cell (px): half the gap between two buttons. */
+export const stepPad = () => spacing().pad;
 /** The Channel Rack window's narrowest width (px). */
 export const RACK_MIN_W = 480;
 
@@ -128,7 +138,7 @@ const focusSoon = (k: WinKey) => requestAnimationFrame(() => (document.querySele
  * The Channel Rack's width for a pattern of `steps` steps at window position `x`: the pattern and
  * its greyed extra bar at the comfortable step width, up to ~4 bars and the screen's right edge.
  */
-export const rackWidthFor = (steps: number, x: number) => rackFitWidth(steps, { left: RACK_LEFT, cw: STEP_W, pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W, room: window.innerWidth - x - 10 });
+export const rackWidthFor = (steps: number, x: number) => rackFitWidth(steps, { left: RACK_LEFT, cw: stepW(), pad: 2 * RACK_PAD_X + 2, min: RACK_MIN_W, room: window.innerWidth - x - 10 });
 /** The rack's place and width for `steps` steps: as wide as the pattern needs, sliding left before it would scroll (the screen is the only limit). */
 export const rackPlaceFor = (steps: number, x: number) => fitOnScreen(x, rackWidthFor(steps, 10), window.innerWidth);
 /** F6: open the Channel Rack (or bring it to the front). */

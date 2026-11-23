@@ -23,9 +23,9 @@ function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: num
  * Step-grid geometry: cell width, scroll offsets (px), row height, rows, `end` = the pattern's
  * steps and `steps` = the steps shown (the pattern plus one greyed bar: a click there extends it).
  */
-export interface RackGeo { cw: number; sx: number; sy: number; rh: number; steps: number; end: number; rows: number }
+export interface RackGeo { cw: number; sx: number; sy: number; rh: number; steps: number; end: number; rows: number; /** a step button's inset in its cell (half the gap between buttons) */ pad: number }
 
-const STEP_PAD = 2, STEP_VPAD = 5, STEP_R = 3;
+const STEP_VPAD = 5, STEP_R = 3;
 /** Unlit step colours: alternating groups of four (beats), like FL's. */
 function stepOff(s: number) {
   return mix(T.fg5, Math.floor(s / 4) % 2 ? (theme.light ? 14 : 9) : (theme.light ? 34 : 30), T.bg2);
@@ -46,7 +46,7 @@ function rackBg(g: CanvasRenderingContext2D, W: number, H: number, G: RackGeo) {
       const x = stepX(s, G.cw) - G.sx;
       g.globalAlpha = s >= G.end ? 0.35 : 1;
       g.fillStyle = stepOff(s);
-      g.beginPath(); rr(g, x + STEP_PAD, y + STEP_VPAD, G.cw - 2 * STEP_PAD, G.rh - 2 * STEP_VPAD, STEP_R); g.fill();
+      g.beginPath(); rr(g, x + G.pad, y + STEP_VPAD, G.cw - 2 * G.pad, G.rh - 2 * STEP_VPAD, STEP_R); g.fill();
     }
   }
   g.globalAlpha = 1;
@@ -61,7 +61,7 @@ function rackBg(g: CanvasRenderingContext2D, W: number, H: number, G: RackGeo) {
 
 export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: RackGeo, layer: Layer, pt: Pattern, chans: Channel[], selCh: Id | null, roll: Set<Id>, anySolo: boolean) {
   g.clearRect(0, 0, W, H);
-  const bg = layer.get(W, H, ['rack', G.cw, G.sx, G.sy, G.rh, G.steps, G.end, G.rows].join('|'), (gg, w, h) => rackBg(gg, w, h, G));
+  const bg = layer.get(W, H, ['rack', G.cw, G.pad, G.sx, G.sy, G.rh, G.steps, G.end, G.rows].join('|'), (gg, w, h) => rackBg(gg, w, h, G));
   g.drawImage(bg, 0, 0, W, H);
   const vpad = STEP_VPAD;
   const r0 = Math.max(0, Math.floor(G.sy / G.rh)), r1 = Math.min(chans.length - 1, Math.ceil((G.sy + H) / G.rh));
@@ -91,7 +91,7 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
       const x = stepX(n.step, G.cw) - G.sx, cw = G.cw * spans[k];
       if (x > W || x + cw < 0) return;
       g.fillStyle = stepOn(velOf(n), dim);
-      g.beginPath(); rr(g, x + STEP_PAD, y + vpad, Math.max(3, cw - 2 * STEP_PAD), G.rh - 2 * vpad, Math.min(STEP_R, cw / 4)); g.fill();
+      g.beginPath(); rr(g, x + G.pad, y + vpad, Math.max(3, cw - 2 * G.pad), G.rh - 2 * vpad, Math.min(STEP_R, cw / 4)); g.fill();
       // a step with its own key (graph editor): its note name, or a tick when the cell is narrow
       if (n.p != null && n.p !== c.root) {
         g.fillStyle = T.onFill;
