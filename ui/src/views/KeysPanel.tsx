@@ -114,7 +114,10 @@ export function KeysPanel(props: { c: KeysChannel }) {
   };
   const art = () => keys().articulation ?? null;
   const arts = () => cur()?.articulations ?? [];
-  const activeArt = () => art() ?? arts()[0]?.key ?? null;
+  const auto = () => cur()?.auto ?? null;
+  // no choice = Auto where the instrument has it, else its first articulation
+  const activeArt = () => art() ?? (auto() ? null : arts()[0]?.key ?? null);
+  const nameOf = (key: number) => arts().find(a => a.key === key)?.name ?? noteName(key);
 
   return (
     <div class="keyspanel">
@@ -168,10 +171,19 @@ export function KeysPanel(props: { c: KeysChannel }) {
           <div class="kart">
             <span class="lab">{t('b.kp.art')}</span>
             <div class="seg" role="radiogroup" aria-label={t('b.kp.art')}>
+              <Show when={auto()}>
+                {au => (
+                  <button class={{ on: activeArt() == null }} role="radio" aria-checked={activeArt() == null ? 'true' : 'false'}
+                    title={t('b.kp.autoTip', { short: nameOf(au().short), long: nameOf(au().long), ms: Math.round(au().seconds * 1000) })}
+                    onClick={() => setKeysArticulation(props.c.id, undefined)}>
+                    {t('b.kp.auto')}
+                  </button>
+                )}
+              </Show>
               <For each={arts()}>{a => (
                 <button class={{ on: a.key === activeArt() }} role="radio" aria-checked={a.key === activeArt() ? "true" : "false"}
                   title={t('b.kp.artTip', { name: a.name, note: noteName(a.key) })}
-                  onClick={() => setKeysArticulation(props.c.id, a.key === arts()[0].key ? undefined : a.key)}>
+                  onClick={() => setKeysArticulation(props.c.id, !auto() && a.key === arts()[0].key ? undefined : a.key)}>
                   {a.name}
                 </button>
               )}</For>
@@ -199,9 +211,10 @@ export function KeysPanel(props: { c: KeysChannel }) {
 export function keysKeyboard(c: KeysChannel) {
   const i = keysInstrument(c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT);
   const arts = i?.articulations ?? [];
-  const active = c.keys.articulation ?? arts[0]?.key;
+  // Auto lights both the articulations it picks between
+  const active = c.keys.articulation != null ? [c.keys.articulation] : i?.auto ? [i.auto.short, i.auto.long] : arts.slice(0, 1).map(a => a.key);
   return {
     range: i?.range,
-    switches: arts.map(a => ({ key: a.key, name: a.name, on: a.key === active })),
+    switches: arts.map(a => ({ key: a.key, name: a.name, on: active.includes(a.key) })),
   };
 }

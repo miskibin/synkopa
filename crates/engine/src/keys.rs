@@ -60,9 +60,24 @@ pub struct InstrumentInfo {
     pub license: &'static str,
     /// Playable range, MIDI keys (for the keyboard's shading).
     pub range: (u8, u8),
+    /// The articulation chosen by note length when the channel picks none (strings).
+    pub auto: Option<AutoArticulation>,
     #[serde(skip)]
     pub sfz: &'static str,
 }
+
+/// Auto articulation, as in modern string libraries: a note shorter than `seconds` plays the
+/// `short` keyswitch's articulation (spiccato), a longer one the `long` one (arco). A live note,
+/// whose length is not known when it starts, plays `long`.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
+pub struct AutoArticulation {
+    pub short: u8,
+    pub long: u8,
+    pub seconds: f32,
+}
+
+/// Strings: spiccato (D#1) under 0.13 s (a sixteenth at about 115 BPM), sustain / arco (C1) above.
+const STRINGS_AUTO: Option<AutoArticulation> = Some(AutoArticulation { short: 27, long: 24, seconds: 0.13 });
 
 /// Every instrument, in the order the browser lists them.
 pub const CATALOG: &[InstrumentInfo] = &[
@@ -76,6 +91,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "Salamander Grand Piano V3 by Alexander Holm",
         license: "CC-BY-3.0",
         range: (21, 108),
+        auto: None,
         sfz: include_str!("../instruments/grand-piano.sfz"),
     },
     InstrumentInfo {
@@ -88,6 +104,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "VSCO 2 Community Edition by Versilian Studios",
         license: "CC0-1.0",
         range: (21, 108),
+        auto: None,
         sfz: include_str!("../instruments/upright-piano.sfz"),
     },
     InstrumentInfo {
@@ -100,6 +117,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "Wurlitzer EP200 by Greg Sullivan (SFZ mapping by kinwie)",
         license: "CC-BY-3.0",
         range: (33, 96),
+        auto: None,
         sfz: include_str!("../instruments/wurlitzer.sfz"),
     },
     InstrumentInfo {
@@ -112,6 +130,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "Yamaha CP80 by Greg Sullivan (SFZ mapping by kinwie)",
         license: "CC-BY-3.0",
         range: (21, 108),
+        auto: None,
         sfz: include_str!("../instruments/cp80.sfz"),
     },
     InstrumentInfo {
@@ -124,6 +143,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "Hohner Pianet T by Greg Sullivan (SFZ mapping by kinwie)",
         license: "CC-BY-3.0",
         range: (29, 88),
+        auto: None,
         sfz: include_str!("../instruments/pianet.sfz"),
     },
     InstrumentInfo {
@@ -136,6 +156,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "VSCO 2 Community Edition by Versilian Studios",
         license: "CC0-1.0",
         range: (33, 93),
+        auto: STRINGS_AUTO,
         sfz: include_str!("../instruments/strings.sfz"),
     },
     InstrumentInfo {
@@ -148,6 +169,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "VSCO 2 Community Edition by Versilian Studios",
         license: "CC0-1.0",
         range: (55, 103),
+        auto: STRINGS_AUTO,
         sfz: include_str!("../instruments/solo-violin.sfz"),
     },
     InstrumentInfo {
@@ -160,6 +182,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "VSCO 2 Community Edition by Versilian Studios",
         license: "CC0-1.0",
         range: (21, 105),
+        auto: None,
         sfz: include_str!("../instruments/harp.sfz"),
     },
     InstrumentInfo {
@@ -172,6 +195,7 @@ pub const CATALOG: &[InstrumentInfo] = &[
         credit: "VCSL by Versilian Studios",
         license: "CC0-1.0",
         range: (48, 91),
+        auto: None,
         sfz: include_str!("../instruments/vibraphone.sfz"),
     },
 ];

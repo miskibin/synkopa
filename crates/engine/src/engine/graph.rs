@@ -427,6 +427,10 @@ fn build_patterns(
                 slices,
                 keys: ks.and_then(|k| keys.get(&k.instrument).cloned()),
                 keys_sw: ks.and_then(|k| k.articulation),
+                keys_auto: ks
+                    .filter(|k| k.articulation.is_none())
+                    .and_then(|k| crate::keys::instrument(&k.instrument))
+                    .and_then(|i| i.auto),
                 keys_release,
                 keys_dynamics,
                 mb_ring: mb.ring,

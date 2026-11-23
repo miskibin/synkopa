@@ -38,7 +38,9 @@ instrument are dropped. Knobs:
 | Volume, Pan | | the channel's own |
 
 Instruments with articulations (the strings) show them as buttons; the choice is saved with the
-channel. Their keyswitches (C1–D#1 for the strings) are tinted on the keyboard and switch while
+channel. The strings default to **Auto**, as modern string libraries do: a note shorter than
+0.13 s plays spiccato, a longer one sustain (arco); a note played live, whose length is unknown when
+it starts, plays sustain. Their keyswitches (C1–D#1 for the strings) are tinted on the keyboard and switch while
 playing: a note on one picks the articulation instead of sounding, until the next edit. Keys outside
 an instrument's range are dimmed (they still play, pitched from the nearest recording).
 

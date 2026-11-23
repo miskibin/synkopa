@@ -828,6 +828,8 @@ pub struct ChanRt {
     pub keys_release: f32,
     /// The channel's articulation (keyswitch key), when it chose one.
     pub keys_sw: Option<u8>,
+    /// Without one: the instrument's auto articulation by note length, if it has one.
+    pub keys_auto: Option<crate::keys::AutoArticulation>,
     pub keys_dynamics: f32,
     /// Music Box channels: the knobs (see `crate::musicbox`; the release in seconds, the
     /// rest normalized 0..1).

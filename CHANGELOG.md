@@ -14,7 +14,8 @@ shown in the app after an update and is published as the release notes (see
   piano got richer: four dynamics instead of three, levelled so a harder hit changes the tone
   without jumping in volume, and the soft thud of the dampers when you let a key go. The strings
   play sustain, tremolo, pizzicato or spiccato: pick one in the window or switch while playing with
-  the keyswitches tinted red on the keyboard. Release has an **Auto** setting that lets each
+  the keyswitches tinted red on the keyboard, or leave them on **Auto**, which plays fast notes
+  spiccato and long ones with the bow. Release has an **Auto** setting that lets each
   instrument ring the way it was recorded (a harp rings out, a damped piano note stops). Slide
   notes glide every instrument. From the command line: `synkopa channels --keys --instrument
   wurlitzer`, `--articulation pizzicato`. The installer grows by about 10 MB.

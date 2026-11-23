@@ -7,6 +7,7 @@ import type { KeysCategory } from '../api/types';
 export interface KeysCatalogEntry {
   id: string; name: string; category: KeysCategory; description: string; kit: string; bundled: boolean;
   credit: string; license: string; range: [number, number]; articulations: { key: number; name: string }[];
+  auto: { short: number; long: number; seconds: number } | null;
   /** Download size of the instrument's library kit. */
   bytes: number;
 }

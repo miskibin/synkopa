@@ -112,6 +112,8 @@ export type KeysPhase = 'idle' | 'missing' | 'loading' | 'ready' | 'error';
 export interface KeysInstrument {
   id: string; name: string; category: KeysCategory; description: string; kit: string; bundled: boolean;
   credit: string; license: string; range: [number, number]; articulations: { key: number; name: string }[];
+  /** Without a chosen articulation: notes shorter than `seconds` play `short`, longer ones `long` (strings). */
+  auto: { short: number; long: number; seconds: number } | null;
   bytes: number; installed: boolean; state: KeysPhase; error: string | null;
 }
 export interface KeysStatus { instruments: KeysInstrument[] }

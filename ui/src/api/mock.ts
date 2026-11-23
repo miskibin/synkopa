@@ -1646,7 +1646,7 @@ export class MockBackend implements Backend {
       instruments: KEYS_CATALOG.map(i => {
         const installed = i.bundled || !!this.kits.find(k => k.id === i.kit)?.installed;
         const state = !used.has(i.id) ? 'idle' : installed ? 'ready' : 'missing';
-        return { ...i, articulations: [...i.articulations], range: [...i.range] as [number, number], installed, state, error: null };
+        return { ...i, articulations: [...i.articulations], range: [...i.range] as [number, number], auto: i.auto && { ...i.auto }, installed, state, error: null };
       }),
     };
   }

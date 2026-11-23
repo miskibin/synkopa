@@ -338,3 +338,27 @@ fn an_articulation_the_instrument_lacks_is_refused() {
     let names: Vec<&str> = wave_engine::keys::articulations("strings").iter().map(|a| a.name.as_str()).collect();
     assert_eq!(names, ["Sustain", "Tremolo", "Pizzicato", "Spiccato"]);
 }
+
+#[test]
+fn auto_articulation_plays_short_notes_spiccato_and_long_ones_arco() {
+    // the strings' auto rule: under 0.13 s the short articulation (key 27), else the long (24)
+    let mapping = "<global> sw_lokey=24 sw_hikey=27 sw_default=24
+        <master> sw_last=24 <region> sample=arco lokey=48 hikey=72 pitch_keycenter=60
+        <master> sw_last=27 <region> sample=spic lokey=48 hikey=72 pitch_keycenter=60";
+    let b = Arc::new(bank_from(mapping, vec![("arco", tone(261.63, 0.5)), ("spic", tone(523.25, 0.5))]).unwrap());
+    let render_strings = |keys: KeysState, notes: Vec<Note>| {
+        let e = Engine::new(project(notes, keys), Arc::new(NoPlugins));
+        e.set_keys_bank("strings", Some(b.clone()));
+        e.render(0.0, 4.0, 0.0, SR).unwrap().as_chunks::<2>().0.iter().map(|f| f[0]).collect::<Vec<f32>>()
+    };
+    let strings = KeysState { instrument: "strings".into(), ..Default::default() };
+    // a sixteenth at 128 BPM is 0.117 s: short; four sixteenths are 0.47 s: long
+    let short = render_strings(strings.clone(), vec![note(0.0, 1.0, 60, 0.9)]);
+    let long = render_strings(strings.clone(), vec![note(0.0, 4.0, 60, 0.9)]);
+    assert!((freq(&short[200..STEP - 200]) - 523.25).abs() < 15.0, "short note: spiccato");
+    assert!((freq(&long[200..3 * STEP]) - 261.63).abs() < 5.0, "long note: arco");
+    // a chosen articulation wins over the auto one
+    let arco = KeysState { articulation: Some(24), ..strings };
+    let x = render_strings(arco, vec![note(0.0, 1.0, 60, 0.9)]);
+    assert!((freq(&x[200..STEP - 200]) - 261.63).abs() < 15.0);
+}

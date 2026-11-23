@@ -576,7 +576,13 @@ impl VoicePool {
                 let rr = self.rr[k];
                 self.rr[k] = rr.wrapping_add(1);
                 let rand = self.rand();
-                let sw = self.switch(ch.id).or(ch.keys_sw);
+                // a keyswitch played live, else the channel's articulation, else the auto one by length
+                let sw = self.switch(ch.id).or(ch.keys_sw).or_else(|| {
+                    ch.keys_auto.map(|a| match end.seconds().filter(|s| *s < LIVE_SECONDS) {
+                        Some(s) if s < a.seconds => a.short,
+                        _ => a.long,
+                    })
+                });
                 let mut first = None;
                 bank.pick(crate::sfz::Trigger::Attack, key, vel, rr, rand, sw, ch.keys_dynamics, 0.0, |h| {
                     let i = self.keys_zone(ch, &bank, idx, dest, delay, end, key, vel, gain, pan, h, false);
