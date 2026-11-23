@@ -364,24 +364,53 @@ impl Engine {
     /// still applies; other clips are left out. Like FL's *Render to audio in place*, effect
     /// tails and releases are kept: the clip runs past the span until the decay has died away
     /// (at most [`IN_PLACE_MAX_TAIL_S`]); on its own new track it overlaps nothing.
+    ///
+    /// With a `range` (the playlist's time selection, in beats) only that part is rendered, like
+    /// FL's consolidate of a time selection: the clips are the selected ones that overlap it, or
+    /// — with no clip selected — every clip that plays there (not muted, on an audible track).
+    /// A clip crossing an edge of the range is split there: only its inside part is rendered and
+    /// muted, the parts outside keep playing.
     pub fn export_in_place(
         &self,
         clip_ids: &[Id],
+        range: Option<(f64, f64)>,
         sample_rate: u32,
         cancel: &AtomicBool,
         progress: &mut dyn FnMut(RenderProgress),
     ) -> Result<InPlace, EngineError> {
         let err = |m: &str| EngineError::Msg(m.into());
+        if let Some((a, b)) = range {
+            if !a.is_finite() || !b.is_finite() || b - a < 1e-6 || a < 0.0 {
+                return Err(err("the time selection is empty"));
+            }
+        }
         let (picked, from, to, bpm, at_rev) = {
             let c = self.core.lock();
-            let picked: Vec<Clip> =
-                c.project.clips.iter().filter(|x| clip_ids.contains(&x.id) && x.kind != ClipKind::Auto).cloned().collect();
+            let p = &c.project;
+            let any_solo = p.tracks.iter().any(|t| t.solo);
+            let audible = |x: &Clip| !x.muted && p.tracks.get(x.track as usize).is_some_and(|t| !t.muted && (!any_solo || t.solo));
+            let inside = |x: &Clip| range.is_none_or(|(a, b)| x.start < b - 1e-6 && x.start + x.len > a + 1e-6);
+            let picked: Vec<Clip> = p
+                .clips
+                .iter()
+                .filter(|x| x.kind != ClipKind::Auto && inside(x))
+                .filter(|x| if clip_ids.is_empty() && range.is_some() { audible(x) } else { clip_ids.contains(&x.id) })
+                .cloned()
+                .collect();
             if picked.is_empty() {
-                return Err(err("select the clips to export in place (automation clips alone make no sound)"));
+                return Err(err(if range.is_some() {
+                    "nothing plays in the time selection to export in place"
+                } else {
+                    "select the clips to export in place (automation clips alone make no sound)"
+                }));
             }
-            let from = picked.iter().map(|x| x.start).fold(f64::INFINITY, f64::min);
-            let to = picked.iter().map(|x| x.start + x.len).fold(f64::NEG_INFINITY, f64::max);
-            (picked, from, to, c.project.bpm, c.revision)
+            let mut from = picked.iter().map(|x| x.start).fold(f64::INFINITY, f64::min);
+            let mut to = picked.iter().map(|x| x.start + x.len).fold(f64::NEG_INFINITY, f64::max);
+            if let Some((a, b)) = range {
+                from = from.max(a);
+                to = to.min(b);
+            }
+            (picked, from, to, p.bpm, c.revision)
         };
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
@@ -392,6 +421,11 @@ impl Engine {
             for x in p.clips.iter_mut() {
                 if ids.contains(&x.id) {
                     x.muted = false;
+                    // only the part inside the time selection sounds: what plays before it must
+                    // not ring into the render (the part before keeps playing live)
+                    if range.is_some() {
+                        crop_clip(x, from, to);
+                    }
                 }
             }
             for (i, t) in p.tracks.iter_mut().enumerate() {
@@ -483,13 +517,34 @@ impl Engine {
                 icon: None,
             },
         );
+        let mut outside = vec![];
         for x in c.project.clips.iter_mut() {
             if x.track >= at {
                 x.track += 1;
             }
             if ids.contains(&x.id) {
+                // a clip crossing an edge of the time selection is split there: the parts
+                // outside keep playing as they were, the rendered part inside is muted
+                if range.is_some() {
+                    let (start, end) = (x.start, x.start + x.len);
+                    if start < from - 1e-6 {
+                        let mut before = x.clone();
+                        crop_clip(&mut before, start, from);
+                        outside.push(before);
+                    }
+                    if end > to + 1e-6 {
+                        let mut after = x.clone();
+                        crop_clip(&mut after, to, end);
+                        outside.push(after);
+                    }
+                    crop_clip(x, from, to);
+                }
                 x.muted = true;
             }
+        }
+        for mut x in outside {
+            x.id = c.project.alloc_id();
+            c.project.clips.push(x);
         }
         let clip_id = c.project.alloc_id();
         c.project.clips.push(Clip {
@@ -527,6 +582,22 @@ impl Engine {
 pub const IN_PLACE_MAX_TAIL_S: f64 = 30.0;
 
 /// What [`Engine::export_in_place`] made: the new source, its clip and the track it is on.
+/// `x` cut down to the beats `a..b` of the timeline (both inside it), the way the playlist's
+/// slice tool cuts a clip: the content stays where it plays, a fade at a cut edge goes.
+fn crop_clip(x: &mut Clip, a: f64, b: f64) {
+    let (start, end) = (x.start, x.start + x.len);
+    let (a, b) = (a.max(start), b.min(end));
+    if a > start {
+        x.offset += a - start;
+        x.fade_in = 0.0;
+    }
+    if b < end {
+        x.fade_out = 0.0;
+    }
+    x.start = a;
+    x.len = b - a;
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InPlace {

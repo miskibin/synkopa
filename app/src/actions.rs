@@ -1810,14 +1810,18 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             Ok(json!({ "sourceId": r.source_id, "track": r.track, "insertId": r.insert_id, "revision": e.revision() }))
         }
         "export_in_place" => {
-            let ids: Vec<u64> = arg(a, "clipIds")
-                .and_then(Value::as_array)
-                .ok_or("`clipIds` (array of clip ids) is required")?
-                .iter()
-                .filter_map(as_index)
-                .collect();
+            let range = match (opt_f64(a, "fromBeat"), opt_f64(a, "toBeat")) {
+                (Some(f), Some(t)) => Some((f, t)),
+                (None, None) => None,
+                _ => return Err("`fromBeat` and `toBeat` go together".into()),
+            };
+            let ids: Vec<u64> = match arg(a, "clipIds") {
+                Some(v) => v.as_array().ok_or("`clipIds` must be an array of clip ids")?.iter().filter_map(as_index).collect(),
+                None if range.is_some() => vec![],
+                None => return Err("`clipIds` (array of clip ids) or `fromBeat`/`toBeat` is required".into()),
+            };
             let r = e
-                .export_in_place(&ids, IN_PLACE_RATE, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
+                .export_in_place(&ids, range, IN_PLACE_RATE, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
                 .map_err(|x| x.to_string())?;
             Ok(json!({ "sourceId": r.source_id, "clipId": r.clip_id, "track": r.track, "revision": e.revision() }))
         }

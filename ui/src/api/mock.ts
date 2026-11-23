@@ -1381,11 +1381,17 @@ export class MockBackend implements Backend {
   }
   /** engine.rs `export_in_place`: one audio clip over the selection's span on a new track below it, routed to the master.
    *  The engine's clip also carries the effect tail past the span; the mock renders no effects, so it has none. */
-  async exportInPlace(clipIds: Id[]) {
+  async exportInPlace(clipIds: Id[], range?: [number, number]) {
     await delay(30);
-    const cs = this.p.clips.filter(c => clipIds.includes(c.id) && c.kind !== 'auto');
-    if (!cs.length) throw new Error('select the clips to export in place (automation clips alone make no sound)');
-    const from = Math.min(...cs.map(c => c.start)), to = Math.max(...cs.map(c => c.start + c.len));
+    if (range && !(range[1] - range[0] >= 1e-6 && range[0] >= 0)) throw new Error('the time selection is empty');
+    const anySolo = this.p.tracks.some(t => t.solo);
+    const audible = (c: Clip) => { const t = this.p.tracks[c.track]; return !c.muted && !!t && !t.muted && (!anySolo || t.solo); };
+    const inside = (c: Clip) => !range || (c.start < range[1] - 1e-6 && c.start + c.len > range[0] + 1e-6);
+    const cs = this.p.clips.filter(c => c.kind !== 'auto' && inside(c) && (!clipIds.length && range ? audible(c) : clipIds.includes(c.id)));
+    if (!cs.length) throw new Error(range ? 'nothing plays in the time selection to export in place' : 'select the clips to export in place (automation clips alone make no sound)');
+    let from = Math.min(...cs.map(c => c.start)), to = Math.max(...cs.map(c => c.start + c.len));
+    if (range) { from = Math.max(from, range[0]); to = Math.min(to, range[1]); }
+    const ids = new Set(cs.map(c => c.id));
     const first = [...cs].sort((a, b) => a.track - b.track || a.start - b.start)[0];
     const low = Math.max(...cs.map(c => c.track));
     const srcName = (c: Clip) => (c.kind === 'pat' ? this.p.patterns.find(x => x.id === c.ref)?.name : this.p.sources.find(x => x.id === c.ref)?.name) ?? 'Render';
@@ -1396,7 +1402,24 @@ export class MockBackend implements Backend {
     this.srcMeta.set(sourceId, src); this.p.sources.push(strip(src));
     const at = Math.min(low + 1, this.p.tracks.length);
     this.p.tracks.splice(at, 0, { id: this.p.nextId++, name, color, muted: false, solo: false, arm: false, vol: 0.7937, h: this.p.tracks[low]?.h ?? 60, insert: 0 });
-    for (const c of this.p.clips) { if (c.track >= at) c.track++; if (clipIds.includes(c.id) && c.kind !== 'auto') c.muted = true; }
+    // engine.rs `crop_clip`: a clip crossing an edge of the time selection is split there, the inside part muted
+    const crop = (c: Clip, a: number, b: number): Clip => {
+      const s = Math.max(a, c.start), e = Math.min(b, c.start + c.len);
+      const r = { ...c, start: s, len: e - s };
+      if (s > c.start) { r.offset = c.offset + (s - c.start); r.fadeIn = 0; }
+      if (e < c.start + c.len) r.fadeOut = 0;
+      return r;
+    };
+    const outside: Clip[] = [];
+    this.p.clips = this.p.clips.map(c => {
+      if (c.track >= at) c.track++;
+      if (!ids.has(c.id)) return c;
+      if (!range) return { ...c, muted: true };
+      if (c.start < from - 1e-6) outside.push({ ...crop(c, c.start, from), id: 0 });
+      if (c.start + c.len > to + 1e-6) outside.push({ ...crop(c, to, c.start + c.len), id: 0 });
+      return { ...crop(c, from, to), muted: true };
+    });
+    for (const c of outside) this.p.clips.push({ ...c, id: this.p.nextId++ });
     const clipId = this.p.nextId++;
     this.p.clips.push(mkClip(clipId, at, from, to - from, 'audio', sourceId));
     this.pushUndo(prev); this.changed();

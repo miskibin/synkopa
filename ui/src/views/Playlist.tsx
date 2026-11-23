@@ -1347,6 +1347,7 @@ export function Playlist() {
       ]),
       { t: 'sec', label: tl('a.pl.secMix') },
       { t: 'item', label: tl('a.pl.inPlace'), kbd: 'Ctrl+Alt+E', title: tl('a.pl.inPlaceTip'), act: () => void A.exportInPlace(c) },
+      ...(S.project.loop ? [{ t: 'item', label: tl('a.pl.inPlaceRange'), title: tl('a.pl.inPlaceRangeTip'), disabled: !A.rangeInPlaceClips().length, act: () => void A.exportRangeInPlace() } as MenuItem] : []),
       { t: 'item', label: tl('a.pl.mixerChannel'), act: () => openRouteMenu(c.track, x, y) },
       { t: 'item', label: tl('a.pl.selAllSource'), act: all },
       { t: 'sep' },

@@ -103,6 +103,37 @@ describe('export in place', () => {
     await sync();
     expect(store.S.project.tracks.length).toBe(tracks);
   });
+  it('a loop range exports only what plays inside it, splitting clips at its edges', async () => {
+    const c = { ...store.S.project.clips.find(x => x.kind === 'pat' && !x.muted && x.len >= 4)! };
+    const a = c.start + 1, b = c.start + c.len - 1;
+    edit.commit([{ op: 'setLoop', loop: { a, b } }], 'Loop');
+    await sync();
+    ui.setU('sel', [c.id]);
+    const n = store.S.project.clips.length, tracks = store.S.project.tracks.length;
+    await A.exportRangeInPlace();
+    await sync();
+    expect(store.S.project.tracks.length).toBe(tracks + 1);
+    const made = store.S.project.clips.find(x => x.id === ui.U.sel[0])!;
+    expect([made.kind, made.start, made.len]).toEqual(['audio', a, b - a]);
+    const mid = store.S.project.clips.find(x => x.id === c.id)!;
+    expect([mid.start, mid.len, mid.offset, mid.muted]).toEqual([a, b - a, c.offset + 1, true]);
+    const outer = store.S.project.clips.filter(x => x.ref === c.ref && x.kind === 'pat' && x.id !== c.id && x.track === mid.track && !x.muted
+      && (Math.abs(x.start + x.len - a) < 1e-9 || Math.abs(x.start - b) < 1e-9));
+    expect(outer.length).toBe(2);
+    expect(store.S.project.clips.length).toBe(n + 3);
+    await A.undo();
+    await sync();
+    expect(store.S.project.clips.length).toBe(n);
+  });
+  it('Ctrl+Alt+E with nothing selected exports the loop range', async () => {
+    const c = { ...store.S.project.clips.find(x => x.kind === 'pat' && !x.muted)! };
+    edit.commit([{ op: 'setLoop', loop: { a: c.start, b: c.start + c.len } }], 'Loop');
+    await sync();
+    ui.setU('sel', []);
+    const spy = vi.spyOn(mock, 'exportInPlace');
+    await A.exportInPlace();
+    expect(spy).toHaveBeenCalledWith([], [c.start, c.start + c.len]);
+  });
   it('says so when nothing is selected', async () => {
     ui.setU('sel', []);
     const spy = vi.spyOn(mock, 'exportInPlace');

@@ -90,8 +90,10 @@ export interface Backend {
   makeUnique(clipIds: Id[]): Promise<{ sourceId: Id; track: number; insertId: Id }>;
   /** FL's *Export in place*: the clips rendered (through their inserts and effects, not the master's, tails kept) over the span
    *  they cover into one audio clip on a new track right below them, routed to the master; the originals are muted.
+   *  With `range` (the playlist's time selection, beats `[from, to]`) only that span is rendered: the given clips that overlap
+   *  it, or with none given every clip that plays there; a clip crossing an edge is split and only its inside part muted.
    *  One undo step. Rejects a selection that renders silent; `exportCancel` stops it (`cancelled`). */
-  exportInPlace(clipIds: Id[]): Promise<{ sourceId: Id; clipId: Id; track: number } | { cancelled: true }>;
+  exportInPlace(clipIds: Id[], range?: [number, number]): Promise<{ sourceId: Id; clipId: Id; track: number } | { cancelled: true }>;
   /** The stem separation model (HTDemucs): size, licence, whether it is installed. */
   stemsModelStatus(): Promise<StemModelStatus>;
   /** Downloads the stem model (progress: `model-progress` with id `htdemucs`), SHA-256 checked. `stemsCancel` stops it. */
@@ -373,7 +375,7 @@ export function tauriBackend(): Backend {
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),
-    exportInPlace: clipIds => invoke('export_in_place', { clipIds }),
+    exportInPlace: (clipIds, range) => invoke('export_in_place', { clipIds, range: range ?? null }),
     stemsModelStatus: () => invoke('stems_model_status'),
     stemsModelInstall: () => invoke('stems_model_install'),
     extractStems: (clipId, stems) => invoke('extract_stems', { clipId, stems }),

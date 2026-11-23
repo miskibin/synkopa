@@ -73,6 +73,9 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
                                            sample on a new track below, routed to a free mixer insert
   export-in-place --clip ID[,ID...]        render clips (with their mixer effects) to one audio clip on a new
                                            track below them; the originals are muted (one undo step)
+  export-in-place --from B --to B [--clip ID[,ID...]]
+                                           only that time selection: the given clips, or every clip that plays
+                                           there; clips crossing its edges are split, the inside part muted
   stems --clip ID [--only drums,bass,other,vocals]
                                            extract stems (HTDemucs) from an audio clip: one new track per
                                            stem right below it, same place and length; the clip is muted
@@ -970,13 +973,24 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             send(cx, a, "make_unique", json!({ "clipIds": ids }))
         }
         "export-in-place" => {
-            let ids = a
-                .need("clip")
-                .map_err(u)?
-                .split(',')
-                .map(|x| x.trim().parse::<u64>().map_err(|_| u(format!("--clip takes clip ids separated by commas, got {x}"))))
-                .collect::<Result<Vec<_>, _>>()?;
-            send(cx, a, "export_in_place", json!({ "clipIds": ids }))
+            let mut args = json!({});
+            if let Some(c) = a.get("clip") {
+                let ids = c
+                    .split(',')
+                    .map(|x| x.trim().parse::<u64>().map_err(|_| u(format!("--clip takes clip ids separated by commas, got {x}"))))
+                    .collect::<Result<Vec<_>, _>>()?;
+                args["clipIds"] = json!(ids);
+            }
+            match (a.num("from").map_err(u)?, a.num("to").map_err(u)?) {
+                (Some(f), Some(t)) => {
+                    args["fromBeat"] = json!(f);
+                    args["toBeat"] = json!(t);
+                }
+                (None, None) if a.has("clip") => {}
+                (None, None) => return Err(u("export-in-place needs --clip, or --from and --to".into())),
+                _ => return Err(u("--from and --to go together".into())),
+            }
+            send(cx, a, "export_in_place", args)
         }
         "stems" if a.has("install") => {
             eprintln!("downloading the HTDemucs stem model (~90 MB; MIT licence)");
