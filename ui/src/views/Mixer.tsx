@@ -28,8 +28,8 @@ import { openFxPicker } from './FxPicker';
 import { openFxChains, saveFxChain } from './FxChains';
 import { useSize } from './patternShared';
 import { canSend, sendsOf, toMaster } from '../lib/routing';
-import { pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
-import { keyedFrom, sidechainItems, sidechainSources, sidechainTo } from '../state/sidechain';
+import { drivesKey, pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
+import { listening, sidechainItems, sidechainSources, unkey } from '../state/sidechain';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -99,7 +99,7 @@ function sendItems(m: Insert): MenuItem[] {
   const sends = sendsOf(m);
   const targets = S.project.inserts.filter(x => x.id !== 0 && x.id !== m.id);
   // the master is the first target: unticking it is FL's "route to this track only"
-  const master: MenuItem = { t: 'item', label: 'Master', checked: toMaster(m), disabled: toMaster(m) && !sends.length, title: tr('c.rt.toMasterTip'), act: () => setToMaster(m.id, !toMaster(m)) };
+  const master: MenuItem = { t: 'item', label: 'Master', checked: toMaster(m), disabled: toMaster(m) && !sends.length && !drivesKey(m.id), title: tr('c.rt.toMasterTip'), act: () => setToMaster(m.id, !toMaster(m)) };
   return [
     { t: 'sub', label: tr('c.rt.sendTo'), items: [master, { t: 'sep' }, ...(targets.length ? targets.map(x => {
       const s = sends.find(v => v.to === x.id), why = s ? null : sendBlock(m.id, x.id);
@@ -585,11 +585,11 @@ function RouteLane() {
 const nameOf = (id: Id) => { const m = S.project.inserts.find(x => x.id === id); return m ? tName(m.name) || 'Insert ' + id : String(id); };
 const levelText = (from: Id, to: Id, v: number) => tr('c.rt.level', { a: nameOf(from), b: nameOf(to), v: pct(v) });
 
-/** A sidechain cable's tag: click opens the Compressor that listens; right-click offers removing it. */
+/** A sidechain cable's tag: click opens the effect that listens; right-click offers removing it. */
 function scLabelDown(e: PointerEvent, from: Id, to: Id) {
   e.stopPropagation(); e.preventDefault();
   const dst = S.project.inserts.find(m => m.id === to); if (!dst) return;
-  const comps = keyedFrom(dst, from);
+  const comps = listening(dst, from);
   A.selectInsert(to);
   if (e.button === 0 && comps.length) { setU({ fxSel: comps[0].id }); A.openPlug(comps[0].id); return; }
   if (e.button !== 2) return;
@@ -597,7 +597,7 @@ function scLabelDown(e: PointerEvent, from: Id, to: Id) {
     { t: 'title', label: nameOf(from) + ' → ' + nameOf(to) + ' (SC)' },
     ...comps.map(f => ({ t: 'item' as const, label: tr('c.sc.open', { name: A.fxName(f) }), act: () => A.openPlug(f.id) })),
     { t: 'sep' },
-    { t: 'item', label: tr('c.sc.remove'), danger: true, act: () => sidechainTo(from, to) },
+    { t: 'item', label: tr('c.sc.remove'), danger: true, act: () => unkey(from, to) },
   ], 220);
 }
 

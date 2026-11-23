@@ -145,7 +145,9 @@ pub fn sidechain(app: &dyn Host, fx: Option<u64>, from: Option<u64>, to: Option<
     let (from, to) = (from.ok_or("pass --from INSERT")?, to.ok_or("pass --to INSERT (or --fx ID)")?);
     let m = p.insert(to).ok_or(format!("no insert {to}"))?;
     p.insert(from).ok_or(format!("no insert {from}"))?;
-    let keyed: Vec<&Fx> = m.fx.iter().filter(|f| f.kind.takes_key() && f.key == Some(from)).collect();
+    // ducking is a Compressor's: a Gate or Filter keyed from `from` was set up in its own window
+    // and is neither "already sidechained" nor removed by `off`
+    let keyed: Vec<&Fx> = m.fx.iter().filter(|f| f.kind == FxKind::Comp && f.key == Some(from)).collect();
     if off {
         let ops: Vec<Op> = keyed.iter().map(|f| Op::PutFx { insert_id: to, fx: Fx { key: None, ..(*f).clone() }, index: None }).collect();
         if ops.is_empty() {
@@ -1063,7 +1065,6 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
     v
 }
 
-/// A channel by id, by name (case-insensitive) or by built-in instrument name.
 fn marker_json(m: &wave_engine::Marker) -> Value {
     json!({ "id": m.id, "name": m.name, "at": m.at, "bar": m.at / wave_engine::BAR_BEATS + 1.0 })
 }
@@ -1135,6 +1136,7 @@ pub fn markers(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     Ok(json!({ "revision": rev, "added": added, "loop": p.loop_range, "markers": list(&p) }))
 }
 
+/// A channel by id, by name (case-insensitive) or by built-in instrument name.
 fn find_channel<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine::Channel> {
     if let Some(id) = as_index(v) {
         return p.channel(id).ok_or(format!("no channel {id} (see `synkopa channels`)"));

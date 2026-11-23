@@ -409,3 +409,13 @@ fn the_meter_shows_the_level_the_selected_detector_compares() {
     pk.meters(&mut m);
     assert!(m[0] > -1.0, "peak: the meter ({}) shows the click", m[0]);
 }
+
+#[test]
+fn an_expander_settles_to_closed_above_its_floor() {
+    // 2:1 expander 10 dB under the close threshold: it rests at −10 dB, far above the −40 dB
+    // floor, and the state the window shows says closed, not "closing" for ever
+    let sr = 48_000.0;
+    let x = sine(sr as usize, 440.0, 0.1, sr);
+    let (_, states) = run(&mut make(&gate_fx(&[("thr", -6.0), ("hyst", 4.0), ("ratio", 2.0), ("floor", -40.0)]), sr), &x, None, 512);
+    assert_eq!(states.last(), Some(&State::Closed), "{:?}", &states[states.len() - 3..]);
+}

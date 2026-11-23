@@ -252,7 +252,6 @@ impl Gate {
         let slope = self.ratio - 1.0;
         let floor = self.floor_db();
         let silent = self.floor <= FLOOR_SILENT;
-        let rest = self.rest_db();
         let mask = self.dl.len() - 1;
         let (up, down) = if self.duck { (self.a_rel, self.a_att) } else { (self.a_att, self.a_rel) };
         let (mut det_max, mut gr_min) = (MIN_DB, 0f32);
@@ -333,7 +332,9 @@ impl Gate {
                 self.g2 = target;
             }
             let g2_db = super::gain_to_db(self.g2);
-            if self.state == State::Closing && (g2_db.max(MIN_DB) - rest.max(MIN_DB)).abs() < 0.1 {
+            // closed once the gain has arrived where it is headed: the floor for a gate, the
+            // expander's own reduction (often above the floor) otherwise
+            if self.state == State::Closing && (g2_db.max(MIN_DB) - target_db.max(MIN_DB)).abs() < 0.1 {
                 self.state = State::Closed;
             }
             // the silent floor is silence, not −120 dB

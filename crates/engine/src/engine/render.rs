@@ -409,9 +409,10 @@ impl Engine {
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
         let scope = |mut p: Project| {
-            // only the selection sounds (automation keeps moving its targets); what the user
-            // muted or soloed elsewhere does not decide what an explicit selection renders
-            p.clips.retain(|x| ids.contains(&x.id) || x.kind == ClipKind::Auto);
+            // only the selection sounds (automation keeps moving its targets), and the sidechain
+            // keys its effects listen to; what the user muted or soloed elsewhere does not
+            // decide what an explicit selection renders
+            keep_keys(&mut p, &ids);
             for x in p.clips.iter_mut() {
                 if ids.contains(&x.id) {
                     x.muted = false;
@@ -575,7 +576,6 @@ impl Engine {
 /// delay set to never die out would otherwise ring forever).
 pub const IN_PLACE_MAX_TAIL_S: f64 = 30.0;
 
-/// What [`Engine::export_in_place`] made: the new source, its clip and the track it is on.
 /// `x` cut down to the beats `a..b` of the timeline (both inside it), the way the playlist's
 /// slice tool cuts a clip: the content stays where it plays, a fade at a cut edge goes.
 fn crop_clip(x: &mut Clip, a: f64, b: f64) {
@@ -592,6 +592,70 @@ fn crop_clip(x: &mut Clip, a: f64, b: f64) {
     x.len = b - a;
 }
 
+/// The inserts clip `x` plays into: its own or its track's, and for a pattern each of its
+/// channels' own (the track's only for a channel without one).
+fn clip_sources(p: &Project, x: &Clip) -> Vec<Id> {
+    let pat = (x.kind == ClipKind::Pat).then(|| p.patterns.iter().find(|pt| pt.id == x.source)).flatten();
+    let Some(pt) = pat else { return vec![p.clip_insert(x)] };
+    let mut v: Vec<Id> = vec![];
+    for c in p.channels.iter().filter(|c| pt.notes.iter().any(|n| n.ch == c.id)) {
+        let i = c.insert.filter(|i| p.insert(*i).is_some()).unwrap_or_else(|| p.clip_insert(x));
+        if !v.contains(&i) {
+            v.push(i);
+        }
+    }
+    v
+}
+
+/// Keeps only the clips `picked` (and automation), and the sidechains they need: the clips play through effects
+/// keyed from other inserts (a bass ducked by the kick), and those keys must sound in the render
+/// as they do in the mix, heard nowhere (like a stem's, see [`stem_project`]). Adds back the
+/// clips that only feed such keys, and mutes every insert neither path needs.
+fn keep_keys(p: &mut Project, picked: &HashSet<Id>) {
+    let reach = |p: &Project, from: &[Id]| -> Vec<Id> {
+        p.inserts.iter().filter(|m| from.iter().any(|&a| crate::routing::reaches(p, a, m.id))).map(|m| m.id).collect()
+    };
+    let sources: Vec<Id> = p.clips.iter().filter(|x| picked.contains(&x.id)).flat_map(|x| clip_sources(p, x)).collect();
+    let path = reach(p, &sources);
+    // the inserts feeding the keys of the path's effects, and of theirs in turn
+    let mut need = path.clone();
+    let mut silent: Vec<Id> = vec![];
+    let mut i = 0;
+    while i < need.len() {
+        let keys: Vec<Id> = p.insert(need[i]).map(|m| m.fx.iter().filter_map(|f| f.key).collect()).unwrap_or_default();
+        for k in keys {
+            for x in p.inserts.iter().filter(|m| m.id != 0 && crate::routing::reaches(p, m.id, k)).map(|m| m.id) {
+                if !need.contains(&x) {
+                    need.push(x);
+                    silent.push(x);
+                }
+            }
+        }
+        i += 1;
+    }
+    if silent.is_empty() {
+        p.clips.retain(|x| picked.contains(&x.id) || x.kind == ClipKind::Auto);
+        return;
+    }
+    // a clip that feeds only those keys plays again; one heard anywhere else stays out
+    let feeds_key = |x: &Clip, p: &Project| {
+        let src = clip_sources(p, x);
+        src.iter().any(|i| silent.contains(i)) && src.iter().all(|i| *i != 0 && !path.contains(i))
+    };
+    let keep: HashSet<Id> =
+        p.clips.iter().filter(|x| !picked.contains(&x.id) && x.kind != ClipKind::Auto && feeds_key(x, p)).map(|x| x.id).collect();
+    p.clips.retain(|x| picked.contains(&x.id) || keep.contains(&x.id) || x.kind == ClipKind::Auto);
+    for m in p.inserts.iter_mut().filter(|m| m.id != 0) {
+        if silent.contains(&m.id) {
+            m.master = false;
+            m.sends.retain(|s| silent.contains(&s.to));
+        } else if !path.contains(&m.id) {
+            m.muted = true;
+        }
+    }
+}
+
+/// What [`Engine::export_in_place`] made: the new source, its clip and the track it is on.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InPlace {
