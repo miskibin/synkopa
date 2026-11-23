@@ -3,14 +3,16 @@
 //! RMVPE install surfacing a bad model file instead of downloading it.
 
 use std::path::{Path, PathBuf};
-use std::sync::Once;
+use std::sync::{Mutex, Once};
 
 use serde_json::{json, Value};
 use wave_cli::Files as _;
 use wave_engine::singer::{sing, song, Voice};
 use wave_engine::sources::write_wav;
+use wave_engine::Project;
 
-use crate::headless::Files;
+use crate::actions::{auto_vocal, control, Host};
+use crate::headless::{Files, Headless};
 
 const SR: f32 = 44100.0;
 
@@ -194,4 +196,63 @@ fn f0_model_install_surfaces_a_bad_model_file_instead_of_downloading() {
     assert!(!e.is_empty(), "the load error is the reply, not a success");
     let st = doc.call("f0_model", &json!({}), None).unwrap();
     assert_eq!(st["backend"], "yin", "{st}");
+}
+
+/// The same sung-take project as [`project`], built through `control` so the test holds the
+/// concrete [`Headless`] — both a `Doc` and a `Host` — for the parity and progress tests.
+fn control_project(d: &Path) -> (Headless, u64, u64) {
+    no_model();
+    let s = song(41, 10);
+    wav(&d.join("take.wav"), &sing(&s, &Voice::default(), &[], 0.0, SR).audio);
+    let beat = Voice { seed: 5, transpose: -12.0, formant: 0.9, ..Voice::default() };
+    wav(&d.join("beat.wav"), &sing(&s, &beat, &[], 0.0, SR).audio);
+    let h = Headless::new(Project::empty());
+    let paths = [d.join("take.wav").display().to_string(), d.join("beat.wav").display().to_string()];
+    let r = control(&h, "import", &json!({ "paths": paths, "track": 0, "beat": 0 }), None, None).unwrap();
+    (h, r["clipIds"][0].as_u64().unwrap(), r["clipIds"][1].as_u64().unwrap())
+}
+
+#[test]
+fn the_session_command_and_the_shared_action_answer_alike() {
+    let d = tmp("parity");
+    let (h, clip, beat) = control_project(&d);
+    route_to_insert(&h, clip, 1);
+    let a = json!({ "clipId": clip, "beatClipId": beat });
+    let via_session = control(&h, "auto_vocal", &a, None, None).unwrap();
+
+    let d2 = tmp("parity-fn");
+    let (h2, clip2, beat2) = control_project(&d2);
+    route_to_insert(&h2, clip2, 1);
+    let via_fn = auto_vocal(&h2, clip2, Some(beat2), wave_engine::autovocal::Style::Natural, false, None, None, &|_| {}).unwrap();
+
+    assert_eq!(via_session, via_fn, "one action, one reply — the front doors only shape the transport");
+}
+
+#[test]
+fn the_chain_step_carries_the_callers_label_and_the_stages_are_reported() {
+    let d = tmp("label");
+    let (h, clip, beat) = control_project(&d);
+    route_to_insert(&h, clip, 1);
+
+    let seen: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let r = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, false, None, Some("Auto wokal"), &|s| {
+        seen.lock().unwrap().push(s.to_owned())
+    })
+    .unwrap();
+    assert_eq!(*seen.lock().unwrap(), ["plan", "bake", "chain"], "the front door sees each stage once");
+    assert_eq!(r["riderBaked"]["clipId"], json!(clip), "the bake happened");
+    assert_eq!(h.engine().state().undo_label.as_deref(), Some("Auto wokal"), "the chain step carries the caller's label");
+
+    // one undo takes the chain off: the step below is the bake, with the engine's own name
+    h.engine().undo();
+    assert_eq!(h.engine().state().undo_label.as_deref(), Some("Apply Vocal Rider"), "{:?}", h.engine().state().undo_label);
+
+    // a second run is past the bake: no bake stage, no second render
+    let seen2: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let r2 = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, false, None, None, &|s| {
+        seen2.lock().unwrap().push(s.to_owned())
+    })
+    .unwrap();
+    assert_eq!(*seen2.lock().unwrap(), ["plan", "chain"], "already baked: the bake stage is skipped");
+    assert!(r2["riderBaked"].is_null(), "{r2}");
 }

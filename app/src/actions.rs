@@ -275,6 +275,77 @@ fn chain_ops(e: &Engine, insert: u64, plan: &wave_engine::autovocal::AutoVocalPl
     (ops, ids)
 }
 
+/// "Auto Vocal" as one action — the whole journey the app's button and `synkopa auto-vocal`
+/// share: measure the clip (the beat clip joins the key analysis), bake the Vocal Rider into
+/// the audio unless it is already there or `no_bake`, and put the calibrated chain on the
+/// clip's insert (same-kind effects are replaced, an EQ in front stays). The bake and the
+/// chain are two undo steps; `label` names the chain's step (the bake keeps the engine's
+/// own). `progress` reports the stages ("plan", "bake", "chain") for front doors that show
+/// them. A stale `if_revision` refuses before the bake, not after half the job; the apply's
+/// own guard skips the bake's own step. The reply carries the plan summary the button's
+/// toast quotes (`key`, `spread`).
+#[allow(clippy::too_many_arguments)] // the verb's whole surface, one optional each
+pub fn auto_vocal(
+    app: &dyn Host,
+    clip: u64,
+    beat: Option<u64>,
+    style: wave_engine::autovocal::Style,
+    no_bake: bool,
+    if_revision: Option<u64>,
+    label: Option<&str>,
+    progress: &dyn Fn(&str),
+) -> R<Value> {
+    let e = app.engine();
+    progress("plan");
+    // the guard is checked at entry as well: a stale one refuses before the bake, not
+    // after half of the job is done
+    if let Some(r) = if_revision {
+        if e.revision() != r {
+            return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
+        }
+    }
+    let insert = e.clip_insert(clip).ok_or("no such clip")?;
+    if insert == 0 {
+        return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
+    }
+    let plan = e.auto_vocal_plan(clip, beat, style, !no_bake).map_err(|x| x.to_string())?;
+    // the rider is rendered into the audio instead of living on the insert (no playback
+    // delay); a clip that was baked before is not baked twice (same guard as the app)
+    let mut baked = None;
+    if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, clip)) {
+        progress("bake");
+        // the engine checks the guard under the commit lock: a project that moved on
+        // while the rider rendered refuses the bake before a source is written
+        let (s, c) = e.bake_rider(clip, &rb.params, if_revision).map_err(|x| x.to_string())?;
+        baked = Some(json!({ "sourceId": s, "clipId": c }));
+    }
+    progress("chain");
+    // the stage ids come from the snapshot below, so the apply is guarded on the
+    // revision read just before it even when the caller gave no guard: a concurrent
+    // edit then conflicts instead of silently overwriting one of those ids
+    let base = e.revision();
+    let (ops, fx_ids) = chain_ops(e, insert, &plan);
+    // our own bake moved the project one step past the caller's guard; a foreign change
+    // still conflicts (the entry check above refuses before anything is done)
+    let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
+    if let Err(x) = e.apply_labeled(&ops, false, guard, label) {
+        // the bake is already committed (its own undo step): say so, or a retry skips it
+        // as already baked and the caller never learns the audio changed
+        return Err(match &baked {
+            Some(b) => format!(
+                "{x} (the rider was already baked into the clip: {b}, project now at revision {}; the effect chain was not added, run auto-vocal again to add it)",
+                e.revision()
+            ),
+            None => x.to_string(),
+        });
+    }
+    Ok(json!({
+        "revision": e.revision(), "clipId": clip, "insertId": insert, "style": plan.style,
+        "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
+        "key": plan.analysis.key.as_ref().map(|k| k.name.clone()), "spread": plan.stages.iqr400_db,
+    }))
+}
+
 pub fn set_param(app: &dyn Host, fx_id: u64, param: &str, value: f64, if_revision: Option<u64>) -> R<u64> {
     let p = app.engine().project();
     let (m, f) = p.find_fx(fx_id).ok_or(format!("no effect {fx_id}"))?;
@@ -1994,55 +2065,13 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "auto_vocal" => {
             let cid = need_u64(a, "clipId")?;
-            // the guard is checked at entry as well: a stale one refuses before the bake, not
-            // after half of the job is done
-            if let Some(r) = if_revision {
-                if e.revision() != r {
-                    return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
-                }
-            }
-            let insert = e.clip_insert(cid).ok_or("no such clip")?;
-            if insert == 0 {
-                return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
-            }
+            let beat = arg(a, "beatClipId").and_then(as_index);
             let style = match arg(a, "style").and_then(Value::as_str) {
                 Some("hard") => wave_engine::autovocal::Style::Hard,
                 _ => wave_engine::autovocal::Style::Natural,
             };
-            let bake = !arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
-            let plan = e.auto_vocal_plan(cid, arg(a, "beatClipId").and_then(as_index), style, bake).map_err(|x| x.to_string())?;
-            // the rider is rendered into the audio instead of living on the insert (no playback
-            // delay); a clip that was baked before is not baked twice (same guard as the app)
-            let mut baked = None;
-            if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, cid)) {
-                // the engine checks the guard under the commit lock: a project that moved on
-                // while the rider rendered refuses the bake before a source is written
-                let (s, c) = e.bake_rider(cid, &rb.params, if_revision).map_err(|x| x.to_string())?;
-                baked = Some(json!({ "sourceId": s, "clipId": c }));
-            }
-            // the stage ids come from the snapshot below, so the apply is guarded on the
-            // revision read just before it even when the caller gave no guard: a concurrent
-            // edit then conflicts instead of silently overwriting one of those ids
-            let base = e.revision();
-            let (ops, fx_ids) = chain_ops(e, insert, &plan);
-            // our own bake moved the project one step past the caller's guard; a foreign change
-            // still conflicts (the entry check above refuses before anything is done)
-            let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
-            if let Err(x) = e.apply(&ops, false, guard) {
-                // the bake is already committed (its own undo step): say so, or a retry skips it
-                // as already baked and the caller never learns the audio changed
-                return Err(match &baked {
-                    Some(b) => format!(
-                        "{x} (the rider was already baked into the clip: {b}, project now at revision {}; the effect chain was not added, run auto-vocal again to add it)",
-                        e.revision()
-                    ),
-                    None => x.to_string(),
-                });
-            }
-            Ok(json!({
-                "revision": e.revision(), "clipId": cid, "insertId": insert, "style": plan.style,
-                "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
-            }))
+            let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
+            auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
         "plugin_scan" => Ok(json!(app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
         "vst3_scan" => {

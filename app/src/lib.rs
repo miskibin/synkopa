@@ -387,6 +387,41 @@ async fn bake_rider(app: St<'_>, clip_id: u64, params: std::collections::BTreeMa
     Ok(json!({ "sourceId": source, "clipId": clip }))
 }
 
+/// "Auto wokal" as one command — the whole journey `synkopa auto-vocal` runs
+/// ([`actions::auto_vocal`]): measure the clip, bake the rider unless already baked or
+/// `noBake`, put the calibrated chain on its insert. `label` names the chain's undo step.
+/// Progress arrives as `auto-vocal` `{clipId, stage}` events ("plan", "bake", "chain").
+#[tauri::command]
+async fn auto_vocal(
+    app: St<'_>,
+    handle: AppHandle,
+    clip_id: u64,
+    beat_clip_id: Option<u64>,
+    style: Option<wave_engine::autovocal::Style>,
+    no_bake: Option<bool>,
+    label: Option<String>,
+) -> R<Value> {
+    let a = app.inner().clone();
+    let h = handle.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let progress = |stage: &str| {
+            let _ = h.emit("auto-vocal", json!({ "clipId": clip_id, "stage": stage }));
+        };
+        actions::auto_vocal(
+            &*a,
+            clip_id,
+            beat_clip_id,
+            style.unwrap_or_default(),
+            no_bake.unwrap_or(false),
+            None,
+            label.as_deref(),
+            &progress,
+        )
+    })
+    .await
+    .map_err(es)?
+}
+
 #[tauri::command]
 async fn clip_peaks(app: St<'_>, clip_id: u64) -> R<Response> {
     let e = app.engine.clone();
@@ -1356,6 +1391,7 @@ pub fn run(project_arg: Option<&str>) {
             undo,
             redo,
             fx_catalog,
+            auto_vocal,
             transport_play,
             transport_stop,
             transport_silence,

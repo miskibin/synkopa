@@ -946,49 +946,28 @@ export function setSnap(v: number) {
 
 // ---------- auto vocal ----------
 let autoVocalBusy = false;
-/** Analyse an audio clip and put the calibrated vocal chain on its track's insert (one undo step).
- *  Effects of the types the chain brings are replaced; others (e.g. an EQ) stay in front. */
+/** Analyse an audio clip and put the calibrated vocal chain on its track's insert — the whole
+ *  journey on the shared action (`synkopa auto-vocal`): the rider is baked into the audio
+ *  unless the clip was baked before (no live look-ahead delay), same-kind effects are
+ *  replaced, others (e.g. an EQ) stay in front. The bake and the chain are two undo steps. */
 export async function autoVocal(clipId: Id, style: 'natural' | 'hard' = 'natural') {
   const c = S.project.clips.find(x => x.id === clipId);
-  if (!c || c.kind !== 'audio' || !S.catalog || autoVocalBusy) return;
+  if (!c || c.kind !== 'audio' || autoVocalBusy) return;
   const tr = S.project.tracks[c.track]; if (!tr) return;
   const ins = S.project.inserts.find(m => m.id === tr.insert);
   if (!ins || ins.id === 0) { say(t('d.act.av.assign')); return; }
   autoVocalBusy = true;
   say(t('d.act.av.analyze'));
   try {
-    // the rider (≈1.6 s look-ahead) is baked into the audio instead of living on the insert,
-    // so playback and monitoring get no extra delay; a clip that was baked before is not baked twice
-    const src = S.project.sources.find(x => x.id === c.ref);
-    const baked = !!src && / \(rider\)$/.test(src.name);
-    const plan = await be().autoVocalPlan({ clipId, style, bakeRider: true });
-    if (plan.riderBake && !baked) {
-      say(t('d.act.av.level'));
-      await enqueue(() => be().bakeRider({ clipId, params: plan.riderBake!.params }));
-      await resync();
-    }
-    // The chain leaves the vocal far under the limiter; bring it up to mix level in the limiter
-    // (its gain + −1 dBTP ceiling): to sit under the beat when the plan knows it, else −18 LUFS.
-    const makeup = Math.round(clamp(plan.trackGainDb ?? (-18 - plan.stages.lufsAfter), 0, 24) * 10) / 10;
-    const types = new Set<string>(plan.chain.map(p => p.type));
-    types.add('rider'); // an old live rider would ride the vocal a second time
-    const ops: Op[] = ins.fx.filter(f => types.has(f.type)).map(f => ({ op: 'removeFx', fxId: f.id }) as Op);
-    for (const p of plan.chain) {
-      const f = newFx(S.catalog, allocId(), p.type, S.project.bpm);
-      f.params = { ...f.params, ...p.params };
-      f.mix = p.mix;
-      f.preset = null; // calibrated values, not a preset (the header then reads "Własne ustawienia")
-      f.bypass = !p.enabled;
-      if (p.type === 'limit') f.params.gain = clamp((f.params.gain ?? 0) + makeup, 0, 24);
-      ops.push({ op: 'putFx', insertId: ins.id, fx: f });
-    }
-    commit(ops, t('d.act.op.av'));
-    setU({ mixSel: ins.id });
-    const a = plan.analysis, st = plan.stages;
-    say(t(plan.riderBake ? 'd.act.av.done.rb' : 'd.act.av.done', { n: plan.chain.filter(p => p.enabled).length, name: insName(ins) })
-      + t('d.act.av.spread', { a: st.iqr400Db[0].toFixed(1), b: st.iqr400Db[1].toFixed(1) })
-      + (a.key ? t('d.act.av.key', { key: a.key.name }) : t('d.act.av.nokey'))
-      + (plan.warnings.length ? ' · ' + plan.warnings[0] : ''));
+    const r = await enqueue(() => be().autoVocal({ clipId, style, label: t('d.act.op.av') }, stage => {
+      if (stage === 'bake') say(t('d.act.av.level'));
+    }));
+    await resync();
+    setU({ mixSel: r.insertId });
+    say(t(r.riderBaked ? 'd.act.av.done.rb' : 'd.act.av.done', { n: r.fxIds.length, name: insName(ins) })
+      + t('d.act.av.spread', { a: r.spread[0].toFixed(1), b: r.spread[1].toFixed(1) })
+      + (r.key ? t('d.act.av.key', { key: r.key }) : t('d.act.av.nokey'))
+      + (r.warnings.length ? ' · ' + r.warnings[0] : ''));
   } catch (e) { say(t('d.act.av.fail', { err: String(e) })); }
   autoVocalBusy = false;
 }

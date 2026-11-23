@@ -6,7 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
-  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
+  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 
@@ -82,6 +82,15 @@ export interface Backend {
    *  (region, clip gain, norm/rev/pitch edits; fades stay) as a new source; the clip (same id) plays it with gain
    *  0 dB. One undo step; the original source stays in the project. Slow: seconds per minute of audio. */
   bakeRider(args: { clipId: Id; params: Record<string, number> }): Promise<{ sourceId: Id; clipId: Id }>;
+  /** The whole Auto Vocal journey in one command (`synkopa auto-vocal`): measures the clip (key from
+   *  `beatClipId`), bakes the rider unless `noBake` or the source was baked before, and applies the calibrated
+   *  chain to the insert — same-kind effects replaced, an EQ in front stays. The bake and the chain are two undo
+   *  steps; `label` names the chain's. Progress arrives as `auto-vocal {clipId, stage}` events
+   *  ("plan", "bake", "chain") — `onStage` receives them in the mock too. */
+  autoVocal(
+    args: { clipId: Id; beatClipId?: Id; style?: AutoVocalStyle; noBake?: boolean; label?: string },
+    onStage?: (stage: string) => void,
+  ): Promise<AutoVocalResult>;
   trimClip(clipId: Id): Promise<{ sourceId: Id }>;
   /** FL's "Make unique" for audio clips (all of one source, on one track): they get their own copy of the source
    *  (same file and audio, own name "Name #2" and colour) on a new track right below theirs, routed to a free mixer
@@ -375,6 +384,14 @@ export function tauriBackend(): Backend {
     musicAnalyze: a => invoke('music_analyze', { clipId: a?.clipId ?? null, excludeFx: a?.excludeFx ?? null }),
     autoVocalPlan: a => invoke('auto_vocal_plan', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, bakeRider: a.bakeRider ?? null }),
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
+    autoVocal: async (a, onStage) => {
+      const off = onStage ? listen('auto-vocal', e => onStage((e.payload as { stage?: string }).stage ?? '')) : null;
+      try {
+        return await invoke('auto_vocal', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, noBake: a.noBake ?? null, label: a.label ?? null });
+      } finally {
+        (await off)?.();
+      }
+    },
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),
     exportInPlace: (clipIds, range) => invoke('export_in_place', { clipIds, range: range ?? null }),

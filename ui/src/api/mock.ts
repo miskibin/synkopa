@@ -32,7 +32,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
@@ -1139,6 +1139,51 @@ export class MockBackend implements Backend {
     if (keep) { delete c.stretch; delete c.resample; }
     this.pushUndo(prev); this.changed();
     return { sourceId: id, clipId: c.id };
+  }
+  /** The engine's whole journey (app/src/actions.rs `auto_vocal`) on the mock's own pieces:
+   *  the insert is checked first, then the plan, the bake unless the source was baked before,
+   *  and the chain as ops (same-kind effects replaced, an EQ in front stays, the level
+   *  suggestion folded into the limiter's gain). The chain is one undo step named `label`. */
+  async autoVocal(
+    a: { clipId: Id; beatClipId?: Id; style?: AutoVocalStyle; noBake?: boolean; label?: string },
+    onStage?: (stage: string) => void,
+  ): Promise<AutoVocalResult> {
+    const c = this.p.clips.find(x => x.id === a.clipId);
+    if (!c) throw new Error('no such clip');
+    const ins = this.p.tracks[c.track]?.insert ?? 0;
+    if (!ins) throw new Error('the clip plays on the master insert; route its track to its own mixer insert first');
+    const m = this.p.inserts.find(x => x.id === ins);
+    if (!m) throw new Error('no insert ' + ins);
+    onStage?.('plan');
+    const plan = await this.autoVocalPlan({ clipId: a.clipId, beatClipId: a.beatClipId, style: a.style, bakeRider: !a.noBake });
+    let baked: { sourceId: Id; clipId: Id } | null = null;
+    const src = this.srcMeta.get(c.ref);
+    if (plan.riderBake && src && !src.name.endsWith(' (rider)')) {
+      onStage?.('bake');
+      baked = await this.bakeRider({ clipId: a.clipId, params: plan.riderBake.params });
+    }
+    onStage?.('chain');
+    const types = new Set<string>(plan.chain.map(s => s.type));
+    types.add('rider'); // an old live rider would ride the vocal a second time
+    const ops: Op[] = m.fx.filter(f => types.has(f.type)).map(f => ({ op: 'removeFx', fxId: f.id }) as Op);
+    // the plan leaves the vocal far under the limiter: the level suggestion folds into its gain
+    const makeup = Math.round(clamp(plan.trackGainDb ?? -18 - plan.stages.lufsAfter, 0, 24) * 10) / 10;
+    const fxIds: Id[] = [];
+    for (const s of plan.chain) {
+      const f = newFx(this.cat, this.p.nextId++, s.type, this.p.bpm);
+      f.params = { ...f.params, ...s.params };
+      f.mix = s.mix;
+      f.preset = null;
+      f.bypass = !s.enabled;
+      if (s.type === 'limit') f.params.gain = clamp((f.params.gain ?? 0) + makeup, 0, 24);
+      ops.push({ op: 'putFx', insertId: ins, fx: f } as Op);
+      fxIds.push(f.id);
+    }
+    const { revision } = await this.applyOps(ops, { label: a.label });
+    return {
+      revision, clipId: a.clipId, insertId: ins, style: plan.style, riderBaked: baked, fxIds,
+      trackGainDb: plan.trackGainDb, warnings: plan.warnings, key: plan.analysis.key?.name ?? null, spread: plan.stages.iqr400Db,
+    };
   }
   async trimClip(clipId: Id) {
     const c = this.p.clips.find(x => x.id === clipId); if (!c) throw new Error('no clip');
