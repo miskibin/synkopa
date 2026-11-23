@@ -19,8 +19,22 @@ export function markerTextWidth(s: string): number {
   return measureCtx.measureText(s).width;
 }
 
+// The last layout: hit tests run it on every pointer move and the ruler on every paint, while it
+// only changes with the markers (position, name) and the zoom. One entry, keyed by content (the
+// store may change the array in place), so a stale layout is impossible and memory stays bounded.
+let lastKey = '';
+let lastBoxes: MarkerBox[] = [];
+
 /** Boxes of `markers` at `bw` px per beat (see `layoutMarkers`). */
-export const markerBoxes = (markers: readonly Marker[] | undefined, bw: number): MarkerBox[] => layoutMarkers(markers, bw, markerTextWidth);
+export function markerBoxes(markers: readonly Marker[] | undefined, bw: number): MarkerBox[] {
+  let key = String(bw);
+  for (const m of markers ?? []) key += '|' + m.id + ',' + m.at + ',' + JSON.stringify(m.name);
+  if (key !== lastKey) {
+    lastBoxes = layoutMarkers(markers, bw, markerTextWidth);
+    lastKey = key;
+  }
+  return lastBoxes;
+}
 
 /**
  * Draws the strip `W` px wide from content x `offX`. `focus` = the marker under the pointer or

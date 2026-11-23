@@ -190,3 +190,37 @@ fn a_key_round_trips_through_the_project_file_and_old_files_have_none() {
     let plain = serde_json::to_string(&new_fx(1, FxKind::Comp, 120.0)).unwrap();
     assert!(!plain.contains("\"key\""));
 }
+
+/// Export in place of the bass renders it as it sounds in the mix: still ducked by the kick,
+/// although only the bass clips are picked and the drums are not in the result.
+#[test]
+fn export_in_place_keeps_the_sidechain_its_selection_listens_to() {
+    let render = |keyed: bool| {
+        let (p, drums, bass) = sketch();
+        let bpm = p.bpm;
+        let track = p.tracks.iter().position(|t| t.insert == bass).expect("a Bass track") as u32;
+        let picked: Vec<Id> = p.clips.iter().filter(|c| c.track == track && c.kind != ClipKind::Auto).map(|c| c.id).collect();
+        assert!(!picked.is_empty());
+        let dir = std::env::temp_dir().join(format!("wave-sc-inplace-{}-{keyed}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let e = Engine::new(p, Arc::new(NoPlugins));
+        e.save(&dir.join("song.wave")).unwrap();
+        if keyed {
+            put(&e, bass, duck(7001, Some(drums), bpm));
+        }
+        let r = e.export_in_place(&picked, None, SR, &AtomicBool::new(false), &mut |_| {}).unwrap();
+        let p = e.project();
+        let src = p.sources.iter().find(|s| s.id == r.source_id).unwrap();
+        (
+            wave_engine::sources::Audio::load(&dir.join(&src.path))
+                .or_else(|_| wave_engine::sources::Audio::load(std::path::Path::new(&src.path)))
+                .unwrap()
+                .data,
+            bpm,
+        )
+    };
+    let ((dry, bpm), (keyed, _)) = (render(false), render(true));
+    let (on, off) = ducking(&dry, &keyed, bpm);
+    assert!(on < -12.0, "the exported bass is ducked on every kick: {on:.1} dB");
+    assert!(off > -3.0, "and comes back between kicks: {off:.1} dB");
+}

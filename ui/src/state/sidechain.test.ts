@@ -77,6 +77,30 @@ describe('Sidechain to ▸', () => {
     expect(c.key).toBeUndefined();
   });
 
+  it('leaves a keyed Filter alone and adds the ducking Compressor beside it', async () => {
+    // a Filter pumped by the kick, set up in its own window, is not "already sidechained"
+    const { kick, bass } = await pair();
+    A.addFx(bass, 'filter'); await sync();
+    const filter = ins(bass).fx[0].id;
+    SC.setKey(filter, kick); await sync();
+    SC.sidechainTo(kick, bass); await sync();
+    expect(ins(bass).fx.find(f => f.id === filter)?.key).toBe(kick);
+    expect(ins(bass).fx.find(f => f.type === 'comp')?.key).toBe(kick);
+    // and the cable's Remove takes every listener off it, Filter included
+    SC.unkey(kick, bass); await sync();
+    expect(ins(bass).fx.every(f => f.key == null)).toBe(true);
+  });
+
+  it('lets a key insert go nowhere (a ghost kick), but not one that drives nothing', async () => {
+    const { kick, bass } = await pair();
+    const R = await import('./routing');
+    R.setToMaster(kick, false); await sync();
+    expect(ins(kick).master).not.toBe(false); // sends nowhere, drives nothing: it would just fall silent
+    SC.sidechainTo(kick, bass); await sync();
+    R.setToMaster(kick, false); await sync();
+    expect(ins(kick).master).toBe(false);
+  });
+
   it('greys out a target that would close a loop, saying why', async () => {
     const { kick, bass } = await pair();
     SC.sidechainTo(kick, bass); await sync();

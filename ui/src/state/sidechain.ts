@@ -54,8 +54,22 @@ export function keyMenu(fxId: Id): MenuItem[] {
   ];
 }
 
-/** The Compressors on `to` that listen to `from`. */
-export const keyedFrom = (to: Insert, from: Id) => to.fx.filter(f => takesKey(f.type) && f.key === from);
+/**
+ * The Compressors on `to` that listen to `from`: what "Sidechain to" made (ducking). A Gate or
+ * Filter keyed from `from` is set up in its own window and is not this menu's to show or undo.
+ */
+export const keyedFrom = (to: Insert, from: Id) => to.fx.filter(f => f.type === 'comp' && f.key === from);
+
+/** Every effect on `to` whose detector listens to `from` (Compressor, Gate, Filter): a sidechain cable. */
+export const listening = (to: Insert, from: Id) => to.fx.filter(f => takesKey(f.type) && f.key === from);
+
+/** Removes a sidechain cable: every effect on `to` listening to `from` goes back to its own input. One undo step. */
+export function unkey(from: Id, to: Id) {
+  const dst = insertOf(to); if (!dst) return;
+  const fx = listening(dst, from); if (!fx.length) return;
+  commit(fx.map(f => { const x = plain(f) as Fx; delete x.key; return A.fxOp(x, to); }), t('c.sc.undo'));
+  say(t('c.sc.saidOff', { to: insName(dst) }));
+}
 
 /**
  * FL's "Sidechain to this track", from the source strip: insert `from` drives a Compressor on

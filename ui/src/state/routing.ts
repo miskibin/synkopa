@@ -41,14 +41,20 @@ export function removeSend(from: Id, to: Id) {
   say(t('c.rt.unsent', { a: nameOf(from), b: nameOf(to) }) + (toMaster(m) || !next.master ? '' : ' · ' + t('c.rt.backToMaster')));
 }
 
-/** The insert's output into the master on or off (off only while it sends somewhere). */
+/** True when an effect elsewhere listens to insert `id` (its sidechain key). */
+export const drivesKey = (id: Id) => S.project.inserts.some(x => x.fx.some(f => f.key === id));
+
+/**
+ * The insert's output into the master on or off. Off only while it sends somewhere, or while it
+ * drives a sidechain: a "ghost kick", heard nowhere, still ducks the bass (as in FL Studio).
+ */
 export function setToMaster(id: Id, on: boolean) {
   const m = S.project.inserts.find(x => x.id === id); if (!m || id === 0) return;
-  if (!on && !sendsOf(m).length) { say(t('c.rt.wouldSilence')); return; }
+  if (!on && !sendsOf(m).length && !drivesKey(id)) { say(t('c.rt.wouldSilence')); return; }
   const op = insertOp(id, { master: on });
   if (!op) return;
   commit([op], t('c.rt.undoMaster'));
-  say(on ? t('c.rt.masterOn', { a: nameOf(id) }) : t('c.rt.masterOff', { a: nameOf(id) }));
+  say(t(on ? 'c.rt.masterOn' : sendsOf(m).length ? 'c.rt.masterOff' : 'c.rt.ghost', { a: nameOf(id) }));
 }
 
 /** The op setting `from`'s send level to `to` (for a drag: one gesture, many updates). */

@@ -98,3 +98,19 @@ fn the_command_is_dispatched() {
     let r = control(&h, "sidechain", &json!({ "from": kick, "to": bass, "off": true }), None, None).unwrap();
     assert_eq!(r["fxId"], Value::Null);
 }
+
+#[test]
+fn sidechain_to_adds_a_compressor_beside_a_gate_keyed_from_the_same_source() {
+    // a Gate keyed from the kick in its own window is not "already sidechained"
+    let (h, kick, bass) = host();
+    let mut g = new_fx(9001, FxKind::Gate, 120.0);
+    g.key = Some(kick);
+    h.engine().apply(&[Op::PutFx { insert_id: bass, fx: g, index: None }], false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    assert_eq!(r["added"], true);
+    assert_eq!(comps(&h, bass)[0].key, Some(kick));
+    // off removes the ducking, not the Gate's key
+    sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap();
+    let m = h.engine().project().insert(bass).unwrap().clone();
+    assert_eq!(m.fx.iter().find(|f| f.id == 9001).unwrap().key, Some(kick));
+}

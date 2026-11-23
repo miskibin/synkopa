@@ -719,7 +719,8 @@ export function Playlist() {
     const k = Math.floor(dy / LANE_H), take = row.comp.takes[k]; if (!take) return null;
     return { ...row, ti, k, take, cb: toComp(row.clip, x / U.bw) };
   }
-  let hintClip: Id | null = null;
+  // the clip-menu hint is said once: said on every clip it would wipe what the status line was telling
+  let clipHinted = false;
   const hover = (e: PointerEvent) => {
     if (e.buttons) return;
     const p = pt(e), L = laneHit(p.x, p.y), h0 = L ? null : hit(p.x, p.y);
@@ -739,8 +740,7 @@ export function Playlist() {
       if (hv) { const c = hv.kind === 'point' ? 'move' : 'ns-resize'; if (gridCv.style.cursor !== c) gridCv.style.cursor = c; return; }
     } else if (prevEnv) setEnvHover(null);
     // the first time the pointer is on a clip: where its menu is and where a right-click deletes
-    if (h0 && h0.c.id !== hintClip && h0.c.kind !== 'auto' && editable()) { hintClip = h0.c.id; say(tl('a.pl.clipRmbHint')); }
-    else if (!h0) hintClip = null;
+    if (h0 && !clipHinted && h0.c.kind !== 'auto' && editable()) { clipHinted = true; say(tl('a.pl.clipRmbHint')); }
     let cur = toolCursor();
     if (h) {
       if (h.edge === 'menu') cur = 'pointer';

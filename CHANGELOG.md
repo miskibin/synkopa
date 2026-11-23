@@ -4,7 +4,7 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.33 — 2026-11-23
 
 ### Added
 - **Synkopa Keys is now a sampled-instrument player, like Kontakt.** Its window has an instrument
@@ -47,10 +47,15 @@ shown in the app after an update and is published as the release notes (see
   to the kick (or one set up for ducking is added and opened), and the bass dips on every hit
   and swells back between them. In the Compressor window, the Sidechain box picks what it listens
   to: its own sound or any other insert. The window then draws the kick's level against the
-  gain reduction, so you see the pump. The kick insert doesn't even have to be heard: route it nowhere
-  and it still drives the ducking (a "ghost kick"). The maximized mixer shows each sidechain
+  gain reduction, so you see the pump. The kick insert doesn't even have to be heard: untick Send to →
+  Master on it and it still drives the ducking (a "ghost kick"). The maximized mixer shows each sidechain
   as a dashed cable marked SC, and stems keep their ducking. From the command line:
   `synkopa sidechain --from 1 --to 3`.
+- **Export in place for a time selection.** Draw a loop range on the Playlist ruler and pick File →
+  Export loop range in place (or Ctrl+Alt+E with no clip selected): what plays there becomes one
+  audio clip, and only that part of the clips is muted; the parts outside keep playing. With clips
+  selected, only those are rendered. A bass ducked by the kick stays ducked in the exported audio,
+  even when the kick is not part of the selection. `synkopa export-in-place --from 9 --to 17`.
 
 ### Changed
 - **Right-click on a clip's name opens its menu.** Right-clicking the bar with the clip's name
