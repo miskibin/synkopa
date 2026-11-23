@@ -25,7 +25,7 @@ use crate::processor::{ParamBlock, ProcessCtx, Processor, METERS};
 
 /// LFO periods offered when `sync` is on, in beats.
 pub const DIVS: [&str; 8] = ["1/16", "1/8", "1/4", "1/2", "1 takt", "2 takty", "4 takty", "8 taktów"];
-const DIV_BEATS: [f64; 8] = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0];
+pub(crate) const DIV_BEATS: [f64; 8] = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0];
 pub const SYNCS: [&str; 2] = ["Hz", "Tempo"];
 pub const CHORUS_MODES: [&str; 3] = ["Chorus", "Ensemble", "Vibrato"];
 pub const STAGES: [&str; 5] = ["2", "4", "6", "8", "12"];
@@ -68,18 +68,18 @@ pub const PHASER_OCTAVES: f32 = 3.0;
 
 /// One-pole smoother towards a target (about 20 ms to settle).
 #[derive(Clone, Copy, Default)]
-struct Smooth {
-    v: f32,
-    target: f32,
+pub(crate) struct Smooth {
+    pub(crate) v: f32,
+    pub(crate) target: f32,
 }
 
 impl Smooth {
     #[inline(always)]
-    fn tick(&mut self, k: f32) -> f32 {
+    pub(crate) fn tick(&mut self, k: f32) -> f32 {
         self.v += (self.target - self.v) * k;
         self.v
     }
-    fn snap(&mut self) {
+    pub(crate) fn snap(&mut self) {
         self.v = self.target;
     }
 }
@@ -94,13 +94,13 @@ fn soft(x: f32) -> f32 {
 /// The LFO's phase (0..1): free-running at `rate` Hz, or locked to the song position with a
 /// period of `div` beats while the transport plays (free-running at that tempo when stopped).
 #[derive(Clone, Copy, Default)]
-struct Lfo {
-    phase: f64,
+pub(crate) struct Lfo {
+    pub(crate) phase: f64,
 }
 
 impl Lfo {
     /// Phase at the start of the block and the per-sample increment.
-    fn block(&mut self, sync: bool, rate: f32, div: usize, ctx: &ProcessCtx) -> f64 {
+    pub(crate) fn block(&mut self, sync: bool, rate: f32, div: usize, ctx: &ProcessCtx) -> f64 {
         let sr = f64::from(ctx.sample_rate.max(1.0));
         if sync {
             let beats = DIV_BEATS[div.min(DIV_BEATS.len() - 1)];
@@ -113,7 +113,7 @@ impl Lfo {
         }
     }
     #[inline(always)]
-    fn advance(&mut self, inc: f64) {
+    pub(crate) fn advance(&mut self, inc: f64) {
         self.phase += inc;
         if self.phase >= 1.0 {
             self.phase -= 1.0;

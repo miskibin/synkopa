@@ -4,6 +4,8 @@ use std::f32::consts::PI;
 
 pub mod delay;
 pub mod ducker;
+pub mod filter;
+pub mod gate;
 pub mod halftime;
 pub mod limiter_v2;
 pub mod loudness;
@@ -49,6 +51,8 @@ pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
         FxKind::Warp => Box::new(warp::Warp::default()),
         FxKind::Chorus => Box::new(modulation::Chorus::default()),
         FxKind::Phaser => Box::new(modulation::Phaser::default()),
+        FxKind::Gate => Box::new(gate::Gate::default()),
+        FxKind::Filter => Box::new(filter::Filter::default()),
         FxKind::Stereo => Box::new(stereo::Stereo::default()),
         FxKind::Analyzer => Box::new(loudness::Loudness::default()),
         FxKind::Multiband => Box::new(multiband::Multiband::default()),

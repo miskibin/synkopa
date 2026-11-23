@@ -91,6 +91,15 @@ export function pFmt(p: ParamDef, v: number): string {
   if (u === 'bit') return v >= 24 ? 'Off' : Math.round(v) + ' bit';
   // the delay's sample-rate reduction is off at the top of its range (dsp::delay::SRATE_OFF)
   if (p.id === 'srate' && v >= 47000) return 'Off';
+  // the gate (dsp::gate): its side-chain filters are off at the ends, its floor bottoms out in
+  // silence, its ratio tops out as a hard gate
+  if (p.id === 'schp' && v <= 20.5) return 'Off';
+  if (p.id === 'sclp' && v >= 19500) return 'Off';
+  if (p.id === 'floor' && v <= -79.9) return '−∞ dB';
+  if (u === ':1' && p.max >= 100 && v >= 99.5) return '∞:1';
+  // the filter's DJ knob (dsp::filter::dj_map): left low-pass, right high-pass, the middle off
+  if (p.id === 'dj') return Math.abs(v) < 1 ? 'Off' : (v < 0 ? 'LP ' : 'HP ') + Math.round(Math.abs(v)) + '%';
+  if (u === 'oct') return (v > 0.005 ? '+' : '') + (Math.abs(v) < 0.005 ? '0' : v.toFixed(2)) + ' oct';
   // LFO rates live below 10 Hz: keep their decimals ("0.60 Hz", not "1 Hz")
   if (u === 'Hz') return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : v < 10 ? v.toFixed(2) + ' Hz' : v < 100 ? v.toFixed(1) + ' Hz' : Math.round(v) + ' Hz';
   if (u === '°') return Math.round(v) + '°';

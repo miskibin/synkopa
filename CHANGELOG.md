@@ -7,6 +7,19 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Gate and Filter effects.** The **Gate** removes noise and bleed between notes and hits:
+  a hum under a guitar, the kick in a snare mic, room noise between vocal phrases. Hysteresis and
+  Hold stop it from chattering on decaying notes. A Floor (for example −14 dB) keeps it natural,
+  a Ratio turns it into a gentle expander, and Lookahead keeps drum attacks whole. Duck mode turns
+  the music down under a voice. Pick another track in its Sidechain box for a trance gate on the
+  kick. Its window shows the level against the open and close thresholds, the gain, and an
+  open / hold / closed lamp. The **Filter** is a resonant LP / HP / BP / Notch filter (12 or 24 dB),
+  with a growling ladder low-pass that self-oscillates and a one-knob DJ filter (left low-pass,
+  right high-pass, off in the middle). An LFO synced to the song (sine to sample & hold, stereo
+  offset) or the level of the sound (auto-wah) moves the cutoff, and so can another track (a kick
+  pumping a pad). Drive and a soft clip add character. Its window draws the response as it moves.
+  11 and 12 presets. Both are under Dynamics / Repair and Tone / Modulation in the effect picker,
+  and `synkopa add-fx --type gate|filter` adds them from the command line.
 - **Markers on the Playlist, as FL Studio's time markers.** Name the parts of your song (Intro,
   Verse, Hook, Drop) and see them in a strip above the ruler. Press Alt+T to drop a marker where
   the song is (the playhead while it plays) and type its name, or right-click the ruler → Add marker

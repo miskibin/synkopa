@@ -240,6 +240,45 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         p("stereo", "Stereo", 0.0, 180.0, 90.0, "°", false),
         p("mix", "Mix", 0.0, 100.0, 50.0, "%", false),
     ];
+    // order = dsp::gate::idx; the threshold and times are the first view, the side-chain
+    // filters, detector and listen are "advanced"
+    const GATE: &[ParamDef] = &[
+        p("thr", "Thresh", -80.0, 0.0, -40.0, "dB", false),
+        p("hyst", "Hysteresis", 0.0, 24.0, 4.0, "dB", false),
+        // the top of the range (100) is a hard gate, shown as ∞
+        p("ratio", "Ratio", 1.0, 100.0, 100.0, ":1", true),
+        // the bottom of the range (−80) is silence, shown as −∞
+        p("floor", "Floor", -80.0, 0.0, -80.0, "dB", false),
+        p("att", "Attack", 0.1, 50.0, 1.0, "ms", true),
+        p("hold", "Hold", 0.0, 500.0, 40.0, "ms", false),
+        p("rel", "Release", 5.0, 2000.0, 120.0, "ms", true),
+        choice("look", "Lookahead", 0.0, &crate::dsp::gate::LOOKS),
+        choice("mode", "Mode", 0.0, &crate::dsp::gate::MODES),
+        p("schp", "SC low cut", 20.0, 4000.0, 20.0, "Hz", true),
+        p("sclp", "SC high cut", 200.0, 20000.0, 20000.0, "Hz", true),
+        choice("det", "Detect", 0.0, &crate::dsp::gate::DETECT),
+        choice("listen", "SC listen", 0.0, &["Off", "On"]),
+    ];
+    // order = dsp::filter::idx
+    const FILTER: &[ParamDef] = &[
+        choice("type", "Type", 1.0, &crate::dsp::filter::TYPES),
+        p("cutoff", "Cutoff", 20.0, 20000.0, 1600.0, "Hz", true),
+        p("res", "Resonance", 0.0, 100.0, 25.0, "%", false),
+        choice("slope", "Slope", 1.0, &crate::dsp::filter::SLOPES),
+        p("drive", "Drive", 0.0, 24.0, 0.0, "dB", false),
+        // DJ: left low-pass, right high-pass, the centre passes the sound untouched
+        p("dj", "Position", -100.0, 100.0, 0.0, "%", false),
+        choice("sync", "Rate", 1.0, &crate::dsp::modulation::SYNCS),
+        p("rate", "Rate", 0.05, 20.0, 1.0, "Hz", true),
+        choice("div", "Rate", 2.0, &crate::dsp::modulation::DIVS),
+        choice("shape", "Shape", 0.0, &crate::dsp::filter::SHAPES),
+        p("lfo", "LFO depth", -5.0, 5.0, 0.0, "oct", false),
+        p("stereo", "Stereo", 0.0, 180.0, 0.0, "°", false),
+        p("env", "Env depth", -6.0, 6.0, 0.0, "oct", false),
+        p("eatt", "Env attack", 1.0, 200.0, 10.0, "ms", true),
+        p("erel", "Env release", 10.0, 1000.0, 150.0, "ms", true),
+        choice("clip", "Soft clip", 1.0, &["Off", "On"]),
+    ];
     // order = dsp::stereo::idx
     const STEREO: &[ParamDef] = &[
         p("width", "Width", 0.0, 200.0, 100.0, "%", false),
@@ -283,6 +322,8 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         FxKind::Multiband => MULTIBAND,
         FxKind::Chorus => CHORUS,
         FxKind::Phaser => PHASER,
+        FxKind::Gate => GATE,
+        FxKind::Filter => FILTER,
         FxKind::Warp => WARP,
         FxKind::Half => HALF,
         FxKind::Rider => RIDER,
@@ -319,6 +360,8 @@ pub fn type_name(kind: FxKind) -> &'static str {
         FxKind::Warp => "Warp",
         FxKind::Chorus => "Chorus",
         FxKind::Phaser => "Phaser",
+        FxKind::Gate => "Gate",
+        FxKind::Filter => "Filter",
         FxKind::Stereo => "Stereo",
         FxKind::Analyzer => "Analyzer",
         FxKind::Multiband => "Multiband",
@@ -326,11 +369,13 @@ pub fn type_name(kind: FxKind) -> &'static str {
     }
 }
 
-pub const BUILTIN: [FxKind; 19] = [
+pub const BUILTIN: [FxKind; 21] = [
     FxKind::Denoise,
     FxKind::Tune,
     FxKind::Voice,
+    FxKind::Gate,
     FxKind::Eq,
+    FxKind::Filter,
     FxKind::Rider,
     FxKind::Deess,
     FxKind::Comp,
@@ -815,6 +860,94 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
                 synced(ph("Pad — przemiatanie (2 takty)", 3.0, 0.4, 900.0, 80.0, 40.0, 90.0, 50.0), 5.0),
             ]
         }
+        FxKind::Gate => {
+            // (name, thresh, hysteresis, ratio (100 = gate), floor, attack, hold, release, look index,
+            // side-chain low cut, high cut), then any other overrides
+            #[allow(clippy::too_many_arguments)]
+            fn g(
+                n: &'static str,
+                thr: f64,
+                hyst: f64,
+                ratio: f64,
+                floor: f64,
+                att: f64,
+                hold: f64,
+                rel: f64,
+                look: f64,
+                schp: f64,
+                sclp: f64,
+                kv: &[(&'static str, f64)],
+            ) -> Preset {
+                let mut p = pr(n, kv);
+                p.params.extend([
+                    ("thr", thr),
+                    ("hyst", hyst),
+                    ("ratio", ratio),
+                    ("floor", floor),
+                    ("att", att),
+                    ("hold", hold),
+                    ("rel", rel),
+                    ("look", look),
+                    ("schp", schp),
+                    ("sclp", sclp),
+                ]);
+                p
+            }
+            let (duck, rms) = (("mode", 1.0), ("det", 1.0));
+            vec![
+                g("Bramka — uniwersalna", -40.0, 4.0, 100.0, -80.0, 1.0, 40.0, 120.0, 0.0, 20.0, 20000.0, &[]),
+                g("Wokal — naturalne czyszczenie", -45.0, 6.0, 3.0, -14.0, 4.0, 80.0, 220.0, 2.0, 120.0, 8000.0, &[rms]),
+                g("Stopa — krótko i mocno", -22.0, 4.0, 100.0, -30.0, 0.2, 35.0, 110.0, 2.0, 20.0, 300.0, &[]),
+                g("Werbel — bez przesłuchów", -20.0, 5.0, 8.0, -14.0, 0.3, 40.0, 160.0, 2.0, 180.0, 3500.0, &[]),
+                g("Tomy — czyste wybrzmienie", -24.0, 6.0, 100.0, -24.0, 0.4, 70.0, 340.0, 2.0, 70.0, 900.0, &[]),
+                g("Gitara — bez szumu i brumu", -50.0, 6.0, 6.0, -60.0, 1.5, 50.0, 180.0, 0.0, 100.0, 5000.0, &[rms]),
+                g("Ekspander — delikatnie", -32.0, 3.0, 1.8, -10.0, 8.0, 60.0, 280.0, 0.0, 20.0, 20000.0, &[rms]),
+                g("Trance gate (sidechain)", -24.0, 2.0, 100.0, -80.0, 1.0, 15.0, 45.0, 1.0, 20.0, 20000.0, &[]),
+                g("Ducking — bas pod stopę", -20.0, 2.0, 100.0, -12.0, 1.5, 20.0, 130.0, 1.0, 40.0, 300.0, &[duck]),
+                g("Ducking — muzyka pod lektora", -30.0, 4.0, 4.0, -10.0, 15.0, 180.0, 450.0, 2.0, 150.0, 6000.0, &[duck, rms]),
+                g("Gated reverb — werbel lat 80.", -18.0, 3.0, 100.0, -80.0, 0.5, 140.0, 65.0, 1.0, 20.0, 20000.0, &[]),
+            ]
+        }
+        FxKind::Filter => {
+            use crate::dsp::filter::{BP, DJ, HP, LADDER, LP};
+            // (name, type, cutoff Hz, resonance %, drive dB), then any other overrides
+            let f = |n: &'static str, ty: usize, cutoff: f64, res: f64, drive: f64, kv: &[(&'static str, f64)]| {
+                let mut p = pr(n, kv);
+                p.params.extend([("type", ty as f64), ("cutoff", cutoff), ("res", res), ("drive", drive)]);
+                p
+            };
+            // LFO locked to the song: depth (oct), period (DIVS index), shape (SHAPES index)
+            let lfo = |depth: f64, div: f64, shape: f64| [("sync", 1.0), ("lfo", depth), ("div", div), ("shape", shape)];
+            let slope12 = ("slope", 0.0);
+            vec![
+                f("Ciepły low-pass (ladder)", LADDER, 1600.0, 25.0, 3.0, &[]),
+                f("House — zamknięty low-pass", LADDER, 420.0, 35.0, 4.0, &[]),
+                f("Narastanie — high-pass (4 takty)", HP, 490.0, 45.0, 2.0, &[lfo(3.0, 6.0, 2.0).as_slice(), &[slope12]].concat()),
+                f("Wah — ćwierćnuty", BP, 750.0, 68.0, 6.0, &[lfo(1.4, 2.0, 1.0).as_slice(), &[slope12]].concat()),
+                f("Auto-wah — gitara, bas", BP, 320.0, 62.0, 5.0, &[("env", 3.2), ("eatt", 4.0), ("erel", 110.0)]),
+                f("Rytmiczny filtr 1/8", LADDER, 380.0, 40.0, 4.0, &lfo(3.5, 1.0, 3.0)),
+                f("Lo-fi — telefon", BP, 1350.0, 28.0, 12.0, &[]),
+                f(
+                    "Dub — rezonans stereo",
+                    LADDER,
+                    680.0,
+                    78.0,
+                    8.0,
+                    &[lfo(2.2, 2.0, 0.0).as_slice(), &[("stereo", 110.0), ("env", 0.6), ("erel", 240.0)]].concat(),
+                ),
+                f("Pompowanie (sidechain od stopy)", LADDER, 14000.0, 20.0, 2.0, &[("env", -4.5), ("eatt", 2.0), ("erel", 140.0)]),
+                f(
+                    "Acid — 303",
+                    LADDER,
+                    260.0,
+                    86.0,
+                    14.0,
+                    &[lfo(1.0, 0.0, 3.0).as_slice(), &[("env", 3.8), ("eatt", 2.0), ("erel", 90.0)]].concat(),
+                ),
+                f("S&H — losowe kroki 1/16", LP, 900.0, 55.0, 0.0, &lfo(2.0, 0.0, 5.0)),
+                f("DJ — przejście", DJ, 1600.0, 30.0, 0.0, &[]),
+            ]
+        }
         FxKind::Stereo => {
             // (name, width %, spread %, bass mono, mono below Hz)
             let st = |n: &'static str, width: f64, spread: f64, bass: f64, bassf: f64| {
@@ -900,6 +1033,8 @@ pub fn latency(fx: &Fx, sample_rate: f32) -> usize {
         // look-ahead delays the audio so the gain is already down when the "s" arrives
         FxKind::Limit => crate::dsp::limiter_v2::latency_samples(fx.params.get("look").copied().unwrap_or(3.0) as f32, sample_rate),
         FxKind::Warp => crate::dsp::warp::LATENCY,
+        // look-ahead delays the sound so the gate is open when a hit arrives
+        FxKind::Gate => crate::dsp::gate::latency_samples(fx.params.get("look").copied().unwrap_or(0.0), sample_rate),
         FxKind::Deess => ((fx.params.get("look").copied().unwrap_or(5.0).clamp(0.0, 15.0) / 1000.0) * sample_rate as f64) as usize,
         _ => 0,
     }

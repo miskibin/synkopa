@@ -94,7 +94,7 @@ pub(crate) fn opt_f64(a: &Value, k: &str) -> Option<f64> {
 
 pub fn parse_kind(s: &str) -> R<FxKind> {
     serde_json::from_value(json!(s)).map_err(|_| {
-        format!("unknown effect type `{s}` (eq, comp, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, fet, deess, tune, denoise, voice, rider)")
+        format!("unknown effect type `{s}` (eq, comp, gate, filter, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, fet, deess, tune, denoise, voice, rider)")
     })
 }
 
@@ -149,7 +149,7 @@ pub fn sidechain(app: &dyn Host, fx: Option<u64>, from: Option<u64>, to: Option<
     if off {
         let ops: Vec<Op> = keyed.iter().map(|f| Op::PutFx { insert_id: to, fx: Fx { key: None, ..(*f).clone() }, index: None }).collect();
         if ops.is_empty() {
-            return Err(format!("no compressor on insert {to} listens to insert {from}"));
+            return Err(format!("no effect on insert {to} listens to insert {from}"));
         }
         let rev = apply(&ops)?;
         return Ok(json!({ "fxId": null, "added": false, "revision": rev }));
@@ -157,7 +157,8 @@ pub fn sidechain(app: &dyn Host, fx: Option<u64>, from: Option<u64>, to: Option<
     if let Some(f) = keyed.first() {
         return Ok(json!({ "fxId": f.id, "added": false, "revision": app.engine().state().revision }));
     }
-    if let Some(f) = m.fx.iter().find(|f| f.kind.takes_key() && f.key.is_none()) {
+    // "Sidechain to" means ducking: it keys a free Compressor (a Gate or Filter is keyed from its own window)
+    if let Some(f) = m.fx.iter().find(|f| f.kind == FxKind::Comp && f.key.is_none()) {
         let rev = apply(&[Op::PutFx { insert_id: to, fx: Fx { key: Some(from), ..f.clone() }, index: None }])?;
         return Ok(json!({ "fxId": f.id, "added": false, "revision": rev }));
     }

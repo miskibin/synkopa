@@ -28,6 +28,14 @@ export const FX_ART: Record<FxKind, string> = {
   <path d="M16 38c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#7DD3FC" stroke-width="4" stroke-linecap="round" fill="none"/>
   <path d="M16 50c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round" fill="none"/>
   <path d="M16 62c6-12 12-12 18 0s12 12 18 0 12-12 18 0 9-6 14 0" stroke="#0369A1" stroke-width="5" stroke-linecap="round" fill="none"/>`),
+  gate: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FEF9C3"/>
+  <path d="M16 66h12V34h22v32h8V34h26" stroke="#A16207" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M16 46h68" stroke="#EAB308" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="6 6"/>`),
+  filter: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FFEDD5"/>
+  <path d="M16 42h34c8 0 10-10 15 0s8 28 19 28" stroke="#C2410C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M40 72h30 M64 67l6 5-6 5" stroke="#FB923C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`),
   phaser: svg(`
   <rect x="10" y="18" width="80" height="64" rx="12" fill="#F3E8FF"/>
   <path d="M16 36h10c4 0 5 30 9 30s5-30 9-30 5 30 9 30 5-30 9-30h22" stroke="#7E22CE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>

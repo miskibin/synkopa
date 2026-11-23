@@ -256,23 +256,23 @@ drag or wheel a cable's level, right-click it for 100 % / only here / remove; th
 chip is the output into the master. Docked, a strip's right-click menu has *Send to* and
 *Output to Master*, and the chain header says where the insert goes.
 
-**Sidechain** (`Fx.key`, a Compressor only: `FxKind::takes_key`): the effect's detector hears
+**Sidechain** (`Fx.key`, a Compressor, Gate or Filter: `FxKind::takes_key`): the effect's detector (the Filter: its envelope follower) hears
 another insert's post-fader output (mono, of this very block) instead of its own input, and the
 gain lands on its own insert, so a kick ducks the bass. A key is a dependency edge in
 `routing::order`: the listening insert runs at a deeper level than its key, so the key costs no
 latency (it is not delay-compensated against the listener: that only matters with a look-ahead
 effect on the key's chain). The key carries no sound into the mix, so a key insert that goes
 nowhere (FL's "ghost kick": no master, no sends) still drives it; a muted or silent key does
-not duck. `putFx` refuses a key on another effect, from the master, from its own insert, from a
+not duck. `putFx` refuses a key on any other effect, from the master, from its own insert, from a
 missing insert, or from an insert that already waits for this one through sends or keys
 (`routing::depends`); `putInsert` refuses a send that would close such a loop. `removeInsert`
-returns compressors keyed from it to their own input. Stem export keeps the keys running but
+returns effects keyed from it to their own input. Stem export keeps the keys running but
 silent, so a ducked stem sounds as in the mix. FX chain presets drop keys (they name inserts of
 one project). The Compressor's `meters[0]` is the level its detector heard, so its window plots
 the key (labelled SC) against the gain reduction. Two ways in: the Compressor window's
 Sidechain source menu, and the source strip's *Sidechain to ▸* (FL's "Sidechain to this
 track": keys the target's first free Compressor or adds one set up for ducking, a second click
-removes it); the maximized mixer draws each sidechain as a dashed cable tagged SC.
+removes it; a Gate or Filter is keyed from its own window); the maximized mixer draws each sidechain as a dashed cable tagged SC.
 
 PAT mode (L) loops the current pattern and follows
 it when it changes. The loop plays the pattern itself, not its place in the song: a channel
@@ -396,7 +396,9 @@ worker threads (`Engine::set_render_workers`), bit-identical to one thread.
 Effect types: `eq` (7 `bands`), `comp`, `sat` (character saturator, see
 `docs/saturator.md`), `delay` (echo with a processing loop, `docs/delay.md`), `half`, `warp`
 (time and volume maps, `maps: {time, vol}` slots, `docs/warp.md`), `chorus` (Chorus / Ensemble /
-Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/modulation.md`), `stereo` (width,
+Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/modulation.md`), `gate` (gate / expander / ducker with
+hysteresis, hold and look-ahead, `docs/gate-filter.md`), `filter` (SVF, ladder and DJ filter moved by an LFO or an
+envelope follower, `docs/gate-filter.md`), `stereo` (width,
 mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
 compression, the OTT sound, `dsp/multiband.rs`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
 field; the sound passes unchanged, `dsp/loudness.rs`), `reverb`, `limit`,
@@ -813,6 +815,8 @@ u32 underruns       // output underruns since the engine started: callbacks slow
 | `half` | `[0]` position in the loop window 0..1, `[1]` 1 = slowing down (0 = stopped, or passing the input through until the first window after a playhead jump), `[2]`/`[3]` gains of read heads A/B (crossfade), `[4]` speed divisor (1.5 / 2 / 4), `[5]` window in beats, `[6]` crossfade ms (negative = before the window start, Percussive/FX), `[7]`/`[8]` band edges Hz (0 = that side not split). Zero latency; follows the song and the pattern loop preview (`ProcessCtx` carries the preview's beat) |
 | `chorus` | `[0]` LFO phase 0..1, `[1..4]` left voices' read delay ms, `[4..7]` right voices', `[7]` voices a side (2 Chorus, 3 Ensemble, 1 Vibrato), `[8]` rate Hz. Zero latency |
 | `phaser` | `[0]`/`[1]` the stages' break frequency left/right Hz, `[2]` stages, `[3]` LFO phase 0..1. Zero latency |
+| `gate` | `[0]` detector peak dBFS (own input or sidechain, after the side-chain band), `[1]` gain dB, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 while it listens to a sidechain. Latency = look-ahead (0/1/2/5/10 ms), compensated by PDC |
+| `filter` | `[0]`/`[1]` cutoff left/right now Hz, `[2]` envelope 0..1, `[3]` LFO phase 0..1, `[4]` DJ: how much of the filter is heard, `[5]` 1 while the soft clip works, `[6]` 1 with a sidechain. Zero latency |
 | `stereo` | `[0]` correlation out, `[1]` balance −1 (left) … +1 (right), `[2]` side/mid dB out, `[3]` correlation below 120 Hz, `[4]` correlation in, `[5]` side/mid dB in, `[6]` bass mono crossover Hz, `[7]` 1 while there is bass to judge. Zero latency; the window also gets X/Y points (`xy`) |
 | `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |
 | `analyzer` | `[0]` momentary LUFS, `[1]` short-term LUFS, `[2]` integrated LUFS (−200 = not yet), `[3]` loudness range LU (−1 = not yet), `[4]` true-peak hold dBTP, `[5]` true peak of the last 100 ms, `[6]` correlation, `[7]` balance, `[8]` seconds measured, `[9]` side/mid dB. Integrated, range and the hold restart when playback starts. Zero latency; X/Y points and a long FFT (8192) for the bass bands of `specOut` |
