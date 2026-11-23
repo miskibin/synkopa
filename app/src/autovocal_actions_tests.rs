@@ -20,7 +20,7 @@ const SR: f32 = 44100.0;
 /// the detector stays YIN — the same outcome as the missing model `pitch_actions_tests`
 /// arranges (it points this very path at nothing) — and `f0_model_install` finds a file, so no
 /// test here ever downloads the real model.
-fn no_model() {
+pub(crate) fn no_model() {
     static ONCE: Once = Once::new();
     let p = std::env::temp_dir().join("wave-no-such-model.onnx");
     ONCE.call_once(|| {

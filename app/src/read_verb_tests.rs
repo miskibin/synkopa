@@ -96,3 +96,11 @@ fn the_plugin_parameter_verbs_ask_the_host_for_live_plugins() {
     let _ = control(&p2, "plugin_params", &json!({ "fxId": 4242 }), None, None);
     assert!(live_asked(&p2) >= 1, "the session's plugin_params ensures live plugins");
 }
+
+#[test]
+fn the_session_plugin_scan_reply_keeps_the_documented_shape() {
+    let h = Headless::new(Project::empty());
+    let r = control(&h, "plugin_scan", &json!({}), None, None).unwrap();
+    assert!(r.get("plugins").is_some(), "the ScanResult fields sit at the top level: {r}");
+    assert!(r.get("Err").is_none() && r.get("Ok").is_none(), "a Result wrapper would break every documented caller: {r}");
+}

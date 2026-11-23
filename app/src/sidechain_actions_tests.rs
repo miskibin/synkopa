@@ -131,7 +131,8 @@ fn the_callers_label_names_the_undo_step() {
 
 #[test]
 fn a_failed_model_install_is_remembered_as_the_model_error() {
-    // `autovocal_actions_tests::no_model` arranges the junk model file this crate reads too
+    // `no_model` arranges the junk model file: a fixture write, never a real download
+    super::autovocal_tests::no_model();
     let h = crate::headless::Headless::new(wave_engine::Project::empty());
     let e = f0_model_install(&h, &|_, _| {}).unwrap_err();
     assert!(!e.is_empty(), "the load error is the reply");

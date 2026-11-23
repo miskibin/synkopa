@@ -313,6 +313,10 @@ pub fn auto_vocal(
             return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
         }
     }
+    // the insert and the revision it was read at are captured together, before the plan and
+    // the bake take their time: an edit that re-routes the clip meanwhile makes the apply's
+    // guard refuse, instead of the chain landing on the insert the clip no longer plays
+    let base = e.revision();
     let insert = e.clip_insert(clip).ok_or("no such clip")?;
     if insert == 0 {
         return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
@@ -329,14 +333,11 @@ pub fn auto_vocal(
         baked = Some(json!({ "sourceId": s, "clipId": c }));
     }
     progress("chain");
-    // the stage ids come from the snapshot below, so the apply is guarded on the
-    // revision read just before it even when the caller gave no guard: a concurrent
-    // edit then conflicts instead of silently overwriting one of those ids
-    let base = e.revision();
     let (ops, fx_ids) = chain_ops(e, insert, &plan);
-    // our own bake moved the project one step past the caller's guard; a foreign change
-    // still conflicts (the entry check above refuses before anything is done)
-    let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
+    // the apply is guarded on the revision captured before the plan: our own bake moved
+    // the project one step past it (a foreign change still conflicts), the caller's own
+    // guard counts from the entry check instead
+    let guard = Some(if_revision.unwrap_or(base) + u64::from(baked.is_some()));
     if let Err(x) = e.apply_labeled(&ops, false, guard, label) {
         // the bake is already committed (its own undo step): say so, or a retry skips it
         // as already baked and the caller never learns the audio changed
@@ -359,13 +360,20 @@ pub fn auto_vocal(
 /// install (SHA-256 checked inside `models::install`), activate, and remember why the model
 /// still cannot be used. `progress` reports (done, total) for front doors that show a bar.
 pub fn f0_model_install(app: &dyn Host, progress: &dyn Fn(u64, u64)) -> Result<crate::models::ModelStatus, String> {
-    crate::models::install(progress)?;
+    if let Err(e) = crate::models::install(progress) {
+        app.set_model_error(Some(e.clone()));
+        return Err(e);
+    }
     match crate::models::activate(app.engine()) {
         Ok(true) => {
             app.set_model_error(None);
             Ok(crate::models::status(app.engine(), None))
         }
-        Ok(false) => Err("the model file is missing after the install".into()),
+        Ok(false) => {
+            let m = "the model file is missing after the install".to_string();
+            app.set_model_error(Some(m.clone()));
+            Err(m)
+        }
         Err(m) => {
             app.set_model_error(Some(m.clone()));
             Err(m)
@@ -2170,7 +2178,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
             auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
-        "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
+        "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false))?)),
         "vst3_scan" => {
             let r = app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false));
             Ok(json!(r.plugins.into_iter().filter(|p| p.format == PluginRef::VST3).collect::<Vec<_>>()))

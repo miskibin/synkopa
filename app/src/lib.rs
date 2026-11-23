@@ -1380,9 +1380,15 @@ pub fn run(project_arg: Option<&str>) {
     let requests = ProjectOpenRequests(Mutex::new(launch_project.into_iter().collect()));
 
     let builder = tauri::Builder::default().manage(requests);
-    // the automation bridge (driver tools over WebSocket :9223) — debug builds only
+    // The automation bridge (journey tools over WebSocket) — debug builds, and only when the
+    // rig asks for it: no socket, no driver surface by default. Loopback only, so no other
+    // host on the network reaches it either.
     #[cfg(debug_assertions)]
-    let builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+    let builder = if std::env::var_os("SYNKOPA_MCP_BRIDGE").is_some() {
+        builder.plugin(tauri_plugin_mcp_bridge::init_with_config(tauri_plugin_mcp_bridge::Config::localhost_only()))
+    } else {
+        builder
+    };
     #[cfg(windows)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
         if let Some(window) = app.get_webview_window("main") {

@@ -68,6 +68,17 @@ describe('Sidechain to ▸', () => {
     expect(ins(bass).fx[0]).toMatchObject({ id, key: kick });
   });
 
+  it('keys a free Compressor, not a free Gate that happens to come first', async () => {
+    const { kick, bass } = await pair();
+    A.addFx(bass, 'gate'); await sync();
+    A.addFx(bass, 'comp'); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
+    const gate = ins(bass).fx.find(f => f.type === 'gate')!;
+    const comp = ins(bass).fx.find(f => f.type === 'comp')!;
+    expect(gate.key, 'ducking means a Compressor: the Gate is keyed from its own window').toBeUndefined();
+    expect(comp.key).toBe(kick);
+  });
+
   it('a second time removes the sidechain and keeps the Compressor', async () => {
     const { kick, bass } = await pair();
     await SC.sidechainTo(kick, bass); await sync();

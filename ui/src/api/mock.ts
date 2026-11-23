@@ -1218,7 +1218,8 @@ export class MockBackend implements Backend {
       return { fxId: null, added: false, revision: (await this.applyOps(ops, { label: a.label })).revision };
     }
     if (keyed.length) return { fxId: keyed[0].id, added: false, revision: this.revision };
-    const free = dst.fx.find(f => takesKey(f.type) && f.key == null);
+    // ducking means a Compressor: a Gate or Filter is keyed from its own window
+    const free = dst.fx.find(f => f.type === 'comp' && f.key == null);
     if (free) {
       const fx = structuredClone(free);
       fx.key = a.from;
