@@ -1905,6 +1905,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 None if range.is_some() => vec![],
                 None => return Err("`clipIds` (array of clip ids) or `fromBeat`/`toBeat` is required".into()),
             };
+            // a bounce must not start while the piano is still loading (it would be silent):
+            // the same wait the app's export_in_place command makes
+            app.wait_keys()?;
             let r = e
                 .export_in_place(&ids, range, IN_PLACE_RATE, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
                 .map_err(|x| x.to_string())?;
@@ -2368,6 +2371,10 @@ mod tests {
 #[cfg(test)]
 #[path = "autovocal_actions_tests.rs"]
 mod autovocal_tests;
+
+#[cfg(test)]
+#[path = "export_in_place_tests.rs"]
+mod export_in_place_tests;
 
 #[cfg(test)]
 #[path = "sidechain_actions_tests.rs"]
