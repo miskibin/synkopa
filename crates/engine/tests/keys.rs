@@ -362,3 +362,63 @@ fn auto_articulation_plays_short_notes_spiccato_and_long_ones_arco() {
     let x = render_strings(arco, vec![note(0.0, 1.0, 60, 0.9)]);
     assert!((freq(&x[200..STEP - 200]) - 261.63).abs() < 15.0);
 }
+
+/// The engine playing `bank` live from a MIDI keyboard on the Keys channel.
+fn live(bank: Arc<KeysBank>) -> (Arc<Engine>, Rt) {
+    let e = Engine::new(project(vec![], KeysState::default()), Arc::new(NoPlugins));
+    e.set_keys_bank(DEFAULT_INSTRUMENT, Some(bank));
+    let rt = e.create_rt(SR as f32, 256);
+    e.midi_configure(Some(CH), true);
+    (e, rt)
+}
+
+/// Renders `secs` live and returns the output's peak.
+fn run(rt: &mut Rt, secs: f64) -> f32 {
+    let (mut l, mut r) = (vec![0f32; 256], vec![0f32; 256]);
+    let mut peak = 0f32;
+    for _ in 0..(secs * SR as f64 / 256.0) as usize {
+        rt.process(&mut l, &mut r, None);
+        peak = l.iter().fold(peak, |a, x| a.max(x.abs()));
+    }
+    peak
+}
+
+fn key(e: &Engine, down: bool) {
+    e.midi_event(if down { midi::MidiMsg::NoteOn { ch: 0, key: 60, vel: 100 } } else { midi::MidiMsg::NoteOff { ch: 0, key: 60 } });
+}
+
+#[test]
+fn a_one_shot_region_rings_on_after_a_live_key_comes_up() {
+    // a harp string: the finger leaving the key does not choke it
+    let (e, mut rt) =
+        live(Arc::new(bank_from("<region> sample=s loop_mode=one_shot pitch_keycenter=60", vec![("s", tone(261.63, 0.5))]).unwrap()));
+    key(&e, true);
+    run(&mut rt, 0.2);
+    key(&e, false);
+    run(&mut rt, 0.1);
+    assert!(run(&mut rt, 0.2) > 0.01, "the one-shot keeps ringing after the note-off");
+}
+
+#[test]
+fn a_live_key_lets_go_of_every_region_it_started() {
+    // two layered regions on one key: the key coming up must end both
+    let mapping = "<global> ampeg_release=0.01 <region> sample=a pitch_keycenter=60 <region> sample=b pitch_keycenter=60";
+    let (e, mut rt) = live(Arc::new(bank_from(mapping, vec![("a", tone(261.63, 0.3)), ("b", tone(261.63, 0.3))]).unwrap()));
+    key(&e, true);
+    assert!(run(&mut rt, 0.2) > 0.01);
+    key(&e, false);
+    run(&mut rt, 0.1);
+    assert!(run(&mut rt, 0.2) < 1e-4, "a layer kept sounding after the key came up");
+}
+
+#[test]
+fn a_key_struck_again_drops_the_release_noise_of_the_note_it_damps() {
+    // C4 for 4 steps, struck again at step 2: the first note never had its key come up, so no
+    // damper noise sounds at step 4 under the second note
+    let keys = KeysState { release: Some(40.0), ..Default::default() };
+    let restruck = render_with(project(vec![note(0.0, 4.0, 60, 0.9), note(2.0, 8.0, 60, 0.9)], keys.clone()), Some(bank_with_click()));
+    let short = render_with(project(vec![note(0.0, 2.0, 60, 0.9), note(2.0, 8.0, 60, 0.9)], keys), Some(bank_with_click()));
+    let w = 4 * STEP + 200..4 * STEP + 2400;
+    let diff: Vec<f32> = restruck[w.clone()].iter().zip(&short[w]).map(|(a, b)| a - b).collect();
+    assert!(rms(&diff) < 1e-4, "a release noise sounded under the held note: {}", rms(&diff));
+}

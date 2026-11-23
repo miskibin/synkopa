@@ -718,6 +718,13 @@ async fn keys_status(app: St<'_>) -> R<keys::KeysStatus> {
     Ok(keys::status(&app))
 }
 
+/// Synkopa Keys: loads a missing or failed instrument again (the Keys window's Retry).
+#[tauri::command]
+async fn keys_retry(app: St<'_>, id: String) -> R<keys::KeysStatus> {
+    keys::retry(app.inner(), &id);
+    Ok(keys::status(&app))
+}
+
 #[tauri::command]
 async fn library_install(app: St<'_>, handle: AppHandle, id: String) -> R<()> {
     let h = handle.clone();
@@ -733,7 +740,7 @@ async fn library_install(app: St<'_>, handle: AppHandle, id: String) -> R<()> {
         let _ = handle.emit("library-progress", json!({ "id": id, "done": 0, "total": 0, "error": e }));
     } else if wave_engine::keys::CATALOG.iter().any(|i| i.kit == id) {
         // an instrument just arrived: Keys channels that play it start playing
-        keys::ensure(app.inner());
+        keys::retry(app.inner(), &id);
     }
     res
 }
@@ -1404,6 +1411,7 @@ pub fn run(project_arg: Option<&str>) {
             library_list,
             library_install,
             keys_status,
+            keys_retry,
             library_files,
             library_add_folder,
             library_remove_folder,

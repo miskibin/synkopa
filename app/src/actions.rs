@@ -1143,6 +1143,17 @@ fn find_channel<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine
     p.channels.iter().find(|c| c.name.to_lowercase() == s).ok_or(format!("no channel named `{s}` (see `synkopa channels`)"))
 }
 
+/// The channel `v` names as this command has edited it so far: one command can set several
+/// things (`--instrument` and `--param`), and each later op must build on the earlier ones.
+fn edited_channel(p: &wave_engine::Project, ops: &[Op], v: &Value) -> R<wave_engine::Channel> {
+    let c = find_channel(p, v)?;
+    let edited = ops.iter().rev().find_map(|o| match o {
+        Op::PutChannel { channel, .. } if channel.id == c.id => Some(channel.clone()),
+        _ => None,
+    });
+    Ok(edited.unwrap_or_else(|| c.clone()))
+}
+
 pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     use wave_engine::{factory, Channel, ChannelSrc};
     let e = app.engine();
@@ -1237,7 +1248,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         ops.push(Op::PutChannel { channel: ch, index: None });
     } else if let (Some(v), true) = (arg(a, "ch"), arg(a, "instrument").is_some() || arg(a, "articulation").is_some()) {
         // switch a Keys channel's instrument and/or articulation
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         let ChannelSrc::Keys { keys } = &mut c.src else { return Err(format!("channel `{}` is not Synkopa Keys", c.name)) };
         if let Some(i) = arg(a, "instrument").and_then(Value::as_str) {
             let info = keys_instrument(i)?;
@@ -1275,7 +1286,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(name)) = (arg(a, "ch"), arg(a, "preset").and_then(Value::as_str)) {
         // load a factory preset into a synth channel
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         if !matches!(c.src, ChannelSrc::Synth { .. }) {
             return Err(format!("channel `{}` is not a synth", c.name));
         }
@@ -1286,7 +1297,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(param)) = (arg(a, "ch"), arg(a, "param").and_then(Value::as_str)) {
         // one synth knob
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         let value = opt_f64(a, "value").ok_or("`value` is required")?;
         match &mut c.src {
             ChannelSrc::Synth { synth } => {
@@ -1356,7 +1367,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(g)) = (arg(a, "ch"), arg(a, "group").and_then(Value::as_str)) {
         // the Channel Rack filter group ("" = none)
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         let g = g.trim();
         if g.chars().count() > 40 {
             return Err("a group name has at most 40 characters".into());
@@ -2355,3 +2366,21 @@ mod autovocal_tests;
 #[cfg(test)]
 #[path = "sidechain_actions_tests.rs"]
 mod sidechain_tests;
+
+#[cfg(test)]
+mod keys_channel_tests {
+    use super::*;
+    use crate::headless::Headless;
+    use wave_engine::{ChannelSrc, Project};
+
+    #[test]
+    fn one_command_switches_the_instrument_and_sets_a_knob() {
+        let h = Headless::new(Project::empty());
+        let id = channels(&h, &json!({ "keys": true }), None).unwrap()["added"].as_u64().unwrap();
+        // each part builds on the one before it: the knob does not undo the switch
+        channels(&h, &json!({ "ch": id, "instrument": "wurlitzer", "param": "dynamics", "value": 50 }), None).unwrap();
+        let p = h.engine().project();
+        let ChannelSrc::Keys { keys } = &p.channel(id).unwrap().src else { panic!("not Keys") };
+        assert_eq!((keys.instrument.as_str(), keys.dynamics), ("wurlitzer", 50.0));
+    }
+}

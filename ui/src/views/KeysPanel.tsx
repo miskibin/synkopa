@@ -73,6 +73,12 @@ export function KeysPanel(props: { c: KeysChannel }) {
     catch (e) { setErr(String(e)); setDl(null); }
     finally { refresh(); }
   };
+  // a failed load is tried again by the app; a failed download is downloaded again
+  const retry = () => {
+    if (missing()) return download();
+    setErr(null);
+    void be().keysRetry(instId()).then(setSt).catch(e => setErr(String(e)));
+  };
   const pick = (i: KeysInstrument) => { setErr(null); setKeysInstrument(props.c.id, i.id); };
 
   const knob = (lab: TranslationKey, titleKey: TranslationKey, tv: () => number, text: () => string, patch: (v: number) => KeysChannel['keys'], reset: () => KeysChannel['keys'], param: 'release' | 'dynamics') => {
@@ -164,7 +170,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
         </Show>
         <Show when={state() === 'loading' && busy() == null}><div class="keysmsg"><span>{t('b.kp.loading')}</span></div></Show>
         <Show when={failed()}>
-          {m => <div class="keysmsg bad"><span>{m()}</span><button class="smallbtn" onClick={() => (missing() ? download() : (setErr(null), refresh()))}>{t('b.kp.retry')}</button></div>}
+          {m => <div class="keysmsg bad"><span>{m()}</span><button class="smallbtn" onClick={retry}>{t('b.kp.retry')}</button></div>}
         </Show>
 
         <Show when={arts().length > 0}>

@@ -814,9 +814,12 @@ fn resolve<'a>(ops: impl Iterator<Item = &'a (String, String)>, ctx: &mut Ctx, s
                     }
                 }
             }
-            // names, polyphony and off modes: the pool plays one note per key and damps it
+            // names, polyphony and off modes: the pool plays one note per key and damps it; the
+            // keyswitch range only declares which keys switch (`sw_last` does the switching).
+            // Range and directional switches (`sw_lolast`, `sw_up`, ...) are not played, so
+            // they are counted as ignored rather than sounding every articulation at once.
             "region_label" | "group_label" | "master_label" | "global_label" | "note_polyphony" | "polyphony" | "off_time" | "off_mode"
-            | "sw_lokey" | "sw_hikey" | "sw_vel" | "sw_lolast" | "sw_hilast" | "sw_up" | "sw_down" | "sw_previous" => {}
+            | "sw_lokey" | "sw_hikey" | "sw_vel" => {}
             n => {
                 if let Some((head, cc)) = cc_suffix(n) {
                     if let Some(h) = head.strip_suffix("_curve") {

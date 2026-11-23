@@ -101,7 +101,7 @@ impl Host for Headless {
     }
     fn wait_keys(&self) -> R<()> {
         for id in self.engine.keys_instruments() {
-            let Some(info) = wave_engine::keys::instrument(&id) else { continue };
+            let Some(info) = wave_engine::keys::instrument(&id) else { return Err(crate::keys::unknown_msg(&id)) };
             // each instrument is loaded once per command-line session (a failure is remembered)
             let mut done = self.keys.lock();
             let r = done

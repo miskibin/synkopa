@@ -114,4 +114,7 @@ size into `assets-manifest.json`, and writes the instrument's SFZ mapping. Add t
 lists it. Only recordings whose licence allows redistribution qualify (CC0, CC-BY, public domain).
 
 Not there (yet): streaming from disk (every recording is in memory while an instrument plays),
-importing your own `.sfz` files, filters and LFOs from SFZ, legato transitions.
+importing your own `.sfz` files, filters and LFOs from SFZ, legato transitions, and loops for the
+strings: a sustained string note lasts as long as its recording (a few seconds, at most 9 s), not
+as long as the note. Range and directional keyswitches (`sw_lolast`, `sw_up`, ...) are counted as
+ignored opcodes, not played.

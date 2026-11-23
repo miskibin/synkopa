@@ -149,10 +149,14 @@ fn set(app: &App, id: &'static str, phase: Phase, error: Option<String>) {
 }
 
 /// Claims the load of `id` if nobody has: `Some(claim)` when the caller must load it now.
-fn claim(app: &App, id: &'static str) -> Option<u64> {
+/// An instrument that is missing or failed is tried again only on `retry` (a bounce, the
+/// Retry button, a finished download), not on every project edit: each try stats every
+/// recording, and a failing one would be decoded again on each note drag.
+fn claim(app: &App, id: &'static str, retry: bool) -> Option<u64> {
     let mut st = app.keys.st.lock();
     let s = st.entry(id).or_default();
-    if matches!(s.phase, Phase::Loading | Phase::Ready) {
+    let again = matches!(s.phase, Phase::Missing | Phase::Error);
+    if matches!(s.phase, Phase::Loading | Phase::Ready) || (again && !retry) {
         return None;
     }
     let mut n = app.keys.next_claim.lock();
@@ -194,7 +198,7 @@ pub fn ensure(app: &Arc<App>) {
     }
     for id in needed {
         let Some(info) = wave_engine::keys::instrument(&id) else { continue };
-        let Some(claim) = claim(app, info.id) else { continue };
+        let Some(claim) = claim(app, info.id, false) else { continue };
         let a = app.clone();
         // the OS refusing the thread must not panic mid-claim (`Loading` for ever, exports
         // waiting on a worker that does not exist): Builder reports it, and the claim lands
@@ -206,12 +210,31 @@ pub fn ensure(app: &Arc<App>) {
             if !a.engine.keys_instruments().iter().any(|n| n == info.id) {
                 a.engine.set_keys_bank(info.id, None);
                 set(&a, info.id, Phase::Idle, None);
+                // ... and back again while this was deciding: that edit saw `Ready` and
+                // claimed nothing, so the instrument is loaded anew from `Idle`
+                if a.engine.keys_instruments().iter().any(|n| n == info.id) {
+                    ensure(&a);
+                }
             }
         });
         if spawned.is_err() {
             set(app, info.id, Phase::Error, Some("the Keys loader could not start".into()));
         }
     }
+}
+
+/// Tries the instruments of `kit` (or the one instrument `id`) again: after a download, or
+/// the Retry button on a missing or failed one.
+pub fn retry(app: &Arc<App>, id: &str) {
+    for info in wave_engine::keys::CATALOG.iter().filter(|i| i.id == id || i.kit == id) {
+        let mut st = app.keys.st.lock();
+        let s = st.entry(info.id).or_default();
+        if matches!(s.phase, Phase::Missing | Phase::Error) {
+            s.phase = Phase::Idle;
+            s.error = None;
+        }
+    }
+    ensure(app);
 }
 
 /// The bounce-refusal wording, shared with the headless host so both front doors say the same thing.
@@ -221,6 +244,10 @@ pub fn missing_msg(info: &InstrumentInfo) -> String {
          (download it in the app: the Keys window, or Library → {}); the bounce would be silent",
         info.name, info.kit
     )
+}
+
+pub fn unknown_msg(id: &str) -> String {
+    format!("KEYS_UNKNOWN: the project plays a Synkopa Keys instrument `{id}` this version does not have; the bounce would be silent")
 }
 
 pub fn error_msg(info: &InstrumentInfo, e: &str) -> String {
@@ -275,8 +302,12 @@ impl Drop for Landing<'_> {
 /// failed, the loader died): a silently absent instrument is worse than a refused bounce.
 pub fn wait(app: &App) -> R<()> {
     for id in app.engine.keys_instruments() {
-        let Some(info) = wave_engine::keys::instrument(&id) else { continue };
-        if let Some(claim) = claim(app, info.id) {
+        // an instrument this version does not know (a project from a newer Synkopa) would
+        // be a silent channel in the file
+        let Some(info) = wave_engine::keys::instrument(&id) else {
+            return Err(unknown_msg(&id));
+        };
+        if let Some(claim) = claim(app, info.id, true) {
             let _landing = Landing { app, id: info.id, claim };
             load_now(app, info);
         }

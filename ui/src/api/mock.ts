@@ -1640,6 +1640,8 @@ export class MockBackend implements Backend {
   /** The browser preview has no recordings to load: an instrument that is "installed" (bundled, or its kit
    *  downloaded here) is "ready" while a channel plays it, and silent like every mock instrument. */
   async keysStatus(): Promise<KeysStatus> { await delay(); return this.keysNow(); }
+  // the mock never fails a load: a retry reports the status as it is
+  async keysRetry(_id: string): Promise<KeysStatus> { await delay(); return this.keysNow(); }
   private keysNow(): KeysStatus {
     const used = new Set((this.p.channels ?? []).flatMap(c => (c.kind === 'keys' ? [c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT] : [])));
     return {

@@ -241,11 +241,14 @@ pub fn pan_gains(pan: f32) -> (f32, f32) {
 }
 
 /// Ends a held voice: its release (the channel's release time) starts now. A sampler with its
-/// envelope off ignores it and rings out.
+/// envelope off ignores it and rings out, and so does a voice with no length of its own (a
+/// one-shot Keys region: a harp string rings on after the finger leaves it).
 fn release(v: &mut Voice) {
     v.held = false;
     v.sus = false;
-    v.len = v.t;
+    if v.len != u32::MAX {
+        v.len = v.t;
+    }
 }
 
 /// Time for a cut voice to fall 60 dB: fast, but not a click.
@@ -291,6 +294,22 @@ impl VoicePool {
         let v = &mut self.voices[i];
         v.held = true;
         v.key = key;
+        if v.kind == VoiceKind::Keys {
+            // every region the key started (layers, crossfades) is the same live note: the key,
+            // the pedal and the bend hold or let go of all of them
+            for v in self.voices.iter_mut().filter(|v| {
+                v.alive
+                    && v.kind == VoiceKind::Keys
+                    && v.chan_id == ch.id
+                    && v.key == key
+                    && !v.rel
+                    && v.t == 0
+                    && v.delay == 0
+                    && v.len > 0
+            }) {
+                v.held = true;
+            }
+        }
         true
     }
 
@@ -564,10 +583,15 @@ impl VoicePool {
                     self.set_switch(ch.id, key);
                     return None;
                 }
-                // the same key struck again: the string's previous note is damped
-                for v in
-                    self.voices.iter_mut().filter(|v| v.alive && v.kind == VoiceKind::Keys && !v.rel && v.chan_id == ch.id && v.key == key)
-                {
+                // the same key struck again: the string's previous note is damped, and the
+                // key-release noise scheduled for its end is dropped (the key never came up)
+                for v in self.voices.iter_mut().filter(|v| v.alive && v.kind == VoiceKind::Keys && v.chan_id == ch.id && v.key == key) {
+                    if v.rel {
+                        if v.delay > delay {
+                            v.alive = false;
+                        }
+                        continue;
+                    }
                     v.held = false;
                     v.sus = false;
                     v.len = v.len.min(v.t.saturating_add(delay.saturating_sub(v.delay)));
