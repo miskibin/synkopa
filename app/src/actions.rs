@@ -359,7 +359,7 @@ pub fn auto_vocal(
 /// install (SHA-256 checked inside `models::install`), activate, and remember why the model
 /// still cannot be used. `progress` reports (done, total) for front doors that show a bar.
 pub fn f0_model_install(app: &dyn Host, progress: &dyn Fn(u64, u64)) -> Result<crate::models::ModelStatus, String> {
-    crate::models::install(|done, total| progress(done, total))?;
+    crate::models::install(progress)?;
     match crate::models::activate(app.engine()) {
         Ok(true) => {
             app.set_model_error(None);
