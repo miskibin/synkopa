@@ -19,6 +19,7 @@
     "core:window:allow-is-fullscreen",
     "core:window:allow-internal-toggle-maximize",
     "core:window:allow-destroy",
-    "core:webview:allow-set-webview-zoom"
+    "core:webview:allow-set-webview-zoom",
+    "mcp-bridge:default"
   ]
 }

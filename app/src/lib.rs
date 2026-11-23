@@ -1380,6 +1380,9 @@ pub fn run(project_arg: Option<&str>) {
     let requests = ProjectOpenRequests(Mutex::new(launch_project.into_iter().collect()));
 
     let builder = tauri::Builder::default().manage(requests);
+    // the automation bridge (driver tools over WebSocket :9223) — debug builds only
+    #[cfg(debug_assertions)]
+    let builder = builder.plugin(tauri_plugin_mcp_bridge::init());
     #[cfg(windows)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
         if let Some(window) = app.get_webview_window("main") {
