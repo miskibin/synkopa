@@ -101,7 +101,6 @@ afterEach(async () => {
   // close what a test opened (module state outlives the render)
   ui.setU({ settings: false, exportOpen: false, help: false, fxPicker: null, fxChainWin: null, vstPicker: null, missingOpen: false, musicWin: null, midiWin: null, menu: null, openingProject: false });
   (await import('./Palette')).setPaletteOpen(false);
-  if (document.querySelector('.askdlg')) (await import('./Ask')).toggleAsk();
   (await import('../state/stems')).closeStems();
   settle();
   vi.restoreAllMocks();
@@ -381,7 +380,6 @@ describe('dialogs: a failed dialog says so, closes with Esc, and opens again wor
     ['Export', 'a.ex.what', () => ui.setU('exportOpen', true), () => !!document.querySelector('.exdlg')],
     ['Keyboard shortcuts', 'a.sc.1', () => ui.setU('help', true), () => !!document.querySelector('.helpdlg')],
     ['Find a command', 'a.cmd.placeholder', async () => (await import('./Palette')).setPaletteOpen(true), () => !!document.querySelector('.cmddlg')],
-    ['Ask AI about Synkopa', 'd.ask.intro', async () => (await import('./Ask')).toggleAsk(), () => !!document.querySelector('.askdlg')],
     ['Effect picker', 'c.picker.compressor', () => ui.setU('fxPicker', { insId: 1, x: 100, y: 100 }), () => !!document.querySelector('.fxpick, [data-fxpicker], .dialog:not(.faildlg)')],
     ['Effect chains', 'e.fxc.search', () => ui.setU('fxChainWin', { insId: 1, x: 100, y: 100 }), () => !document.querySelector('.faildlg')],
     ['Add plugin', 'd.set.search', () => ui.setU('vstPicker', { insId: 1 }), () => !document.querySelector('.faildlg')],

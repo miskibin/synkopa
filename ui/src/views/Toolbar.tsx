@@ -29,7 +29,7 @@ import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { UpdateChip } from './Updates';
-import { AskButton, openAsk } from './Ask';
+import { AskButton, askChatGPT } from './Ask';
 import { setCommandMenus, setPaletteOpen } from './Palette';
 import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
@@ -425,7 +425,7 @@ function MenuBar() {
       { t: 'item', label: t('a.mn.fullscreen'), kbd: 'F11', checked: isFullscreen(), act: () => void toggleFullscreen() },
     ]],
     ['a.mn.help', () => [
-      { t: 'item', label: t('d.ask.menu'), glyph: G.ask, kbd: 'F1', act: openAsk },
+      { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
       { t: 'item', label: t('a.cmd.title'), glyph: G.shortcuts, kbd: 'Ctrl+K', act: () => setPaletteOpen(true) },
       { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },
       { t: 'sep' },
@@ -496,7 +496,7 @@ function PatSelector() {
 
 const shortcuts = (): [string, string][] => [
   ['Play / Stop', t('a.sc.1')],
-  [t('d.ask.menu'), 'F1'],
+  [t('d.ask.button'), 'F1'],
   [t('a.sc.2'), 'F9'],
   [t('a.sc.routeCh'), 'Ctrl+L'],
   [t('a.sc.spreadCh'), 'Shift+Ctrl+L'],
