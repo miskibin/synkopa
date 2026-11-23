@@ -5,12 +5,13 @@
 // third from A0 to C8, plus the 88 key-release recordings. Inside its velocity band a layer
 // is levelled by (velocity / the velocity it was played at)^k, with k measured from the
 // level step to the next layer (RMS of the first 0.5 s, mean over the 30 notes), so the level
-// is continuous across layer boundaries.
+// is continuous across layer boundaries; on top of that (velocity / 127) scales every layer
+// alike, the dynamic range a player expects (the original mapping adds 73 % veltrack).
 // Keys above D#6 have no dampers on a grand: they ring on after the key is let go.
 
 <global> ampeg_release=0.5
 
-<group> lovel=1 hivel=25 amp_velcurve_1=0.0769 amp_velcurve_13=1 amp_velcurve_25=1.9231
+<group> lovel=1 hivel=25 amp_velcurve_1=0.0006 amp_velcurve_7=0.0297 amp_velcurve_13=0.1024 amp_velcurve_19=0.2187 amp_velcurve_25=0.3786
 <region> sample=A0v1.flac lokey=21 hikey=22 pitch_keycenter=21
 <region> sample=C1v1.flac lokey=23 hikey=25 pitch_keycenter=24
 <region> sample=D#1v1.flac lokey=26 hikey=28 pitch_keycenter=27
@@ -42,7 +43,7 @@
 <region> sample=A7v1.flac lokey=104 hikey=106 pitch_keycenter=105 ampeg_release=4
 <region> sample=C8v1.flac lokey=107 hikey=108 pitch_keycenter=108 ampeg_release=4
 
-<group> lovel=26 hivel=63 amp_velcurve_26=0.5417 amp_velcurve_48=1 amp_velcurve_63=1.2948
+<group> lovel=26 hivel=63 amp_velcurve_26=0.1109 amp_velcurve_32=0.1680 amp_velcurve_38=0.2369 amp_velcurve_44=0.3176 amp_velcurve_48=0.3780 amp_velcurve_50=0.4093 amp_velcurve_56=0.5105 amp_velcurve_62=0.6226 amp_velcurve_63=0.6423
 <region> sample=A0v6.flac lokey=21 hikey=22 pitch_keycenter=21
 <region> sample=C1v6.flac lokey=23 hikey=25 pitch_keycenter=24
 <region> sample=D#1v6.flac lokey=26 hikey=28 pitch_keycenter=27
@@ -74,7 +75,7 @@
 <region> sample=A7v6.flac lokey=104 hikey=106 pitch_keycenter=105 ampeg_release=4
 <region> sample=C8v6.flac lokey=107 hikey=108 pitch_keycenter=108 ampeg_release=4
 
-<group> lovel=64 hivel=102 amp_velcurve_64=0.7723 amp_velcurve_84=1 amp_velcurve_102=1.4266
+<group> lovel=64 hivel=102 amp_velcurve_64=0.3892 amp_velcurve_70=0.4635 amp_velcurve_76=0.5441 amp_velcurve_82=0.6311 amp_velcurve_84=0.6614 amp_velcurve_88=0.7545 amp_velcurve_94=0.9093 amp_velcurve_100=1.0833 amp_velcurve_102=1.1458
 <region> sample=A0v11.flac lokey=21 hikey=22 pitch_keycenter=21
 <region> sample=C1v11.flac lokey=23 hikey=25 pitch_keycenter=24
 <region> sample=D#1v11.flac lokey=26 hikey=28 pitch_keycenter=27
@@ -106,7 +107,7 @@
 <region> sample=A7v11.flac lokey=104 hikey=106 pitch_keycenter=105 ampeg_release=4
 <region> sample=C8v11.flac lokey=107 hikey=108 pitch_keycenter=108 ampeg_release=4
 
-<group> lovel=103 hivel=127 amp_velcurve_103=0.7121 amp_velcurve_124=1 amp_velcurve_127=1.0447
+<group> lovel=103 hivel=127 amp_velcurve_103=0.5775 amp_velcurve_109=0.6779 amp_velcurve_115=0.7889 amp_velcurve_121=0.9110 amp_velcurve_124=0.9764 amp_velcurve_127=1.0447
 <region> sample=A0v16.flac lokey=21 hikey=22 pitch_keycenter=21
 <region> sample=C1v16.flac lokey=23 hikey=25 pitch_keycenter=24
 <region> sample=D#1v16.flac lokey=26 hikey=28 pitch_keycenter=27
