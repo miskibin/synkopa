@@ -265,5 +265,6 @@ Special thanks to [@rebizu](https://github.com/rebizu) for architectural reviews
 Third-party components and sample credits are in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
+<a href="https://upstar.dev/r/miskibin/synkopa"><picture><source media="(prefers-color-scheme: dark)" srcset="https://upstar.dev/badge/miskibin/synkopa/rank-card-dark.svg"><img alt="Upstar" src="https://upstar.dev/badge/miskibin/synkopa/rank-card.svg" width="250" height="55"></picture></a>
 
 [![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
