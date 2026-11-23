@@ -680,13 +680,19 @@ async fn handle_connection<R: Runtime>(
     let ws_stream = match accept_hdr_async(
         stream,
         |req: &tokio_tungstenite::tungstenite::http::Request<()>,
-         mut resp: tokio_tungstenite::tungstenite::http::Response<()>| {
-            // a browser page cannot suppress its Origin header: answer it 403,
-            // so the upgrade never completes for it
+         _resp: tokio_tungstenite::tungstenite::http::Response<()>| {
+            // a browser page cannot suppress its Origin header: refuse the handshake outright.
+            // Returning Err (not an Ok 403 response) matters — tungstenite 0.28 builds a live
+            // session from an Ok response even when its status is 403, so a raw client could
+            // ignore the status and keep sending frames; from Err the server replies with the
+            // error and never builds a session, and frames sent after it go nowhere.
             if req.headers().contains_key("origin") {
-                *resp.status_mut() = tokio_tungstenite::tungstenite::http::StatusCode::FORBIDDEN;
+                return Err(tokio_tungstenite::tungstenite::http::Response::builder()
+                    .status(tokio_tungstenite::tungstenite::http::StatusCode::FORBIDDEN)
+                    .body(Some("this bridge does not accept browser connections".into()))
+                    .expect("a static error response always builds"));
             }
-            Ok(resp)
+            Ok(_resp)
         },
     )
     .await
