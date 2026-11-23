@@ -48,11 +48,11 @@ async function pair() {
 describe('Sidechain to ▸', () => {
   it('adds a ducking Compressor listening to the source, opens it, and is one undo step', async () => {
     const { kick, bass } = await pair();
-    SC.sidechainTo(kick, bass);
+    await SC.sidechainTo(kick, bass);
     await sync();
     const c = ins(bass).fx.find(f => f.type === 'comp')!;
     expect(c.key).toBe(kick);
-    expect(c.params.thr).toBe(SC.DUCK_PARAMS.thr);
+    expect(c.params.thr, "the engine's ducking setup (actions.rs DUCK_PARAMS)").toBe(-24);
     expect(ui.U.mixSel).toBe(bass);
     expect(ui.U.plugs.some(w => w.fxId === c.id)).toBe(true);
     A.undo(); await sync();
@@ -63,15 +63,15 @@ describe('Sidechain to ▸', () => {
     const { kick, bass } = await pair();
     A.addFx(bass, 'comp'); await sync();
     const id = ins(bass).fx[0].id;
-    SC.sidechainTo(kick, bass); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
     expect(ins(bass).fx.length).toBe(1);
     expect(ins(bass).fx[0]).toMatchObject({ id, key: kick });
   });
 
   it('a second time removes the sidechain and keeps the Compressor', async () => {
     const { kick, bass } = await pair();
-    SC.sidechainTo(kick, bass); await sync();
-    SC.sidechainTo(kick, bass); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
     const c = ins(bass).fx.find(f => f.type === 'comp')!;
     expect(c).toBeDefined();
     expect(c.key).toBeUndefined();
@@ -103,7 +103,7 @@ describe('Sidechain to ▸', () => {
 
   it('greys out a target that would close a loop, saying why', async () => {
     const { kick, bass } = await pair();
-    SC.sidechainTo(kick, bass); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
     // the bass driving the kick back: the kick would wait for itself
     const back = SC.sidechainItems(ins(bass));
     expect(back.t).toBe('sub');
@@ -121,20 +121,20 @@ describe('the Compressor window source menu', () => {
     const { kick, bass } = await pair();
     A.addFx(bass, 'comp'); await sync();
     const id = ins(bass).fx[0].id;
-    SC.setKey(id, kick); await sync();
+    await SC.setKey(id, kick); await sync();
     expect(ins(bass).fx[0].key).toBe(kick);
     const menu = SC.keyMenu(id);
     expect(menu.some(i => i.t === 'item' && i.checked && i.label === store.insName(ins(kick)))).toBe(true);
-    SC.setKey(id, null); await sync();
+    await SC.setKey(id, null); await sync();
     expect(ins(bass).fx[0].key).toBeUndefined();
-    SC.setKey(id, kick); await sync();
+    await SC.setKey(id, kick); await sync();
     A.removeInsert(kick); await sync();
     expect(ins(bass).fx[0].key).toBeUndefined();
   });
 
   it('a sidechain moved with its effect onto the source itself is dropped, not refused', async () => {
     const { kick, bass } = await pair();
-    SC.sidechainTo(kick, bass); await sync();
+    await SC.sidechainTo(kick, bass); await sync();
     const c = ins(bass).fx.find(f => f.type === 'comp')!;
     await A.moveFxTo([c.id], kick, false); await sync();
     const moved = ins(kick).fx.find(f => f.id === c.id)!;

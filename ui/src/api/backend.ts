@@ -91,6 +91,11 @@ export interface Backend {
     args: { clipId: Id; beatClipId?: Id; style?: AutoVocalStyle; noBake?: boolean; label?: string },
     onStage?: (stage: string) => void,
   ): Promise<AutoVocalResult>;
+  /** FL's "Sidechain to ▸" and the Compressor window's source menu, as one command (`synkopa sidechain`):
+   *  with `fxId`, that Compressor listens to `from` (`off`: back to its own input); with `from`/`to`, the
+   *  target's first free Compressor is keyed or a ducking one is added (`added`); `off` without `fxId`: every
+   *  Compressor on `to` keyed from `from` goes back to its own input. The engine validates every key. */
+  sidechain(args: { fxId?: Id; from?: Id; to?: Id; off?: boolean; ifRevision?: number; label?: string }): Promise<{ fxId: Id | null; added: boolean; revision: number }>;
   trimClip(clipId: Id): Promise<{ sourceId: Id }>;
   /** FL's "Make unique" for audio clips (all of one source, on one track): they get their own copy of the source
    *  (same file and audio, own name "Name #2" and colour) on a new track right below theirs, routed to a free mixer
@@ -392,6 +397,7 @@ export function tauriBackend(): Backend {
         (await off)?.();
       }
     },
+    sidechain: a => invoke('sidechain', { fxId: a.fxId ?? null, from: a.from ?? null, to: a.to ?? null, off: a.off ?? null, ifRevision: a.ifRevision ?? null, label: a.label ?? null }),
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),
     exportInPlace: (clipIds, range) => invoke('export_in_place', { clipIds, range: range ?? null }),

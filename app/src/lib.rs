@@ -440,6 +440,28 @@ async fn trim_clip(app: St<'_>, clip_id: u64) -> R<Value> {
     Ok(json!({ "sourceId": id }))
 }
 
+/// "Sidechain to ▸" as one command — the same action `synkopa sidechain` runs
+/// ([`actions::sidechain`]): with `fx_id`, that Compressor listens to `from` (`off`: back to
+/// its own input); with `from`/`to`, the target's first free Compressor is keyed or a ducking
+/// one is added. `label` names the undo step; the engine validates every key.
+#[tauri::command]
+async fn sidechain(
+    app: St<'_>,
+    fx_id: Option<u64>,
+    from: Option<u64>,
+    to: Option<u64>,
+    off: Option<bool>,
+    if_revision: Option<u64>,
+    label: Option<String>,
+) -> R<Value> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        actions::sidechain(&*a, fx_id, from, to, off.unwrap_or(false), if_revision, label.as_deref())
+    })
+    .await
+    .map_err(es)?
+}
+
 /// FX chain presets (`fx_chains.rs`): list, save, load onto an insert, rename, delete.
 #[tauri::command]
 async fn fx_chain(app: St<'_>, cmd: String, args: Value) -> R<Value> {
@@ -1392,6 +1414,7 @@ pub fn run(project_arg: Option<&str>) {
             redo,
             fx_catalog,
             auto_vocal,
+            sidechain,
             transport_play,
             transport_stop,
             transport_silence,

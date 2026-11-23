@@ -130,11 +130,19 @@ pub const DUCK_PARAMS: [(&str, f64); 6] = [("thr", -24.0), ("ratio", 6.0), ("att
 ///   a sidechain gets it, else a Compressor set up for ducking is added at the end. `off`:
 ///   every Compressor on `to` keyed from `from` goes back to its own input.
 ///
-/// One undo step. Returns the Compressor (`null` after `off` without `fx`), whether it was
-/// added, and the revision.
-pub fn sidechain(app: &dyn Host, fx: Option<u64>, from: Option<u64>, to: Option<u64>, off: bool, if_revision: Option<u64>) -> R<Value> {
+/// One undo step named `label`. Returns the Compressor (`null` after `off` without `fx`),
+/// whether it was added, and the revision.
+pub fn sidechain(
+    app: &dyn Host,
+    fx: Option<u64>,
+    from: Option<u64>,
+    to: Option<u64>,
+    off: bool,
+    if_revision: Option<u64>,
+    label: Option<&str>,
+) -> R<Value> {
     let p = app.engine().project();
-    let apply = |ops: &[Op]| app.engine().apply(ops, false, if_revision).map_err(|e| e.to_string());
+    let apply = |ops: &[Op]| app.engine().apply_labeled(ops, false, if_revision, label).map_err(|e| e.to_string());
     if let Some(fx_id) = fx {
         let (m, f) = p.find_fx(fx_id).ok_or(format!("no effect {fx_id}"))?;
         let mut f = f.clone();
@@ -1900,7 +1908,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "sidechain" => {
             let off = arg(a, "off").map(|v| v.as_bool().ok_or("`off` must be a boolean")).transpose()?.unwrap_or(false);
             let num = |k: &str| arg(a, k).and_then(Value::as_u64);
-            sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision)
+            sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision, label)
         }
         "set_param" => {
             set_param(app, need_u64(a, "fxId")?, need_str(a, "param")?, opt_f64(a, "value").ok_or("`value` is required")?, if_revision)

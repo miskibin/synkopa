@@ -25,7 +25,7 @@ fn comps(h: &Headless, on: u64) -> Vec<Fx> {
 #[test]
 fn sidechain_to_adds_a_ducking_compressor_once_and_off_returns_it_to_its_own_input() {
     let (h, kick, bass) = host();
-    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None, None).unwrap();
     assert_eq!(r["added"], true);
     let c = comps(&h, bass);
     assert_eq!(c.len(), 1);
@@ -33,11 +33,11 @@ fn sidechain_to_adds_a_ducking_compressor_once_and_off_returns_it_to_its_own_inp
     assert_eq!(c[0].params["thr"], DUCK_PARAMS[0].1);
     assert_eq!(r["fxId"], c[0].id);
     // again: the same compressor, nothing added
-    let again = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    let again = sidechain(&h, None, Some(kick), Some(bass), false, None, None).unwrap();
     assert_eq!((again["added"].clone(), again["fxId"].clone()), (json!(false), json!(c[0].id)));
     assert_eq!(comps(&h, bass).len(), 1);
     // off: the compressor stays, on its own input
-    sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap();
+    sidechain(&h, None, Some(kick), Some(bass), true, None, None).unwrap();
     assert_eq!(comps(&h, bass)[0].key, None);
     // one undo step brings the key back
     assert!(h.engine().undo());
@@ -50,7 +50,7 @@ fn sidechain_to_keys_a_compressor_already_on_the_target() {
     let p = h.engine().project();
     let f = new_fx(p.next_id, FxKind::Comp, p.bpm);
     h.engine().apply(&[Op::PutFx { insert_id: bass, fx: f.clone(), index: None }], false, None).unwrap();
-    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None, None).unwrap();
     assert_eq!(r["added"], false);
     assert_eq!(comps(&h, bass).len(), 1);
     assert_eq!(comps(&h, bass)[0].key, Some(kick));
@@ -63,15 +63,15 @@ fn one_compressor_by_id_and_the_refusals() {
     let p = h.engine().project();
     let f = new_fx(p.next_id, FxKind::Comp, p.bpm);
     h.engine().apply(&[Op::PutFx { insert_id: bass, fx: f.clone(), index: None }], false, None).unwrap();
-    sidechain(&h, Some(f.id), Some(kick), None, false, None).unwrap();
+    sidechain(&h, Some(f.id), Some(kick), None, false, None, None).unwrap();
     assert_eq!(comps(&h, bass)[0].key, Some(kick));
-    sidechain(&h, Some(f.id), None, None, true, None).unwrap();
+    sidechain(&h, Some(f.id), None, None, true, None, None).unwrap();
     assert_eq!(comps(&h, bass)[0].key, None);
-    assert!(sidechain(&h, Some(f.id), None, None, false, None).unwrap_err().contains("--from"));
-    assert!(sidechain(&h, Some(f.id), Some(bass), None, false, None).is_err(), "not its own insert");
-    assert!(sidechain(&h, Some(f.id), Some(0), None, false, None).is_err(), "not the master");
-    assert!(sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap_err().contains("no effect"));
-    assert!(sidechain(&h, None, Some(kick), Some(424242), false, None).is_err());
+    assert!(sidechain(&h, Some(f.id), None, None, false, None, None).unwrap_err().contains("--from"));
+    assert!(sidechain(&h, Some(f.id), Some(bass), None, false, None, None).is_err(), "not its own insert");
+    assert!(sidechain(&h, Some(f.id), Some(0), None, false, None, None).is_err(), "not the master");
+    assert!(sidechain(&h, None, Some(kick), Some(bass), true, None, None).unwrap_err().contains("no effect"));
+    assert!(sidechain(&h, None, Some(kick), Some(424242), false, None, None).is_err());
 }
 
 #[test]
@@ -81,12 +81,12 @@ fn sidechain_to_keys_a_compressor_and_leaves_a_gate_alone() {
     let p = h.engine().project();
     let g = new_fx(p.next_id, FxKind::Gate, p.bpm);
     h.engine().apply(&[Op::PutFx { insert_id: bass, fx: g.clone(), index: None }], false, None).unwrap();
-    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None, None).unwrap();
     assert_eq!(r["added"], true, "a ducking compressor is added next to the gate");
     let p = h.engine().project();
     assert_eq!(p.find_fx(g.id).unwrap().1.key, None);
     // a gate can still be keyed by id, and then counts as listening
-    sidechain(&h, Some(g.id), Some(kick), None, false, None).unwrap();
+    sidechain(&h, Some(g.id), Some(kick), None, false, None, None).unwrap();
     assert_eq!(h.engine().project().find_fx(g.id).unwrap().1.key, Some(kick));
 }
 
@@ -106,11 +106,25 @@ fn sidechain_to_adds_a_compressor_beside_a_gate_keyed_from_the_same_source() {
     let mut g = new_fx(9001, FxKind::Gate, 120.0);
     g.key = Some(kick);
     h.engine().apply(&[Op::PutFx { insert_id: bass, fx: g, index: None }], false, None).unwrap();
-    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None, None).unwrap();
     assert_eq!(r["added"], true);
     assert_eq!(comps(&h, bass)[0].key, Some(kick));
     // off removes the ducking, not the Gate's key
-    sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap();
+    sidechain(&h, None, Some(kick), Some(bass), true, None, None).unwrap();
     let m = h.engine().project().insert(bass).unwrap().clone();
     assert_eq!(m.fx.iter().find(|f| f.id == 9001).unwrap().key, Some(kick));
+}
+
+#[test]
+fn the_callers_label_names_the_undo_step() {
+    let (h, kick, bass) = host();
+    sidechain(&h, None, Some(kick), Some(bass), false, None, Some("Sidechain")).unwrap();
+    assert_eq!(h.engine().state().undo_label.as_deref(), Some("Sidechain"), "the added step carries the caller's label");
+    // one undo takes the ducking compressor off, keeping its settings for a redo
+    let c = comps(&h, bass)[0].clone();
+    h.engine().undo();
+    assert!(comps(&h, bass).is_empty());
+    h.engine().redo();
+    assert_eq!(comps(&h, bass)[0].params, c.params);
+    assert_eq!(comps(&h, bass)[0].key, Some(kick));
 }
