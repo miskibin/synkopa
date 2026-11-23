@@ -107,7 +107,7 @@ impl actions::Host for App {
         keys::wait(self)
     }
     fn keys_installed(&self) -> bool {
-        keys::status(self).installed
+        keys::piano_installed(self)
     }
 }
 
@@ -731,9 +731,9 @@ async fn library_install(app: St<'_>, handle: AppHandle, id: String) -> R<()> {
     .map_err(es)?;
     if let Err(e) = &res {
         let _ = handle.emit("library-progress", json!({ "id": id, "done": 0, "total": 0, "error": e }));
-    } else if id == wave_engine::keys::KIT_ID {
-        // the piano just arrived: Keys channels start playing
-        keys::ensure(app.inner(), app.engine.uses_keys());
+    } else if wave_engine::keys::CATALOG.iter().any(|i| i.kit == id) {
+        // an instrument just arrived: Keys channels that play it start playing
+        keys::ensure(app.inner());
     }
     res
 }
@@ -1573,7 +1573,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
         *a.status.lock() = st;
     });
     let _ = app.handle.set(tapp.handle().clone());
-    keys::ensure(&app, app.engine.uses_keys());
+    keys::ensure(&app);
     // reopen the saved keyboard (it may be unplugged: the status says so, and it opens when it returns)
     let a = app.clone();
     a.midi.set_fixed_velocity(a.settings.lock().midi_fixed_velocity);
@@ -1586,7 +1586,8 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     let h = tapp.handle().clone();
     let a = app.clone();
     engine.on_change(move |dto| {
-        keys::ensure(&a, dto.project.channels.iter().any(|c| matches!(c.src, wave_engine::ChannelSrc::Keys { .. })));
+        // the core lock is released before listeners run: the loader may read the engine
+        keys::ensure(&a);
         let _ = h.emit("state", dto);
     });
     if let Some(w) = tapp.get_webview_window("main") {

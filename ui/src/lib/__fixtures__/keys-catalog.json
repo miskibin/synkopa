@@ -1,0 +1,153 @@
+{
+  "instruments": [
+    {
+      "articulations": [],
+      "bundled": true,
+      "bytes": 185205823,
+      "category": "piano",
+      "credit": "Salamander Grand Piano V3 by Alexander Holm",
+      "description": "Yamaha C5 concert grand: four dynamic layers, key-release noises",
+      "id": "grand-piano",
+      "kit": "salamander-piano",
+      "license": "CC-BY-3.0",
+      "name": "Grand Piano",
+      "range": [
+        21,
+        108
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 155073798,
+      "category": "piano",
+      "credit": "VSCO 2 Community Edition by Versilian Studios",
+      "description": "Intimate upright with felt and wood: three dynamics, two round robins",
+      "id": "upright-piano",
+      "kit": "upright-piano",
+      "license": "CC0-1.0",
+      "name": "Upright Piano",
+      "range": [
+        21,
+        108
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 21443484,
+      "category": "electric",
+      "credit": "Wurlitzer EP200 by Greg Sullivan (SFZ mapping by kinwie)",
+      "description": "Reedy, barking electric piano of soul and pop records",
+      "id": "wurlitzer",
+      "kit": "e-pianos",
+      "license": "CC-BY-3.0",
+      "name": "Wurlitzer EP200",
+      "range": [
+        33,
+        96
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 21443484,
+      "category": "electric",
+      "credit": "Yamaha CP80 by Greg Sullivan (SFZ mapping by kinwie)",
+      "description": "Yamaha's stringed electric grand: bright, glassy 80s ballads",
+      "id": "cp80",
+      "kit": "e-pianos",
+      "license": "CC-BY-3.0",
+      "name": "Electric Grand CP80",
+      "range": [
+        21,
+        108
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 21443484,
+      "category": "electric",
+      "credit": "Hohner Pianet T by Greg Sullivan (SFZ mapping by kinwie)",
+      "description": "Hohner's plucked-reed piano: soft, woody, short",
+      "id": "pianet",
+      "kit": "e-pianos",
+      "license": "CC-BY-3.0",
+      "name": "Pianet T",
+      "range": [
+        29,
+        88
+      ]
+    },
+    {
+      "articulations": [
+        {
+          "key": 24,
+          "name": "Sustain"
+        },
+        {
+          "key": 25,
+          "name": "Tremolo"
+        },
+        {
+          "key": 26,
+          "name": "Pizzicato"
+        },
+        {
+          "key": 27,
+          "name": "Spiccato"
+        }
+      ],
+      "bundled": false,
+      "bytes": 197593328,
+      "category": "strings",
+      "credit": "VSCO 2 Community Edition by Versilian Studios",
+      "description": "Violins, violas and cellos sustaining with vibrato, blended across the keyboard",
+      "id": "strings",
+      "kit": "string-section",
+      "license": "CC0-1.0",
+      "name": "String Section",
+      "range": [
+        33,
+        93
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 35312492,
+      "category": "strings",
+      "credit": "VSCO 2 Community Edition by Versilian Studios",
+      "description": "Plucked concert harp for arpeggios and glissandi",
+      "id": "harp",
+      "kit": "harp",
+      "license": "CC0-1.0",
+      "name": "Concert Harp",
+      "range": [
+        21,
+        105
+      ]
+    },
+    {
+      "articulations": [],
+      "bundled": false,
+      "bytes": 42066916,
+      "category": "mallets",
+      "credit": "VCSL by Versilian Studios",
+      "description": "Soft-mallet vibraphone with the motor off: two dynamics",
+      "id": "vibraphone",
+      "kit": "vibraphone",
+      "license": "CC0-1.0",
+      "name": "Vibraphone",
+      "range": [
+        48,
+        91
+      ]
+    }
+  ],
+  "releaseMs": [
+    40.0,
+    3000.0
+  ]
+}

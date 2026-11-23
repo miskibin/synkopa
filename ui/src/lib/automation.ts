@@ -123,7 +123,8 @@ export function readTarget(p: Project, t: AutoTarget): number | null {
     case 'chanPan': return chanOf(p, t.id)?.pan ?? null;
     case 'clipGain': return clipOf(p, t.id)?.gain ?? null;
     case 'clipPan': return clipOf(p, t.id)?.pan ?? null;
-    case 'keys': { const c = chanOf(p, t.chanId); return c?.kind === 'keys' ? c.keys[t.param] : null; }
+    // a release the instrument decides reads as the knob's neutral position
+    case 'keys': { const c = chanOf(p, t.chanId); return c?.kind === 'keys' ? (t.param === 'release' ? c.keys.release ?? KEYS_RELEASE.def : c.keys.dynamics) : null; }
     case 'musicBox': { const c = chanOf(p, t.chanId); return c?.kind === 'musicbox' ? c.musicBox[t.param] : null; }
     case 'synth': {
       const c = chanOf(p, t.chanId); if (c?.kind !== 'synth') return null;

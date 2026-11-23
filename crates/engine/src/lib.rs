@@ -39,6 +39,7 @@ pub mod pitch_api;
 mod project_zip;
 pub mod relink;
 pub mod rt;
+pub mod sfz;
 pub mod slices;
 pub mod sources;
 pub mod synth;

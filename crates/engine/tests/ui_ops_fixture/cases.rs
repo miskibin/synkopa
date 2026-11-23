@@ -390,7 +390,51 @@ pub fn cases() -> Vec<Case> {
         "main",
         "putChannel refuses a keys release out of range",
         vec![Op::PutChannel {
-            channel: chan(Channel::new(33, "Keys", "#7c8cf8", ChannelSrc::Keys { keys: KeysState { release: 10.0, dynamics: 100.0 } })),
+            channel: chan(Channel::new(
+                33,
+                "Keys",
+                "#7c8cf8",
+                ChannelSrc::Keys { keys: KeysState { release: Some(10.0), dynamics: 100.0, ..Default::default() } },
+            )),
+            index: None,
+        }],
+    ));
+    c.push((
+        "main",
+        "putChannel adds a keys channel playing another instrument",
+        vec![Op::PutChannel {
+            channel: chan(Channel::new(
+                34,
+                "Keys",
+                "#7c8cf8",
+                ChannelSrc::Keys { keys: KeysState { instrument: "strings".into(), articulation: Some(26), ..Default::default() } },
+            )),
+            index: None,
+        }],
+    ));
+    c.push((
+        "main",
+        "putChannel refuses an unknown keys instrument",
+        vec![Op::PutChannel {
+            channel: chan(Channel::new(
+                34,
+                "Keys",
+                "#7c8cf8",
+                ChannelSrc::Keys { keys: KeysState { instrument: "kazoo".into(), articulation: None, ..Default::default() } },
+            )),
+            index: None,
+        }],
+    ));
+    c.push((
+        "main",
+        "putChannel refuses an articulation the instrument lacks",
+        vec![Op::PutChannel {
+            channel: chan(Channel::new(
+                34,
+                "Keys",
+                "#7c8cf8",
+                ChannelSrc::Keys { keys: KeysState { instrument: "grand-piano".into(), articulation: Some(26), ..Default::default() } },
+            )),
             index: None,
         }],
     ));

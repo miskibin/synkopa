@@ -1,0 +1,32 @@
+// Synkopa Keys: Vibraphone.
+// Vibraphone from the Versilian Community Sample Library by Versilian Studios, CC0-1.0.
+// https://github.com/sgossner/VCSL (c1ea7bcc3c)
+// Mapping by Synkopa.
+
+<global> ampeg_release=1.8 amp_veltrack=60 global_volume=9.5
+
+<group> lovel=1 hivel=80
+<region> sample=Vibes_soft_F2_v1_rr1_Main.wav lokey=48 hikey=55 pitch_keycenter=53
+<region> sample=Vibes_soft_A2_v1_rr1_Main.wav lokey=56 hikey=58 pitch_keycenter=57
+<region> sample=Vibes_soft_C3_v1_rr2_Main.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=Vibes_soft_E3_v1_rr2_Main.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=Vibes_soft_G3_v1_rr1_Main.wav lokey=66 hikey=69 pitch_keycenter=67
+<region> sample=Vibes_soft_B3_v1_rr1_Main.wav lokey=70 hikey=72 pitch_keycenter=71
+<region> sample=Vibes_soft_D4_v1_rr1_Main.wav lokey=73 hikey=75 pitch_keycenter=74
+<region> sample=Vibes_soft_F4_v1_rr1_Main.wav lokey=76 hikey=79 pitch_keycenter=77
+<region> sample=Vibes_soft_A4_v1_rr1_Main.wav lokey=80 hikey=82 pitch_keycenter=81
+<region> sample=Vibes_soft_C5_v1_rr1_Main.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=Vibes_soft_E5_v1_rr1_Main.wav lokey=87 hikey=91 pitch_keycenter=88
+
+<group> lovel=81 hivel=127
+<region> sample=Vibes_soft_F2_v2_rr1_Main.wav lokey=48 hikey=55 pitch_keycenter=53
+<region> sample=Vibes_soft_A2_v2_rr1_Main.wav lokey=56 hikey=58 pitch_keycenter=57
+<region> sample=Vibes_soft_C3_v2_rr1_Main.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=Vibes_soft_E3_v2_rr1_Main.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=Vibes_soft_G3_v2_rr1_Main.wav lokey=66 hikey=69 pitch_keycenter=67
+<region> sample=Vibes_soft_B3_v2_rr1_Main.wav lokey=70 hikey=72 pitch_keycenter=71
+<region> sample=Vibes_soft_D4_v2_rr1_Main.wav lokey=73 hikey=75 pitch_keycenter=74
+<region> sample=Vibes_soft_F4_v2_rr1_Main.wav lokey=76 hikey=79 pitch_keycenter=77
+<region> sample=Vibes_soft_A4_v2_rr1_Main.wav lokey=80 hikey=82 pitch_keycenter=81
+<region> sample=Vibes_soft_C5_v2_rr1_Main.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=Vibes_soft_E5_v2_rr1_Main.wav lokey=87 hikey=91 pitch_keycenter=88

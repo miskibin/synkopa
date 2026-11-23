@@ -514,8 +514,16 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             }
             if let ChannelSrc::Keys { keys } = &c.src {
                 let (r, y) = (crate::keys::RELEASE_MS, crate::keys::DYNAMICS);
-                if !(keys.release.is_finite() && (r.0..=r.1).contains(&keys.release)) {
+                if keys.release.is_some_and(|ms| !(ms.is_finite() && (r.0..=r.1).contains(&ms))) {
                     return Err(OpError::Invalid(format!("keys release must be {}..{} ms", r.0, r.1)));
+                }
+                if crate::keys::instrument(&keys.instrument).is_none() {
+                    return Err(OpError::Invalid(format!("Synkopa Keys has no instrument `{}`", keys.instrument)));
+                }
+                if let Some(a) = keys.articulation {
+                    if !crate::keys::articulations(&keys.instrument).iter().any(|x| x.key == a) {
+                        return Err(OpError::Invalid(format!("{} has no articulation on key {a}", keys.instrument)));
+                    }
                 }
                 if !(keys.dynamics.is_finite() && (y.0..=y.1).contains(&keys.dynamics)) {
                     return Err(OpError::Invalid("keys dynamics must be 0..100 %".into()));

@@ -826,6 +826,8 @@ pub struct ChanRt {
     /// the release time in seconds and the velocity → level amount 0..1.
     pub keys: Option<Arc<crate::keys::KeysBank>>,
     pub keys_release: f32,
+    /// The channel's articulation (keyswitch key), when it chose one.
+    pub keys_sw: Option<u8>,
     pub keys_dynamics: f32,
     /// Music Box channels: the knobs (see `crate::musicbox`; the release in seconds, the
     /// rest normalized 0..1).
@@ -1510,13 +1512,13 @@ impl Rt {
                             }
                         }
                     } else {
-                        self.voices.note_off(chan, key);
+                        self.voices.note_off(&tl.chans, chan, key);
                         self.synths.key_up(chan, key);
                         self.plugs.key_up(chan, key);
                     }
                 }
                 Cmd::MidiSustain(down) => {
-                    self.voices.sustain(down);
+                    self.voices.sustain(&self.timeline.chans, down);
                     self.synths.sustain(down);
                     self.plugs.sustain(down);
                 }
@@ -2950,7 +2952,7 @@ fn apply_automation(tl: &mut Timeline, g: &mut Graph, synths: &mut crate::poly::
             }
             TargetRt::KeysRelease(i) => {
                 if let Some(ch) = tl.chans.get_mut(i) {
-                    let (lo, hi, _) = crate::keys::RELEASE_MS;
+                    let (lo, hi) = crate::keys::RELEASE_MS;
                     ch.keys_release = lo * (hi / lo).powf(v) / 1000.0;
                 }
             }

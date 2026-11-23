@@ -10,7 +10,8 @@ import { newSynthChannel } from '../lib/synth';
 import { nextChannelColor } from '../lib/color';
 import { prefs } from './prefs';
 import { be } from '../api/backend';
-import { KEYS_DYNAMICS, KEYS_RELEASE, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
+import { keysInstrument } from '../lib/keysCatalog';
+import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
 import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
@@ -430,7 +431,7 @@ export function addSynth(name: string | null) {
 }
 /** A new channel's colour: one the rack uses least, so its steps and notes stand apart. */
 const freshColor = () => nextChannelColor(channels().map(c => c.color));
-const keysChannel = (id: Id): Channel => ({ id, name: 'Synkopa Keys', color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
+const keysChannel = (id: Id): Channel => ({ id, name: 'Synkopa Keys', color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
 /** A new Music Box channel: the modeled tine instrument. */
 const musicBoxChannel = (id: Id): Channel => ({
   id, name: 'Music Box', color: '#cf8e52', kind: 'musicbox',
@@ -518,6 +519,30 @@ export function addKeys() {
   commit([chanOp(c)], t('b.st.addKeys'));
   selectChannel(c.id);
   say(t('b.st.keysSay'));
+}
+/**
+ * Make a Keys channel play another instrument of the catalog (one undo step). Its articulation
+ * and a release override belong to the old instrument and are dropped; a channel still named
+ * after its instrument (or the default name) takes the new one's name.
+ */
+export function setKeysInstrument(id: Id, instrument: string) {
+  const c = chanById(id);
+  const inst = keysInstrument(instrument);
+  if (c?.kind !== 'keys' || !inst) return;
+  const was = c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT;
+  if (was === instrument) return;
+  const named = c.name === 'Synkopa Keys' || c.name === keysInstrument(was)?.name;
+  const keys = { instrument, dynamics: c.keys.dynamics };
+  commit([chanOp(c, { name: named ? inst.name : c.name, keys } as Partial<Channel>)], t('b.kp.instCh'));
+  say(t('b.kp.instSay', { name: named ? inst.name : c.name, inst: inst.name }));
+}
+/** Pick the articulation a Keys channel plays (the keyswitch key; `undefined` = the instrument's default). */
+export function setKeysArticulation(id: Id, key: number | undefined) {
+  const c = chanById(id);
+  if (c?.kind !== 'keys' || c.keys.articulation === key) return;
+  const keys = { ...c.keys, articulation: key };
+  if (key == null) delete keys.articulation;
+  commit([chanOp(c, { keys } as Partial<Channel>)], t('b.kp.artCh'));
 }
 /** A new Music Box channel: the modeled tine instrument. */
 export function addMusicBox() {

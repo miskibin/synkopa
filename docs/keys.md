@@ -1,75 +1,114 @@
 # Synkopa Keys
 
-A sampled grand piano as a Channel Rack channel (`kind: "keys"`). Add it from the Channel
-Rack's **+** menu (*Synkopa Keys — fortepian*) or with `synkopa channels --keys`; it is played from
-the piano roll, the typing keyboard and a MIDI keyboard (with the sustain pedal) like every
-other pitched channel.
+A sampled-instrument player as a Channel Rack channel (`kind: "keys"`), laid out like a sampler
+plugin: an instrument browser on the left, the chosen instrument on the right. Add it from the
+Channel Rack's **+** menu or with `synkopa channels --keys`; it plays from the piano roll, the
+typing keyboard and a MIDI keyboard (with the sustain pedal) like every other pitched channel, and
+slide notes glide it.
 
-Project format: `{"kind": "keys", "keys": {"release": 350, "dynamics": 100}}`; both fields are
-optional. Projects without a Keys channel load unchanged.
+## Instruments
+
+| instrument | id | what it is | recordings | licence | size |
+| --- | --- | --- | --- | --- | --- |
+| Grand Piano | `grand-piano` | Yamaha C5, 4 dynamics, key-release noises | [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano), Alexander Holm | CC-BY-3.0 | ships in the app (33 MB) |
+| Upright Piano | `upright-piano` | 3 dynamics, 2 round robins | [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE) Upright Nr1, Versilian Studios | CC0 | 155 MB |
+| Wurlitzer EP200 | `wurlitzer` | electric piano | [E-Pianos](https://github.com/sfzinstruments/GregSullivan.E-Pianos), Greg Sullivan | CC-BY-3.0 | 21 MB (one kit with the next two) |
+| Electric Grand CP80 | `cp80` | stringed electric grand | same | CC-BY-3.0 | |
+| Pianet T | `pianet` | plucked-reed piano | same | CC-BY-3.0 | |
+| String Section | `strings` | violins, violas, cellos: sustain, tremolo, pizzicato, spiccato | VSCO 2 CE, Versilian Studios | CC0 | 198 MB |
+| Concert Harp | `harp` | rings out on its own | VSCO 2 CE | CC0 | 35 MB |
+| Vibraphone | `vibraphone` | soft mallets, motor off, 2 dynamics | [VCSL](https://github.com/sgossner/VCSL), Versilian Studios | CC0 | 42 MB |
+
+Only the grand piano ships inside the app. The others are library kits: the instrument's
+**Download** button (or Library → the kit) fetches the files once into the sample library, each
+checked against the SHA-256 pinned in `assets-manifest.json`. A CC-BY instrument's credit is shown
+under its knobs; a song that uses it should credit the recordings.
+
+## The window and the project
+
+Clicking an instrument in the browser makes the channel play it (one undo step). A channel still
+named after its instrument takes the new name; an articulation and a release set for the old
+instrument are dropped. Knobs:
 
 | knob | range | what it does |
 | --- | --- | --- |
-| Wybrzmienie (`release`) | 40 ms – 3 s, default 350 ms | how long a note rings after its key is let go (−60 dB at the end) |
-| Dynamika (`dynamics`) | 0 – 100 %, default 100 % | how much the velocity changes the level; the timbre always follows the velocity |
+| Release (`release`) | Auto, or 40 ms – 3 s | how long a note rings after its key is let go (−60 dB at the end). **Auto** (2× click) = each region's own time as the instrument was mapped: the piano's dampers 0.5 s, its top two octaves (no dampers) 3–4 s, the strings 1.4 s |
+| Dynamics (`dynamics`) | 0 – 100 %, default 100 % | how much the velocity changes the level; the timbre always follows it |
+| Volume, Pan | | the channel's own |
+
+Instruments with articulations (the strings) show them as buttons; the choice is saved with the
+channel. Their keyswitches (C1–D#1 for the strings) are tinted on the keyboard and switch while
+playing: a note on one picks the articulation instead of sounding, until the next edit. Keys outside
+an instrument's range are dimmed (they still play, pitched from the nearest recording).
+
+Project format: `{"kind": "keys", "keys": {"instrument": "strings", "dynamics": 100, "articulation": 26}}`.
+`instrument` defaults to `grand-piano`, `release` (ms) is absent for Auto, `articulation` absent for
+the instrument's first one. Projects made before there was a choice (`{"release": 350, "dynamics":
+100}`) play the grand piano with their saved release, as they did.
 
 ```sh
-synkopa channels --keys
-synkopa channels --ch "Synkopa Keys" --param release --value 600
-synkopa channels --ch "Synkopa Keys" --param dynamics --value 70
+synkopa channels --keys --instrument wurlitzer
+synkopa channels --ch "String Section" --articulation pizzicato
+synkopa channels --ch "Synkopa Keys" --param release --value 600   # 0 = Auto
+synkopa catalog                                                       # "keys": the instruments and their articulations
 ```
 
-The Keys window (click the channel's name) has a keyboard you can click (a key sounds while held): lower on a key is a
-harder hit, dragging slides across keys, and keys held on a MIDI keyboard light up. Sampler
-channels have the same keyboard, with a dot on the root key.
+## How it works
 
-## The recordings
+Every instrument is an SFZ mapping embedded in the program (`crates/engine/instruments/*.sfz`) over
+the files of its kit. `crates/engine/src/sfz.rs` parses the part of SFZ the player supports:
+`<control>/<global>/<master>/<group>/<region>/<curve>`, `#define` and `#include`; key and velocity
+ranges, `pitch_keycenter`/`pitch_keytrack`, `tune`/`transpose`, `volume`/`amplitude`/`pan`
+(and `global_/master_/group_volume`), `amp_veltrack` and `amp_velcurve_N`, velocity and key
+crossfades, `trigger=release` with `rt_decay`, round robins (`seq_length`/`seq_position`,
+`lorand`/`hirand`), the amplitude envelope (`ampeg_*`), `offset`/`end`, loops, `group`/`off_by`,
+keyswitches with `sw_label`, and `*_onccN` modulation of those. CCs are not routed into a playing
+instrument (except the sustain pedal): a CC modulation is evaluated at load from the CC's default
+(`set_cc`/`set_hdcc`), the extended CCs 131 (velocity) and 133 (key) per note. Unknown opcodes are
+counted, not fatal; every catalog instrument parses with none.
 
-Salamander Grand Piano V3 (a Yamaha C5, recorded by Alexander Holm, **CC-BY-3.0**): 30 notes,
-every minor third from A0 to C8, at 3 of the 16 recorded dynamics (layers 4, 9 and 14), 48 kHz
-24-bit FLAC, 138 MB. They are pinned by URL and SHA-256 in `assets-manifest.json` (kit
-`salamander-piano`).
+`crates/engine/src/keys.rs` loads the recordings an instrument names (decoded on a few threads,
+cut at 9 s with a 1.5 s fade unless a region loops them) and keeps them as 16-bit PCM — half of
+`f32`, far below the recordings' own noise. A note plays every region its key, velocity, round
+robin and keyswitch select, resampled with cubic interpolation, under its ADSR; a sequenced note
+schedules its key-release regions at its end, a live note plays them at its note-off (or when the
+pedal lets it go). Voices come from the engine's shared pool of 128, oldest stolen first. The
+bank is an `Arc` built off the audio thread; a voice only reads it. No allocation, lock or I/O in
+the callback.
 
-The installer carries them prepared, not as downloaded (about 23 MB instead of 138 MB). The
-engine keeps only the first 9 seconds of a recording, fading out over the last 1.5
-(`keys::trimmed`), so the recordings run up to 25 s but most of that never plays.
-`wave-keys-prep` (`crates/keys-prep`) applies that same cut ahead of time and stores 16-bit
-FLAC with triangular dither; when the app loads a prepared file the cut finds nothing to do.
-The 16-bit step is inaudible: the recordings' own noise is far above it. The tool decodes
-every file it writes and stops the build if any sample is more than 1.6 steps of 16-bit
-from the cut original; on the current files the largest difference is −86.8 dBFS. Its
-output is deterministic (the dither is seeded from the file name). The in-app download
-installs the original files.
+The app loads an instrument the first time a channel plays it and drops it when none does, so
+browsing does not pile them up in memory (about 190 MB for the piano, 140 MB the strings, under
+40 MB the others). An offline bounce (`synkopa render`, Export) waits for every instrument the
+project plays and refuses to start silently when one is missing.
 
-CC-BY is an attribution licence: a song that uses the piano should credit the recordings. The
-Keys window shows the credit, and `THIRD_PARTY_NOTICES.md` carries it for the app.
+Levels: the same four-bar phrase rendered on every instrument sits at −28 ± 1.5 dBFS RMS
+(`cargo run --release -p wave-engine --example keys_demo -- target/keys-kits target/keys-demo`).
 
-Where the app finds them, in this order:
+## The grand piano's mapping
 
-1. **inside the app**: `keys/` in the bundled resources. `node scripts/fetch-keys.mjs`
-   downloads the originals into `target/keys-src` (checksummed, reused on the next run),
-   prepares them into `app/resources/keys` (not in Git) and `tauri build` ships that folder; the release workflow runs the script, so installers always contain the piano;
-2. **the sample library**: `<data>/WAVE/Library/salamander-piano`, for builds made without
-   step 1 (a plain `cargo build`). The Keys window then offers **Pobierz fortepian**, which
-   installs the library kit; the channel starts playing when the download ends.
+4 of the Salamander's 16 dynamics (layers 1, 6, 11, 16) at every minor third from A0 to C8, plus its
+88 key-release recordings 40 dB down. Inside its velocity band a layer is levelled by
+(velocity / the velocity it was played at)^k, with k measured from the level step to the next
+layer (RMS of the first 0.5 s, mean over the 30 notes: 1.0, 0.95, 1.83), so the level is continuous
+across a layer boundary and only the timbre changes.
 
-Nothing is loaded until a project has a Keys channel. Then the files are decoded on a few
-threads (about a second) into memory, about 280 MB, and stay there. Until that ends the
-channel is silent and the window says so; an offline bounce (`synkopa render`, Eksport) waits
-for it instead of rendering a silent piano.
+The installer carries the recordings prepared, not as downloaded (33 MB instead of 185 MB):
+`node scripts/fetch-keys.mjs` downloads the originals into `target/keys-src` (checksummed, reused
+on the next run) and runs `wave-keys-prep` (`crates/keys-prep`), which applies the 9 s cut ahead of
+time and stores 16-bit FLAC with triangular dither into `app/resources/keys` (not in Git); `tauri
+build` ships that folder, and the release workflow runs the script. The tool decodes every file it
+writes and stops the build if any sample is more than 1.6 steps of 16-bit from the cut original
+(the largest difference on the current files is −86.8 dBFS). A build without the folder (a plain
+`cargo build`) offers the download instead.
 
-## How a note plays (`crates/engine/src/keys.rs`, voices in `synth.rs`)
+## Adding an instrument
 
-- the recording nearest to the key, resampled by at most two semitones (cubic interpolation);
-- the layer its velocity falls in (thirds of the velocity range); inside a layer the level
-  follows the velocity by `dynamics` (`(velocity / layer centre)^(1.2 · dynamics)`);
-- it rings for the note's length, then fades exponentially over `release`; striking a key
-  again damps that key's previous note the same way;
-- recordings are cut at 9 s with a 1.5 s fade (the longest a held note can ring);
-- voices come from the engine's shared pool of 96, oldest stolen first.
+`node scripts/keys-kits.mjs [kit ...]` builds the downloadable kits: for each it downloads the
+recordings it plays (pinned to a commit, cached in `target/keys-kits`), writes their SHA-256 and
+size into `assets-manifest.json`, and writes the instrument's SFZ mapping. Add the instrument to
+`CATALOG` in `keys.rs`, level it with `keys_demo`, and run
+`WAVE_WRITE_FIXTURES=1 cargo test -p wave-engine --test keys_catalog_fixture` so the browser mock
+lists it. Only recordings whose licence allows redistribution qualify (CC0, CC-BY, public domain).
 
-Real time: the bank is an `Arc` built off the audio thread and carried by the timeline; a
-voice only reads it. No allocation, lock or I/O in the callback.
-
-Not there (yet): half-pedalling and sympathetic resonance, release samples, more than three
-dynamics. They are what a larger sample set would add.
+Not there (yet): streaming from disk (every recording is in memory while an instrument plays),
+importing your own `.sfz` files, filters and LFOs from SFZ, legato transitions.

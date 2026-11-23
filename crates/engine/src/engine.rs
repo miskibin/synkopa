@@ -408,8 +408,8 @@ pub(crate) struct Core {
     /// `fx_errors`), with the plugin it hosts. A failed one is retried when its plugin changes
     /// or the audio device is rebuilt, not on every edit.
     plugs: HashMap<Id, PluginRef>,
-    /// The Synkopa Keys piano, once the app has loaded it.
-    keys: Option<Arc<crate::keys::KeysBank>>,
+    /// Synkopa Keys instruments the app has loaded, by catalog id.
+    keys: HashMap<String, Arc<crate::keys::KeysBank>>,
 }
 
 /// Live MIDI input state kept under the core lock (see [`Engine::midi_configure`]).
@@ -566,7 +566,7 @@ impl Engine {
                 midi: MidiState::default(),
                 synths: HashMap::new(),
                 plugs: HashMap::new(),
-                keys: None,
+                keys: HashMap::new(),
             }),
             shared: Mutex::new(Arc::new(Shared::new())),
             factory,
@@ -1520,16 +1520,43 @@ impl Engine {
 }
 
 impl Engine {
-    /// Hands the engine the loaded piano (or takes it away). Keys channels are silent
-    /// without it; with it they play at once, also notes that are sounding.
-    pub fn set_keys_bank(&self, bank: Option<Arc<crate::keys::KeysBank>>) {
+    /// Hands the engine a loaded instrument (or takes it away). Keys channels that play it are
+    /// silent without it; with it they play at once.
+    pub fn set_keys_bank(&self, instrument: &str, bank: Option<Arc<crate::keys::KeysBank>>) {
         let mut c = self.core.lock();
-        c.keys = bank;
+        match bank {
+            Some(b) => c.keys.insert(instrument.to_string(), b),
+            None => c.keys.remove(instrument),
+        };
         self.sync(&mut c, Dirty { timeline: true, mixer: false, params: false });
     }
 
-    pub fn has_keys_bank(&self) -> bool {
-        self.core.lock().keys.is_some()
+    pub fn has_keys_bank(&self, instrument: &str) -> bool {
+        self.core.lock().keys.contains_key(instrument)
+    }
+
+    /// Instruments the engine holds (loaded), by catalog id.
+    pub fn keys_banks(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.core.lock().keys.keys().cloned().collect();
+        v.sort();
+        v
+    }
+
+    /// The instruments the project's Keys channels play, each once, in catalog-id order.
+    pub fn keys_instruments(&self) -> Vec<String> {
+        let c = self.core.lock();
+        let mut v: Vec<String> = c
+            .project
+            .channels
+            .iter()
+            .filter_map(|ch| match &ch.src {
+                ChannelSrc::Keys { keys } => Some(keys.instrument.clone()),
+                _ => None,
+            })
+            .collect();
+        v.sort();
+        v.dedup();
+        v
     }
 
     /// True when the project has a Synkopa Keys channel.

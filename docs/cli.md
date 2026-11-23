@@ -210,6 +210,8 @@ synkopa channels --synth "808 Deep"                # a synth channel with a fact
 synkopa channels --ch 1005 --preset "Pad Warm"     # load a synth preset (ids/names in `synkopa catalog` → effects.synth)
 synkopa channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
 synkopa channels --keys                              # Synkopa Keys: the sampled grand piano (see docs/keys.md)
+synkopa channels --keys --instrument strings         # another Keys instrument (ids: `synkopa catalog`, "keys")
+synkopa channels --ch "String Section" --articulation pizzicato   # a Keys channel's instrument / articulation
 synkopa channels --ch "Synkopa Keys" --param release --value 600   # its knobs: release (ms), dynamics (%)
 synkopa channels --musicbox                          # the Music Box: the modeled tine instrument (see docs/musicbox.md)
 synkopa channels --ch "Music Box" --param ring --value 140     # its knobs: ring, brightness, body, mechanical, spread (%); release (ms)
