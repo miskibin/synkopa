@@ -237,14 +237,24 @@ export const rollX = (G: RollGeo, step: number) => G.kw + step * G.pps - G.sx;
 
 function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, root: number, mask: number, grid: number) {
   const k0 = Math.max(0, Math.floor(127 - (G.sy + H) / G.rowH)), k1 = Math.min(127, Math.ceil(127 - G.sy / G.rowH));
+  const whiteRow = theme.light ? T.bg7 : mix(T.bg6, 48, T.viz);
+  const blackRow = theme.light ? mix(T.line2, 55, T.bg7) : T.viz;
+  const rootTint = rgba(T.blue, theme.light ? 0.18 : 0.20);
+  const scaleTint = rgba(T.fgHi, theme.light ? 0.07 : 0.06);
+  const fineLine = rgba(T.fg, 0.13);
+  const beatLine = rgba(T.fg, 0.23);
+  const majorLine = rgba(T.fg, 0.40);
   g.fillStyle = T.viz; g.fillRect(0, 0, W, H);
   for (let k = k0; k <= k1; k++) {
     const y = rollY(G, k);
     const isRoot = (((k - root) % 12) + 12) % 12 === 0;
-    g.fillStyle = isRoot ? rgba(T.blue, theme.light ? 0.10 : 0.09) : inScale(k, root, mask) ? (theme.light ? T.bg7 : mix(T.viz, 70, T.bg6)) : isBlack(k) ? mix(T.viz, 80, T.bg0) : T.viz;
+    g.fillStyle = isBlack(k) ? blackRow : whiteRow;
     g.fillRect(G.kw, y, W - G.kw, G.rowH);
-    g.fillStyle = (k % 12 === 0) ? T.vizAxis : T.vizGrid;
-    g.fillRect(G.kw, Math.round(y + G.rowH) - 0.5, W - G.kw, 1);
+    // Keep the black/white distinction underneath the root and scale highlights.
+    if (isRoot || (mask !== 0xfff && inScale(k, root, mask) !== theme.light)) {
+      g.fillStyle = isRoot ? rootTint : scaleTint;
+      g.fillRect(G.kw, y, W - G.kw, G.rowH);
+    }
   }
   // vertical lines: the snap grid's own lines (16ths, triplets, ... when there is room), then
   // beats and bars over them. A grid of a beat or longer shows 16ths, like 1/16.
@@ -255,18 +265,23 @@ function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, r
     const xa = Math.max(G.kw, Math.round(rollX(G, b * 4))), xb = Math.round(rollX(G, (b + n) * 4));
     if (xb > xa) g.fillRect(xa, 0, xb - xa, H);
   }
+  for (let k = k0; k <= k1; k++) {
+    // The bottom edge of C divides octaves at the C/B boundary.
+    g.fillStyle = k % 12 === 0 ? majorLine : fineLine;
+    g.fillRect(G.kw, Math.round(rollY(G, k) + G.rowH) - 1, W - G.kw, 1);
+  }
   const u = grid > 0 && grid < 4 ? grid : 1;
   if (u * G.pps >= 7) {
-    g.fillStyle = T.vizGrid;
+    g.fillStyle = fineLine;
     for (let i = Math.floor(s0 / u); i * u <= s1; i++) {
       const s = i * u;
       if (Math.abs(s / 4 - Math.round(s / 4)) < 1e-6) continue;
-      g.fillRect(Math.round(rollX(G, s)) - 0.5, 0, 1, H);
+      g.fillRect(Math.round(rollX(G, s)), 0, 1, H);
     }
   }
   for (let s = Math.ceil(s0 / 4) * 4; s <= s1; s += 4) {
-    g.fillStyle = s % 16 === 0 ? T.vizAxis : T.vizGrid2;
-    g.fillRect(Math.round(rollX(G, s)) - 0.5, 0, 1, H);
+    g.fillStyle = s % 16 === 0 ? majorLine : beatLine;
+    g.fillRect(Math.round(rollX(G, s)), 0, 1, H);
   }
   // past the pattern end: drawing there makes the pattern longer
   const endX = rollX(G, G.steps);
