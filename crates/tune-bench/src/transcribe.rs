@@ -13,7 +13,7 @@
 use std::path::Path;
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, F0Estimator};
+use wave_engine::pitch::{analyze_with, F0Estimator, PitchAnalysis};
 use wave_engine::sources::{mono_of, Audio};
 
 use crate::vocalset::{self, Item};
@@ -24,6 +24,10 @@ pub struct N {
     pub off: f64,
     /// MIDI, fractional.
     pub p: f32,
+}
+
+pub fn tracker_notes(analysis: &PitchAnalysis) -> Vec<N> {
+    analysis.notes.iter().map(|n| N { on: n.start, off: n.end, p: n.pitch }).collect()
 }
 
 const TECHNIQUES: [&str; 16] = [
@@ -105,31 +109,42 @@ fn truth(root: &Path, stem: &str, mid_onsets: bool) -> Option<Vec<N>> {
     None
 }
 
-/// Maximum bipartite matching (augmenting paths); `ok(r, e)` says whether the pair may match.
-fn matching(r: &[N], e: &[N], ok: impl Fn(&N, &N) -> bool) -> usize {
+/// Maximum bipartite matching (augmenting paths), indexed by reference note.
+/// Visit notes in slice order and prefer a free candidate before reassigning an existing match.
+fn matching(r: &[N], e: &[N], ok: impl Fn(&N, &N) -> bool) -> Vec<Option<usize>> {
     let adj: Vec<Vec<usize>> = r.iter().map(|a| (0..e.len()).filter(|&j| ok(a, &e[j])).collect()).collect();
     let mut owner: Vec<Option<usize>> = vec![None; e.len()];
     fn aug(i: usize, adj: &[Vec<usize>], seen: &mut [bool], owner: &mut [Option<usize>]) -> bool {
+        if let Some(&j) = adj[i].iter().find(|&&j| owner[j].is_none()) {
+            owner[j] = Some(i);
+            return true;
+        }
         for &j in &adj[i] {
             if seen[j] {
                 continue;
             }
             seen[j] = true;
-            if owner[j].is_none_or(|k| aug(k, adj, seen, owner)) {
+            if owner[j].is_some_and(|k| aug(k, adj, seen, owner)) {
                 owner[j] = Some(i);
                 return true;
             }
         }
         false
     }
-    let mut n = 0;
     for i in 0..r.len() {
-        let mut seen = vec![false; e.len()];
-        if aug(i, &adj, &mut seen, &mut owner) {
-            n += 1;
+        aug(i, &adj, &mut vec![false; e.len()], &mut owner);
+    }
+    let mut matches = vec![None; r.len()];
+    for (j, i) in owner.into_iter().enumerate() {
+        if let Some(i) = i {
+            matches[i] = Some(j);
         }
     }
-    n
+    matches
+}
+
+pub fn note_matches(r: &[N], e: &[N], with_offset: bool) -> Vec<Option<usize>> {
+    matching(r, e, |a, b| onset_ok(a, b) && pitch_ok(a, b) && (!with_offset || offset_ok(a, b)))
 }
 
 const ON_TOL: f64 = 0.05;
@@ -168,9 +183,9 @@ impl Score {
     pub fn add(&mut self, r: &[N], e: &[N]) {
         self.refs += r.len();
         self.ests += e.len();
-        self.on_p_off += matching(r, e, |a, b| onset_ok(a, b) && pitch_ok(a, b) && offset_ok(a, b));
-        self.on_p += matching(r, e, |a, b| onset_ok(a, b) && pitch_ok(a, b));
-        self.on += matching(r, e, onset_ok);
+        self.on_p_off += note_matches(r, e, true).iter().flatten().count();
+        self.on_p += note_matches(r, e, false).iter().flatten().count();
+        self.on += matching(r, e, onset_ok).iter().flatten().count();
         for a in r {
             let dur = a.off - a.on;
             // detected notes that mostly sit inside this annotated note

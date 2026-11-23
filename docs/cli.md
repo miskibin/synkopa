@@ -433,6 +433,48 @@ notes* pastes) is scored note by note (mir_eval's COn / COnP / COnPOff) by `tran
 `transcribe-grid` (VocalSet + GTSinger, tunes the note tracker on some singers and reports the
 held-out ones).
 
+### vocadito transcription benchmark
+
+Fetch [vocadito](https://doi.org/10.5281/zenodo.5578807) (Rachel Bittner, Katherine
+Pasalo, Juan José Bosch, Gabriel Meseguer-Brocal, and David Rubinstein, 2021,
+CC BY 4.0) and extract `vocadito.zip`. Point `--vocadito` at the directory
+containing `Audio/`, `Annotations/Notes/`, and `vocadito_metadata.csv`.
+
+```sh
+cargo test --locked -p wave-tune-bench
+cargo run --locked -p wave-tune-bench -- transcribe \
+  --vocadito /path/to/vocadito --yin --json vocadito-yin.json
+```
+
+The command reads every track in the metadata and returns an error naming any
+missing audio or A1/A2 note CSV. The report goes to stdout and optionally to
+`--json FILE`; progress goes to stderr. Use `--yin` to select YIN, or
+`--rmvpe MODEL.onnx` to select an explicit RMVPE model. The default loads the
+installed RMVPE model when available and otherwise uses YIN. Passing both
+`--yin` and `--rmvpe` is an error. The `backendRecordings` counts report the backend that actually analyzed each
+recording, including YIN fallbacks. Use `--root DIR` for Annotated VocalSet and
+its `--limit`, `--bpm`, `--basic-pitch`, and `--dump` options.
+
+Each recording is analyzed once. Both annotators score the same raw tracker
+notes in source time. The report sums note counts across tracks before computing
+precision, recall and F1. The denominators are predicted notes for precision,
+reference notes for recall, and their sum for F1 (with twice the matched notes
+as numerator). COnP uses the existing one-to-one match within 50 ms of onset and
+50 cents of pitch. COnPOff also requires the offset to be within the larger of
+50 ms and 20% of the reference duration. A ratio with a zero denominator is
+`null`, with counts still present.
+
+A repeat is a consecutive pair of notes on the same rounded MIDI key with a
+gap from −20 to +120 ms. Both notes must have distinct COnP matches for the
+pair to be preserved. A pair is shared when it occurs as a repeat in both
+annotations and the A1-to-A2 COnP match links its two corresponding notes. A
+shared pair is preserved when the two annotations link each corresponding note
+to the same predicted note. Maximum-cardinality matching uses onset, pitch,
+then offset to order both sides. It visits references in that order, prefers
+the first free candidate, and can reassign matches along an augmenting path.
+Repeat recall uses preserved pairs over reference pairs for A1, A2, and shared
+pairs separately.
+
 ## Pitch editing for agents
 
 The pitch editor's notes, for scripts and agents: what a vocal clip sings, how it relates to

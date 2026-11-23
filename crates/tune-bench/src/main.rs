@@ -12,6 +12,7 @@ mod listen;
 mod medley;
 mod synth;
 mod transcribe;
+mod vocadito;
 mod vocalset;
 
 use std::path::{Path, PathBuf};
@@ -27,6 +28,8 @@ const HELP: &str = "tune-bench — Tune to Reference benchmarks
   tune-bench vocalset --root DIR [--mode self|cross|mismatch|all] [--limit 40]
   tune-bench ab --out DIR [--root DIR] [--fragments 20] [--baseline snap|take] [--seed 1]
   tune-bench ab-score --kit DIR --ratings ratings.csv
+  tune-bench transcribe --root DIR [--limit 60] [--bpm 120] [--basic-pitch nmp.onnx] [--dump DIR]
+  tune-bench transcribe --vocadito DIR [--yin | --rmvpe model.onnx] [--json report.json]
 
   agent workflow (pitch inspect/compare/suggest → editTune → render), scored on the re-analysed render,
   with existing Tune to Reference on the same cases for comparison:
@@ -442,30 +445,55 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
             Ok(true)
         }
         "transcribe" => {
+            let vocadito = a.get("vocadito");
+            if a.has("vocadito") {
+                if vocadito.is_none() {
+                    return Err("--vocadito requires a directory".into());
+                }
+                if a.has("yin") && a.has("rmvpe") {
+                    return Err("use either --yin or --rmvpe MODEL".into());
+                }
+                for key in ["rmvpe", "json"] {
+                    if a.has(key) && a.get(key).is_none() {
+                        return Err(format!("--{key} requires a path"));
+                    }
+                }
+                if a.has("root") {
+                    return Err("use either --vocadito or --root".into());
+                }
+                for key in ["limit", "bpm", "basic-pitch", "dump"] {
+                    if a.has(key) {
+                        return Err(format!("--{key} is only supported with transcribe --root"));
+                    }
+                }
+            }
             let model = estimator(a)?;
             let est = model.as_ref().map(|m| m as &dyn F0Estimator);
-            let root = a.get("root").ok_or("--root is required")?;
-            let current = |an: &wave_engine::pitch::PitchAnalysis, _: &[f32], _: f32| -> Vec<transcribe::N> {
-                an.notes.iter().map(|n| transcribe::N { on: n.start, off: n.end, p: n.pitch }).collect()
+            let v = if let Some(root) = vocadito {
+                vocadito::run(Path::new(root), est)?
+            } else {
+                let root = a.get("root").ok_or("--root is required")?;
+                let current = |an: &wave_engine::pitch::PitchAnalysis, _: &[f32], _: f32| transcribe::tracker_notes(an);
+                let mut methods: Vec<transcribe::Transcriber> = vec![("current", &current)];
+                let bp = a.get("basic-pitch").map(|p| basic_pitch::Worker::spawn(Path::new(p))).transpose()?;
+                let bp_notes = |x: &[f32], sr: f32| bp.as_ref().map(|m| m.notes(x, sr).expect("Basic Pitch")).unwrap_or_default();
+                let bp_poly = |_: &wave_engine::pitch::PitchAnalysis, x: &[f32], sr: f32| basic_pitch::to_n(&bp_notes(x, sr));
+                let bp_mono = |_: &wave_engine::pitch::PitchAnalysis, x: &[f32], sr: f32| {
+                    basic_pitch::to_n(&basic_pitch::monophonic(&bp_notes(x, sr)))
+                };
+                if bp.is_some() {
+                    methods.push(("basic-pitch", &bp_poly));
+                    methods.push(("basic-pitch-mono", &bp_mono));
+                }
+                transcribe::run(
+                    Path::new(root),
+                    a.num("limit", 60.0)? as usize,
+                    est,
+                    &methods,
+                    a.num("bpm", 120.0)?,
+                    a.get("dump").map(Path::new),
+                )?
             };
-            let mut methods: Vec<transcribe::Transcriber> = vec![("current", &current)];
-            let bp = a.get("basic-pitch").map(|p| basic_pitch::Worker::spawn(Path::new(p))).transpose()?;
-            let bp_notes = |x: &[f32], sr: f32| bp.as_ref().map(|m| m.notes(x, sr).expect("Basic Pitch")).unwrap_or_default();
-            let bp_poly = |_: &wave_engine::pitch::PitchAnalysis, x: &[f32], sr: f32| basic_pitch::to_n(&bp_notes(x, sr));
-            let bp_mono =
-                |_: &wave_engine::pitch::PitchAnalysis, x: &[f32], sr: f32| basic_pitch::to_n(&basic_pitch::monophonic(&bp_notes(x, sr)));
-            if bp.is_some() {
-                methods.push(("basic-pitch", &bp_poly));
-                methods.push(("basic-pitch-mono", &bp_mono));
-            }
-            let v = transcribe::run(
-                Path::new(root),
-                a.num("limit", 60.0)? as usize,
-                est,
-                &methods,
-                a.num("bpm", 120.0)?,
-                a.get("dump").map(Path::new),
-            )?;
             let text = serde_json::to_string_pretty(&v).map_err(|e| e.to_string())?;
             if let Some(p) = a.get("json") {
                 std::fs::write(p, &text).map_err(|e| format!("{p}: {e}"))?;
@@ -520,5 +548,16 @@ fn main() -> ExitCode {
             eprintln!("tune-bench: {e}");
             ExitCode::from(2)
         }
+    }
+}
+
+#[cfg(test)]
+mod cli_tests {
+    use super::{run, Args};
+
+    #[test]
+    fn vocadito_rejects_conflicting_estimators_before_reading_inputs() {
+        let args = Args(["--vocadito", "dataset", "--yin", "--rmvpe", "model.onnx"].into_iter().map(str::to_owned).collect());
+        assert_eq!(run("transcribe", &args).unwrap_err(), "use either --yin or --rmvpe MODEL");
     }
 }
