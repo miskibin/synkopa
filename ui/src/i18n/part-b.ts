@@ -276,6 +276,7 @@ export const en = {
   'b.kp.d.cp80': "Yamaha's stringed electric grand: bright, glassy 80s ballads",
   'b.kp.d.pianet': "Hohner's plucked-reed piano: soft, woody, short",
   'b.kp.d.strings': 'Violin, viola and cello sections: sustain, tremolo, pizzicato and spiccato',
+  'b.kp.d.solo-violin': 'One violin for melodies and fast runs: arco with vibrato, tremolo, pizzicato, spiccato',
   'b.kp.d.harp': 'Plucked concert harp that rings out, for arpeggios and glissandi',
   'b.kp.d.vibraphone': 'Soft-mallet vibraphone with the motor off: two dynamics',
   // Music Box (the modeled tine instrument, see ui/src/views/MusicBoxPanel.tsx)
@@ -952,6 +953,7 @@ export const pl: Record<keyof typeof en, string> = {
   'b.kp.d.cp80': 'Strunowy fortepian elektryczny Yamahy: jasny, szklisty, ballady lat 80.',
   'b.kp.d.pianet': 'Pianet Hohnera z szarpanymi stroikami: miękki, drewniany, krótki',
   'b.kp.d.strings': 'Sekcje skrzypiec, altówek i wiolonczel: sustain, tremolo, pizzicato i spiccato',
+  'b.kp.d.solo-violin': 'Skrzypce solo do melodii i szybkich pasaży: arco z vibrato, tremolo, pizzicato, spiccato',
   'b.kp.d.harp': 'Harfa koncertowa, która swobodnie wybrzmiewa — do arpeggiów i glissand',
   'b.kp.d.vibraphone': 'Wibrafon miękkimi pałkami, bez silnika: dwie dynamiki',
   // Music Box (modelowy instrument, patrz ui/src/views/MusicBoxPanel.tsx)

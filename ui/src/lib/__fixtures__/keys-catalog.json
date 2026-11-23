@@ -114,6 +114,39 @@
       ]
     },
     {
+      "articulations": [
+        {
+          "key": 24,
+          "name": "Arco"
+        },
+        {
+          "key": 25,
+          "name": "Tremolo"
+        },
+        {
+          "key": 26,
+          "name": "Pizzicato"
+        },
+        {
+          "key": 27,
+          "name": "Spiccato"
+        }
+      ],
+      "bundled": false,
+      "bytes": 135467164,
+      "category": "strings",
+      "credit": "VSCO 2 Community Edition by Versilian Studios",
+      "description": "One violin for melodies and runs: arco with vibrato, tremolo, pizzicato, spiccato",
+      "id": "solo-violin",
+      "kit": "solo-violin",
+      "license": "CC0-1.0",
+      "name": "Solo Violin",
+      "range": [
+        55,
+        103
+      ]
+    },
+    {
       "articulations": [],
       "bundled": false,
       "bytes": 35312492,

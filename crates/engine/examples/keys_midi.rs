@@ -1,5 +1,5 @@
 //! Renders a MIDI file on a Synkopa Keys instrument (all parts merged on one channel).
-//!   cargo run --release -p wave-engine --example keys_midi -- <kit folder> <instrument> <file.mid> <out.wav> [tempo scale]
+//!   cargo run --release -p wave-engine --example keys_midi -- <kit folder> <instrument> <file.mid> <out.wav> [tempo scale] [articulation key]
 use std::path::Path;
 use std::sync::Arc;
 use wave_engine::keys::{instrument, KeysBank};
@@ -22,7 +22,8 @@ fn main() {
     let mut p = Project::empty();
     p.bpm = bpm;
     p.inserts[0].fx.clear();
-    let keys = KeysState { instrument: info.id.into(), ..Default::default() };
+    let articulation = a.get(5).and_then(|s| s.parse().ok());
+    let keys = KeysState { instrument: info.id.into(), articulation, ..Default::default() };
     p.channels.push(Channel { name: "Keys".into(), root: 60, ..Channel::new(CH, "", "#4f8ef7", ChannelSrc::Keys { keys }) });
     p.patterns = vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: end, min_len: end, notes, swing: 0.0 }];
     p.clips = vec![Clip {

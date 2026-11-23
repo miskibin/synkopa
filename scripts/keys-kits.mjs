@@ -45,13 +45,22 @@ const header = (title, credit, src, notes = []) =>
 // ------------------------------------------------------------------ the kits
 
 let treeCache;
-/** Every file path of VSCO 2 at the pinned commit (one GitHub API call). */
+/** Every file path of VSCO 2 at the pinned commit: one GitHub API call, cached in
+ *  target/keys-kits/vsco-tree.json (the recursive listing of this large repo can time out;
+ *  GITHUB_TOKEN, if set, is sent with it). */
 async function vscoTree() {
-  if (!treeCache) {
-    const res = await fetch(`https://api.github.com/repos/${VSCO.repo}/git/trees/${VSCO.commit}?recursive=1`);
-    if (!res.ok) throw new Error(`VSCO tree: HTTP ${res.status}`);
-    treeCache = (await res.json()).tree.filter(t => t.type === "blob").map(t => t.path);
-  }
+  if (treeCache) return treeCache;
+  const cache = join(root, 'target', 'keys-kits', `vsco-tree-${VSCO.commit.slice(0, 10)}.json`);
+  try {
+    treeCache = JSON.parse(await readFile(cache, 'utf8'));
+    return treeCache;
+  } catch { /* not cached */ }
+  const headers = process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {};
+  const res = await fetch(`https://api.github.com/repos/${VSCO.repo}/git/trees/${VSCO.commit}?recursive=1`, { headers });
+  if (!res.ok) throw new Error(`VSCO tree: HTTP ${res.status}`);
+  treeCache = (await res.json()).tree.filter(t => t.type === 'blob').map(t => t.path);
+  await mkdir(dirname(cache), { recursive: true });
+  await writeFile(cache, JSON.stringify(treeCache));
   return treeCache;
 }
 
@@ -226,6 +235,57 @@ const KITS = [
         o += `<region> sample=${parsed.find(p => p.k === r.root).n}.wav lokey=${r.lo} hikey=${r.hi} pitch_keycenter=${r.root}\n`;
       }
       return { files, sfz: { harp: o } };
+    },
+  },
+  {
+    id: 'solo-violin',
+    name: 'Solo Violin',
+    description: 'VSCO 2 solo violin for Synkopa Keys: arco with vibrato, tremolo, pizzicato, spiccato',
+    attribution: 'Solo violin from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.',
+    source: VSCO,
+    files: async () => {
+      const tree = await vscoTree();
+      // the arco and pizzicato files name C4 as middle C, tremolo and spiccato C3 (checked by pitch)
+      const arts = [
+        ['Arco Vib', 24, 'Arco', 60, 'ampeg_attack=0.02 ampeg_release=0.6 global_volume=6'],
+        ['Trem', 25, 'Tremolo', 72, 'ampeg_attack=0.02 ampeg_release=0.6 global_volume=5'],
+        ['Pizz', 26, 'Pizzicato', 60, 'ampeg_release=0.4 global_volume=11.5'],
+        ['spic', 27, 'Spiccato', 72, 'ampeg_release=0.15 global_volume=13'],
+      ];
+      const files = [];
+      let o = header('Solo Violin', 'Solo violin from VSCO 2 Community Edition by Versilian Studios', VSCO, [
+        'Mapping by Synkopa: four articulations on keyswitches C0..D#0 (keys 24..27), two',
+        'dynamics split at velocity 80, round robins where they were recorded.',
+      ]);
+      o += '\n<global> sw_lokey=24 sw_hikey=27 sw_default=24 amp_veltrack=60\n';
+      for (const [dir, sw, label, c4, env] of arts) {
+        const path = `Strings/Solo Violin/${dir}`;
+        const parsed = tree
+          .filter(p => p.startsWith(path + '/') && p.endsWith('.wav'))
+          .map(p => {
+            const n = p.slice(path.length + 1, -4);
+            const m = /_([A-G]#?\d)_(p|f|v1|v2)(?:_(?:rr|RR)(\d+))?$/.exec(n);
+            if (!m) throw new Error(`${path}: ${n}`);
+            return { n, path: p, k: key(m[1], c4), loud: m[2] === 'f' || m[2] === 'v2', rr: Number(m[3] ?? 1) };
+          });
+        const prefix = `${label.toLowerCase()}-`;
+        o += `\n<master> sw_last=${sw} sw_label=${label} ${env}\n`;
+        const sp = spans(parsed.map(p => p.k), 55, 103);
+        for (const loud of [false, true]) {
+          o += `<group> ${loud ? 'lovel=80 hivel=127' : 'lovel=1 hivel=79'}\n`;
+          for (const r of sp) {
+            let takes = parsed.filter(p => p.k === r.root && p.loud === loud);
+            if (!takes.length) takes = parsed.filter(p => p.k === r.root);
+            takes.sort((a, b) => a.rr - b.rr);
+            takes.forEach((t, j) => {
+              if (!files.some(f => f.path === t.path)) files.push({ file: `${prefix}${t.n}.wav`, path: t.path });
+              const rr = takes.length > 1 ? ` seq_length=${takes.length} seq_position=${j + 1}` : '';
+              o += `<region> sample=${prefix}${t.n}.wav lokey=${r.lo} hikey=${r.hi} pitch_keycenter=${r.root}${rr}\n`;
+            });
+          }
+        }
+      }
+      return { files, sfz: { 'solo-violin': o } };
     },
   },
   {

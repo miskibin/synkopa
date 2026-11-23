@@ -139,6 +139,18 @@ pub const CATALOG: &[InstrumentInfo] = &[
         sfz: include_str!("../instruments/strings.sfz"),
     },
     InstrumentInfo {
+        id: "solo-violin",
+        name: "Solo Violin",
+        category: Category::Strings,
+        description: "One violin for melodies and runs: arco with vibrato, tremolo, pizzicato, spiccato",
+        kit: "solo-violin",
+        bundled: false,
+        credit: "VSCO 2 Community Edition by Versilian Studios",
+        license: "CC0-1.0",
+        range: (55, 103),
+        sfz: include_str!("../instruments/solo-violin.sfz"),
+    },
+    InstrumentInfo {
         id: "harp",
         name: "Concert Harp",
         category: Category::Strings,

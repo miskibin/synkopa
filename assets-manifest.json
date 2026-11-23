@@ -6546,6 +6546,987 @@
           "bytes": 3221132
         }
       ]
+    },
+    {
+      "id": "solo-violin",
+      "name": "Solo Violin",
+      "description": "VSCO 2 solo violin for Synkopa Keys: arco with vibrato, tremolo, pizzicato, spiccato",
+      "attribution": "Solo violin from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.",
+      "source": {
+        "repo": "https://github.com/sgossner/VSCO-2-CE",
+        "commit": "440300901dfe9275fd84e0b7763af1f8443ae62e",
+        "license": "CC0-1.0",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "author": "Versilian Studios LLC"
+      },
+      "samples": [
+        {
+          "file": "arco-LLVln_ArcoVib_G3_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G3_p.wav",
+          "sha256": "c52d8ef3e2882984c09da1b7c7ef40b82e997bc78cfdd380fe167bbcb94b03de",
+          "bytes": 2788822
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A3_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A3_p.wav",
+          "sha256": "8daa4ca0eba8a834814435047e36b47826e730a7796c325966323f53debc9e46",
+          "bytes": 2911130
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C4_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C4_p.wav",
+          "sha256": "592ebf4404ccafc7164c13cc543911ba9a2fe5f5e70dbb200807e2ae37b25035",
+          "bytes": 3096650
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E4_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E4_p.wav",
+          "sha256": "57c5aec0678a5d582d87ab33cd2f8954fea26ffd04c932eb6753d6a78e08736b",
+          "bytes": 2600174
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G4_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G4_p.wav",
+          "sha256": "ad1ba8442a6b40919093c9c831a8171c7030f7e651fbe075ab87764665deef88",
+          "bytes": 2594066
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A4_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A4_p.wav",
+          "sha256": "0d05607b46b78690893006d5aa7923ac304c7fb497df1e96536dc88ac5ac487f",
+          "bytes": 2612122
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C5_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C5_p.wav",
+          "sha256": "77a2133b5f97e1ec0edb759c0c552fc3efa7caf4ce1e0a4aa22625cf4c9da130",
+          "bytes": 2498790
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E5_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E5_p.wav",
+          "sha256": "c60c3bcfc64ea00ebf8d97b16f2876c892393839a017a945c5e557359b6369a4",
+          "bytes": 2517094
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G5_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G5_p.wav",
+          "sha256": "537df6072b0922a0231a6b3fad117e84bcaaa3e60ca68c665776a83c9bd9062d",
+          "bytes": 2596714
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A5_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A5_p.wav",
+          "sha256": "204834bfb91ee62d53d3b2c9e9d37928617f643922f434323508a15a70ee591c",
+          "bytes": 2562122
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C6_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C6_p.wav",
+          "sha256": "48039f28964328d0b8235b8d61e39b06f8d22f836a6940fa036fe7004fc58e6c",
+          "bytes": 2358906
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E6_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E6_p.wav",
+          "sha256": "f1f0f8062eda1af6147852bf61b39e6b8734d4b0236737810c9d660297a34f0c",
+          "bytes": 2514702
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G6_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G6_p.wav",
+          "sha256": "eb40e796d0e40ff4a729fd93dc9436ac08b30de308a8191e944351fee49aef9d",
+          "bytes": 2417222
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A6_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A6_p.wav",
+          "sha256": "0f212759660b2fb0d645b2089adbf4222eebc829927c1e002caa434ecd804f0b",
+          "bytes": 2614110
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C7_p.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C7_p.wav",
+          "sha256": "02b077cecc5002156fb439c5e0edfb75dbed94a97502a0252e57a76930415889",
+          "bytes": 2274706
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G3_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G3_f.wav",
+          "sha256": "80bae3776b0ccd3d4774f47429e829c7764f5fe6061ff844a8affc6ac68b7899",
+          "bytes": 2936890
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A3_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A3_f.wav",
+          "sha256": "76934f3a85e4ba3b6518132c2fe6effa340c33fbb02f94e88c60b00073dc722f",
+          "bytes": 2864482
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C4_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C4_f.wav",
+          "sha256": "4169605b51a72454f11bc2c34efc66c1d9993fd2b7d5f097a025ef9d3a2dbdfa",
+          "bytes": 2334170
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E4_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E4_f.wav",
+          "sha256": "418512905f3294a23cf999f0587bf8e04d60192fe317ea8c80c150a85670eda2",
+          "bytes": 2416566
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G4_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G4_f.wav",
+          "sha256": "14e3ea3d5172722d4d2686bae5da3d603800a7a474fa295d98275a9410913822",
+          "bytes": 2366050
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A4_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A4_f.wav",
+          "sha256": "19e5374658351508a9e2c929e871a43caff41e62d5e3363ead6f88428a9ab863",
+          "bytes": 2488526
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C5_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C5_f.wav",
+          "sha256": "af72f852ef2892233699851dacf5f8d97d446822d8eb4ce9e0ec27d5a721b118",
+          "bytes": 2497990
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E5_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E5_f.wav",
+          "sha256": "5c278e263fd59650190fc58294945cd291906eb1abd8293f728a96a878d1d478",
+          "bytes": 2365174
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G5_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G5_f.wav",
+          "sha256": "b5bb27541d6187e6eeb20baf50625ca35fc9d44c7f113936a9369bc7ce490a68",
+          "bytes": 2222106
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A5_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A5_f.wav",
+          "sha256": "0558d79d23db55c710e664e6283b62619f5a582ce261a5c082700a0d01536627",
+          "bytes": 1986834
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C6_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C6_f.wav",
+          "sha256": "7ec8e0c2dde75282a4aaacccc713c84faa3e84daa9cf43df45ffc0e209964d46",
+          "bytes": 2162774
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_E6_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_E6_f.wav",
+          "sha256": "8d1712f5659274a83aa90807132084559633e4817027c8a5b5f40826b3d9bc84",
+          "bytes": 2363554
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_G6_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_G6_f.wav",
+          "sha256": "68c49e55565810ea822866e3d39e51c1a5ad53cfa1a67bc25836ca7feac3fe0c",
+          "bytes": 2164026
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_A6_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_A6_f.wav",
+          "sha256": "37f6cc2f12b1b443a77d3ee370178da4a002a2ac3b6529663cc7ee002728ddcf",
+          "bytes": 2052254
+        },
+        {
+          "file": "arco-LLVln_ArcoVib_C7_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Arco%20Vib/LLVln_ArcoVib_C7_f.wav",
+          "sha256": "f8223aed62911ef3f6937111bf3cdcc36fc25a636d4f99480b97029c4d28f393",
+          "bytes": 2176486
+        },
+        {
+          "file": "tremolo-LLVln_trem_G2_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G2_v1_rr1.wav",
+          "sha256": "b924e25d576d64a76c7adb4e1a05aba25db4917c18b754c34c669104d0470c1e",
+          "bytes": 1168480
+        },
+        {
+          "file": "tremolo-LLVln_trem_A2_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A2_v1_rr1.wav",
+          "sha256": "fe010776f8724749465bf9f136164870b3234c7d27c213ee713c280599d04fc3",
+          "bytes": 1242096
+        },
+        {
+          "file": "tremolo-LLVln_trem_C3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C3_v1_rr1.wav",
+          "sha256": "2eaac72dde26d26dac3738fc828e9741d22e45cbeb83b0ab63fa4bccc0d0932f",
+          "bytes": 1207480
+        },
+        {
+          "file": "tremolo-LLVln_trem_E3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E3_v1_rr1.wav",
+          "sha256": "99ebaf1666d05d45e7e5e1c39535545433d7c64472bb6721d4bc98c9e6b09474",
+          "bytes": 1357076
+        },
+        {
+          "file": "tremolo-LLVln_trem_G3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G3_v1_rr1.wav",
+          "sha256": "0225a017e47470c944a2931bb9df8441824895c5ab152f5b19f409cc724f3aa2",
+          "bytes": 1167032
+        },
+        {
+          "file": "tremolo-LLVln_trem_A3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A3_v1_rr1.wav",
+          "sha256": "1ec8588ff79e6d9e4d4203ad58d35b7a90317dcb3901f0d1b1a3d8ff1a0aa29d",
+          "bytes": 1325428
+        },
+        {
+          "file": "tremolo-LLVln_trem_C4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C4_v1_rr1.wav",
+          "sha256": "0f54c1a9ddc014871828146aaa53aea2e2b12f5c59f08f12b846dedeb10eb60e",
+          "bytes": 1185856
+        },
+        {
+          "file": "tremolo-LLVln_trem_E4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E4_v1_rr1.wav",
+          "sha256": "20dca8ab716c68fc8445e31dbac57ff69bfeaee45335712d1418dbf40de37d9e",
+          "bytes": 988948
+        },
+        {
+          "file": "tremolo-LLVln_trem_G4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G4_v1_rr1.wav",
+          "sha256": "82460e41596463e64e0106efabc2767043067d16c84274b49ab169e8e50d8d2a",
+          "bytes": 1106004
+        },
+        {
+          "file": "tremolo-LLVln_trem_A4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A4_v1_rr1.wav",
+          "sha256": "92ef887f011ede53a9771fc1e9c50a8f53b3547695f268c3223fce0f2893a48e",
+          "bytes": 1341468
+        },
+        {
+          "file": "tremolo-LLVln_trem_C5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C5_v1_rr1.wav",
+          "sha256": "c6d2bf86329435006532e5e5afdc89808db4c28599675dd3218c7402b887f6bd",
+          "bytes": 1156076
+        },
+        {
+          "file": "tremolo-LLVln_trem_E5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E5_v1_rr1.wav",
+          "sha256": "40307288922d7fd2ce86e43816b089ce2e0f50a66a561d3285a0b7c714815e88",
+          "bytes": 1206932
+        },
+        {
+          "file": "tremolo-LLVln_trem_G5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G5_v1_rr1.wav",
+          "sha256": "f3299b48f8c082c2c0d2bf7fcb8e84f69df44e7de55a713b897f2365b911f372",
+          "bytes": 1489688
+        },
+        {
+          "file": "tremolo-LLVln_trem_C6_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C6_v2_rr1.wav",
+          "sha256": "53faf1a9b503ce710f977175eecbd15abb06d8a1ba32ca9e83eb3abc87861d16",
+          "bytes": 1666564
+        },
+        {
+          "file": "tremolo-LLVln_trem_G2_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G2_v2_rr1.wav",
+          "sha256": "d18c1ece6b2170cc721fec7df6e93d88605817c835ee9e64cc2bbde12a2c86b2",
+          "bytes": 1055924
+        },
+        {
+          "file": "tremolo-LLVln_trem_A2_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A2_v2_rr1.wav",
+          "sha256": "de42f26ee9a7ef124a63d161076d11532bbbca4fa8f6a9809b546e9d65807849",
+          "bytes": 1434720
+        },
+        {
+          "file": "tremolo-LLVln_trem_C3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C3_v2_rr1.wav",
+          "sha256": "517c2b9e2b5f46416bde88d732cd69fabe8a4cf2c3cef3873620f66a5166dfe8",
+          "bytes": 1268928
+        },
+        {
+          "file": "tremolo-LLVln_trem_E3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E3_v2_rr1.wav",
+          "sha256": "9adb581924e9502d305e573a41997f914edab8b7a56ebfa02f136d9342e6923b",
+          "bytes": 1358384
+        },
+        {
+          "file": "tremolo-LLVln_trem_G3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G3_v2_rr1.wav",
+          "sha256": "c4b0206ef3bb7dd6889172e1b38ebc47ae6f8c438056523b5b556392367e9895",
+          "bytes": 1408600
+        },
+        {
+          "file": "tremolo-LLVln_trem_A3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A3_v2_rr1.wav",
+          "sha256": "18d686151114a52c334019694bb216f48c811faab28660d608a6a0de948093a0",
+          "bytes": 1234852
+        },
+        {
+          "file": "tremolo-LLVln_trem_C4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C4_v2_rr1.wav",
+          "sha256": "e047a8a4cf8a4668cde2490ccbbc0532af2df1afb2a72a2e205dce3303c09d9a",
+          "bytes": 1385804
+        },
+        {
+          "file": "tremolo-LLVln_trem_E4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E4_v2_rr1.wav",
+          "sha256": "aa1b1923f469f8718c005f4f65c91967c1c7cada96f92f9426fac3d6316c60ae",
+          "bytes": 1248160
+        },
+        {
+          "file": "tremolo-LLVln_trem_G4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G4_v2_rr1.wav",
+          "sha256": "93990f54d3a2ab64c97c35cbe81b60260681dc65a56c3aa10de723b6e1ab3dcc",
+          "bytes": 1157700
+        },
+        {
+          "file": "tremolo-LLVln_trem_A4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_A4_v2_rr1.wav",
+          "sha256": "8b16f91a40de749788d400b9c31ead5cb47bde6e00343138afb6b3a8582be0c5",
+          "bytes": 1308108
+        },
+        {
+          "file": "tremolo-LLVln_trem_C5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_C5_v2_rr1.wav",
+          "sha256": "cad9537e5a89258546021e75e3907e9359c34696b7afc4c4845e83268718f76f",
+          "bytes": 1042900
+        },
+        {
+          "file": "tremolo-LLVln_trem_E5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_E5_v2_rr1.wav",
+          "sha256": "49cdf4a1e96dcd7800174c7f565897fe05fe19b23e9e97be302cb594094c4791",
+          "bytes": 1340880
+        },
+        {
+          "file": "tremolo-LLVln_trem_G5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Trem/LLVln_trem_G5_v2_rr1.wav",
+          "sha256": "4bad7f2518e4b40771fc7535c3dda0ea3036304dcb2c37d2555f390e0c61301f",
+          "bytes": 1105492
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G3_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G3_p_RR1.wav",
+          "sha256": "7bc900aa6b34b87d89ff035cd56066a9ecbdd584d12bafadcbd243b9e0a9bba1",
+          "bytes": 670770
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A3_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A3_p_RR1.wav",
+          "sha256": "9a7cc4d7c6c848e6302f1a35e499781240ccf66c5acf72779f0da03b91bf73e9",
+          "bytes": 252226
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A3_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A3_p_RR2.wav",
+          "sha256": "2ebc13ead350e7e70704d3c93a77d2931fa60754afc2e33ce623d0c6aa8ed9aa",
+          "bytes": 236542
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C4_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C4_p_RR1.wav",
+          "sha256": "95b9db0c0dafdabac63e18618b7d98b31ae41cdacf9e9a703850211113b6754a",
+          "bytes": 202686
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C4_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C4_p_RR2.wav",
+          "sha256": "975d64141752349499780e6509729d95c5718a3021bf4a4ba1b22c31ce3e3480",
+          "bytes": 180622
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E4_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E4_p_RR1.wav",
+          "sha256": "090cc6a411d0e37c4c524b54cd81f268d96f9ad58cd542f26f06dd824a35b7cd",
+          "bytes": 219786
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E4_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E4_p_RR2.wav",
+          "sha256": "ea8fa4d781ecaf2f6d79a4d477b90d3dbb0b57cc57db9af6492dc7d39dbe1d6a",
+          "bytes": 244910
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G4_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G4_p_RR1.wav",
+          "sha256": "8117f03620a33be4d6ee0f6d631cab022e035b222d7780e9d94cdcca843568cd",
+          "bytes": 237770
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G4_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G4_p_RR2.wav",
+          "sha256": "ffc72d552ca2a86c8e3dc56c4f6f511ea5826e913994957ac508b4569ac62a03",
+          "bytes": 204786
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A4_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A4_p_RR1.wav",
+          "sha256": "43bc6f4e22da0bbb56de421f97f2c609df9193036b126c581df8e37303e795e0",
+          "bytes": 407194
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A4_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A4_p_RR2.wav",
+          "sha256": "434c0b38f8bed901de8bb1921b327421e7b15fa41c8adfa61c600e2d136ceaac",
+          "bytes": 392590
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C5_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C5_p_RR1.wav",
+          "sha256": "30e4c83fcb263c9ae3d92481083ebfdf84b2c8abed59a290b58d19084425c2da",
+          "bytes": 146346
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C5_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C5_p_RR2.wav",
+          "sha256": "d5348bd101d6596eaa4d2995601fd5659d2a313b54df4e32a9f16a61c33addbb",
+          "bytes": 132558
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E5_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E5_p_RR1.wav",
+          "sha256": "9590a957b38d05f1cab495b77a9a8895b8308c37a1a1077092cdf46f9dc57ffb",
+          "bytes": 309230
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E5_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E5_p_RR2.wav",
+          "sha256": "30de38d27467d66af4a58da5f9ee0408d50491b865503c9f5c3a5d452032ef37",
+          "bytes": 374842
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G5_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G5_p_RR1.wav",
+          "sha256": "1378f2083a3832529cd2bc3fa77d9dddaab6909d1b23f5261a6255ba8186040f",
+          "bytes": 160246
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G5_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G5_p_RR2.wav",
+          "sha256": "77fd229877c3b2e7f253a273192ed8099302aabdc1255cbd1f293bfc44517e90",
+          "bytes": 164818
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A5_p_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A5_p_RR1.wav",
+          "sha256": "cd13bd60250ba2011651d54409791c05e7b2b16316d81155aaed5af775c53c38",
+          "bytes": 231858
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A5_p_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A5_p_RR2.wav",
+          "sha256": "9fc6088286632466955f3306a45c200594f6da3084cc128d528d6ef993a56105",
+          "bytes": 259234
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E6_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E6_f_RR1.wav",
+          "sha256": "37a372a0a56301179b2dfc3e25ccf7b3b392617d512da57214ab8b85e66d264a",
+          "bytes": 221638
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E6_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E6_f_RR2.wav",
+          "sha256": "4026da1bc8ebd09c7053c7e58a5de8c7d72fc5233942c36c2fade30fb687c069",
+          "bytes": 179286
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A6_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A6_f_RR1.wav",
+          "sha256": "667b41d61ec54a033ff1f7024cff95ba6162f4d4bdb8b595740f306fd8588460",
+          "bytes": 158874
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A6_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A6_f_RR2.wav",
+          "sha256": "f450315f1875b9054ed905c2168f4083ac961d64ebff42b24f4305c65b8e4796",
+          "bytes": 170638
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C7_f.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C7_f.wav",
+          "sha256": "fccd76254ab12434dd3e41958b8c9f6a5058102ed9b507e5a6e5df953dd04f02",
+          "bytes": 186922
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G3_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G3_f_RR1.wav",
+          "sha256": "dc56b8193aaa29d9a0704aeee8672437a00bd12ec5e964e9a02765ead48fcdf6",
+          "bytes": 708714
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G3_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G3_f_RR2.wav",
+          "sha256": "75db2279cd1908e4187f04a1b1af43d8841d943d217e9d6b5a8a89374d122643",
+          "bytes": 853698
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A3_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A3_f_RR1.wav",
+          "sha256": "8f400b390219271d04eb9fc0247493d92089f2ca982b9a23be682bec18b7972d",
+          "bytes": 455042
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A3_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A3_f_RR2.wav",
+          "sha256": "f8aed0fad17c902ee245c556ee604f87222160f5fb273fe51caffd966cc69a0b",
+          "bytes": 352286
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C4_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C4_f_RR1.wav",
+          "sha256": "f2836918ed710f19d1e63a6884409f1c9138cdb525d6295d9cdb473f0d56be95",
+          "bytes": 266734
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C4_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C4_f_RR2.wav",
+          "sha256": "ce9c5aef57a88446a0febeab6ce143317bacbaab3329e5f29c3cf24867b02ea0",
+          "bytes": 243210
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E4_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E4_f_RR1.wav",
+          "sha256": "96e609d2d3ad1d01f898763ee1554ce69416238d9b2c598a89f0fad2b710eab9",
+          "bytes": 343798
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E4_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E4_f_RR2.wav",
+          "sha256": "b9816fe7508b46b4617bfbe47588f0b9b5bad07c7c6fa8156b1a372129a2bbf1",
+          "bytes": 340118
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G4_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G4_f_RR1.wav",
+          "sha256": "006bd7c4ae323a1b2076895ca74350a3cd7e2c82acfef3fcb1fb1b6f601c40dd",
+          "bytes": 229234
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G4_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G4_f_RR2.wav",
+          "sha256": "fed514fb316eda3691b2e11dd3ca89b9f64d28ca9863762fcfa609fefce8d475",
+          "bytes": 244566
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A4_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A4_f_RR1.wav",
+          "sha256": "bf68ed22022538e70f6b04098a03a224dc0acb7b35334bce3af0b3196bc24455",
+          "bytes": 407654
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A4_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A4_f_RR2.wav",
+          "sha256": "4d74eb16c8c55e983ff86c1a9cb20b58675278132d560ac582f4f337dd191e78",
+          "bytes": 487638
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C5_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C5_f_RR1.wav",
+          "sha256": "df52150f00c233e6d270d7c557d90e741ef856577571f3a875b2868a5047b6a0",
+          "bytes": 314458
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_C5_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_C5_f_RR2.wav",
+          "sha256": "28046880d71a116098059dceb98c4973926a3c2134325368eddcdbbf0b66ee52",
+          "bytes": 245206
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E5_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E5_f_RR1.wav",
+          "sha256": "5704be5d372702464b44fecf10669c8181001ffc9ad29f63397f3634405d2f07",
+          "bytes": 549454
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_E5_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_E5_f_RR2.wav",
+          "sha256": "b917c66686118628c23a997c7c25534644236d4ddf7df03ed6cbf3df9a22baae",
+          "bytes": 587006
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G5_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G5_f_RR1.wav",
+          "sha256": "855b7dfd084573bd84189a539ffd08ce05d701d7a2fcf7df7a87ce81e90af738",
+          "bytes": 210570
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_G5_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_G5_f_RR2.wav",
+          "sha256": "faeda347d3d85c5b6c90508dde61d88a2795f7caa4bc6a6ddd299e24dc9ca5c8",
+          "bytes": 246934
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A5_f_RR1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A5_f_RR1.wav",
+          "sha256": "3eba1cba37e7bb60a879474b070a4d2bf0af03d65bee9f5f45d013c67fe0e5ae",
+          "bytes": 329810
+        },
+        {
+          "file": "pizzicato-LLVln_Pizz_A5_f_RR2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/Pizz/LLVln_Pizz_A5_f_RR2.wav",
+          "sha256": "e502977cadbe96d79910f5931885efd8a0d3e5b85d160bedb1ca3112eb2e9771",
+          "bytes": 355430
+        },
+        {
+          "file": "spiccato-LLVln_spic_G2_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G2_v1_rr1.wav",
+          "sha256": "0826f0c0c1b6cd850deefdcd3376a16c1ad2cb19a0ee81b71141529dcdbbf5b8",
+          "bytes": 161360
+        },
+        {
+          "file": "spiccato-LLVln_spic_G2_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G2_v1_rr2.wav",
+          "sha256": "12b59cd786b629aba2fbae9138ad60b2cbff9491d5eb1523be8c060f8f0d18f3",
+          "bytes": 209040
+        },
+        {
+          "file": "spiccato-LLVln_spic_A2_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A2_v1_rr1.wav",
+          "sha256": "5317473e0c3acd60eac63cf641e3947dcd3ab8f99b8fa5d4c7b1e7806f33cbae",
+          "bytes": 212172
+        },
+        {
+          "file": "spiccato-LLVln_spic_A2_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A2_v1_rr2.wav",
+          "sha256": "ef40155b657e6b13bf73e3035b51c146fea267abf5e8ba5378a82c58b6385303",
+          "bytes": 147868
+        },
+        {
+          "file": "spiccato-LLVln_spic_C3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C3_v1_rr1.wav",
+          "sha256": "9ed4ccbf955d179b4b1791e09cc4e18caf79934d769880ac55530a927426a3d9",
+          "bytes": 147328
+        },
+        {
+          "file": "spiccato-LLVln_spic_C3_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C3_v1_rr2.wav",
+          "sha256": "83e0736736771534a986994e66fe0712df677db0a4c049d341fbc6457e906672",
+          "bytes": 143016
+        },
+        {
+          "file": "spiccato-LLVln_spic_E3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E3_v1_rr1.wav",
+          "sha256": "a6b5f0bff98ac81134f6ac53e3d639944e3d5d4d008e9757d56951b58163b239",
+          "bytes": 225092
+        },
+        {
+          "file": "spiccato-LLVln_spic_E3_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E3_v1_rr2.wav",
+          "sha256": "293f6dfd8be16c2319ef704c5841cd7bb60d218411ee15b76a7ab33089489e34",
+          "bytes": 220480
+        },
+        {
+          "file": "spiccato-LLVln_spic_G3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G3_v1_rr1.wav",
+          "sha256": "b9c82d49a3575fa514586b89de6f10c735dcb8a2e1c3b1408aa0715298479365",
+          "bytes": 262440
+        },
+        {
+          "file": "spiccato-LLVln_spic_G3_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G3_v1_rr2.wav",
+          "sha256": "b7ea30516346a214f22a9ed07e17e3e1ad1044513dc035fe2a44b3d8b8137878",
+          "bytes": 178892
+        },
+        {
+          "file": "spiccato-LLVln_spic_A3_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A3_v1_rr1.wav",
+          "sha256": "1f21dc936b765b7e9e0ceb65949f3b22205a61a43af21cb7a0307aabcb654cbb",
+          "bytes": 181484
+        },
+        {
+          "file": "spiccato-LLVln_spic_A3_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A3_v1_rr2.wav",
+          "sha256": "6cfe01a4c8f753c13a7be78be6cfd14b0d21c0a8956d41cd462ca5c936d7215e",
+          "bytes": 163712
+        },
+        {
+          "file": "spiccato-LLVln_spic_C4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C4_v1_rr1.wav",
+          "sha256": "6d75b28586d150dce0f9cd4ccf649dbc125afaf43762a2f5676f3d916289963e",
+          "bytes": 150832
+        },
+        {
+          "file": "spiccato-LLVln_spic_C4_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C4_v1_rr2.wav",
+          "sha256": "b24d6b61e64d27aa6ccddbb56e9c64aea2ed504078d0f2b9e13ef8bec3c923a8",
+          "bytes": 158924
+        },
+        {
+          "file": "spiccato-LLVln_spic_E4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E4_v1_rr1.wav",
+          "sha256": "635445fb882ea6988a9a17fdfb4b1f461316a882475e48877e2dae9c3f57a2ab",
+          "bytes": 291860
+        },
+        {
+          "file": "spiccato-LLVln_spic_E4_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E4_v1_rr2.wav",
+          "sha256": "b55073fdcc7c410e735f0d20692b2e3ba1bd4a7e76bb4c1be8950e8716cea75d",
+          "bytes": 297672
+        },
+        {
+          "file": "spiccato-LLVln_spic_G4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G4_v1_rr1.wav",
+          "sha256": "4859b51dc4a991898f637454a63f81a80f3b45c141cd5feba9dd3a0f06e6330d",
+          "bytes": 220868
+        },
+        {
+          "file": "spiccato-LLVln_spic_G4_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G4_v1_rr2.wav",
+          "sha256": "804a09eb742a8eeec6a66173ca107de11686b9b6f2dd4669569c63f90a1bf8e5",
+          "bytes": 199328
+        },
+        {
+          "file": "spiccato-LLVln_spic_A4_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A4_v1_rr1.wav",
+          "sha256": "13477c70ee092b81f2537a6624546b1eea1ffaba0cbe0a93797003ba6d862bc6",
+          "bytes": 243708
+        },
+        {
+          "file": "spiccato-LLVln_spic_A4_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A4_v1_rr2.wav",
+          "sha256": "9fa515ac27ad4354826560feec06502ae993ffc5bb41ed922c34e792d5eca1c8",
+          "bytes": 235924
+        },
+        {
+          "file": "spiccato-LLVln_spic_C5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C5_v1_rr1.wav",
+          "sha256": "72e3baa8e22c1797dbda56f4665c7808a44e6f2561bddfbb10a5171e19752015",
+          "bytes": 221532
+        },
+        {
+          "file": "spiccato-LLVln_spic_C5_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C5_v1_rr2.wav",
+          "sha256": "a7d040d9a36369aa9c1f3a9ced12c4f30deeca81eaa67230abfc940cc86b4094",
+          "bytes": 165968
+        },
+        {
+          "file": "spiccato-LLVln_spic_E5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E5_v1_rr1.wav",
+          "sha256": "0b1887a463b3a0506fe2193ba5d6086849a603cd30dc761f5c77ff6bce658338",
+          "bytes": 235416
+        },
+        {
+          "file": "spiccato-LLVln_spic_E5_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E5_v1_rr2.wav",
+          "sha256": "6d6c9490e5ebc4f1eb0b548b3ff48659628b094d784d2fe9d570c0b4923c9bdc",
+          "bytes": 236520
+        },
+        {
+          "file": "spiccato-LLVln_spic_G5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G5_v1_rr1.wav",
+          "sha256": "3deba0200c7d0fbb5428b4771ba675223d05f193cce70ac19fe536769e30d538",
+          "bytes": 144376
+        },
+        {
+          "file": "spiccato-LLVln_spic_G5_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G5_v1_rr2.wav",
+          "sha256": "0d58953ef25096583d6553b4ad69ed118e3d238297cacd63445e06f2df0f7d00",
+          "bytes": 180720
+        },
+        {
+          "file": "spiccato-LLVln_spic_A5_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A5_v1_rr1.wav",
+          "sha256": "b45eef0c35bfd1a213f23d5f992b8569e5dc4e12814c05e2bb0e5f61ec79b8f6",
+          "bytes": 190168
+        },
+        {
+          "file": "spiccato-LLVln_spic_A5_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A5_v1_rr2.wav",
+          "sha256": "b2eb0ffbf6133f352d7479562cde60174f21a4adb43d7c32d35f01b70c2bb120",
+          "bytes": 159720
+        },
+        {
+          "file": "spiccato-LLVln_spic_C6_v1_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C6_v1_rr1.wav",
+          "sha256": "5322bc5235a2c1433a2fb00e0dea8f33620bfa37ebad3198398f119eaa8c0fbf",
+          "bytes": 216652
+        },
+        {
+          "file": "spiccato-LLVln_spic_C6_v1_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C6_v1_rr2.wav",
+          "sha256": "348a34eb4a954ad56554a1e03d5d2e78d1420b76099f914af99f4eba65517345",
+          "bytes": 191664
+        },
+        {
+          "file": "spiccato-LLVln_spic_G2_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G2_v2_rr1.wav",
+          "sha256": "3bcd4edde6d9c9882ad16d3ba8d1999b6190581cb4af77df6b0d6606d7b4a60e",
+          "bytes": 391880
+        },
+        {
+          "file": "spiccato-LLVln_spic_G2_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G2_v2_rr2.wav",
+          "sha256": "72b722d23d17719c85602d152bdc1b80894f3564f6b53262c953d4ec3a7d5985",
+          "bytes": 368676
+        },
+        {
+          "file": "spiccato-LLVln_spic_A2_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A2_v2_rr1.wav",
+          "sha256": "4d7f9520bbde4f43324554b53bf147d2b5ea1a8c1234a7375793420f8a29f1d6",
+          "bytes": 292356
+        },
+        {
+          "file": "spiccato-LLVln_spic_A2_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A2_v2_rr2.wav",
+          "sha256": "d3579f437be1f0c713a0407fada47f75e26b18da1f4984a365356382bc6618f9",
+          "bytes": 334496
+        },
+        {
+          "file": "spiccato-LLVln_spic_C3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C3_v2_rr1.wav",
+          "sha256": "004ab9c49db15533ee5f47d626138a5af3f044f19131827a0911ec3648c0e68e",
+          "bytes": 201628
+        },
+        {
+          "file": "spiccato-LLVln_spic_C3_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C3_v2_rr2.wav",
+          "sha256": "0910dd0f25c3455cd8164de1037d35053164fe7b0b640be219fef281a415b2c7",
+          "bytes": 208516
+        },
+        {
+          "file": "spiccato-LLVln_spic_E3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E3_v2_rr1.wav",
+          "sha256": "b4a9d9a85016a0ee4db54256d3a7384288823821b866df4bd1cd226a05cf2396",
+          "bytes": 290760
+        },
+        {
+          "file": "spiccato-LLVln_spic_E3_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E3_v2_rr2.wav",
+          "sha256": "31ec1ba3c100ff966464f532baab9303e3cfe58c27367fba912ec01a5967de90",
+          "bytes": 215624
+        },
+        {
+          "file": "spiccato-LLVln_spic_G3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G3_v2_rr1.wav",
+          "sha256": "af5163b8b919a07cb85abeb1fbb2f1f124889f9b0417e4f41571f6d7588f5665",
+          "bytes": 207440
+        },
+        {
+          "file": "spiccato-LLVln_spic_G3_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G3_v2_rr2.wav",
+          "sha256": "bada8ff79015d7d9129e205925331d3663b592e194ced971cf44c499c1cc0b7f",
+          "bytes": 196268
+        },
+        {
+          "file": "spiccato-LLVln_spic_A3_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A3_v2_rr1.wav",
+          "sha256": "cda80f0f3d2deebc97d313581f810cb1b42b516cd26d617252e62e12ea205a1b",
+          "bytes": 245852
+        },
+        {
+          "file": "spiccato-LLVln_spic_A3_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A3_v2_rr2.wav",
+          "sha256": "7b1025869c74c8a937ecbed90636f25c2adcfe94d3751879a4b9177a07b19fd4",
+          "bytes": 315832
+        },
+        {
+          "file": "spiccato-LLVln_spic_C4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C4_v2_rr1.wav",
+          "sha256": "0071c0e2cf8ee18b6502f392015dc89ed39a6320f8a430779a50c48b1cb37f42",
+          "bytes": 211868
+        },
+        {
+          "file": "spiccato-LLVln_spic_C4_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C4_v2_rr2.wav",
+          "sha256": "bde86277c2a400799bd7bd15500b10a8f9249d9fdf7929a9499977fe39d0e625",
+          "bytes": 209452
+        },
+        {
+          "file": "spiccato-LLVln_spic_E4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E4_v2_rr1.wav",
+          "sha256": "365e59e228e7af42d9277381d16bbd088983d99190e746da6ae81f9b10cb48fe",
+          "bytes": 326208
+        },
+        {
+          "file": "spiccato-LLVln_spic_E4_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E4_v2_rr2.wav",
+          "sha256": "02a5a5b7a5f88258059d2b4af2596eb974060968a5c8033b4d53465e8f43daa8",
+          "bytes": 353820
+        },
+        {
+          "file": "spiccato-LLVln_spic_G4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G4_v2_rr1.wav",
+          "sha256": "acfee187b8d0e781aaae2c2f68250c42e1d8f410a595673502fb96f1469a789e",
+          "bytes": 226544
+        },
+        {
+          "file": "spiccato-LLVln_spic_G4_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G4_v2_rr2.wav",
+          "sha256": "fe962a6aa6e8c01de0e5d9cf2e498d3f2f9be66f944152ca8e4e73726d71c512",
+          "bytes": 243868
+        },
+        {
+          "file": "spiccato-LLVln_spic_A4_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A4_v2_rr1.wav",
+          "sha256": "6c506b5fccacbbbadb70993ff00d77c68a185af79febb35dc7101eb616046650",
+          "bytes": 244532
+        },
+        {
+          "file": "spiccato-LLVln_spic_A4_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A4_v2_rr2.wav",
+          "sha256": "c7a1418539041e1428f6aff88f66aa184e9dfff61857b725acdefff4993c1435",
+          "bytes": 342108
+        },
+        {
+          "file": "spiccato-LLVln_spic_C5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C5_v2_rr1.wav",
+          "sha256": "28788d5a97438d739403627aea0f8aa42fa6582d75c4e8f4f2431cfae1cd4738",
+          "bytes": 217828
+        },
+        {
+          "file": "spiccato-LLVln_spic_C5_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C5_v2_rr2.wav",
+          "sha256": "2c9a17f8848c55c3fd94ac8b742e5e552a9815b417ccf2ff0696accd0c566c35",
+          "bytes": 226964
+        },
+        {
+          "file": "spiccato-LLVln_spic_E5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E5_v2_rr1.wav",
+          "sha256": "3c440d43b09b1a152fdf9308f4773ec8c55cea05b97ed06e50dbce1a9d2a2256",
+          "bytes": 204612
+        },
+        {
+          "file": "spiccato-LLVln_spic_E5_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_E5_v2_rr2.wav",
+          "sha256": "76a1aff68c93f1d0607b348536967de3fb5baa2775bbc9527172ee5a99eaed73",
+          "bytes": 173228
+        },
+        {
+          "file": "spiccato-LLVln_spic_G5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G5_v2_rr1.wav",
+          "sha256": "f83bc69d68304da0f24d042ce01f5e8c9f824cc70fe19eea8b11e8fc6131df99",
+          "bytes": 163952
+        },
+        {
+          "file": "spiccato-LLVln_spic_G5_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_G5_v2_rr2.wav",
+          "sha256": "5b6a703c73566b5f3f18656902369e4434bd223dc01cb6abd2ba373361ea1db7",
+          "bytes": 212520
+        },
+        {
+          "file": "spiccato-LLVln_spic_A5_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A5_v2_rr1.wav",
+          "sha256": "c5e2925c08a55dd4329c74bc9f0b832dac4e405d04da7a19fd790bff71f02162",
+          "bytes": 239996
+        },
+        {
+          "file": "spiccato-LLVln_spic_A5_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_A5_v2_rr2.wav",
+          "sha256": "ed2da319deea36dc872cfb3c09828d51fc0ba02bf4626a8bc43b8075e59cfd14",
+          "bytes": 169368
+        },
+        {
+          "file": "spiccato-LLVln_spic_C6_v2_rr1.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C6_v2_rr1.wav",
+          "sha256": "4e854001e15c23bb42e1f9dd8ca276e54d279423c6dd94db9bab6385cd9641c2",
+          "bytes": 196924
+        },
+        {
+          "file": "spiccato-LLVln_spic_C6_v2_rr2.wav",
+          "url": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Solo%20Violin/spic/LLVln_spic_C6_v2_rr2.wav",
+          "sha256": "46796f4235be0817e2106b9e20ec626092db29808937e0c957eb325da8893905",
+          "bytes": 206584
+        }
+      ]
     }
   ],
   "factory": {

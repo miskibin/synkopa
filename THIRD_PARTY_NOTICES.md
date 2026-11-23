@@ -175,7 +175,7 @@ through its own SFZ mappings (`crates/engine/instruments`).
   Sullivan, SFZ mapping by kinwie, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/).
   Synkopa's mappings are theirs with the sample folder renamed and the level trimmed. Music made
   with them contains these recordings: credit them as the licence asks.
-* Upright Piano, String Section and Concert Harp from the
+* Upright Piano, String Section, Solo Violin and Concert Harp from the
   [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and the Vibraphone from the
   [Versilian Community Sample Library](https://github.com/sgossner/VCSL), both by Versilian Studios
   LLC, released to the public domain under [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/).

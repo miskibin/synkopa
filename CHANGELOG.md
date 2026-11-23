@@ -9,7 +9,7 @@ shown in the app after an update and is published as the release notes (see
 ### Added
 - **Synkopa Keys is now a sampled-instrument player, like Kontakt.** Its window has an instrument
   browser: the Grand Piano that ships with the app, an Upright Piano, three electric pianos
-  (Wurlitzer, Yamaha CP80, Pianet), a String Section, a Concert Harp and a Vibraphone — each a free
+  (Wurlitzer, Yamaha CP80, Pianet), a String Section, a Solo Violin, a Concert Harp and a Vibraphone — each a free
   download of 21–198 MB from its button, open recordings you can use in your music. The grand
   piano got richer: four dynamics instead of three, levelled so a harder hit changes the tone
   without jumping in volume, and the soft thud of the dampers when you let a key go. The strings

@@ -16,6 +16,7 @@ slide notes glide it.
 | Electric Grand CP80 | `cp80` | stringed electric grand | same | CC-BY-3.0 | |
 | Pianet T | `pianet` | plucked-reed piano | same | CC-BY-3.0 | |
 | String Section | `strings` | violins, violas, cellos: sustain, tremolo, pizzicato, spiccato | VSCO 2 CE, Versilian Studios | CC0 | 198 MB |
+| Solo Violin | `solo-violin` | one violin: arco with vibrato, tremolo, pizzicato, spiccato | VSCO 2 CE, Versilian Studios | CC0 | 135 MB |
 | Concert Harp | `harp` | rings out on its own | VSCO 2 CE | CC0 | 35 MB |
 | Vibraphone | `vibraphone` | soft mallets, motor off, 2 dynamics | [VCSL](https://github.com/sgossner/VCSL), Versilian Studios | CC0 | 42 MB |
 
