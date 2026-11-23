@@ -300,8 +300,8 @@ async fn source_peaks(app: St<'_>, id: u64, norm: Option<bool>, rev: Option<bool
 
 #[tauri::command]
 async fn pitch_analyze(app: St<'_>, clip_id: u64) -> R<std::sync::Arc<wave_engine::pitch::PitchAnalysis>> {
-    let e = app.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || e.pitch_analysis(clip_id)).await.map_err(es)?.map_err(es)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::pitch_analysis(&*a, clip_id)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -322,8 +322,8 @@ async fn pitch_target(
     clip_id: u64,
     reference: Option<wave_engine::RefTune>,
 ) -> R<std::sync::Arc<wave_engine::reference::PitchTarget>> {
-    let e = app.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || e.pitch_target(clip_id, reference)).await.map_err(es)?.map_err(es)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::pitch_target(&*a, clip_id, reference)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -351,8 +351,8 @@ async fn f0_model_install(app: St<'_>, handle: AppHandle) -> R<models::ModelStat
 
 #[tauri::command]
 async fn music_analyze(app: St<'_>, clip_id: Option<u64>, exclude_fx: Option<u64>) -> R<wave_engine::music::MusicAnalysis> {
-    let e = app.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || e.music_analysis(clip_id, exclude_fx)).await.map_err(es)?.map_err(es)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::music_analysis(&*a, clip_id, exclude_fx)).await.map_err(es)?
 }
 
 /// "Auto wokal": measures a vocal clip (and the beat's key) and returns the calibrated
@@ -367,23 +367,20 @@ async fn auto_vocal_plan(
     style: Option<wave_engine::autovocal::Style>,
     bake_rider: Option<bool>,
 ) -> R<wave_engine::autovocal::AutoVocalPlan> {
-    let e = app.engine.clone();
+    let a = app.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        e.auto_vocal_plan(clip_id, beat_clip_id, style.unwrap_or_default(), bake_rider.unwrap_or(false))
+        actions::vocal_plan(&*a, clip_id, beat_clip_id, style.unwrap_or_default(), bake_rider.unwrap_or(false))
     })
     .await
     .map_err(es)?
-    .map_err(es)
 }
 
 /// Renders the Vocal Rider (`params`, e.g. a plan's `riderBake.params`) into an audio clip's
 /// audio as a new source and swaps the clip onto it (one undo step; the original source stays).
 #[tauri::command]
 async fn bake_rider(app: St<'_>, clip_id: u64, params: std::collections::BTreeMap<String, f64>) -> R<Value> {
-    let e = app.engine.clone();
-    let (source, clip) =
-        tauri::async_runtime::spawn_blocking(move || e.bake_rider(clip_id, &params, None)).await.map_err(es)?.map_err(es)?;
-    Ok(json!({ "sourceId": source, "clipId": clip }))
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::bake_rider(&*a, clip_id, &params, None)).await.map_err(es)?
 }
 
 /// "Auto wokal" as one command — the whole journey `synkopa auto-vocal` runs
@@ -501,16 +498,14 @@ async fn relink_search(app: St<'_>, args: Value) -> R<Value> {
 
 #[tauri::command]
 async fn make_unique(app: St<'_>, clip_ids: Vec<u64>) -> R<Value> {
-    let e = app.engine.clone();
-    let r = tauri::async_runtime::spawn_blocking(move || e.make_unique_audio(&clip_ids)).await.map_err(es)?.map_err(es)?;
-    Ok(json!(r))
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::make_unique(&*a, &clip_ids)).await.map_err(es)?
 }
 
 #[tauri::command]
 async fn flatten_comp(app: St<'_>, clip_id: u64) -> R<Value> {
-    let e = app.engine.clone();
-    let id = tauri::async_runtime::spawn_blocking(move || e.flatten_comp(clip_id)).await.map_err(es)?.map_err(es)?;
-    Ok(json!({ "sourceId": id }))
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::flatten_comp(&*a, clip_id)).await.map_err(es)?
 }
 
 /// FL's *Export in place*: the selected clips (or, with `range`, the part of the arrangement in
@@ -520,17 +515,16 @@ async fn flatten_comp(app: St<'_>, clip_id: u64) -> R<Value> {
 async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>, range: Option<(f64, f64)>) -> R<Value> {
     app.export_cancel.store(false, Ordering::Relaxed);
     let a = app.inner().clone();
+    // the shared action waits for the piano; a cancelled bounce comes back as "cancelled"
     let r = tauri::async_runtime::spawn_blocking(move || {
-        // a bounce must not start while the piano is still loading (it would be silent)
-        keys::wait(&a).map_err(wave_engine::EngineError::Msg)?;
-        a.engine.export_in_place(&clip_ids, range, actions::IN_PLACE_RATE, &a.export_cancel, &mut |_| {})
+        actions::export_in_place(&*a, &clip_ids, range, &a.export_cancel, &mut |_| {})
     })
     .await
     .map_err(es)?;
     match r {
-        Ok(v) => Ok(json!(v)),
-        Err(wave_engine::EngineError::Cancelled) => Ok(json!({ "cancelled": true })),
-        Err(e) => Err(e.to_string()),
+        Ok(v) => Ok(v),
+        Err(e) if e == "cancelled" => Ok(json!({ "cancelled": true })),
+        Err(e) => Err(e),
     }
 }
 
@@ -1129,8 +1123,8 @@ async fn export_cancel(app: St<'_>) -> R<()> {
 
 #[tauri::command]
 async fn plugin_scan(app: St<'_>, rescan: bool) -> R<plugins::ScanResult> {
-    let p = app.plugins.clone();
-    tauri::async_runtime::spawn_blocking(move || p.scan(rescan)).await.map_err(es)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::plugin_scan(&*a, rescan)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1191,7 +1185,8 @@ async fn plugin_block(app: St<'_>, format: String, path: String) -> R<()> {
 
 #[tauri::command]
 async fn plugin_params(app: St<'_>, fx_id: u64) -> R<Vec<plugins::ParamInfo>> {
-    app.plugins.params(fx_id)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::plugin_params(&*a, fx_id)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1201,7 +1196,8 @@ async fn plugin_state(app: St<'_>, fx_id: u64) -> R<String> {
 
 #[tauri::command]
 async fn plugin_set_param(app: St<'_>, fx_id: u64, id: u32, value: f64) -> R<()> {
-    app.plugins.set_param(fx_id, id, value)
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::plugin_set_param(&*a, fx_id, id, value)).await.map_err(es)?
 }
 
 /// Whether automation `id` drives its target while playing (false = re-enable it): a manual

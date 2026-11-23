@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use wave_engine::sources::write_wav;
 use wave_engine::{Engine, Project};
 
-use crate::actions::{control, Host, R};
+use crate::actions::{bake_rider, control, export_in_place, make_unique, Host, R};
 use crate::headless::Headless;
 use crate::plugins::Plugins;
 
@@ -138,4 +138,26 @@ fn a_bounce_without_clips_still_names_the_problem() {
     assert!(e.contains("clipIds"), "{e}");
     let e = control(&h, "export_in_place", &json!({ "clipIds": [4242] }), None, None).unwrap_err();
     assert!(!e.is_empty(), "an unknown clip is refused, not silently ignored");
+}
+
+#[test]
+fn the_session_command_and_the_shared_actions_answer_alike() {
+    // two identical projects: one asked through the session commands, one through the shared
+    // actions the app's Tauri commands call — one action per verb, one reply
+    let d = tmp("parity-a");
+    let (h, clip) = with_a_clip(&d);
+    let params = std::collections::BTreeMap::new();
+    let a1 = control(&h, "make_unique", &json!({ "clipIds": [clip] }), None, None).unwrap();
+    let a2 = control(&h, "bake_rider", &json!({ "clipId": clip, "params": params }), None, None).unwrap();
+    let a3 = control(&h, "export_in_place", &json!({ "clipIds": [clip] }), None, None).unwrap();
+
+    let d2 = tmp("parity-b");
+    let (h2, clip2) = with_a_clip(&d2);
+    let b1 = make_unique(&h2, &[clip2]).unwrap();
+    let b2 = bake_rider(&h2, clip2, &params, None).unwrap();
+    let b3 = export_in_place(&h2, &[clip2], None, &std::sync::atomic::AtomicBool::new(false), &mut |_| {}).unwrap();
+
+    assert_eq!(a1, b1, "make_unique: one action, one reply");
+    assert_eq!(a2, b2, "bake_rider: one action, one reply");
+    assert_eq!(a3, b3, "export_in_place: one action, one reply");
 }
