@@ -1,4 +1,12 @@
 {
+  "latencyParams": [
+    "gate.look",
+    "rider.speed",
+    "rider.look",
+    "deess.look",
+    "sat.hq",
+    "limit.look"
+  ],
   "order": [
     "denoise",
     "tune",

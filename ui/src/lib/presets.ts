@@ -95,7 +95,8 @@ export function pFmt(p: ParamDef, v: number): string {
   // silence, its ratio tops out as a hard gate
   if (p.id === 'schp' && v <= 20.5) return 'Off';
   if (p.id === 'sclp' && v >= 19500) return 'Off';
-  if (p.id === 'floor' && v <= -79.9) return '−∞ dB';
+  // (only the gate's floor, −80…0 dB: the vocal rider's noise floor goes down to −100 dB in earnest)
+  if (p.id === 'floor' && p.min === -80 && p.max === 0 && v <= -79.9) return '−∞ dB';
   if (u === ':1' && p.max >= 100 && v >= 99.5) return '∞:1';
   // the filter's DJ knob (dsp::filter::dj_map): left low-pass, right high-pass, the middle off
   if (p.id === 'dj') return Math.abs(v) < 1 ? 'Off' : (v < 0 ? 'LP ' : 'HP ') + Math.round(Math.abs(v)) + '%';

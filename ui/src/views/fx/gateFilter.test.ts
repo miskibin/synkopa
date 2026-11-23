@@ -3,11 +3,14 @@ import { mockCatalog } from '../../api/mockData';
 import type { AnyBuiltinKind, ParamDef, Preset } from '../../api/types';
 import { pFmt } from '../../lib/presets';
 import engine from '../../lib/__fixtures__/fx-catalog.json';
+import { filterEnvStep, gateStep, type GateSim } from '../../api/mockGateFilter';
+import { automatedKeys, setsLatency } from '../../lib/automation';
+import type { Project } from '../../api/types';
 import { djMap, filterResponseDb, svfQ } from './filter';
 import { gateCurve } from './gateCurve';
 
 // What the engine serves (crates/engine/tests/ui_fx_catalog_fixture.rs) against the mock's copy.
-const eng = engine as unknown as { types: Record<string, { name: string; params: ParamDef[] }>; presets: Record<string, Preset[]> };
+const eng = engine as unknown as { types: Record<string, { name: string; params: ParamDef[] }>; presets: Record<string, Preset[]>; latencyParams: string[]; order: string[] };
 
 describe('mock catalog', () => {
   const cat = mockCatalog();
@@ -79,5 +82,50 @@ describe('gate transfer curve', () => {
     expect(pFmt(f('dj'), 0)).toBe('Off');
     expect(pFmt(f('dj'), -40)).toBe('LP 40%');
     expect(pFmt(f('lfo'), 1.5)).toBe('+1.50 oct');
+  });
+});
+
+describe('latency parameters', () => {
+  it("are the engine's list (catalog::sets_latency): automation leaves them alone", () => {
+    const ui = eng.order.flatMap(k => eng.types[k].params.filter(p => setsLatency(k, p.id)).map(p => k + '.' + p.id));
+    expect(ui.sort()).toEqual([...eng.latencyParams].sort());
+  });
+  it("an old automation of the gate's look-ahead does not drive the control", () => {
+    const p = {
+      inserts: [{ id: 1, fx: [{ id: 7, type: 'gate', params: { look: 0 } }] }],
+      clips: [{ id: 1, kind: 'auto', ref: 3 }, { id: 2, kind: 'auto', ref: 4 }],
+      automations: [{ id: 3, target: { kind: 'fx', fxId: 7, param: 'look' }, points: [] }, { id: 4, target: { kind: 'fx', fxId: 7, param: 'thr' }, points: [] }],
+    } as unknown as Project;
+    expect([...automatedKeys(p)]).toEqual(['fx:7:thr']);
+  });
+});
+
+describe("the mock's gate and filter", () => {
+  it('holds the gate open for its hold time after the level drops', () => {
+    const pr = { thr: -30, hyst: 4, hold: 100, rel: 50, att: 1 };
+    const run = (hold: number) => {
+      const s: GateSim = { state: 0, hold: 0, gr: -120 };
+      gateStep({ ...pr, hold }, -10, 1 / 30, s);
+      const states: number[] = [];
+      for (let i = 0; i < 10; i++) { gateStep({ ...pr, hold }, -60, 1 / 60, s); states.push(s.state); }
+      return states;
+    };
+    // 100 ms of hold at 60 frames/s: six frames in hold before it starts closing
+    expect(run(100).slice(0, 6).every(st => st === 2)).toBe(true);
+    expect(run(100)[7]).not.toBe(2);
+    expect(run(0)[0]).toBe(3);
+  });
+  it("moves the filter's envelope at its attack and release", () => {
+    const fast = filterEnvStep({ eatt: 1, erel: 1000 }, 0, 0.01, 0);
+    const slow = filterEnvStep({ eatt: 200, erel: 1000 }, 0, 0.01, 0);
+    expect(fast).toBeGreaterThan(0.99);
+    expect(slow).toBeLessThan(0.1);
+    expect(filterEnvStep({ eatt: 1, erel: 10 }, -120, 0.05, 1)).toBeLessThan(0.01);
+    expect(filterEnvStep({ eatt: 1, erel: 1000 }, -120, 0.05, 1)).toBeGreaterThan(0.9);
+  });
+  it("shows −∞ only at the gate's floor, not the vocal rider's noise floor", () => {
+    const cat = mockCatalog();
+    const rider = cat.types.rider!.params.find(p => p.id === 'floor')!;
+    expect(pFmt(rider, -90)).not.toContain('∞');
   });
 });

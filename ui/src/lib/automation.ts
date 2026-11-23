@@ -223,8 +223,26 @@ export function automatedKeys(p: Project): Set<string> {
   const used = new Set<Id>();
   for (const c of p.clips) if (c.kind === 'auto' && !c.muted) used.add(c.ref);
   const s = new Set<string>();
-  for (const a of p.automations ?? []) if (used.has(a.id)) s.add(targetKey(a.target));
+  for (const a of p.automations ?? []) {
+    if (!used.has(a.id)) continue;
+    // the engine does not play these (catalog::sets_latency), so the control is not driven
+    const t = a.target;
+    if (t.kind === 'fx') { const f = fxOf(p, t.fxId)?.f; if (f && setsLatency(f.type, t.param)) continue; }
+    s.add(targetKey(t));
+  }
   return s;
+}
+
+/**
+ * Parameters that change an effect's latency (engine `catalog::sets_latency`): look-ahead and
+ * quality switches. Delay compensation is planned when the mixer is built, not while it plays,
+ * so these are set by hand, not automated.
+ */
+export function setsLatency(type: string, param: string): boolean {
+  if (type === 'gate' || type === 'limit' || type === 'deess') return param === 'look';
+  if (type === 'rider') return param === 'look' || param === 'speed';
+  if (type === 'sat') return param === 'hq';
+  return false;
 }
 
 /** An automation clip of one target: beats [start, end) play `points` from `offset` on. */

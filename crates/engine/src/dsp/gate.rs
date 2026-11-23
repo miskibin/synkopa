@@ -128,6 +128,9 @@ pub struct Gate {
     // look-ahead line
     dl: Vec<f32>,
     dr: Vec<f32>,
+    /// What the detector hears, delayed like the sound, for `listen`.
+    kl: Vec<f32>,
+    kr: Vec<f32>,
     w: usize,
     // meters
     det_db: f32,
@@ -171,6 +174,8 @@ impl Default for Gate {
             g2: 0.0,
             dl: Vec::new(),
             dr: Vec::new(),
+            kl: Vec::new(),
+            kr: Vec::new(),
             w: 0,
             det_db: -120.0,
             gr_db: 0.0,
@@ -250,7 +255,7 @@ impl Gate {
         let rest = self.rest_db();
         let mask = self.dl.len() - 1;
         let (up, down) = if self.duck { (self.a_rel, self.a_att) } else { (self.a_att, self.a_rel) };
-        let (mut det_max, mut gr_min) = (0f32, 0f32);
+        let (mut det_max, mut gr_min) = (MIN_DB, 0f32);
         for i in 0..n {
             let (xl, xr) = (l[i], r[i]);
             // the side-chain: its own input (both sides, linked) or the key, band-limited
@@ -269,7 +274,8 @@ impl Gate {
                 self.env = if a > self.env { a } else { flush(self.env + (a - self.env) * self.k_pk) };
                 20.0 * self.env.max(1e-6).log10()
             };
-            det_max = det_max.max(kl.abs().max(kr.abs()));
+            // the meter shows the level the state machine compares with the thresholds
+            det_max = det_max.max(lvl_db);
 
             // open at the threshold, close below threshold − hysteresis once the hold is over
             match self.state {
@@ -335,20 +341,23 @@ impl Gate {
             gr_min = gr_min.min(g2_db.max(MIN_DB));
 
             // look-ahead: the sound comes out `look` samples late, the gain is already moving
+            // (listening, the detector's sound is delayed the same way, so it lines up with the mix)
             self.dl[self.w] = xl;
             self.dr[self.w] = xr;
+            self.kl[self.w] = kl;
+            self.kr[self.w] = kr;
             let rd = (self.w + self.dl.len() - self.look) & mask;
             let (yl, yr) = (self.dl[rd], self.dr[rd]);
             self.w = (self.w + 1) & mask;
             if self.listen {
-                l[i] = kl;
-                r[i] = kr;
+                l[i] = self.kl[rd];
+                r[i] = self.kr[rd];
             } else {
                 l[i] = yl * g;
                 r[i] = yr * g;
             }
         }
-        self.det_db = super::gain_to_db(det_max).max(-120.0);
+        self.det_db = det_max.max(MIN_DB);
         self.gr_db = gr_min;
         self.keyed = key.is_some();
     }
@@ -361,6 +370,8 @@ impl Processor for Gate {
         let n = ((0.010 * self.sr) as usize + 4).next_power_of_two();
         self.dl = vec![0.0; n];
         self.dr = vec![0.0; n];
+        self.kl = vec![0.0; n];
+        self.kr = vec![0.0; n];
         self.k_pk = 1.0 - (-1.0 / (0.010 * self.sr)).exp();
         self.k_ms = 1.0 - (-1.0 / (0.010 * self.sr)).exp();
         self.derive();
@@ -382,14 +393,15 @@ impl Processor for Gate {
         self.rms = v[idx::DET] >= 0.5;
         self.listen = v[idx::LISTEN] >= 0.5;
         self.derive();
-        let (hp, lp) = (v[idx::SCHP].clamp(20.0, 4000.0), v[idx::SCLP].clamp(500.0, 20_000.0));
+        let (hp, lp) = (v[idx::SCHP].clamp(20.0, 4000.0), v[idx::SCLP].clamp(200.0, 20_000.0));
         if hp != self.schp || lp != self.sclp {
             (self.schp, self.sclp) = (hp, lp);
             self.update_filters();
         }
-        if duck != self.duck || !self.primed {
-            // a new mode starts at rest rather than gliding from the other mode's gain
-            self.duck = duck;
+        // a new mode glides from the gain it has now to the new mode's (its attack or release),
+        // so switching it while the music plays does not click
+        self.duck = duck;
+        if !self.primed {
             self.primed = true;
             self.settle();
         }
@@ -408,6 +420,8 @@ impl Processor for Gate {
     fn reset(&mut self) {
         self.dl.fill(0.0);
         self.dr.fill(0.0);
+        self.kl.fill(0.0);
+        self.kr.fill(0.0);
         self.w = 0;
         self.env = 0.0;
         self.ms = 0.0;
@@ -418,6 +432,10 @@ impl Processor for Gate {
     }
 
     fn tail_samples(&self) -> Option<usize> {
+        // listening to a sidechain, it plays the key, which goes on while its own input is silent
+        if self.listen && self.keyed {
+            return None;
+        }
         // silent in = silent out once the look-ahead line has emptied; what has to settle is the
         // hold, the release (to −120 dB, ~2.5 release times in dB) and the detector
         let rel = (self.rel_ms / 1000.0 * self.sr * 2.5) as usize;
@@ -428,8 +446,9 @@ impl Processor for Gate {
         self.gr_db.min(0.0)
     }
 
-    /// `[0]` detector peak dBFS of the last block (its own input or the key, after the side-chain
-    /// filters), `[1]` gain dB now, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 when
+    /// `[0]` the detector's level in dBFS, the highest of the last block: peak or RMS as `det`
+    /// picks, of its own input or the key, after the side-chain filters, the level the thresholds
+    /// are compared with, `[1]` gain dB now, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 when
     /// the detector hears a sidechain.
     fn meters(&self, out: &mut [f32; METERS]) {
         out[0] = self.det_db;

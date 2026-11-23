@@ -363,3 +363,72 @@ fn the_filter_runs_far_faster_than_real_time() {
         assert!(speed > 20.0, "filter: {speed:.0}× real time");
     }
 }
+
+#[test]
+fn the_dj_centre_leaves_loud_audio_alone_with_the_clip_on() {
+    let sr = 48_000.0;
+    let x = noise(sr as usize / 4, 1.0, 5);
+    let centre = filt(&[("type", 5.0), ("dj", 0.0), ("clip", 1.0)]);
+    let (y, _) = run(&mut make(&centre, sr), &x, &x, None, 256, ctx(sr));
+    assert_eq!(y, x, "full-scale samples pass the centre unclipped");
+}
+
+#[test]
+fn switching_the_type_or_slope_on_a_sustained_note_does_not_click() {
+    let sr = 48_000.0;
+    let len = sr as usize;
+    let x = sine(len, 220.0, 0.5, sr);
+    let step = |s: &[f32]| s.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0.0f32, f32::max);
+    type Kv<'a> = &'a [(&'a str, f64)];
+    let cases: [(Kv, Kv); 6] = [
+        (&[("type", 0.0)], &[("type", 2.0)]),
+        (&[("type", 2.0)], &[("type", 1.0)]),
+        (&[("type", 1.0)], &[("type", 0.0)]),
+        (&[("type", 3.0)], &[("type", 4.0)]),
+        (&[("type", 0.0), ("slope", 0.0)], &[("type", 0.0), ("slope", 1.0)]),
+        (&[("type", 5.0), ("dj", -40.0)], &[("type", 1.0)]),
+    ];
+    for (a, b) in cases {
+        let with = |kv: &[(&str, f64)]| filt(&[kv, &[("cutoff", 2000.0), ("res", 40.0)]].concat());
+        let mut p = make(&with(a), sr);
+        let (mut l, mut r) = (x.clone(), x.clone());
+        let half = len / 2;
+        p.process(&mut l[..half], &mut r[..half], &ctx(sr));
+        p.set_params(&param_block(&with(b)));
+        p.process(&mut l[half..], &mut r[half..], &ctx(sr));
+        let jump = step(&l[half - 2..half + 4800]);
+        assert!(jump < 0.03, "{a:?} → {b:?}: a step of {jump} at the switch");
+        assert!(l.iter().all(|v| v.is_finite()));
+    }
+    // a burst of switches (automation stepping the type) still never jumps
+    let mut p = make(&filt(&[("type", 0.0), ("cutoff", 2000.0)]), sr);
+    let (mut l, mut r) = (x.clone(), x.clone());
+    for (i, ch) in l.chunks_mut(64).zip(r.chunks_mut(64)).enumerate() {
+        p.set_params(&param_block(&filt(&[("type", (i % 5) as f64), ("cutoff", 2000.0)])));
+        p.process(ch.0, ch.1, &ctx(sr));
+    }
+    let jump = step(&l);
+    assert!(jump < 0.06, "switching every 64 samples: a step of {jump}");
+}
+
+#[test]
+fn the_ladder_has_rung_out_when_its_reported_tail_ends() {
+    let sr = 48_000.0;
+    for res in [80.0, 92.0, 96.0] {
+        let f = filt(&[("type", 1.0), ("cutoff", 800.0), ("res", res)]);
+        let mut p = make(&f, sr);
+        let mut x = vec![0.0f32; 64];
+        x[0] = 0.5;
+        let (mut l, mut r) = (x.clone(), x.clone());
+        p.process(&mut l, &mut r, &ctx(sr));
+        let tail = p.tail_samples().expect("below self-oscillation the ladder reports a tail");
+        let mut silent = vec![0.0f32; tail];
+        let mut s2 = silent.clone();
+        p.process(&mut silent, &mut s2, &ctx(sr));
+        let mut after = vec![0.0f32; 4800];
+        let mut a2 = after.clone();
+        p.process(&mut after, &mut a2, &ctx(sr));
+        let left = after.iter().fold(0.0f32, |m, v| m.max(v.abs()));
+        assert!(db(left) < -100.0, "res {res}: {:.1} dBFS still ringing after the {:.2} s tail", db(left), tail as f32 / sr);
+    }
+}

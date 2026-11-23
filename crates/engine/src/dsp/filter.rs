@@ -165,6 +165,59 @@ impl Ladder {
     }
 }
 
+/// One filter type's running state. Switching the type or the slope crossfades from the old one
+/// to the new one (`FADE_MS`), both running meanwhile, so a switch on a sustained note does not
+/// click.
+#[derive(Clone, Copy, Default)]
+struct Core {
+    ftype: usize,
+    slope24: bool,
+    svf: [[Svf; 2]; 2],
+    ladder: [Ladder; 2],
+}
+
+impl Core {
+    /// The base cutoff (log2 Hz), the filter mode and how much of it is heard: DJ takes all
+    /// three from its knob, the other types use the Cutoff knob.
+    #[inline(always)]
+    fn shape(&self, oct: f32, dj: f32) -> (f32, usize, f32) {
+        if self.ftype == DJ {
+            let (f, m, w) = dj_map(dj);
+            (f.log2(), m, w)
+        } else {
+            (oct, self.ftype, 1.0)
+        }
+    }
+    #[inline(always)]
+    fn tick(&mut self, c: usize, x: f32, g: f32, mode: usize, res: f32) -> f32 {
+        if mode == LADDER {
+            self.ladder[c].tick(x, g, LADDER_K_MAX * res)
+        } else {
+            let kq = 1.0 / svf_q(res);
+            if self.slope24 {
+                let st1 = self.svf[c][0].run(x, g, std::f32::consts::SQRT_2, mode);
+                self.svf[c][1].run(st1, g, kq, mode)
+            } else {
+                self.svf[c][0].run(x, g, kq, mode)
+            }
+        }
+    }
+    /// The same running state as another type and slope. The SVF types share one filter (only
+    /// the output they tap differs), so it carries on warm; the ladder starts empty after an SVF
+    /// type and the reverse.
+    fn switched(&self, ftype: usize, slope24: bool) -> Core {
+        let mut n = Core { ftype, slope24, ..*self };
+        if (ftype == LADDER) != (self.ftype == LADDER) {
+            n.svf = [[Svf::default(); 2]; 2];
+            n.ladder = [Ladder::default(); 2];
+        }
+        n
+    }
+}
+
+/// How long a type or slope switch crossfades.
+const FADE_MS: f32 = 10.0;
+
 /// Deterministic noise for S&H: a value in −1..1 for each LFO cycle.
 #[inline]
 fn hash01(n: u64) -> f32 {
@@ -199,8 +252,6 @@ pub struct Filter {
     sr: f32,
     k: f32,
     k_slew: f32,
-    ftype: usize,
-    slope24: bool,
     sync: bool,
     rate: f32,
     div: usize,
@@ -217,8 +268,13 @@ pub struct Filter {
     stereo: Smooth,
     env_amt: Smooth,
     primed: bool,
-    svf: [[Svf; 2]; 2],
-    ladder: [Ladder; 2],
+    /// The type playing now, and the one it is fading from (while `fade` > 0).
+    cur: Core,
+    old: Core,
+    fade: u32,
+    fade_n: u32,
+    /// A switch asked for while another was fading: it starts when that one ends.
+    pending: Option<(usize, bool)>,
     lfo: Lfo,
     /// Completed LFO cycles (S&H picks a value per cycle).
     cycle: u64,
@@ -238,8 +294,6 @@ impl Default for Filter {
             sr: 48_000.0,
             k: 0.0,
             k_slew: 0.0,
-            ftype: LADDER,
-            slope24: true,
             sync: true,
             rate: 1.0,
             div: 2,
@@ -255,8 +309,11 @@ impl Default for Filter {
             stereo: Smooth::default(),
             env_amt: Smooth::default(),
             primed: false,
-            svf: [[Svf::default(); 2]; 2],
-            ladder: [Ladder::default(); 2],
+            cur: Core { ftype: LADDER, slope24: true, ..Core::default() },
+            old: Core::default(),
+            fade: 0,
+            fade_n: 480,
+            pending: None,
             lfo: Lfo::default(),
             cycle: 0,
             lfo_y: [0.0; 2],
@@ -271,6 +328,16 @@ impl Default for Filter {
 }
 
 impl Filter {
+    /// Starts a crossfade from the type playing now to `ftype` / `slope24`.
+    fn switch(&mut self, ftype: usize, slope24: bool) {
+        if ftype == self.cur.ftype && slope24 == self.cur.slope24 {
+            return;
+        }
+        self.old = self.cur;
+        self.cur = self.cur.switched(ftype, slope24);
+        self.fade = self.fade_n;
+    }
+
     fn smoothers(&mut self) -> [&mut Smooth; 7] {
         [&mut self.oct, &mut self.res, &mut self.drive, &mut self.dj, &mut self.lfo_amt, &mut self.stereo, &mut self.env_amt]
     }
@@ -285,7 +352,7 @@ impl Filter {
             self.cycle = (ctx.beat / beats).floor().max(0.0) as u64;
         }
         let fmax = (0.45 * sr).min(21_000.0);
-        let (ft, slope24, shape, use_clip) = (self.ftype, self.slope24, self.shape, self.clip);
+        let (shape, use_clip) = (self.shape, self.clip);
         let mut peak = 0f32;
         for s in 0..n {
             let oct = self.oct.tick(k);
@@ -306,51 +373,63 @@ impl Filter {
             self.env = flush(det + (self.env - det) * a);
             let env_m = ((20.0 * self.env.max(1e-5).log10() - ENV_FLOOR_DB) / -ENV_FLOOR_DB).clamp(0.0, 1.0);
 
-            // DJ: the knob picks the base cutoff and the side; elsewhere the Cutoff knob
-            let (base_oct, mode, wet) = if ft == DJ {
-                let (f, m, w) = dj_map(dj);
-                (f.log2(), m, w)
-            } else {
-                (oct, ft, 1.0)
-            };
             let ph = self.lfo.phase as f32;
             let gain = (drive * (1.0 / 20.0) * std::f32::consts::LOG2_10).exp2();
             let drive_w = (drive / 1.0).clamp(0.0, 1.0);
             let trim = 1.0 / (1.0 + 0.35 * (gain - 1.0));
+            let cur_shape = self.cur.shape(oct, dj);
+            let fading = self.fade > 0;
+            let old_shape = if fading { self.old.shape(oct, dj) } else { (0.0, 0, 0.0) };
+            // the new type's share of the crossfade, smoothstep from 0 to 1
+            let t = if fading {
+                let u = 1.0 - self.fade as f32 / self.fade_n as f32;
+                u * u * (3.0 - 2.0 * u)
+            } else {
+                1.0
+            };
             for c in 0..2 {
                 let p = ph + if c == 1 { stereo } else { 0.0 };
                 let raw = lfo_value(shape, p, self.cycle + p.floor().max(0.0) as u64);
                 self.lfo_y[c] += (raw - self.lfo_y[c]) * self.k_slew;
-                let f = (base_oct + lfo_amt * self.lfo_y[c] + env_amt * env_m).exp2().clamp(16.0, fmax);
-                if s + 1 == n {
-                    self.fc[c] = f;
-                }
-                let g = (PI * f / sr).tan();
+                let m = lfo_amt * self.lfo_y[c] + env_amt * env_m;
                 let x = if c == 0 { xl } else { xr };
                 // drive: a smooth blend in over the first dB, so 0 dB is exactly clean
                 let xd = if drive_w > 0.0 { x + drive_w * ((x * gain).tanh() * trim - x) } else { x };
-                let y = if mode == LADDER {
-                    self.ladder[c].tick(xd, g, LADDER_K_MAX * res)
-                } else {
-                    let kq = 1.0 / svf_q(res);
-                    if slope24 {
-                        let st1 = self.svf[c][0].run(xd, g, std::f32::consts::SQRT_2, mode);
-                        self.svf[c][1].run(st1, g, kq, mode)
-                    } else {
-                        self.svf[c][0].run(xd, g, kq, mode)
+                // the filtered sound (soft-clipped), then blended with the dry by how much of it is
+                // heard: the DJ centre passes the sound untouched, clip included
+                let voice = |core: &mut Core, (base, mode, w): (f32, usize, f32), peak: &mut f32| -> (f32, f32) {
+                    let f = (base + m).exp2().clamp(16.0, fmax);
+                    let y = core.tick(c, xd, (PI * f / sr).tan(), mode, res);
+                    if w > 0.0 {
+                        *peak = peak.max(y.abs());
                     }
+                    let y = if use_clip { clip(y) } else { y };
+                    (x + w * (y - x), f)
                 };
-                let y = x + wet * (y - x);
-                let y = if use_clip { clip(y) } else { y };
-                peak = peak.max(y.abs());
+                let (mut y, f) = voice(&mut self.cur, cur_shape, &mut peak);
+                if s + 1 == n {
+                    self.fc[c] = f;
+                }
+                if fading {
+                    let (yo, _) = voice(&mut self.old, old_shape, &mut peak);
+                    y = yo + t * (y - yo);
+                }
                 if c == 0 {
                     l[s] = y;
                 } else {
                     r[s] = y;
                 }
             }
+            if fading {
+                self.fade -= 1;
+                if self.fade == 0 {
+                    if let Some((ft, sl)) = self.pending.take() {
+                        self.switch(ft, sl);
+                    }
+                }
+            }
             self.env_m = env_m;
-            self.dj_w = wet;
+            self.dj_w = cur_shape.2;
             let was = self.lfo.phase;
             self.lfo.advance(inc);
             if self.lfo.phase < was {
@@ -367,6 +446,7 @@ impl Processor for Filter {
         self.sr = sample_rate.max(8000.0);
         self.k = 1.0 - (-1.0 / (0.02 * self.sr)).exp();
         self.k_slew = 1.0 - (-1.0 / (0.0015 * self.sr)).exp();
+        self.fade_n = ((FADE_MS / 1000.0 * self.sr) as u32).max(1);
         self.reset();
     }
 
@@ -374,12 +454,14 @@ impl Processor for Filter {
         let v = &p.values;
         let ftype = (v[idx::TYPE].round().max(0.0) as usize).min(TYPES.len() - 1);
         let slope24 = v[idx::SLOPE] >= 0.5;
-        if ftype != self.ftype || slope24 != self.slope24 {
-            // the state of one topology means nothing to another: start the new one empty
-            self.svf = [[Svf::default(); 2]; 2];
-            self.ladder = [Ladder::default(); 2];
-            self.ftype = ftype;
-            self.slope24 = slope24;
+        if !self.primed {
+            // loading: nothing is playing yet, so nothing to fade from
+            self.cur = Core { ftype, slope24, ..Core::default() };
+        } else if self.fade > 0 {
+            // a switch is fading: this one follows it (the last asked for wins)
+            self.pending = Some((ftype, slope24)).filter(|&(f, s)| f != self.cur.ftype || s != self.cur.slope24);
+        } else {
+            self.switch(ftype, slope24);
         }
         self.oct.target = v[idx::CUTOFF].clamp(16.0, 22_000.0).log2();
         self.res.target = (v[idx::RES] / 100.0).clamp(0.0, 1.0);
@@ -414,8 +496,9 @@ impl Processor for Filter {
     }
 
     fn reset(&mut self) {
-        self.svf = [[Svf::default(); 2]; 2];
-        self.ladder = [Ladder::default(); 2];
+        let (ft, sl) = self.pending.take().unwrap_or((self.cur.ftype, self.cur.slope24));
+        self.cur = Core { ftype: ft, slope24: sl, ..Core::default() };
+        self.fade = 0;
         self.env = 0.0;
         self.lfo_y = [0.0; 2];
         for s in self.smoothers() {
@@ -425,16 +508,33 @@ impl Processor for Filter {
 
     fn tail_samples(&self) -> Option<usize> {
         let res = self.res.target.max(self.res.v);
-        if self.ftype == LADDER && LADDER_K_MAX * res >= 4.0 {
+        let ladder = self.cur.ftype == LADDER || (self.fade > 0 && self.old.ftype == LADDER);
+        let kq = LADDER_K_MAX * res;
+        if ladder && kq >= 4.0 {
             return None; // self-oscillating: it may sing on its own
         }
         // a resonance at f with quality Q falls 140 dB in 16.1·Q/(π f) s; the lowest cutoff
         // the modulation can reach is the slowest to ring out
         let reach = self.lfo_amt.target.abs().max(self.lfo_amt.v.abs()) + self.env_amt.target.abs().max(self.env_amt.v.abs());
-        let base = if self.ftype == DJ { 20.0 } else { self.oct.target.min(self.oct.v).exp2() };
+        let dj = self.cur.ftype == DJ || (self.fade > 0 && self.old.ftype == DJ);
+        let base = if dj { 20.0 } else { self.oct.target.min(self.oct.v).exp2() };
         let f = (base * (-reach).exp2()).max(16.0);
-        let q = if self.ftype == LADDER { 0.7 + 8.0 * res } else { svf_q(res) + 0.7 };
-        let secs = 16.1 * q / (PI * f) * if self.slope24 || self.ftype == LADDER { 2.0 } else { 1.0 };
+        // a resonance at f with quality Q falls 140 dB (ln 10^7 = 16.1 time constants) in
+        // 16.1·Q/(π f) s; two cascaded stages ring about twice as long
+        let svf = 16.1 * (svf_q(res) + 0.7) / (PI * f) * 2.0;
+        // the ladder's slowest poles, 1 + s = k^¼·e^(±jπ/4), decay at (1 − k^¼/√2)·2π f, which
+        // goes to zero as the feedback nears 4 (the small signal is the slowest; 1.5× for the
+        // margin the bilinear transform and the saturation leave)
+        let lad = if ladder {
+            let sigma = (1.0 - kq.powf(0.25) * std::f32::consts::FRAC_1_SQRT_2).max(1e-6) * TAU * f;
+            1.5 * 16.1 / sigma
+        } else {
+            0.0
+        };
+        let secs = svf.max(lad);
+        if secs > 60.0 {
+            return None; // practically at the edge of self-oscillation
+        }
         Some(((secs + 0.05) * self.sr) as usize)
     }
 

@@ -11,6 +11,7 @@ import { knobVal, paramDefs, pFmt, pNorm, presetInfo, presetList } from '../lib/
 import { noteName, stepBeats } from '../lib/beatDiv';
 import * as A from '../state/actions';
 import { autoDisplay, autoTweak, autoWheel, captureArmed, controlMenu, isAutomated, isOverridden, noteManualTweak, paramMenu, type Tweak } from '../state/automation';
+import { setsLatency } from '../lib/automation';
 import type { AutoTarget } from '../api/types';
 import { commit, Gesture } from '../state/edit';
 import { findFx, insName, plain, S } from '../state/store';
@@ -209,21 +210,23 @@ function ParamKnob(props: { fxId: Id; p: ParamDef; ends?: [string, string]; colo
   let g: Tweak | null = null;
   const reset = () => { const op = setParam(props.fxId, p.id, p.def); if (op) commit([op], tName(p.label)); };
   const staticOps = (t: number) => { const op = setParam(props.fxId, p.id, knobVal(p, t)); return op ? [op] : null; };
+  // armed automation recording leaves the latency parameters alone (see fxParamMenu)
+  const recordable = () => (fx() && setsLatency(fx()!.type, p.id) ? null : target());
   return (
     <Knob key={props.fxId + p.id} label={tName(p.label)} t={() => clamp(pNorm(p, val()), 0, 1)} ends={props.ends} color={props.color} size={props.size}
       automated={() => isAutomated(target())}
       overridden={() => isOverridden(target())}
       zero={() => (p.min < 0 && p.max > 0 && !p.log ? pNorm(p, 0) : 0)} text={() => pFmt(p, val())}
-      onStart={() => { g = autoTweak(target(), tName(p.label), staticOps, { color: props.color }); }}
+      onStart={() => { g = autoTweak(recordable(), tName(p.label), staticOps, { color: props.color }); }}
       onChange={t => { const v = knobVal(p, t); g?.move(t); say(A.fxName(fx()!) + ' · ' + tName(p.label) + ' ' + fmtLong(p, v)); }}
       onEnd={() => { g?.end(); g = null; }}
       onReset={reset}
-      onMenu={(x, y) => paramMenu(x, y, target(), reset, props.color)}
+      onMenu={(x, y) => fxParamMenu(x, y, fx(), p, target(), reset, props.color)}
       onWheel={t => {
         // a synced time steps one note value per notch (snapping alone would undo a small move)
         const v = p.unit === 'beat' ? stepBeats(val(), t - pNorm(p, val())) : knobVal(p, t);
         const n = clamp(pNorm(p, v), 0, 1);
-        autoWheel(target(), 'fx' + props.fxId + p.id, tName(p.label), n, t2 => { const op = setParam(props.fxId, p.id, p.unit === 'beat' ? stepBeats(val(), t2 - pNorm(p, val())) : knobVal(p, t2)); return op ? [op] : null; });
+        autoWheel(recordable(), 'fx' + props.fxId + p.id, tName(p.label), n, t2 => { const op = setParam(props.fxId, p.id, p.unit === 'beat' ? stepBeats(val(), t2 - pNorm(p, val())) : knobVal(p, t2)); return op ? [op] : null; });
         say(A.fxName(fx()!) + ' · ' + tName(p.label) + ' ' + fmtLong(p, v));
       }} />
   );
@@ -241,7 +244,13 @@ function ParamChoice(props: { fxId: Id; p: ParamDef; danger?: number; color?: st
     say(A.fxName(fx()!) + ' · ' + tName(props.p.label) + ': ' + tName(props.p.options![i]));
   };
   return <Segmented label={props.hideLabel ? undefined : tName(props.p.label)} options={props.labels ?? props.p.options!.map(tName)} value={val} pick={pick} danger={props.danger} color={props.color} small={props.small}
-    onMenu={(x, y) => paramMenu(x, y, target(), () => pick(props.p.def), props.color)} />;
+    onMenu={(x, y) => fxParamMenu(x, y, fx(), props.p, target(), () => pick(props.p.def), props.color)} />;
+}
+
+/** A parameter's right-click menu; one that moves the effect's latency cannot be automated, and says why. */
+function fxParamMenu(x: number, y: number, fx: Fx | undefined, p: ParamDef, target: AutoTarget, reset: () => void, color?: string) {
+  if (fx && setsLatency(fx.type, p.id)) controlMenu(x, y, tName(p.label), reset, t('c.fx.latNoAuto'));
+  else paramMenu(x, y, target, reset, color);
 }
 
 /** One catalog parameter, as a knob (size tier) or segmented buttons — tinted with the effect's colour. */

@@ -305,6 +305,10 @@ default `curve`) for the segment that ends at it. They are omitted when default,
 projects load and play unchanged. `curve_at` (model.rs) and `curveAt` (`lib/automation.ts`) are
 the same formulas, both checked against `crates/engine/tests/fixtures/curves.json`. The engine
 still evaluates automation once per audio block, so a hold or a stair lands on a block boundary.
+Parameters that move an effect's latency (look-ahead, the Saturator's HQ: `catalog::sets_latency`,
+mirrored by `setsLatency` in `lib/automation.ts`) cannot be automated: delay compensation is planned
+when the mixer graph is built, so the insert would drift out of time. Their right-click menu says so,
+and the engine ignores an automation of one in an older project.
 
 **Recording tweaks.** With the record filter's *Automation* ticked (`rec_automation`,
 right-click on Record), a control tweak while the song plays appends points to that
@@ -815,7 +819,7 @@ u32 underruns       // output underruns since the engine started: callbacks slow
 | `half` | `[0]` position in the loop window 0..1, `[1]` 1 = slowing down (0 = stopped, or passing the input through until the first window after a playhead jump), `[2]`/`[3]` gains of read heads A/B (crossfade), `[4]` speed divisor (1.5 / 2 / 4), `[5]` window in beats, `[6]` crossfade ms (negative = before the window start, Percussive/FX), `[7]`/`[8]` band edges Hz (0 = that side not split). Zero latency; follows the song and the pattern loop preview (`ProcessCtx` carries the preview's beat) |
 | `chorus` | `[0]` LFO phase 0..1, `[1..4]` left voices' read delay ms, `[4..7]` right voices', `[7]` voices a side (2 Chorus, 3 Ensemble, 1 Vibrato), `[8]` rate Hz. Zero latency |
 | `phaser` | `[0]`/`[1]` the stages' break frequency left/right Hz, `[2]` stages, `[3]` LFO phase 0..1. Zero latency |
-| `gate` | `[0]` detector peak dBFS (own input or sidechain, after the side-chain band), `[1]` gain dB, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 while it listens to a sidechain. Latency = look-ahead (0/1/2/5/10 ms), compensated by PDC |
+| `gate` | `[0]` detector level dBFS, peak or RMS as `det` picks (own input or sidechain, after the side-chain band), `[1]` gain dB, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 while it listens to a sidechain. Latency = look-ahead (0/1/2/5/10 ms), compensated by PDC |
 | `filter` | `[0]`/`[1]` cutoff left/right now Hz, `[2]` envelope 0..1, `[3]` LFO phase 0..1, `[4]` DJ: how much of the filter is heard, `[5]` 1 while the soft clip works, `[6]` 1 with a sidechain. Zero latency |
 | `stereo` | `[0]` correlation out, `[1]` balance −1 (left) … +1 (right), `[2]` side/mid dB out, `[3]` correlation below 120 Hz, `[4]` correlation in, `[5]` side/mid dB in, `[6]` bass mono crossover Hz, `[7]` 1 while there is bass to judge. Zero latency; the window also gets X/Y points (`xy`) |
 | `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |

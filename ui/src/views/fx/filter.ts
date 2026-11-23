@@ -11,6 +11,7 @@ import type { FxFrame } from '../../api/telemetry';
 import { clamp } from '../../lib/format';
 import { fx2x } from '../../lib/eq';
 import { t as tr } from '../../lib/i18n';
+import { audioStatus } from '../../state/audioWatch';
 import { freqGrid, MONO10, rgba, T, TeleGate, type Viz } from './common';
 
 export const FILTER_COLOR = '#ff7a59';
@@ -40,6 +41,9 @@ function svfStage(om: number, k: number, mode: number): C {
   if (mode === NOTCH) return div([1 - om * om, 0], den);
   return div([1, 0], den);
 }
+
+/** The rate the engine runs at: the response near the top depends on it (tan(πf/sr)). */
+const liveRate = () => { const r = audioStatus()?.actualRate ?? 0; return r > 0 ? r : SR; };
 
 /** |H(f)| in dB of the filter with these settings at cutoff `fc` (linear: drive and clip left out). */
 export function filterResponseDb(f: number, fc: number, type: number, res: number, slope24: boolean, sr = SR, wet = 1): number {
@@ -77,10 +81,12 @@ export class FilterViz implements Viz {
   cursor = 'default';
   private gate = new TeleGate();
   private fc: [number, number] = [0, 0];
-  private live = false; private clip = false; private env = 0;
+  private live = false; private clip = false; private env = 0; private sr = SR;
   update(_fx: Fx, a: FxFrame | null): boolean {
-    if (!a) { const was = this.live; this.live = false; return was; }
-    if (!this.gate.fresh(a, 4)) return false;
+    const sr = liveRate(), moved = sr !== this.sr;
+    this.sr = sr;
+    if (!a) { const was = this.live; this.live = false; return was || moved; }
+    if (!this.gate.fresh(a, 4)) return moved;
     this.live = true;
     this.fc = [a.meters[0] || 1000, a.meters[1] || 1000];
     this.env = a.meters[2] ?? 0;
@@ -102,7 +108,7 @@ export class FilterViz implements Viz {
     const curve = (fc: number, col: string, width: number, fill: boolean) => {
       g.beginPath();
       for (let i = 0; i <= 240; i++) {
-        const f = 20 * Math.pow(1000, i / 240), xx = fx2x(f, W), yy = y(filterResponseDb(f, fc, sh.type, sh.res, sh.slope24, SR, sh.wet));
+        const f = 20 * Math.pow(1000, i / 240), xx = fx2x(f, W), yy = y(filterResponseDb(f, fc, sh.type, sh.res, sh.slope24, this.sr, sh.wet));
         i ? g.lineTo(xx, yy) : g.moveTo(xx, yy);
       }
       if (fill) { g.lineTo(W, bot); g.lineTo(0, bot); g.closePath(); g.fillStyle = rgba(col, 0.1); g.fill(); }

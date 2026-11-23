@@ -1016,6 +1016,18 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
     }
 }
 
+/// Whether parameter `id` of `kind` changes the effect's latency (`latency`). Delay
+/// compensation is planned when the mixer graph is built, not while it plays, so automation
+/// cannot move these: the insert would drift out of time with the rest of the mix.
+pub fn sets_latency(kind: FxKind, id: &str) -> bool {
+    match kind {
+        FxKind::Gate | FxKind::Limit | FxKind::Deess => id == "look",
+        FxKind::Rider => id == "look" || id == "speed",
+        FxKind::Sat => id == "hq",
+        _ => false,
+    }
+}
+
 /// Delay an effect adds, in samples (for latency compensation).
 pub fn latency(fx: &Fx, sample_rate: f32) -> usize {
     if fx.bypass {
@@ -1136,6 +1148,26 @@ mod tests {
         assert_eq!(on_bands("Low cut 80 Hz"), vec![(Lowcut, 80.0, 24)]);
         assert_eq!(on_bands("High cut 10 kHz"), vec![(Highcut, 10000.0, 24)]);
         assert_eq!(on_bands("Flat").len(), 5, "Flat keeps the tone bands ready");
+    }
+
+    /// Automation skips the parameters that move latency (`sets_latency`): every parameter that
+    /// does must be on that list, or automating it would put the insert out of time.
+    #[test]
+    fn every_latency_parameter_is_kept_from_automation() {
+        for kind in BUILTIN {
+            let fx = new_fx(1, kind, 120.0);
+            let base = latency(&fx, 48_000.0);
+            for d in params(kind) {
+                let moves = [d.min, d.max, d.def, (d.min + d.max) / 2.0].into_iter().any(|v| {
+                    let mut f = fx.clone();
+                    f.params.insert(d.id.to_string(), v);
+                    latency(&f, 48_000.0) != base
+                });
+                if moves {
+                    assert!(sets_latency(kind, d.id), "{kind:?}.{} moves latency but can be automated", d.id);
+                }
+            }
+        }
     }
 
     #[test]

@@ -1,6 +1,7 @@
 // In-browser fake engine, used when the page is not running inside Tauri.
 // Holds the demo project, applies ops with undo/gestures, plays a fake transport and
 // streams binary telemetry frames (encoded exactly like the real ones).
+import { filterEnvStep, gateStep } from './mockGateFilter';
 import { askUrl, DISCORD_URL, MAX_ASK_URL, type AskService } from '../lib/askLink';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
@@ -650,16 +651,9 @@ export class MockBackend implements Backend {
       const keyed = fx.key != null;
       const keyDb = playing ? -4 + 20 * Math.log10(Math.max(1e-6, pulse)) : -120;
       const det = keyed ? keyDb : lvDb;
-      const thr = pr.thr ?? -40, close = thr - (pr.hyst ?? 4), ratio = pr.ratio ?? 100;
-      const floor = (pr.floor ?? -80) <= -79.9 ? -120 : pr.floor ?? -80, duck = (pr.mode ?? 0) >= 0.5;
-      if (det >= thr) sim.held = 1; else if (det < close && sim.held === 1) sim.held = 3;
-      const shut = ratio >= 99.5 ? floor : Math.max(floor, (ratio - 1) * Math.min(0, det - close));
-      const gateDb = sim.held === 1 ? 0 : shut, target = duck ? floor - gateDb : gateDb;
-      const rel = (duck ? pr.att ?? 1 : pr.rel ?? 120) / 1000, att = (duck ? pr.rel ?? 120 : pr.att ?? 1) / 1000;
-      const prev = sim.gr;
-      sim.gr = target + (prev - target) * Math.exp(-dt / (target > prev ? att : rel));
-      if (sim.held === 3 && Math.abs(sim.gr - (duck ? 0 : floor)) < 0.1) sim.held = 0;
-      gr = Math.max(-120, sim.gr);
+      const gs = { state: sim.held, hold: sim.corr, gr: sim.gr };
+      gr = gateStep(pr, det, dt, gs);
+      sim.held = gs.state; sim.corr = gs.hold; sim.gr = gs.gr;
       meters[0] = Math.max(-120, det); meters[1] = gr; meters[2] = sim.held; meters[3] = keyed ? 1 : 0;
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + gr;
       out = level * dbg(gr);
@@ -674,7 +668,7 @@ export class MockBackend implements Backend {
           : shape === 4 ? (q < 0.5 ? 1 : -1) : shape === 5 ? Math.sin(Math.floor(synced ? beat / div : t * (pr.rate ?? 1)) * 12.9898) : Math.sin(2 * Math.PI * q);
       };
       const keyed = fx.key != null, keyDb = playing ? -4 + 20 * Math.log10(Math.max(1e-6, pulse)) : -120;
-      const env = clamp(((keyed ? keyDb : lvDb) + 40) / 40, 0, 1);
+      const env = sim.center = filterEnvStep(pr, keyed ? keyDb : lvDb, dt, sim.center);
       const type = Math.round(pr.type ?? 1);
       const dj = clamp((pr.dj ?? 0) / 100, -1, 1), m = Math.abs(dj), tt = clamp((m - 0.01) / 0.99, 0, 1);
       const base = type === 5 ? (dj < 0 ? 20000 * Math.pow(2, -9.966 * tt) : 20 * Math.pow(2, 9.966 * tt)) : pr.cutoff ?? 1600;

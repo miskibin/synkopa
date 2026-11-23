@@ -337,3 +337,75 @@ fn the_gate_runs_far_faster_than_real_time() {
     assert!(speed > 20.0, "gate: {speed:.0}× real time");
     eprintln!("gate: {speed:.0}× real time");
 }
+
+#[test]
+fn a_side_chain_low_pass_below_500_hz_is_honoured() {
+    // a 700 Hz tone: a 250 Hz side-chain low-pass takes ~36 dB off it, so the gate stays shut;
+    // at 500 Hz (the old lower limit) it would lose only ~12 dB and open
+    let sr = 48_000.0;
+    let x = sine(sr as usize / 2, 700.0, 0.3, sr);
+    let shut = gate_fx(&[("thr", -30.0), ("sclp", 250.0), ("floor", -40.0)]);
+    let (y, _) = run(&mut make(&shut, sr), &x, None, 256);
+    assert!(db(rms(&y[12_000..]) / rms(&x[12_000..])) < -39.0, "a 250 Hz low-pass keeps a 700 Hz tone out of the detector");
+    let wide = gate_fx(&[("thr", -30.0), ("sclp", 500.0), ("floor", -40.0)]);
+    let (y, _) = run(&mut make(&wide, sr), &x, None, 256);
+    assert!(db(rms(&y[12_000..]) / rms(&x[12_000..])).abs() < 0.1, "at 500 Hz it opens");
+}
+
+#[test]
+fn listen_is_delayed_like_the_sound_and_keeps_a_keyed_gate_awake() {
+    let sr = 48_000.0;
+    for look in 0..LOOKS.len() {
+        let f = gate_fx(&[("look", look as f64), ("listen", 1.0)]);
+        let d = latency(&f, sr);
+        let mut x = vec![0.0f32; 4800];
+        x[1000] = 1.0;
+        let (y, _) = run(&mut make(&f, sr), &x, None, 64);
+        let peak = y.iter().enumerate().max_by(|a, b| a.1.abs().total_cmp(&b.1.abs())).unwrap().0;
+        assert_eq!(peak, 1000 + d, "look {look}: listen lines up with the compensated mix");
+    }
+    // listening to a key, it plays while its own input is silent: the host must not park it
+    let f = gate_fx(&[("listen", 1.0)]);
+    let mut g = make(&f, sr);
+    assert!(g.tail_samples().is_some(), "listening to itself, silence in is silence out");
+    let key = vec![0.1f32; 256];
+    run(&mut g, &[0.0; 256], Some(&key), 256);
+    assert_eq!(g.tail_samples(), None, "listening to a sidechain");
+}
+
+#[test]
+fn switching_gate_and_duck_on_a_sustained_note_does_not_click() {
+    let sr = 48_000.0;
+    let len = sr as usize;
+    let step = |s: &[f32]| s.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0.0f32, f32::max);
+    // loud (the gate open, the duck down) and quiet (the gate shut, the duck letting it through)
+    for (amp, (from, to)) in [0.5f32, 0.02].into_iter().flat_map(|a| [(a, (0.0, 1.0)), (a, (1.0, 0.0))]) {
+        let x = sine(len, 220.0, amp, sr);
+        let mut g = make(&gate_fx(&[("thr", -30.0), ("mode", from), ("floor", -40.0)]), sr);
+        let (mut l, mut r) = (x.clone(), x.clone());
+        let half = len / 2;
+        g.process(&mut l[..half], &mut r[..half], &ctx(sr));
+        g.set_params(&param_block(&gate_fx(&[("thr", -30.0), ("mode", to), ("floor", -40.0)])));
+        g.process(&mut l[half..], &mut r[half..], &ctx(sr));
+        // the sine's own largest step is 2π·220/48000·amp (0.0144 at 0.5)
+        let jump = step(&l[half - 2..half + 4800]) / amp;
+        assert!(jump < 0.06, "amp {amp}, mode {from} → {to}: a step of {jump} (relative) at the switch");
+    }
+}
+
+#[test]
+fn the_meter_shows_the_level_the_selected_detector_compares() {
+    // a lone click: its peak is 0 dBFS, its 10 ms RMS ~ −27 dB, under a −20 dB threshold
+    let sr = 48_000.0;
+    let mut x = vec![0.0f32; 256];
+    x[10] = 1.0;
+    let mut m = [0.0f32; METERS];
+    let mut rms_g = make(&gate_fx(&[("det", 1.0), ("thr", -20.0)]), sr);
+    let (_, st) = run(&mut rms_g, &x, None, 256);
+    rms_g.meters(&mut m);
+    assert!(m[0] < -20.0 && st[0] == State::Closed, "RMS: the meter ({}) stays under the threshold it does not reach", m[0]);
+    let mut pk = make(&gate_fx(&[("det", 0.0), ("thr", -20.0)]), sr);
+    run(&mut pk, &x, None, 256);
+    pk.meters(&mut m);
+    assert!(m[0] > -1.0, "peak: the meter ({}) shows the click", m[0]);
+}
