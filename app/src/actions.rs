@@ -830,6 +830,7 @@ pub fn context(app: &dyn Host, full: bool) -> Value {
         "channels": p.channels.iter().map(|c| channel_json(p, c)).collect::<Vec<_>>(),
         "sources": p.sources.iter().map(|s| json!({"id": s.id, "name": s.name, "seconds": s.dur, "path": s.path})).collect::<Vec<_>>(),
         "clips": p.clips.len(),
+        "markers": p.markers.iter().map(marker_json).collect::<Vec<_>>(),
         "notebook": p.notebook.pages.iter().map(|pg| json!({"id": pg.id, "name": pg.name, "startBar": pg.start_bar, "lines": pg.text.lines().count()})).collect::<Vec<_>>(),
         "nextId": p.next_id,
     })
@@ -868,7 +869,10 @@ pub fn schema() -> Value {
             "removeComp": {"id": 0},
             "editTune": {"clip": 412, "edit": {"base": "segmentation fingerprint from `synkopa pitch inspect` (optional; refused as STALE_NOTES when the notes changed)", "init": "[[start, end], …] seconds: the analysis' notes, used only when the clip has no notes of its own yet (`pitch edit` adds it)", "notes": [{"i": 3, "shift": -20, "shiftBy": 0, "drift": 0.2, "formant": 0, "gain": 0, "speed": 60}], "reset": [5], "split": [{"i": 7, "at": 12.35}], "merge": [9], "clear": false, "erasePencil": [[1.0, 1.5]], "pencil": [[2.0, 64.0], [2.02, 64.1]]}},
             "putNotebook": {"notebook": {"pages": [{"id": 0, "name": "Zwrotka 1", "startBar": 1, "text": "[Zwrotka]\nfirst bar\n\nthird bar"}]}},
+            "putMarker": {"marker": {"id": 0, "at": 32, "name": "Hook"}},
+            "removeMarker": {"id": 0},
         },
+        "markers": "Playlist time markers (labels only, never played): `at` in beats on the song timeline (0..2048), name up to 80 characters, at most 256; kept sorted by `at`. putMarker adds, moves or renames (by id), removeMarker deletes. A marker's section runs to the next marker (the last one: to the song end). Easier: `synkopa markers --add Hook --bar 9`, `synkopa markers --loop Hook`",
         "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, bar = 4 beats), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `synkopa context --full`",
         "comps": "take lanes: a clip of kind `comp` plays comp `ref`; takes/regions are in comp beats (comp beat = clip.offset + timeline beat − clip.start); regions sorted, non-overlapping, gaps are silent; xfade in seconds (equal-power crossfade centred on each region start, default 0.01). Easier: `synkopa takes --track N`, `synkopa comp --track N --set '[{\"take\":ID,\"from\":B,\"to\":B}]'` (timeline beats)",
         "pitchEdits": "editTune changes only a clip's pitch edits (the pitch editor's notes): indices name the notes as `synkopa pitch inspect` lists them (before this op), whatever order the parts are in; they apply as clear, reset, notes, split, merge, erasePencil, pencil. shift/formant in cents (within 2400), drift 0..1, gain -24..12 dB, speed 0..1000 ms (null = the reference's, else immediate). Easier: `synkopa pitch edit`",
@@ -970,6 +974,77 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
 }
 
 /// A channel by id, by name (case-insensitive) or by built-in instrument name.
+fn marker_json(m: &wave_engine::Marker) -> Value {
+    json!({ "id": m.id, "name": m.name, "at": m.at, "bar": m.at / wave_engine::BAR_BEATS + 1.0 })
+}
+
+/// A marker by id, or by name (case-insensitive; the first one when names repeat).
+fn find_marker<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine::Marker> {
+    if let Some(id) = as_index(v) {
+        return p.marker(id).ok_or(format!("no marker {id} (see `synkopa markers`)"));
+    }
+    let s = v.as_str().ok_or("a marker is named by its id or its name")?.trim().to_lowercase();
+    p.markers.iter().find(|m| m.name.to_lowercase() == s).ok_or(format!("no marker named `{s}` (see `synkopa markers`)"))
+}
+
+/// `at` in beats, or `bar` (1-based, may be fractional: 9.5 = the middle of bar 9).
+fn marker_pos(a: &Value) -> R<Option<f64>> {
+    match (opt_f64(a, "at"), opt_f64(a, "bar")) {
+        (Some(_), Some(_)) => Err("give `at` (beats) or `bar`, not both".into()),
+        (Some(b), None) => Ok(Some(b)),
+        (None, Some(bar)) if bar >= 1.0 => Ok(Some((bar - 1.0) * wave_engine::BAR_BEATS)),
+        (None, Some(bar)) => Err(format!("bars count from 1, not {bar}")),
+        (None, None) => Ok(None),
+    }
+}
+
+fn marker_name(v: &Value) -> R<String> {
+    let n = v.as_str().ok_or("a marker name is text")?.trim().to_string();
+    if n.chars().count() > wave_engine::MARKER_NAME_MAX {
+        return Err(format!("a marker name has at most {} characters", wave_engine::MARKER_NAME_MAX));
+    }
+    Ok(n)
+}
+
+/// Playlist markers (FL's time markers): list; `add` (a name) at `at`/`bar` (default: the start
+/// position); `marker` (id or name) with a new `name` and/or `at`/`bar`; `remove`; `loop` (the
+/// section from the marker to the next one becomes the loop). Each edit is one undo step.
+pub fn markers(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
+    let e = app.engine();
+    let mut p = e.project();
+    let list = |p: &wave_engine::Project| p.markers.iter().map(marker_json).collect::<Vec<_>>();
+    let mut added = None;
+    let (op, label) = if let Some(n) = arg(a, "add") {
+        let at = marker_pos(a)?.unwrap_or_else(|| e.state().transport.start_beat.max(0.0));
+        let id = p.alloc_id();
+        added = Some(id);
+        (Op::PutMarker { marker: wave_engine::Marker { id, at, name: marker_name(n)? } }, "Add marker")
+    } else if let Some(v) = arg(a, "remove") {
+        (Op::RemoveMarker { id: find_marker(&p, v)?.id }, "Delete marker")
+    } else if let Some(v) = arg(a, "loop") {
+        let id = find_marker(&p, v)?.id;
+        (Op::SetLoop { range: p.marker_section(id) }, "Loop section")
+    } else if let Some(v) = arg(a, "marker") {
+        let mut m = find_marker(&p, v)?.clone();
+        let (name, at) = (arg(a, "name"), marker_pos(a)?);
+        if name.is_none() && at.is_none() {
+            return Err("say what changes: `name` and/or `at` / `bar`".into());
+        }
+        if let Some(n) = name {
+            m.name = marker_name(n)?;
+        }
+        if let Some(b) = at {
+            m.at = b;
+        }
+        (Op::PutMarker { marker: m }, if at.is_some() { "Move marker" } else { "Rename marker" })
+    } else {
+        return Ok(json!(list(&p)));
+    };
+    let rev = e.apply_labeled(&[op], false, if_revision, Some(label)).map_err(|x| x.to_string())?;
+    let p = e.project();
+    Ok(json!({ "revision": rev, "added": added, "loop": p.loop_range, "markers": list(&p) }))
+}
+
 fn find_channel<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine::Channel> {
     if let Some(id) = as_index(v) {
         return p.channel(id).ok_or(format!("no channel {id} (see `synkopa channels`)"));
@@ -1576,7 +1651,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -1628,6 +1703,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "takes" => takes(app, a),
         "channels" => channels(app, a, if_revision),
+        "markers" => markers(app, a, if_revision),
         "pattern" => pattern(app, a, if_revision),
         "pattern_play" => {
             let id = arg(a, "id").and_then(as_index);

@@ -77,6 +77,13 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   stems [--install]                        stem model install state (--install: downloads ~90 MB, MIT,
                                            SHA-256 checked)
 
+MARKERS  (Playlist time markers: named points like Intro / Hook / Drop; never played)
+  markers                                  id, name, position (beats and bar) of every marker
+  markers --add NAME [--bar N | --at B]    add one (default: at the start position)
+  markers --marker ID|NAME --name NEW      rename; with --bar N / --at B: move
+  markers --remove ID|NAME                 delete
+  markers --loop ID|NAME                   loop the section from the marker to the next one (or the song end)
+
 PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and | are ignored)
   channels                                 Channel Rack: ids, instrument/sample, volume, pan, insert
   channels --add kick-808|snare|marimba…   add a sampler of a standard-library sample (--sample SOURCE_ID: of a project source)
@@ -868,6 +875,25 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 args["value"] = json!(v);
             }
             send(cx, a, "channels", args)
+        }
+        "markers" => {
+            let mut args = json!({});
+            for k in ["add", "name"] {
+                if let Some(v) = a.get(k) {
+                    args[k] = json!(v);
+                }
+            }
+            for k in ["marker", "remove", "loop"] {
+                if let Some(v) = a.get(k) {
+                    args[k] = id_or_name(v);
+                }
+            }
+            for k in ["at", "bar"] {
+                if let Some(v) = a.num(k).map_err(u)? {
+                    args[k] = json!(v);
+                }
+            }
+            send(cx, a, "markers", args)
         }
         "pattern" => {
             if a.has("play") || a.has("stop") {

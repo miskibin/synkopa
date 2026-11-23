@@ -15,6 +15,7 @@ import { notify } from '../state/notice';
 import { clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
 import { snapLabel } from '../lib/snap';
 import * as A from '../state/actions';
+import * as MK from '../state/markers';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { S } from '../state/store';
 import { curBeat, tele } from '../state/telemetry';
@@ -347,6 +348,19 @@ function MenuBar() {
     items.push({ t: 'item', label: t('a.mn.recentClear'), act: () => void forgetRecent() });
     return items;
   };
+  /** Edit › Markers: add at the song position, jump, and every marker of the song (the palette finds them by name). */
+  const markerItems = (): MenuItem[] => {
+    const ms = MK.markers(), none = !ms.length;
+    const items: MenuItem[] = [
+      { t: 'item', label: t('a.mk.add'), kbd: 'Alt+T', title: t('a.mk.addTip'), act: () => void MK.addMarker() },
+      { t: 'item', label: t('a.mk.prev'), kbd: 'Alt+←', disabled: none, act: () => MK.jump(-1) },
+      { t: 'item', label: t('a.mk.next'), kbd: 'Alt+→', disabled: none, act: () => MK.jump(1) },
+    ];
+    if (none) return items;
+    items.push({ t: 'sec', label: t('a.mk.inSong', { n: ms.length }) });
+    for (const m of ms) items.push({ t: 'item', label: (m.name || t('a.mk.unnamed')) + ' · ' + fmtPos(m.at), title: t('a.mk.jumpTip'), act: () => MK.jumpTo(m.id) });
+    return items;
+  };
   const menus: [TranslationKey, () => MenuItem[]][] = [
     ['a.mn.file', () => [
       { t: 'item', label: t('a.mn.new'), glyph: G.new, kbd: 'Ctrl+Shift+N', disabled: U.openingProject, act: () => void A.projectNew() },
@@ -379,6 +393,8 @@ function MenuBar() {
       { t: 'item', label: t('a.mn.del'), glyph: G.del, kbd: 'Del', disabled: none(), act: () => A.delIds([...U.sel]) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.selAll'), glyph: G.selAll, kbd: 'Ctrl+A', disabled: !S.project.clips.length, act: A.selectAll },
+      { t: 'sep' },
+      { t: 'sub', label: t('a.mk.menu'), items: markerItems() },
     ]],
     ['a.mn.view', () => [
       { t: 'item', label: t('a.mn.browser'), kbd: 'Alt+F8', checked: U.pickOpen, act: () => setU('pickOpen', !U.pickOpen) },
@@ -518,6 +534,9 @@ const shortcuts = (): [string, string][] => [
   [t('a.sc.31'), 'Ctrl+C · X · V'],
   [t('a.sc.32'), 'Del'],
   [t('a.sc.33'), 'Alt+M'],
+  [t('a.sc.mkAdd'), 'Alt+T'],
+  [t('a.sc.mkJump'), 'Alt + ← → · Alt+Num / *'],
+  [t('a.sc.mkStrip'), t('a.sc.mkStripKeys')],
   [t('a.mn.metro'), 'Ctrl+M'],
   [t('a.sc.stretchMode'), 'Shift+M'],
   [t('a.sc.34'), 'Shift + ← →'],

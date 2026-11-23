@@ -402,6 +402,8 @@ export interface Project {
   channels?: Channel[];
   /** The lyrics notebook (absent in old projects = no pages). */
   notebook?: Notebook;
+  /** Named Playlist time markers, sorted by `at` (absent = none: the engine omits an empty list). */
+  markers?: Marker[];
   /** Musical key for the piano roll and scale-aware note tools (0 = C; null = none set). */
   key?: number | null;
   /** Which pitches are in: 0 chromatic, 1 major, 2 natural minor, 3/4 pentatonic (`pitch::scale_mask`). */
@@ -432,6 +434,8 @@ export type TransformSelect =
 /** One notebook page: each line of `text` is a bar counted from `startBar` (1-based); `[…]` lines are headers. */
 export interface LyricPage { id: Id; name: string; startBar: number; text: string }
 export interface Notebook { pages: LyricPage[] }
+/** A named point on the song timeline ("Intro", "Hook"): `at` in beats like a clip's `start`. Only a label, never played. */
+export interface Marker { id: Id; at: number; name: string }
 
 export type Op =
   | { op: 'putClips'; clips: Clip[] }
@@ -458,7 +462,9 @@ export type Op =
   | { op: 'removeAutomation'; id: Id }
   | { op: 'putComp'; comp: Comp }
   | { op: 'removeComp'; id: Id }
-  | { op: 'putNotebook'; notebook: Notebook };
+  | { op: 'putNotebook'; notebook: Notebook }
+  | { op: 'putMarker'; marker: Marker }
+  | { op: 'removeMarker'; id: Id };
 
 export interface TransportDto {
   playing: boolean; rec: boolean; monitor: boolean; metro: boolean; countIn: boolean; startBeat: number;

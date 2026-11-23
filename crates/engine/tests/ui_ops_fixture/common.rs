@@ -33,6 +33,10 @@ pub fn plugin_fx(id: Id, path: &str) -> Fx {
     f
 }
 
+pub fn marker(id: Id, at: f64, name: &str) -> Marker {
+    Marker { id, at, name: name.into() }
+}
+
 pub fn eq_fx(id: Id, bands: Vec<EqBand>) -> Fx {
     let mut f = fx(id, FxKind::Eq);
     f.bands = Some(bands);
@@ -93,7 +97,7 @@ pub fn page(id: Id, name: &str, start_bar: u32, text: &str) -> LyricPage {
 /// The rich project every case starts from unless it says otherwise: two routed tracks,
 /// master + two inserts (with a delay/EQ/plugin slot), a two-bar pattern with notes on a
 /// sampler and a keys channel, an audio and a comp and an automation clip, a take group,
-/// a loop, key A minor and a notebook page.
+/// a loop, key A minor, a notebook page and two markers.
 pub fn base() -> Project {
     Project {
         version: 2,
@@ -190,6 +194,7 @@ pub fn base() -> Project {
             Channel::new(31, "Keys", "#7c8cf8", ChannelSrc::Keys { keys: KeysState::default() }),
         ],
         notebook: Notebook { pages: vec![page(70, "Verse", 1, "[Verse]\nfirst line\n\nsecond line")] },
+        markers: vec![marker(80, 0.0, "Intro"), marker(81, 16.0, "Hook")],
         key: Some(9),
         scale: 2,
         next_id: 100,

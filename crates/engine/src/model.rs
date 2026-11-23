@@ -58,6 +58,10 @@ pub struct Project {
     /// The lyrics notebook ("Notatnik"): pages of text where one line is one bar.
     #[serde(default)]
     pub notebook: Notebook,
+    /// Named time markers on the Playlist ruler (FL Studio's time markers, Ableton's locators):
+    /// sorted by position. Older projects have none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<Marker>,
     /// Musical key for the piano roll and the note transforms (0 = C … 11 = B).
     /// `None` = no key set: scale-aware tools stay pitch-neutral.
     #[serde(default)]
@@ -1345,6 +1349,23 @@ fn first_bar() -> u32 {
     1
 }
 
+/// A named point on the song timeline ("Intro", "Hook", "Drop"): the Playlist draws it on the
+/// ruler, the playhead jumps to it, and the stretch up to the next marker is a section that can
+/// be looped. Only a label: it never changes what plays.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Marker {
+    pub id: Id,
+    /// Position in beats on the song timeline, like a clip's `start`.
+    pub at: f64,
+    #[serde(default)]
+    pub name: String,
+}
+
+/// Limits of the markers (a bad CLI script must not bloat every undo snapshot).
+pub const MARKERS_MAX: usize = 256;
+pub const MARKER_NAME_MAX: usize = 80;
+
 /// Limits of a notebook (a bad CLI script must not bloat every undo snapshot).
 pub const NOTEBOOK_MAX_PAGES: usize = 64;
 pub const NOTEBOOK_MAX_TEXT: usize = 100_000;
@@ -1659,6 +1680,19 @@ impl Project {
         c.insert
             .filter(|id| self.inserts.iter().any(|m| m.id == *id))
             .unwrap_or_else(|| self.tracks.get(c.track as usize).map_or(0, |t| t.insert))
+    }
+
+    pub fn marker(&self, id: Id) -> Option<&Marker> {
+        self.markers.iter().find(|m| m.id == id)
+    }
+
+    /// The section a marker starts: from it to the next marker further on, or to the song end
+    /// when it is the last one (at least a bar). `None` for an unknown marker.
+    pub fn marker_section(&self, id: Id) -> Option<LoopRange> {
+        let m = self.marker(id)?;
+        let next = self.markers.iter().filter(|x| x.at > m.at + 1e-9).map(|x| x.at).fold(f64::INFINITY, f64::min);
+        let b = if next.is_finite() { next } else { self.song_end().max(m.at + BAR_BEATS) };
+        Some(LoopRange { a: m.at, b: b.min(TOTAL_BEATS).max(m.at + 1.0 / 64.0) })
     }
 
     pub fn song_end(&self) -> f64 {

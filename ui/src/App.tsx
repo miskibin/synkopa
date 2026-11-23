@@ -11,6 +11,7 @@ import { typingIn } from './lib/keys';
 import { awayZone, releasesFocus } from './lib/focusZone';
 import { snapRes } from './lib/snap';
 import * as A from './state/actions';
+import * as MK from './state/markers';
 import { findFx, S } from './state/store';
 import { swapTake } from './state/comp';
 import { closeMenu, docked, openRename, say, setU, tucked, U } from './state/ui';
@@ -166,6 +167,13 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     const n = +e.code.slice(5);
     return n === 4 ? playlistZoom.fit() : playlistZoom.preset(n - 1);
+  }
+  // FL's time markers: Alt+T adds one at the song position; Alt+Num / and Alt+Num * jump to the previous / next
+  // (Alt+← / Alt+→ the same without a number pad; not in the Channel Rack or the Piano roll, which own their arrows)
+  if (e.altKey && !m && !e.shiftKey && e.code === 'KeyT') { e.preventDefault(); if (!e.repeat) MK.addMarker(); return; }
+  if (e.altKey && !m && !e.shiftKey && (e.code === 'NumpadDivide' || e.code === 'NumpadMultiply' || (!patWinFocused() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')))) {
+    e.preventDefault();
+    return MK.jump(e.code === 'NumpadMultiply' || e.key === 'ArrowRight' ? 1 : -1);
   }
   if (e.key === 'F1') { e.preventDefault(); return toggleAsk(); }
   if (e.key === 'F8') { e.preventDefault(); return e.altKey ? setU('pickOpen', !U.pickOpen) : toggleNotebook(); }

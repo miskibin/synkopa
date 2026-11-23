@@ -153,6 +153,7 @@ function opKey(op: Op): string {
     case 'putAutomation': return 'a' + op.automation.id;
     case 'putComp': return 'c' + op.comp.id;
     case 'putNotebook': return 'nb';
+    case 'putMarker': return 'mk' + op.marker.id;
     case 'editTune': return 'et' + op.clip;
     default: return op.op;
   }

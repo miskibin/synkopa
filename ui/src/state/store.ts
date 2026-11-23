@@ -15,6 +15,7 @@ import { applyCompOp, compExtent } from '../lib/comp';
 import { batch, createSignal, createStore } from '../lib/reactive';
 import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
+import { putMarker, removeMarker } from '../lib/markers';
 import { applyPatternOp, fitLen as fitPatternLen, followPatternLength } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
 import { applyTransform } from '../lib/transforms';
@@ -79,7 +80,7 @@ const bumpProject = (arrangement = true) => batch(() => { setProjVersion(v => v 
 const MIXER_ONLY = new Set<Op['op']>(['putFx', 'removeFx', 'moveFx', 'putInsert', 'removeInsert', 'putNotebook']);
 /** Not mixer edits, but nothing an arrangement canvas draws from the clip list either: the loop
  *  range is read directly by the views that show it (a loop drag must not redraw every clip). */
-const NOT_ARRANGEMENT = new Set<Op['op']>([...MIXER_ONLY, 'setLoop']);
+const NOT_ARRANGEMENT = new Set<Op['op']>([...MIXER_ONLY, 'setLoop', 'putMarker', 'removeMarker']);
 
 /**
  * Told about every arrangement change before it is applied: the local ops (with the project as it
@@ -425,6 +426,9 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       p.clips = p.clips.filter(c => !(c.kind === 'audio' && c.ref === op.id));
       return;
     case 'putNotebook': applyNotebookOp(p, op.notebook, false); return;
+    // refused (a bad position or name): left to the engine's reply, like the other ports
+    case 'putMarker': try { putMarker(p, op.marker); } catch { /* the reply resyncs */ } return;
+    case 'removeMarker': try { removeMarker(p, op.id); } catch { /* already gone */ } return;
     case 'setBpm': p.bpm = op.bpm; return;
     case 'setLoop': p.loop = op.loop ? { ...op.loop } : null; return;
     case 'setKey': p.key = op.key; p.scale = op.scale ?? 1; return;
@@ -478,7 +482,7 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
 }
 
 /** Ops whose application copies everything it keeps (the others are copied for the store: `M` must not share objects with it). */
-const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setLoop', 'setKey', 'putAutomation', 'transformNotes']);
+const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setLoop', 'setKey', 'putAutomation', 'transformNotes', 'putMarker', 'removeMarker']);
 const copyOp = (op: Op): Op => {
   if (SELF_COPYING.has(op.op)) return op;
   try { return structuredClone(op); } catch { return plain(op); } // an op holding store proxies

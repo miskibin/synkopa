@@ -17,7 +17,7 @@ const rows = fixture.cases as unknown as Row[];
 describe('ops parity with the engine (ops.json)', () => {
   it('covers every op and a rejection of most', () => {
     const kinds = new Set(rows.flatMap(r => r.ops.map(o => o.op)));
-    expect(kinds.size).toBe(25);
+    expect(kinds.size).toBe(27);
     expect(rows.filter(r => r.error).length).toBeGreaterThanOrEqual(50);
     expect(rows.filter(r => !r.error).length).toBeGreaterThanOrEqual(30);
   });

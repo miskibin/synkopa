@@ -10,6 +10,8 @@ mod headless;
 mod keys;
 mod library;
 mod links;
+#[cfg(test)]
+mod markers_tests;
 mod midi_actions;
 mod models;
 mod pitch_actions;

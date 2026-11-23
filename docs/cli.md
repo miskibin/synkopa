@@ -133,7 +133,8 @@ steps is read once.
 | command | what you get |
 | --- | --- |
 | `synkopa status` | transport, revision, file, audio device, CLI path |
-| `synkopa context` | summary: tracks (index, insert, volume, clip count), inserts with effects and parameters, patterns, channels, sources, `nextId` |
+| `synkopa context` | summary: tracks (index, insert, volume, clip count), inserts with effects and parameters, patterns, channels, sources, markers, `nextId` |
+| `synkopa markers` | the Playlist markers in song order: id, name, `at` (beats) and `bar` (1-based; 9.5 = the middle of bar 9) |
 | `synkopa channels` | the Channel Rack: id, name, `sample` (+ source and sampler settings)/`synth` (+ preset)/`keys`, volume, pan, mute/solo, mixer insert (`null` = the clip's track), root key, note count |
 | `synkopa pattern [--id N]` | a pattern as one step string per channel (`x` full velocity, `1`–`9` = 10–90 %, `.` empty, a space every beat) plus `notes` for melodic rows, bars, minimum bars, swing % |
 | `synkopa context --full` | the whole project JSON (every clip, note, parameter) |
@@ -272,6 +273,26 @@ page (one undo step):
 ```sh
 synkopa apply --json '[{"op":"putNotebook","notebook":{"pages":[{"id":3000,"name":"Refren","startBar":17,"text":"[Refren]\nto jest nasz czas\nnasza noc"}]}}]'
 ```
+
+## Markers (song sections)
+
+Named points on the Playlist timeline (FL Studio's time markers): labels only, they never change
+what plays. A marker's *section* runs to the next marker (the last one: to the song end). Name a
+marker by its id or its name (case-insensitive). Each edit is one undo step.
+
+```sh
+synkopa markers                                   # [{id, name, at, bar}] in song order
+synkopa markers --add Intro --bar 1               # --bar N (1-based) or --at B (beats); default: the start position
+synkopa markers --add Hook --at 32
+synkopa markers --marker Hook --name "Hook 1"     # rename
+synkopa markers --marker "Hook 1" --bar 17        # move (both at once: one step)
+synkopa markers --loop "Hook 1"                   # the loop = the section from the marker to the next one
+synkopa markers --remove Intro
+```
+
+Through `apply` the ops are `putMarker {marker: {id, at, name}}` (add, move or rename by id;
+`at` 0..2048 beats, names up to 80 characters, at most 256 markers, kept sorted) and
+`removeMarker {id}`.
 
 ## Listening without speakers
 

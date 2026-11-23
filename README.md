@@ -97,7 +97,7 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 
 | | |
 | --- | --- |
-| **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place |
+| **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place; named markers on the timeline (Alt+T) to jump between and loop song sections |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
 | **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
 | **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser, stereo imager with bass mono, OTT-style multiband, loudness analyzer (LUFS, true peak); presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |

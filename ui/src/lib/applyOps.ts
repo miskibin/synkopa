@@ -6,6 +6,7 @@ import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type Clip, type ClipTu
 import { applyCompOp } from './comp';
 import { forgetInsert, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
+import { putMarker, removeMarker } from './markers';
 import { applyPatternOp, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
 import { applyTransform } from './transforms';
 import { applyTuneEdit } from './pitch';
@@ -159,6 +160,10 @@ export function applyOp(p: Project, op: Op): void {
       return;
     case 'putNotebook':
       try { applyNotebookOp(p, op.notebook); } catch (e) { throw new OpError((e as Error).message); }
+      return;
+    case 'putMarker':
+    case 'removeMarker':
+      try { if (op.op === 'putMarker') putMarker(p, op.marker); else removeMarker(p, op.id); } catch (e) { throw new OpError((e as Error).message); }
       return;
     case 'setBpm':
       if (!(op.bpm >= 20 && op.bpm <= 999)) throw new OpError('bpm must be 20..999');

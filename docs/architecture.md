@@ -609,7 +609,8 @@ notes; `select` limits the notes touched by humanize/quantize/strum — the gene
 `euclidFill|euclidDrums|melody` always replace every note of their target channel), `setKey{key, scale}` (project key/scale for the
 scale-aware tools),
 `editTune{clip, edit}` (note-level pitch edits of an audio clip, see [Pitch edits](#pitch-edits-on-audio-clips)),
-`putComp{comp}`, `removeComp{id}`, `putNotebook{notebook}`, `setBpm{bpm}`, `setLoop{loop}`.
+`putComp{comp}`, `removeComp{id}`, `putNotebook{notebook}`, `putMarker{marker}` (add, move or
+rename a Playlist marker by id; kept sorted by `at`), `removeMarker{id}`, `setBpm{bpm}`, `setLoop{loop}`.
 
 Every effect has `mix` (0..1 dry/wet, default 1). Automation:
 `project.key` (0 = C, `null` = none) and `project.scale` (0 chromatic, 1 major, 2 minor, 3/4 pentatonic) feed the scale-aware note tools; `project.automations[] = {id, name, color, target, points:[{t, v}]}`; a clip of
@@ -1233,6 +1234,16 @@ clip off with its own copy of the source. `Clip.insert` (audio clips only) route
 track's insert, like a routed channel: the track still mutes it and scales it with its fader
 (`rt.rs` mixes it straight into that insert's input). Removing the insert sends the clip back to its
 track. `Project::clip_insert` resolves where a clip is heard.
+
+### Playlist markers
+
+`project.markers` (`[{id, at, name}]`, absent when empty so older builds read the file unchanged)
+are FL's time markers: labels on the song timeline, never played, not part of the timeline the
+engine builds. `Project::marker_section` (and `ui/src/lib/markers.ts` `markerSection`) is the span
+from a marker to the next one further on, or to the song end (at least a bar) for the last one —
+what "loop this section" sets. The Playlist draws them in a strip above the ruler that exists only
+while the song has markers (`views/markerDraw.ts`); a drag is local until release (Esc cancels),
+then one `putMarker`. `synkopa markers` is the same set of edits (`actions::markers`).
 
 ### Song end
 

@@ -780,6 +780,26 @@ pub fn cases() -> Vec<Case> {
         vec![Op::PutNotebook { notebook: Notebook { pages: vec![page(70, &"x".repeat(81), 1, "a")] } }],
     ));
 
+    // ---- markers
+    c.push(("main", "putMarker adds a marker in position order", vec![Op::PutMarker { marker: marker(82, 8.0, "Verse") }]));
+    c.push(("main", "putMarker moves a marker past another", vec![Op::PutMarker { marker: marker(80, 32.0, "Intro") }]));
+    c.push(("main", "putMarker renames a marker", vec![Op::PutMarker { marker: marker(81, 16.0, "Refren") }]));
+    c.push((
+        "main",
+        "putMarker keeps two markers at one place in id order",
+        vec![Op::PutMarker { marker: marker(90, 16.0, "B") }, Op::PutMarker { marker: marker(85, 16.0, "A") }],
+    ));
+    c.push(("main", "putMarker refuses a negative position", vec![Op::PutMarker { marker: marker(82, -1.0, "x") }]));
+    c.push(("main", "putMarker refuses a position past the playlist", vec![Op::PutMarker { marker: marker(82, 4096.0, "x") }]));
+    c.push((
+        "main",
+        "putMarker refuses a name longer than 80 characters",
+        vec![Op::PutMarker { marker: marker(82, 4.0, &"x".repeat(81)) }],
+    ));
+    c.push(("main", "removeMarker drops a marker", vec![Op::RemoveMarker { id: 80 }]));
+    c.push(("main", "removeMarker of the last markers leaves none", vec![Op::RemoveMarker { id: 80 }, Op::RemoveMarker { id: 81 }]));
+    c.push(("main", "removeMarker refuses an unknown marker", vec![Op::RemoveMarker { id: 99 }]));
+
     // ---- batches
     c.push((
         "main",

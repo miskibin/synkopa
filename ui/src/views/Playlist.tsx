@@ -3,7 +3,7 @@ import { t as tl } from '../lib/i18n';
 import { createMemo, For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { InstIcon, laneAutoIcons, trackIcon } from '../ui/instIcons';
-import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, type Automation, type AutoPoint, type Channel, type Clip, type Comp, type CurveShape, type Id, type Op, type Take, type Track } from '../api/types';
+import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, type Automation, type AutoPoint, type Channel, type Clip, type Comp, type CurveShape, type Id, type Marker, type Op, type Take, type Track } from '../api/types';
 import { boundaries, boundaryXfade, moveBoundary, setBoundaryXfade, takeEnd, toComp, toTimeline, unusedTakes, usedBeats, writeRange } from '../lib/comp';
 import * as CA from '../state/comp';
 import { compById, LANE_H, takeRow, type TakeRow } from '../state/comp';
@@ -37,6 +37,9 @@ import { addPoint, deletePoints, dragTension, hitEnv, insetGeom, movePoints, poi
 import { autoById } from '../state/store';
 import { addSampler, openPattern } from '../state/pattern';
 import { rgba, T, theme } from '../ui/theme';
+import { markerAtX } from '../lib/markers';
+import * as MK from '../state/markers';
+import { drawMarkers, drawMarkerTicks, MARKER_H, markerBoxes } from './markerDraw';
 
 
 /** Shared geometry, so the browser and OS drops can find a beat/track under the pointer. */
@@ -45,7 +48,7 @@ import { rgba, T, theme } from '../ui/theme';
 // sit on top, and Chromium then kept stale pixels after scrolls (a clip or a ghost stayed on
 // screen until something repainted it).
 
-export const geom = { grid: null as HTMLDivElement | null, scroll: null as HTMLDivElement | null, tops: [0] as number[] };
+export const geom = { grid: null as HTMLDivElement | null, scroll: null as HTMLDivElement | null, tops: [0] as number[], top: RULER_H };
 
 function trackAtY(y: number): number {
   const t = geom.tops; if (y < 0) return -1;
@@ -59,7 +62,7 @@ function trackAtYClamped(y: number): number {
 export function gridPoint(clientX: number, clientY: number) {
   const r = geom.grid!.getBoundingClientRect(), x = clientX - r.left, y = clientY - r.top;
   const sr = geom.scroll!.getBoundingClientRect();
-  const inside = clientX >= Math.max(r.left, sr.left + U.headW) && clientX <= Math.min(r.right, sr.right) && clientY >= Math.max(r.top, sr.top + 26) && clientY <= Math.min(r.bottom, sr.bottom);
+  const inside = clientX >= Math.max(r.left, sr.left + U.headW) && clientX <= Math.min(r.right, sr.right) && clientY >= Math.max(r.top, sr.top + geom.top) && clientY <= Math.min(r.bottom, sr.bottom);
   return { beat: x / U.bw, track: trackAtY(y), x, y, inside };
 }
 const unit = (alt: boolean) => A.snapUnit(alt);
@@ -128,6 +131,16 @@ const LANE_H_MIN = 28, LANE_H_MAX = 220;
 export function Playlist() {
   let scrollEl!: HTMLDivElement, gridEl!: HTMLDivElement, gridCv!: HTMLCanvasElement, fadeCv!: HTMLCanvasElement, rulerCv!: HTMLCanvasElement;
   let phGrid!: HTMLDivElement, phRuler!: HTMLDivElement;
+  let mkCv: HTMLCanvasElement | undefined, mkRow: HTMLDivElement | undefined;
+  /** A marker being dragged (not sent until it is let go: Esc puts it back) and the one under the pointer. */
+  const [mkDrag, setMkDrag] = createSignal<{ id: Id; at: number } | null>(null);
+  const [mkHover, setMkHover] = createSignal<Id | null>(null);
+  /** The markers as drawn: a dragged one at its new place. */
+  const shownMarkers = (): Marker[] | undefined => {
+    const ms = rawOf(S.project).markers, d = mkDrag();
+    if (!ms || !d) return ms;
+    return ms.map(m => (m.id === d.id ? { ...m, at: d.at } : m)).sort((a, b) => a.at - b.at || a.id - b.id);
+  };
   const [vw, setVw] = createSignal(800), [vh, setVh] = createSignal(400);
   const [scroll, setScroll] = createSignal({ x: 0, y: 0 });
 
@@ -190,10 +203,14 @@ export function Playlist() {
     if (x < left || x > left + w - 40) scrollEl.scrollLeft = Math.max(0, x - 40);
     syncScroll();
   }), { defer: true });
+  // the marker strip shows above the ruler while the song has markers
+  const mkH = () => (S.project.markers?.length ? MARKER_H : 0);
+  const rowH = () => RULER_H + mkH();
+  effect(() => { geom.top = rowH(); });
   const gridW = () => TOTAL * U.bw;
   const gridH = () => tops()[tops().length - 1];
   const cw = () => Math.max(1, Math.min(vw() - U.headW, gridW()));
-  const ch = () => Math.max(1, Math.min(vh() - 26, gridH()));
+  const ch = () => Math.max(1, Math.min(vh() - rowH(), gridH()));
   const editable = () => U.tool === 'draw' || U.tool === 'paint' || U.tool === 'select';
   const toolCursor = () => ({ draw: 'crosshair', paint: 'copy', erase: 'not-allowed', mute: 'pointer', slice: 'col-resize', select: 'crosshair' })[U.tool];
 
@@ -327,6 +344,7 @@ export function Playlist() {
     envDrawn = ids;
   });
   effect(() => { U.bw; U.start; S.project.loop?.a; S.project.loop?.b; cw(); dirtyRuler = true; });
+  effect(() => { for (const m of S.project.markers ?? []) { void m.at; void m.name; } mkDrag(); mkHover(); dirtyRuler = true; });
 
   /** The grid view of one frame; `at` places it on a region of the tile (tile-local CSS px). */
   const frameView = (): View => ({
@@ -476,8 +494,18 @@ export function Playlist() {
     const g = rulerCv.getContext('2d')!;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawRuler(g, t.x, t.w, U.bw, S.project.loop, U.start);
+    const ms = shownMarkers();
+    drawMarkerTicks(g, t.x, t.w, ms, U.bw, RULER_H);
     rulerCv.style.width = t.w + 'px';
     rulerCv.style.transform = `translateX(${t.x}px)`;
+    if (!mkCv) return;
+    if (!ms?.length) return;
+    fitCanvas(mkCv, t.w, MARKER_H);
+    const mg = mkCv.getContext('2d')!;
+    mg.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawMarkers(mg, t.x, t.w, markerBoxes(ms, U.bw), mkDrag()?.id ?? mkHover());
+    mkCv.style.width = t.w + 'px';
+    mkCv.style.transform = `translateX(${t.x}px)`;
   };
   /** The playhead lives in grid coordinates like the canvases: it scrolls with them. */
   const placePlayhead = (beat: number) => {
@@ -528,7 +556,7 @@ export function Playlist() {
   /** The clip area on screen (client px): the view without the track headers, the ruler and the scrollbar. */
   const viewRect = () => {
     const r = scrollEl.getBoundingClientRect();
-    return { left: r.left + U.headW, top: r.top + 26, right: r.left + scrollEl.clientWidth, bottom: r.top + scrollEl.clientHeight };
+    return { left: r.left + U.headW, top: r.top + rowH(), right: r.left + scrollEl.clientWidth, bottom: r.top + scrollEl.clientHeight };
   };
   const syncScroll = () => setScroll({ x: scrollEl.scrollLeft, y: scrollEl.scrollTop });
   /** Scrolls by (dx, dy) px; false when the view could not move (at its ends). */
@@ -1360,6 +1388,81 @@ export function Playlist() {
   };
   const rulerHover = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.cursor = rulerCursor(ruler, e); };
   const rulerDown = (e: PointerEvent) => { if (e.button === 0) closeMenu(); rulerPress(ruler, e); };
+  /** Right-click on the ruler or an empty part of the marker strip: add a marker there (FL). */
+  const timelineMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const at = clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL);
+    openMenu(e.clientX, e.clientY, [
+      { t: 'title', label: fmtPos(at) },
+      { t: 'item', label: tl('a.mk.addHere'), act: () => void MK.addMarker(at) },
+      { t: 'item', label: tl('a.mk.add'), kbd: 'Alt+T', title: tl('a.mk.addTip'), act: () => void MK.addMarker() },
+    ], 110);
+  };
+
+  // ---------- markers (FL's time markers): a strip above the ruler while the song has any ----------
+  /** The marker under client x, from the layout as it is drawn now. */
+  const markerAt = (clientX: number): Id | null => markerAtX(markerBoxes(shownMarkers(), U.bw), clientX - gridLeft());
+  MK.setMarkerAnchor(id => {
+    const m = S.project.markers?.find(x => x.id === id), r = mkRow?.getBoundingClientRect(), sr = scrollEl?.getBoundingClientRect();
+    if (!m || !r || !sr) return null;
+    return { x: clamp(r.left + m.at * U.bw, sr.left + U.headW, sr.right - 240), y: r.top + MARKER_H + 2 };
+  });
+  onCleanup(() => MK.setMarkerAnchor(null));
+  const markerHover = (e: PointerEvent) => {
+    if (mkDrag()) return;
+    const id = markerAt(e.clientX);
+    if (id !== mkHover()) setMkHover(id);
+    (e.currentTarget as HTMLElement).style.cursor = id != null ? 'grab' : rulerCursor(ruler, e);
+  };
+  const markerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    closeMenu();
+    const id = markerAt(e.clientX), m = id != null ? S.project.markers?.find(x => x.id === id) : undefined;
+    if (!m) {
+      // an empty part of the strip: double-click adds a marker, otherwise it is the ruler
+      if (dblCheck('mkstrip')) { e.preventDefault(); MK.addMarker(clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL)); return; }
+      rulerPress(ruler, e);
+      return;
+    }
+    e.preventDefault();
+    // FL: double-click a marker = the section up to the next one (here: looped)
+    if (dblCheck('mk' + m.id)) { MK.loopSection(m.id); return; }
+    const x0 = e.clientX, from = m.at;
+    let lifted = false, cancelled = false, at = from;
+    const esc = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape' || !lifted) return;
+      ev.preventDefault(); ev.stopPropagation(); cancelled = true; setMkDrag(null); say(tl('a.mk.moveCancel'));
+    };
+    window.addEventListener('keydown', esc, true);
+    trackEdge(ev => {
+      if (cancelled) return;
+      if (!lifted) { if (Math.abs(ev.clientX - x0) < 4) return; lifted = true; }
+      const b = clamp(snapRound(from + (ev.clientX - x0) / U.bw, unit(ev.altKey)), 0, TOTAL);
+      if (b === at && mkDrag()) return;
+      at = b; setMkDrag({ id: m.id, at });
+      say(`${m.name || tl('a.mk.unnamed')} · ${fmtPos(at)}`);
+    }, () => {
+      window.removeEventListener('keydown', esc, true);
+      setMkDrag(null);
+      if (!lifted) { MK.jumpTo(m.id); return; }
+      if (cancelled || at === from) return;
+      const cur = S.project.markers?.find(x => x.id === m.id);
+      if (cur) commit([{ op: 'putMarker', marker: { ...plain(cur), at } }], tl('a.mk.undoMove'));
+    }, 'grabbing', { x: true });
+  };
+  const markerMenu = (e: MouseEvent) => {
+    const id = markerAt(e.clientX), m = id != null ? S.project.markers?.find(x => x.id === id) : undefined;
+    if (!m) return timelineMenu(e);
+    e.preventDefault();
+    openMenu(e.clientX, e.clientY, [
+      { t: 'title', label: (m.name || tl('a.mk.unnamed')) + ' · ' + fmtPos(m.at) },
+      { t: 'item', label: tl('a.mk.jumpHere'), act: () => MK.jumpTo(m.id) },
+      { t: 'item', label: tl('a.mk.loop'), kbd: tl('a.mk.dblClick'), title: tl('a.mk.loopTip'), act: () => MK.loopSection(m.id) },
+      { t: 'item', label: tl('a.mk.rename'), act: () => MK.renameMarker(m.id) },
+      { t: 'sep' },
+      { t: 'item', label: tl('a.mk.delete'), danger: true, act: () => MK.deleteMarker(m.id) },
+    ], 200);
+  };
 
   // ---------- header splitter ----------
   const headSplit = (e: PointerEvent) => {
@@ -1429,13 +1532,18 @@ export function Playlist() {
       <div ref={scrollEl} class="plscroll" onPointerDown={panDown} onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
         onPointerMove={e => { lastPtr = { x: e.clientX, y: e.clientY }; }} onPointerLeave={() => { lastPtr = null; }}>
         <div style={{ width: U.headW + gridW() + 'px', position: 'relative' }}>
-          <div class="rulerRow">
+          <div class="rulerRow" style={{ height: rowH() + 'px' }}>
             <div class="plhead" style={{ width: U.headW + 'px' }}>
+              <Show when={mkH()}><div class="mkhead" style={{ height: MARKER_H + 'px' }}>{tl('a.mk.menu')}</div></Show>
             </div>
-            <div style={{ position: 'relative', width: gridW() + 'px', height: '26px', flex: 'none' }}>
-              <div class="phtile"><div ref={phRuler} class="phead" style={{ height: '26px' }} /></div>
-              <canvas ref={rulerCv} class="ruler" title={tl('a.pl.rulerTip')}
-                onPointerDown={rulerDown} onPointerMove={rulerHover} />
+            <div ref={mkRow} style={{ position: 'relative', width: gridW() + 'px', height: rowH() + 'px', flex: 'none' }}>
+              <div class="phtile"><div ref={phRuler} class="phead" style={{ height: rowH() + 'px' }} /></div>
+              <Show when={mkH()}>
+                <canvas ref={el => { mkCv = el; dirtyRuler = true; }} class="ruler mkstrip" title={tl('a.mk.stripTip')} style={{ height: MARKER_H + 'px' }}
+                  onPointerDown={markerDown} onPointerMove={markerHover} onPointerLeave={() => setMkHover(null)} onContextMenu={markerMenu} />
+              </Show>
+              <canvas ref={rulerCv} class="ruler" title={tl('a.pl.rulerTip')} style={{ top: mkH() + 'px' }}
+                onPointerDown={rulerDown} onPointerMove={rulerHover} onContextMenu={timelineMenu} />
 
             </div>
           </div>

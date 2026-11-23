@@ -138,6 +138,15 @@ pub enum Op {
     PutNotebook {
         notebook: Notebook,
     },
+    /// Insert or replace a Playlist marker by id (add, move and rename are all this). Markers
+    /// stay sorted by position. Never touches the audio graph.
+    PutMarker {
+        marker: Marker,
+    },
+    /// Remove a Playlist marker.
+    RemoveMarker {
+        id: Id,
+    },
     /// Note-level pitch edits of an audio clip (`crate::tune_edit`): move, reset, split and
     /// merge notes and draw pitch, addressed by note index in the clip's current segmentation.
     /// Nothing else of the clip changes.
@@ -948,6 +957,25 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             }
             p.notebook = notebook.clone();
         }
+        Op::PutMarker { marker } => {
+            validate_marker(marker)?;
+            match p.markers.iter().position(|m| m.id == marker.id) {
+                Some(i) => p.markers[i] = marker.clone(),
+                None if p.markers.len() >= MARKERS_MAX => {
+                    return Err(OpError::Invalid(format!("a project has at most {MARKERS_MAX} markers")));
+                }
+                None => p.markers.push(marker.clone()),
+            }
+            // by position, then by id: two markers at one place keep a stable order
+            p.markers.sort_by(|a, b| a.at.total_cmp(&b.at).then(a.id.cmp(&b.id)));
+            bump(p, marker.id);
+        }
+        Op::RemoveMarker { id } => {
+            if p.marker(*id).is_none() {
+                return Err(OpError::Missing { what: "marker", id: *id });
+            }
+            p.markers.retain(|m| m.id != *id);
+        }
         Op::SetBpm { bpm } => {
             if !(20.0..=999.0).contains(bpm) {
                 return Err(OpError::Invalid("bpm must be 20..999".into()));
@@ -977,6 +1005,17 @@ fn follow_pattern_length(p: &mut Project, id: Id, old: f64, new: f64) {
             c.len = new.min(TOTAL_BEATS - c.start).max(1.0 / 16.0);
         }
     }
+}
+
+/// Checks a marker: a position on the playlist, a bounded name.
+pub fn validate_marker(m: &Marker) -> Result<(), OpError> {
+    if !(m.at.is_finite() && (0.0..=TOTAL_BEATS).contains(&m.at)) {
+        return Err(OpError::Invalid(format!("marker {}: position must be 0..{TOTAL_BEATS} beats", m.id)));
+    }
+    if m.name.chars().count() > MARKER_NAME_MAX {
+        return Err(OpError::Invalid(format!("marker {}: name is longer than {MARKER_NAME_MAX} characters", m.id)));
+    }
+    Ok(())
 }
 
 /// Checks a notebook: unique page ids, bars 1..=NOTEBOOK_MAX_BAR, bounded size.
