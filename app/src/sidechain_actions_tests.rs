@@ -128,3 +128,16 @@ fn the_callers_label_names_the_undo_step() {
     assert_eq!(comps(&h, bass)[0].params, c.params);
     assert_eq!(comps(&h, bass)[0].key, Some(kick));
 }
+
+#[test]
+fn a_failed_model_install_is_remembered_as_the_model_error() {
+    // `autovocal_actions_tests::no_model` arranges the junk model file this crate reads too
+    let h = crate::headless::Headless::new(wave_engine::Project::empty());
+    let e = f0_model_install(&h, &|_, _| {}).unwrap_err();
+    assert!(!e.is_empty(), "the load error is the reply");
+    assert_eq!(h.model_error().as_deref(), Some(e.as_str()), "the failure is remembered on the host");
+    // the session command reports the same error and the same remembered cause
+    let e2 = control(&h, "f0_model_install", &json!({}), None, None).unwrap_err();
+    assert_eq!(e2, e);
+    assert_eq!(h.model_error().as_deref(), Some(e2.as_str()));
+}

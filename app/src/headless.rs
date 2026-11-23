@@ -3,7 +3,7 @@
 //! running app uses, against an engine of its own.
 
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 use serde_json::Value;
@@ -40,8 +40,8 @@ impl wave_cli::Files for Files {
 pub struct Headless {
     engine: Arc<Engine>,
     plugins: Arc<Plugins>,
-    /// The pitch model, loaded on first need: why it could not be, if it could not.
-    model: OnceLock<Option<String>>,
+    /// Why the pitch model could not be used, once an attempt was made (None = usable).
+    model: Mutex<Option<String>>,
     /// Synkopa Keys instruments loaded (or that failed to load) so far, by catalog id.
     keys: Mutex<std::collections::HashMap<&'static str, R<()>>>,
     /// The audio-thread half nobody plays: it makes the engine instantiate hosted plugins
@@ -56,7 +56,7 @@ impl Headless {
         let engine = Engine::new(Project::empty(), plugins.factory());
         // a fresh engine has no recording take: this cannot fail
         let _ = engine.new_project(project);
-        Self { engine, plugins, model: OnceLock::new(), keys: Mutex::new(Default::default()), rt: Mutex::new(None) }
+        Self { engine, plugins, model: Mutex::new(None), keys: Mutex::new(Default::default()), rt: Mutex::new(None) }
     }
 
     /// Lets the inert audio half take the commands and graphs queued for it.
@@ -97,7 +97,10 @@ impl Host for Headless {
         Value::Null
     }
     fn model_error(&self) -> Option<String> {
-        self.model.get().cloned().flatten()
+        self.model.lock().clone()
+    }
+    fn set_model_error(&self, e: Option<String>) {
+        *self.model.lock() = e;
     }
     fn wait_keys(&self) -> R<()> {
         for id in self.engine.keys_instruments() {
@@ -122,7 +125,10 @@ impl Host for Headless {
             .is_some_and(|i| crate::keys::find_dir(bundled_keys(), i).is_some())
     }
     fn ensure_pitch_model(&self) {
-        self.model.get_or_init(|| crate::models::activate(&self.engine).err());
+        let mut m = self.model.lock();
+        if m.is_none() {
+            *m = crate::models::activate(&self.engine).err();
+        }
     }
     fn ensure_live_plugins(&self) {
         let mut rt = self.rt.lock();

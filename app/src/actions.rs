@@ -354,6 +354,24 @@ pub fn auto_vocal(
     }))
 }
 
+/// The RMVPE model download as one action, the button and `synkopa f0-model-install` share:
+/// install (SHA-256 checked inside `models::install`), activate, and remember why the model
+/// still cannot be used. `progress` reports (done, total) for front doors that show a bar.
+pub fn f0_model_install(app: &dyn Host, progress: &dyn Fn(u64, u64)) -> Result<crate::models::ModelStatus, String> {
+    crate::models::install(|done, total| progress(done, total))?;
+    match crate::models::activate(app.engine()) {
+        Ok(true) => {
+            app.set_model_error(None);
+            Ok(crate::models::status(app.engine(), None))
+        }
+        Ok(false) => Err("the model file is missing after the install".into()),
+        Err(m) => {
+            app.set_model_error(Some(m.clone()));
+            Err(m)
+        }
+    }
+}
+
 pub fn set_param(app: &dyn Host, fx_id: u64, param: &str, value: f64, if_revision: Option<u64>) -> R<u64> {
     let p = app.engine().project();
     let (m, f) = p.find_fx(fx_id).ok_or(format!("no effect {fx_id}"))?;
@@ -2032,18 +2050,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "f0_model_install" => {
             // the download (~345 MB) is SHA-256 checked inside `install`; blocking is fine here —
             // session requests run on their own thread (the app path streams progress events instead)
-            crate::models::install(|_, _| {})?;
-            match crate::models::activate(e) {
-                Ok(true) => {
-                    app.set_model_error(None);
-                    Ok(json!(crate::models::status(e, None)))
-                }
-                Ok(false) => Err("the model file is missing after the install".into()),
-                Err(m) => {
-                    app.set_model_error(Some(m.clone()));
-                    Err(m)
-                }
-            }
+            f0_model_install(app, &|_, _| {}).map(|st| json!(st))
         }
         "music_analyze" => {
             let cid = arg(a, "clipId").and_then(as_index);

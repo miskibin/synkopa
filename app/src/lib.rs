@@ -336,18 +336,17 @@ async fn f0_model_install(app: St<'_>, handle: AppHandle) -> R<models::ModelStat
     let a = app.inner().clone();
     let h = handle.clone();
     let res = tauri::async_runtime::spawn_blocking(move || {
-        models::install(|done, total| {
+        // progress streams as model-progress events; a failure is announced the same way
+        actions::f0_model_install(&*a, &|done, total| {
             let _ = h.emit("model-progress", json!({ "id": "rmvpe", "done": done, "total": total }));
-        })?;
-        models::activate(&a.engine).map(|_| ())
+        })
     })
     .await
     .map_err(es)?;
-    *app.model_error.lock() = res.as_ref().err().cloned();
     if let Err(e) = &res {
         let _ = handle.emit("model-progress", json!({ "id": "rmvpe", "done": 0, "total": 0, "error": e }));
     }
-    res.map(|_| models::status(&app.engine, None))
+    res
 }
 
 #[tauri::command]
