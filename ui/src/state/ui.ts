@@ -36,6 +36,8 @@ export type MenuItem =
   | { t: 'sub'; label: string; items: MenuItem[]; glyph?: MenuGlyph }
   /** `icon` (24×24 stroke path in a coloured tile) wins over `glyph`, which wins over the label guess. */
   | { t: 'item'; label: string; kbd?: string; act: () => void; danger?: boolean; disabled?: boolean; icon?: string; iconColor?: string; title?: string; glyph?: MenuGlyph;
+      /** A standalone command label when the menu already supplies context. */
+      paletteLabel?: string;
       /** A toggle: shows a check mark in the icon slot while on (and nothing while off). */
       checked?: boolean }
   | { t: 'swatches'; current?: string; pick: (c: string) => void }

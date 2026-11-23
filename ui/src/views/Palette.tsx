@@ -28,7 +28,7 @@ interface Cmd { danger?: boolean; menu: string; sub: string; label: string; glyp
 
 function flatten(items: MenuItem[], menu: string, sub: string, out: Cmd[]) {
   for (const it of items) {
-    if (it.t === 'item') out.push({ menu, sub, label: it.label, danger: it.danger, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
+    if (it.t === 'item') out.push({ menu, sub, label: it.paletteLabel ?? it.label, danger: it.danger, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
     else if (it.t === 'sub') flatten(it.items, menu, sub ? sub + ' › ' + it.label : it.label, out);
   }
 }

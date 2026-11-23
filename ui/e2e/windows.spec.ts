@@ -1,8 +1,34 @@
-import { expect, test } from './fixtures';
+import { expect, MOD, test } from './fixtures';
 
 const layout = (page: import('@playwright/test').Page) => page.evaluate(() => JSON.parse(localStorage.getItem('wave.layout') ?? '{}'));
 
 test.describe('Windows', () => {
+  test('the command palette identifies each dock target and moves the named panel', async ({ app }) => {
+    await app.keyboard.press(`${MOD}+k`);
+    const query = app.getByRole('searchbox', { name: 'Find a command' });
+    await query.fill('dock');
+    const options = app.getByRole('option', { name: /^Dock / });
+    const labels = ['Channel rack', 'Piano roll', 'Mixer'].flatMap(panel => [
+      `Dock ${panel} left`, `Dock ${panel} right`, `Dock ${panel} at the bottom`,
+    ]);
+    await expect(options.locator('.name')).toHaveText(labels);
+    await query.fill('rack right dock');
+    await app.getByRole('option', { name: /^Dock Channel rack right\b/ }).click();
+
+    const rack = app.locator('.rackwin');
+    await expect(rack).toHaveClass(/\bdocked\b/);
+    await expect.poll(async () => JSON.stringify((await layout(app)).dock.right)).toContain('rack');
+    await rack.locator('.winhd').first().click({ button: 'right' });
+    await expect(app.getByRole('menuitemcheckbox', { name: 'Dock right', exact: true })).toHaveAttribute('aria-checked', 'true');
+    await app.keyboard.press('Escape');
+
+    await app.keyboard.press(`${MOD}+k`);
+    await query.fill('float rack');
+    await app.getByRole('option', { name: /^Float Channel rack as a window\b/ }).click();
+    await expect(rack).toBeVisible();
+    await expect(rack).not.toHaveClass(/\bdocked\b/);
+  });
+
   test('the Channel rack opens floating, docks, floats again and closes', async ({ app }) => {
     const toggle = app.getByRole('button', { name: 'Channel rack' });
     const rack = app.locator('.rackwin');
