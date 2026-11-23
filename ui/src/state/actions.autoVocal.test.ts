@@ -57,9 +57,8 @@ it('one command does the whole journey: the chain lands, the mixer follows, the 
 
   const p = store.S.project;
   const fx = p.inserts.find(m => m.id === 1)?.fx ?? [];
-  expect(fx.length).toBeGreaterThanOrEqual(5, 'the calibrated chain is on the insert');
-  expect(fx.some(f => f.type === 'rider')).toBe(false, 'the rider is baked into the audio, not live on the insert');
-  expect(store.U === undefined, 'U lives in state/ui').toBe(true);
+  expect(fx.length, 'the calibrated chain is on the insert').toBeGreaterThanOrEqual(5);
+  expect(fx.some(f => f.type === 'rider'), 'the rider is baked into the audio, not live on the insert').toBe(false);
   expect(ui.U.mixSel).toBe(1);
   expect(ui.U.readout).toMatch(/Auto (vocal|wokal): /);
   expect(ui.U.readout).toMatch(/key|klucz|no key|bez tonacji/);

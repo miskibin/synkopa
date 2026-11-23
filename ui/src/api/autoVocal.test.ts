@@ -75,6 +75,6 @@ describe('the mock answers autoVocal as one journey, like the engine action', ()
     const clip = (await backend.getState()).project.clips.find(c => c.kind === 'audio' && c.ref === take.sourceIds[0])!.id;
     const stages: string[] = [];
     await expect(backend.autoVocal({ clipId: clip }, s => stages.push(s))).rejects.toThrow(/master insert/);
-    expect(stages).toEqual([], 'the refusal comes before the first stage');
+    expect(stages, 'the refusal comes before the first stage').toEqual([]);
   });
 });
