@@ -1,0 +1,190 @@
+// Synkopa Keys: Solo Violin.
+// Solo violin from VSCO 2 Community Edition by Versilian Studios, CC0-1.0.
+// https://github.com/sgossner/VSCO-2-CE (440300901d)
+// Mapping by Synkopa: four articulations on keyswitches C0..D#0 (keys 24..27), two
+// dynamics split at velocity 80, round robins where they were recorded.
+
+<global> sw_lokey=24 sw_hikey=27 sw_default=24 amp_veltrack=60
+
+<master> sw_last=24 sw_label=Arco ampeg_attack=0.02 ampeg_release=0.6 global_volume=6
+<group> lovel=1 hivel=79
+<region> sample=arco-LLVln_ArcoVib_G3_p.wav lokey=55 hikey=56 pitch_keycenter=55
+<region> sample=arco-LLVln_ArcoVib_A3_p.wav lokey=57 hikey=58 pitch_keycenter=57
+<region> sample=arco-LLVln_ArcoVib_C4_p.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=arco-LLVln_ArcoVib_E4_p.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=arco-LLVln_ArcoVib_G4_p.wav lokey=66 hikey=68 pitch_keycenter=67
+<region> sample=arco-LLVln_ArcoVib_A4_p.wav lokey=69 hikey=70 pitch_keycenter=69
+<region> sample=arco-LLVln_ArcoVib_C5_p.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=arco-LLVln_ArcoVib_E5_p.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=arco-LLVln_ArcoVib_G5_p.wav lokey=78 hikey=80 pitch_keycenter=79
+<region> sample=arco-LLVln_ArcoVib_A5_p.wav lokey=81 hikey=82 pitch_keycenter=81
+<region> sample=arco-LLVln_ArcoVib_C6_p.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=arco-LLVln_ArcoVib_E6_p.wav lokey=87 hikey=89 pitch_keycenter=88
+<region> sample=arco-LLVln_ArcoVib_G6_p.wav lokey=90 hikey=92 pitch_keycenter=91
+<region> sample=arco-LLVln_ArcoVib_A6_p.wav lokey=93 hikey=94 pitch_keycenter=93
+<region> sample=arco-LLVln_ArcoVib_C7_p.wav lokey=95 hikey=103 pitch_keycenter=96
+<group> lovel=80 hivel=127
+<region> sample=arco-LLVln_ArcoVib_G3_f.wav lokey=55 hikey=56 pitch_keycenter=55
+<region> sample=arco-LLVln_ArcoVib_A3_f.wav lokey=57 hikey=58 pitch_keycenter=57
+<region> sample=arco-LLVln_ArcoVib_C4_f.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=arco-LLVln_ArcoVib_E4_f.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=arco-LLVln_ArcoVib_G4_f.wav lokey=66 hikey=68 pitch_keycenter=67
+<region> sample=arco-LLVln_ArcoVib_A4_f.wav lokey=69 hikey=70 pitch_keycenter=69
+<region> sample=arco-LLVln_ArcoVib_C5_f.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=arco-LLVln_ArcoVib_E5_f.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=arco-LLVln_ArcoVib_G5_f.wav lokey=78 hikey=80 pitch_keycenter=79
+<region> sample=arco-LLVln_ArcoVib_A5_f.wav lokey=81 hikey=82 pitch_keycenter=81
+<region> sample=arco-LLVln_ArcoVib_C6_f.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=arco-LLVln_ArcoVib_E6_f.wav lokey=87 hikey=89 pitch_keycenter=88
+<region> sample=arco-LLVln_ArcoVib_G6_f.wav lokey=90 hikey=92 pitch_keycenter=91
+<region> sample=arco-LLVln_ArcoVib_A6_f.wav lokey=93 hikey=94 pitch_keycenter=93
+<region> sample=arco-LLVln_ArcoVib_C7_f.wav lokey=95 hikey=103 pitch_keycenter=96
+
+<master> sw_last=25 sw_label=Tremolo ampeg_attack=0.02 ampeg_release=0.6 global_volume=5
+<group> lovel=1 hivel=79
+<region> sample=tremolo-LLVln_trem_G2_v1_rr1.wav lokey=55 hikey=56 pitch_keycenter=55
+<region> sample=tremolo-LLVln_trem_A2_v1_rr1.wav lokey=57 hikey=58 pitch_keycenter=57
+<region> sample=tremolo-LLVln_trem_C3_v1_rr1.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=tremolo-LLVln_trem_E3_v1_rr1.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=tremolo-LLVln_trem_G3_v1_rr1.wav lokey=66 hikey=68 pitch_keycenter=67
+<region> sample=tremolo-LLVln_trem_A3_v1_rr1.wav lokey=69 hikey=70 pitch_keycenter=69
+<region> sample=tremolo-LLVln_trem_C4_v1_rr1.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=tremolo-LLVln_trem_E4_v1_rr1.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=tremolo-LLVln_trem_G4_v1_rr1.wav lokey=78 hikey=80 pitch_keycenter=79
+<region> sample=tremolo-LLVln_trem_A4_v1_rr1.wav lokey=81 hikey=82 pitch_keycenter=81
+<region> sample=tremolo-LLVln_trem_C5_v1_rr1.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=tremolo-LLVln_trem_E5_v1_rr1.wav lokey=87 hikey=89 pitch_keycenter=88
+<region> sample=tremolo-LLVln_trem_G5_v1_rr1.wav lokey=90 hikey=93 pitch_keycenter=91
+<region> sample=tremolo-LLVln_trem_C6_v2_rr1.wav lokey=94 hikey=103 pitch_keycenter=96
+<group> lovel=80 hivel=127
+<region> sample=tremolo-LLVln_trem_G2_v2_rr1.wav lokey=55 hikey=56 pitch_keycenter=55
+<region> sample=tremolo-LLVln_trem_A2_v2_rr1.wav lokey=57 hikey=58 pitch_keycenter=57
+<region> sample=tremolo-LLVln_trem_C3_v2_rr1.wav lokey=59 hikey=62 pitch_keycenter=60
+<region> sample=tremolo-LLVln_trem_E3_v2_rr1.wav lokey=63 hikey=65 pitch_keycenter=64
+<region> sample=tremolo-LLVln_trem_G3_v2_rr1.wav lokey=66 hikey=68 pitch_keycenter=67
+<region> sample=tremolo-LLVln_trem_A3_v2_rr1.wav lokey=69 hikey=70 pitch_keycenter=69
+<region> sample=tremolo-LLVln_trem_C4_v2_rr1.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=tremolo-LLVln_trem_E4_v2_rr1.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=tremolo-LLVln_trem_G4_v2_rr1.wav lokey=78 hikey=80 pitch_keycenter=79
+<region> sample=tremolo-LLVln_trem_A4_v2_rr1.wav lokey=81 hikey=82 pitch_keycenter=81
+<region> sample=tremolo-LLVln_trem_C5_v2_rr1.wav lokey=83 hikey=86 pitch_keycenter=84
+<region> sample=tremolo-LLVln_trem_E5_v2_rr1.wav lokey=87 hikey=89 pitch_keycenter=88
+<region> sample=tremolo-LLVln_trem_G5_v2_rr1.wav lokey=90 hikey=93 pitch_keycenter=91
+<region> sample=tremolo-LLVln_trem_C6_v2_rr1.wav lokey=94 hikey=103 pitch_keycenter=96
+
+<master> sw_last=26 sw_label=Pizzicato ampeg_release=0.4 global_volume=11.5
+<group> lovel=1 hivel=79
+<region> sample=pizzicato-LLVln_Pizz_G3_p_RR1.wav lokey=55 hikey=56 pitch_keycenter=55
+<region> sample=pizzicato-LLVln_Pizz_A3_p_RR1.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A3_p_RR2.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C4_p_RR1.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_C4_p_RR2.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E4_p_RR1.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E4_p_RR2.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_G4_p_RR1.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_G4_p_RR2.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A4_p_RR1.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A4_p_RR2.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C5_p_RR1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_C5_p_RR2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E5_p_RR1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E5_p_RR2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_G5_p_RR1.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_G5_p_RR2.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A5_p_RR1.wav lokey=81 hikey=84 pitch_keycenter=81 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A5_p_RR2.wav lokey=81 hikey=84 pitch_keycenter=81 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E6_f_RR1.wav lokey=85 hikey=90 pitch_keycenter=88 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E6_f_RR2.wav lokey=85 hikey=90 pitch_keycenter=88 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A6_f_RR1.wav lokey=91 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A6_f_RR2.wav lokey=91 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C7_f.wav lokey=95 hikey=103 pitch_keycenter=96
+<group> lovel=80 hivel=127
+<region> sample=pizzicato-LLVln_Pizz_G3_f_RR1.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_G3_f_RR2.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A3_f_RR1.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A3_f_RR2.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C4_f_RR1.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_C4_f_RR2.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E4_f_RR1.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E4_f_RR2.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_G4_f_RR1.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_G4_f_RR2.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A4_f_RR1.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A4_f_RR2.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C5_f_RR1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_C5_f_RR2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E5_f_RR1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E5_f_RR2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_G5_f_RR1.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_G5_f_RR2.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A5_f_RR1.wav lokey=81 hikey=84 pitch_keycenter=81 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A5_f_RR2.wav lokey=81 hikey=84 pitch_keycenter=81 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_E6_f_RR1.wav lokey=85 hikey=90 pitch_keycenter=88 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_E6_f_RR2.wav lokey=85 hikey=90 pitch_keycenter=88 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_A6_f_RR1.wav lokey=91 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=1
+<region> sample=pizzicato-LLVln_Pizz_A6_f_RR2.wav lokey=91 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=2
+<region> sample=pizzicato-LLVln_Pizz_C7_f.wav lokey=95 hikey=103 pitch_keycenter=96
+
+<master> sw_last=27 sw_label=Spiccato ampeg_release=0.15 global_volume=13
+<group> lovel=1 hivel=79
+<region> sample=spiccato-LLVln_spic_G2_v1_rr1.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G2_v1_rr2.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A2_v1_rr1.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A2_v1_rr2.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C3_v1_rr1.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C3_v1_rr2.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E3_v1_rr1.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E3_v1_rr2.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G3_v1_rr1.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G3_v1_rr2.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A3_v1_rr1.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A3_v1_rr2.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C4_v1_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C4_v1_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E4_v1_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E4_v1_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G4_v1_rr1.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G4_v1_rr2.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A4_v1_rr1.wav lokey=81 hikey=82 pitch_keycenter=81 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A4_v1_rr2.wav lokey=81 hikey=82 pitch_keycenter=81 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C5_v1_rr1.wav lokey=83 hikey=86 pitch_keycenter=84 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C5_v1_rr2.wav lokey=83 hikey=86 pitch_keycenter=84 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E5_v1_rr1.wav lokey=87 hikey=89 pitch_keycenter=88 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E5_v1_rr2.wav lokey=87 hikey=89 pitch_keycenter=88 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G5_v1_rr1.wav lokey=90 hikey=92 pitch_keycenter=91 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G5_v1_rr2.wav lokey=90 hikey=92 pitch_keycenter=91 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A5_v1_rr1.wav lokey=93 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A5_v1_rr2.wav lokey=93 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C6_v1_rr1.wav lokey=95 hikey=103 pitch_keycenter=96 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C6_v1_rr2.wav lokey=95 hikey=103 pitch_keycenter=96 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127
+<region> sample=spiccato-LLVln_spic_G2_v2_rr1.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G2_v2_rr2.wav lokey=55 hikey=56 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A2_v2_rr1.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A2_v2_rr2.wav lokey=57 hikey=58 pitch_keycenter=57 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C3_v2_rr1.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C3_v2_rr2.wav lokey=59 hikey=62 pitch_keycenter=60 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E3_v2_rr1.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E3_v2_rr2.wav lokey=63 hikey=65 pitch_keycenter=64 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G3_v2_rr1.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G3_v2_rr2.wav lokey=66 hikey=68 pitch_keycenter=67 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A3_v2_rr1.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A3_v2_rr2.wav lokey=69 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C4_v2_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C4_v2_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E4_v2_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E4_v2_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G4_v2_rr1.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G4_v2_rr2.wav lokey=78 hikey=80 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A4_v2_rr1.wav lokey=81 hikey=82 pitch_keycenter=81 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A4_v2_rr2.wav lokey=81 hikey=82 pitch_keycenter=81 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C5_v2_rr1.wav lokey=83 hikey=86 pitch_keycenter=84 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C5_v2_rr2.wav lokey=83 hikey=86 pitch_keycenter=84 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_E5_v2_rr1.wav lokey=87 hikey=89 pitch_keycenter=88 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_E5_v2_rr2.wav lokey=87 hikey=89 pitch_keycenter=88 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_G5_v2_rr1.wav lokey=90 hikey=92 pitch_keycenter=91 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_G5_v2_rr2.wav lokey=90 hikey=92 pitch_keycenter=91 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_A5_v2_rr1.wav lokey=93 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_A5_v2_rr2.wav lokey=93 hikey=94 pitch_keycenter=93 seq_length=2 seq_position=2
+<region> sample=spiccato-LLVln_spic_C6_v2_rr1.wav lokey=95 hikey=103 pitch_keycenter=96 seq_length=2 seq_position=1
+<region> sample=spiccato-LLVln_spic_C6_v2_rr2.wav lokey=95 hikey=103 pitch_keycenter=96 seq_length=2 seq_position=2

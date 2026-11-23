@@ -1,0 +1,248 @@
+// Synkopa Keys: String Section.
+// Violin, viola and cello sections from VSCO 2 Community Edition by Versilian Studios, CC0-1.0.
+// https://github.com/sgossner/VSCO-2-CE (440300901d)
+// Mapping by Synkopa: four articulations on keyswitches C0..D#0 (keys 24..27), each with the
+// cellos low, the violas in the middle and the violins on top (split, not layered: two
+// sections on one note comb-filter), two dynamics split at velocity 80, round robins where
+// they were recorded.
+
+<global> sw_lokey=24 sw_hikey=27 sw_default=24 amp_veltrack=40 global_volume=1.5
+
+<master> sw_last=24 sw_label=Sustain ampeg_attack=0.04 ampeg_release=1.4 global_volume=2.5
+<group> lovel=1 hivel=79 volume=0
+<region> sample=cello-sustain-susvib_C1_v1_1.wav lokey=33 hikey=38 pitch_keycenter=36
+<region> sample=cello-sustain-susvib_E1_v1_1.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=1
+<region> sample=cello-sustain-susvib_E1_v1_2.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=2
+<region> sample=cello-sustain-susvib_G1_v1_1.wav lokey=42 hikey=45 pitch_keycenter=43
+<region> sample=cello-sustain-susvib_B1_v1_1.wav lokey=46 hikey=48 pitch_keycenter=47
+<region> sample=cello-sustain-susvib_D2_v1_1.wav lokey=49 hikey=50 pitch_keycenter=50
+<group> lovel=80 hivel=127 volume=0
+<region> sample=cello-sustain-susvib_C1_v3_1.wav lokey=33 hikey=38 pitch_keycenter=36
+<region> sample=cello-sustain-susvib_E1_v3_1.wav lokey=39 hikey=41 pitch_keycenter=40
+<region> sample=cello-sustain-susvib_G1_v3_1.wav lokey=42 hikey=45 pitch_keycenter=43
+<region> sample=cello-sustain-susvib_B1_v3_1.wav lokey=46 hikey=48 pitch_keycenter=47
+<region> sample=cello-sustain-susvib_D2_v3_1.wav lokey=49 hikey=50 pitch_keycenter=50
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=viola-sustain-ViolaEns_susvib_D2_v1_1.wav lokey=51 hikey=51 pitch_keycenter=50
+<region> sample=viola-sustain-ViolaEns_susvib_E2_v1_1.wav lokey=52 hikey=53 pitch_keycenter=52
+<region> sample=viola-sustain-ViolaEns_susvib_G2_v1_1.wav lokey=54 hikey=57 pitch_keycenter=55
+<region> sample=viola-sustain-ViolaEns_susvib_B2_v1_1.wav lokey=58 hikey=59 pitch_keycenter=59
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=viola-sustain-ViolaEns_susvib_D2_v2_1.wav lokey=51 hikey=51 pitch_keycenter=50
+<region> sample=viola-sustain-ViolaEns_susvib_E2_v2_1.wav lokey=52 hikey=53 pitch_keycenter=52
+<region> sample=viola-sustain-ViolaEns_susvib_G2_v2_1.wav lokey=54 hikey=57 pitch_keycenter=55
+<region> sample=viola-sustain-ViolaEns_susvib_B2_v2_1.wav lokey=58 hikey=59 pitch_keycenter=59
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=violin-sustain-VlnEns_susVib_B2_v1.wav lokey=60 hikey=60 pitch_keycenter=59
+<region> sample=violin-sustain-VlnEns_susVib_D3_v1.wav lokey=61 hikey=64 pitch_keycenter=62
+<region> sample=violin-sustain-VlnEns_susVib_F#3_v1.wav lokey=65 hikey=67 pitch_keycenter=66
+<region> sample=violin-sustain-VlnEns_susVib_A3_v1.wav lokey=68 hikey=70 pitch_keycenter=69
+<region> sample=violin-sustain-VlnEns_susVib_C4_v1.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=violin-sustain-VlnEns_susVib_E4_v1.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=violin-sustain-VlnEns_susVib_G4_v1.wav lokey=78 hikey=81 pitch_keycenter=79
+<region> sample=violin-sustain-VlnEns_susVib_B4_v1.wav lokey=82 hikey=84 pitch_keycenter=83
+<region> sample=violin-sustain-VlnEns_susVib_D5_v1.wav lokey=85 hikey=93 pitch_keycenter=86
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=violin-sustain-VlnEns_susVib_B2_v2.wav lokey=60 hikey=60 pitch_keycenter=59
+<region> sample=violin-sustain-VlnEns_susVib_D3_v2.wav lokey=61 hikey=64 pitch_keycenter=62
+<region> sample=violin-sustain-VlnEns_susVib_F#3_v2.wav lokey=65 hikey=67 pitch_keycenter=66
+<region> sample=violin-sustain-VlnEns_susVib_A3_v2.wav lokey=68 hikey=70 pitch_keycenter=69
+<region> sample=violin-sustain-VlnEns_susVib_C4_v2.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=violin-sustain-VlnEns_susVib_E4_v2.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=violin-sustain-VlnEns_susVib_G4_v2.wav lokey=78 hikey=81 pitch_keycenter=79
+<region> sample=violin-sustain-VlnEns_susVib_B4_v2.wav lokey=82 hikey=84 pitch_keycenter=83
+<region> sample=violin-sustain-VlnEns_susVib_D5_v2.wav lokey=85 hikey=93 pitch_keycenter=86
+
+<master> sw_last=25 sw_label=Tremolo ampeg_attack=0.03 ampeg_release=1.2
+<group> lovel=1 hivel=79 volume=0
+<region> sample=cello-tremolo-trem_C1_v2_1.wav lokey=33 hikey=38 pitch_keycenter=36
+<region> sample=cello-tremolo-trem_E1_v1_1.wav lokey=39 hikey=41 pitch_keycenter=40
+<region> sample=cello-tremolo-trem_G1_v1_1.wav lokey=42 hikey=45 pitch_keycenter=43
+<region> sample=cello-tremolo-trem_B1_v1_1.wav lokey=46 hikey=48 pitch_keycenter=47
+<region> sample=cello-tremolo-trem_D2_v1_1.wav lokey=49 hikey=50 pitch_keycenter=50
+<group> lovel=80 hivel=127 volume=0
+<region> sample=cello-tremolo-trem_C1_v2_1.wav lokey=33 hikey=38 pitch_keycenter=36
+<region> sample=cello-tremolo-trem_E1_v2_1.wav lokey=39 hikey=41 pitch_keycenter=40
+<region> sample=cello-tremolo-trem_G1_v2_1.wav lokey=42 hikey=45 pitch_keycenter=43
+<region> sample=cello-tremolo-trem_B1_v1_1.wav lokey=46 hikey=48 pitch_keycenter=47
+<region> sample=cello-tremolo-trem_D2_v2_1.wav lokey=49 hikey=50 pitch_keycenter=50
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=viola-tremolo-Violas_trem_E2_v1_rr1.wav lokey=51 hikey=53 pitch_keycenter=52
+<region> sample=viola-tremolo-Violas_trem_G2_v1_rr1.wav lokey=54 hikey=57 pitch_keycenter=55
+<region> sample=viola-tremolo-Violas_trem_B2_v1_rr1.wav lokey=58 hikey=59 pitch_keycenter=59
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=viola-tremolo-Violas_trem_E2_v2_rr1.wav lokey=51 hikey=53 pitch_keycenter=52
+<region> sample=viola-tremolo-Violas_trem_G2_v2_rr1.wav lokey=54 hikey=57 pitch_keycenter=55
+<region> sample=viola-tremolo-Violas_trem_B2_v2_rr1.wav lokey=58 hikey=59 pitch_keycenter=59
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=violin-tremolo-VlnEns_Trem_B2_v1.wav lokey=60 hikey=60 pitch_keycenter=59
+<region> sample=violin-tremolo-VlnEns_Trem_D3_v1.wav lokey=61 hikey=64 pitch_keycenter=62
+<region> sample=violin-tremolo-VlnEns_Trem_F#3_v1.wav lokey=65 hikey=67 pitch_keycenter=66
+<region> sample=violin-tremolo-VlnEns_Trem_A3_v1.wav lokey=68 hikey=70 pitch_keycenter=69
+<region> sample=violin-tremolo-VlnEns_Trem_C4_v1.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=violin-tremolo-VlnEns_Trem_E4_v1.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=violin-tremolo-VlnEns_Trem_G4_v1.wav lokey=78 hikey=81 pitch_keycenter=79
+<region> sample=violin-tremolo-VlnEns_Trem_B4_v1.wav lokey=82 hikey=84 pitch_keycenter=83
+<region> sample=violin-tremolo-VlnEns_Trem_D5_v1.wav lokey=85 hikey=93 pitch_keycenter=86
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=violin-tremolo-VlnEns_Trem_B2_v2.wav lokey=60 hikey=60 pitch_keycenter=59
+<region> sample=violin-tremolo-VlnEns_Trem_D3_v2.wav lokey=61 hikey=64 pitch_keycenter=62
+<region> sample=violin-tremolo-VlnEns_Trem_F#3_v1.wav lokey=65 hikey=67 pitch_keycenter=66
+<region> sample=violin-tremolo-VlnEns_Trem_A3_v2.wav lokey=68 hikey=70 pitch_keycenter=69
+<region> sample=violin-tremolo-VlnEns_Trem_C4_v2.wav lokey=71 hikey=74 pitch_keycenter=72
+<region> sample=violin-tremolo-VlnEns_Trem_E4_v2.wav lokey=75 hikey=77 pitch_keycenter=76
+<region> sample=violin-tremolo-VlnEns_Trem_G4_v2.wav lokey=78 hikey=81 pitch_keycenter=79
+<region> sample=violin-tremolo-VlnEns_Trem_B4_v2.wav lokey=82 hikey=84 pitch_keycenter=83
+<region> sample=violin-tremolo-VlnEns_Trem_D5_v2.wav lokey=85 hikey=93 pitch_keycenter=86
+
+<master> sw_last=26 sw_label=Pizzicato ampeg_release=0.5 global_volume=7
+<group> lovel=1 hivel=79 volume=0
+<region> sample=cello-pizzicato-pizzT_C1_v1_RR1.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_C1_v1_RR2.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_E1_v1_RR1.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_E1_v1_RR2.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_G1_v1_RR1.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_G1_v1_RR2.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_B1_v1_RR1.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_B1_v1_RR2.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_D2_v1_RR1.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_D2_v1_RR2.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=0
+<region> sample=cello-pizzicato-pizzT_C1_v2_RR1.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_C1_v2_RR2.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_E1_v2_RR1.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_E1_v2_RR2.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_G1_v2_RR1.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_G1_v2_RR2.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_B1_v2_RR1.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_B1_v2_RR2.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=2
+<region> sample=cello-pizzicato-pizzT_D2_v2_RR1.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=1
+<region> sample=cello-pizzicato-pizzT_D2_v2_RR2.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=2
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=viola-pizzicato-ViolaEns_pizz_E2_v1_rr1.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_E2_v1_rr2.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=2
+<region> sample=viola-pizzicato-ViolaEns_pizz_G2_v1_rr1.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_G2_v1_rr2.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=viola-pizzicato-ViolaEns_pizz_B2_v1_rr1.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_B2_v1_rr2.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=viola-pizzicato-ViolaEns_pizz_E2_v2_rr1.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_E2_v2_rr2.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=2
+<region> sample=viola-pizzicato-ViolaEns_pizz_G2_v2_rr1.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_G2_v2_rr2.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=viola-pizzicato-ViolaEns_pizz_B2_v2_rr1.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=viola-pizzicato-ViolaEns_pizz_B2_v2_rr2.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=2
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B2_v1_rr1.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B2_v1_rr2.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_D3_v1_rr1.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_D3_v1_rr2.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_F#3_v1_rr1.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_F#3_v1_rr2.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_A3_v1_rr1.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_A3_v1_rr2.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_C4_v1_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_C4_v1_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_E4_v1_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_E4_v1_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_G4_v1_rr1.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_G4_v1_rr2.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_B4_v1_rr1.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B4_v1_rr2.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_D5_v1_rr1.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_D5_v1_rr2.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B2_v2_rr1.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B2_v2_rr2.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_D3_v2_rr1.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_D3_v2_rr2.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_F#3_v2_rr1.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_F#3_v2_rr2.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_A3_v2_rr1.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_A3_v2_rr2.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_C4_v2_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_C4_v2_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_E4_v2_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_E4_v2_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_G4_v2_rr1.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_G4_v2_rr2.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_B4_v2_rr1.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_B4_v2_rr2.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=2
+<region> sample=violin-pizzicato-VlnEns_Pizz_D5_v2_rr1.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=1
+<region> sample=violin-pizzicato-VlnEns_Pizz_D5_v2_rr2.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=2
+
+<master> sw_last=27 sw_label=Spiccato ampeg_release=0.2 global_volume=8
+<group> lovel=1 hivel=79 volume=0
+<region> sample=cello-spiccato-spic_C1_v1_RR1.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_C1_v1_RR2.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_E1_v1_RR1.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_E1_v1_RR2.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_G1_v1_RR1.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_G1_v1_RR2.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_B1_v1_RR1.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_B1_v1_RR2.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_D2_v1_RR1.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_D2_v1_RR2.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=0
+<region> sample=cello-spiccato-spic_C1_v2_RR1.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_C1_v2_RR2.wav lokey=33 hikey=38 pitch_keycenter=36 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_E1_v2_RR1.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_E1_v2_RR2.wav lokey=39 hikey=41 pitch_keycenter=40 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_G1_v2_RR1.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_G1_v2_RR2.wav lokey=42 hikey=45 pitch_keycenter=43 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_B1_v2_RR1.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_B1_v2_RR2.wav lokey=46 hikey=48 pitch_keycenter=47 seq_length=2 seq_position=2
+<region> sample=cello-spiccato-spic_D2_v2_RR1.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=1
+<region> sample=cello-spiccato-spic_D2_v2_RR2.wav lokey=49 hikey=50 pitch_keycenter=50 seq_length=2 seq_position=2
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=viola-spiccato-Violas_spic_E2_v1_rr1.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_E2_v1_rr2.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=2
+<region> sample=viola-spiccato-Violas_spic_G2_v1_rr1.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_G2_v1_rr2.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=viola-spiccato-Violas_spic_B2_v1_rr1.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_B2_v1_rr2.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=viola-spiccato-Violas_spic_E2_v2_rr1.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_E2_v2_rr2.wav lokey=51 hikey=53 pitch_keycenter=52 seq_length=2 seq_position=2
+<region> sample=viola-spiccato-Violas_spic_G2_v2_rr1.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_G2_v2_rr2.wav lokey=54 hikey=57 pitch_keycenter=55 seq_length=2 seq_position=2
+<region> sample=viola-spiccato-Violas_spic_B2_v2_rr1.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=viola-spiccato-Violas_spic_B2_v2_rr2.wav lokey=58 hikey=59 pitch_keycenter=59 seq_length=2 seq_position=2
+<group> lovel=1 hivel=79 volume=-1
+<region> sample=violin-spiccato-VlnEns_Spic_B2_v1_rr1.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_B2_v1_rr2.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_D3_v1_rr1.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_D3_v1_rr2.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_F#3_v1_rr1.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_F#3_v1_rr2.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_A3_v1_rr1.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_A3_v1_rr2.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_C4_v1_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_C4_v1_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_E4_v1_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_E4_v1_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_G4_v1_rr1.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_G4_v1_rr2.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_B4_v1_rr1.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_B4_v1_rr2.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_D5_v1_rr1.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_D5_v1_rr2.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=2
+<group> lovel=80 hivel=127 volume=-1
+<region> sample=violin-spiccato-VlnEns_Spic_B2_v2_rr1.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_B2_v2_rr2.wav lokey=60 hikey=60 pitch_keycenter=59 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_D3_v2_rr1.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_D3_v2_rr2.wav lokey=61 hikey=64 pitch_keycenter=62 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_F#3_v2_rr1.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_F#3_v2_rr2.wav lokey=65 hikey=67 pitch_keycenter=66 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_A3_v2_rr1.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_A3_v2_rr2.wav lokey=68 hikey=70 pitch_keycenter=69 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_C4_v2_rr1.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_C4_v2_rr2.wav lokey=71 hikey=74 pitch_keycenter=72 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_E4_v2_rr1.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_E4_v2_rr2.wav lokey=75 hikey=77 pitch_keycenter=76 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_G4_v2_rr1.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_G4_v2_rr2.wav lokey=78 hikey=81 pitch_keycenter=79 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_B4_v2_rr1.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_B4_v2_rr2.wav lokey=82 hikey=84 pitch_keycenter=83 seq_length=2 seq_position=2
+<region> sample=violin-spiccato-VlnEns_Spic_D5_v2_rr1.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=1
+<region> sample=violin-spiccato-VlnEns_Spic_D5_v2_rr2.wav lokey=85 hikey=93 pitch_keycenter=86 seq_length=2 seq_position=2

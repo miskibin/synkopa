@@ -21,6 +21,10 @@ export function PianoKeys(props: {
   root?: number;
   /** Right-click on a key makes it the root. Without it right-click does nothing. */
   onRoot?: (key: number) => void;
+  /** Keys an instrument plays; the others are dimmed (they still sound, pitched from the nearest recording). */
+  range?: readonly [number, number];
+  /** Keyswitches (Kontakt-style): tinted, the active one brighter; they pick an articulation instead of sounding. */
+  switches?: readonly { key: number; name: string; on: boolean }[];
 }) {
   let el!: HTMLDivElement;
   const [down, setDown] = createSignal<number | null>(null);
@@ -73,6 +77,9 @@ export function PianoKeys(props: {
 
   const lit = (k: number) => down() === k || held().has(k) || typingHeld().includes(k);
   const isRoot = (k: number) => props.root === k;
+  const sw = (k: number) => props.switches?.find(s => s.key === k);
+  const out = (k: number) => !!props.range && !sw(k) && (k < props.range[0] || k > props.range[1]);
+  const cls = (k: number) => ({ on: lit(k), root: isRoot(k), out: out(k), sw: !!sw(k), swon: !!sw(k)?.on });
   return (
     <div ref={el} class="pkeys" role="group" aria-label={t('b.pk.aria')} title={t(props.onRoot ? 'b.pk.titleRoot' : 'b.pk.title')}
       onPointerDown={e => { if (e.button !== 0) return; el.setPointerCapture(e.pointerId); play(e); }}
@@ -80,14 +87,14 @@ export function PianoKeys(props: {
       onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
       onContextMenu={menu}>
       <For each={whites()}>{(k, i) => (
-        <div class={['w', { on: lit(k), root: isRoot(k) }]} style={{ left: (i() / whites().length) * 100 + '%', width: 100 / whites().length + '%' }}>
+        <div class={['w', cls(k)]} title={sw(k)?.name} style={{ left: (i() / whites().length) * 100 + '%', width: 100 / whites().length + '%' }}>
           <Show when={isRoot(k) || (k % 12 === 0 && (props.root == null || Math.abs(k - props.root) > 2))}>
             <span class="lbl">{noteName(k)}</span>
           </Show>
         </div>
       )}</For>
       <For each={blacks()}>{b => (
-        <div class={['b', { on: lit(b.key), root: isRoot(b.key) }]} style={{ left: 'calc(' + (b.at / whites().length) * 100 + '% - ' + (32 / whites().length) + '%)', width: 64 / whites().length + '%' }} />
+        <div class={['b', cls(b.key)]} title={sw(b.key)?.name} style={{ left: 'calc(' + (b.at / whites().length) * 100 + '% - ' + (32 / whites().length) + '%)', width: 64 / whites().length + '%' }} />
       )}</For>
     </div>
   );

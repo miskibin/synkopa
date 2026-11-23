@@ -3,7 +3,7 @@
 //! The Salamander recordings are 24-bit FLAC and up to 25 s long, but the engine keeps only
 //! the first [`keys::MAX_SECONDS`] of each (with a fade, [`keys::trimmed`]). This step applies
 //! that same cut ahead of time and stores the result as 16-bit FLAC with TPDF dither, so
-//! the installer carries what actually plays: about 23 MB instead of 138 MB. When the app
+//! the installer carries what actually plays: about 38 MB instead of 185 MB. When the app
 //! loads a prepared file, `trimmed` finds it already short enough and leaves it alone.
 //!
 //! Every file is decoded again after encoding and compared with the cut recording; a file
@@ -339,7 +339,10 @@ mod tests {
         let mut names: Vec<_> = std::fs::read_dir(&out).unwrap().flatten().map(|e| e.file_name().into_string().unwrap()).collect();
         names.sort();
         assert_eq!(names, ["ATTRIBUTION.txt", "C4v1.flac", "C4v2.flac"]);
-        assert_eq!(keys::KeysBank::load(&out).map(|_| ()), Ok(()));
+        // the prepared files play as an instrument
+        let prepared =
+            vec![("C4v1.flac", Audio::load(&out.join("C4v1.flac")).unwrap()), ("C4v2.flac", Audio::load(&out.join("C4v2.flac")).unwrap())];
+        assert!(keys::bank_from("<region> sample=C4v1.flac key=60 hivel=64 <region> sample=C4v2.flac key=60 lovel=65", prepared).is_ok());
         let _ = std::fs::remove_dir_all(src);
         let _ = std::fs::remove_dir_all(out);
     }

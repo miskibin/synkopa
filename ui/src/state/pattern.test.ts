@@ -104,6 +104,45 @@ describe('sampler channels from project audio', () => {
   });
 });
 
+describe('Synkopa Keys instruments', () => {
+  const keysChan = () => P.channels().find(c => c.kind === 'keys') as Extract<ReturnType<typeof P.channels>[number], { kind: 'keys' }>;
+  it('switches the instrument, renames a channel still named after it and drops the old articulation', async () => {
+    P.addKeys();
+    await sync();
+    const id = keysChan().id;
+    P.setKeysInstrument(id, 'strings');
+    await sync();
+    expect(keysChan().name).toBe('String Section');
+    P.setKeysArticulation(id, 26);
+    await sync();
+    expect(keysChan().keys).toMatchObject({ instrument: 'strings', articulation: 26 });
+    P.setKeysInstrument(id, 'harp');
+    await sync();
+    expect(keysChan().name).toBe('Concert Harp');
+    expect(keysChan().keys.articulation).toBeUndefined();
+    expect(keysChan().keys.release).toBeUndefined();
+  });
+  it('keeps a name the user gave and ignores an unknown instrument', async () => {
+    P.addKeys();
+    await sync();
+    const c = keysChan();
+    edit.commit([P.chanOp(store.plain(c), { name: 'Lead keys' })], 'rename');
+    await sync();
+    P.setKeysInstrument(c.id, 'wurlitzer');
+    await sync();
+    expect(keysChan().name).toBe('Lead keys');
+    P.setKeysInstrument(c.id, 'kazoo');
+    await sync();
+    expect(keysChan().keys.instrument).toBe('wurlitzer');
+  });
+  it('lists the catalog with what is installed', async () => {
+    const st = await mock.keysStatus();
+    expect(st.instruments.map(i => i.id)).toContain('grand-piano');
+    expect(st.instruments.find(i => i.id === 'grand-piano')).toMatchObject({ bundled: true, installed: true });
+    expect(st.instruments.find(i => i.id === 'strings')?.articulations.map(a => a.name)).toEqual(['Sustain', 'Tremolo', 'Pizzicato', 'Spiccato']);
+  });
+});
+
 describe('the second Stop', () => {
   it('cuts the tails only when nothing was playing', async () => {
     const silence = vi.spyOn(mock, 'transportSilence');

@@ -8,7 +8,7 @@
 use crate::model::Id;
 use crate::rt::{ChanRt, InsertRt};
 
-pub const MAX_VOICES: usize = 96;
+pub const MAX_VOICES: usize = 128;
 
 /// How a scheduled note ends. Sampler triggers have no note-off; explicit held sampler notes
 /// stop at their end (envelope off) or release from it (envelope on), while auditions and
@@ -34,8 +34,9 @@ pub enum VoiceKind {
     /// The sample of the voice's channel, pitched by the note and shaped by the channel's
     /// sampler settings (part of the file, direction, fades, volume envelope).
     Sample,
-    /// Synkopa Keys: a recording of the channel's piano, picked by key and velocity; it rings
-    /// for the note's length, then fades over the channel's release time.
+    /// Synkopa Keys: a region of the channel's instrument (see `crate::keys`), picked by key,
+    /// velocity and round robin; it rings for the note's length under its envelope, then
+    /// releases over the region's (or the channel's) release time.
     Keys,
     /// A synth channel: its notes go to the channel's `poly::SynthInst`, not this pool.
     Synth,
@@ -91,8 +92,18 @@ pub struct Voice {
     sus: bool,
     /// MIDI key of a live note (and of every piano note).
     key: u8,
-    /// Piano: which recording of the bank plays, and the release envelope's level.
+    /// Keys: the bank's zone (region) this voice plays.
     zone: u16,
+    /// Keys: the note's envelope (after its per-note modulations), its level now, its stage
+    /// (0 delay, 1 attack, 2 hold, 3 decay, 4 sustain) and the samples spent in that stage.
+    eg: crate::sfz::Eg,
+    lvl: f32,
+    stage: u8,
+    stage_t: u32,
+    /// Keys: a key-release voice (it plays its noise to the end and is never damped), and the
+    /// velocity the note was struck with (its release noise follows it).
+    rel: bool,
+    note_vel: f32,
     /// Music Box: the sounding note's tine model.
     pub mb: crate::musicbox::Tine,
     /// Release (and cut) level: 1 until the note ends, then it falls.
@@ -167,6 +178,12 @@ impl Voice {
             sus: false,
             key: 0,
             zone: 0,
+            eg: crate::sfz::Eg { delay: 0.0, attack: 0.0, hold: 0.0, decay: 0.0, sustain: 1.0, release: 0.0 },
+            lvl: 0.0,
+            stage: 0,
+            stage_t: 0,
+            rel: false,
+            note_vel: 0.0,
             mb: crate::musicbox::Tine::default(),
             env: 1.0,
             cut: 0,
@@ -196,7 +213,17 @@ pub struct VoicePool {
     pedal: bool,
     /// Pitch-bend factor applied to live notes (1 = none).
     bend: f32,
+    /// Keys: notes struck so far per key (round robins rotate on it), a random generator
+    /// (`lorand`/`hirand`), and the keyswitch each channel last pressed.
+    rr: [u32; 128],
+    rng: u32,
+    switches: [(Id, u8); 16],
 }
+
+/// A live note's length: it lasts until its key comes up.
+const LIVE_SECONDS: f32 = 3600.0;
+/// No channel in a keyswitch slot.
+const NO_ID: Id = Id::MAX;
 
 #[inline]
 fn exp_ramp(v0: f32, v1: f32, t: f32, dur: f32) -> f32 {
@@ -214,11 +241,14 @@ pub fn pan_gains(pan: f32) -> (f32, f32) {
 }
 
 /// Ends a held voice: its release (the channel's release time) starts now. A sampler with its
-/// envelope off ignores it and rings out.
+/// envelope off ignores it and rings out, and so does a voice with no length of its own (a
+/// one-shot Keys region: a harp string rings on after the finger leaves it).
 fn release(v: &mut Voice) {
     v.held = false;
     v.sus = false;
-    v.len = v.t;
+    if v.len != u32::MAX {
+        v.len = v.t;
+    }
 }
 
 /// Time for a cut voice to fall 60 dB: fast, but not a click.
@@ -231,7 +261,15 @@ const SLICE_TAIL_SECONDS: f32 = 0.005;
 
 impl VoicePool {
     pub fn new(sr: f32) -> Self {
-        Self { voices: vec![Voice::dead(); MAX_VOICES], sr, pedal: false, bend: 1.0 }
+        Self {
+            voices: vec![Voice::dead(); MAX_VOICES],
+            sr,
+            pedal: false,
+            bend: 1.0,
+            rr: [0; 128],
+            rng: 0x9e37_79b9,
+            switches: [(NO_ID, 0); 16],
+        }
     }
 
     pub fn set_sr(&mut self, sr: f32) {
@@ -243,6 +281,8 @@ impl VoicePool {
         self.voices.iter_mut().for_each(|v| v.alive = false);
         self.pedal = false;
         self.bend = 1.0;
+        self.rr = [0; 128];
+        self.switches = [(NO_ID, 0); 16];
     }
 
     /// A live key went down: the note sounds until [`Self::note_off`] (and the pedal) let it go.
@@ -250,30 +290,152 @@ impl VoicePool {
     pub fn note_on(&mut self, ch: &ChanRt, idx: usize, dest: Dest, key: u8, vel: f32) -> bool {
         // the same key struck again releases its previous note
         self.release_where(|v| v.held && v.chan_id == ch.id && v.key == key);
-        let Some(i) = self.note_slot(ch, idx, dest, 0, NoteEnd::Release(3600.0), key, vel, 1.0, 0.0) else { return false };
+        let Some(i) = self.note_slot(ch, idx, dest, 0, NoteEnd::Release(LIVE_SECONDS), key, vel, 1.0, 0.0) else { return false };
         let v = &mut self.voices[i];
         v.held = true;
         v.key = key;
+        if v.kind == VoiceKind::Keys {
+            // every region the key started (layers, crossfades) is the same live note: the key,
+            // the pedal and the bend hold or let go of all of them
+            for v in self.voices.iter_mut().filter(|v| {
+                v.alive
+                    && v.kind == VoiceKind::Keys
+                    && v.chan_id == ch.id
+                    && v.key == key
+                    && !v.rel
+                    && v.t == 0
+                    && v.delay == 0
+                    && v.len > 0
+            }) {
+                v.held = true;
+            }
+        }
         true
     }
 
     /// A live key went up. With the pedal down the note keeps sounding until it comes up.
-    pub fn note_off(&mut self, chan_id: Id, key: u8) {
+    /// A Keys note that ends now plays its instrument's key-release noise.
+    pub fn note_off(&mut self, chans: &[ChanRt], chan_id: Id, key: u8) {
         let pedal = self.pedal;
+        let mut ended: Option<Voice> = None;
         for v in self.voices.iter_mut().filter(|v| v.alive && v.held && v.chan_id == chan_id && v.key == key) {
             if pedal {
                 v.sus = true;
             } else {
+                if v.kind == VoiceKind::Keys && !v.rel && ended.is_none() {
+                    ended = Some(*v);
+                }
                 release(v);
+            }
+        }
+        if let Some(v) = ended {
+            self.keys_release(chans, &v);
+        }
+    }
+
+    pub fn sustain(&mut self, chans: &[ChanRt], down: bool) {
+        self.pedal = down;
+        if down {
+            return;
+        }
+        // the dampers fall on every key the pedal was holding: one release noise per key
+        let mut done: [(Id, u128); 8] = [(NO_ID, 0); 8];
+        for i in 0..self.voices.len() {
+            let v = self.voices[i];
+            if !(v.alive && v.sus) {
+                continue;
+            }
+            release(&mut self.voices[i]);
+            if v.kind != VoiceKind::Keys || v.rel {
+                continue;
+            }
+            let bit = 1u128 << (v.key & 127);
+            match done.iter().position(|d| d.0 == v.chan_id).or_else(|| done.iter().position(|d| d.0 == NO_ID)) {
+                Some(s) if done[s].1 & bit != 0 => {}
+                Some(s) => {
+                    done[s] = (v.chan_id, done[s].1 | bit);
+                    self.keys_release(chans, &v);
+                }
+                None => self.keys_release(chans, &v),
             }
         }
     }
 
-    pub fn sustain(&mut self, down: bool) {
-        self.pedal = down;
-        if !down {
-            self.release_where(|v| v.sus);
+    /// Starts the key-release regions of the Keys note `v`, which ends now.
+    fn keys_release(&mut self, chans: &[ChanRt], v: &Voice) {
+        let Some(ch) = chans.get(v.chan).filter(|c| c.id == v.chan_id) else { return };
+        let Some(bank) = ch.keys.clone() else { return };
+        if !bank.has_release(v.key) {
+            return;
         }
+        let held = v.t as f32 / self.sr;
+        let rand = self.rand();
+        let sw = self.switch(ch.id).or(ch.keys_sw);
+        let rr = self.rr[v.key as usize & 127];
+        let (dest, chan, key, pan, vel) = (v.dest, v.chan, v.key, v.pan, v.note_vel);
+        bank.pick(crate::sfz::Trigger::Release, key, vel, rr, rand, sw, ch.keys_dynamics, held, |h| {
+            self.keys_zone(ch, &bank, chan, dest, 0, NoteEnd::Natural, key, vel, 1.0, pan, h, true);
+        });
+    }
+
+    fn rand(&mut self) -> f32 {
+        // xorshift32: deterministic and allocation-free
+        let mut x = self.rng;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.rng = x;
+        (x >> 8) as f32 / (1u32 << 24) as f32
+    }
+
+    fn switch(&self, chan_id: Id) -> Option<u8> {
+        self.switches.iter().find(|s| s.0 == chan_id).map(|s| s.1)
+    }
+
+    fn set_switch(&mut self, chan_id: Id, key: u8) {
+        let i = self.switches.iter().position(|s| s.0 == chan_id).or_else(|| self.switches.iter().position(|s| s.0 == NO_ID)).unwrap_or(0);
+        self.switches[i] = (chan_id, key);
+    }
+
+    /// Starts one zone of a Keys note; returns its voice slot.
+    #[allow(clippy::too_many_arguments)]
+    fn keys_zone(
+        &mut self,
+        ch: &ChanRt,
+        bank: &crate::keys::KeysBank,
+        idx: usize,
+        dest: Dest,
+        delay: u32,
+        end: NoteEnd,
+        key: u8,
+        vel: f32,
+        gain: f32,
+        pan: f32,
+        h: crate::keys::Hit,
+        rel: bool,
+    ) -> Option<usize> {
+        let z = bank.zone(h.zone)?;
+        // a group's note silences the voices that are `off_by` it (an open hi-hat by a closed one)
+        if z.group != 0 {
+            for v in self.voices.iter_mut().filter(|v| v.alive && v.kind == VoiceKind::Keys && v.chan_id == ch.id && v.cut_at == u32::MAX) {
+                if bank.zone(v.zone).is_some_and(|o| o.off_by == z.group) {
+                    v.cut_at = v.t.saturating_add(delay.saturating_sub(v.delay));
+                }
+            }
+        }
+        let rate = bank.pcm(z).sr as f64 / self.sr as f64 * 2f64.powf(h.semis as f64 / 12.0);
+        // a one-shot region plays to its end whatever the note's length
+        let end = if z.loop_mode == crate::sfz::LoopMode::OneShot { NoteEnd::Natural } else { end };
+        let i = self.trigger(VoiceKind::Keys, dest, idx, ch.id, delay, end, h.gain * gain * KEYS_HEADROOM, rate);
+        let v = &mut self.voices[i];
+        v.zone = h.zone;
+        v.key = key;
+        v.pan = (pan + h.pan).clamp(-1.0, 1.0);
+        v.pos = z.offset;
+        v.eg = h.eg;
+        v.rel = rel;
+        v.note_vel = vel;
+        Some(i)
     }
 
     /// Pitch bend of live notes, in semitones.
@@ -297,6 +459,8 @@ impl VoicePool {
     /// A new channel table arrived: point every voice at its channel's new index, and
     /// silence voices whose channel is gone. RT-safe (no allocation).
     pub fn remap(&mut self, chans: &[ChanRt]) {
+        // the project's articulation is the truth again: a keyswitch played live lasts until the next edit
+        self.switches = [(NO_ID, 0); 16];
         for v in self.voices.iter_mut().filter(|v| v.alive && v.chan != NO_CHAN) {
             match chans.iter().position(|c| c.id == v.chan_id) {
                 Some(i) => v.chan = i,
@@ -328,6 +492,7 @@ impl VoicePool {
             v.alive
                 && v.chan_id == chan_id
                 && matches!(v.kind, VoiceKind::Sample | VoiceKind::Keys | VoiceKind::MusicBox)
+                && !v.rel
                 && v.slice == NO_SLICE
                 && v.delay <= delay
                 && v.cut_at == u32::MAX
@@ -412,21 +577,52 @@ impl VoicePool {
                 Some(i)
             }
             VoiceKind::Keys => {
-                let bank = ch.keys.as_ref()?;
-                let (zone, semis, hit) = bank.pick(key, vel, ch.keys_dynamics);
-                let a = bank.audio(zone)?;
-                let rate = a.sr as f64 / self.sr as f64 * 2f64.powf(semis as f64 / 12.0);
-                // the same key struck again: the string's previous note is damped
+                let bank = ch.keys.clone()?;
+                if bank.is_switch(key) {
+                    // a keyswitch picks the articulation; it does not sound
+                    self.set_switch(ch.id, key);
+                    return None;
+                }
+                // the same key struck again: the string's previous note is damped, and the
+                // key-release noise scheduled for its end is dropped (the key never came up)
                 for v in self.voices.iter_mut().filter(|v| v.alive && v.kind == VoiceKind::Keys && v.chan_id == ch.id && v.key == key) {
+                    if v.rel {
+                        if v.delay > delay {
+                            v.alive = false;
+                        }
+                        continue;
+                    }
                     v.held = false;
                     v.sus = false;
-                    v.len = v.len.min(v.t);
+                    v.len = v.len.min(v.t.saturating_add(delay.saturating_sub(v.delay)));
                 }
-                let i = self.trigger(VoiceKind::Keys, dest, idx, ch.id, delay, end, hit * gain * KEYS_HEADROOM, rate);
-                self.voices[i].zone = zone;
-                self.voices[i].key = key;
-                self.voices[i].pan = pan;
-                Some(i)
+                let k = key as usize & 127;
+                let rr = self.rr[k];
+                self.rr[k] = rr.wrapping_add(1);
+                let rand = self.rand();
+                // a keyswitch played live, else the channel's articulation, else the auto one by length
+                let sw = self.switch(ch.id).or(ch.keys_sw).or_else(|| {
+                    ch.keys_auto.map(|a| match end.seconds().filter(|s| *s < LIVE_SECONDS) {
+                        Some(s) if s < a.seconds => a.short,
+                        _ => a.long,
+                    })
+                });
+                let mut first = None;
+                bank.pick(crate::sfz::Trigger::Attack, key, vel, rr, rand, sw, ch.keys_dynamics, 0.0, |h| {
+                    let i = self.keys_zone(ch, &bank, idx, dest, delay, end, key, vel, gain, pan, h, false);
+                    first = first.or(i);
+                });
+                // a sequenced note knows when it ends: its key-release noise is scheduled with it
+                // (a live note plays it at its note-off)
+                if let Some(s) = end.seconds().filter(|s| *s < LIVE_SECONDS) {
+                    if first.is_some() && bank.has_release(key) {
+                        let at = delay.saturating_add((s * self.sr) as u32);
+                        bank.pick(crate::sfz::Trigger::Release, key, vel, rr, rand, sw, ch.keys_dynamics, s, |h| {
+                            self.keys_zone(ch, &bank, idx, dest, at, NoteEnd::Natural, key, vel, gain, pan, h, true);
+                        });
+                    }
+                }
+                first
             }
             VoiceKind::MusicBox => {
                 let p = crate::musicbox::Params {
@@ -569,30 +765,90 @@ impl VoicePool {
             };
             let stereo = !out_r.is_empty();
             if v.kind == VoiceKind::Keys {
-                let Some((a, release)) = piano.and_then(|(b, r)| b.audio(v.zone).map(|a| (a, r))) else {
+                let Some((bank, release_override)) = piano else {
                     v.alive = false;
                     continue;
                 };
+                let Some(z) = bank.zone(v.zone) else {
+                    v.alive = false;
+                    continue;
+                };
+                let p = bank.pcm(z);
+                // a key-release noise plays out; otherwise the channel's release (if set) or the region's
+                let release = if release_override >= 0.0 { release_override } else { v.eg.release };
                 // -60 dB after `release` seconds
                 let coef = 10f32.powf(-3.0 / (release.max(0.005) * sr));
+                let eg = v.eg;
+                let (delay_n, attack_n, hold_n) = ((eg.delay * sr) as u32, (eg.attack * sr).max(0.001 * sr), (eg.hold * sr) as u32);
+                // the decay falls 60 dB of the way to the sustain level in `decay` seconds
+                let dcoef = if eg.decay > 0.0 { 10f32.powf(-3.0 / (eg.decay * sr)) } else { 0.0 };
+                let looping = z.loop_len > 0.0;
                 for i in start..n {
-                    if v.pos >= a.frames as f64 {
+                    if looping && (z.loop_mode == crate::sfz::LoopMode::Continuous || v.t < v.len) && v.pos >= z.loop_start + z.loop_len {
+                        v.pos -= z.loop_len * ((v.pos - z.loop_start) / z.loop_len).floor();
+                    }
+                    if v.pos >= z.end {
                         v.alive = false;
                         break;
                     }
-                    if v.t >= v.len {
+                    if v.cut_at != u32::MAX && v.t >= v.cut_at {
+                        v.env *= 10f32.powf(-3.0 / (CUT_SECONDS * sr));
+                        if v.env < 1e-4 {
+                            v.alive = false;
+                            break;
+                        }
+                    } else if v.t >= v.len {
                         v.env *= coef;
                         if v.env < 1e-4 {
                             v.alive = false;
                             break;
                         }
+                    } else {
+                        // the envelope advances while the note is held; a release starts from its level
+                        match v.stage {
+                            0 => {
+                                v.lvl = 0.0;
+                                if v.stage_t >= delay_n {
+                                    v.stage = 1;
+                                    v.stage_t = 0;
+                                }
+                            }
+                            1 => {
+                                v.lvl = (v.stage_t as f32 / attack_n).min(1.0);
+                                if v.lvl >= 1.0 {
+                                    v.stage = 2;
+                                    v.stage_t = 0;
+                                }
+                            }
+                            2 => {
+                                v.lvl = 1.0;
+                                if v.stage_t >= hold_n {
+                                    v.stage = 3;
+                                    v.stage_t = 0;
+                                }
+                            }
+                            3 => {
+                                v.lvl = eg.sustain + (v.lvl - eg.sustain) * dcoef;
+                                if (v.lvl - eg.sustain).abs() < 1e-4 {
+                                    v.lvl = eg.sustain;
+                                    v.stage = 4;
+                                }
+                            }
+                            _ => {}
+                        }
+                        v.stage_t += 1;
+                        // a fully decayed note (an electric piano's tine) is over
+                        if v.stage == 4 && eg.sustain <= 0.0 {
+                            v.alive = false;
+                            break;
+                        }
                     }
-                    let (x, y) = a.sample(v.pos);
-                    let fade = (v.t as f32 / (0.001 * sr)).min(1.0) * v.env;
+                    let (x, y) = p.sample(v.pos);
+                    let a = v.lvl * v.env;
                     let (gl, gr) = side(i);
-                    out_l[i] += x * gl * fade;
+                    out_l[i] += x * gl * a;
                     if stereo {
-                        out_r[i] += y * gr * fade;
+                        out_r[i] += y * gr * a;
                     }
                     v.pos += v.rate * bend as f64 * v.slide_tick();
                     v.t += 1;

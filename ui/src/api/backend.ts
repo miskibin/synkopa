@@ -181,6 +181,8 @@ export interface Backend {
   libraryInstall(id: string): Promise<void>;
   /** Synkopa Keys: whether the piano's recordings are on this computer and loaded. */
   keysStatus(): Promise<KeysStatus>;
+  /** Loads a missing or failed Keys instrument (or a kit's instruments) again. */
+  keysRetry(id: string): Promise<KeysStatus>;
   libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles>;
   libraryAddFolder(): Promise<string[]>;
   libraryRemoveFolder(path: string): Promise<string[]>;
@@ -434,6 +436,7 @@ export function tauriBackend(): Backend {
     libraryList: () => invoke('library_list'),
     libraryInstall: id => invoke('library_install', { id }),
     keysStatus: () => invoke('keys_status'),
+    keysRetry: (id: string) => invoke('keys_retry', { id }),
     libraryFiles: q => invoke('library_files', { kit: q.kit ?? null, folder: q.folder ?? null }),
     libraryAddFolder: () => invoke('library_add_folder'),
     libraryRemoveFolder: path => invoke('library_remove_folder', { path }),

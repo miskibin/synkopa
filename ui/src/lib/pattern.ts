@@ -5,7 +5,8 @@
 // (absent = the channel's root); `v` velocity 0..1 (absent = 1).
 import { t, type TranslationKey } from './i18n';
 import { migrateSatParams } from './saturator';
-import { KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState } from '../api/types';
+import { keysInstrument } from './keysCatalog';
+import { KEYS_DEFAULT_INSTRUMENT, KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState } from '../api/types';
 import { addStarterKit } from './factory';
 import { SYNTH_CATALOG } from '../api/synthCatalog';
 import { synthError } from './synth';
@@ -154,8 +155,12 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       }
       if (c.kind === 'synth') { const e = synthError(SYNTH_CATALOG, c.synth ?? { preset: null, params: {} }); if (e) fail(e); }
       if (c.kind === 'keys') {
-        if (!(c.keys?.release >= KEYS_RELEASE.min && c.keys.release <= KEYS_RELEASE.max)) fail(`keys release must be ${KEYS_RELEASE.min}..${KEYS_RELEASE.max} ms`);
+        const r = c.keys?.release;
+        if (r != null && !(r >= KEYS_RELEASE.min && r <= KEYS_RELEASE.max)) fail(`keys release must be ${KEYS_RELEASE.min}..${KEYS_RELEASE.max} ms`);
         if (!(c.keys.dynamics >= 0 && c.keys.dynamics <= 100)) fail('keys dynamics must be 0..100 %');
+        const inst = keysInstrument(c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT);
+        if (!inst) fail(`Synkopa Keys has no instrument \`${c.keys.instrument}\``);
+        else if (c.keys.articulation != null && !inst.articulations.some(a => a.key === c.keys.articulation)) fail(`${inst.id} has no articulation on key ${c.keys.articulation}`);
       }
       if (c.kind === 'plugin') {
         if (c.plugin?.format !== 'vst3') fail(`${c.plugin?.format === 'lv2' ? 'LV2' : 'these'} instruments are not supported (VST3 only)`);

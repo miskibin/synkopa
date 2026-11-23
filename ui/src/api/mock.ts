@@ -40,7 +40,8 @@ import { MockUpdates } from './mockUpdates';
 import { MOCK_LV2 } from './mockPlugins';
 import { UNSAFE_PLUGIN } from './types';
 import { fromNormalized, lv2Param } from '../lib/pluginParam';
-import { KEYS_DYNAMICS, KEYS_RELEASE, SAMPLE_ROOT, samplerDefault } from './types';
+import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, SAMPLE_ROOT, samplerDefault } from './types';
+import { KEYS_CATALOG } from '../lib/keysCatalog';
 import { newSynthChannel } from '../lib/synth';
 import { candidate, rank, unambiguous } from '../lib/relink';
 
@@ -162,6 +163,9 @@ export class MockBackend implements Backend {
     { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
     { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
     { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
+    // the kits of the downloadable Synkopa Keys instruments (the grand piano ships with the app)
+    ...[...new Map(KEYS_CATALOG.filter(i => !i.bundled).map(i => [i.kit, i])).values()]
+      .map(i => ({ id: i.kit, name: i.name, description: i.description, bytes: i.bytes, count: 1, installed: false })),
   ];
   private folders = ['C:\\Users\\michal\\Music\\Samples'];
   /** Live plugin instances' parameters (VST3: normalized only; LV2: by port, with their real values). */
@@ -1261,7 +1265,7 @@ export class MockBackend implements Backend {
       const b = p.becomes;
       const ch: Channel = b.kind === 'synth'
         ? { ...newSynthChannel(this.cat.synth!, id, b.preset), ...base, root: /Bas|808/.test(b.preset) ? 36 : 60 }
-        : { ...base, color: '#e0a44a', kind: 'keys', keys: { release: KEYS_RELEASE.def, dynamics: KEYS_DYNAMICS.def }, root: 60 };
+        : { ...base, color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, root: 60 };
       ops.push({ op: 'putChannel', channel: ch });
       channelIds.push(id);
       for (const n of p.raw) notes.push(note(id, n, true));
@@ -1653,11 +1657,24 @@ export class MockBackend implements Backend {
     const iv = setInterval(() => {
       done = Math.min(total, done + total / 25);
       this.emit('library-progress', { id, done, total });
-      if (done >= total) { clearInterval(iv); kit.installed = true; }
+      if (done >= total) { clearInterval(iv); kit.installed = true; this.emit('keys-status', this.keysNow()); }
     }, 60);
   }
-  /** The browser preview has no recordings to load: the piano is always "ready" (and silent, like every mock instrument). */
-  async keysStatus(): Promise<KeysStatus> { await delay(); return { state: 'ready', error: null, kit: 'salamander-piano', installed: true }; }
+  /** The browser preview has no recordings to load: an instrument that is "installed" (bundled, or its kit
+   *  downloaded here) is "ready" while a channel plays it, and silent like every mock instrument. */
+  async keysStatus(): Promise<KeysStatus> { await delay(); return this.keysNow(); }
+  // the mock never fails a load: a retry reports the status as it is
+  async keysRetry(_id: string): Promise<KeysStatus> { await delay(); return this.keysNow(); }
+  private keysNow(): KeysStatus {
+    const used = new Set((this.p.channels ?? []).flatMap(c => (c.kind === 'keys' ? [c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT] : [])));
+    return {
+      instruments: KEYS_CATALOG.map(i => {
+        const installed = i.bundled || !!this.kits.find(k => k.id === i.kit)?.installed;
+        const state = !used.has(i.id) ? 'idle' : installed ? 'ready' : 'missing';
+        return { ...i, articulations: [...i.articulations], range: [...i.range] as [number, number], auto: i.auto && { ...i.auto }, installed, state, error: null };
+      }),
+    };
+  }
   async libraryFiles(q: { kit?: string; folder?: string }): Promise<LibraryFiles> {
     await delay(10);
     // the standard library is listed by its portable paths (the app lists where it is installed; importing either gives `lib:` sources)

@@ -108,7 +108,7 @@ the kit and its mixer routing in every pattern.
 * `channel.kind`: `sample` (the sampler: plays project source `source`; the note's key
   repitches it, `root` = the key at which the file plays at its own pitch, default 60 = C5 in
   FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (Synkopa
-  Keys, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
+  Keys, sampled SFZ instruments: `keys: {instrument, release?, dynamics, articulation?}`, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
   parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)) or `plugin` (a hosted VST3
   instrument, `plugin: PluginRef`; see [Plugin instruments](#plugin-instruments)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
   1), `pan` −1..1 (balance law of the mixer), `mute`/`solo` (with any solo, only soloed

@@ -160,7 +160,22 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 The Synkopa Keys piano plays recordings from the
 [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano) by
 Alexander Holm, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/). Installers
-ship 90 of its recordings, modified: each is cut to 9 seconds with a fade-out (the longest a
+ship 208 of its recordings, modified: each is cut to 9 seconds with a fade-out (the longest a
 note rings in Synkopa) and stored as 16-bit FLAC (see `docs/keys.md`). The in-app download installs
 the original files unmodified.
 Music made with Synkopa Keys contains these recordings: credit them as the licence asks.
+
+## Synkopa Keys instruments downloaded on demand
+
+These are not in the installer; Synkopa downloads them when you ask, unmodified, and plays them
+through its own SFZ mappings (`crates/engine/instruments`).
+
+* Wurlitzer EP200, Yamaha CP80 and Hohner Pianet T from
+  [Greg Sullivan's E-Pianos](https://github.com/sfzinstruments/GregSullivan.E-Pianos) by Greg
+  Sullivan, SFZ mapping by kinwie, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/).
+  Synkopa's mappings are theirs with the sample folder renamed and the level trimmed. Music made
+  with them contains these recordings: credit them as the licence asks.
+* Upright Piano, String Section, Solo Violin and Concert Harp from the
+  [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and the Vibraphone from the
+  [Versilian Community Sample Library](https://github.com/sgossner/VCSL), both by Versilian Studios
+  LLC, released to the public domain under [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/).

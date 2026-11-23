@@ -42,7 +42,8 @@ pub struct Headless {
     plugins: Arc<Plugins>,
     /// The pitch model, loaded on first need: why it could not be, if it could not.
     model: OnceLock<Option<String>>,
-    keys: OnceLock<R<()>>,
+    /// Synkopa Keys instruments loaded (or that failed to load) so far, by catalog id.
+    keys: Mutex<std::collections::HashMap<&'static str, R<()>>>,
     /// The audio-thread half nobody plays: it makes the engine instantiate hosted plugins
     /// live (their parameters and state are reachable), pumped by hand after each command.
     rt: Mutex<Option<wave_engine::rt::Rt>>,
@@ -55,7 +56,7 @@ impl Headless {
         let engine = Engine::new(Project::empty(), plugins.factory());
         // a fresh engine has no recording take: this cannot fail
         let _ = engine.new_project(project);
-        Self { engine, plugins, model: OnceLock::new(), keys: OnceLock::new(), rt: Mutex::new(None) }
+        Self { engine, plugins, model: OnceLock::new(), keys: Mutex::new(Default::default()), rt: Mutex::new(None) }
     }
 
     /// Lets the inert audio half take the commands and graphs queued for it.
@@ -67,7 +68,7 @@ impl Headless {
     }
 }
 
-/// Where an installed app keeps the piano recordings (Tauri resources) relative to the binary.
+/// Where an installed app keeps the bundled piano (Tauri resources) relative to the binary.
 fn bundled_keys() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
@@ -75,7 +76,8 @@ fn bundled_keys() -> Option<PathBuf> {
     if cfg!(debug_assertions) {
         c.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("resources").join("keys"));
     }
-    c.into_iter().find(|d| KeysBank::present(d))
+    let piano = wave_engine::keys::instrument(wave_engine::keys::DEFAULT_INSTRUMENT)?;
+    c.into_iter().find(|d| KeysBank::present(piano, d))
 }
 
 impl Host for Headless {
@@ -98,20 +100,26 @@ impl Host for Headless {
         self.model.get().cloned().flatten()
     }
     fn wait_keys(&self) -> R<()> {
-        if !self.engine.uses_keys() {
-            return Ok(());
+        for id in self.engine.keys_instruments() {
+            let Some(info) = wave_engine::keys::instrument(&id) else { return Err(crate::keys::unknown_msg(&id)) };
+            // each instrument is loaded once per command-line session (a failure is remembered)
+            let mut done = self.keys.lock();
+            let r = done
+                .entry(info.id)
+                .or_insert_with(|| {
+                    let d = crate::keys::find_dir(bundled_keys(), info).ok_or_else(|| crate::keys::missing_msg(info))?;
+                    let bank = KeysBank::load_instrument(info, &d).map_err(|e| crate::keys::error_msg(info, &e))?;
+                    self.engine.set_keys_bank(info.id, Some(Arc::new(bank)));
+                    Ok(())
+                })
+                .clone();
+            r?;
         }
-        self.keys
-            .get_or_init(|| {
-                let d = crate::keys::find_dir(bundled_keys()).ok_or_else(crate::keys::missing_msg)?;
-                let bank = KeysBank::load(&d).map_err(|e| crate::keys::error_msg(&e))?;
-                self.engine.set_keys_bank(Some(Arc::new(bank)));
-                Ok(())
-            })
-            .clone()
+        Ok(())
     }
     fn keys_installed(&self) -> bool {
-        crate::keys::find_dir(bundled_keys()).is_some()
+        wave_engine::keys::instrument(wave_engine::keys::DEFAULT_INSTRUMENT)
+            .is_some_and(|i| crate::keys::find_dir(bundled_keys(), i).is_some())
     }
     fn ensure_pitch_model(&self) {
         self.model.get_or_init(|| crate::models::activate(&self.engine).err());

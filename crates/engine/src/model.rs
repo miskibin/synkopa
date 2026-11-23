@@ -566,18 +566,27 @@ impl Default for SamplerState {
 }
 
 /// A Synkopa Keys channel's settings.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KeysState {
-    /// How long a note rings after its key is let go, in milliseconds.
-    #[serde(default = "keys_release")]
-    pub release: f32,
+    /// Which instrument of `crate::keys::CATALOG` it plays (projects made before there was a
+    /// choice play the grand piano).
+    #[serde(default = "keys_instrument")]
+    pub instrument: String,
+    /// How long a note rings after its key is let go, in milliseconds; `None` = as the
+    /// instrument's own mapping says (each region its own time).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<f32>,
     /// 0..100 %: how much the velocity changes the level (the timbre always follows it).
     #[serde(default = "keys_dynamics")]
     pub dynamics: f32,
+    /// The articulation it plays (the keyswitch key of `crate::keys::articulations`); `None`
+    /// = the instrument's default. Keyswitch notes switch it while playing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub articulation: Option<u8>,
 }
 
-fn keys_release() -> f32 {
-    crate::keys::RELEASE_MS.2
+fn keys_instrument() -> String {
+    crate::keys::DEFAULT_INSTRUMENT.into()
 }
 fn keys_dynamics() -> f32 {
     crate::keys::DYNAMICS.2
@@ -585,7 +594,7 @@ fn keys_dynamics() -> f32 {
 
 impl Default for KeysState {
     fn default() -> Self {
-        Self { release: keys_release(), dynamics: keys_dynamics() }
+        Self { instrument: keys_instrument(), release: None, dynamics: keys_dynamics(), articulation: None }
     }
 }
 

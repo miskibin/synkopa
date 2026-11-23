@@ -86,6 +86,12 @@ fn kit_dir(id: &str) -> PathBuf {
     library_dir().join(id)
 }
 
+/// Download size of every manifest kit, bytes.
+pub fn kit_sizes() -> &'static std::collections::HashMap<String, u64> {
+    static SIZES: std::sync::OnceLock<std::collections::HashMap<String, u64>> = std::sync::OnceLock::new();
+    SIZES.get_or_init(|| manifest().instruments.into_iter().map(|k| (k.id, k.samples.iter().map(|s| s.bytes).sum())).collect())
+}
+
 fn installed(k: &Kit) -> bool {
     let d = kit_dir(&k.id);
     k.samples.iter().all(|s| d.join(&s.file).is_file())

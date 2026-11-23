@@ -89,15 +89,34 @@ export const SAMPLE_ROOT = 60;
  */
 export interface SynthState { preset: string | null; params: Record<string, number> }
 /**
- * Synkopa Keys (the sampled grand piano): `release` = how long a note rings after its key is let
- * go, in ms; `dynamics` 0..100 % = how much the velocity changes the level (the timbre always
- * follows the velocity). Mirrors crates/engine/src/keys.rs.
+ * Synkopa Keys (sampled instruments, crates/engine/src/keys.rs): `instrument` = a catalog id
+ * (`KeysInstrument.id`; absent in old projects = the grand piano); `release` = how long a note
+ * rings after its key is let go, in ms — absent = each region's own time, as the instrument was
+ * mapped; `dynamics` 0..100 % = how much the velocity changes the level (the timbre always
+ * follows the velocity); `articulation` = the keyswitch key of one of the instrument's
+ * articulations (absent = its default).
  */
-export interface KeysState { release: number; dynamics: number }
+export interface KeysState { instrument?: string; release?: number; dynamics: number; articulation?: number }
+/** `def`: where the knob sits when the instrument's own release applies (and automation's neutral value). */
 export const KEYS_RELEASE = { min: 40, max: 3000, def: 350 } as const;
 export const KEYS_DYNAMICS = { min: 0, max: 100, def: 100 } as const;
-/** Where the piano's recordings are: `missing` = not on this computer yet (install library kit `kit`). */
-export interface KeysStatus { state: 'idle' | 'missing' | 'loading' | 'ready' | 'error'; error: string | null; kit: string; installed: boolean }
+export const KEYS_DEFAULT_INSTRUMENT = 'grand-piano';
+export type KeysCategory = 'piano' | 'electric' | 'strings' | 'mallets';
+export type KeysPhase = 'idle' | 'missing' | 'loading' | 'ready' | 'error';
+/**
+ * One instrument of the Keys catalog and where it stands: `installed` = its recordings are on
+ * this computer (bundled, or library kit `kit` downloaded, `bytes` to download); `state` = the
+ * loader (`idle` = no channel plays it now, `missing` = a channel plays it but it is not here).
+ * `range` = playable MIDI keys; `articulations` = keyswitch key and name (empty for most).
+ */
+export interface KeysInstrument {
+  id: string; name: string; category: KeysCategory; description: string; kit: string; bundled: boolean;
+  credit: string; license: string; range: [number, number]; articulations: { key: number; name: string }[];
+  /** Without a chosen articulation: notes shorter than `seconds` play `short`, longer ones `long` (strings). */
+  auto: { short: number; long: number; seconds: number } | null;
+  bytes: number; installed: boolean; state: KeysPhase; error: string | null;
+}
+export interface KeysStatus { instruments: KeysInstrument[] }
 /**
  * Music Box (the modeled tine instrument): `ring` 25..250 % of the natural decay of the note's
  * fundamental, `brightness` 0..100 % = how hard the pluck excites the overtone stack, `body`

@@ -911,7 +911,7 @@ pub fn schema() -> Value {
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
             "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
-            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
+            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "keys": "kind keys, optional: {instrument (catalog id, default grand-piano), release (ms; absent = the instrument's own), dynamics (0..100 %), articulation (keyswitch key of the instrument's articulations; absent = its default)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
             "putSource": {"source": "rename/recolour an existing source"},
@@ -999,6 +999,30 @@ pub fn relink(app: &dyn Host, a: &Value) -> R<Value> {
 
 // ---------------------------------------------------------------- channels & patterns
 
+/// Synkopa Keys instruments, for `synkopa catalog`.
+fn keys_catalog() -> Value {
+    json!(wave_engine::keys::CATALOG
+        .iter()
+        .map(|i| json!({
+            "id": i.id,
+            "name": i.name,
+            "category": i.category,
+            "description": i.description,
+            "bundled": i.bundled,
+            "kit": i.kit,
+            "articulations": wave_engine::keys::articulations(i.id),
+        }))
+        .collect::<Vec<_>>())
+}
+
+/// A Synkopa Keys instrument by catalog id or name (any case).
+fn keys_instrument(s: &str) -> R<&'static wave_engine::keys::InstrumentInfo> {
+    wave_engine::keys::CATALOG.iter().find(|i| i.id.eq_ignore_ascii_case(s) || i.name.eq_ignore_ascii_case(s)).ok_or_else(|| {
+        let ids: Vec<&str> = wave_engine::keys::CATALOG.iter().map(|i| i.id).collect();
+        format!("Synkopa Keys has no instrument `{s}` ({})", ids.join(", "))
+    })
+}
+
 fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
     use wave_engine::ChannelSrc;
     let g = c.gain();
@@ -1008,7 +1032,16 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
             json!({ "source": source, "sourceName": p.sources.iter().find(|s| s.id == *source).map(|s| s.name.clone()), "sampler": sampler, "slices": slices }),
         ),
         ChannelSrc::Synth { synth } => ("synth", json!({ "preset": synth.preset })),
-        ChannelSrc::Keys { keys } => ("keys", json!({ "release": keys.release, "dynamics": keys.dynamics })),
+        ChannelSrc::Keys { keys } => (
+            "keys",
+            json!({
+                "instrument": keys.instrument,
+                "instrumentName": wave_engine::keys::instrument(&keys.instrument).map(|i| i.name),
+                "articulation": keys.articulation.and_then(|k| wave_engine::keys::articulations(&keys.instrument).iter().find(|a| a.key == k)).map(|a| a.name.clone()),
+                "release": keys.release,
+                "dynamics": keys.dynamics,
+            }),
+        ),
         ChannelSrc::MusicBox { music_box } => (
             "musicbox",
             json!({ "ring": music_box.ring, "brightness": music_box.brightness, "body": music_box.body, "mechanical": music_box.mechanical, "spread": music_box.spread, "release": music_box.release }),
@@ -1110,6 +1143,17 @@ fn find_channel<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine
     p.channels.iter().find(|c| c.name.to_lowercase() == s).ok_or(format!("no channel named `{s}` (see `synkopa channels`)"))
 }
 
+/// The channel `v` names as this command has edited it so far: one command can set several
+/// things (`--instrument` and `--param`), and each later op must build on the earlier ones.
+fn edited_channel(p: &wave_engine::Project, ops: &[Op], v: &Value) -> R<wave_engine::Channel> {
+    let c = find_channel(p, v)?;
+    let edited = ops.iter().rev().find_map(|o| match o {
+        Op::PutChannel { channel, .. } if channel.id == c.id => Some(channel.clone()),
+        _ => None,
+    });
+    Ok(edited.unwrap_or_else(|| c.clone()))
+}
+
 pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     use wave_engine::{factory, Channel, ChannelSrc};
     let e = app.engine();
@@ -1190,11 +1234,48 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
     if arg(a, "keys").and_then(Value::as_bool).unwrap_or(false) {
-        // a Synkopa Keys channel: the sampled grand piano
+        // a Synkopa Keys channel: the grand piano, or the instrument `--instrument` names
         let id = p.next_id + ops.len() as u64;
-        let ch = Channel::new(id, "Synkopa Keys", "#e0a44a", ChannelSrc::Keys { keys: Default::default() });
+        let mut keys = wave_engine::KeysState::default();
+        let mut name = "Synkopa Keys";
+        if let Some(i) = arg(a, "instrument").and_then(Value::as_str) {
+            let info = keys_instrument(i)?;
+            keys.instrument = info.id.into();
+            name = info.name;
+        }
+        let ch = Channel::new(id, name, "#e0a44a", ChannelSrc::Keys { keys });
         added = Some(id);
         ops.push(Op::PutChannel { channel: ch, index: None });
+    } else if let (Some(v), true) = (arg(a, "ch"), arg(a, "instrument").is_some() || arg(a, "articulation").is_some()) {
+        // switch a Keys channel's instrument and/or articulation
+        let mut c = edited_channel(&p, &ops, v)?;
+        let ChannelSrc::Keys { keys } = &mut c.src else { return Err(format!("channel `{}` is not Synkopa Keys", c.name)) };
+        if let Some(i) = arg(a, "instrument").and_then(Value::as_str) {
+            let info = keys_instrument(i)?;
+            if keys.instrument != info.id {
+                keys.instrument = info.id.into();
+                // another instrument has its own articulations and release
+                keys.articulation = None;
+                keys.release = None;
+            }
+        }
+        if let Some(art) = arg(a, "articulation").and_then(Value::as_str) {
+            let arts = wave_engine::keys::articulations(&keys.instrument);
+            let names = || arts.iter().map(|x| x.name.to_lowercase()).collect::<Vec<_>>().join(", ");
+            keys.articulation = Some(
+                arts.iter()
+                    .find(|x| x.name.eq_ignore_ascii_case(art) || x.key.to_string() == art)
+                    .ok_or_else(|| {
+                        if arts.is_empty() {
+                            format!("{} has no articulations", keys.instrument)
+                        } else {
+                            format!("{} has no articulation `{art}` ({})", keys.instrument, names())
+                        }
+                    })?
+                    .key,
+            );
+        }
+        ops.push(Op::PutChannel { channel: c, index: None });
     }
     if arg(a, "musicbox").and_then(Value::as_bool).unwrap_or(false) {
         // a Music Box channel: the modeled tine instrument
@@ -1205,7 +1286,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(name)) = (arg(a, "ch"), arg(a, "preset").and_then(Value::as_str)) {
         // load a factory preset into a synth channel
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         if !matches!(c.src, ChannelSrc::Synth { .. }) {
             return Err(format!("channel `{}` is not a synth", c.name));
         }
@@ -1216,7 +1297,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(param)) = (arg(a, "ch"), arg(a, "param").and_then(Value::as_str)) {
         // one synth knob
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         let value = opt_f64(a, "value").ok_or("`value` is required")?;
         match &mut c.src {
             ChannelSrc::Synth { synth } => {
@@ -1232,9 +1313,11 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
                 ))
             }
             ChannelSrc::Keys { keys } => match param {
-                "release" => keys.release = (value as f32).clamp(wave_engine::keys::RELEASE_MS.0, wave_engine::keys::RELEASE_MS.1),
+                // 0 = the instrument's own release
+                "release" if value <= 0.0 => keys.release = None,
+                "release" => keys.release = Some((value as f32).clamp(wave_engine::keys::RELEASE_MS.0, wave_engine::keys::RELEASE_MS.1)),
                 "dynamics" => keys.dynamics = (value as f32).clamp(0.0, 100.0),
-                _ => return Err(format!("Synkopa Keys has no parameter `{param}` (release in ms, dynamics in %)")),
+                _ => return Err(format!("Synkopa Keys has no parameter `{param}` (release in ms, 0 = the instrument's; dynamics in %)")),
             },
             ChannelSrc::MusicBox { music_box } => {
                 let v = value as f32;
@@ -1284,7 +1367,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     }
     if let (Some(v), Some(g)) = (arg(a, "ch"), arg(a, "group").and_then(Value::as_str)) {
         // the Channel Rack filter group ("" = none)
-        let mut c = find_channel(&p, v)?.clone();
+        let mut c = edited_channel(&p, &ops, v)?;
         let g = g.trim();
         if g.chars().count() > 40 {
             return Err("a group name has at most 40 characters".into());
@@ -1708,7 +1791,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","sidechain","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "keys": keys_catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","sidechain","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {
@@ -2287,3 +2370,21 @@ mod autovocal_tests;
 #[cfg(test)]
 #[path = "sidechain_actions_tests.rs"]
 mod sidechain_tests;
+
+#[cfg(test)]
+mod keys_channel_tests {
+    use super::*;
+    use crate::headless::Headless;
+    use wave_engine::{ChannelSrc, Project};
+
+    #[test]
+    fn one_command_switches_the_instrument_and_sets_a_knob() {
+        let h = Headless::new(Project::empty());
+        let id = channels(&h, &json!({ "keys": true }), None).unwrap()["added"].as_u64().unwrap();
+        // each part builds on the one before it: the knob does not undo the switch
+        channels(&h, &json!({ "ch": id, "instrument": "wurlitzer", "param": "dynamics", "value": 50 }), None).unwrap();
+        let p = h.engine().project();
+        let ChannelSrc::Keys { keys } = &p.channel(id).unwrap().src else { panic!("not Keys") };
+        assert_eq!((keys.instrument.as_str(), keys.dynamics), ("wurlitzer", 50.0));
+    }
+}

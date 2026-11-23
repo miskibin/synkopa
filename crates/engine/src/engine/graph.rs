@@ -116,14 +116,7 @@ impl Engine {
             let mut takes = comp_audio(sources, &project.comps);
             takes.extend(sample_audio(sources, &project.channels));
             let bpm = project.bpm;
-            let tl = build_timeline(
-                project,
-                &mut |clip| sources.clip_play(clip, stale, bpm),
-                &takes,
-                &audition,
-                keys.as_ref(),
-                &*auto_overrides,
-            );
+            let tl = build_timeline(project, &mut |clip| sources.clip_play(clip, stale, bpm), &takes, &audition, keys, &*auto_overrides);
             send(c, Cmd::Timeline(Box::new(tl)));
         }
     }
@@ -368,7 +361,11 @@ fn audible_channels(p: &Project) -> Vec<(f32, f32, bool)> {
 /// The channel table and the patterns for the audio thread. Swing is applied here (when
 /// the timeline is built, i.e. at schedule time, never written into the notes); notes of
 /// unknown channels and notes past the pattern end are left out.
-fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Arc<crate::keys::KeysBank>>) -> (Vec<ChanRt>, Vec<PatRt>) {
+fn build_patterns(
+    p: &Project,
+    audio: &HashMap<Id, Arc<Audio>>,
+    keys: &HashMap<String, Arc<crate::keys::KeysBank>>,
+) -> (Vec<ChanRt>, Vec<PatRt>) {
     let ins_idx = |id: Id| p.inserts.iter().position(|m| m.id == id);
     let track_ins = |track: u32| p.tracks.get(track as usize).and_then(|t| ins_idx(t.insert));
     // first clip (by time) of each pattern → its track's insert
@@ -395,11 +392,13 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
                 ChannelSrc::MusicBox { .. } => (crate::synth::VoiceKind::MusicBox, None),
                 ChannelSrc::Plugin { .. } => (crate::synth::VoiceKind::Plugin, None),
             };
-            let ks = match c.src {
+            let ks = match &c.src {
                 ChannelSrc::Keys { keys: k } => Some(k),
                 _ => None,
             };
-            let (keys_release, keys_dynamics) = ks.map(|k| (k.release / 1000.0, k.dynamics / 100.0)).unwrap_or((0.35, 1.0));
+            // a negative release = each region's own
+            let (keys_release, keys_dynamics) =
+                ks.map(|k| (k.release.map_or(-1.0, |ms| ms / 1000.0), k.dynamics / 100.0)).unwrap_or((-1.0, 1.0));
             let mb = match &c.src {
                 ChannelSrc::MusicBox { music_box } => crate::musicbox::Params {
                     ring: (music_box.ring - crate::musicbox::RING.0) / (crate::musicbox::RING.1 - crate::musicbox::RING.0),
@@ -426,7 +425,12 @@ fn build_patterns(p: &Project, audio: &HashMap<Id, Arc<Audio>>, keys: Option<&Ar
                 sample,
                 smp,
                 slices,
-                keys: ks.and(keys.cloned()),
+                keys: ks.and_then(|k| keys.get(&k.instrument).cloned()),
+                keys_sw: ks.and_then(|k| k.articulation),
+                keys_auto: ks
+                    .filter(|k| k.articulation.is_none())
+                    .and_then(|k| crate::keys::instrument(&k.instrument))
+                    .and_then(|i| i.auto),
                 keys_release,
                 keys_dynamics,
                 mb_ring: mb.ring,
@@ -595,7 +599,7 @@ pub(crate) fn build_timeline(
     audio: &mut ClipAudioFn<'_>,
     takes: &HashMap<Id, Arc<Audio>>,
     audition: &HashMap<Id, Id>,
-    keys: Option<&Arc<crate::keys::KeysBank>>,
+    keys: &HashMap<String, Arc<crate::keys::KeysBank>>,
     overrides: &HashSet<Id>,
 ) -> Timeline {
     // comps are resolved once each, shared by every clip that plays them
@@ -800,11 +804,11 @@ mod override_timeline_tests {
             root: 60,
         });
         let none: HashSet<Id> = Default::default();
-        let tl = build_timeline(&p, &mut |_| None, &HashMap::new(), &HashMap::new(), None, &none);
+        let tl = build_timeline(&p, &mut |_| None, &HashMap::new(), &HashMap::new(), &HashMap::new(), &none);
         assert_eq!(tl.autos.len(), 1, "without an override the envelope drives");
         assert_eq!(tl.drives.len(), 1);
         let one: HashSet<Id> = [aid].into();
-        let tl = build_timeline(&p, &mut |_| None, &HashMap::new(), &HashMap::new(), None, &one);
+        let tl = build_timeline(&p, &mut |_| None, &HashMap::new(), &HashMap::new(), &HashMap::new(), &one);
         assert!(tl.autos.is_empty() && tl.drives.is_empty() && tl.clips.is_empty(), "the override drops envelope, clip and drive");
     }
 }
