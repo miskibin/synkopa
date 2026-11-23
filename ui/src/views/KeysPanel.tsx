@@ -15,7 +15,6 @@ import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu
 import { commit } from '../state/edit';
 import { chanById, chanOp, setKeysArticulation, setKeysInstrument } from '../state/pattern';
 import { say } from '../state/ui';
-import { InstIcon } from '../ui/instIcons';
 import { Knob } from '../ui/Knob';
 import { ChannelLevelKnobs } from './ChannelWindow';
 
@@ -27,7 +26,11 @@ const relMs = (t: number) => Math.round(KEYS_RELEASE.min * Math.pow(KEYS_RELEASE
 const relText = (ms: number) => (ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : Math.round(ms) + ' ms');
 
 const CATEGORIES: KeysCategory[] = ['piano', 'electric', 'strings', 'mallets'];
-const CAT_ICON: Record<KeysCategory, string> = { piano: 'piano', electric: 'piano', strings: 'other', mallets: 'other' };
+/** Each instrument's artwork (`ui/src/art/keys/<id>.webp`), by catalog id. */
+const ART: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob<string>('../art/keys/*.webp', { eager: true, query: '?url', import: 'default' }))
+    .map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1, -'.webp'.length), url]),
+);
 
 /** The instrument's one-line character in the UI's language (the engine's English as a fallback). */
 export function instDesc(i: Pick<KeysInstrument, 'id' | 'description'>) {
@@ -135,7 +138,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
 
       <section class="kface">
         <div class="kplate" style={{ '--kc': props.c.color }}>
-          <span class="kicon"><InstIcon id={CAT_ICON[cur()?.category ?? 'piano']} size={30} /></span>
+          <Show when={ART[instId()]}>{src => <img class="kart-img" src={src()} alt="" draggable={false} />}</Show>
           <div class="ktitle">
             <div class="kcatlbl">{cur() ? t(('b.kp.cat.' + cur()!.category) as TranslationKey) : ''}</div>
             <div class="knm">{cur()?.name ?? instId()}</div>
