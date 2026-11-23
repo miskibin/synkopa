@@ -63,11 +63,16 @@ export function resetLayout() {
 
 /** The dock / float choices for a panel (its title bar's right-click menu and the View menu). */
 export function dockMenu(id: PaneId): MenuItem[] {
+  const name = paneName(id);
   const on = (e: Edge) => U.dock[e].some(s => s.some(p => p.id === id));
-  const item = (e: Edge, label: TranslationKey): MenuItem => ({ t: 'item', label: t(label), checked: on(e), act: () => dockPaneTo(id, e) });
+  const item = (e: Edge, label: TranslationKey, paletteLabel: TranslationKey): MenuItem => ({
+    t: 'item', label: t(label), paletteLabel: t(paletteLabel, { name }), checked: on(e), act: () => dockPaneTo(id, e),
+  });
   return [
-    item('left', 'b.dk.toLeft'), item('right', 'b.dk.toRight'), item('bottom', 'b.dk.toBottom'),
-    { t: 'item', label: t('b.dk.toFloat'), checked: !docked(id), act: () => (docked(id) ? floatPane(id) : showPane(id)) },
+    item('left', 'b.dk.toLeft', 'b.dk.panelLeft'),
+    item('right', 'b.dk.toRight', 'b.dk.panelRight'),
+    item('bottom', 'b.dk.toBottom', 'b.dk.panelBottom'),
+    { t: 'item', label: t('b.dk.toFloat'), paletteLabel: t('b.dk.panelFloat', { name }), checked: !docked(id), act: () => (docked(id) ? floatPane(id) : showPane(id)) },
   ];
 }
 /** The title bar's dock button: what it does, as a tooltip. */
