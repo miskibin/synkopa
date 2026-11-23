@@ -70,8 +70,24 @@ fn one_compressor_by_id_and_the_refusals() {
     assert!(sidechain(&h, Some(f.id), None, None, false, None).unwrap_err().contains("--from"));
     assert!(sidechain(&h, Some(f.id), Some(bass), None, false, None).is_err(), "not its own insert");
     assert!(sidechain(&h, Some(f.id), Some(0), None, false, None).is_err(), "not the master");
-    assert!(sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap_err().contains("no compressor"));
+    assert!(sidechain(&h, None, Some(kick), Some(bass), true, None).unwrap_err().contains("no effect"));
     assert!(sidechain(&h, None, Some(kick), Some(424242), false, None).is_err());
+}
+
+#[test]
+fn sidechain_to_keys_a_compressor_and_leaves_a_gate_alone() {
+    // "Sidechain to" means ducking: a free Gate on the target is not what the user asked for
+    let (h, kick, bass) = host();
+    let p = h.engine().project();
+    let g = new_fx(p.next_id, FxKind::Gate, p.bpm);
+    h.engine().apply(&[Op::PutFx { insert_id: bass, fx: g.clone(), index: None }], false, None).unwrap();
+    let r = sidechain(&h, None, Some(kick), Some(bass), false, None).unwrap();
+    assert_eq!(r["added"], true, "a ducking compressor is added next to the gate");
+    let p = h.engine().project();
+    assert_eq!(p.find_fx(g.id).unwrap().1.key, None);
+    // a gate can still be keyed by id, and then counts as listening
+    sidechain(&h, Some(g.id), Some(kick), None, false, None).unwrap();
+    assert_eq!(h.engine().project().find_fx(g.id).unwrap().1.key, Some(kick));
 }
 
 #[test]

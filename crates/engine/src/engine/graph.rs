@@ -700,6 +700,11 @@ fn resolve_target(p: &Project, t: &AutoTarget) -> Option<TargetRt> {
                 }
                 TargetRt::Band { fx: *fx_id, band, field }
             } else {
+                // a look-ahead or quality switch moves the effect's latency, which only a rebuilt
+                // graph compensates
+                if crate::catalog::sets_latency(f.kind, param) {
+                    return None;
+                }
                 let defs = crate::catalog::params(f.kind);
                 let idx = defs.iter().position(|d| d.id == param)?;
                 let d = &defs[idx];

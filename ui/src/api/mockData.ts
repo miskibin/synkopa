@@ -18,6 +18,7 @@ const p = (id: string, label: string, min: number, max: number, def: number, uni
 /** catalog.rs `choice`: a discrete parameter (value = index) shown as buttons. */
 const choice = (id: string, label: string, def: number, options: string[]): ParamDef => ({ id, label, min: 0, max: options.length - 1, def, unit: '', log: false, options });
 
+const DIVS_PL = ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów'];
 const SLOTS = Array.from({ length: 16 }, (_, i) => String(i + 1));
 const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
   eq: [p('out', 'Output', -18, 18, 0, 'dB')],
@@ -80,6 +81,19 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
   phaser: [choice('stages', 'Stages', 1, ['2', '4', '6', '8', '12']), choice('sync', 'Rate', 0, ['Hz', 'Tempo']), p('rate', 'Rate', 0.02, 10, 0.4, 'Hz', true),
     choice('div', 'Rate', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']), p('center', 'Center', 100, 8000, 800, 'Hz', true), p('depth', 'Depth', 0, 100, 70, '%'),
     p('fb', 'Feedback', -95, 95, 30, '%'), p('stereo', 'Stereo', 0, 180, 90, '°'), p('mix', 'Mix', 0, 100, 50, '%')],
+  // catalog.rs GATE (dsp::gate::idx order); ratio 100 = hard gate (∞), floor −80 = silence
+  gate: [p('thr', 'Thresh', -80, 0, -40, 'dB'), p('hyst', 'Hysteresis', 0, 24, 4, 'dB'), p('ratio', 'Ratio', 1, 100, 100, ':1', true),
+    p('floor', 'Floor', -80, 0, -80, 'dB'), p('att', 'Attack', 0.1, 50, 1, 'ms', true), p('hold', 'Hold', 0, 500, 40, 'ms'),
+    p('rel', 'Release', 5, 2000, 120, 'ms', true), choice('look', 'Lookahead', 0, ['0 ms', '1 ms', '2 ms', '5 ms', '10 ms']), choice('mode', 'Mode', 0, ['Gate', 'Duck']),
+    p('schp', 'SC low cut', 20, 4000, 20, 'Hz', true), p('sclp', 'SC high cut', 200, 20000, 20000, 'Hz', true), choice('det', 'Detect', 0, ['Peak', 'RMS']),
+    choice('listen', 'SC listen', 0, ['Off', 'On'])],
+  // catalog.rs FILTER (dsp::filter::idx order)
+  filter: [choice('type', 'Type', 1, ['LP', 'Ladder', 'HP', 'BP', 'Notch', 'DJ']), p('cutoff', 'Cutoff', 20, 20000, 1600, 'Hz', true), p('res', 'Resonance', 0, 100, 25, '%'),
+    choice('slope', 'Slope', 1, ['12 dB', '24 dB']), p('drive', 'Drive', 0, 24, 0, 'dB'), p('dj', 'Position', -100, 100, 0, '%'),
+    choice('sync', 'Rate', 1, ['Hz', 'Tempo']), p('rate', 'Rate', 0.05, 20, 1, 'Hz', true), choice('div', 'Rate', 2, DIVS_PL),
+    choice('shape', 'Shape', 0, ['Sine', 'Triangle', 'Saw up', 'Saw down', 'Square', 'S&H']), p('lfo', 'LFO depth', -5, 5, 0, 'oct'), p('stereo', 'Stereo', 0, 180, 0, '°'),
+    p('env', 'Env depth', -6, 6, 0, 'oct'), p('eatt', 'Env attack', 1, 200, 10, 'ms', true), p('erel', 'Env release', 10, 1000, 150, 'ms', true),
+    choice('clip', 'Soft clip', 1, ['Off', 'On'])],
   // catalog.rs STEREO (dsp::stereo::idx order)
   stereo: [p('width', 'Width', 0, 200, 100, '%'), p('spread', 'Spread', 0, 100, 0, '%'), choice('bass', 'Bass mono', 0, ['Off', 'On']),
     p('bassf', 'Mono below', 40, 500, 120, 'Hz', true), p('gain', 'Gain', -60, 24, 0, 'dB'), p('pan', 'Pan', -100, 100, 0, '%'),
@@ -98,7 +112,7 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
     choice('solo', 'Band solo', 0, ['Off', 'On']), p('mix', 'Mix', 0, 100, 100, '%')],
 };
 const NAMES: Record<AnyBuiltinKind, string> = { eq: 'Parametric EQ', comp: 'Compressor', sat: 'Saturator', delay: 'Delay', reverb: 'Reverb', limit: 'Limiter',
-  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser',
+  fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser', gate: 'Gate', filter: 'Filter',
   stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband' };
 
 type BandEdit = [number, boolean | null, number | null, number | null, number | null];
@@ -138,7 +152,43 @@ const ste = (name: string, width: number, spread: number, bass: number, bassf: n
 const mbp = (name: string, depth: number, time: number, up: number, down: number, inp: number, out: number, xlo: number, xhi: number, g: [number, number, number]): Preset =>
   ({ name, params: { depth, time, up, down, in: inp, out, xlo, xhi, gl: g[0], gm: g[1], gh: g[2] } });
 
+/** catalog.rs gate presets: (name, thresh, hysteresis, ratio, floor, attack, hold, release, look, SC low cut, SC high cut). */
+const gte = (name: string, thr: number, hyst: number, ratio: number, floor: number, att: number, hold: number, rel: number, look: number, schp: number, sclp: number, kv: Record<string, number> = {}): Preset =>
+  ({ name, params: { ...kv, thr, hyst, ratio, floor, att, hold, rel, look, schp, sclp } });
+/** catalog.rs filter presets: (name, type, cutoff, resonance, drive); `lfo(depth, div, shape)` locks the LFO to the song. */
+const flt = (name: string, type: number, cutoff: number, res: number, drive: number, kv: Record<string, number> = {}): Preset =>
+  ({ name, params: { ...kv, type, cutoff, res, drive } });
+const lfo = (depth: number, div: number, shape: number) => ({ sync: 1, lfo: depth, div, shape });
+const [F_LP, F_LADDER, F_HP, F_BP, F_DJ] = [0, 1, 2, 3, 5];
+
 const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
+  gate: [
+    gte('Bramka — uniwersalna', -40, 4, 100, -80, 1, 40, 120, 0, 20, 20000),
+    gte('Wokal — naturalne czyszczenie', -45, 6, 3, -14, 4, 80, 220, 2, 120, 8000, { det: 1 }),
+    gte('Stopa — krótko i mocno', -22, 4, 100, -30, 0.2, 35, 110, 2, 20, 300),
+    gte('Werbel — bez przesłuchów', -20, 5, 8, -14, 0.3, 40, 160, 2, 180, 3500),
+    gte('Tomy — czyste wybrzmienie', -24, 6, 100, -24, 0.4, 70, 340, 2, 70, 900),
+    gte('Gitara — bez szumu i brumu', -50, 6, 6, -60, 1.5, 50, 180, 0, 100, 5000, { det: 1 }),
+    gte('Ekspander — delikatnie', -32, 3, 1.8, -10, 8, 60, 280, 0, 20, 20000, { det: 1 }),
+    gte('Trance gate (sidechain)', -24, 2, 100, -80, 1, 15, 45, 1, 20, 20000),
+    gte('Ducking — bas pod stopę', -20, 2, 100, -12, 1.5, 20, 130, 1, 40, 300, { mode: 1 }),
+    gte('Ducking — muzyka pod lektora', -30, 4, 4, -10, 15, 180, 450, 2, 150, 6000, { mode: 1, det: 1 }),
+    gte('Gated reverb — werbel lat 80.', -18, 3, 100, -80, 0.5, 140, 65, 1, 20, 20000),
+  ],
+  filter: [
+    flt('Ciepły low-pass (ladder)', F_LADDER, 1600, 25, 3),
+    flt('House — zamknięty low-pass', F_LADDER, 420, 35, 4),
+    flt('Narastanie — high-pass (4 takty)', F_HP, 490, 45, 2, { ...lfo(3, 6, 2), slope: 0 }),
+    flt('Wah — ćwierćnuty', F_BP, 750, 68, 6, { ...lfo(1.4, 2, 1), slope: 0 }),
+    flt('Auto-wah — gitara, bas', F_BP, 320, 62, 5, { env: 3.2, eatt: 4, erel: 110 }),
+    flt('Rytmiczny filtr 1/8', F_LADDER, 380, 40, 4, lfo(3.5, 1, 3)),
+    flt('Lo-fi — telefon', F_BP, 1350, 28, 12),
+    flt('Dub — rezonans stereo', F_LADDER, 680, 78, 8, { ...lfo(2.2, 2, 0), stereo: 110, env: 0.6, erel: 240 }),
+    flt('Pompowanie (sidechain od stopy)', F_LADDER, 14000, 20, 2, { env: -4.5, eatt: 2, erel: 140 }),
+    flt('Acid — 303', F_LADDER, 260, 86, 14, { ...lfo(1, 0, 3), env: 3.8, eatt: 2, erel: 90 }),
+    flt('S&H — losowe kroki 1/16', F_LP, 900, 55, 0, lfo(2, 0, 5)),
+    flt('DJ — przejście', F_DJ, 1600, 30, 0),
+  ],
   stereo: [
     ste('Bez zmian', 100, 0, 0, 120),
     ste('Bas w mono (120 Hz)', 100, 0, 1, 120),
@@ -302,7 +352,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
 };
 
 /** catalog.rs `BUILTIN` (also the order of the "add effect" menu). */
-export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'eq', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'analyzer'];
+export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'analyzer'];
 
 export function mockCatalog(): Catalog {
   return {

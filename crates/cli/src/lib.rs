@@ -55,13 +55,13 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
   undo | redo                              (running app only)
   bpm <value>
-  add-fx --insert ID --type eq|comp|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|... [--preset N]
+  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|... [--preset N]
   route --from ID --to ID [--gain 0..2] [--only]   mixer routing: insert FROM sends to TO (post-fader;
                                                   --only: no longer to the master; --to 0: to the master again)
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)
   sidechain --from ID --to ID [--off]             insert FROM ducks insert TO: keys TO's compressor, or adds one
                                                   set up for ducking (--off: back to its own input)
-  sidechain --fx ID --from ID | --off             what that compressor listens to
+  sidechain --fx ID --from ID | --off             what that compressor, gate or filter listens to
   set-param --fx ID --param NAME --value V
   preset --fx ID --index N
   import <file>... [--track N --beat B]    load audio, optionally place it

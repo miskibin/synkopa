@@ -11,6 +11,7 @@ import { knobVal, paramDefs, pFmt, pNorm, presetInfo, presetList } from '../lib/
 import { noteName, stepBeats } from '../lib/beatDiv';
 import * as A from '../state/actions';
 import { autoDisplay, autoTweak, autoWheel, captureArmed, controlMenu, isAutomated, isOverridden, noteManualTweak, paramMenu, type Tweak } from '../state/automation';
+import { setsLatency } from '../lib/automation';
 import type { AutoTarget } from '../api/types';
 import { commit, Gesture } from '../state/edit';
 import { findFx, insName, plain, S } from '../state/store';
@@ -39,6 +40,8 @@ import { TuneViz } from './fx/tune';
 import { RiderViz } from './fx/rider';
 import { halfHit, HalfViz, halfXf } from './fx/half';
 import { ChorusViz, PhaserViz } from './fx/modulation';
+import { GateViz } from './fx/gate';
+import { FilterViz } from './fx/filter';
 import { warpDown, warpHover, WarpViz } from './fx/warp';
 import { onVoicePad, padParams, padToVoice, VoiceViz } from './fx/voice';
 import { StereoViz } from './fx/stereo';
@@ -63,15 +66,17 @@ function makeViz(f: Fx): Viz | null {
     case 'warp': return new WarpViz();
     case 'chorus': return new ChorusViz();
     case 'phaser': return new PhaserViz();
+    case 'gate': return new GateViz();
+    case 'filter': return new FilterViz();
     case 'stereo': return new StereoViz();
     case 'analyzer': return new AnalyzerViz();
     case 'multiband': return new MultibandViz();
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, stereo: 250, analyzer: 360, multiband: 270 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270 };
 /** Default window widths per type (actions.openPlug). */
-export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700 };
+export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -86,6 +91,8 @@ const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   voice: 'c.fx.hint.voice',
   chorus: 'c.fx.hint.chorus',
   phaser: 'c.fx.hint.phaser',
+  gate: 'c.fx.hint.gate',
+  filter: 'c.fx.hint.filter',
   stereo: 'c.fx.hint.stereo',
   analyzer: 'c.fx.hint.analyzer',
   multiband: 'c.fx.hint.multiband',
@@ -203,21 +210,23 @@ function ParamKnob(props: { fxId: Id; p: ParamDef; ends?: [string, string]; colo
   let g: Tweak | null = null;
   const reset = () => { const op = setParam(props.fxId, p.id, p.def); if (op) commit([op], tName(p.label)); };
   const staticOps = (t: number) => { const op = setParam(props.fxId, p.id, knobVal(p, t)); return op ? [op] : null; };
+  // armed automation recording leaves the latency parameters alone (see fxParamMenu)
+  const recordable = () => (fx() && setsLatency(fx()!.type, p.id) ? null : target());
   return (
     <Knob key={props.fxId + p.id} label={tName(p.label)} t={() => clamp(pNorm(p, val()), 0, 1)} ends={props.ends} color={props.color} size={props.size}
       automated={() => isAutomated(target())}
       overridden={() => isOverridden(target())}
       zero={() => (p.min < 0 && p.max > 0 && !p.log ? pNorm(p, 0) : 0)} text={() => pFmt(p, val())}
-      onStart={() => { g = autoTweak(target(), tName(p.label), staticOps, { color: props.color }); }}
+      onStart={() => { g = autoTweak(recordable(), tName(p.label), staticOps, { color: props.color }); }}
       onChange={t => { const v = knobVal(p, t); g?.move(t); say(A.fxName(fx()!) + ' · ' + tName(p.label) + ' ' + fmtLong(p, v)); }}
       onEnd={() => { g?.end(); g = null; }}
       onReset={reset}
-      onMenu={(x, y) => paramMenu(x, y, target(), reset, props.color)}
+      onMenu={(x, y) => fxParamMenu(x, y, fx(), p, target(), reset, props.color)}
       onWheel={t => {
         // a synced time steps one note value per notch (snapping alone would undo a small move)
         const v = p.unit === 'beat' ? stepBeats(val(), t - pNorm(p, val())) : knobVal(p, t);
         const n = clamp(pNorm(p, v), 0, 1);
-        autoWheel(target(), 'fx' + props.fxId + p.id, tName(p.label), n, t2 => { const op = setParam(props.fxId, p.id, p.unit === 'beat' ? stepBeats(val(), t2 - pNorm(p, val())) : knobVal(p, t2)); return op ? [op] : null; });
+        autoWheel(recordable(), 'fx' + props.fxId + p.id, tName(p.label), n, t2 => { const op = setParam(props.fxId, p.id, p.unit === 'beat' ? stepBeats(val(), t2 - pNorm(p, val())) : knobVal(p, t2)); return op ? [op] : null; });
         say(A.fxName(fx()!) + ' · ' + tName(p.label) + ' ' + fmtLong(p, v));
       }} />
   );
@@ -235,7 +244,13 @@ function ParamChoice(props: { fxId: Id; p: ParamDef; danger?: number; color?: st
     say(A.fxName(fx()!) + ' · ' + tName(props.p.label) + ': ' + tName(props.p.options![i]));
   };
   return <Segmented label={props.hideLabel ? undefined : tName(props.p.label)} options={props.labels ?? props.p.options!.map(tName)} value={val} pick={pick} danger={props.danger} color={props.color} small={props.small}
-    onMenu={(x, y) => paramMenu(x, y, target(), () => pick(props.p.def), props.color)} />;
+    onMenu={(x, y) => fxParamMenu(x, y, fx(), props.p, target(), () => pick(props.p.def), props.color)} />;
+}
+
+/** A parameter's right-click menu; one that moves the effect's latency cannot be automated, and says why. */
+function fxParamMenu(x: number, y: number, fx: Fx | undefined, p: ParamDef, target: AutoTarget, reset: () => void, color?: string) {
+  if (fx && setsLatency(fx.type, p.id)) controlMenu(x, y, tName(p.label), reset, t('c.fx.latNoAuto'));
+  else paramMenu(x, y, target, reset, color);
 }
 
 /** One catalog parameter, as a knob (size tier) or segmented buttons — tinted with the effect's colour. */
@@ -399,6 +414,30 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.bands', adv: true, items: [{ id: 'gl', size: 'sm' }, { id: 'gm', size: 'sm' }, { id: 'gh', size: 'sm' }] },
     { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
   ],
+  // first view: when it opens and how deep it closes, its times, Gate/Duck and look-ahead, and
+  // what it listens to; the side-chain band and the detector are under "Advanced"
+  gate: [
+    { title: 'c.fx.sec.gate', items: [{ id: 'thr', size: 'lg' }, { id: 'ratio', ends: ['c.fx.end.gentle', 'c.fx.end.gate'] }, { id: 'hyst', size: 'sm' }, { id: 'floor' }] },
+    { title: 'c.fx.sec.time', items: [{ id: 'att' }, { id: 'hold' }, { id: 'rel' }] },
+    { title: 'c.fx.sec.mode', items: [{ stack: [{ id: 'mode', small: true }, { id: 'look', small: true }] }] },
+    { title: 'c.sc.title', items: [{ stack: [{ x: 'key' }, { id: 'listen', labels: ['c.fx.lab.listenOff', 'c.fx.lab.listenOn'], small: true }] }] },
+    { title: 'c.fx.sec.sidechain', adv: true, items: [{ id: 'schp', size: 'sm' }, { id: 'sclp', size: 'sm' }] },
+    { title: 'c.fx.sec.detection', adv: true, items: [{ stack: [{ id: 'det', small: true }] }] },
+  ],
+  filter: [
+    { title: 'c.fx.sec.filter', items: [
+      { stack: [{ id: 'type', small: true }, { id: 'slope', small: true, when: fx => Math.round(fx.params.type ?? 1) !== 1 }] },
+      { id: 'cutoff', size: 'lg', when: fx => Math.round(fx.params.type ?? 1) !== 5 },
+      { id: 'dj', size: 'lg', ends: ['LP', 'HP'], when: fx => Math.round(fx.params.type ?? 1) === 5 },
+      { id: 'res', size: 'lg' }, { id: 'drive' },
+    ] },
+    { title: 'c.fx.sec.lfo', items: [
+      { stack: [{ id: 'sync', small: true }, { id: 'div', small: true, when: synced }, { id: 'shape', small: true, labels: ['Sin', 'Tri', 'Saw ↑', 'Saw ↓', 'Sqr', 'S&H'] }] },
+      { id: 'rate', when: fx => !synced(fx) }, { id: 'lfo' }, { id: 'stereo', size: 'sm' },
+    ] },
+    { title: 'c.fx.sec.envelope', items: [{ id: 'env' }, { id: 'eatt', size: 'sm' }, { id: 'erel', size: 'sm' }, { x: 'key' }] },
+    { title: 'c.fx.sec.output', adv: true, items: [{ stack: [{ id: 'clip', small: true }] }] },
+  ],
   half: [
     { title: 'c.fx.sec.slowdown', items: [{ stack: [{ id: 'speed', labels: ['c.fx.lab.halfFifth', 'c.fx.lab.halfOctave', 'c.fx.lab.halfTwoOct'], small: true }, { id: 'loop', small: true }] }] },
     { title: 'c.fx.sec.transitions', items: [{ id: 'smooth', size: 'lg', ends: ['c.fx.end.percussive', 'c.fx.end.swell'] }] },
@@ -426,19 +465,26 @@ function LayoutItem(props: { fx: Fx; it: Item }) {
   return <Ctl fx={props.fx} id={it.id} size={it.size} ends={ends()} labels={it.labels?.map(L)} danger={it.danger} small={it.small} />;
 }
 
-/** The Compressor's sidechain: what its detector hears (its own input, or another insert's sound). */
+/** What a keyed source does to each effect that takes one (the hint under the picker, the tooltip). */
+function keyText(fx: Fx): { tip: TranslationKey; on: TranslationKey } {
+  if (fx.type === 'gate') return { tip: 'c.sc.tipGate', on: (fx.params.mode ?? 0) >= 0.5 ? 'c.sc.duckOn' : 'c.sc.gateOn' };
+  if (fx.type === 'filter') return { tip: 'c.sc.tipFilter', on: 'c.sc.filterOn' };
+  return { tip: 'c.sc.tip', on: 'c.sc.ducks' };
+}
+
+/** A sidechain picker (Compressor, Gate, Filter): what its detector hears (its own input, or another insert's sound). */
 function KeyPicker(props: { fx: Fx }) {
   const src = () => (props.fx.key == null ? undefined : S.project.inserts.find(m => m.id === props.fx.key));
   return (
     <div class="scpick">
-      <button class={['smallbtn', { on: !!src() }]} data-sidechain title={t('c.sc.tip')}
+      <button class={['smallbtn', { on: !!src() }]} data-sidechain title={t(keyText(props.fx).tip)}
         onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMenu(r.left, r.bottom + 4, keyMenu(props.fx.id), 260); }}>
         <Show when={src()} fallback={<span class="ell">{t('c.sc.own')}</span>}>
           {m => <><span class="scdot" style={{ background: m().color }} /><span class="ell">{insName(m())}</span></>}
         </Show>
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style={{ flex: 'none' }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
-      <span class="sclab">{src() ? t('c.sc.ducks') : t('c.sc.ownHint')}</span>
+      <span class="sclab">{src() ? t(keyText(props.fx).on) : t('c.sc.ownHint')}</span>
     </div>
   );
 }

@@ -164,6 +164,10 @@ pub enum FxKind {
     Chorus,
     /// Swept all-pass stages with feedback (`dsp::modulation`).
     Phaser,
+    /// Noise gate / downward expander / ducker with hysteresis, hold and look-ahead (`dsp::gate`).
+    Gate,
+    /// Resonant filter (SVF, ladder, DJ) moved by an LFO or an envelope follower (`dsp::filter`).
+    Filter,
     /// Width, mono-safe spread, bass mono, gain, balance, polarity (`dsp::stereo`).
     Stereo,
     /// Loudness, true peak, spectrum and stereo field; passes the sound unchanged (`dsp::loudness`).
@@ -177,9 +181,10 @@ pub enum FxKind {
 }
 
 impl FxKind {
-    /// Whether the effect can listen to another insert ([`Fx::key`]): the Compressor.
+    /// Whether the effect can listen to another insert ([`Fx::key`]): the Compressor's and the
+    /// Gate's detectors, the Filter's envelope follower.
     pub fn takes_key(self) -> bool {
-        matches!(self, FxKind::Comp)
+        matches!(self, FxKind::Comp | FxKind::Gate | FxKind::Filter)
     }
 }
 

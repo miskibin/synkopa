@@ -19020,7 +19020,7 @@
     },
     {
       "base": "main",
-      "error": "only a Compressor takes a sidechain (`key`)",
+      "error": "only a Compressor, Gate or Filter takes a sidechain (`key`)",
       "name": "putFx refuses a sidechain on a delay",
       "ops": [
         {

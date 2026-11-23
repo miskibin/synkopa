@@ -1098,7 +1098,7 @@ pub fn validate_comp(p: &Project, comp: &Comp) -> Result<Comp, OpError> {
 fn validate_key(p: &Project, insert_id: Id, fx: &Fx) -> Result<(), OpError> {
     let Some(k) = fx.key else { return Ok(()) };
     if !fx.kind.takes_key() {
-        return Err(OpError::Invalid("only a Compressor takes a sidechain (`key`)".into()));
+        return Err(OpError::Invalid("only a Compressor, Gate or Filter takes a sidechain (`key`)".into()));
     }
     if k == 0 {
         return Err(OpError::Invalid("the master cannot be a sidechain: it is processed last".into()));

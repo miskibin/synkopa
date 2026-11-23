@@ -72,7 +72,8 @@ export function sidechainTo(from: Id, to: Id) {
     return;
   }
   const why = keyBlock(to, from); if (why) { say(why); return; }
-  const free = dst.fx.find(f => takesKey(f.type) && f.key == null);
+  // ducking means a Compressor: a Gate or Filter is keyed from its own window
+  const free = dst.fx.find(f => f.type === 'comp' && f.key == null);
   if (free) {
     commit([A.fxOp({ ...(plain(free) as Fx), key: from }, to)], t('c.sc.undo'));
     say(t('c.sc.saidOn', { from: insName(src), to: insName(dst) }));

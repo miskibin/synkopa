@@ -1,0 +1,5241 @@
+{
+  "latencyParams": [
+    "gate.look",
+    "rider.speed",
+    "rider.look",
+    "deess.look",
+    "sat.hq",
+    "limit.look"
+  ],
+  "order": [
+    "denoise",
+    "tune",
+    "voice",
+    "gate",
+    "eq",
+    "filter",
+    "rider",
+    "deess",
+    "comp",
+    "fet",
+    "multiband",
+    "sat",
+    "delay",
+    "half",
+    "warp",
+    "chorus",
+    "phaser",
+    "stereo",
+    "reverb",
+    "limit",
+    "analyzer"
+  ],
+  "presets": {
+    "analyzer": [
+      {
+        "name": "Streaming (−14 LUFS)",
+        "params": {
+          "target": 1.0
+        }
+      },
+      {
+        "name": "Głośno (−9 LUFS)",
+        "params": {
+          "target": 2.0
+        }
+      },
+      {
+        "name": "Broadcast (−23 LUFS)",
+        "params": {
+          "target": 3.0
+        }
+      }
+    ],
+    "chorus": [
+      {
+        "name": "Klasyczny chorus",
+        "params": {
+          "delay": 12.0,
+          "depth": 40.0,
+          "fb": 0.0,
+          "hp": 20.0,
+          "mix": 50.0,
+          "mode": 0.0,
+          "rate": 0.6,
+          "tone": 20000.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Wokal — zagęszczenie",
+        "params": {
+          "delay": 16.0,
+          "depth": 18.0,
+          "fb": 0.0,
+          "hp": 150.0,
+          "mix": 22.0,
+          "mode": 0.0,
+          "rate": 0.35,
+          "tone": 12000.0,
+          "width": 130.0
+        }
+      },
+      {
+        "name": "Szeroki syntezator",
+        "params": {
+          "delay": 14.0,
+          "depth": 55.0,
+          "fb": 0.0,
+          "hp": 20.0,
+          "mix": 50.0,
+          "mode": 1.0,
+          "rate": 0.5,
+          "tone": 16000.0,
+          "width": 180.0
+        }
+      },
+      {
+        "name": "Vintage — dwa BBD",
+        "params": {
+          "delay": 5.0,
+          "depth": 70.0,
+          "fb": 0.0,
+          "hp": 80.0,
+          "mix": 50.0,
+          "mode": 0.0,
+          "rate": 0.5,
+          "tone": 7000.0,
+          "width": 160.0
+        }
+      },
+      {
+        "name": "Czysta gitara lat 80",
+        "params": {
+          "delay": 8.0,
+          "depth": 45.0,
+          "fb": 15.0,
+          "hp": 60.0,
+          "mix": 45.0,
+          "mode": 0.0,
+          "rate": 0.9,
+          "tone": 10000.0,
+          "width": 140.0
+        }
+      },
+      {
+        "name": "Bas — stabilny dół",
+        "params": {
+          "delay": 10.0,
+          "depth": 35.0,
+          "fb": 0.0,
+          "hp": 250.0,
+          "mix": 45.0,
+          "mode": 0.0,
+          "rate": 0.45,
+          "tone": 9000.0,
+          "width": 120.0
+        }
+      },
+      {
+        "name": "Smyczki — ensemble",
+        "params": {
+          "delay": 18.0,
+          "depth": 35.0,
+          "fb": 0.0,
+          "hp": 100.0,
+          "mix": 60.0,
+          "mode": 1.0,
+          "rate": 0.7,
+          "tone": 9000.0,
+          "width": 160.0
+        }
+      },
+      {
+        "name": "Wir z tempem (1 takt)",
+        "params": {
+          "delay": 15.0,
+          "depth": 50.0,
+          "div": 4.0,
+          "fb": -30.0,
+          "hp": 120.0,
+          "mix": 45.0,
+          "mode": 1.0,
+          "rate": 0.6,
+          "sync": 1.0,
+          "tone": 14000.0,
+          "width": 200.0
+        }
+      },
+      {
+        "name": "Vibrato",
+        "params": {
+          "delay": 12.0,
+          "depth": 35.0,
+          "fb": 0.0,
+          "hp": 20.0,
+          "mix": 100.0,
+          "mode": 2.0,
+          "rate": 5.5,
+          "tone": 20000.0,
+          "width": 0.0
+        }
+      }
+    ],
+    "comp": [
+      {
+        "name": "Domyślny",
+        "params": {
+          "att": 10.0,
+          "gain": 0.0,
+          "ratio": 4.0,
+          "rel": 150.0,
+          "thr": -18.0
+        }
+      },
+      {
+        "name": "Wokal — wyrównanie",
+        "params": {
+          "att": 5.0,
+          "gain": 4.0,
+          "ratio": 3.0,
+          "rel": 120.0,
+          "thr": -20.0
+        }
+      },
+      {
+        "name": "Drum bus — glue",
+        "params": {
+          "att": 30.0,
+          "gain": 2.0,
+          "ratio": 2.0,
+          "rel": 200.0,
+          "thr": -14.0
+        }
+      },
+      {
+        "name": "Kick — punch",
+        "params": {
+          "att": 25.0,
+          "gain": 3.0,
+          "ratio": 4.0,
+          "rel": 80.0,
+          "thr": -16.0
+        }
+      },
+      {
+        "name": "Bas — kontrola",
+        "params": {
+          "att": 3.0,
+          "gain": 4.0,
+          "ratio": 5.0,
+          "rel": 90.0,
+          "thr": -22.0
+        }
+      },
+      {
+        "name": "Delikatny",
+        "params": {
+          "att": 20.0,
+          "gain": 1.0,
+          "ratio": 1.5,
+          "rel": 250.0,
+          "thr": -12.0
+        }
+      },
+      {
+        "name": "Smash",
+        "params": {
+          "att": 0.5,
+          "gain": 12.0,
+          "ratio": 12.0,
+          "rel": 60.0,
+          "thr": -35.0
+        }
+      }
+    ],
+    "deess": [
+      {
+        "name": "Wokal — domyślny",
+        "params": {
+          "freq": 6000.0,
+          "listen": 0.0,
+          "look": 5.0,
+          "mode": 0.0,
+          "range": 8.0,
+          "thr": -32.0
+        }
+      },
+      {
+        "name": "Ostre „s”",
+        "params": {
+          "freq": 6500.0,
+          "listen": 0.0,
+          "look": 8.0,
+          "mode": 0.0,
+          "range": 12.0,
+          "thr": -36.0
+        }
+      },
+      {
+        "name": "Delikatnie",
+        "params": {
+          "freq": 7000.0,
+          "listen": 0.0,
+          "look": 5.0,
+          "mode": 0.0,
+          "range": 5.0,
+          "thr": -26.0
+        }
+      },
+      {
+        "name": "Wokal żeński",
+        "params": {
+          "freq": 8000.0,
+          "listen": 0.0,
+          "look": 6.0,
+          "mode": 0.0,
+          "range": 8.0,
+          "thr": -32.0
+        }
+      },
+      {
+        "name": "Wokal męski",
+        "params": {
+          "freq": 5000.0,
+          "listen": 0.0,
+          "look": 6.0,
+          "mode": 0.0,
+          "range": 8.0,
+          "thr": -32.0
+        }
+      },
+      {
+        "name": "Szerokopasmowy",
+        "params": {
+          "freq": 6000.0,
+          "listen": 0.0,
+          "look": 5.0,
+          "mode": 1.0,
+          "range": 6.0,
+          "thr": -30.0
+        }
+      }
+    ],
+    "delay": [
+      {
+        "name": "Ósemka 1/8",
+        "params": {
+          "beats": 0.5,
+          "fb": 35.0,
+          "mix": 22.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Ping-pong 1/8",
+        "params": {
+          "beats": 0.5,
+          "cutoff": 7000.0,
+          "fb": 50.0,
+          "mix": 30.0,
+          "model": 2.0,
+          "pan": -70.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Ping-pong kropkowana 1/8",
+        "params": {
+          "beats": 0.75,
+          "cutoff": 7000.0,
+          "fb": 50.0,
+          "mix": 30.0,
+          "model": 2.0,
+          "pan": -70.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Ping-pong 1/4",
+        "params": {
+          "beats": 1.0,
+          "cutoff": 6000.0,
+          "fb": 45.0,
+          "mix": 28.0,
+          "model": 2.0,
+          "pan": -70.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Kropkowana 1/8",
+        "params": {
+          "beats": 0.75,
+          "fb": 40.0,
+          "mix": 22.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Ćwierćnuta 1/4",
+        "params": {
+          "beats": 1.0,
+          "fb": 30.0,
+          "mix": 22.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Triola 1/8T",
+        "params": {
+          "beats": 0.3333333333333333,
+          "fb": 35.0,
+          "mix": 20.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Slapback",
+        "params": {
+          "cutoff": 7000.0,
+          "fb": 0.0,
+          "ftype": 1.0,
+          "mix": 25.0,
+          "sync": 1.0,
+          "time": 90.0
+        }
+      },
+      {
+        "name": "Wysyłka — 100 % wet",
+        "params": {
+          "beats": 0.75,
+          "dry": 0.0,
+          "fb": 40.0,
+          "mix": 100.0,
+          "sync": 0.0,
+          "tone": 25.0
+        }
+      },
+      {
+        "name": "Taśma — dub",
+        "params": {
+          "beats": 1.5,
+          "cutoff": 2400.0,
+          "diff": 15.0,
+          "fb": 70.0,
+          "knee": 70.0,
+          "level": -10.0,
+          "mix": 30.0,
+          "mtime": 18.0,
+          "rate": 0.6,
+          "res": 20.0,
+          "smooth": 65.0,
+          "sym": 30.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Dub — samooscylacja",
+        "params": {
+          "beats": 0.75,
+          "cutoff": 1200.0,
+          "fb": 108.0,
+          "knee": 80.0,
+          "level": -9.0,
+          "mix": 28.0,
+          "res": 55.0,
+          "smooth": 80.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Lo-fi / bitcrush",
+        "params": {
+          "beats": 0.5,
+          "bits": 8.0,
+          "fb": 45.0,
+          "ftype": 0.0,
+          "level": -6.0,
+          "mix": 30.0,
+          "srate": 8000.0,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Rozmyte echo (ambient)",
+        "params": {
+          "beats": 1.0,
+          "cutoff": 4500.0,
+          "diff": 70.0,
+          "dspread": 70.0,
+          "fb": 60.0,
+          "mix": 30.0,
+          "mtime": 10.0,
+          "rate": 0.3,
+          "sync": 0.0
+        }
+      },
+      {
+        "name": "Chorus / dublowanie",
+        "params": {
+          "fb": 15.0,
+          "ftype": 0.0,
+          "keep": 1.0,
+          "mix": 45.0,
+          "mtime": 55.0,
+          "offset": 40.0,
+          "rate": 0.7,
+          "sync": 1.0,
+          "time": 14.0
+        }
+      },
+      {
+        "name": "Multi-FX: filtr + drive (bez echa)",
+        "params": {
+          "cutoff": 1800.0,
+          "dry": 0.0,
+          "fb": 0.0,
+          "level": -14.0,
+          "mcut": 45.0,
+          "mix": 100.0,
+          "model": 3.0,
+          "rate": 0.25,
+          "res": 55.0,
+          "sync": 1.0,
+          "time": 100.0
+        }
+      }
+    ],
+    "denoise": [
+      {
+        "name": "Wokal — delikatnie",
+        "params": {
+          "reduction": 8.0,
+          "sens": 35.0,
+          "smooth": 50.0
+        }
+      },
+      {
+        "name": "Wokal — szum pokoju",
+        "params": {
+          "reduction": 14.0,
+          "sens": 50.0,
+          "smooth": 60.0
+        }
+      },
+      {
+        "name": "Telefon / dyktafon",
+        "params": {
+          "reduction": 20.0,
+          "sens": 65.0,
+          "smooth": 70.0
+        }
+      },
+      {
+        "name": "Mocno",
+        "params": {
+          "reduction": 30.0,
+          "sens": 80.0,
+          "smooth": 80.0
+        }
+      }
+    ],
+    "eq": [
+      {
+        "bands": [
+          {
+            "f": 30.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Flat",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 100.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 300.0,
+            "g": -2.5,
+            "on": true,
+            "place": "stereo",
+            "q": 1.2,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 3.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.9,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 10000.0,
+            "g": 2.5,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Wokal — obecność",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 30.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 60.0,
+            "g": 3.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 350.0,
+            "g": -4.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.4,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 4000.0,
+            "g": 3.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.2,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Kick — punch",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 35.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 80.0,
+            "g": 2.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": -3.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 8000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Bas — czysty dół",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 60.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 300.0,
+            "g": -4.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.5,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Mud cut",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 30.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 5000.0,
+            "g": 1.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 12000.0,
+            "g": 4.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Air / połysk",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 120.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "highcut"
+          }
+        ],
+        "name": "Pasmo — wytnij dół i górę",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 400.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1500.0,
+            "g": 4.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.8,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 3200.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "highcut"
+          }
+        ],
+        "name": "Telefon / lo-fi",
+        "params": {
+          "out": 2.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 30.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 80.0,
+            "g": 1.5,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": -0.5,
+            "on": true,
+            "place": "stereo",
+            "q": 0.6,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 10000.0,
+            "g": 1.5,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Master — smile",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 20.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "highcut"
+          }
+        ],
+        "name": "Wytnij < 20 Hz i > 18 kHz",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 80.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Low cut 80 Hz",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 150.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 18000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highcut"
+          }
+        ],
+        "name": "Low cut 150 Hz (wokal)",
+        "params": {
+          "out": 0.0
+        }
+      },
+      {
+        "bands": [
+          {
+            "f": 30.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowcut"
+          },
+          {
+            "f": 90.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "lowshelf"
+          },
+          {
+            "f": 250.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 1000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 3500.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 1.0,
+            "slope": 12,
+            "type": "peak"
+          },
+          {
+            "f": 9000.0,
+            "g": 0.0,
+            "on": false,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 12,
+            "type": "highshelf"
+          },
+          {
+            "f": 10000.0,
+            "g": 0.0,
+            "on": true,
+            "place": "stereo",
+            "q": 0.71,
+            "slope": 24,
+            "type": "highcut"
+          }
+        ],
+        "name": "High cut 10 kHz",
+        "params": {
+          "out": 0.0
+        }
+      }
+    ],
+    "fet": [
+      {
+        "name": "Wokal — klasyk",
+        "params": {
+          "attack": 400.0,
+          "input": 8.0,
+          "mix": 100.0,
+          "output": -2.0,
+          "ratio": 0.0,
+          "release": 250.0
+        }
+      },
+      {
+        "name": "Wokal — z przodu",
+        "params": {
+          "attack": 200.0,
+          "input": 12.0,
+          "mix": 100.0,
+          "output": -4.0,
+          "ratio": 1.0,
+          "release": 150.0
+        }
+      },
+      {
+        "name": "Bas — kontrola",
+        "params": {
+          "attack": 600.0,
+          "input": 10.0,
+          "mix": 100.0,
+          "output": -3.0,
+          "ratio": 2.0,
+          "release": 400.0
+        }
+      },
+      {
+        "name": "Równoległa kompresja",
+        "params": {
+          "attack": 100.0,
+          "input": 18.0,
+          "mix": 45.0,
+          "output": -6.0,
+          "ratio": 4.0,
+          "release": 120.0
+        }
+      },
+      {
+        "name": "All buttons — smash",
+        "params": {
+          "attack": 60.0,
+          "input": 20.0,
+          "mix": 100.0,
+          "output": -10.0,
+          "ratio": 4.0,
+          "release": 100.0
+        }
+      }
+    ],
+    "filter": [
+      {
+        "name": "Ciepły low-pass (ladder)",
+        "params": {
+          "cutoff": 1600.0,
+          "drive": 3.0,
+          "res": 25.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "House — zamknięty low-pass",
+        "params": {
+          "cutoff": 420.0,
+          "drive": 4.0,
+          "res": 35.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "Narastanie — high-pass (4 takty)",
+        "params": {
+          "cutoff": 490.0,
+          "div": 6.0,
+          "drive": 2.0,
+          "lfo": 3.0,
+          "res": 45.0,
+          "shape": 2.0,
+          "slope": 0.0,
+          "sync": 1.0,
+          "type": 2.0
+        }
+      },
+      {
+        "name": "Wah — ćwierćnuty",
+        "params": {
+          "cutoff": 750.0,
+          "div": 2.0,
+          "drive": 6.0,
+          "lfo": 1.4,
+          "res": 68.0,
+          "shape": 1.0,
+          "slope": 0.0,
+          "sync": 1.0,
+          "type": 3.0
+        }
+      },
+      {
+        "name": "Auto-wah — gitara, bas",
+        "params": {
+          "cutoff": 320.0,
+          "drive": 5.0,
+          "eatt": 4.0,
+          "env": 3.2,
+          "erel": 110.0,
+          "res": 62.0,
+          "type": 3.0
+        }
+      },
+      {
+        "name": "Rytmiczny filtr 1/8",
+        "params": {
+          "cutoff": 380.0,
+          "div": 1.0,
+          "drive": 4.0,
+          "lfo": 3.5,
+          "res": 40.0,
+          "shape": 3.0,
+          "sync": 1.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "Lo-fi — telefon",
+        "params": {
+          "cutoff": 1350.0,
+          "drive": 12.0,
+          "res": 28.0,
+          "type": 3.0
+        }
+      },
+      {
+        "name": "Dub — rezonans stereo",
+        "params": {
+          "cutoff": 680.0,
+          "div": 2.0,
+          "drive": 8.0,
+          "env": 0.6,
+          "erel": 240.0,
+          "lfo": 2.2,
+          "res": 78.0,
+          "shape": 0.0,
+          "stereo": 110.0,
+          "sync": 1.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "Pompowanie (sidechain od stopy)",
+        "params": {
+          "cutoff": 14000.0,
+          "drive": 2.0,
+          "eatt": 2.0,
+          "env": -4.5,
+          "erel": 140.0,
+          "res": 20.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "Acid — 303",
+        "params": {
+          "cutoff": 260.0,
+          "div": 0.0,
+          "drive": 14.0,
+          "eatt": 2.0,
+          "env": 3.8,
+          "erel": 90.0,
+          "lfo": 1.0,
+          "res": 86.0,
+          "shape": 3.0,
+          "sync": 1.0,
+          "type": 1.0
+        }
+      },
+      {
+        "name": "S&H — losowe kroki 1/16",
+        "params": {
+          "cutoff": 900.0,
+          "div": 0.0,
+          "drive": 0.0,
+          "lfo": 2.0,
+          "res": 55.0,
+          "shape": 5.0,
+          "sync": 1.0,
+          "type": 0.0
+        }
+      },
+      {
+        "name": "DJ — przejście",
+        "params": {
+          "cutoff": 1600.0,
+          "drive": 0.0,
+          "res": 30.0,
+          "type": 5.0
+        }
+      }
+    ],
+    "gate": [
+      {
+        "name": "Bramka — uniwersalna",
+        "params": {
+          "att": 1.0,
+          "floor": -80.0,
+          "hold": 40.0,
+          "hyst": 4.0,
+          "look": 0.0,
+          "ratio": 100.0,
+          "rel": 120.0,
+          "schp": 20.0,
+          "sclp": 20000.0,
+          "thr": -40.0
+        }
+      },
+      {
+        "name": "Wokal — naturalne czyszczenie",
+        "params": {
+          "att": 4.0,
+          "det": 1.0,
+          "floor": -14.0,
+          "hold": 80.0,
+          "hyst": 6.0,
+          "look": 2.0,
+          "ratio": 3.0,
+          "rel": 220.0,
+          "schp": 120.0,
+          "sclp": 8000.0,
+          "thr": -45.0
+        }
+      },
+      {
+        "name": "Stopa — krótko i mocno",
+        "params": {
+          "att": 0.2,
+          "floor": -30.0,
+          "hold": 35.0,
+          "hyst": 4.0,
+          "look": 2.0,
+          "ratio": 100.0,
+          "rel": 110.0,
+          "schp": 20.0,
+          "sclp": 300.0,
+          "thr": -22.0
+        }
+      },
+      {
+        "name": "Werbel — bez przesłuchów",
+        "params": {
+          "att": 0.3,
+          "floor": -14.0,
+          "hold": 40.0,
+          "hyst": 5.0,
+          "look": 2.0,
+          "ratio": 8.0,
+          "rel": 160.0,
+          "schp": 180.0,
+          "sclp": 3500.0,
+          "thr": -20.0
+        }
+      },
+      {
+        "name": "Tomy — czyste wybrzmienie",
+        "params": {
+          "att": 0.4,
+          "floor": -24.0,
+          "hold": 70.0,
+          "hyst": 6.0,
+          "look": 2.0,
+          "ratio": 100.0,
+          "rel": 340.0,
+          "schp": 70.0,
+          "sclp": 900.0,
+          "thr": -24.0
+        }
+      },
+      {
+        "name": "Gitara — bez szumu i brumu",
+        "params": {
+          "att": 1.5,
+          "det": 1.0,
+          "floor": -60.0,
+          "hold": 50.0,
+          "hyst": 6.0,
+          "look": 0.0,
+          "ratio": 6.0,
+          "rel": 180.0,
+          "schp": 100.0,
+          "sclp": 5000.0,
+          "thr": -50.0
+        }
+      },
+      {
+        "name": "Ekspander — delikatnie",
+        "params": {
+          "att": 8.0,
+          "det": 1.0,
+          "floor": -10.0,
+          "hold": 60.0,
+          "hyst": 3.0,
+          "look": 0.0,
+          "ratio": 1.8,
+          "rel": 280.0,
+          "schp": 20.0,
+          "sclp": 20000.0,
+          "thr": -32.0
+        }
+      },
+      {
+        "name": "Trance gate (sidechain)",
+        "params": {
+          "att": 1.0,
+          "floor": -80.0,
+          "hold": 15.0,
+          "hyst": 2.0,
+          "look": 1.0,
+          "ratio": 100.0,
+          "rel": 45.0,
+          "schp": 20.0,
+          "sclp": 20000.0,
+          "thr": -24.0
+        }
+      },
+      {
+        "name": "Ducking — bas pod stopę",
+        "params": {
+          "att": 1.5,
+          "floor": -12.0,
+          "hold": 20.0,
+          "hyst": 2.0,
+          "look": 1.0,
+          "mode": 1.0,
+          "ratio": 100.0,
+          "rel": 130.0,
+          "schp": 40.0,
+          "sclp": 300.0,
+          "thr": -20.0
+        }
+      },
+      {
+        "name": "Ducking — muzyka pod lektora",
+        "params": {
+          "att": 15.0,
+          "det": 1.0,
+          "floor": -10.0,
+          "hold": 180.0,
+          "hyst": 4.0,
+          "look": 2.0,
+          "mode": 1.0,
+          "ratio": 4.0,
+          "rel": 450.0,
+          "schp": 150.0,
+          "sclp": 6000.0,
+          "thr": -30.0
+        }
+      },
+      {
+        "name": "Gated reverb — werbel lat 80.",
+        "params": {
+          "att": 0.5,
+          "floor": -80.0,
+          "hold": 140.0,
+          "hyst": 3.0,
+          "look": 1.0,
+          "ratio": 100.0,
+          "rel": 65.0,
+          "schp": 20.0,
+          "sclp": 20000.0,
+          "thr": -18.0
+        }
+      }
+    ],
+    "half": [
+      {
+        "name": "Half-time — 1 takt",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 4.0,
+          "mix": 100.0,
+          "smooth": 10.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "Bębny — ósemki, punch",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 1.0,
+          "mix": 100.0,
+          "smooth": -12.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "Szesnastki — oktawa w dół",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 0.0,
+          "mix": 100.0,
+          "smooth": -8.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "Triola — kwinta niżej",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 2.0,
+          "mix": 100.0,
+          "smooth": 10.0,
+          "solo": 0.0,
+          "speed": 0.0
+        }
+      },
+      {
+        "name": "Kwinta — harmonia 50 %",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 3.0,
+          "mix": 50.0,
+          "smooth": 20.0,
+          "solo": 0.0,
+          "speed": 0.0
+        }
+      },
+      {
+        "name": "4× — tekstura",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 4.0,
+          "mix": 100.0,
+          "smooth": 45.0,
+          "solo": 0.0,
+          "speed": 2.0
+        }
+      },
+      {
+        "name": "Swell — od tyłu",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 3.0,
+          "mix": 100.0,
+          "smooth": 80.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "FX — swoop",
+        "params": {
+          "hi": 20000.0,
+          "lo": 20.0,
+          "loop": 2.0,
+          "mix": 100.0,
+          "smooth": -70.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "Tylko góra (sub zostaje)",
+        "params": {
+          "hi": 20000.0,
+          "lo": 150.0,
+          "loop": 4.0,
+          "mix": 100.0,
+          "smooth": 10.0,
+          "solo": 0.0,
+          "speed": 1.0
+        }
+      },
+      {
+        "name": "Środek pasma — solo",
+        "params": {
+          "hi": 4000.0,
+          "lo": 300.0,
+          "loop": 2.0,
+          "mix": 100.0,
+          "smooth": 10.0,
+          "solo": 1.0,
+          "speed": 1.0
+        }
+      }
+    ],
+    "limit": [
+      {
+        "name": "Bezpieczny",
+        "params": {
+          "ceil": -1.0,
+          "gain": 0.0
+        }
+      },
+      {
+        "name": "Streaming −1 dBTP",
+        "params": {
+          "ceil": -1.0,
+          "gain": 4.0,
+          "rel": 80.0
+        }
+      },
+      {
+        "name": "Głośny master",
+        "params": {
+          "ceil": -1.0,
+          "gain": 7.0,
+          "rel": 120.0
+        }
+      },
+      {
+        "name": "Bardzo głośny",
+        "params": {
+          "ceil": -0.5,
+          "gain": 10.0,
+          "look": 5.0,
+          "rel": 150.0
+        }
+      },
+      {
+        "name": "Przezroczysty",
+        "params": {
+          "ceil": -1.0,
+          "gain": 3.0,
+          "look": 5.0,
+          "rel": 250.0
+        }
+      }
+    ],
+    "multiband": [
+      {
+        "name": "Domyślny — klej",
+        "params": {
+          "depth": 40.0,
+          "down": 100.0,
+          "gh": 0.0,
+          "gl": 0.0,
+          "gm": 0.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 100.0,
+          "up": 100.0,
+          "xhi": 2500.0,
+          "xlo": 88.3
+        }
+      },
+      {
+        "name": "Klasyczny OTT (100 %)",
+        "params": {
+          "depth": 100.0,
+          "down": 100.0,
+          "gh": 0.0,
+          "gl": 0.0,
+          "gm": 0.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 100.0,
+          "up": 100.0,
+          "xhi": 2500.0,
+          "xlo": 88.3
+        }
+      },
+      {
+        "name": "Hi-haty — chrupko",
+        "params": {
+          "depth": 45.0,
+          "down": 90.0,
+          "gh": 2.0,
+          "gl": -6.0,
+          "gm": -1.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 40.0,
+          "up": 110.0,
+          "xhi": 3200.0,
+          "xlo": 120.0
+        }
+      },
+      {
+        "name": "Lead — gęsto",
+        "params": {
+          "depth": 65.0,
+          "down": 110.0,
+          "gh": 1.5,
+          "gl": -3.0,
+          "gm": 1.0,
+          "in": 0.0,
+          "out": -1.5,
+          "time": 80.0,
+          "up": 125.0,
+          "xhi": 2400.0,
+          "xlo": 100.0
+        }
+      },
+      {
+        "name": "808 — trzyma dół",
+        "params": {
+          "depth": 40.0,
+          "down": 120.0,
+          "gh": -6.0,
+          "gl": 0.0,
+          "gm": -1.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 160.0,
+          "up": 40.0,
+          "xhi": 1200.0,
+          "xlo": 90.0
+        }
+      },
+      {
+        "name": "Wokal — bliżej",
+        "params": {
+          "depth": 25.0,
+          "down": 85.0,
+          "gh": 1.5,
+          "gl": -6.0,
+          "gm": 0.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 90.0,
+          "up": 90.0,
+          "xhi": 3000.0,
+          "xlo": 110.0
+        }
+      },
+      {
+        "name": "Pad — powietrze",
+        "params": {
+          "depth": 50.0,
+          "down": 60.0,
+          "gh": 2.0,
+          "gl": -3.0,
+          "gm": -1.0,
+          "in": 0.0,
+          "out": -1.0,
+          "time": 150.0,
+          "up": 140.0,
+          "xhi": 3500.0,
+          "xlo": 150.0
+        }
+      },
+      {
+        "name": "Master — lekko",
+        "params": {
+          "depth": 12.0,
+          "down": 75.0,
+          "gh": 0.0,
+          "gl": 0.0,
+          "gm": 0.0,
+          "in": 0.0,
+          "out": 0.0,
+          "time": 150.0,
+          "up": 55.0,
+          "xhi": 2800.0,
+          "xlo": 95.0
+        }
+      }
+    ],
+    "phaser": [
+      {
+        "name": "Klasyczny, 4 stopnie",
+        "params": {
+          "center": 900.0,
+          "depth": 70.0,
+          "fb": 0.0,
+          "mix": 50.0,
+          "rate": 0.5,
+          "stages": 1.0,
+          "stereo": 90.0
+        }
+      },
+      {
+        "name": "Delikatny",
+        "params": {
+          "center": 1200.0,
+          "depth": 45.0,
+          "fb": 10.0,
+          "mix": 35.0,
+          "rate": 0.2,
+          "stages": 0.0,
+          "stereo": 60.0
+        }
+      },
+      {
+        "name": "Głębokie przemiatanie",
+        "params": {
+          "center": 700.0,
+          "depth": 90.0,
+          "fb": 45.0,
+          "mix": 50.0,
+          "rate": 0.08,
+          "stages": 4.0,
+          "stereo": 120.0
+        }
+      },
+      {
+        "name": "Funk — gitara (1/8)",
+        "params": {
+          "center": 1100.0,
+          "depth": 60.0,
+          "div": 1.0,
+          "fb": 55.0,
+          "mix": 50.0,
+          "rate": 0.4,
+          "stages": 2.0,
+          "stereo": 0.0,
+          "sync": 1.0
+        }
+      },
+      {
+        "name": "Odrzutowiec",
+        "params": {
+          "center": 1500.0,
+          "depth": 85.0,
+          "fb": 85.0,
+          "mix": 50.0,
+          "rate": 0.05,
+          "stages": 4.0,
+          "stereo": 30.0
+        }
+      },
+      {
+        "name": "Wir stereo",
+        "params": {
+          "center": 800.0,
+          "depth": 75.0,
+          "fb": 35.0,
+          "mix": 50.0,
+          "rate": 0.3,
+          "stages": 3.0,
+          "stereo": 180.0
+        }
+      },
+      {
+        "name": "Pusty (ujemny feedback)",
+        "params": {
+          "center": 600.0,
+          "depth": 70.0,
+          "fb": -60.0,
+          "mix": 50.0,
+          "rate": 0.35,
+          "stages": 2.0,
+          "stereo": 90.0
+        }
+      },
+      {
+        "name": "Pad — przemiatanie (2 takty)",
+        "params": {
+          "center": 900.0,
+          "depth": 80.0,
+          "div": 5.0,
+          "fb": 40.0,
+          "mix": 50.0,
+          "rate": 0.4,
+          "stages": 3.0,
+          "stereo": 90.0,
+          "sync": 1.0
+        }
+      }
+    ],
+    "reverb": [
+      {
+        "name": "Vocal Plate",
+        "params": {
+          "bass": 0.8,
+          "duck": 3.0,
+          "early": 50.0,
+          "hi": 7000.0,
+          "lo": 300.0,
+          "mix": 15.0,
+          "mod": 50.0,
+          "pre": 25.0,
+          "size": 1.0,
+          "space": 0.0,
+          "tone": 0.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Vocal Room",
+        "params": {
+          "bass": 0.9,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 8000.0,
+          "lo": 250.0,
+          "mix": 12.0,
+          "mod": 50.0,
+          "pre": 10.0,
+          "size": 0.6,
+          "space": 1.0,
+          "tone": -10.0,
+          "width": 90.0
+        }
+      },
+      {
+        "name": "Vocal Hall",
+        "params": {
+          "bass": 0.8,
+          "duck": 4.0,
+          "early": 50.0,
+          "hi": 6500.0,
+          "lo": 250.0,
+          "mix": 14.0,
+          "mod": 50.0,
+          "pre": 35.0,
+          "size": 2.0,
+          "space": 2.0,
+          "tone": -20.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Ambience",
+        "params": {
+          "bass": 1.0,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 9000.0,
+          "lo": 200.0,
+          "mix": 12.0,
+          "mod": 50.0,
+          "pre": 0.0,
+          "size": 0.4,
+          "space": 3.0,
+          "tone": 10.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Ballada — długi plate",
+        "params": {
+          "bass": 0.8,
+          "duck": 6.0,
+          "early": 50.0,
+          "hi": 6000.0,
+          "lo": 350.0,
+          "mix": 18.0,
+          "mod": 50.0,
+          "pre": 40.0,
+          "size": 2.4,
+          "space": 0.0,
+          "tone": -30.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Bębny — pokój",
+        "params": {
+          "bass": 1.0,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 9000.0,
+          "lo": 150.0,
+          "mix": 12.0,
+          "mod": 50.0,
+          "pre": 0.0,
+          "size": 0.7,
+          "space": 1.0,
+          "tone": 0.0,
+          "width": 80.0
+        }
+      },
+      {
+        "name": "Wysyłka — hala 100 %",
+        "params": {
+          "bass": 0.9,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 7000.0,
+          "lo": 200.0,
+          "mix": 100.0,
+          "mod": 50.0,
+          "pre": 20.0,
+          "size": 2.2,
+          "space": 2.0,
+          "tone": -10.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Wokal — rap, krótko",
+        "params": {
+          "bass": 0.7,
+          "duck": 5.0,
+          "early": 50.0,
+          "hi": 7500.0,
+          "lo": 400.0,
+          "mix": 10.0,
+          "mod": 50.0,
+          "pre": 10.0,
+          "size": 0.5,
+          "space": 1.0,
+          "tone": 0.0,
+          "width": 80.0
+        }
+      },
+      {
+        "name": "Wokal — R&B, hala",
+        "params": {
+          "bass": 0.8,
+          "duck": 5.0,
+          "early": 50.0,
+          "hi": 6500.0,
+          "lo": 250.0,
+          "mix": 16.0,
+          "mod": 50.0,
+          "pre": 45.0,
+          "size": 2.6,
+          "space": 2.0,
+          "tone": -20.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Wokal — pop, jasny plate",
+        "params": {
+          "bass": 0.7,
+          "duck": 6.0,
+          "early": 50.0,
+          "hi": 9000.0,
+          "lo": 350.0,
+          "mix": 18.0,
+          "mod": 50.0,
+          "pre": 60.0,
+          "size": 1.8,
+          "space": 0.0,
+          "tone": 25.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Werbel — plate",
+        "params": {
+          "bass": 0.9,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 9000.0,
+          "lo": 250.0,
+          "mix": 20.0,
+          "mod": 50.0,
+          "pre": 0.0,
+          "size": 1.1,
+          "space": 0.0,
+          "tone": 10.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Klawisze — ciepła hala",
+        "params": {
+          "bass": 1.1,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 5500.0,
+          "lo": 200.0,
+          "mix": 22.0,
+          "mod": 50.0,
+          "pre": 20.0,
+          "size": 2.2,
+          "space": 2.0,
+          "tone": -30.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Lead — EDM, hala",
+        "params": {
+          "bass": 0.9,
+          "duck": 6.0,
+          "early": 50.0,
+          "hi": 9000.0,
+          "lo": 300.0,
+          "mix": 25.0,
+          "mod": 50.0,
+          "pre": 30.0,
+          "size": 3.5,
+          "space": 2.0,
+          "tone": 10.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Pad — ambientowa mgła",
+        "params": {
+          "bass": 1.0,
+          "duck": 0.0,
+          "early": 20.0,
+          "hi": 7000.0,
+          "lo": 200.0,
+          "mix": 35.0,
+          "mod": 80.0,
+          "pre": 60.0,
+          "size": 8.0,
+          "space": 2.0,
+          "tone": -10.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Lo-fi — ciemny pokój",
+        "params": {
+          "bass": 1.0,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 3500.0,
+          "lo": 300.0,
+          "mix": 25.0,
+          "mod": 50.0,
+          "pre": 15.0,
+          "size": 1.0,
+          "space": 1.0,
+          "tone": -60.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Kosmos — 18 s",
+        "params": {
+          "bass": 0.9,
+          "duck": 0.0,
+          "early": 10.0,
+          "hi": 6000.0,
+          "lo": 250.0,
+          "mix": 40.0,
+          "mod": 100.0,
+          "pre": 80.0,
+          "size": 18.0,
+          "space": 2.0,
+          "tone": -20.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Wysyłka — plate 100 %",
+        "params": {
+          "bass": 0.8,
+          "duck": 0.0,
+          "early": 50.0,
+          "hi": 8000.0,
+          "lo": 300.0,
+          "mix": 100.0,
+          "mod": 50.0,
+          "pre": 20.0,
+          "size": 1.5,
+          "space": 0.0,
+          "tone": 0.0,
+          "width": 100.0
+        }
+      }
+    ],
+    "rider": [
+      {
+        "name": "Wokal — śpiew",
+        "params": {
+          "amount": 50.0,
+          "auto": 1.0,
+          "down": 6.0,
+          "look": 2.0,
+          "phrase": 20.0,
+          "speed": 0.0,
+          "up": 5.0
+        }
+      },
+      {
+        "name": "Rap",
+        "params": {
+          "amount": 50.0,
+          "auto": 1.0,
+          "down": 6.0,
+          "look": 2.0,
+          "phrase": 20.0,
+          "speed": 1.0,
+          "up": 5.0
+        }
+      },
+      {
+        "name": "Delikatnie",
+        "params": {
+          "amount": 30.0,
+          "auto": 1.0,
+          "down": 4.0,
+          "look": 2.0,
+          "phrase": 10.0,
+          "speed": 0.0,
+          "up": 3.0
+        }
+      },
+      {
+        "name": "Mocno",
+        "params": {
+          "amount": 80.0,
+          "auto": 1.0,
+          "down": 9.0,
+          "look": 2.0,
+          "phrase": 30.0,
+          "speed": 0.0,
+          "up": 8.0
+        }
+      },
+      {
+        "name": "Wokal — śpiew (długi look-ahead, opóźnienie)",
+        "params": {
+          "amount": 50.0,
+          "auto": 1.0,
+          "down": 6.0,
+          "look": 1.0,
+          "phrase": 20.0,
+          "speed": 0.0,
+          "up": 5.0
+        }
+      }
+    ],
+    "sat": [
+      {
+        "name": "Domyślny",
+        "params": {
+          "drive": 40.0,
+          "style": 0.0
+        }
+      },
+      {
+        "name": "Wokal — ciepło",
+        "params": {
+          "drive": 35.0,
+          "highcut": 16000.0,
+          "lowcut": 80.0,
+          "style": 0.0,
+          "tone": 10.0
+        }
+      },
+      {
+        "name": "Wokal — lampa",
+        "params": {
+          "drive": 45.0,
+          "highcut": 15000.0,
+          "lowcut": 70.0,
+          "style": 3.0
+        }
+      },
+      {
+        "name": "Rap — ziarno",
+        "params": {
+          "drive": 58.0,
+          "highcut": 14000.0,
+          "lowcut": 100.0,
+          "style": 1.0,
+          "tone": 25.0
+        }
+      },
+      {
+        "name": "Bębny — smash",
+        "params": {
+          "drive": 80.0,
+          "lowcut": 30.0,
+          "mix": 70.0,
+          "style": 1.0,
+          "thump": 30.0
+        }
+      },
+      {
+        "name": "Bas — waga",
+        "params": {
+          "drive": 50.0,
+          "lowcut": 35.0,
+          "style": 2.0,
+          "thump": 40.0,
+          "tone": -20.0
+        }
+      },
+      {
+        "name": "Lo-fi głośnik",
+        "params": {
+          "drive": 60.0,
+          "highcut": 4500.0,
+          "lowcut": 300.0,
+          "steep": 1.0,
+          "style": 4.0,
+          "thump": 35.0,
+          "tone": 20.0
+        }
+      },
+      {
+        "name": "Równoległe zgniecenie",
+        "params": {
+          "drive": 90.0,
+          "mix": 30.0,
+          "punish": 1.0,
+          "style": 4.0
+        }
+      },
+      {
+        "name": "Taśma — klej na bus",
+        "params": {
+          "drive": 22.0,
+          "highcut": 18000.0,
+          "style": 0.0
+        }
+      }
+    ],
+    "stereo": [
+      {
+        "name": "Bez zmian",
+        "params": {
+          "bass": 0.0,
+          "bassf": 120.0,
+          "spread": 0.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Bas w mono (120 Hz)",
+        "params": {
+          "bass": 1.0,
+          "bassf": 120.0,
+          "spread": 0.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Szerzej, bas w mono",
+        "params": {
+          "bass": 1.0,
+          "bassf": 150.0,
+          "spread": 0.0,
+          "width": 140.0
+        }
+      },
+      {
+        "name": "Mono → stereo (spread)",
+        "params": {
+          "bass": 1.0,
+          "bassf": 150.0,
+          "spread": 60.0,
+          "width": 100.0
+        }
+      },
+      {
+        "name": "Wokal — dubel szeroki",
+        "params": {
+          "bass": 1.0,
+          "bassf": 200.0,
+          "spread": 35.0,
+          "width": 120.0
+        }
+      },
+      {
+        "name": "Pad — bardzo szeroko",
+        "params": {
+          "bass": 1.0,
+          "bassf": 200.0,
+          "spread": 40.0,
+          "width": 170.0
+        }
+      },
+      {
+        "name": "Węziej (70 %)",
+        "params": {
+          "bass": 0.0,
+          "bassf": 120.0,
+          "spread": 0.0,
+          "width": 70.0
+        }
+      },
+      {
+        "name": "Mono",
+        "params": {
+          "bass": 0.0,
+          "bassf": 120.0,
+          "spread": 0.0,
+          "width": 0.0
+        }
+      }
+    ],
+    "tune": [
+      {
+        "name": "Naturalny",
+        "params": {
+          "flex": 40.0,
+          "humanize": 30.0,
+          "retune": 40.0,
+          "vibrato": 60.0
+        }
+      },
+      {
+        "name": "Delikatna korekta",
+        "params": {
+          "flex": 70.0,
+          "humanize": 50.0,
+          "retune": 80.0,
+          "vibrato": 80.0
+        }
+      },
+      {
+        "name": "Pop — mocno",
+        "params": {
+          "flex": 10.0,
+          "humanize": 10.0,
+          "retune": 10.0,
+          "vibrato": 30.0
+        }
+      },
+      {
+        "name": "Efekt robota",
+        "params": {
+          "retune": 0.0
+        }
+      }
+    ],
+    "voice": [
+      {
+        "name": "Domyślny",
+        "params": {}
+      },
+      {
+        "name": "Głębszy, pełniejszy",
+        "params": {
+          "formant": -2.0
+        }
+      },
+      {
+        "name": "Oktawa w dół",
+        "params": {
+          "formant": -2.0,
+          "pitch": -12.0
+        }
+      },
+      {
+        "name": "Oktawa w górę",
+        "params": {
+          "formant": 2.0,
+          "pitch": 12.0
+        }
+      },
+      {
+        "name": "Zmiana płci ↓",
+        "params": {
+          "formant": -4.0,
+          "pitch": -4.0
+        }
+      },
+      {
+        "name": "Zmiana płci ↑",
+        "params": {
+          "formant": 4.0,
+          "pitch": 4.0
+        }
+      },
+      {
+        "name": "Chipmunk",
+        "params": {
+          "link": 1.0,
+          "pitch": 7.0
+        }
+      },
+      {
+        "name": "Demon",
+        "params": {
+          "drive": 12.0,
+          "formant": -6.0,
+          "out": -4.0,
+          "pitch": -7.0
+        }
+      },
+      {
+        "name": "Hard tune + drive",
+        "params": {
+          "drive": 10.0,
+          "mode": 1.0,
+          "out": -3.0
+        }
+      },
+      {
+        "name": "Robot",
+        "params": {
+          "drive": 6.0,
+          "mode": 2.0,
+          "out": -2.0
+        }
+      }
+    ],
+    "warp": [
+      {
+        "name": "Domyślny",
+        "params": {}
+      },
+      {
+        "name": "Half-time",
+        "params": {
+          "tslot": 1.0
+        }
+      },
+      {
+        "name": "Sidechain 1/4",
+        "params": {
+          "vslot": 1.0
+        }
+      },
+      {
+        "name": "Tape stop (pół taktu)",
+        "params": {
+          "tslot": 8.0
+        }
+      },
+      {
+        "name": "Stutter 1/8 + bramka",
+        "params": {
+          "tslot": 5.0,
+          "vslot": 4.0
+        }
+      },
+      {
+        "name": "Wyzwalanie na żywo (co ćwierćnutę, one-shot)",
+        "params": {
+          "oneshot": 1.0,
+          "trig": 3.0
+        }
+      }
+    ]
+  },
+  "types": {
+    "analyzer": {
+      "name": "Analyzer",
+      "params": [
+        {
+          "def": 1.0,
+          "id": "target",
+          "label": "Target",
+          "log": false,
+          "max": 3.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "Streaming −14",
+            "Loud −9",
+            "Broadcast −23"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 2.0,
+          "id": "slope",
+          "label": "Slope",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "0 dB",
+            "3 dB",
+            "4.5 dB"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "chorus": {
+      "name": "Chorus",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "mode",
+          "label": "Mode",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "Chorus",
+            "Ensemble",
+            "Vibrato"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "sync",
+          "label": "Rate",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Hz",
+            "Tempo"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.6,
+          "id": "rate",
+          "label": "Rate",
+          "log": true,
+          "max": 10.0,
+          "min": 0.05,
+          "unit": "Hz"
+        },
+        {
+          "def": 4.0,
+          "id": "div",
+          "label": "Rate",
+          "log": false,
+          "max": 7.0,
+          "min": 0.0,
+          "options": [
+            "1/16",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1 takt",
+            "2 takty",
+            "4 takty",
+            "8 taktów"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 40.0,
+          "id": "depth",
+          "label": "Depth",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 12.0,
+          "id": "delay",
+          "label": "Delay",
+          "log": true,
+          "max": 40.0,
+          "min": 2.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "fb",
+          "label": "Feedback",
+          "log": false,
+          "max": 90.0,
+          "min": -90.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "width",
+          "label": "Width",
+          "log": false,
+          "max": 200.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 20.0,
+          "id": "hp",
+          "label": "Safe bass",
+          "log": true,
+          "max": 1000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 20000.0,
+          "id": "tone",
+          "label": "Tone",
+          "log": true,
+          "max": 20000.0,
+          "min": 1000.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 50.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        }
+      ]
+    },
+    "comp": {
+      "name": "Compressor",
+      "params": [
+        {
+          "def": -18.0,
+          "id": "thr",
+          "label": "Thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -60.0,
+          "unit": "dB"
+        },
+        {
+          "def": 4.0,
+          "id": "ratio",
+          "label": "Ratio",
+          "log": true,
+          "max": 20.0,
+          "min": 1.0,
+          "unit": ":1"
+        },
+        {
+          "def": 10.0,
+          "id": "att",
+          "label": "Attack",
+          "log": true,
+          "max": 100.0,
+          "min": 0.1,
+          "unit": "ms"
+        },
+        {
+          "def": 150.0,
+          "id": "rel",
+          "label": "Release",
+          "log": true,
+          "max": 1000.0,
+          "min": 10.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "gain",
+          "label": "Makeup",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "det",
+          "label": "Detect",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Peak",
+            "RMS"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "deess": {
+      "name": "De-esser",
+      "params": [
+        {
+          "def": -32.0,
+          "id": "thr",
+          "label": "Threshold",
+          "log": false,
+          "max": 0.0,
+          "min": -60.0,
+          "unit": "dB"
+        },
+        {
+          "def": 8.0,
+          "id": "range",
+          "label": "Range",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 6000.0,
+          "id": "freq",
+          "label": "Freq",
+          "log": true,
+          "max": 16000.0,
+          "min": 2000.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "mode",
+          "label": "Mode",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Split",
+            "Wide"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 5.0,
+          "id": "look",
+          "label": "Lookahead",
+          "log": false,
+          "max": 15.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "listen",
+          "label": "Listen",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "S"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "detect",
+          "label": "Detect",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Absolute",
+            "Relative"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "delay": {
+      "name": "Delay",
+      "params": [
+        {
+          "def": 100.0,
+          "id": "input",
+          "label": "Input",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "sync",
+          "label": "Sync",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Tempo",
+            "ms"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.75,
+          "id": "beats",
+          "label": "Time",
+          "log": true,
+          "max": 4.0,
+          "min": 0.020833333333333332,
+          "unit": "beat"
+        },
+        {
+          "def": 375.0,
+          "id": "time",
+          "label": "Time",
+          "log": true,
+          "max": 2000.0,
+          "min": 1.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "keep",
+          "label": "Keep pitch",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 40.0,
+          "id": "smooth",
+          "label": "Smoothing",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "offset",
+          "label": "Offset",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": -60.0,
+          "id": "pan",
+          "label": "Pan",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "model",
+          "label": "Model",
+          "log": false,
+          "max": 3.0,
+          "min": 0.0,
+          "options": [
+            "Mono",
+            "Stereo",
+            "Ping-pong",
+            "Off"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 100.0,
+          "id": "spread",
+          "label": "Stereo",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 35.0,
+          "id": "fb",
+          "label": "Feedback",
+          "log": false,
+          "max": 125.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "ftype",
+          "label": "Filter",
+          "log": false,
+          "max": 3.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "LP",
+            "HP",
+            "BP"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 6000.0,
+          "id": "cutoff",
+          "label": "Cutoff",
+          "log": true,
+          "max": 20000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "res",
+          "label": "Resonance",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 48000.0,
+          "id": "srate",
+          "label": "Sample rate",
+          "log": true,
+          "max": 48000.0,
+          "min": 500.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 24.0,
+          "id": "bits",
+          "label": "Bits",
+          "log": false,
+          "max": 24.0,
+          "min": 2.0,
+          "unit": "bit"
+        },
+        {
+          "def": 1.0,
+          "id": "dist",
+          "label": "Distortion",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Limit",
+            "Sat"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "level",
+          "label": "Threshold",
+          "log": false,
+          "max": 0.0,
+          "min": -36.0,
+          "unit": "dB"
+        },
+        {
+          "def": 50.0,
+          "id": "knee",
+          "label": "Knee",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "sym",
+          "label": "Symmetry",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "diff",
+          "label": "Diffusion",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 50.0,
+          "id": "dspread",
+          "label": "Diff. spread",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.5,
+          "id": "rate",
+          "label": "LFO rate",
+          "log": true,
+          "max": 20.0,
+          "min": 0.05,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "mtime",
+          "label": "Mod time",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "mcut",
+          "label": "Mod cutoff",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 25.0,
+          "id": "mix",
+          "label": "Wet",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "tone",
+          "label": "Tone",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "dry",
+          "label": "Dry",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "duck",
+          "label": "Ducking",
+          "log": false,
+          "max": 12.0,
+          "min": 0.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "denoise": {
+      "name": "Denoiser",
+      "params": [
+        {
+          "def": 12.0,
+          "id": "reduction",
+          "label": "Reduction",
+          "log": false,
+          "max": 40.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 50.0,
+          "id": "sens",
+          "label": "Sensitivity",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 50.0,
+          "id": "smooth",
+          "label": "Smoothing",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "learn",
+          "label": "Profile",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Adaptive",
+            "Hold"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "listen",
+          "label": "Listen",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "Noise"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "eq": {
+      "name": "Parametric EQ",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Output",
+          "log": false,
+          "max": 18.0,
+          "min": -18.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "fet": {
+      "name": "FET Compressor",
+      "params": [
+        {
+          "def": 8.0,
+          "id": "input",
+          "label": "Input",
+          "log": false,
+          "max": 36.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "output",
+          "label": "Output",
+          "log": false,
+          "max": 12.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "ratio",
+          "label": "Ratio",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "4",
+            "8",
+            "12",
+            "20",
+            "All"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 300.0,
+          "id": "attack",
+          "label": "Attack",
+          "log": true,
+          "max": 800.0,
+          "min": 20.0,
+          "unit": "µs"
+        },
+        {
+          "def": 300.0,
+          "id": "release",
+          "label": "Release",
+          "log": true,
+          "max": 1100.0,
+          "min": 50.0,
+          "unit": "ms"
+        },
+        {
+          "def": 100.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        }
+      ]
+    },
+    "filter": {
+      "name": "Filter",
+      "params": [
+        {
+          "def": 1.0,
+          "id": "type",
+          "label": "Type",
+          "log": false,
+          "max": 5.0,
+          "min": 0.0,
+          "options": [
+            "LP",
+            "Ladder",
+            "HP",
+            "BP",
+            "Notch",
+            "DJ"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1600.0,
+          "id": "cutoff",
+          "label": "Cutoff",
+          "log": true,
+          "max": 20000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 25.0,
+          "id": "res",
+          "label": "Resonance",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "slope",
+          "label": "Slope",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "12 dB",
+            "24 dB"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "drive",
+          "label": "Drive",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "dj",
+          "label": "Position",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "sync",
+          "label": "Rate",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Hz",
+            "Tempo"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1.0,
+          "id": "rate",
+          "label": "Rate",
+          "log": true,
+          "max": 20.0,
+          "min": 0.05,
+          "unit": "Hz"
+        },
+        {
+          "def": 2.0,
+          "id": "div",
+          "label": "Rate",
+          "log": false,
+          "max": 7.0,
+          "min": 0.0,
+          "options": [
+            "1/16",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1 takt",
+            "2 takty",
+            "4 takty",
+            "8 taktów"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "shape",
+          "label": "Shape",
+          "log": false,
+          "max": 5.0,
+          "min": 0.0,
+          "options": [
+            "Sine",
+            "Triangle",
+            "Saw up",
+            "Saw down",
+            "Square",
+            "S&H"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "lfo",
+          "label": "LFO depth",
+          "log": false,
+          "max": 5.0,
+          "min": -5.0,
+          "unit": "oct"
+        },
+        {
+          "def": 0.0,
+          "id": "stereo",
+          "label": "Stereo",
+          "log": false,
+          "max": 180.0,
+          "min": 0.0,
+          "unit": "°"
+        },
+        {
+          "def": 0.0,
+          "id": "env",
+          "label": "Env depth",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "oct"
+        },
+        {
+          "def": 10.0,
+          "id": "eatt",
+          "label": "Env attack",
+          "log": true,
+          "max": 200.0,
+          "min": 1.0,
+          "unit": "ms"
+        },
+        {
+          "def": 150.0,
+          "id": "erel",
+          "label": "Env release",
+          "log": true,
+          "max": 1000.0,
+          "min": 10.0,
+          "unit": "ms"
+        },
+        {
+          "def": 1.0,
+          "id": "clip",
+          "label": "Soft clip",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "gate": {
+      "name": "Gate",
+      "params": [
+        {
+          "def": -40.0,
+          "id": "thr",
+          "label": "Thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -80.0,
+          "unit": "dB"
+        },
+        {
+          "def": 4.0,
+          "id": "hyst",
+          "label": "Hysteresis",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 100.0,
+          "id": "ratio",
+          "label": "Ratio",
+          "log": true,
+          "max": 100.0,
+          "min": 1.0,
+          "unit": ":1"
+        },
+        {
+          "def": -80.0,
+          "id": "floor",
+          "label": "Floor",
+          "log": false,
+          "max": 0.0,
+          "min": -80.0,
+          "unit": "dB"
+        },
+        {
+          "def": 1.0,
+          "id": "att",
+          "label": "Attack",
+          "log": true,
+          "max": 50.0,
+          "min": 0.1,
+          "unit": "ms"
+        },
+        {
+          "def": 40.0,
+          "id": "hold",
+          "label": "Hold",
+          "log": false,
+          "max": 500.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 120.0,
+          "id": "rel",
+          "label": "Release",
+          "log": true,
+          "max": 2000.0,
+          "min": 5.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "look",
+          "label": "Lookahead",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "0 ms",
+            "1 ms",
+            "2 ms",
+            "5 ms",
+            "10 ms"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "mode",
+          "label": "Mode",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Gate",
+            "Duck"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 20.0,
+          "id": "schp",
+          "label": "SC low cut",
+          "log": true,
+          "max": 4000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 20000.0,
+          "id": "sclp",
+          "label": "SC high cut",
+          "log": true,
+          "max": 20000.0,
+          "min": 200.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "det",
+          "label": "Detect",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Peak",
+            "RMS"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "listen",
+          "label": "SC listen",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "half": {
+      "name": "Half-Speed",
+      "params": [
+        {
+          "def": 1.0,
+          "id": "speed",
+          "label": "Speed",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "1.5×",
+            "2×",
+            "4×"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 4.0,
+          "id": "loop",
+          "label": "Loop",
+          "log": false,
+          "max": 7.0,
+          "min": 0.0,
+          "options": [
+            "1/16",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1 takt",
+            "2 takty",
+            "4 takty",
+            "8 taktów"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 10.0,
+          "id": "smooth",
+          "label": "Smooth",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 20.0,
+          "id": "lo",
+          "label": "Band low",
+          "log": true,
+          "max": 20000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 20000.0,
+          "id": "hi",
+          "label": "Band high",
+          "log": true,
+          "max": 20000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "solo",
+          "label": "Band solo",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 100.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        }
+      ]
+    },
+    "limit": {
+      "name": "Limiter",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "gain",
+          "label": "Gain",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": -1.0,
+          "id": "ceil",
+          "label": "Ceiling",
+          "log": false,
+          "max": 0.0,
+          "min": -12.0,
+          "unit": "dBTP"
+        },
+        {
+          "def": 80.0,
+          "id": "rel",
+          "label": "Release",
+          "log": true,
+          "max": 1000.0,
+          "min": 10.0,
+          "unit": "ms"
+        },
+        {
+          "def": 1.0,
+          "id": "auto",
+          "label": "Auto release",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 3.0,
+          "id": "look",
+          "label": "Lookahead",
+          "log": false,
+          "max": 5.0,
+          "min": 1.0,
+          "unit": "ms"
+        },
+        {
+          "def": 100.0,
+          "id": "link",
+          "label": "Stereo link",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Output",
+          "log": false,
+          "max": 0.0,
+          "min": -12.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "multiband": {
+      "name": "Multiband",
+      "params": [
+        {
+          "def": 40.0,
+          "id": "depth",
+          "label": "Depth",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "time",
+          "label": "Time",
+          "log": true,
+          "max": 1000.0,
+          "min": 10.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "up",
+          "label": "Upward",
+          "log": false,
+          "max": 200.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "down",
+          "label": "Downward",
+          "log": false,
+          "max": 200.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "in",
+          "label": "In gain",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Out gain",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 88.3,
+          "id": "xlo",
+          "label": "Low / mid",
+          "log": true,
+          "max": 1000.0,
+          "min": 30.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 2500.0,
+          "id": "xhi",
+          "label": "Mid / high",
+          "log": true,
+          "max": 16000.0,
+          "min": 500.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "gl",
+          "label": "Low gain",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "gm",
+          "label": "Mid gain",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "gh",
+          "label": "High gain",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": -33.8,
+          "id": "dl",
+          "label": "Low down thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -72.0,
+          "unit": "dB"
+        },
+        {
+          "def": -30.3,
+          "id": "dm",
+          "label": "Mid down thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -72.0,
+          "unit": "dB"
+        },
+        {
+          "def": -35.5,
+          "id": "dh",
+          "label": "High down thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -72.0,
+          "unit": "dB"
+        },
+        {
+          "def": -40.8,
+          "id": "ul",
+          "label": "Low up thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -90.0,
+          "unit": "dB"
+        },
+        {
+          "def": -41.8,
+          "id": "um",
+          "label": "Mid up thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -90.0,
+          "unit": "dB"
+        },
+        {
+          "def": -40.8,
+          "id": "uh",
+          "label": "High up thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -90.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "phaser": {
+      "name": "Phaser",
+      "params": [
+        {
+          "def": 1.0,
+          "id": "stages",
+          "label": "Stages",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "2",
+            "4",
+            "6",
+            "8",
+            "12"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "sync",
+          "label": "Rate",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Hz",
+            "Tempo"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.4,
+          "id": "rate",
+          "label": "Rate",
+          "log": true,
+          "max": 10.0,
+          "min": 0.02,
+          "unit": "Hz"
+        },
+        {
+          "def": 4.0,
+          "id": "div",
+          "label": "Rate",
+          "log": false,
+          "max": 7.0,
+          "min": 0.0,
+          "options": [
+            "1/16",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1 takt",
+            "2 takty",
+            "4 takty",
+            "8 taktów"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 800.0,
+          "id": "center",
+          "label": "Center",
+          "log": true,
+          "max": 8000.0,
+          "min": 100.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 70.0,
+          "id": "depth",
+          "label": "Depth",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 30.0,
+          "id": "fb",
+          "label": "Feedback",
+          "log": false,
+          "max": 95.0,
+          "min": -95.0,
+          "unit": "%"
+        },
+        {
+          "def": 90.0,
+          "id": "stereo",
+          "label": "Stereo",
+          "log": false,
+          "max": 180.0,
+          "min": 0.0,
+          "unit": "°"
+        },
+        {
+          "def": 50.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        }
+      ]
+    },
+    "reverb": {
+      "name": "Reverb",
+      "params": [
+        {
+          "def": 1.0,
+          "id": "size",
+          "label": "Decay",
+          "log": true,
+          "max": 20.0,
+          "min": 0.2,
+          "unit": "s"
+        },
+        {
+          "def": 25.0,
+          "id": "pre",
+          "label": "Pre-delay",
+          "log": false,
+          "max": 150.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 300.0,
+          "id": "lo",
+          "label": "Low cut",
+          "log": true,
+          "max": 1000.0,
+          "min": 20.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 7000.0,
+          "id": "hi",
+          "label": "High cut",
+          "log": true,
+          "max": 16000.0,
+          "min": 2000.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 100.0,
+          "id": "width",
+          "label": "Width",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 15.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "tone",
+          "label": "Tone",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "space",
+          "label": "Space",
+          "log": false,
+          "max": 3.0,
+          "min": 0.0,
+          "options": [
+            "Plate",
+            "Room",
+            "Hall",
+            "Ambience"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "duck",
+          "label": "Ducking",
+          "log": false,
+          "max": 12.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 50.0,
+          "id": "early",
+          "label": "Early",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "bass",
+          "label": "Bass decay",
+          "log": false,
+          "max": 1.5,
+          "min": 0.5,
+          "unit": "×"
+        },
+        {
+          "def": 50.0,
+          "id": "mod",
+          "label": "Modulation",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        }
+      ]
+    },
+    "rider": {
+      "name": "Vocal Rider",
+      "params": [
+        {
+          "def": 50.0,
+          "id": "amount",
+          "label": "Amount",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 20.0,
+          "id": "phrase",
+          "label": "Phrase",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 5.0,
+          "id": "up",
+          "label": "Max boost",
+          "log": false,
+          "max": 12.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 6.0,
+          "id": "down",
+          "label": "Max cut",
+          "log": false,
+          "max": 12.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "speed",
+          "label": "Speed",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Sung",
+            "Rap"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1.0,
+          "id": "auto",
+          "label": "Auto target",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": -24.0,
+          "id": "target",
+          "label": "Target",
+          "log": false,
+          "max": 0.0,
+          "min": -60.0,
+          "unit": "dB"
+        },
+        {
+          "def": -70.0,
+          "id": "floor",
+          "label": "Noise floor",
+          "log": false,
+          "max": -20.0,
+          "min": -100.0,
+          "unit": "dB"
+        },
+        {
+          "def": 2.0,
+          "id": "look",
+          "label": "Look-ahead",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "Krótki (+0,3 s opóźnienia)",
+            "Długi (+1–1,6 s opóźnienia)",
+            "Na żywo"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Output",
+          "log": false,
+          "max": 24.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": -60.0,
+          "id": "gate",
+          "label": "Gate",
+          "log": false,
+          "max": -10.0,
+          "min": -100.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "sat": {
+      "name": "Saturator",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "style",
+          "label": "Style",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "Taśma",
+            "Konsola",
+            "Transformator",
+            "Trioda",
+            "Pentoda"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 40.0,
+          "id": "drive",
+          "label": "Drive",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "punish",
+          "label": "Punish",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 10.0,
+          "id": "lowcut",
+          "label": "Low cut",
+          "log": true,
+          "max": 1000.0,
+          "min": 10.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "thump",
+          "label": "Thump",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "tone",
+          "label": "Tone",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 20000.0,
+          "id": "highcut",
+          "label": "High cut",
+          "log": true,
+          "max": 20000.0,
+          "min": 500.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "steep",
+          "label": "Steep",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1.0,
+          "id": "auto",
+          "label": "Auto gain",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 100.0,
+          "id": "mix",
+          "label": "Mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Output",
+          "log": false,
+          "max": 12.0,
+          "min": -24.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "hq",
+          "label": "Oversampling",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "2×",
+            "4×"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "stereo": {
+      "name": "Stereo",
+      "params": [
+        {
+          "def": 100.0,
+          "id": "width",
+          "label": "Width",
+          "log": false,
+          "max": 200.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "spread",
+          "label": "Spread",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "bass",
+          "label": "Bass mono",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 120.0,
+          "id": "bassf",
+          "label": "Mono below",
+          "log": true,
+          "max": 500.0,
+          "min": 40.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "gain",
+          "label": "Gain",
+          "log": false,
+          "max": 24.0,
+          "min": -60.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "pan",
+          "label": "Pan",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "invl",
+          "label": "Invert L",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "invr",
+          "label": "Invert R",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "swap",
+          "label": "Swap L/R",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "tune": {
+      "name": "Pitch Correct",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "key",
+          "label": "Key",
+          "log": false,
+          "max": 11.0,
+          "min": 0.0,
+          "options": [
+            "C",
+            "C#",
+            "D",
+            "D#",
+            "E",
+            "F",
+            "F#",
+            "G",
+            "G#",
+            "A",
+            "A#",
+            "B"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "scale",
+          "label": "Scale",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "Chromatic",
+            "Major",
+            "Minor",
+            "Maj pent",
+            "Min pent"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 20.0,
+          "id": "retune",
+          "label": "Retune",
+          "log": false,
+          "max": 400.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "humanize",
+          "label": "Humanize",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "flex",
+          "label": "Flex",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "vibrato",
+          "label": "Vibrato",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "transpose",
+          "label": "Transpose",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "st"
+        },
+        {
+          "def": 0.0,
+          "id": "formant",
+          "label": "Formant",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "st"
+        },
+        {
+          "def": 0.0,
+          "id": "voice",
+          "label": "Voice",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "Auto",
+            "Low male",
+            "Male",
+            "Female",
+            "Soprano"
+          ],
+          "unit": ""
+        }
+      ]
+    },
+    "voice": {
+      "name": "Voice",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "mode",
+          "label": "Mode",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "Transpose",
+            "Quantize",
+            "Robot"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "pitch",
+          "label": "Pitch",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "st"
+        },
+        {
+          "def": 0.0,
+          "id": "formant",
+          "label": "Formant",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "st"
+        },
+        {
+          "def": 0.0,
+          "id": "link",
+          "label": "Link",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "drive",
+          "label": "Drive",
+          "log": false,
+          "max": 30.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "out",
+          "label": "Output",
+          "log": false,
+          "max": 12.0,
+          "min": -24.0,
+          "unit": "dB"
+        }
+      ]
+    },
+    "warp": {
+      "name": "Warp",
+      "params": [
+        {
+          "def": 0.0,
+          "id": "tslot",
+          "label": "Time slot",
+          "log": false,
+          "max": 15.0,
+          "min": 0.0,
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "vslot",
+          "label": "Volume slot",
+          "log": false,
+          "max": 15.0,
+          "min": 0.0,
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "trig",
+          "label": "Trigger sync",
+          "log": false,
+          "max": 5.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "1/16",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1 takt"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "pos",
+          "label": "Position",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Song",
+            "Trigger"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "oneshot",
+          "label": "One-shot",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "hold",
+          "label": "Hold",
+          "log": false,
+          "max": 2.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "Poprzedni takt",
+            "Następny takt"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 100.0,
+          "id": "tmix",
+          "label": "Time mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "vmix",
+          "label": "Volume mix",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "att",
+          "label": "Attack",
+          "log": false,
+          "max": 500.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "rel",
+          "label": "Release",
+          "log": false,
+          "max": 1000.0,
+          "min": 0.0,
+          "unit": "ms"
+        },
+        {
+          "def": 0.0,
+          "id": "tns",
+          "label": "Tension",
+          "log": false,
+          "max": 100.0,
+          "min": -100.0,
+          "unit": "%"
+        },
+        {
+          "def": 1.0,
+          "id": "click",
+          "label": "Click reduction",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1.0,
+          "id": "attack",
+          "label": "Attack protect",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 1.0,
+          "id": "dc",
+          "label": "DC removal",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        }
+      ]
+    }
+  }
+}

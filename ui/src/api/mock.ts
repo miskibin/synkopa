@@ -1,6 +1,7 @@
 // In-browser fake engine, used when the page is not running inside Tauri.
 // Holds the demo project, applies ops with undo/gestures, plays a fake transport and
 // streams binary telemetry frames (encoded exactly like the real ones).
+import { filterEnvStep, gateStep } from './mockGateFilter';
 import { askUrl, DISCORD_URL, MAX_ASK_URL, type AskService } from '../lib/askLink';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
@@ -644,6 +645,41 @@ export class MockBackend implements Backend {
       if (fx.type === 'comp') { meters[0] = Math.max(-120, inDb); meters[1] = keyed ? 1 : 0; }
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + gr + (pr.gain ?? 0);
       out = level * dbg(gr);
+    } else if (fx.type === 'gate') {
+      // dsp::gate meters: [0] detector dBFS, [1] gain dB, [2] state (0 closed, 1 open, 2 hold, 3 closing), [3] keyed.
+      // The detector hears the key (a kick every beat) or the insert's level; hysteresis, a release in dB.
+      const keyed = fx.key != null;
+      const keyDb = playing ? -4 + 20 * Math.log10(Math.max(1e-6, pulse)) : -120;
+      const det = keyed ? keyDb : lvDb;
+      const gs = { state: sim.held, hold: sim.corr, gr: sim.gr };
+      gr = gateStep(pr, det, dt, gs);
+      sim.held = gs.state; sim.corr = gs.hold; sim.gr = gs.gr;
+      meters[0] = Math.max(-120, det); meters[1] = gr; meters[2] = sim.held; meters[3] = keyed ? 1 : 0;
+      for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + gr;
+      out = level * dbg(gr);
+    } else if (fx.type === 'filter') {
+      // dsp::filter meters: [0]/[1] cutoff left/right Hz, [2] envelope 0..1, [3] LFO phase, [4] DJ wet, [5] clip, [6] keyed
+      const synced = (pr.sync ?? 1) >= 0.5, div = [0.25, 0.5, 1, 2, 4, 8, 16, 32][Math.round(pr.div ?? 2)] ?? 1;
+      const ph = synced ? (((beat / div) % 1) + 1) % 1 : (t * (pr.rate ?? 1)) % 1;
+      const shape = Math.round(pr.shape ?? 0);
+      const lfo = (x: number) => {
+        const q = ((x % 1) + 1) % 1;
+        return shape === 1 ? (q < 0.25 ? 4 * q : q < 0.75 ? 2 - 4 * q : 4 * q - 4) : shape === 2 ? 2 * q - 1 : shape === 3 ? 1 - 2 * q
+          : shape === 4 ? (q < 0.5 ? 1 : -1) : shape === 5 ? Math.sin(Math.floor(synced ? beat / div : t * (pr.rate ?? 1)) * 12.9898) : Math.sin(2 * Math.PI * q);
+      };
+      const keyed = fx.key != null, keyDb = playing ? -4 + 20 * Math.log10(Math.max(1e-6, pulse)) : -120;
+      const env = sim.center = filterEnvStep(pr, keyed ? keyDb : lvDb, dt, sim.center);
+      const type = Math.round(pr.type ?? 1);
+      const dj = clamp((pr.dj ?? 0) / 100, -1, 1), m = Math.abs(dj), tt = clamp((m - 0.01) / 0.99, 0, 1);
+      const base = type === 5 ? (dj < 0 ? 20000 * Math.pow(2, -9.966 * tt) : 20 * Math.pow(2, 9.966 * tt)) : pr.cutoff ?? 1600;
+      const st = (pr.stereo ?? 0) / 360;
+      for (let c = 0; c < 2; c++) meters[c] = clamp(base * Math.pow(2, (pr.lfo ?? 0) * lfo(ph + (c ? st : 0)) + (pr.env ?? 0) * env), 16, 21000);
+      meters[2] = env; meters[3] = ph; meters[4] = type === 5 ? clamp((m - 0.01) / 0.04, 0, 1) : 1; meters[5] = 0; meters[6] = keyed ? 1 : 0;
+      const fc = meters[0];
+      for (let k = 0; k < SPEC_BANDS; k++) {
+        const r = BAND_F[k] / fc, hp = type === 2 || (type === 5 && dj > 0);
+        specOut[k] = specIn[k] - (hp ? 24 * Math.max(0, -Math.log2(r)) : type === 3 ? 12 * Math.abs(Math.log2(r)) : type === 4 ? 0 : 24 * Math.max(0, Math.log2(r)));
+      }
     } else if (fx.type === 'reverb') {
       const hi = pr.hi ?? 8000, lo = pr.lo ?? 120, wet = 20 * Math.log10(Math.max(1e-3, (pr.mix ?? 25) / 100));
       const sustain = 6 * Math.log10(1 + (pr.size ?? 2));

@@ -47,7 +47,7 @@ export function canSend(p: Pick<Project, 'inserts'>, from: Id, to: Id): boolean 
 }
 
 /** Effects that can listen to another insert (`Fx.key`). Mirrors `FxKind::takes_key`. */
-export const takesKey = (type: FxKind) => type === 'comp';
+export const takesKey = (type: FxKind) => type === 'comp' || type === 'gate' || type === 'filter';
 
 /** The inserts whose sound drives an effect on `m` (its sidechains), without repeats. */
 export const keysOf = (m: Insert): Id[] => [...new Set(m.fx.flatMap(f => (f.key != null ? [f.key] : [])))];
@@ -56,7 +56,7 @@ export const keysOf = (m: Insert): Id[] => [...new Set(m.fx.flatMap(f => (f.key 
 export function keyError(p: Pick<Project, 'inserts'>, on: Id, fx: Pick<Fx, 'type' | 'key'>): string | null {
   const k = fx.key;
   if (k == null) return null;
-  if (!takesKey(fx.type)) return 'only a Compressor takes a sidechain (`key`)';
+  if (!takesKey(fx.type)) return 'only a Compressor, Gate or Filter takes a sidechain (`key`)';
   if (k === 0) return 'the master cannot be a sidechain: it is processed last';
   if (k === on) return 'a sidechain is another insert (an effect hears its own insert without one)';
   if (!p.inserts.some(m => m.id === k)) return `no insert with id ${k}`;
