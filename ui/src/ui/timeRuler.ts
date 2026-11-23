@@ -13,23 +13,15 @@ import { rgba, T } from './theme';
 /** Ruler height (px). */
 export const RULER_H = 26;
 
+const BEAT_LABEL_MIN_PX = 48;
+const SIXTEENTH_TICK_MIN_PX = 16;
+const BAR_FONT = '600 12px "Geist Mono Variable", "Geist Mono", monospace';
+const BEAT_FONT = '500 10px "Geist Mono Variable", "Geist Mono", monospace';
+
 /**
  * Draws the ruler `W` px wide: beat `b` at x = b × bw − offX. Bar numbers count from beat 0
  * (bar 1); `loop` is the green band, `start` the start marker (none: not drawn).
  */
-/** The finest unit the ruler names besides bars, in beats: 1 (beats) once a beat is 48 px wide, ¼ (16ths) at 48 px a 16th; 0 = bars only. */
-export function rulerSubdivision(bw: number): number {
-  return bw * 0.25 >= 48 ? 0.25 : bw >= 48 ? 1 : 0;
-}
-
-/** The ruler's name for beat `b` (on a beat or a 16th): "5.2", "5.2.3"; empty on a bar line (the bar number is drawn there). */
-export function rulerLabel(b: number): string {
-  const step = Math.round(b * 4);
-  const bar = Math.floor(step / 16), beat = Math.floor((step % 16) / 4), six = step % 4;
-  if (beat === 0 && six === 0) return '';
-  return six ? `${bar + 1}.${beat + 1}.${six + 1}` : `${bar + 1}.${beat + 1}`;
-}
-
 export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, bw: number, loop: BeatRange | null | undefined, start: number | null, H = RULER_H) {
   g.fillStyle = T.rulerBg; g.fillRect(0, 0, W, H);
   if (!(bw > 0)) return;
@@ -37,33 +29,35 @@ export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, 
   const x0 = offX, x1 = offX + W;
   if (loop) {
     g.fillStyle = rgba(T.green, 0.16); g.fillRect(loop.a * bw, 0, (loop.b - loop.a) * bw, H);
-    g.fillStyle = T.green; g.fillRect(Math.round(loop.a * bw), 0, 1, H); g.fillRect(Math.round(loop.b * bw) - 1, 0, 1, H);
   }
-  // beat ticks along the bottom (when they are not crammed together)
-  g.fillStyle = T.fg6;
-  if (bw >= 3) for (let b = Math.max(0, Math.floor(x0 / bw)); b * bw <= x1; b++) g.fillRect(Math.round(b * bw), H - 5, 1, 5);
+  // Sixteenths have short ticks. Only beats and bars have numbers.
+  const sixteenthW = bw / 4;
+  if (sixteenthW >= SIXTEENTH_TICK_MIN_PX) {
+    g.fillStyle = T.fg6;
+    for (let s = Math.max(0, Math.floor(x0 / sixteenthW)); s * sixteenthW <= x1; s++) {
+      if (s % 4) g.fillRect(Math.round(s * sixteenthW), H - 4, 1, 4);
+    }
+  }
+  if (bw >= 3) {
+    g.font = BEAT_FONT;
+    for (let b = Math.max(0, Math.floor(x0 / bw)); b * bw <= x1; b++) {
+      const x = Math.round(b * bw);
+      g.fillStyle = T.fg5; g.fillRect(x, H - 8, 1, 8);
+      if (bw >= BEAT_LABEL_MIN_PX && b % 4) {
+        g.fillStyle = T.fg4;
+        g.fillText(`${Math.floor(b / 4) + 1}.${b % 4 + 1}`, x + 4, H - 11);
+      }
+    }
+  }
   const barW = bw * 4, barStep = barW < 4 ? 32 : barW < 9 ? 16 : barW < 16 ? 8 : barW < 36 ? 4 : barW < 64 ? 2 : 1;
-  g.font = '500 10px "Geist Mono Variable", "Geist Mono", monospace';
+  g.font = BAR_FONT;
   for (let bar = Math.max(0, Math.floor(x0 / barW / barStep) * barStep); bar * barW <= x1; bar += barStep) {
     const x = Math.round(bar * barW);
-    g.fillStyle = T.fg6; g.fillRect(x, 0, 1, H);
-    g.fillStyle = T.rulerText; g.fillText(String(bar + 1), x + 4, H - 11);
+    g.fillStyle = T.fg4; g.fillRect(x, 0, 1, H);
+    g.fillStyle = T.fgHi; g.fillText(String(bar + 1), x + 4, H - 11);
   }
-  // zoomed in past a bar per screen: beats ("5.2") and then 16ths ("5.2.3") are named too
-  const sub = rulerSubdivision(bw);
-  if (sub) {
-    const stepPx = bw * sub;
-    g.fillStyle = T.fg6;
-    if (sub < 1) for (let k = Math.max(0, Math.floor(x0 / stepPx)); k * stepPx <= x1; k++) g.fillRect(Math.round(k * stepPx), H - 3, 1, 3);
-    g.fillStyle = T.fg4;
-    for (let k = Math.max(0, Math.floor(x0 / stepPx)); k * stepPx <= x1; k++) {
-      const label = rulerLabel(k * sub);
-      if (!label) continue;
-      // a 16th inside a beat shows only its own number, dimmer: the beat's label to its left already names the bar and beat
-      const six = sub < 1 ? k % 4 : 0;
-      g.fillStyle = six ? T.fg6 : T.fg4;
-      g.fillText(six ? String(six + 1) : label, Math.round(k * stepPx) + 4, H - 11);
-    }
+  if (loop) {
+    g.fillStyle = T.green; g.fillRect(Math.round(loop.a * bw), 0, 1, H); g.fillRect(Math.round(loop.b * bw) - 1, 0, 1, H);
   }
   if (start != null) {
     const sx = start * bw;

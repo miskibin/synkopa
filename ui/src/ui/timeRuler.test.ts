@@ -1,21 +1,36 @@
-import { describe, expect, it } from 'vitest';
-import { rulerDown, rulerLabel, rulerSubdivision, type RulerHost } from './timeRuler';
+import { describe, expect, it, vi } from 'vitest';
+import { drawRuler, rulerDown, RULER_H, type RulerHost } from './timeRuler';
+import { T } from './theme';
 
-describe('ruler labels when zoomed in', () => {
-  it('names beats, then 16ths, once they have room', () => {
-    expect(rulerSubdivision(22)).toBe(0);
-    expect(rulerSubdivision(48)).toBe(1);
-    expect(rulerSubdivision(191)).toBe(1);
-    expect(rulerSubdivision(192)).toBe(0.25);
-    expect(rulerSubdivision(1024)).toBe(0.25);
+describe('ruler labels and ticks', () => {
+  const render = (bw: number, offX = 0) => {
+    const labels: { text: string; font: string; color: string }[] = [];
+    const g = {
+      fillRect: vi.fn(), save: vi.fn(), translate: vi.fn(), restore: vi.fn(),
+      fillStyle: '', font: '',
+      fillText(text: string) { labels.push({ text, font: this.font, color: this.fillStyle }); },
+    };
+    drawRuler(g as unknown as CanvasRenderingContext2D, offX, 4 * bw, bw, null, null);
+    return { labels, rects: g.fillRect };
+  };
+
+  it('shows beat labels and shorter subdivision ticks as space allows', () => {
+    const zoomedOut = render(22);
+    expect(zoomedOut.labels.map(l => l.text)).toEqual(['1', '2']);
+    const beatZoom = render(48);
+    expect(beatZoom.labels.map(l => l.text)).toEqual(['1.2', '1.3', '1.4', '1', '2']);
+    expect(beatZoom.rects).not.toHaveBeenCalledWith(12, RULER_H - 4, 1, 4);
+    const highZoom = render(192);
+    expect(highZoom.labels).toEqual(beatZoom.labels);
+    expect(highZoom.rects).toHaveBeenCalledWith(48, RULER_H - 4, 1, 4);
+    expect(highZoom.rects).toHaveBeenCalledWith(192, RULER_H - 8, 1, 8);
   });
-  it('labels bar.beat and bar.beat.16th, leaving bar lines to the bar number', () => {
-    expect(rulerLabel(0)).toBe('');
-    expect(rulerLabel(16)).toBe('');
-    expect(rulerLabel(17)).toBe('5.2');
-    expect(rulerLabel(17.75)).toBe('5.2.4');
-    expect(rulerLabel(0.25)).toBe('1.1.2');
-    expect(rulerLabel(3.5)).toBe('1.4.3');
+
+  it('keeps bar labels prominent and counts beats correctly after scrolling', () => {
+    const { labels } = render(192, 16.5 * 192);
+    expect(labels).toContainEqual({ text: '5', font: expect.stringContaining('600 12px'), color: T.fgHi });
+    expect(labels).toContainEqual({ text: '5.2', font: expect.stringContaining('500 10px'), color: T.fg4 });
+    expect(labels.map(l => l.text)).toEqual(['5.2', '5.3', '5.4', '5', '6']);
   });
 });
 
