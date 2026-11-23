@@ -212,6 +212,53 @@ fn control_project(d: &Path) -> (Headless, u64, u64) {
     (h, r["clipIds"][0].as_u64().unwrap(), r["clipIds"][1].as_u64().unwrap())
 }
 
+/// A re-route that lands while the action runs: the clip's track moves to insert 2, so the
+/// chain's captured insert (1) is stale and the apply's guard must refuse it.
+fn reroute_to_insert_2(h: &Headless, clip: u64) {
+    let p = h.engine().project();
+    let t = p.tracks[p.clips.iter().find(|c| c.id == clip).unwrap().track as usize].clone();
+    h.engine().apply(&[wave_engine::Op::PutTrack { track: wave_engine::Track { insert: 2, ..t } }], false, None).unwrap();
+}
+
+#[test]
+fn a_reroute_during_the_bake_conflicts_and_leaves_the_old_insert_alone() {
+    let d = tmp("reroute-bake");
+    let (h, clip, beat) = control_project(&d);
+    route_to_insert(&h, clip, 1);
+
+    let seen: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let e = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, false, None, None, &|s| {
+        seen.lock().unwrap().push(s.to_owned());
+        if s == "bake" {
+            reroute_to_insert_2(&h, clip);
+        }
+    })
+    .unwrap_err();
+    assert!(e.contains("REVISION_CONFLICT"), "{e}");
+    assert!(e.contains("already baked"), "{e} — the caller must learn the audio changed");
+    assert_eq!(*seen.lock().unwrap(), ["plan", "bake", "chain"], "every stage still reports");
+    assert!(h.engine().project().insert(1).unwrap().fx.is_empty(), "the stale chain never landed");
+}
+
+#[test]
+fn a_reroute_without_a_bake_conflicts_the_same_way() {
+    let d = tmp("reroute-nobake");
+    let (h, clip, beat) = control_project(&d);
+    route_to_insert(&h, clip, 1);
+
+    let seen: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let e = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, true, None, None, &|s| {
+        seen.lock().unwrap().push(s.to_owned());
+        if s == "chain" {
+            reroute_to_insert_2(&h, clip);
+        }
+    })
+    .unwrap_err();
+    assert!(e.contains("REVISION_CONFLICT"), "{e}");
+    assert!(!e.contains("already baked"), "{e} — no bake, nothing baked to report");
+    assert!(h.engine().project().insert(1).unwrap().fx.is_empty(), "the stale chain never landed");
+}
+
 #[test]
 fn the_session_command_and_the_shared_action_answer_alike() {
     let d = tmp("parity");

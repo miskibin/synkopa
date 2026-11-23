@@ -452,10 +452,7 @@ pub fn export_in_place(
     progress: &mut dyn FnMut(wave_engine::RenderProgress),
 ) -> R<Value> {
     app.wait_keys()?;
-    let r = app
-        .engine()
-        .export_in_place(ids, range, IN_PLACE_RATE, cancel, progress)
-        .map_err(|x| x.to_string())?;
+    let r = app.engine().export_in_place(ids, range, IN_PLACE_RATE, cancel, progress).map_err(|x| x.to_string())?;
     Ok(json!({ "sourceId": r.source_id, "clipId": r.clip_id, "track": r.track, "revision": app.engine().revision() }))
 }
 
