@@ -457,16 +457,17 @@ async fn flatten_comp(app: St<'_>, clip_id: u64) -> R<Value> {
     Ok(json!({ "sourceId": id }))
 }
 
-/// FL's *Export in place*: the selected clips rendered to one audio clip on a new track below
-/// them (originals muted, one undo step). Off the IPC thread; `export_cancel` stops it.
+/// FL's *Export in place*: the selected clips (or, with `range`, the part of the arrangement in
+/// that time selection) rendered to one audio clip on a new track below them (originals muted,
+/// one undo step). Off the IPC thread; `export_cancel` stops it.
 #[tauri::command]
-async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>) -> R<Value> {
+async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>, range: Option<(f64, f64)>) -> R<Value> {
     app.export_cancel.store(false, Ordering::Relaxed);
     let a = app.inner().clone();
     let r = tauri::async_runtime::spawn_blocking(move || {
         // a bounce must not start while the piano is still loading (it would be silent)
         keys::wait(&a).map_err(wave_engine::EngineError::Msg)?;
-        a.engine.export_in_place(&clip_ids, actions::IN_PLACE_RATE, &a.export_cancel, &mut |_| {})
+        a.engine.export_in_place(&clip_ids, range, actions::IN_PLACE_RATE, &a.export_cancel, &mut |_| {})
     })
     .await
     .map_err(es)?;

@@ -169,6 +169,7 @@ synkopa midi import lead.mid --parts 1 --pattern 3 --ch 1004 --replace   # one p
 synkopa midi export --out song.mid [--pattern 3]         # the song or one pattern, with tempo
 synkopa make-unique --clip 5012                           # own copy of the sample on a new track (same routing)
 synkopa export-in-place --clip 5012,5013                 # render them (with mixer effects) to one clip on a new track below
+synkopa export-in-place --from 8 --to 24                 # everything playing in beats 8..24 (clips split at the edges)
 synkopa stems --clip 5012 [--only vocals,drums]           # extract stems: one track per stem below the clip, clip muted
 synkopa stems [--install]                                 # stem model state; --install downloads it (90 MB, MIT, SHA-256 checked)
 synkopa apply --file edit.json --label "Busier hats"

@@ -509,11 +509,39 @@ async function makeUniqueAudio(clip: Clip) {
  */
 export async function exportInPlace(clip?: Clip) {
   const ids = clip && !U.sel.includes(clip.id) ? [clip.id] : S.project.clips.filter(c => U.sel.includes(c.id) && c.kind !== 'auto').map(c => c.id);
+  // nothing selected but a loop range drawn on the ruler: that time selection is what goes (FL)
+  if (!ids.length && !clip && S.project.loop) return exportRangeInPlace();
   if (!ids.length) { say(t('d.act.inPlaceNone')); return; }
+  return runInPlace(ids, undefined, t('d.act.inPlaceBusy', { n: ids.length }));
+}
+/** The selected clips that overlap the loop range, or with none selected everything that plays there. */
+export function rangeInPlaceClips(): Clip[] {
+  const l = S.project.loop; if (!l) return [];
+  const anySolo = S.project.tracks.some(x => x.solo);
+  const sel = S.project.clips.filter(c => U.sel.includes(c.id) && c.kind !== 'auto');
+  const audible = (c: Clip) => { const tr = S.project.tracks[c.track]; return !c.muted && !!tr && !tr.muted && (!anySolo || tr.solo); };
+  return (sel.length ? sel : S.project.clips.filter(c => c.kind !== 'auto' && audible(c)))
+    .filter(c => c.start < l.b - 1e-6 && c.start + c.len > l.a + 1e-6);
+}
+/**
+ * *Export in place* of the loop range drawn on the Playlist ruler (FL's time selection): what plays
+ * inside it — the selected clips, or with none selected every audible clip — rendered to one audio
+ * clip on a new track below; clips crossing the range's edges are split there and only their inside
+ * part is muted. One undo step.
+ */
+export async function exportRangeInPlace() {
+  const l = S.project.loop;
+  if (!l) { say(t('d.act.inPlaceNoRange')); return; }
+  const n = rangeInPlaceClips().length;
+  if (!n) { say(t('d.act.inPlaceRangeEmpty')); return; }
+  const ids = S.project.clips.filter(c => U.sel.includes(c.id) && c.kind !== 'auto').map(c => c.id);
+  return runInPlace(ids, [l.a, l.b], t('d.act.inPlaceRangeBusy', { n, from: fmtPos(l.a), to: fmtPos(l.b) }));
+}
+async function runInPlace(ids: Id[], range: [number, number] | undefined, busy: string) {
   endWheelGestures();
-  say(t('d.act.inPlaceBusy', { n: ids.length }));
+  say(busy);
   try {
-    const r = await enqueue(() => be().exportInPlace(ids));
+    const r = await enqueue(() => be().exportInPlace(ids, range));
     if ('cancelled' in r) { say(t('d.act.inPlaceCancelled')); return; }
     await resync();
     setU({ sel: [r.clipId], cur: { kind: 'audio', ref: r.sourceId, clipId: null } });

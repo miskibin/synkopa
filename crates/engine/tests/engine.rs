@@ -954,7 +954,7 @@ fn export_in_place_renders_the_selection_onto_a_new_track() {
     let (e, c) = lone_audio_clip();
     let never = std::sync::atomic::AtomicBool::new(false);
     let tracks = e.project().tracks.len();
-    let r = e.export_in_place(&[c.id], 48000, &never, &mut |_| {}).unwrap();
+    let r = e.export_in_place(&[c.id], None, 48000, &never, &mut |_| {}).unwrap();
     let p = e.project();
     assert_eq!(p.tracks.len(), tracks + 1);
     assert_eq!(r.track, c.track + 1, "the new track goes right below the selection");
@@ -1001,7 +1001,7 @@ fn one_bar_through(kind: FxKind, set: &[(&str, f64)]) -> (Arc<Engine>, Clip) {
 fn assert_in_place_keeps_tail(e: &Engine, c: &Clip) {
     let never = AtomicBool::new(false);
     let others: Vec<Clip> = e.project().clips.iter().filter(|x| x.id != c.id).cloned().collect();
-    let r = e.export_in_place(&[c.id], 48000, &never, &mut |_| {}).unwrap();
+    let r = e.export_in_place(&[c.id], None, 48000, &never, &mut |_| {}).unwrap();
     let p = e.project();
     let made = p.clips.iter().find(|x| x.id == r.clip_id).unwrap().clone();
     assert_eq!(made.start, c.start);
@@ -1038,18 +1038,58 @@ fn export_in_place_keeps_delay_echoes() {
 }
 
 #[test]
+fn export_in_place_of_a_time_selection_splits_the_clips_at_its_edges() {
+    // a one-bar tone with no effects, rendered only over its middle half
+    let (e, c) = one_bar_through(FxKind::Eq, &[]);
+    let never = AtomicBool::new(false);
+    let (a, b) = (c.start + c.len * 0.25, c.start + c.len * 0.75);
+    let before_n = e.project().clips.len();
+    // nothing selected: what plays in the range goes
+    let r = e.export_in_place(&[], Some((a, b)), 48000, &never, &mut |_| {}).unwrap();
+    let p = e.project();
+    let made = p.clips.iter().find(|x| x.id == r.clip_id).unwrap();
+    assert!((made.start - a).abs() < 1e-9, "the render starts at the range");
+    assert!((made.len - (b - a)).abs() < 0.05, "and covers only the range ({} vs {})", made.len, b - a);
+    // the original became three pieces: before (plays), inside (muted), after (plays)
+    let pieces: Vec<&Clip> = {
+        let mut v: Vec<&Clip> = p.clips.iter().filter(|x| x.source == c.source && x.kind == c.kind && x.id != r.clip_id).collect();
+        v.sort_by(|x, y| x.start.total_cmp(&y.start));
+        v
+    };
+    assert_eq!(p.clips.len(), before_n + 3, "two outer pieces and the rendered clip");
+    assert_eq!(pieces.len(), 3);
+    assert_eq!((pieces[0].start, pieces[0].len, pieces[0].offset, pieces[0].muted), (c.start, a - c.start, c.offset, false));
+    assert_eq!((pieces[1].start, pieces[1].len, pieces[1].muted), (a, b - a, true));
+    assert!((pieces[1].offset - (c.offset + a - c.start)).abs() < 1e-9);
+    assert_eq!((pieces[2].start, pieces[2].muted), (b, false));
+    assert!((pieces[2].start + pieces[2].len - (c.start + c.len)).abs() < 1e-9);
+    assert!((pieces[2].offset - (c.offset + b - c.start)).abs() < 1e-9);
+    // the arrangement still sounds the same way through the whole bar, with no gap or doubling
+    let whole = rms(&e.render(c.start, c.start + c.len, 0.0, 48000).unwrap());
+    assert!(whole > 1e-2, "the bar still sounds ({whole})");
+    assert!(e.undo());
+    assert_eq!(e.project().clips.len(), before_n, "one undo step takes it all back");
+    // a range where nothing plays is refused, and so is an empty one
+    let end = c.start + c.len;
+    assert!(e.export_in_place(&[], Some((end + 4.0, end + 8.0)), 48000, &never, &mut |_| {}).is_err());
+    assert!(e.export_in_place(&[], Some((a, a)), 48000, &never, &mut |_| {}).is_err());
+    // a selected clip outside the range is not exported
+    assert!(e.export_in_place(&[c.id], Some((end + 4.0, end + 8.0)), 48000, &never, &mut |_| {}).is_err());
+}
+
+#[test]
 fn export_in_place_refuses_an_empty_or_silent_selection() {
     let (e, c) = lone_audio_clip();
     let never = std::sync::atomic::AtomicBool::new(false);
-    assert!(e.export_in_place(&[], 48000, &never, &mut |_| {}).is_err());
+    assert!(e.export_in_place(&[], None, 48000, &never, &mut |_| {}).is_err());
     let t = e.project().tracks[c.track as usize].clone();
     let ins = e.project().insert(t.insert).unwrap().clone();
     e.apply(&[Op::PutInsert { insert: Insert { muted: true, ..ins } }], false, None).unwrap();
     let rev = e.revision();
-    assert!(e.export_in_place(&[c.id], 48000, &never, &mut |_| {}).is_err(), "a muted insert renders silent");
+    assert!(e.export_in_place(&[c.id], None, 48000, &never, &mut |_| {}).is_err(), "a muted insert renders silent");
     assert_eq!(e.revision(), rev, "nothing changed");
     let cancel = std::sync::atomic::AtomicBool::new(true);
-    assert!(matches!(e.export_in_place(&[c.id], 48000, &cancel, &mut |_| {}), Err(EngineError::Cancelled)));
+    assert!(matches!(e.export_in_place(&[c.id], None, 48000, &cancel, &mut |_| {}), Err(EngineError::Cancelled)));
 }
 
 #[test]
