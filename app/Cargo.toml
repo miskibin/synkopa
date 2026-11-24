@@ -25,6 +25,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 wave-engine.workspace = true
+tauri-plugin-mcp-bridge = "0.13"
 wave-rmvpe.workspace = true
 wave-stems.workspace = true
 wave-chords.workspace = true

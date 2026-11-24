@@ -19,3 +19,6 @@ pub const ERR_NO_STEM_MODEL: &str = "STEM_MODEL_MISSING:";
 /// Chord detection needs the ChordMini model, which is not installed (`app/src/chords_actions.rs`):
 /// the tempo and key dialog offers the download on it.
 pub const ERR_NO_CHORD_MODEL: &str = "CHORD_MODEL_MISSING:";
+/// A long render the caller aborted (`EngineError::Cancelled` renders as exactly this string;
+/// `export_in_place`, and the commands that map it to a `{cancelled: true}` reply).
+pub const ERR_CANCELLED: &str = "cancelled";

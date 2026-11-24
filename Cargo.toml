@@ -20,6 +20,8 @@ members = [
     "crates/demo-synth",
     "crates/stems",
     "crates/chords",
+    # the vendored automation bridge: a member so its handshake regression test runs in CI
+    "crates/vendor/mcp-bridge",
 ]
 
 [workspace.package]
@@ -72,3 +74,7 @@ opt-level = 3
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+[patch.crates-io]
+# the vendored bridge refuses Origin-bearing handshakes (see crates/vendor/mcp-bridge/README.synkopa.md)
+tauri-plugin-mcp-bridge = { path = "crates/vendor/mcp-bridge" }

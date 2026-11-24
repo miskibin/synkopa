@@ -130,11 +130,19 @@ pub const DUCK_PARAMS: [(&str, f64); 6] = [("thr", -24.0), ("ratio", 6.0), ("att
 ///   a sidechain gets it, else a Compressor set up for ducking is added at the end. `off`:
 ///   every Compressor on `to` keyed from `from` goes back to its own input.
 ///
-/// One undo step. Returns the Compressor (`null` after `off` without `fx`), whether it was
-/// added, and the revision.
-pub fn sidechain(app: &dyn Host, fx: Option<u64>, from: Option<u64>, to: Option<u64>, off: bool, if_revision: Option<u64>) -> R<Value> {
+/// One undo step named `label`. Returns the Compressor (`null` after `off` without `fx`),
+/// whether it was added, and the revision.
+pub fn sidechain(
+    app: &dyn Host,
+    fx: Option<u64>,
+    from: Option<u64>,
+    to: Option<u64>,
+    off: bool,
+    if_revision: Option<u64>,
+    label: Option<&str>,
+) -> R<Value> {
     let p = app.engine().project();
-    let apply = |ops: &[Op]| app.engine().apply(ops, false, if_revision).map_err(|e| e.to_string());
+    let apply = |ops: &[Op]| app.engine().apply_labeled(ops, false, if_revision, label).map_err(|e| e.to_string());
     if let Some(fx_id) = fx {
         let (m, f) = p.find_fx(fx_id).ok_or(format!("no effect {fx_id}"))?;
         let mut f = f.clone();
@@ -273,6 +281,195 @@ fn chain_ops(e: &Engine, insert: u64, plan: &wave_engine::autovocal::AutoVocalPl
         ids.push(id);
     }
     (ops, ids)
+}
+
+/// "Auto Vocal" as one action — the whole journey the app's button and `synkopa auto-vocal`
+/// share: measure the clip (the beat clip joins the key analysis), bake the Vocal Rider into
+/// the audio unless it is already there or `no_bake`, and put the calibrated chain on the
+/// clip's insert (same-kind effects are replaced, an EQ in front stays). The bake and the
+/// chain are two undo steps; `label` names the chain's step (the bake keeps the engine's
+/// own). `progress` reports the stages ("plan", "bake", "chain") for front doors that show
+/// them. A stale `if_revision` refuses before the bake, not after half the job; the apply's
+/// own guard skips the bake's own step. The reply carries the plan summary the button's
+/// toast quotes (`key`, `spread`).
+#[allow(clippy::too_many_arguments)] // the verb's whole surface, one optional each
+pub fn auto_vocal(
+    app: &dyn Host,
+    clip: u64,
+    beat: Option<u64>,
+    style: wave_engine::autovocal::Style,
+    no_bake: bool,
+    if_revision: Option<u64>,
+    label: Option<&str>,
+    progress: &dyn Fn(&str),
+) -> R<Value> {
+    let e = app.engine();
+    app.ensure_pitch_model();
+    // the guard is checked at entry as well: a stale one refuses before the bake, not
+    // after half of the job is done
+    if let Some(r) = if_revision {
+        if e.revision() != r {
+            return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
+        }
+    }
+    // the insert and the revision it was read at are captured together, before the plan and
+    // the bake take their time: an edit that re-routes the clip meanwhile makes the apply's
+    // guard refuse, instead of the chain landing on the insert the clip no longer plays
+    let base = e.revision();
+    let insert = e.clip_insert(clip).ok_or("no such clip")?;
+    if insert == 0 {
+        return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
+    }
+    // every refusal is done: only now does the journey report its first stage, so a refused
+    // run reports none (the mock and the UI's stage list count the same way)
+    progress("plan");
+    let plan = e.auto_vocal_plan(clip, beat, style, !no_bake).map_err(|x| x.to_string())?;
+    // the rider is rendered into the audio instead of living on the insert (no playback
+    // delay); a clip that was baked before is not baked twice (same guard as the app)
+    let mut baked = None;
+    if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, clip)) {
+        progress("bake");
+        // the engine checks the guard under the commit lock: a project that moved on
+        // while the rider rendered refuses the bake before a source is written
+        let (s, c) = e.bake_rider(clip, &rb.params, if_revision).map_err(|x| x.to_string())?;
+        baked = Some(json!({ "sourceId": s, "clipId": c }));
+    }
+    progress("chain");
+    let (ops, fx_ids) = chain_ops(e, insert, &plan);
+    // the apply is guarded on the revision captured before the plan: our own bake moved
+    // the project one step past it (a foreign change still conflicts), the caller's own
+    // guard counts from the entry check instead
+    let guard = Some(if_revision.unwrap_or(base) + u64::from(baked.is_some()));
+    if let Err(x) = e.apply_labeled(&ops, false, guard, label) {
+        // the bake is already committed (its own undo step): say so, or a retry skips it
+        // as already baked and the caller never learns the audio changed
+        return Err(match &baked {
+            Some(b) => format!(
+                "{x} (the rider was already baked into the clip: {b}, project now at revision {}; the effect chain was not added, run auto-vocal again to add it)",
+                e.revision()
+            ),
+            None => x.to_string(),
+        });
+    }
+    Ok(json!({
+        "revision": e.revision(), "clipId": clip, "insertId": insert, "style": plan.style,
+        "riderBaked": baked, "fxIds": fx_ids, "fxCount": plan.chain.iter().filter(|s| s.enabled).count(),
+        "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
+        "key": plan.analysis.key.as_ref().map(|k| k.name.clone()), "spread": plan.stages.iqr400_db,
+    }))
+}
+
+/// The RMVPE model download as one action, the button and `synkopa f0-model-install` share:
+/// install (SHA-256 checked inside `models::install`), activate, and remember why the model
+/// still cannot be used. `progress` reports (done, total) for front doors that show a bar.
+pub fn f0_model_install(app: &dyn Host, progress: &dyn Fn(u64, u64)) -> Result<crate::models::ModelStatus, String> {
+    if let Err(e) = crate::models::install(progress) {
+        app.set_model_error(Some(e.clone()));
+        return Err(e);
+    }
+    match crate::models::activate(app.engine()) {
+        Ok(true) => {
+            app.set_model_error(None);
+            Ok(crate::models::status(app.engine(), None))
+        }
+        Ok(false) => {
+            let m = "the model file is missing after the install".to_string();
+            app.set_model_error(Some(m.clone()));
+            Err(m)
+        }
+        Err(m) => {
+            app.set_model_error(Some(m.clone()));
+            Err(m)
+        }
+    }
+}
+
+/// The clip's pitch analysis, with the model ensured first — what the button, the CLI and
+/// `pitch inspect` all start from.
+pub fn pitch_analysis(app: &dyn Host, clip: u64) -> Result<std::sync::Arc<wave_engine::pitch::PitchAnalysis>, String> {
+    app.ensure_pitch_model();
+    app.engine().pitch_analysis(clip).map_err(|e| e.to_string())
+}
+
+/// The clip's tune-to-reference target, with the model ensured first.
+pub fn pitch_target(
+    app: &dyn Host,
+    clip: u64,
+    reference: Option<RefTune>,
+) -> Result<std::sync::Arc<wave_engine::reference::PitchTarget>, String> {
+    app.ensure_pitch_model();
+    app.engine().pitch_target(clip, reference).map_err(|e| e.to_string())
+}
+
+/// "Auto wokal"'s plan (read-only measure), with the model ensured first.
+pub fn vocal_plan(
+    app: &dyn Host,
+    clip: u64,
+    beat: Option<u64>,
+    style: wave_engine::autovocal::Style,
+    bake: bool,
+) -> Result<wave_engine::autovocal::AutoVocalPlan, String> {
+    app.ensure_pitch_model();
+    app.engine().auto_vocal_plan(clip, beat, style, bake).map_err(|e| e.to_string())
+}
+
+/// Tempo and key of a clip, or of the project's active audio clips.
+pub fn music_analysis(app: &dyn Host, clip: Option<u64>, exclude: Option<u64>) -> Result<wave_engine::music::MusicAnalysis, String> {
+    app.engine().music_analysis(clip, exclude).map_err(|e| e.to_string())
+}
+
+/// The plugin scan, with the project's plugins running live while it is read.
+pub fn plugin_scan(app: &dyn Host, rescan: bool) -> Result<crate::plugins::ScanResult, String> {
+    app.ensure_live_plugins();
+    Ok(app.plugins().scan(rescan))
+}
+
+/// A hosted plugin's parameters, with the project's plugins running live.
+pub fn plugin_params(app: &dyn Host, fx: u64) -> Result<Vec<crate::plugins::ParamInfo>, String> {
+    app.ensure_live_plugins();
+    app.plugins().params(fx)
+}
+
+/// Sets a hosted plugin parameter, with the project's plugins running live.
+pub fn plugin_set_param(app: &dyn Host, fx: u64, id: u32, value: f64) -> Result<(), String> {
+    app.ensure_live_plugins();
+    app.plugins().set_param(fx, id, value)
+}
+
+/// Renders the Vocal Rider into an audio clip's audio as a new source and swaps the clip onto
+/// it (one undo step; the original source stays). The button's journey step and `synkopa
+/// bake-rider` share it.
+pub fn bake_rider(app: &dyn Host, clip: u64, params: &std::collections::BTreeMap<String, f64>, if_revision: Option<u64>) -> R<Value> {
+    let (source, baked) = app.engine().bake_rider(clip, params, if_revision).map_err(|x| x.to_string())?;
+    Ok(json!({ "clipId": baked, "sourceId": source, "revision": app.engine().revision() }))
+}
+
+/// FL's *Export in place*: the selected clips rendered to one audio clip on a new track below
+/// them (originals muted, one undo step). A bounce waits for the Synkopa Keys piano first; a
+/// cancelled bounce comes back as the error [`wave_engine::errors::ERR_CANCELLED`].
+pub fn export_in_place(
+    app: &dyn Host,
+    ids: &[u64],
+    range: Option<(f64, f64)>,
+    cancel: &std::sync::atomic::AtomicBool,
+    progress: &mut dyn FnMut(wave_engine::RenderProgress),
+) -> R<Value> {
+    app.wait_keys()?;
+    let r = app.engine().export_in_place(ids, range, IN_PLACE_RATE, cancel, progress).map_err(|x| x.to_string())?;
+    Ok(json!({ "sourceId": r.source_id, "clipId": r.clip_id, "track": r.track, "revision": app.engine().revision() }))
+}
+
+/// FL's *Make unique*: the clips get their own copy of their source on a new track right below
+/// theirs (one undo step; other clips of the source are untouched).
+pub fn make_unique(app: &dyn Host, ids: &[u64]) -> R<Value> {
+    let r = app.engine().make_unique_audio(ids).map_err(|x| x.to_string())?;
+    Ok(json!({ "sourceId": r.source_id, "track": r.track, "insertId": r.insert_id, "revision": app.engine().revision() }))
+}
+
+/// The comp clip rendered to one audio source; the clip plays it instead (one undo step).
+pub fn flatten_comp(app: &dyn Host, clip: u64) -> R<Value> {
+    let id = app.engine().flatten_comp(clip).map_err(|x| x.to_string())?;
+    Ok(json!({ "clipId": clip, "sourceId": id, "revision": app.engine().revision() }))
 }
 
 pub fn set_param(app: &dyn Host, fx_id: u64, param: &str, value: f64, if_revision: Option<u64>) -> R<u64> {
@@ -1832,7 +2029,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "sidechain" => {
             let off = arg(a, "off").map(|v| v.as_bool().ok_or("`off` must be a boolean")).transpose()?.unwrap_or(false);
             let num = |k: &str| arg(a, k).and_then(Value::as_u64);
-            sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision)
+            // the CLI's file mode carries the label in the args (no session header field)
+            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
+            sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision, label)
         }
         "set_param" => {
             set_param(app, need_u64(a, "fxId")?, need_str(a, "param")?, opt_f64(a, "value").ok_or("`value` is required")?, if_revision)
@@ -1894,8 +2093,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 .iter()
                 .filter_map(as_index)
                 .collect();
-            let r = e.make_unique_audio(&ids).map_err(|x| x.to_string())?;
-            Ok(json!({ "sourceId": r.source_id, "track": r.track, "insertId": r.insert_id, "revision": e.revision() }))
+            make_unique(app, &ids)
         }
         "export_in_place" => {
             let range = match (opt_f64(a, "fromBeat"), opt_f64(a, "toBeat")) {
@@ -1908,23 +2106,16 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 None if range.is_some() => vec![],
                 None => return Err("`clipIds` (array of clip ids) or `fromBeat`/`toBeat` is required".into()),
             };
-            let r = e
-                .export_in_place(&ids, range, IN_PLACE_RATE, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
-                .map_err(|x| x.to_string())?;
-            Ok(json!({ "sourceId": r.source_id, "clipId": r.clip_id, "track": r.track, "revision": e.revision() }))
+            export_in_place(app, &ids, range, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
         }
-        "flatten_comp" => {
-            let clip = comp_clip(&e.project(), a)?;
-            let id = e.flatten_comp(clip.id).map_err(|x| x.to_string())?;
-            Ok(json!({ "clipId": clip.id, "sourceId": id, "revision": e.revision() }))
-        }
+        "flatten_comp" => flatten_comp(app, comp_clip(&e.project(), a)?.id),
         "comp_audition" => {
             let clip = comp_clip(&e.project(), a)?;
             e.audition(clip.source, arg(a, "take").and_then(as_index)).map_err(|x| x.to_string())?;
             Ok(json!({ "compId": clip.source, "audition": e.state().audition.get(&clip.source) }))
         }
         "pitch_analyze" => {
-            let an = e.pitch_analysis(need_u64(a, "clipId")?).map_err(|x| x.to_string())?;
+            let an = pitch_analysis(app, need_u64(a, "clipId")?)?;
             Ok(json!({ "rate": an.rate, "backend": an.backend, "notes": an.notes }))
         }
         "pitch_target" => {
@@ -1932,7 +2123,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 Some(v) => Some(serde_json::from_value::<RefTune>(v.clone()).map_err(|er| format!("BAD_ARGS: reference: {er}"))?),
                 None => None,
             };
-            let t = e.pitch_target(need_u64(a, "clipId")?, params).map_err(|x| x.to_string())?;
+            let t = pitch_target(app, need_u64(a, "clipId")?, params)?;
             if arg(a, "full").and_then(Value::as_bool).unwrap_or(false) {
                 return Ok(json!(&*t));
             }
@@ -1953,24 +2144,12 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "f0_model_install" => {
             // the download (~345 MB) is SHA-256 checked inside `install`; blocking is fine here —
             // session requests run on their own thread (the app path streams progress events instead)
-            crate::models::install(|_, _| {})?;
-            match crate::models::activate(e) {
-                Ok(true) => {
-                    app.set_model_error(None);
-                    Ok(json!(crate::models::status(e, None)))
-                }
-                Ok(false) => Err("the model file is missing after the install".into()),
-                Err(m) => {
-                    app.set_model_error(Some(m.clone()));
-                    Err(m)
-                }
-            }
+            f0_model_install(app, &|_, _| {}).map(|st| json!(st))
         }
         "music_analyze" => {
             let cid = arg(a, "clipId").and_then(as_index);
             let ex = arg(a, "excludeFx").and_then(as_index);
-            let an = e.music_analysis(cid, ex).map_err(|x| x.to_string())?;
-            Ok(json!(an))
+            Ok(json!(music_analysis(app, cid, ex)?))
         }
         "auto_vocal_plan" => {
             let cid = need_u64(a, "clipId")?;
@@ -1980,7 +2159,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 _ => wave_engine::autovocal::Style::Natural,
             };
             let bake = arg(a, "bakeRider").and_then(Value::as_bool).unwrap_or(false);
-            let plan = e.auto_vocal_plan(cid, beat, style, bake).map_err(|x| x.to_string())?;
+            let plan = vocal_plan(app, cid, beat, style, bake)?;
             Ok(json!(plan))
         }
         "bake_rider" => {
@@ -1989,62 +2168,21 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 Some(v) => serde_json::from_value(v.clone()).map_err(|er| format!("BAD_ARGS: params: {er}"))?,
                 None => Default::default(),
             };
-            let (source, clip) = e.bake_rider(cid, &params, if_revision).map_err(|x| x.to_string())?;
-            Ok(json!({ "clipId": clip, "sourceId": source, "revision": e.revision() }))
+            bake_rider(app, cid, &params, if_revision)
         }
         "auto_vocal" => {
             let cid = need_u64(a, "clipId")?;
-            // the guard is checked at entry as well: a stale one refuses before the bake, not
-            // after half of the job is done
-            if let Some(r) = if_revision {
-                if e.revision() != r {
-                    return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
-                }
-            }
-            let insert = e.clip_insert(cid).ok_or("no such clip")?;
-            if insert == 0 {
-                return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
-            }
+            let beat = arg(a, "beatClipId").and_then(as_index);
             let style = match arg(a, "style").and_then(Value::as_str) {
                 Some("hard") => wave_engine::autovocal::Style::Hard,
                 _ => wave_engine::autovocal::Style::Natural,
             };
-            let bake = !arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
-            let plan = e.auto_vocal_plan(cid, arg(a, "beatClipId").and_then(as_index), style, bake).map_err(|x| x.to_string())?;
-            // the rider is rendered into the audio instead of living on the insert (no playback
-            // delay); a clip that was baked before is not baked twice (same guard as the app)
-            let mut baked = None;
-            if let Some(rb) = plan.rider_bake.as_ref().filter(|_| !already_baked(e, cid)) {
-                // the engine checks the guard under the commit lock: a project that moved on
-                // while the rider rendered refuses the bake before a source is written
-                let (s, c) = e.bake_rider(cid, &rb.params, if_revision).map_err(|x| x.to_string())?;
-                baked = Some(json!({ "sourceId": s, "clipId": c }));
-            }
-            // the stage ids come from the snapshot below, so the apply is guarded on the
-            // revision read just before it even when the caller gave no guard: a concurrent
-            // edit then conflicts instead of silently overwriting one of those ids
-            let base = e.revision();
-            let (ops, fx_ids) = chain_ops(e, insert, &plan);
-            // our own bake moved the project one step past the caller's guard; a foreign change
-            // still conflicts (the entry check above refuses before anything is done)
-            let guard = Some(if_revision.map_or(base, |r| r + u64::from(baked.is_some())));
-            if let Err(x) = e.apply(&ops, false, guard) {
-                // the bake is already committed (its own undo step): say so, or a retry skips it
-                // as already baked and the caller never learns the audio changed
-                return Err(match &baked {
-                    Some(b) => format!(
-                        "{x} (the rider was already baked into the clip: {b}, project now at revision {}; the effect chain was not added, run auto-vocal again to add it)",
-                        e.revision()
-                    ),
-                    None => x.to_string(),
-                });
-            }
-            Ok(json!({
-                "revision": e.revision(), "clipId": cid, "insertId": insert, "style": plan.style,
-                "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
-            }))
+            let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
+            // the CLI's file mode carries the label in the args (no session header field)
+            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
+            auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
-        "plugin_scan" => Ok(json!(app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false)))),
+        "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false))?)),
         "vst3_scan" => {
             let r = app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false));
             Ok(json!(r.plugins.into_iter().filter(|p| p.format == PluginRef::VST3).collect::<Vec<_>>()))
@@ -2060,7 +2198,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "plugin_params" | "vst3_params" => {
             let q = arg(a, "query").and_then(Value::as_str).map(str::to_lowercase);
-            let ps = app.plugins().params(need_u64(a, "fxId")?)?;
+            let ps = plugin_params(app, need_u64(a, "fxId")?)?;
             Ok(json!(ps
                 .into_iter()
                 .filter(|p| q.as_ref().map(|q| p.name().to_lowercase().contains(q)).unwrap_or(true))
@@ -2071,7 +2209,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             Ok(json!({}))
         }
         "plugin_set_param" | "vst3_set_param" => {
-            app.plugins().set_param(need_u64(a, "fxId")?, need_u64(a, "id")? as u32, opt_f64(a, "value").ok_or("`value` is required")?)?;
+            plugin_set_param(app, need_u64(a, "fxId")?, need_u64(a, "id")? as u32, opt_f64(a, "value").ok_or("`value` is required")?)?;
             Ok(json!({}))
         }
         other => Err(format!("UNKNOWN_COMMAND: `{other}` (see `synkopa catalog`)")),
@@ -2371,6 +2509,14 @@ mod tests {
 #[cfg(test)]
 #[path = "autovocal_actions_tests.rs"]
 mod autovocal_tests;
+
+#[cfg(test)]
+#[path = "export_in_place_tests.rs"]
+mod export_in_place_tests;
+
+#[cfg(test)]
+#[path = "read_verb_tests.rs"]
+mod read_verb_tests;
 
 #[cfg(test)]
 #[path = "sidechain_actions_tests.rs"]
