@@ -696,6 +696,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .rollprops { z-index: 5; gap: 1px; }
 .rollprops .rpnote { padding: 0 8px 4px; font: 500 10px var(--sans); color: var(--fg4); white-space: normal; line-height: 1.35; }
 .rollprops .rpf { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center; padding-left: 8px; font: 500 11px var(--sans); color: var(--fg3); }
+.rollprops .rpf small { display: block; color: var(--fg4); font-size: 9px; }
 .rollprops .rpf input { min-width: 0; font: 500 11px var(--mono); border-color: var(--line3); }
 .rollprops .rpf input:focus { border-color: var(--blue); }
 /* FL's note properties: a head, a row of knobs with the Slide switch, the fields, Reset / Accept */
