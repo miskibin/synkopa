@@ -19,6 +19,9 @@ shown in the app after an update and is published as the release notes (see
   piano to sit in a mix, or widen it), **Tune** (±1 semitone in cents, to match a recording),
   **Attack** (fade notes in for swells and pads) and **Noise** (the level of the dampers and
   string noises). All can be automated.
+- **Scroll through patterns with the mouse wheel** over the pattern name in the Channel Rack or
+  the toolbar. Scrolling past the last pattern starts a new empty one; leave it without adding
+  anything and it disappears again, so browsing leaves no empty patterns behind.
 
 ### Changed
 - **Synkopa Keys is now Synkopa Instruments**, with a new, larger window. Choosing an instrument
@@ -27,6 +30,15 @@ shown in the app after an update and is published as the release notes (see
   have yet. Click through them while playing the keyboard below, or step with the ‹ › arrows on the
   instrument. The knobs are grouped into Sound, Envelope, Playing and Channel. A new channel is
   named after its instrument ("Grand Piano").
+
+### Fixed
+- **Switching the Piano roll's lane between VEL and PAN** shows the new lane at once.
+- **A wide melody in the Channel Rack** (an 808 spanning two octaves) stays inside its own row
+  instead of drawing over the channels above and below.
+- **The typing keyboard plays the channel selected in the Channel Rack,** also while another
+  channel's window is still open.
+- **The `synkopa` command now works in Git Bash on Windows,** the shell coding agents use there;
+  before, only PowerShell and cmd found it.
 
 ## 0.9.33 — 2026-11-23
 

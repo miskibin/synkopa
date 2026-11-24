@@ -58,6 +58,13 @@ fn write_launcher(file: &std::path::Path, body: &str) {
     }
 }
 
+/// The `sh` launcher for Git Bash / MSYS / Cygwin on Windows: the app's path with forward
+/// slashes (`C:/…`), which every one of those shells accepts.
+#[cfg(any(windows, test))]
+fn sh_launcher(exe: &std::path::Path) -> String {
+    format!("#!/bin/sh\nexec \"{}\" --cli \"$@\"\n", exe.display().to_string().replace('\\', "/"))
+}
+
 /// Writes (or refreshes) the launcher. Never fails the app: problems become a note.
 pub fn install() -> CliStatus {
     let exe = match std::env::current_exe() {
@@ -86,10 +93,30 @@ pub fn install() -> CliStatus {
         mark_executable(&file);
     }
     write_launcher(&alias, &body);
+    // Git Bash / MSYS (the shell coding agents run on Windows) does not run a `.cmd` without its
+    // extension, so `synkopa` was "command not found" there. An extensionless sh script beside it
+    // fixes that; cmd and PowerShell ignore it (not in PATHEXT) — npm's shims do the same.
+    #[cfg(windows)]
+    {
+        let sh = sh_launcher(&exe);
+        write_launcher(&dir.join("synkopa"), &sh);
+        write_launcher(&dir.join("wave"), &sh);
+    }
     let note = if on_path(&dir) {
         None
     } else {
         Some(format!("{} is not on PATH — add it, or call {} directly", dir.display(), file.display()))
     };
     CliStatus { installed: true, command: "synkopa".into(), path: Some(file.display().to_string()), note }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sh_launcher_uses_forward_slashes_and_passes_every_argument() {
+        let s = sh_launcher(std::path::Path::new(r"C:\Program Files\Synkopa\synkopa.exe"));
+        assert_eq!(s, "#!/bin/sh\nexec \"C:/Program Files/Synkopa/synkopa.exe\" --cli \"$@\"\n");
+    }
 }

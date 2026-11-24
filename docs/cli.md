@@ -10,7 +10,8 @@ The CLI works in two ways, with the same commands:
 The old `wave` command still works as an alias.
 
 There is nothing to install: on start the app puts a `synkopa` launcher on your PATH
-(`%LOCALAPPDATA%\Microsoft\WindowsApps\wave.cmd` on Windows, `~/.local/bin/wave` elsewhere).
+(`%LOCALAPPDATA%\Microsoft\WindowsApps\synkopa.cmd` on Windows, plus an extensionless `synkopa`
+script there for Git Bash / MSYS, the shell coding agents use; `~/.local/bin/synkopa` elsewhere).
 Settings → CLI shows where it went. Open a new terminal after the first start and run:
 
 ```sh
