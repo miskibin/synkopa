@@ -26,7 +26,7 @@ pnpm --dir ui test
 pnpm --dir ui build
 ```
 
-Tip: a one-off full run does not benefit from incremental compilation — `CARGO_INCREMENTAL=0 cargo test --workspace` is faster and keeps `target/` tens of GB smaller.
+Tip: for a clean one-off full run, `CARGO_INCREMENTAL=0 cargo test --workspace` can be faster and leaves `target/` tens of GB smaller, since no incremental caches are written. If you have a warm incremental cache from recent workspace edits, the plain command may reuse it and be faster — setting the variable neither reuses nor removes an existing cache.
 
 [`docs/architecture.md`](docs/architecture.md) explains how the engine, UI and CLI fit together.
 [`AGENTS.md`](AGENTS.md) holds the project's quality bar and applies to AI coding agents too.
