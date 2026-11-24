@@ -6,6 +6,8 @@
 //! opens a filter, adds growl or widens a pad without opening the matrix; the panel names each
 //! macro after what it drives.
 
+use std::sync::LazyLock;
+
 use super::params::{defaults, ix, Patch};
 
 pub const CATEGORIES: &[&str] = &["808", "Bas", "Pluck", "Lead", "Pad", "Klawisze", "Dzwonki", "Dęte/Smyczki", "Arp", "Lo-fi", "FX"];
@@ -154,7 +156,19 @@ fn pr(name: &'static str, category: &'static str, kv: &[(usize, f32)], slots: &[
     Preset { name, category, patch }
 }
 
-pub fn all() -> Vec<Preset> {
+/// Every factory preset, in menu order (built once; the vec is ~90 floats a preset).
+pub fn all() -> &'static [Preset] {
+    static ALL: LazyLock<Vec<Preset>> = LazyLock::new(build);
+    &ALL
+}
+
+/// The preset `name` resolves to — legacy names map to their current one — or `None`.
+pub fn by_name(name: &str) -> Option<&'static Preset> {
+    let name = current_name(name);
+    all().iter().find(|p| p.name == name)
+}
+
+fn build() -> Vec<Preset> {
     use ix::*;
     vec![
         // ------------------------------------------------ 808 / sub

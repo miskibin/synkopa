@@ -1273,18 +1273,7 @@ impl Engine {
         }
         let n = c.project.tracks.len();
         let id = c.project.alloc_id();
-        c.project.tracks.push(Track {
-            id,
-            name: format!("Track {}", n + 1),
-            color: "#8b93a1".into(),
-            muted: false,
-            solo: false,
-            arm: false,
-            vol: VOL_UNITY,
-            h: 56.0,
-            insert: 0,
-            icon: None,
-        });
+        c.project.tracks.push(Track::new(id, format!("Track {}", n + 1), "#8b93a1", 0));
         c.rec_added = Some(id);
         c.revision += 1;
         self.sync(c, Dirty { timeline: true, mixer: true, params: true });
@@ -1491,18 +1480,7 @@ impl Engine {
         let at = first.track + 1;
         c.project.tracks.insert(
             at as usize,
-            Track {
-                id: track_id,
-                name: name.clone(),
-                color: old.color.clone(),
-                muted: false,
-                solo: false,
-                arm: false,
-                vol: VOL_UNITY,
-                h: track.h,
-                insert: insert_id,
-                icon: track.icon.clone(),
-            },
+            Track { h: track.h, icon: track.icon.clone(), ..Track::new(track_id, name.clone(), old.color.clone(), insert_id) },
         );
         for x in c.project.clips.iter_mut() {
             if clip_ids.contains(&x.id) {
@@ -1603,7 +1581,6 @@ impl Engine {
                 Some(w.analyzer.analyze(&c_watch(&c.watch), &detail, &shared))
             };
             let w = c.wires.as_mut().unwrap();
-            let sr = w.sr as u32;
             // drain recorded input
             let n = w.record.slots();
             if n > 0 {
@@ -1618,7 +1595,6 @@ impl Engine {
                     chunk.commit_all();
                 }
             }
-            let _ = sr;
             let ids: Vec<Id> = c.project.inserts.iter().map(|m| m.id).collect();
             if let Some(t) = c.take.as_mut() {
                 t.resolve(&shared);

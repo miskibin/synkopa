@@ -295,7 +295,7 @@ impl Engine {
                 .filter(|cl| cl.kind == ClipKind::Audio && !cl.muted)
                 .filter_map(|cl| {
                     let tr = p.tracks.get(cl.track as usize)?;
-                    if tr.muted || (any_solo && !tr.solo) {
+                    if !p.track_audible_with(tr, any_solo) {
                         return None;
                     }
                     let is_excluded = ex_ins == Some(tr.insert);

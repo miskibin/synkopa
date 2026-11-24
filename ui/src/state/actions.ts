@@ -4,7 +4,7 @@ import { shownFloating } from './winOrder';
 import { be } from '../api/backend';
 import { t, tName } from '../lib/i18n';
 import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type AnyBuiltinKind, type PluginInfo, type Clip, type Fx, type Id, type Insert, type Op, type RecoveredProject, type Track } from '../api/types';
-import { clampMove, duplicateSpan, insertTrackOps, moveClips, moveTrackOps, muteOps, pasteClips, sliceClip, swapTrackOps, TOTAL } from '../lib/clipOps';
+import { clampMove, duplicateSpan, insertTrackOps, moveClips, moveTrackOps, muteOps, newClip, pasteClips, sliceClip, swapTrackOps, TOTAL } from '../lib/clipOps';
 import { parseViews, rememberView, viewFor } from '../lib/projView';
 import { clamp, fmtPos } from '../lib/format';
 import { loadPreset as loadPresetFx, newFx, presetInfo, presetList } from '../lib/presets';
@@ -104,7 +104,7 @@ export function addPatternToSong(id: Id) {
   const free = (i: number) => !S.project.clips.some(c => c.track === i && c.start < len && c.start + c.len > 0);
   const track = S.project.tracks.findIndex((_, i) => free(i));
   if (track < 0) return say(t('d.act.noFreeTrack'));
-  const nc: Clip = { id: allocId(), track, start: 0, len, offset: 0, kind: 'pat', ref: id, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false };
+  const nc: Clip = newClip(allocId(), track, 0, len, 'pat', id);
   commit([{ op: 'putClips', clips: [nc] }], t('a.pl.insertClip'));
   say(t('d.act.addedToSong', { name: p.name, track: S.project.tracks[track].name }));
 }

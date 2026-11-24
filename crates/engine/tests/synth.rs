@@ -295,7 +295,7 @@ fn stealing_retriggering_legato_and_preset_changes_do_not_click() {
 fn presets_are_loudness_matched() {
     let sr = SR as f32;
     for p in presets::all() {
-        let (l, r) = lab::probe(&p, sr);
+        let (l, r) = lab::probe(p, sr);
         let (lufs, tp) = lab::loudness(&l, &r, sr);
         // polyphonic patches play 12 dB lower (POLY_HEADROOM) so chords fit below full scale
         let hr = if p.patch[ix::V_MODE] == 0.0 { 20.0 * poly::POLY_HEADROOM.log10() as f64 } else { 0.0 };
@@ -387,7 +387,7 @@ fn a_chord_is_the_sum_of_its_notes() {
     // an output limiter used to squash chords by 5–11 dB: notes got quieter and the tone
     // changed as keys were added. Without global drive a polyphonic patch is linear: the chord
     // is exactly its notes played alone, added up.
-    for p in presets::all().into_iter().filter(|p| p.patch[ix::V_MODE] == 0.0 && p.patch[ix::FX_DRIVE] == 0.0) {
+    for p in presets::all().iter().filter(|p| p.patch[ix::V_MODE] == 0.0 && p.patch[ix::FX_DRIVE] == 0.0) {
         let k0 = p.probe_key();
         let (l, r) = chord(&p.patch, k0, |_| true);
         let (mut sl, mut sr) = (vec![0f32; l.len()], vec![0f32; r.len()]);
@@ -410,7 +410,7 @@ fn a_chord_is_the_sum_of_its_notes() {
 fn polyphonic_presets_keep_global_drive_off() {
     // the global drive saturates the sum of all notes: on a chord it adds intermodulation
     // (−8 to −17 dB on four notes), so poly presets get their grit from the per-voice drive
-    for p in presets::all().into_iter().filter(|p| p.patch[ix::V_MODE] == 0.0) {
+    for p in presets::all().iter().filter(|p| p.patch[ix::V_MODE] == 0.0) {
         assert_eq!(p.patch[ix::FX_DRIVE], 0.0, "{}", p.name);
     }
 }
@@ -435,7 +435,7 @@ fn chords_fit_below_full_scale_without_clicks() {
 #[test]
 fn switching_poly_and_mono_glides_the_headroom() {
     let sr = SR as f32;
-    let p = presets::all().into_iter().find(|p| p.name == "Pad Warm").unwrap();
+    let p = presets::all().iter().find(|p| p.name == "Pad Warm").unwrap();
     let mut s = SynthInst::new(1, p.patch, sr);
     s.note(0, (2.0 * sr) as u32, 60, 1.0, Dest::Click);
     let (mut l, mut r) = lab::run(&mut s, 0.5, sr);
@@ -456,7 +456,7 @@ fn notes_of_a_chord_do_not_glide_from_each_other() {
     // poly glide used to slide every note of a chord from the note struck just before it
     // (a smeared, detuned chord); notes struck together now share the glide origin
     let sr = SR as f32;
-    let p = presets::all().into_iter().find(|p| p.name == "Supersaw Hymn").unwrap();
+    let p = presets::all().iter().find(|p| p.name == "Supersaw Hymn").unwrap();
     let render = |glide: f32, spread: f32| {
         let mut q = p.patch;
         q[ix::V_MODE] = 0.0;

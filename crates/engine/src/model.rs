@@ -21,9 +21,9 @@ pub const VOL_UNITY: f32 = 0.7937;
 /// Beats shown on the playlist. The arrangement may not go past this: 512 bars of 4/4,
 /// 11:46 at 174 BPM, 17 minutes at 120. Nothing is allocated per beat, so the limit
 /// only bounds the playlist's scroll width (≈200k px at the deepest zoom).
+pub const TOTAL_BEATS: f64 = 2048.0;
 /// How far (beats) a clip may run past a bar line before the song gets that extra bar: a 16th.
 pub const SONG_END_SLACK: f64 = 0.25;
-pub const TOTAL_BEATS: f64 = 2048.0;
 
 pub fn fader_gain(t: f32) -> f32 {
     2.0 * t * t * t
@@ -101,6 +101,25 @@ pub struct Track {
 
 fn width_unity() -> f32 {
     1.0
+}
+
+impl Track {
+    /// A track at unity, unmuted, with the default lane height, heard on the master:
+    /// set what differs (`h`, `icon`, `insert`) at the call site.
+    pub fn new(id: Id, name: impl Into<String>, color: impl Into<String>, insert: Id) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            color: color.into(),
+            muted: false,
+            solo: false,
+            arm: false,
+            vol: VOL_UNITY,
+            h: 56.0,
+            insert,
+            icon: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1727,12 +1746,17 @@ impl Project {
         self.inserts.iter().find_map(|m| m.fx.iter().find(|f| f.id == fx_id).map(|f| (m, f)))
     }
 
-    /// End of the last clip, rounded up to a bar; at least one bar.
-    /// Where the song ends (SONG playback wraps there, a song export stops there): the bar the
-    /// last clip ends in. A clip running into the next bar by less than [`SONG_END_SLACK`] (an
-    /// audio file a hair longer than its bars: encoder padding, a click of tail) does not add
-    /// that bar, so the playhead goes back to the start as soon as the music is over. A clip
-    /// that *starts* in a bar always keeps that bar.
+    /// A track plays: not muted, and when any track is soloed only the soloed ones do —
+    /// the mixer's solo rule, which the graph, renders and analysis must agree on.
+    pub fn track_audible(&self, t: &Track) -> bool {
+        self.track_audible_with(t, self.tracks.iter().any(|t| t.solo))
+    }
+    /// The same rule with the solo aggregate hoisted: callers that loop over tracks or clips
+    /// compute `any_solo` once per operation instead of rescanning per item.
+    pub fn track_audible_with(&self, t: &Track, any_solo: bool) -> bool {
+        !t.muted && (!any_solo || t.solo)
+    }
+
     /// The mixer insert a clip is heard on: its own (audio clips), else its track's.
     pub fn clip_insert(&self, c: &Clip) -> Id {
         c.insert
@@ -1753,6 +1777,12 @@ impl Project {
         Some(LoopRange { a: m.at, b: b.min(TOTAL_BEATS).max(m.at + 1.0 / 64.0) })
     }
 
+    /// End of the last clip, rounded up to a bar; at least one bar.
+    /// Where the song ends (SONG playback wraps there, a song export stops there): the bar the
+    /// last clip ends in. A clip running into the next bar by less than [`SONG_END_SLACK`] (an
+    /// audio file a hair longer than its bars: encoder padding, a click of tail) does not add
+    /// that bar, so the playhead goes back to the start as soon as the music is over. A clip
+    /// that *starts* in a bar always keeps that bar.
     pub fn song_end(&self) -> f64 {
         let end = self.clips.iter().fold(4.0f64, |m, c| m.max(c.start + c.len - SONG_END_SLACK).max(c.start + 1e-6));
         (end / 4.0).ceil() * 4.0

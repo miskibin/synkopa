@@ -55,6 +55,86 @@ pub trait Host {
 /// Commands that need the audio device, the musician's undo history or the app's window.
 pub const LIVE_ONLY: &[&str] = &["play", "stop", "pattern_play", "pattern_loop", "comp_audition", "note_audition", "undo", "redo", "open"];
 
+/// Every verb `control` answers — the `catalog` reply's command list, the front door scripts
+/// are told to consult. A verb added without an entry here is invisible to them.
+pub const ALL_COMMANDS: &[&str] = &[
+    "status",
+    "context",
+    "catalog",
+    "schema",
+    "apply",
+    "undo",
+    "redo",
+    "play",
+    "stop",
+    "render",
+    "import",
+    "add_fx",
+    "route",
+    "unroute",
+    "sidechain",
+    "set_param",
+    "load_preset",
+    "save",
+    "open",
+    "export_project_zip",
+    "pitch_analyze",
+    "pitch_target",
+    "pitch_inspect",
+    "pitch_compare",
+    "pitch_suggest",
+    "pitch_edit",
+    "pitch_render",
+    "melody_channels",
+    "melody_reference",
+    "tune_ref",
+    "f0_model",
+    "f0_model_install",
+    "music_analyze",
+    "chords_model",
+    "chords_model_install",
+    "chords_analyze",
+    "chords_to_pattern",
+    "auto_vocal_plan",
+    "auto_vocal",
+    "bake_rider",
+    "midi_inspect",
+    "midi_import",
+    "midi_export",
+    "fx_chains",
+    "fx_chain_save",
+    "fx_chain_load",
+    "fx_chain_rename",
+    "fx_chain_delete",
+    "missing",
+    "relink",
+    "set_project",
+    "make_unique",
+    "export_in_place",
+    "stems_model",
+    "stems_model_install",
+    "extract_stems",
+    "takes",
+    "comp",
+    "flatten_comp",
+    "comp_audition",
+    "channels",
+    "markers",
+    "pattern",
+    "pattern_play",
+    "pattern_loop",
+    "note_audition",
+    "plugin_scan",
+    "plugin_add",
+    "plugin_params",
+    "plugin_set_param",
+    "plugin_load_anyway",
+    "vst3_scan",
+    "vst3_add",
+    "vst3_params",
+    "vst3_set_param",
+];
+
 fn live_only_error(cmd: &str) -> String {
     let why = match cmd {
         "undo" | "redo" => "a project file has no undo history (each `synkopa --project` call starts fresh; edit with `apply` and keep the file under version control, or use --dry-run / --save-as to try an edit)",
@@ -1043,20 +1123,22 @@ pub fn render(app: &dyn Host, a: &Value) -> R<Value> {
     render_to_file(app, &out, bounce, &std::sync::atomic::AtomicBool::new(false), fmt, &|_| {})
 }
 
+/// A gain as the UI shows it: `-inf` once it is inaudible, else signed decibels.
+fn db_string(g: f32) -> String {
+    if g < 1e-6 {
+        "-inf".to_string()
+    } else {
+        format!("{:+.1} dB", 20.0 * g.log10())
+    }
+}
+
 pub fn context(app: &dyn Host, full: bool) -> Value {
     let st = app.engine().state();
     if full {
         return json!({ "revision": st.revision, "project": st.project, "transport": st.transport, "path": st.path, "fxErrors": st.fx_errors });
     }
     let p = &st.project;
-    let db = |t: f32| {
-        let g = wave_engine::fader_gain(t);
-        if g < 1e-6 {
-            "-inf".to_string()
-        } else {
-            format!("{:+.1} dB", 20.0 * g.log10())
-        }
-    };
+    let db = |t: f32| db_string(wave_engine::fader_gain(t));
     json!({
         "revision": st.revision,
         "path": st.path,
@@ -1257,7 +1339,7 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
     };
     let mut v = json!({
         "id": c.id, "index": p.channels.iter().position(|x| x.id == c.id), "name": c.name, "kind": kind,
-        "volume": if g < 1e-6 { "-inf".to_string() } else { format!("{:+.1} dB", 20.0 * g.log10()) }, "vol": c.vol, "pan": c.pan,
+        "volume": db_string(g), "vol": c.vol, "pan": c.pan,
         "mute": c.mute, "solo": c.solo, "insert": c.insert, "root": c.root, "group": c.group,
         "notes": p.patterns.iter().map(|pt| pt.notes.iter().filter(|n| n.ch == c.id).count()).sum::<usize>(),
     });
@@ -2010,9 +2092,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             )
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
-        "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "keys": keys_catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","sidechain","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","chords_model","chords_model_install","chords_analyze","chords_to_pattern","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
-        ),
+        "catalog" => Ok(json!({ "effects": catalog::catalog(), "keys": keys_catalog(), "commands": ALL_COMMANDS })),
         "schema" => Ok(schema()),
         "apply" => {
             let ops: Vec<Op> =

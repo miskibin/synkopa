@@ -121,3 +121,15 @@ export function panDrag(e: PointerEvent, at: () => { x: number; y: number }, set
   track(ev => set(o.x - (ev.clientX - sx), o.y - (ev.clientY - sy)), null, 'grabbing');
   return true;
 }
+
+/** Escape cancels a drag (capture-phase on window, so it wins over the app's own Escape
+ * handling): while `lifted()` is true, the key marks the drag cancelled and calls `onCancel`.
+ * The returned `off` removes the listener — call it when the pointer interaction ends. */
+export function escCancels(lifted: () => boolean, onCancel: () => void): { off: () => void } {
+  const esc = (ev: KeyboardEvent) => {
+    if (ev.key !== 'Escape' || !lifted()) return;
+    ev.preventDefault(); ev.stopPropagation(); onCancel();
+  };
+  window.addEventListener('keydown', esc, true);
+  return { off: () => window.removeEventListener('keydown', esc, true) };
+}

@@ -879,22 +879,23 @@ pub fn catalog() -> SynthCatalog {
         categories: presets::CATEGORIES,
         presets: presets::all()
             .iter()
-            .map(|p| SynthPreset {
-                name: p.name,
-                category: p.category,
-                params: PARAMS.iter().zip(p.patch.iter()).map(|(d, v)| (d.id, (*v as f64 * 1000.0).round() / 1000.0)).collect(),
-            })
+            .map(|p| SynthPreset { name: p.name, category: p.category, params: rounded_params(&p.patch).collect() })
             .collect(),
         waves: tables::bank().display(96),
     }
 }
 
+/// A preset patch rounded to 3 decimals, as (param id, value) pairs: the catalog and
+/// `preset_state` serve the same numbers.
+fn rounded_params(patch: &[f32]) -> impl Iterator<Item = (&'static str, f64)> + '_ {
+    PARAMS.iter().zip(patch.iter()).map(|(d, v)| (d.id, (*v as f64 * 1000.0).round() / 1000.0))
+}
+
 /// A synth state holding preset `name`'s full parameter set (`None` if there is no such preset).
 pub fn preset_state(name: &str) -> Option<crate::model::SynthState> {
-    let name = presets::current_name(name);
-    let p = presets::all().into_iter().find(|p| p.name == name)?;
+    let p = presets::by_name(name)?;
     Some(crate::model::SynthState {
         preset: Some(p.name.to_owned()),
-        params: PARAMS.iter().zip(p.patch.iter()).map(|(d, v)| (d.id.to_owned(), (*v as f64 * 1000.0).round() / 1000.0)).collect(),
+        params: rounded_params(&p.patch).map(|(k, v)| (k.to_owned(), v)).collect(),
     })
 }

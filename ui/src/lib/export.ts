@@ -1,4 +1,5 @@
 import { VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
+import { newClip } from './clipOps';
 
 /** Beat range for a song, loop or pattern bounce — mirrors `Engine::export_range` / `Engine::pattern_range`. */
 export function exportRange(project: Project, useLoop: boolean, pattern?: Id | null): { from: number; to: number } {
@@ -36,7 +37,7 @@ export function patternProject(p: Project, id: Id): Project {
   q.clips = []; if (q.comps) q.comps = []; q.loop = null;
   if (!q.tracks.length) q.tracks.push({ id: 1, name: 'Pattern', color: '#4f8ef7', muted: false, solo: false, arm: false, vol: VOL_UNITY, h: 56, insert: 0 });
   q.tracks.forEach((t, i) => { t.solo = false; if (i === 0) { t.muted = false; t.vol = VOL_UNITY; t.insert = 0; } });
-  q.clips.push({ id: q.nextId++, track: 0, start: 0, len, offset: 0, kind: 'pat', ref: id, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+  q.clips.push(newClip(q.nextId++, 0, 0, len, 'pat', id));
   return q;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stackPatternClips } from './clipOps';
+import { newClip, stackPatternClips } from './clipOps';
 
 // Several patterns dragged from the Browser: one per track, all from the drop point.
 describe('stacking patterns dropped together', () => {
@@ -17,5 +17,14 @@ describe('stacking patterns dropped together', () => {
   it('clips a pattern at the end of the song', () => {
     const [c] = stackPatternClips([3], 0, 504, 30, 512, ref => lens[ref], () => id++).clips;
     expect(c.len).toBe(8);
+  });
+});
+
+// Every builder of a fresh playlist clip goes through newClip (the views, the mock, the
+// automation and comp paths): pin its whole default shape, so a new field or a changed
+// default is a decision here, not a silent drift between the seven former copies.
+describe('newClip defaults', () => {
+  it('a pattern clip carries the house defaults for every field the caller does not set', () => {
+    expect(newClip(9, 2, 6, 4, 'pat', 5)).toEqual({ id: 9, track: 2, start: 6, len: 4, offset: 0, kind: 'pat', ref: 5, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
   });
 });

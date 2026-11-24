@@ -382,7 +382,7 @@ impl Engine {
             let c = self.core.lock();
             let p = &c.project;
             let any_solo = p.tracks.iter().any(|t| t.solo);
-            let audible = |x: &Clip| !x.muted && p.tracks.get(x.track as usize).is_some_and(|t| !t.muted && (!any_solo || t.solo));
+            let audible = |x: &Clip| !x.muted && p.tracks.get(x.track as usize).is_some_and(|t| p.track_audible_with(t, any_solo));
             let inside = |x: &Clip| range.is_none_or(|(a, b)| x.start < b - 1e-6 && x.start + x.len > a + 1e-6);
             let picked: Vec<Clip> = p
                 .clips
@@ -497,21 +497,7 @@ impl Engine {
         let at = (low + 1).min(c.project.tracks.len() as u32);
         let h = c.project.tracks.get(low as usize).map_or(60.0, |t| t.h);
         let track_id = c.project.alloc_id();
-        c.project.tracks.insert(
-            at as usize,
-            Track {
-                id: track_id,
-                name: name.clone(),
-                color: color.clone(),
-                muted: false,
-                solo: false,
-                arm: false,
-                vol: VOL_UNITY,
-                h,
-                insert: 0,
-                icon: None,
-            },
-        );
+        c.project.tracks.insert(at as usize, Track { h, ..Track::new(track_id, name.clone(), color.clone(), 0) });
         let mut outside = vec![];
         for x in c.project.clips.iter_mut() {
             if x.track >= at {
@@ -825,21 +811,7 @@ impl Engine {
             c.sources.insert(source_id, Arc::new(s.audio));
             let track_id = c.project.alloc_id();
             let ti = at + k as u32;
-            c.project.tracks.insert(
-                ti as usize,
-                Track {
-                    id: track_id,
-                    name,
-                    color: s.color,
-                    muted: false,
-                    solo: false,
-                    arm: false,
-                    vol: VOL_UNITY,
-                    h: track.h,
-                    insert: track.insert,
-                    icon: None,
-                },
-            );
+            c.project.tracks.insert(ti as usize, Track { h: track.h, insert: track.insert, ..Track::new(track_id, name, s.color, 0) });
             let clip_id = c.project.alloc_id();
             c.project.clips.push(Clip {
                 id: clip_id,
@@ -873,18 +845,7 @@ pub fn pattern_project(mut p: Project, id: Id) -> Project {
     p.comps.clear();
     p.loop_range = None;
     if p.tracks.is_empty() {
-        p.tracks.push(Track {
-            id: 1,
-            name: "Pattern".into(),
-            color: "#4f8ef7".into(),
-            muted: false,
-            solo: false,
-            arm: false,
-            vol: VOL_UNITY,
-            h: 56.0,
-            insert: 0,
-            icon: None,
-        });
+        p.tracks.push(Track::new(1, "Pattern", "#4f8ef7", 0));
     }
     for (i, t) in p.tracks.iter_mut().enumerate() {
         t.solo = false;
