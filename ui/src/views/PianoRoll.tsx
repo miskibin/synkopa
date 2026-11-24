@@ -265,14 +265,14 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafMain = 0, rafVel = 0;
   effect(() => {
-    data(); sel(); laneMode(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
     if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
   // the ghost belongs to the stamp tool: gone the moment another tool is picked
   effect(() => { if (rollTool() !== 'stamp') setStampGhost(null); });
   effect(() => {
-    data(); sel(); laneSize(); view(); size(); ch(); pt().len;
+    data(); sel(); lane(); laneSize(); view(); size(); ch(); pt().len;
     if (U.mixView) return;
     if (!rafVel) rafVel = requestAnimationFrame(() => { rafVel = 0; untrack(drawVel); });
   });
@@ -529,7 +529,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       setViewS(v => ({ ...v, sx: clamp(v.sx + d, 0, maxSx()) }));
     } else { const rh = geo().rowH; setViewS(v => ({ ...v, sy: clamp(v.sy + d * 0.7, 0, maxSyAt(rh)) })); }
   };
-  // a note's own pan is played by sampler and Synkopa Keys channels; a synth or plugin channel has the lane on velocity only
+  // a note's own pan is played by sampler and Synkopa Instruments channels; a synth or plugin channel has the lane on velocity only
   const panPlays = () => ch().kind !== 'plugin';
   /** Slide notes bend the built-in instruments; a plugin is never told (as in FL). */
   const slidePlays = () => ch().kind !== 'plugin';

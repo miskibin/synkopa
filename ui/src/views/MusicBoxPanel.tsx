@@ -14,7 +14,7 @@ import { Knob } from '../ui/Knob';
 type MbChannel = Extract<Channel, { kind: 'musicbox' }>;
 type MbParam = 'ring' | 'brightness' | 'body' | 'mechanical' | 'spread' | 'release';
 
-/** Release knob travel is logarithmic: 40 ms .. 3 s (like Synkopa Keys). */
+/** Release knob travel is logarithmic: 40 ms .. 3 s (like Synkopa Instruments). */
 const relT = (ms: number) => Math.log(ms / MB_RELEASE.min) / Math.log(MB_RELEASE.max / MB_RELEASE.min);
 const relMs = (t: number) => Math.round(MB_RELEASE.min * Math.pow(MB_RELEASE.max / MB_RELEASE.min, clamp(t, 0, 1)));
 const relText = (ms: number) => (ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : Math.round(ms) + ' ms');

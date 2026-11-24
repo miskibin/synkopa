@@ -1,8 +1,9 @@
 // Automation (playlist envelopes): normalisation of every automatable control to 0..1 exactly
 // as the engine does, the value of an envelope at a beat, which clip drives a target at the
 // playhead, and the ops that create a new automation clip ("Automatyzuj na playliście").
-import { t as tl, tName } from './i18n';
-import { CLIP_GAIN_DB, KEYS_DYNAMICS, KEYS_RELEASE, MB_RELEASE, MB_RING, type AutoPoint, type AutoTarget, type CurveShape, type Automation, type Catalog, type Channel, type Clip, type Id, type Op, type Project, type Track } from '../api/types';
+import { t as tl, tName, type TranslationKey } from './i18n';
+import { keysDenorm, keysNorm, keysText, keysValue } from './keysKnobs';
+import { CLIP_GAIN_DB, MB_RELEASE, MB_RING, type AutoPoint, type AutoTarget, type CurveShape, type Automation, type Catalog, type Channel, type Clip, type Id, type Op, type Project, type Track } from '../api/types';
 import { insertTrackOps } from './clipOps';
 import { synthParam } from './synth';
 import { dbText, hzText, panText, volText } from './format';
@@ -67,7 +68,7 @@ export function normalize(p: Project, cat: Catalog | null, t: AutoTarget, x: num
     case 'plugin': return c01(x);
     case 'insertPan': case 'chanPan': case 'clipPan': return c01((x + 1) / 2);
     case 'clipGain': return lin(x, CLIP_GAIN_DB.min, CLIP_GAIN_DB.max);
-    case 'keys': return t.param === 'release' ? lg(x, KEYS_RELEASE.min, KEYS_RELEASE.max) : lin(x, KEYS_DYNAMICS.min, KEYS_DYNAMICS.max);
+    case 'keys': return keysNorm(t.param, x);
     case 'musicBox': return musicBoxNorm(t, x);
     case 'synth': {
       const d = cat && synthParam(cat.synth, t.param);
@@ -92,7 +93,7 @@ export function denormalize(p: Project, cat: Catalog | null, t: AutoTarget, v: n
     case 'plugin': return v;
     case 'insertPan': case 'chanPan': case 'clipPan': return v * 2 - 1;
     case 'clipGain': return unlin(v, CLIP_GAIN_DB.min, CLIP_GAIN_DB.max);
-    case 'keys': return t.param === 'release' ? ex(v, KEYS_RELEASE.min, KEYS_RELEASE.max) : unlin(v, KEYS_DYNAMICS.min, KEYS_DYNAMICS.max);
+    case 'keys': return keysDenorm(t.param, v);
     case 'musicBox': return musicBoxDenorm(t, v);
     case 'synth': {
       const d = cat && synthParam(cat.synth, t.param);
@@ -124,7 +125,7 @@ export function readTarget(p: Project, t: AutoTarget): number | null {
     case 'clipGain': return clipOf(p, t.id)?.gain ?? null;
     case 'clipPan': return clipOf(p, t.id)?.pan ?? null;
     // a release the instrument decides reads as the knob's neutral position
-    case 'keys': { const c = chanOf(p, t.chanId); return c?.kind === 'keys' ? (t.param === 'release' ? c.keys.release ?? KEYS_RELEASE.def : c.keys.dynamics) : null; }
+    case 'keys': { const c = chanOf(p, t.chanId); return c?.kind === 'keys' ? keysValue(c.keys, t.param) : null; }
     case 'musicBox': { const c = chanOf(p, t.chanId); return c?.kind === 'musicbox' ? c.musicBox[t.param] : null; }
     case 'synth': {
       const c = chanOf(p, t.chanId); if (c?.kind !== 'synth') return null;
@@ -344,7 +345,7 @@ export function targetLabel(p: Project, cat: Catalog | null, t: AutoTarget, para
     case 'trackVol': return (p.tracks.find(x => x.id === t.id)?.name ?? '?') + ' · ' + tl('a.au.trackVol');
     case 'chanVol': return (chanOf(p, t.id)?.name ?? '?') + ' · ' + tl('a.au.vol');
     case 'chanPan': return (chanOf(p, t.id)?.name ?? '?') + ' · ' + tl('a.au.pan');
-    case 'keys': return (chanOf(p, t.chanId)?.name ?? '?') + ' · ' + tl(t.param === 'release' ? 'b.kp.release' : 'b.kp.dynamics');
+    case 'keys': return (chanOf(p, t.chanId)?.name ?? '?') + ' · ' + tl(('b.kp.' + t.param) as TranslationKey);
     case 'musicBox': return (chanOf(p, t.chanId)?.name ?? '?') + ' · ' + tl(t.param === 'release' ? 'b.mb.release' : t.param === 'ring' ? 'b.mb.ring' : t.param === 'brightness' ? 'b.mb.brightness' : t.param === 'body' ? 'b.mb.body' : t.param === 'mechanical' ? 'b.mb.mechanical' : 'b.mb.spread');
     case 'synth': return (chanOf(p, t.chanId)?.name ?? '?') + ' · ' + tName((cat && synthParam(cat.synth, t.param)?.label) ?? t.param);
     case 'clipGain': case 'clipPan': {
@@ -376,7 +377,7 @@ export function autoValueText(p: Project, cat: Catalog | null, t: AutoTarget, v:
     case 'clipGain': return dbText(x);
     case 'mix': return Math.round(x * 100) + '%';
     case 'synth': { const d = cat && synthParam(cat.synth, t.param); return d ? pFmt(d, x) : Math.round(v * 100) + '%'; }
-    case 'keys': return t.param === 'release' ? Math.round(x) + ' ms' : Math.round(x) + '%'; // release is in ms, dynamics in percent (KEYS_RELEASE, KEYS_DYNAMICS)
+    case 'keys': return keysText(t.param, x);
     case 'musicBox': return t.param === 'release' ? Math.round(x) + ' ms' : Math.round(x) + '%'; // release ms, the rest percent (MB_RELEASE, MB_*)
     case 'plugin': return Math.round(x * 100) + '%';
     case 'fx': {
@@ -414,7 +415,6 @@ export function parseAutoValue(p: Project, cat: Catalog | null, t: AutoTarget, t
       return normalize(p, cat, t, Math.max(-1, Math.min(1, x / 100)));
     }
     case 'mix': return c01(x / 100);
-    case 'keys': if (t.param !== 'release') return c01(x / 100); break;
     case 'musicBox': if (t.param === 'ring') return c01((x - MB_RING.min) / (MB_RING.max - MB_RING.min)); if (t.param !== 'release') return c01(x / 100); break;
   }
   return normalize(p, cat, t, x);

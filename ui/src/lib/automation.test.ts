@@ -8,7 +8,7 @@ import curvesJson from '../../../crates/engine/tests/fixtures/curves.json?raw';
 
 const cat = mockCatalog();
 
-/** The demo song plus a synth channel, a Synkopa Keys channel and an audio clip to automate. */
+/** The demo song plus a synth channel, a Synkopa Instruments channel and an audio clip to automate. */
 function project(): Project {
   const p = sketchProject(cat);
   const synth = { ...newSynthChannel(cat.synth, 7001, null), name: 'Lead' };
@@ -64,6 +64,23 @@ describe('automation of channels, synth and Keys parameters, and audio clips', (
     expect(denormalize(p, cat, targets[2], 1)).toBeCloseTo(d.max, 6);
   });
 
+  it('normalises the Keys knobs like the engine (rt.rs KeysKnobs::set)', () => {
+    const p = project();
+    const k = (param: 'attack' | 'tone' | 'width' | 'tune' | 'noise') => ({ kind: 'keys' as const, chanId: 7002, param });
+    // attack: the bottom of the travel is none, then logarithmic 1 ms .. 2 s (engine `2000^v`)
+    expect(denormalize(p, cat, k('attack'), 0)).toBe(0);
+    expect(denormalize(p, cat, k('attack'), 0.5)).toBeCloseTo(Math.sqrt(2000), 6);
+    expect(normalize(p, cat, k('attack'), 2000)).toBeCloseTo(1, 9);
+    // tone and tune are bipolar and linear; width and noise linear percentages
+    expect(denormalize(p, cat, k('tone'), 0.5)).toBe(0);
+    expect(denormalize(p, cat, k('tune'), 1)).toBe(100);
+    expect(normalize(p, cat, k('width'), 100)).toBeCloseTo(100 / 150, 9);
+    expect(normalize(p, cat, k('noise'), 50)).toBe(0.5);
+    // older projects without the knobs read as their defaults
+    expect(readTarget(p, k('width'))).toBe(100);
+    expect(readTarget(p, k('tone'))).toBe(0);
+  });
+
   it('normalises Music Box knobs like the engine (ring is range-relative, release logarithmic)', () => {
     const p = project();
     // ring spans 25..250 %: the normalized 0..1 the engine consumes is (x − 25) / 225, so a
@@ -110,7 +127,7 @@ describe('automation of channels, synth and Keys parameters, and audio clips', (
     // a pattern clip has no gain to automate
     const pat = p.clips.find(c => c.kind === 'pat')!;
     expect(readTarget(p, { kind: 'clipGain', id: pat.id })).toBeNull();
-    // keys parameters of a channel that is not Synkopa Keys
+    // keys parameters of a channel that is not Synkopa Instruments
     expect(readTarget(p, { kind: 'keys', chanId: 7001, param: 'release' })).toBeNull();
   });
 

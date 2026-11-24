@@ -61,7 +61,7 @@ pub struct App {
     /// Why the installed RMVPE model could not be used, if it could not.
     pub model_error: Mutex<Option<String>>,
     session: Mutex<Option<wave_session::Server>>,
-    /// Synkopa Keys piano: where it is and whether it is loaded.
+    /// Synkopa Instruments piano: where it is and whether it is loaded.
     pub keys: keys::Keys,
     /// The update found by the last check and its downloaded installer.
     pub updater: updater::State,
@@ -713,13 +713,13 @@ async fn library_list(app: St<'_>) -> R<Value> {
     Ok(json!({ "kits": library::kits(), "folders": app.settings.lock().folders }))
 }
 
-/// Synkopa Keys: is the piano on this computer, and is it loaded?
+/// Synkopa Instruments: is the piano on this computer, and is it loaded?
 #[tauri::command]
 async fn keys_status(app: St<'_>) -> R<keys::KeysStatus> {
     Ok(keys::status(&app))
 }
 
-/// Synkopa Keys: loads a missing or failed instrument again (the Keys window's Retry).
+/// Synkopa Instruments: loads a missing or failed instrument again (the Keys window's Retry).
 #[tauri::command]
 async fn keys_retry(app: St<'_>, id: String) -> R<keys::KeysStatus> {
     keys::retry(app.inner(), &id);

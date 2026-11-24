@@ -1,4 +1,4 @@
-//! Synkopa Keys: the sampled instruments behind Channel Rack channels of kind `keys`.
+//! Synkopa Instruments: the sampled instruments behind Channel Rack channels of kind `keys`.
 //!
 //! Each instrument of the [`CATALOG`] is an SFZ mapping (embedded in the program, see
 //! `crates/engine/instruments`) over the recordings of a library kit: the grand piano ships
@@ -31,6 +31,20 @@ const FADE_SECONDS: f64 = 1.5;
 /// Release override, ms (min, max); `None` in the project = the instrument's own.
 pub const RELEASE_MS: (f32, f32) = (40.0, 3000.0);
 pub const DYNAMICS: (f32, f32, f32) = (0.0, 100.0, 100.0);
+/// Attack, ms (min, max, default): a fade-in added to every note (0 = as recorded). Slower
+/// than the instrument's own attack only: a region's own fade is never shortened.
+pub const ATTACK_MS: (f32, f32, f32) = (0.0, 2000.0, 0.0);
+/// Tone, −100 (dark) .. +100 (bright): a shelf over the highs, ±[`TONE_DB`] at the ends.
+pub const TONE: (f32, f32, f32) = (-100.0, 100.0, 0.0);
+pub const TONE_DB: f32 = 9.0;
+/// Corner of the tone shelf, Hz.
+pub const TONE_HZ: f32 = 1800.0;
+/// Stereo width of the recordings, % (0 = mono, 100 = as recorded, 150 = wider).
+pub const WIDTH: (f32, f32, f32) = (0.0, 150.0, 100.0);
+/// Fine tune, cents.
+pub const TUNE: (f32, f32, f32) = (-100.0, 100.0, 0.0);
+/// Level of the key-release noises (dampers, string squeaks), %.
+pub const NOISE: (f32, f32, f32) = (0.0, 100.0, 100.0);
 
 /// What kind of instrument it is (the browser groups by it).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
@@ -39,10 +53,11 @@ pub enum Category {
     Piano,
     Electric,
     Strings,
+    Guitar,
     Mallets,
 }
 
-/// One instrument Synkopa Keys can play.
+/// One instrument Synkopa Instruments can play.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstrumentInfo {
@@ -62,6 +77,12 @@ pub struct InstrumentInfo {
     pub range: (u8, u8),
     /// The articulation chosen by note length when the channel picks none (strings).
     pub auto: Option<AutoArticulation>,
+    /// The recordings are stereo (Width widens or narrows them; a mono recording has no image).
+    pub stereo: bool,
+    /// A fretted instrument's open strings, low to high (MIDI keys); empty for the rest. Each
+    /// note is played on one of them, and a new note on a string stops the one it was ringing
+    /// (see [`pick_string`]).
+    pub strings: &'static [u8],
     #[serde(skip)]
     pub sfz: &'static str,
 }
@@ -79,6 +100,14 @@ pub struct AutoArticulation {
 /// Strings: spiccato (D#1) under 0.13 s (a sixteenth at about 115 BPM), sustain / arco (C1) above.
 const STRINGS_AUTO: Option<AutoArticulation> = Some(AutoArticulation { short: 27, long: 24, seconds: 0.13 });
 
+/// Guitars: a note shorter than 0.15 s (a sixteenth at 100 BPM) plays the staccato
+/// recordings (C#2), a longer one the sustained pick (C2).
+const GUITAR_AUTO: Option<AutoArticulation> = Some(AutoArticulation { short: 37, long: 36, seconds: 0.15 });
+/// A guitar in standard tuning: E2 A2 D3 G3 B3 E4.
+const GUITAR_STRINGS: &[u8] = &[40, 45, 50, 55, 59, 64];
+/// The highest fret a note is placed on.
+pub const FRETS: u8 = 22;
+
 /// Every instrument, in the order the browser lists them.
 pub const CATALOG: &[InstrumentInfo] = &[
     InstrumentInfo {
@@ -92,6 +121,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC-BY-3.0",
         range: (21, 108),
         auto: None,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/grand-piano.sfz"),
     },
     InstrumentInfo {
@@ -105,6 +136,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC0-1.0",
         range: (21, 108),
         auto: None,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/upright-piano.sfz"),
     },
     InstrumentInfo {
@@ -118,6 +151,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC-BY-3.0",
         range: (33, 96),
         auto: None,
+        stereo: false,
+        strings: &[],
         sfz: include_str!("../instruments/wurlitzer.sfz"),
     },
     InstrumentInfo {
@@ -131,6 +166,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC-BY-3.0",
         range: (21, 108),
         auto: None,
+        stereo: false,
+        strings: &[],
         sfz: include_str!("../instruments/cp80.sfz"),
     },
     InstrumentInfo {
@@ -144,6 +181,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC-BY-3.0",
         range: (29, 88),
         auto: None,
+        stereo: false,
+        strings: &[],
         sfz: include_str!("../instruments/pianet.sfz"),
     },
     InstrumentInfo {
@@ -157,6 +196,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC0-1.0",
         range: (33, 93),
         auto: STRINGS_AUTO,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/strings.sfz"),
     },
     InstrumentInfo {
@@ -170,6 +211,8 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC0-1.0",
         range: (55, 103),
         auto: STRINGS_AUTO,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/solo-violin.sfz"),
     },
     InstrumentInfo {
@@ -183,7 +226,39 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC0-1.0",
         range: (21, 105),
         auto: None,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/harp.sfz"),
+    },
+    InstrumentInfo {
+        id: "hollow-body-guitar",
+        name: "Hollow Body Guitar",
+        category: Category::Guitar,
+        description: "Gretsch Anniversary hollow body, clean: chords, rhythm and lines; staccato for short notes",
+        kit: "hollow-body-guitar",
+        bundled: false,
+        credit: "Black And Green Guitars by Karoryfer Samples",
+        license: "CC0-1.0",
+        range: (40, 86),
+        auto: GUITAR_AUTO,
+        stereo: false,
+        strings: GUITAR_STRINGS,
+        sfz: include_str!("../instruments/hollow-body-guitar.sfz"),
+    },
+    InstrumentInfo {
+        id: "jazz-guitar",
+        name: "Jazz Club Guitar",
+        category: Category::Guitar,
+        description: "Höfner Club archtop, warm and round: jazz comping and mellow melodies",
+        kit: "jazz-guitar",
+        bundled: false,
+        credit: "Black And Green Guitars by Karoryfer Samples",
+        license: "CC0-1.0",
+        range: (40, 86),
+        auto: GUITAR_AUTO,
+        stereo: false,
+        strings: GUITAR_STRINGS,
+        sfz: include_str!("../instruments/jazz-guitar.sfz"),
     },
     InstrumentInfo {
         id: "vibraphone",
@@ -196,9 +271,22 @@ pub const CATALOG: &[InstrumentInfo] = &[
         license: "CC0-1.0",
         range: (48, 91),
         auto: None,
+        stereo: true,
+        strings: &[],
         sfz: include_str!("../instruments/vibraphone.sfz"),
     },
 ];
+
+/// The string a fretted instrument plays `key` on (index into `strings`, low to high): the
+/// highest string that reaches it, which is the lowest fret, as a guitarist voices a chord; a
+/// string still `held` by another note goes to the next one down. When every string that reaches
+/// it is held, the highest of them (its note is stopped). `None` when no string reaches the key.
+pub fn pick_string(strings: &[u8], key: u8, held: impl Fn(usize) -> bool) -> Option<usize> {
+    let reach = |s: &usize| key >= strings[*s] && key - strings[*s] <= FRETS;
+    let mut on = (0..strings.len()).rev().filter(reach);
+    let first = on.clone().next()?;
+    Some(on.find(|s| !held(*s)).unwrap_or(first))
+}
 
 pub fn instrument(id: &str) -> Option<&'static InstrumentInfo> {
     CATALOG.iter().find(|i| i.id == id)
@@ -211,20 +299,37 @@ pub struct Articulation {
     pub name: String,
 }
 
-/// The articulations of a catalog instrument (empty for most), parsed once from its mapping.
-pub fn articulations(id: &str) -> &'static [Articulation] {
-    static ALL: std::sync::OnceLock<Vec<Vec<Articulation>>> = std::sync::OnceLock::new();
+/// What a catalog instrument's mapping says about it, parsed once.
+struct Mapped {
+    articulations: Vec<Articulation>,
+    release_noise: bool,
+}
+
+fn mapped(id: &str) -> Option<&'static Mapped> {
+    static ALL: std::sync::OnceLock<Vec<Mapped>> = std::sync::OnceLock::new();
     let all = ALL.get_or_init(|| {
         CATALOG
             .iter()
-            .map(|i| {
-                sfz::parse(i.sfz, Path::new("."))
-                    .map(|inst| inst.articulations().into_iter().map(|(key, name)| Articulation { key, name }).collect())
-                    .unwrap_or_default()
+            .map(|i| match sfz::parse(i.sfz, Path::new(".")) {
+                Ok(inst) => Mapped {
+                    release_noise: inst.regions.iter().any(|r| r.trigger == Trigger::Release),
+                    articulations: inst.articulations().into_iter().map(|(key, name)| Articulation { key, name }).collect(),
+                },
+                Err(_) => Mapped { articulations: vec![], release_noise: false },
             })
             .collect()
     });
-    CATALOG.iter().position(|i| i.id == id).map_or(&[], |i| &all[i])
+    CATALOG.iter().position(|i| i.id == id).map(|i| &all[i])
+}
+
+/// The articulations of a catalog instrument (empty for most), parsed once from its mapping.
+pub fn articulations(id: &str) -> &'static [Articulation] {
+    mapped(id).map_or(&[], |m| &m.articulations)
+}
+
+/// True when the instrument plays key-release noises (the Noise knob has something to do).
+pub fn release_noise(id: &str) -> bool {
+    mapped(id).is_some_and(|m| m.release_noise)
 }
 
 /// Interleaved 16-bit PCM with interpolation padding (one frame before, two after).
@@ -692,6 +797,36 @@ mod tests {
         ids.dedup();
         assert_eq!(ids.len(), CATALOG.len());
         assert!(instrument(DEFAULT_INSTRUMENT).is_some_and(|i| i.bundled));
+    }
+
+    #[test]
+    fn a_chord_spreads_over_the_strings_as_a_guitarist_voices_it() {
+        let strings = instrument("hollow-body-guitar").unwrap().strings;
+        // assign the notes of a chord one by one, each taking its string
+        let voice = |chord: &[u8]| {
+            let mut taken: Vec<usize> = vec![];
+            chord
+                .iter()
+                .map(|&k| {
+                    let s = pick_string(strings, k, |s| taken.contains(&s)).unwrap();
+                    taken.push(s);
+                    s
+                })
+                .collect::<Vec<_>>()
+        };
+        // open C: A3 D2 G0 B1 e0; G major: E3 A2 D0 G0 B0 e3; an F barre: every string
+        assert_eq!(voice(&[48, 52, 55, 60, 64]), [1, 2, 3, 4, 5]);
+        assert_eq!(voice(&[43, 47, 50, 55, 59, 67]), [0, 1, 2, 3, 4, 5]);
+        assert_eq!(voice(&[41, 48, 53, 57, 60, 65]), [0, 1, 2, 3, 4, 5]);
+        // played top down (an upstroke), the same strings
+        assert_eq!(voice(&[64, 60, 55, 52, 48]), [5, 4, 3, 2, 1]);
+        // a cluster: the second note moves down a string
+        assert_eq!(voice(&[60, 62]), [4, 3]);
+        // a melody note takes the lowest fret
+        assert_eq!(pick_string(strings, 71, |_| false), Some(5));
+        // below the low E, or every string held: still a string (it is stopped), or none
+        assert_eq!(pick_string(strings, 39, |_| false), None);
+        assert_eq!(pick_string(strings, 64, |_| true), Some(5));
     }
 
     #[test]

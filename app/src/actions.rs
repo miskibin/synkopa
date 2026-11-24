@@ -36,13 +36,13 @@ pub trait Host {
     fn model_error(&self) -> Option<String>;
     /// After an install attempt: remember why the model still cannot be used, or clear it.
     fn set_model_error(&self, _e: Option<String>) {}
-    /// Before an offline bounce: the Synkopa Keys piano the project plays is loaded.
+    /// Before an offline bounce: the Synkopa Instruments piano the project plays is loaded.
     fn wait_keys(&self) -> R<()>;
     /// Before pitch work or a bounce of pitch-edited clips: the pitch model is in place.
     fn ensure_pitch_model(&self) {}
     /// Before VST3 parameter access: the project's plugins run as live instances.
     fn ensure_live_plugins(&self) {}
-    /// The Synkopa Keys piano recordings are on this computer (an import gives piano parts to it).
+    /// The Synkopa Instruments piano recordings are on this computer (an import gives piano parts to it).
     fn keys_installed(&self) -> bool {
         false
     }
@@ -913,14 +913,14 @@ pub fn schema() -> Value {
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
             "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
-            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "keys": "kind keys, optional: {instrument (catalog id, default grand-piano), release (ms; absent = the instrument's own), dynamics (0..100 %), articulation (keyswitch key of the instrument's articulations; absent = its default)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
+            "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "keys": "kind keys, optional: {instrument (catalog id, default grand-piano), release (ms; absent = the instrument's own), dynamics (0..100 %), articulation (keyswitch key of the instrument's articulations; absent = its default), attack (0..2000 ms), tone (-100..100), width (0..150 %), tune (-100..100 cents), noise (0..100 %)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
             "putSource": {"source": "rename/recolour an existing source"},
             "removeSource": {"id": 0},
             "setBpm": {"bpm": 128},
             "setLoop": {"loop": {"a": 0, "b": 16}},
-            "putAutomation": {"automation": {"id": 0, "name": "Reverb mix", "color": "#e0a44a", "target": {"kind": "fx|mix|insertVol|insertPan|trackVol|chanVol|chanPan|synth|keys|musicBox|clipGain|clipPan", "fxId": 0, "chanId": 0, "param": "fx: mix or band:<i>:f|g|q; synth: catalog id; keys: release|dynamics; musicBox: ring|brightness|body|mechanical|spread|release", "id": "insert/track/channel/clip id for vol/pan/gain"}, "points": [{"t": 0, "v": 0.2}, {"t": 8, "v": 0.8, "tension": -0.4}, {"t": 12, "v": 0.5, "shape": "hold"}]}},
+            "putAutomation": {"automation": {"id": 0, "name": "Reverb mix", "color": "#e0a44a", "target": {"kind": "fx|mix|insertVol|insertPan|trackVol|chanVol|chanPan|synth|keys|musicBox|clipGain|clipPan", "fxId": 0, "chanId": 0, "param": "fx: mix or band:<i>:f|g|q; synth: catalog id; keys: release|dynamics|attack|tone|width|tune|noise; musicBox: ring|brightness|body|mechanical|spread|release", "id": "insert/track/channel/clip id for vol/pan/gain"}, "points": [{"t": 0, "v": 0.2}, {"t": 8, "v": 0.8, "tension": -0.4}, {"t": 12, "v": 0.5, "shape": "hold"}]}},
             "removeAutomation": {"id": 0},
             "transformNotes": {"pattern": 1, "verb": {"kind": "humanize|quantize|euclidFill|strum|chop|glue|arpeggiate|euclidDrums|melody|chord|progression", "len": 1, "mode": "up|down|upDown|random", "rate": 1, "gate": 0.9, "octaves": 1, "timing": 0.3, "velocity": 0.2, "grid": 1, "amount": 1, "scaleAware": false, "ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7, "width": 0.5, "ramp": 0.05, "voices": [{"ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7}], "bars": 2, "density": 0.5, "repeat": 1, "harmony": "diatonic|maj|min|7|maj7|min7", "template": "pop|pop2|minloop|trap|iivI|doowop|andalusian|blues|canon|chance", "voiceLead": true, "degrees": [0, 5, 2, 6]}, "seed": 7, "select": {"kind": "indices|range", "indices": [1, 2], "from": 0, "to": 16, "ch": 0}},
             "setKey": {"key": 2, "scale": 1},
@@ -1001,7 +1001,7 @@ pub fn relink(app: &dyn Host, a: &Value) -> R<Value> {
 
 // ---------------------------------------------------------------- channels & patterns
 
-/// Synkopa Keys instruments, for `synkopa catalog`.
+/// Synkopa Instruments instruments, for `synkopa catalog`.
 fn keys_catalog() -> Value {
     json!(wave_engine::keys::CATALOG
         .iter()
@@ -1017,11 +1017,11 @@ fn keys_catalog() -> Value {
         .collect::<Vec<_>>())
 }
 
-/// A Synkopa Keys instrument by catalog id or name (any case).
+/// A Synkopa Instruments instrument by catalog id or name (any case).
 fn keys_instrument(s: &str) -> R<&'static wave_engine::keys::InstrumentInfo> {
     wave_engine::keys::CATALOG.iter().find(|i| i.id.eq_ignore_ascii_case(s) || i.name.eq_ignore_ascii_case(s)).ok_or_else(|| {
         let ids: Vec<&str> = wave_engine::keys::CATALOG.iter().map(|i| i.id).collect();
-        format!("Synkopa Keys has no instrument `{s}` ({})", ids.join(", "))
+        format!("Synkopa Instruments has no instrument `{s}` ({})", ids.join(", "))
     })
 }
 
@@ -1042,6 +1042,11 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
                 "articulation": keys.articulation.and_then(|k| wave_engine::keys::articulations(&keys.instrument).iter().find(|a| a.key == k)).map(|a| a.name.clone()),
                 "release": keys.release,
                 "dynamics": keys.dynamics,
+                "attack": keys.attack,
+                "tone": keys.tone,
+                "width": keys.width,
+                "tune": keys.tune,
+                "noise": keys.noise,
             }),
         ),
         ChannelSrc::MusicBox { music_box } => (
@@ -1236,10 +1241,10 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
         ops.push(Op::PutChannel { channel: ch, index: None });
     }
     if arg(a, "keys").and_then(Value::as_bool).unwrap_or(false) {
-        // a Synkopa Keys channel: the grand piano, or the instrument `--instrument` names
+        // a Synkopa Instruments channel: the grand piano, or the instrument `--instrument` names
         let id = p.next_id + ops.len() as u64;
         let mut keys = wave_engine::KeysState::default();
-        let mut name = "Synkopa Keys";
+        let mut name = wave_engine::keys::instrument(&keys.instrument).map_or("Grand Piano", |i| i.name);
         if let Some(i) = arg(a, "instrument").and_then(Value::as_str) {
             let info = keys_instrument(i)?;
             keys.instrument = info.id.into();
@@ -1251,7 +1256,7 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
     } else if let (Some(v), true) = (arg(a, "ch"), arg(a, "instrument").is_some() || arg(a, "articulation").is_some()) {
         // switch a Keys channel's instrument and/or articulation
         let mut c = edited_channel(&p, &ops, v)?;
-        let ChannelSrc::Keys { keys } = &mut c.src else { return Err(format!("channel `{}` is not Synkopa Keys", c.name)) };
+        let ChannelSrc::Keys { keys } = &mut c.src else { return Err(format!("channel `{}` is not Synkopa Instruments", c.name)) };
         if let Some(i) = arg(a, "instrument").and_then(Value::as_str) {
             let info = keys_instrument(i)?;
             if keys.instrument != info.id {
@@ -1319,7 +1324,16 @@ pub fn channels(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value>
                 "release" if value <= 0.0 => keys.release = None,
                 "release" => keys.release = Some((value as f32).clamp(wave_engine::keys::RELEASE_MS.0, wave_engine::keys::RELEASE_MS.1)),
                 "dynamics" => keys.dynamics = (value as f32).clamp(0.0, 100.0),
-                _ => return Err(format!("Synkopa Keys has no parameter `{param}` (release in ms, 0 = the instrument's; dynamics in %)")),
+                "attack" => keys.attack = (value as f32).clamp(wave_engine::keys::ATTACK_MS.0, wave_engine::keys::ATTACK_MS.1),
+                "tone" => keys.tone = (value as f32).clamp(wave_engine::keys::TONE.0, wave_engine::keys::TONE.1),
+                "width" => keys.width = (value as f32).clamp(wave_engine::keys::WIDTH.0, wave_engine::keys::WIDTH.1),
+                "tune" => keys.tune = (value as f32).clamp(wave_engine::keys::TUNE.0, wave_engine::keys::TUNE.1),
+                "noise" => keys.noise = (value as f32).clamp(wave_engine::keys::NOISE.0, wave_engine::keys::NOISE.1),
+                _ => {
+                    return Err(format!(
+                        "Synkopa Instruments has no parameter `{param}` (release and attack in ms, 0 = the instrument's; dynamics, width and noise in %; tone −100..100; tune in cents)"
+                    ))
+                }
             },
             ChannelSrc::MusicBox { music_box } => {
                 let v = value as f32;

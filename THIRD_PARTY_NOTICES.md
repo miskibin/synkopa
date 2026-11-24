@@ -155,17 +155,17 @@ from Freesound's public high-quality MP3 previews and stored as Ogg Vorbis (loop
 * `loop-vox-dark-120-dmin.ogg`: "Drk Vox Loop [120bpm] [D Minor]" by deadrobotmusic on [Freesound](https://freesound.org/s/703686/), [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (from its high-quality preview)
 <!-- factory-credits:end -->
 
-## Salamander Grand Piano (Synkopa Keys)
+## Salamander Grand Piano (Synkopa Instruments)
 
-The Synkopa Keys piano plays recordings from the
+The Synkopa Instruments piano plays recordings from the
 [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano) by
 Alexander Holm, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/). Installers
 ship 208 of its recordings, modified: each is cut to 9 seconds with a fade-out (the longest a
 note rings in Synkopa) and stored as 16-bit FLAC (see `docs/keys.md`). The in-app download installs
 the original files unmodified.
-Music made with Synkopa Keys contains these recordings: credit them as the licence asks.
+Music made with Synkopa Instruments contains these recordings: credit them as the licence asks.
 
-## Synkopa Keys instruments downloaded on demand
+## Synkopa Instruments instruments downloaded on demand
 
 These are not in the installer; Synkopa downloads them when you ask, unmodified, and plays them
 through its own SFZ mappings (`crates/engine/instruments`).
@@ -179,3 +179,8 @@ through its own SFZ mappings (`crates/engine/instruments`).
   [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and the Vibraphone from the
   [Versilian Community Sample Library](https://github.com/sgossner/VCSL), both by Versilian Studios
   LLC, released to the public domain under [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+* Hollow Body Guitar (a Gretsch Anniversary) and Jazz Club Guitar (a Höfner Club) from
+  [Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars) by
+  Karoryfer Samples, recorded by Brian Wood, released to the public domain under
+  [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/). Synkopa's mappings follow theirs,
+  with one velocity curve across the dynamic layers and each note's level evened out.

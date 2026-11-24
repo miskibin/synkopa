@@ -89,19 +89,38 @@ export const SAMPLE_ROOT = 60;
  */
 export interface SynthState { preset: string | null; params: Record<string, number> }
 /**
- * Synkopa Keys (sampled instruments, crates/engine/src/keys.rs): `instrument` = a catalog id
+ * Synkopa Instruments (sampled instruments, crates/engine/src/keys.rs): `instrument` = a catalog id
  * (`KeysInstrument.id`; absent in old projects = the grand piano); `release` = how long a note
  * rings after its key is let go, in ms — absent = each region's own time, as the instrument was
  * mapped; `dynamics` 0..100 % = how much the velocity changes the level (the timbre always
  * follows the velocity); `articulation` = the keyswitch key of one of the instrument's
  * articulations (absent = its default).
  */
-export interface KeysState { instrument?: string; release?: number; dynamics: number; articulation?: number }
+export interface KeysState {
+  instrument?: string; release?: number; dynamics: number; articulation?: number;
+  /** ms of fade-in added to every note (0 = as recorded) — `KEYS_ATTACK`. Absent in older projects = the default. */
+  attack?: number;
+  /** −100 dark .. +100 bright: a shelf over the highs — `KEYS_TONE`. */
+  tone?: number;
+  /** Stereo width of the recordings, % — `KEYS_WIDTH` (a mono instrument has none to change). */
+  width?: number;
+  /** Fine tune, cents — `KEYS_TUNE`. */
+  tune?: number;
+  /** Level of the key-release noises, % — `KEYS_NOISE`. */
+  noise?: number;
+}
 /** `def`: where the knob sits when the instrument's own release applies (and automation's neutral value). */
 export const KEYS_RELEASE = { min: 40, max: 3000, def: 350 } as const;
 export const KEYS_DYNAMICS = { min: 0, max: 100, def: 100 } as const;
+export const KEYS_ATTACK = { min: 0, max: 2000, def: 0 } as const;
+export const KEYS_TONE = { min: -100, max: 100, def: 0 } as const;
+export const KEYS_WIDTH = { min: 0, max: 150, def: 100 } as const;
+export const KEYS_TUNE = { min: -100, max: 100, def: 0 } as const;
+export const KEYS_NOISE = { min: 0, max: 100, def: 100 } as const;
+/** A Keys channel's automatable knobs. */
+export type KeysParam = 'release' | 'dynamics' | 'attack' | 'tone' | 'width' | 'tune' | 'noise';
 export const KEYS_DEFAULT_INSTRUMENT = 'grand-piano';
-export type KeysCategory = 'piano' | 'electric' | 'strings' | 'mallets';
+export type KeysCategory = 'piano' | 'electric' | 'strings' | 'guitar' | 'mallets';
 export type KeysPhase = 'idle' | 'missing' | 'loading' | 'ready' | 'error';
 /**
  * One instrument of the Keys catalog and where it stands: `installed` = its recordings are on
@@ -114,6 +133,8 @@ export interface KeysInstrument {
   credit: string; license: string; range: [number, number]; articulations: { key: number; name: string }[];
   /** Without a chosen articulation: notes shorter than `seconds` play `short`, longer ones `long` (strings). */
   auto: { short: number; long: number; seconds: number } | null;
+  /** Stereo recordings (Width changes their image); `releaseNoise`: it plays key-release noises (the Noise knob). */
+  stereo: boolean; releaseNoise: boolean;
   bytes: number; installed: boolean; state: KeysPhase; error: string | null;
 }
 export interface KeysStatus { instruments: KeysInstrument[] }
@@ -165,7 +186,7 @@ export const samplerDefault = (): SamplerState => ({
   attackTension: 0, decayTension: 0, releaseTension: 0, cut: 0, fadeInMs: 0, fadeOutMs: 0,
 });
 /**
- * What a channel plays: a sample of a project source (the sampler), the built-in synth, Synkopa Keys, or a hosted
+ * What a channel plays: a sample of a project source (the sampler), the built-in synth, Synkopa Instruments, or a hosted
  * VST3 instrument (`plugin`; its sound, parameters and editor are the plugin's, `state` is saved with the project).
  */
 export type ChannelSrc =
@@ -191,7 +212,7 @@ export type Channel = {
  * `v` velocity 0..1 (absent = 1).
  */
 /** `trig` is true for a step trigger, false for a held note, absent on legacy notes. */
-/** `pan`: the note's own pan, -1..1, added to its channel's (absent = 0). Sampler and Synkopa Keys channels play it. */
+/** `pan`: the note's own pan, -1..1, added to its channel's (absent = 0). Sampler and Synkopa Instruments channels play it. */
 /** `slide`: an FL slide note. It starts no sound; the channel's sounding notes glide by the distance
  * from the highest of them to its key, over its length (sampler, Keys and Synth channels; plugins ignore it). */
 export interface Note { ch: Id; step: number; len: number; p?: number; v?: number; pan?: number; trig?: boolean; slide?: boolean }
@@ -393,8 +414,8 @@ export type AutoTarget =
   | { kind: 'chanPan'; id: Id }
   /** A synth channel's parameter (`Catalog.synth` id). */
   | { kind: 'synth'; chanId: Id; param: string }
-  /** A Synkopa Keys channel's release (ms, log) or dynamics (%). */
-  | { kind: 'keys'; chanId: Id; param: 'release' | 'dynamics' }
+  /** A Synkopa Instruments channel's release (ms, log) or dynamics (%). */
+  | { kind: 'keys'; chanId: Id; param: KeysParam }
   /** A Music Box channel's knob: ring/brightness/body/mechanical/spread (%) or release (ms, log). */
   | { kind: 'musicBox'; chanId: Id; param: 'ring' | 'brightness' | 'body' | 'mechanical' | 'spread' | 'release' }
   /** A hosted plugin parameter (`paramId` as `pluginParams` reports it: VST3 id, LV2 port index); values are normalized 0..1. */
@@ -685,7 +706,7 @@ export interface RelinkSearch {
   /** The search stopped at its limit before seeing the whole folder. */
   truncated: boolean;
 }
-/** What an imported MIDI part becomes: GM drums (one library sampler per drum), Synkopa Keys or a synth preset. */
+/** What an imported MIDI part becomes: GM drums (one library sampler per drum), Synkopa Instruments or a synth preset. */
 export type MidiBecomes =
   | { kind: 'drums'; drums: { key: number; name: string; notes: number }[] }
   | { kind: 'keys' }

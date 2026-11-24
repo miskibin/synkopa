@@ -63,8 +63,13 @@
           "id": 31,
           "insert": null,
           "keys": {
+            "attack": 0.0,
             "dynamics": 100.0,
-            "instrument": "grand-piano"
+            "instrument": "grand-piano",
+            "noise": 100.0,
+            "tone": 0.0,
+            "tune": 0.0,
+            "width": 100.0
           },
           "kind": "keys",
           "mute": false,
@@ -478,8 +483,13 @@
           "id": 31,
           "insert": null,
           "keys": {
+            "attack": 0.0,
             "dynamics": 100.0,
-            "instrument": "grand-piano"
+            "instrument": "grand-piano",
+            "noise": 100.0,
+            "tone": 0.0,
+            "tune": 0.0,
+            "width": 100.0
           },
           "kind": "keys",
           "mute": false,
@@ -894,8 +904,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -1371,8 +1386,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -2377,8 +2397,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -2794,8 +2819,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -3253,8 +3283,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -3710,8 +3745,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -4158,8 +4198,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -4615,8 +4660,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -5480,8 +5530,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -5915,8 +5970,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -6381,8 +6441,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -6800,8 +6865,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -7329,8 +7399,13 @@
             "id": 33,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -7411,8 +7486,13 @@
             "id": 33,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -7427,8 +7507,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -7968,8 +8053,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -8674,9 +8764,14 @@
             "id": 33,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
               "instrument": "grand-piano",
-              "release": 10.0
+              "noise": 100.0,
+              "release": 10.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -8704,8 +8799,13 @@
             "insert": null,
             "keys": {
               "articulation": 26,
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "strings"
+              "instrument": "strings",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -8782,8 +8882,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -8799,8 +8904,13 @@
             "insert": null,
             "keys": {
               "articulation": 26,
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "strings"
+              "instrument": "strings",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -9154,7 +9264,7 @@
     },
     {
       "base": "main",
-      "error": "Synkopa Keys has no instrument `kazoo`",
+      "error": "Synkopa Instruments has no instrument `kazoo`",
       "name": "putChannel refuses an unknown keys instrument",
       "ops": [
         {
@@ -9163,8 +9273,13 @@
             "id": 34,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "kazoo"
+              "instrument": "kazoo",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -9192,8 +9307,13 @@
             "insert": null,
             "keys": {
               "articulation": 26,
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -9248,8 +9368,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -9676,8 +9801,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -10089,8 +10219,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -10456,8 +10591,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -10937,8 +11077,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -11343,8 +11488,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -11753,8 +11903,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -12138,8 +12293,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -12621,8 +12781,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -13114,8 +13279,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -13546,8 +13716,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -14105,8 +14280,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -14722,8 +14902,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -15254,8 +15439,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -15690,8 +15880,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -16140,8 +16335,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -16580,8 +16780,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -17341,8 +17546,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -17793,8 +18003,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -18234,8 +18449,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -18660,8 +18880,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -19108,8 +19333,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -19797,8 +20027,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -20215,8 +20450,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -20818,8 +21058,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -21218,8 +21463,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -21723,8 +21973,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -22158,8 +22413,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -22588,8 +22848,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -23026,8 +23291,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -23510,8 +23780,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -23935,8 +24210,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,
@@ -24389,8 +24669,13 @@
             "id": 31,
             "insert": null,
             "keys": {
+              "attack": 0.0,
               "dynamics": 100.0,
-              "instrument": "grand-piano"
+              "instrument": "grand-piano",
+              "noise": 100.0,
+              "tone": 0.0,
+              "tune": 0.0,
+              "width": 100.0
             },
             "kind": "keys",
             "mute": false,

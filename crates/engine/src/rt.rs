@@ -660,9 +660,10 @@ pub enum TargetRt {
         fx: Id,
         param_id: u32,
     },
-    /// Synkopa Keys channel (index into `Timeline::chans`): release time, dynamics.
+    /// Synkopa Instruments channel (index into `Timeline::chans`): release time, dynamics.
     KeysRelease(usize),
     KeysDynamics(usize),
+    KeysKnob(usize, KeysKnob),
     /// Music Box channel (index into `Timeline::chans`): its knobs, see `crate::musicbox`.
     MbRing(usize),
     MbBrightness(usize),
@@ -811,6 +812,84 @@ impl SmpRt {
     }
 }
 
+/// A Synkopa Instruments knob an automation drives (besides release and dynamics).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeysKnob {
+    Attack,
+    Tone,
+    Width,
+    Tune,
+    Noise,
+}
+
+/// A Keys channel's attack, tone, width, tune and noise as the voices use them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KeysKnobs {
+    /// Seconds of fade-in at least.
+    pub attack: f32,
+    /// Gain of the highs over the tone shelf (1 = flat).
+    pub tone: f32,
+    /// Side level, 0 (mono) .. 1.5.
+    pub width: f32,
+    /// Playback rate factor of the fine tune.
+    pub tune: f64,
+    /// Gain of the key-release noises.
+    pub noise: f32,
+}
+
+impl Default for KeysKnobs {
+    fn default() -> Self {
+        Self::from_state(&crate::model::KeysState::default())
+    }
+}
+
+impl KeysKnobs {
+    pub fn from_state(k: &crate::model::KeysState) -> Self {
+        Self {
+            attack: k.attack / 1000.0,
+            tone: tone_gain(k.tone),
+            width: k.width / 100.0,
+            tune: 2f64.powf(k.tune as f64 / 1200.0),
+            noise: k.noise / 100.0,
+        }
+    }
+
+    /// Sets `k` from an automation's normalized 0..1 value.
+    pub fn set(&mut self, k: KeysKnob, v: f32) {
+        use crate::keys::{NOISE, TONE, TUNE, WIDTH};
+        let lin = |(lo, hi, _): (f32, f32, f32)| lo + (hi - lo) * v.clamp(0.0, 1.0);
+        match k {
+            // logarithmic over 1 ms .. max, the bottom of the travel is none
+            KeysKnob::Attack => self.attack = if v <= 0.0 { 0.0 } else { attack_ms(v) / 1000.0 },
+            KeysKnob::Tone => self.tone = tone_gain(lin(TONE)),
+            KeysKnob::Width => self.width = lin(WIDTH) / 100.0,
+            KeysKnob::Tune => self.tune = 2f64.powf(lin(TUNE) as f64 / 1200.0),
+            KeysKnob::Noise => self.noise = lin(NOISE) / 100.0,
+        }
+    }
+
+    fn carry(&mut self, o: &Self, k: KeysKnob) {
+        match k {
+            KeysKnob::Attack => self.attack = o.attack,
+            KeysKnob::Tone => self.tone = o.tone,
+            KeysKnob::Width => self.width = o.width,
+            KeysKnob::Tune => self.tune = o.tune,
+            KeysKnob::Noise => self.noise = o.noise,
+        }
+    }
+}
+
+/// The attack knob's travel 0..1 in ms: logarithmic from 1 ms to the maximum.
+pub fn attack_ms(v: f32) -> f32 {
+    let hi = crate::keys::ATTACK_MS.1;
+    hi.powf(v.clamp(0.0, 1.0))
+}
+
+/// Gain of the highs for a tone of −100..100.
+pub fn tone_gain(tone: f32) -> f32 {
+    10f32.powf(tone / 100.0 * crate::keys::TONE_DB / 20.0)
+}
+
 /// A Channel Rack channel, resolved for the audio thread.
 pub struct ChanRt {
     pub id: Id,
@@ -822,7 +901,7 @@ pub struct ChanRt {
     /// Slice mode: where each slice starts (fractions of the file, increasing), see
     /// `ChannelSrc::Sample::slices`. `None` = the sampler plays its region by pitch.
     pub slices: Option<Arc<[f32]>>,
-    /// Synkopa Keys channels: the piano (`None` until it is loaded: the channel is silent),
+    /// Synkopa Instruments channels: the piano (`None` until it is loaded: the channel is silent),
     /// the release time in seconds and the velocity → level amount 0..1.
     pub keys: Option<Arc<crate::keys::KeysBank>>,
     pub keys_release: f32,
@@ -831,6 +910,10 @@ pub struct ChanRt {
     /// Without one: the instrument's auto articulation by note length, if it has one.
     pub keys_auto: Option<crate::keys::AutoArticulation>,
     pub keys_dynamics: f32,
+    /// The rest of a Keys channel's knobs, in the units the voices use.
+    pub keys_knobs: KeysKnobs,
+    /// A fretted instrument's open strings (`crate::keys::InstrumentInfo::strings`), empty else.
+    pub keys_strings: &'static [u8],
     /// Music Box channels: the knobs (see `crate::musicbox`; the release in seconds, the
     /// rest normalized 0..1).
     pub mb_ring: f32,
@@ -2776,6 +2859,7 @@ fn carry_automated(new: &mut Timeline, old: &Timeline) {
             | TargetRt::ChanPan(i)
             | TargetRt::KeysRelease(i)
             | TargetRt::KeysDynamics(i)
+            | TargetRt::KeysKnob(i, _)
             | TargetRt::MbRing(i)
             | TargetRt::MbBrightness(i)
             | TargetRt::MbBody(i)
@@ -2803,6 +2887,7 @@ fn carry_automated(new: &mut Timeline, old: &Timeline) {
                     TargetRt::ChanVol(_) => (c.gain, c.gain0) = (o.gain, o.gain0),
                     TargetRt::ChanPan(_) => (c.pan, c.pan0) = (o.pan, o.pan0),
                     TargetRt::KeysRelease(_) => c.keys_release = o.keys_release,
+                    TargetRt::KeysKnob(_, k) => c.keys_knobs.carry(&o.keys_knobs, k),
                     TargetRt::MbRing(_) => c.mb_ring = o.mb_ring,
                     TargetRt::MbBrightness(_) => c.mb_brightness = o.mb_brightness,
                     TargetRt::MbBody(_) => c.mb_body = o.mb_body,
@@ -2961,6 +3046,11 @@ fn apply_automation(tl: &mut Timeline, g: &mut Graph, synths: &mut crate::poly::
             TargetRt::KeysDynamics(i) => {
                 if let Some(ch) = tl.chans.get_mut(i) {
                     ch.keys_dynamics = v;
+                }
+            }
+            TargetRt::KeysKnob(i, k) => {
+                if let Some(ch) = tl.chans.get_mut(i) {
+                    ch.keys_knobs.set(k, v);
                 }
             }
             TargetRt::MbRelease(i) => {

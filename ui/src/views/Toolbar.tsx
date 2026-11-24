@@ -1,5 +1,5 @@
 import { isFullscreen, setFullscreen, toggleFullscreen } from '../state/fullscreen';
-import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
+import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, scrollPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { APP_GLYPH as G } from '../ui/menuIcons';
 import { forgetRecent, recent, recentLabels, refreshRecent } from '../state/recent';
@@ -470,7 +470,7 @@ function PatSelector() {
     e.preventDefault();
     acc += e.deltaY || e.deltaX;
     if (Math.abs(acc) < 40) return;
-    stepPattern(acc > 0 ? 1 : -1); acc = 0;
+    scrollPattern(acc > 0 ? 1 : -1); acc = 0;
   };
   return (
     <div class="patselbox" data-patsel>

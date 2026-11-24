@@ -34,7 +34,7 @@ pub enum VoiceKind {
     /// The sample of the voice's channel, pitched by the note and shaped by the channel's
     /// sampler settings (part of the file, direction, fades, volume envelope).
     Sample,
-    /// Synkopa Keys: a region of the channel's instrument (see `crate::keys`), picked by key,
+    /// Synkopa Instruments: a region of the channel's instrument (see `crate::keys`), picked by key,
     /// velocity and round robin; it rings for the note's length under its envelope, then
     /// releases over the region's (or the channel's) release time.
     Keys,
@@ -104,6 +104,17 @@ pub struct Voice {
     /// velocity the note was struck with (its release noise follows it).
     rel: bool,
     note_vel: f32,
+    /// Keys: the tone shelf's low-pass state (left, right) and the knobs as this voice has
+    /// glided to them (high-shelf gain, side level, noise gain), so a turned or automated knob
+    /// moves smoothly instead of stepping at block edges.
+    tlp: (f32, f32),
+    /// Keys, a fretted instrument: the string the note sounds on ([`NO_STRING`] = none), and
+    /// whether a new note on that string stops it (it then fades over [`CHOKE_SECONDS`]).
+    string: u8,
+    choked: bool,
+    k_tone: f32,
+    k_width: f32,
+    k_noise: f32,
     /// Music Box: the sounding note's tine model.
     pub mb: crate::musicbox::Tine,
     /// Release (and cut) level: 1 until the note ends, then it falls.
@@ -184,6 +195,12 @@ impl Voice {
             stage_t: 0,
             rel: false,
             note_vel: 0.0,
+            tlp: (0.0, 0.0),
+            string: NO_STRING,
+            choked: false,
+            k_tone: 1.0,
+            k_width: 1.0,
+            k_noise: 1.0,
             mb: crate::musicbox::Tine::default(),
             env: 1.0,
             cut: 0,
@@ -200,7 +217,7 @@ impl Voice {
     }
 }
 
-/// Output level of Synkopa Keys against its recordings (−12 dB). The Salamander bank is
+/// Output level of Synkopa Instruments against its recordings (−12 dB). The Salamander bank is
 /// levelled hot: one full-velocity note peaks at +1 dBFS, ten keys at +10.5 dBFS. With this
 /// headroom a loud note sits near −11 dBFS and a ten-note chord near −1.8 dBFS, so chords sum
 /// linearly instead of being squashed by a limiter (which made them pump and change tone).
@@ -222,6 +239,18 @@ pub struct VoicePool {
 
 /// A live note's length: it lasts until its key comes up.
 const LIVE_SECONDS: f32 = 3600.0;
+/// A Keys voice on no string (every instrument that is not fretted).
+const NO_STRING: u8 = u8::MAX;
+
+/// True when `v` (a voice already started) still holds its note at `delay` samples into this
+/// block, when a new note starts: its key is down and it was not stopped.
+fn held_at(v: &Voice, delay: u32) -> bool {
+    if v.delay >= delay {
+        return true;
+    }
+    v.t.saturating_add(delay - v.delay) < v.len && v.cut_at == u32::MAX
+}
+
 /// No channel in a keyswitch slot.
 const NO_ID: Id = Id::MAX;
 
@@ -253,6 +282,9 @@ fn release(v: &mut Voice) {
 
 /// Time for a cut voice to fall 60 dB: fast, but not a click.
 const CUT_SECONDS: f32 = 0.006;
+/// A guitar string's old note under a new pick: the pick damps it over a few tens of ms
+/// (a 6 ms cut of a ringing string is heard as a click).
+const CHOKE_SECONDS: f32 = 0.03;
 /// Fade at a trimmed edge of a sample, where the waveform does not start or end at zero.
 const EDGE_SECONDS: f32 = 0.0015;
 /// Fades at the start and the end of a slice, seconds.
@@ -372,9 +404,11 @@ impl VoicePool {
         let rand = self.rand();
         let sw = self.switch(ch.id).or(ch.keys_sw);
         let rr = self.rr[v.key as usize & 127];
-        let (dest, chan, key, pan, vel) = (v.dest, v.chan, v.key, v.pan, v.note_vel);
+        let (dest, chan, key, pan, vel, string) = (v.dest, v.chan, v.key, v.pan, v.note_vel, v.string);
         bank.pick(crate::sfz::Trigger::Release, key, vel, rr, rand, sw, ch.keys_dynamics, held, |h| {
-            self.keys_zone(ch, &bank, chan, dest, 0, NoteEnd::Natural, key, vel, 1.0, pan, h, true);
+            if let Some(i) = self.keys_zone(ch, &bank, chan, dest, 0, NoteEnd::Natural, key, vel, 1.0, pan, h, true) {
+                self.voices[i].string = string;
+            }
         });
     }
 
@@ -433,8 +467,16 @@ impl VoicePool {
         v.pan = (pan + h.pan).clamp(-1.0, 1.0);
         v.pos = z.offset;
         v.eg = h.eg;
+        // the channel's attack only slows a note's own fade-in (a release noise plays as recorded)
+        if !rel {
+            v.eg.attack = v.eg.attack.max(ch.keys_knobs.attack);
+        }
         v.rel = rel;
         v.note_vel = vel;
+        v.tlp = (0.0, 0.0);
+        v.k_tone = ch.keys_knobs.tone;
+        v.k_width = ch.keys_knobs.width;
+        v.k_noise = ch.keys_knobs.noise;
         Some(i)
     }
 
@@ -596,6 +638,33 @@ impl VoicePool {
                     v.sus = false;
                     v.len = v.len.min(v.t.saturating_add(delay.saturating_sub(v.delay)));
                 }
+                // a fretted instrument: the note takes a string, and stops what that string was ringing
+                // (a guitar string sounds one note; restruck, its old note is gone)
+                let string = match crate::keys::pick_string(ch.keys_strings, key, |s| {
+                    self.voices.iter().any(|v| {
+                        v.alive && v.kind == VoiceKind::Keys && v.chan_id == ch.id && !v.rel && v.string as usize == s && held_at(v, delay)
+                    })
+                }) {
+                    Some(s) => {
+                        for v in self
+                            .voices
+                            .iter_mut()
+                            .filter(|v| v.alive && v.kind == VoiceKind::Keys && v.chan_id == ch.id && v.string as usize == s)
+                        {
+                            if v.rel {
+                                // the release noise scheduled for the stopped note's end: it never comes
+                                if v.delay > delay {
+                                    v.alive = false;
+                                }
+                            } else if v.cut_at == u32::MAX {
+                                v.cut_at = v.t.saturating_add(delay.saturating_sub(v.delay));
+                                v.choked = true;
+                            }
+                        }
+                        s as u8
+                    }
+                    None => NO_STRING,
+                };
                 let k = key as usize & 127;
                 let rr = self.rr[k];
                 self.rr[k] = rr.wrapping_add(1);
@@ -610,6 +679,9 @@ impl VoicePool {
                 let mut first = None;
                 bank.pick(crate::sfz::Trigger::Attack, key, vel, rr, rand, sw, ch.keys_dynamics, 0.0, |h| {
                     let i = self.keys_zone(ch, &bank, idx, dest, delay, end, key, vel, gain, pan, h, false);
+                    if let Some(i) = i {
+                        self.voices[i].string = string;
+                    }
                     first = first.or(i);
                 });
                 // a sequenced note knows when it ends: its key-release noise is scheduled with it
@@ -618,7 +690,9 @@ impl VoicePool {
                     if first.is_some() && bank.has_release(key) {
                         let at = delay.saturating_add((s * self.sr) as u32);
                         bank.pick(crate::sfz::Trigger::Release, key, vel, rr, rand, sw, ch.keys_dynamics, s, |h| {
-                            self.keys_zone(ch, &bank, idx, dest, at, NoteEnd::Natural, key, vel, gain, pan, h, true);
+                            if let Some(i) = self.keys_zone(ch, &bank, idx, dest, at, NoteEnd::Natural, key, vel, gain, pan, h, true) {
+                                self.voices[i].string = string;
+                            }
                         });
                     }
                 }
@@ -717,7 +791,7 @@ impl VoicePool {
                         c.gain0 * on,
                         c.pan0,
                         c.sample.as_deref().map(|a| (a, c.smp, c.slices.as_deref())),
-                        c.keys.as_deref().map(|b| (b, c.keys_release)),
+                        c.keys.as_deref().map(|b| (b, c.keys_release, c.keys_knobs)),
                         mb,
                     )
                 }
@@ -765,7 +839,7 @@ impl VoicePool {
             };
             let stereo = !out_r.is_empty();
             if v.kind == VoiceKind::Keys {
-                let Some((bank, release_override)) = piano else {
+                let Some((bank, release_override, knobs)) = piano else {
                     v.alive = false;
                     continue;
                 };
@@ -783,6 +857,14 @@ impl VoicePool {
                 // the decay falls 60 dB of the way to the sustain level in `decay` seconds
                 let dcoef = if eg.decay > 0.0 { 10f32.powf(-3.0 / (eg.decay * sr)) } else { 0.0 };
                 let looping = z.loop_len > 0.0;
+                let (cut, choke) = (10f32.powf(-3.0 / (CUT_SECONDS * sr)), 10f32.powf(-3.0 / (CHOKE_SECONDS * sr)));
+                // the tone shelf: a one-pole low-pass splits off the highs, which the tone scales
+                let tone_a = 1.0 - (-std::f32::consts::TAU * crate::keys::TONE_HZ / sr).exp();
+                // knobs glide over ~10 ms
+                let glide = 1.0 - (-1.0 / (0.01 * sr)).exp();
+                let noise_goal = if v.rel { knobs.noise } else { 1.0 };
+                let flat = (knobs.tone - 1.0).abs() < 1e-6 && (v.k_tone - 1.0).abs() < 1e-6;
+                let rate = v.rate * knobs.tune;
                 for i in start..n {
                     if looping && (z.loop_mode == crate::sfz::LoopMode::Continuous || v.t < v.len) && v.pos >= z.loop_start + z.loop_len {
                         v.pos -= z.loop_len * ((v.pos - z.loop_start) / z.loop_len).floor();
@@ -792,7 +874,7 @@ impl VoicePool {
                         break;
                     }
                     if v.cut_at != u32::MAX && v.t >= v.cut_at {
-                        v.env *= 10f32.powf(-3.0 / (CUT_SECONDS * sr));
+                        v.env *= if v.choked { choke } else { cut };
                         if v.env < 1e-4 {
                             v.alive = false;
                             break;
@@ -843,14 +925,27 @@ impl VoicePool {
                             break;
                         }
                     }
-                    let (x, y) = p.sample(v.pos);
-                    let a = v.lvl * v.env;
+                    let (mut x, mut y) = p.sample(v.pos);
+                    v.k_width += (knobs.width - v.k_width) * glide;
+                    v.k_noise += (noise_goal - v.k_noise) * glide;
+                    if p.channels == 2 {
+                        let (m, sd) = ((x + y) * 0.5, (x - y) * 0.5 * v.k_width);
+                        (x, y) = (m + sd, m - sd);
+                    }
+                    if !flat {
+                        v.k_tone += (knobs.tone - v.k_tone) * glide;
+                        v.tlp.0 += tone_a * (x - v.tlp.0);
+                        v.tlp.1 += tone_a * (y - v.tlp.1);
+                        x = v.tlp.0 + v.k_tone * (x - v.tlp.0);
+                        y = v.tlp.1 + v.k_tone * (y - v.tlp.1);
+                    }
+                    let a = v.lvl * v.env * v.k_noise;
                     let (gl, gr) = side(i);
                     out_l[i] += x * gl * a;
                     if stereo {
                         out_r[i] += y * gr * a;
                     }
-                    v.pos += v.rate * bend as f64 * v.slide_tick();
+                    v.pos += rate * bend as f64 * v.slide_tick();
                     v.t += 1;
                 }
                 continue;

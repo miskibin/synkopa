@@ -15,7 +15,10 @@
       "range": [
         21,
         108
-      ]
+      ],
+      "releaseNoise": true,
+      "stereo": true,
+      "strings": []
     },
     {
       "articulations": [],
@@ -32,7 +35,10 @@
       "range": [
         21,
         108
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": true,
+      "strings": []
     },
     {
       "articulations": [],
@@ -49,7 +55,10 @@
       "range": [
         33,
         96
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": false,
+      "strings": []
     },
     {
       "articulations": [],
@@ -66,7 +75,10 @@
       "range": [
         21,
         108
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": false,
+      "strings": []
     },
     {
       "articulations": [],
@@ -83,7 +95,10 @@
       "range": [
         29,
         88
-      ]
+      ],
+      "releaseNoise": true,
+      "stereo": false,
+      "strings": []
     },
     {
       "articulations": [
@@ -121,7 +136,10 @@
       "range": [
         33,
         93
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": true,
+      "strings": []
     },
     {
       "articulations": [
@@ -159,7 +177,10 @@
       "range": [
         55,
         103
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": true,
+      "strings": []
     },
     {
       "articulations": [],
@@ -176,6 +197,89 @@
       "range": [
         21,
         105
+      ],
+      "releaseNoise": false,
+      "stereo": true,
+      "strings": []
+    },
+    {
+      "articulations": [
+        {
+          "key": 36,
+          "name": "Sustain"
+        },
+        {
+          "key": 37,
+          "name": "Staccato"
+        }
+      ],
+      "auto": {
+        "long": 36,
+        "seconds": 0.15000000596046448,
+        "short": 37
+      },
+      "bundled": false,
+      "bytes": 306328328,
+      "category": "guitar",
+      "credit": "Black And Green Guitars by Karoryfer Samples",
+      "description": "Gretsch Anniversary hollow body, clean: chords, rhythm and lines; staccato for short notes",
+      "id": "hollow-body-guitar",
+      "kit": "hollow-body-guitar",
+      "license": "CC0-1.0",
+      "name": "Hollow Body Guitar",
+      "range": [
+        40,
+        86
+      ],
+      "releaseNoise": true,
+      "stereo": false,
+      "strings": [
+        40,
+        45,
+        50,
+        55,
+        59,
+        64
+      ]
+    },
+    {
+      "articulations": [
+        {
+          "key": 36,
+          "name": "Sustain"
+        },
+        {
+          "key": 37,
+          "name": "Staccato"
+        }
+      ],
+      "auto": {
+        "long": 36,
+        "seconds": 0.15000000596046448,
+        "short": 37
+      },
+      "bundled": false,
+      "bytes": 210729304,
+      "category": "guitar",
+      "credit": "Black And Green Guitars by Karoryfer Samples",
+      "description": "Höfner Club archtop, warm and round: jazz comping and mellow melodies",
+      "id": "jazz-guitar",
+      "kit": "jazz-guitar",
+      "license": "CC0-1.0",
+      "name": "Jazz Club Guitar",
+      "range": [
+        40,
+        86
+      ],
+      "releaseNoise": true,
+      "stereo": false,
+      "strings": [
+        40,
+        45,
+        50,
+        55,
+        59,
+        64
       ]
     },
     {
@@ -193,7 +297,10 @@
       "range": [
         48,
         91
-      ]
+      ],
+      "releaseNoise": false,
+      "stereo": true,
+      "strings": []
     }
   ],
   "releaseMs": [

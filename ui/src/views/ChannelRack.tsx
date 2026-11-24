@@ -16,7 +16,7 @@ import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu
 import { commit, Gesture } from '../state/edit';
 import {
   addBar, RACK_MIN_W, stepPad, stepW, audition, chanById, chanKindLabel, chanOp, channels, closeRack, curPat, openRoll, patOp, playStep, putNotes, RACK_LEFT, RACK_ROW,
-  rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, stepPattern, toggleChanMute, toggleChanSolo,
+  rackFront, rackPlaceFor, removeBar, selChan, selectChannel, selectChannelRange, toggleChannelSelected, isChannelSelected, scrollPattern, toggleChanMute, toggleChanSolo,
   rackChannels, rackFilter, setRackFilter,
 } from '../state/pattern';
 import { arrVersion, rawOf, S } from '../state/store';
@@ -420,7 +420,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     e.preventDefault();
     headAcc += e.deltaY || e.deltaX;
     if (Math.abs(headAcc) < 40) return;
-    stepPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
+    scrollPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
   };
   return (
     <PanelFrame name={t('a.mn.rack')} {...patGeom('rackWin')} z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} dockId="rack" front={rackFront} onKey={onKey} onHeadWheel={headWheel}
@@ -549,7 +549,7 @@ function ChanRow(props: { c: Channel; onMenu: (c: Channel, e: MouseEvent) => voi
         onPointerDown={nameDown}>
         <span class="cicon" style={{ color: c().color }}><InstIcon id={channelIcon(c(), (id: number) => S.project.sources.find(s => s.id === id))} size={11} /></span>
         <span class="ell">{c().name}</span>
-        <Show when={c().kind === 'keys'}><span class="ckind">KEYS</span></Show>
+        <Show when={c().kind === 'keys'}><span class="ckind">INST</span></Show>
         <Show when={c().kind === 'musicbox'}><span class="ckind">MBOX</span></Show>
         <Show when={c().kind === 'plugin'}><span class={['ckind', { err: !!S.fxErrors[c().id] }]}>{S.fxErrors[c().id] ? '! VST3' : 'VST3'}</span></Show>
       </button>

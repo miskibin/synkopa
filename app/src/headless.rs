@@ -42,7 +42,7 @@ pub struct Headless {
     plugins: Arc<Plugins>,
     /// The pitch model, loaded on first need: why it could not be, if it could not.
     model: OnceLock<Option<String>>,
-    /// Synkopa Keys instruments loaded (or that failed to load) so far, by catalog id.
+    /// Synkopa Instruments instruments loaded (or that failed to load) so far, by catalog id.
     keys: Mutex<std::collections::HashMap<&'static str, R<()>>>,
     /// The audio-thread half nobody plays: it makes the engine instantiate hosted plugins
     /// live (their parameters and state are reachable), pumped by hand after each command.

@@ -161,9 +161,9 @@ export class MockBackend implements Backend {
   private kits = [
     { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_LISTED_FILES.length, installed: true },
     { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
-    { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
+    { id: 'wave-keys', name: 'Synkopa Instruments & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
     { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
-    // the kits of the downloadable Synkopa Keys instruments (the grand piano ships with the app)
+    // the kits of the downloadable Synkopa Instruments instruments (the grand piano ships with the app)
     ...[...new Map(KEYS_CATALOG.filter(i => !i.bundled).map(i => [i.kit, i])).values()]
       .map(i => ({ id: i.kit, name: i.name, description: i.description, bytes: i.bytes, count: 1, installed: false })),
   ];

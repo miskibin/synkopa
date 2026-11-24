@@ -99,7 +99,7 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 | --- | --- |
 | **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place; named markers on the timeline (Alt+T) to jump between and loop song sections |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
-| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
+| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Instruments](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
 | **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser, stereo imager with bass mono, OTT-style multiband, loudness analyzer (LUFS, true peak); presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
@@ -174,7 +174,7 @@ change, and a benchmark that counts allocations in the audio callback.
 ## Install
 
 Download the installer from the [latest release](https://github.com/miskibin/synkopa/releases/latest).
-The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Keys piano.
+The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Instruments piano.
 If a Focusrite USB interface is disconnected, use **Switch to WASAPI** in the audio notification
 or in Settings → Audio to resume playback through the default Windows output. Connect the
 interface and choose ASIO again to go back. With Focusrite USB ASIO installed, Synkopa waits for
@@ -192,7 +192,7 @@ To share an editable project, choose **File → Export project as ZIP**. Unzip t
 and open the `.synkopa` file inside it. Keep the `Audio` folder beside the project. The ZIP includes
 the project's samples and recorded takes. Synkopa looks for third-party plugins at the locations
 stored in the project (LV2 plugins by their URI), and files a plugin itself loads (an impulse
-response, a sample) are not collected into the ZIP. Synkopa Keys uses its bundled or separately
+response, a sample) are not collected into the ZIP. Synkopa Instruments uses its bundled or separately
 installed piano library.
 
 ## Build from source
@@ -215,7 +215,7 @@ the Steinberg SDK by itself.
 cd app; cargo tauri build --features asio
 ```
 
-**Synkopa Keys in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
+**Synkopa Instruments in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
 checksummed, cached in `target/keys-src`) and prepares it in `app/resources/keys` (cut to what
 the app plays, 16-bit FLAC, about 23 MB) so `tauri build` ships it. It needs `cargo`. Without it the app offers to
 download the piano the first time you add the instrument.
@@ -232,7 +232,7 @@ Claude Code work on your song, start it in any folder and tell it to run `synkop
 Full reference: [`docs/cli.md`](docs/cli.md).
 
 ```sh
-synkopa channels --keys                      # add the Synkopa Keys piano
+synkopa channels --keys                      # add the Synkopa Instruments piano
 synkopa undo                                 # or press Ctrl+Z in the app
 ```
 

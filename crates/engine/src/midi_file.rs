@@ -381,14 +381,14 @@ pub fn gm_name(program: u8) -> &'static str {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Instrument {
-    /// Synkopa Keys, the sampled grand piano.
+    /// Synkopa Instruments, the sampled grand piano.
     Keys,
     /// A factory synth preset.
     Synth { preset: &'static str },
 }
 
 /// The Synkopa instrument closest to a General MIDI program (none = a piano part).
-/// `keys`: Synkopa Keys is on this computer (otherwise pianos get a synth piano).
+/// `keys`: Synkopa Instruments is on this computer (otherwise pianos get a synth piano).
 pub fn instrument_for(program: Option<u8>, keys: bool) -> Instrument {
     let p = program.unwrap_or(0);
     let synth = |preset| Instrument::Synth { preset };
