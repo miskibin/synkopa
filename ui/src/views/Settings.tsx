@@ -1,6 +1,6 @@
 import { createMemo, For, Show } from 'solid-js';
 import type { JSX } from '@solidjs/web';
-import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
+import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { ICONS } from '../ui/icons';
 import { kept } from '../ui/keptValue';
 import { be } from '../api/backend';
@@ -37,7 +37,9 @@ function SettingsDialog() {
   // the request itself is taken by the effect below (no write while rendering)
   if (audioTabRequested()) lastTab = 'audio';
   const [tab, setTab] = createSignal<Tab>(lastTab);
-  const pickTab = (t: Tab) => { lastTab = t; setTab(t); };
+  let pane: HTMLDivElement | undefined;
+  const pickTab = (next: Tab) => { lastTab = next; setTab(next); };
+  watch(tab, () => { if (pane) pane.scrollTop = 0; }, { defer: true });
   // "Audio settings" on a notice while Settings is already open switches it to the Audio tab
   effect(() => { if (audioTabRequested() && takeAudioTabRequest()) pickTab('audio'); });
   const cur = () => TABS.find(x => x.id === tab()) ?? TABS[0];
@@ -80,7 +82,7 @@ function SettingsDialog() {
         }}>
           <div class="settitle"><TabIcon d={ICONS.gear} color="var(--fg3)" plain />{t('d.set.title')}</div>
           <For each={TABS}>{x => (
-            <button role="tab" data-tab={x.id} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
+            <button role="tab" data-tab={x.id} aria-label={t(x.label)} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
               <TabIcon d={x.icon} color={x.color} />
               <span>{t(x.label)}</span>
             </button>
@@ -94,7 +96,7 @@ function SettingsDialog() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </header>
-          <div class="setpane" role="tabpanel">
+          <div ref={pane} class="setpane" role="tabpanel" aria-label={t(cur().label)} tabindex="0">
             <Show when={tab() === 'general'}><GeneralSection /></Show>
             <Show when={tab() === 'look'}><LookSection /></Show>
             <Show when={tab() === 'updates'}><UpdatesSettings OnOff={OnOff} /></Show>
@@ -256,10 +258,6 @@ function GeneralSection() {
         <Row label={t('d.set.autosave')} desc={t('d.set.autosave.tip')}>
           <Segmented options={AUTOSAVE.map(m => (m ? t('d.set.min', { n: m }) : t('d.set.off')))} value={() => AUTOSAVE.indexOf(prefs().autosaveMin)}
             pick={i => setPref('autosaveMin', AUTOSAVE[i])} />
-        </Row>
-        <Row label={t('d.set.demo')} desc={t('d.set.demo.tip')}>
-          <button class="smallbtn" style={{ 'justify-self': 'start' }} disabled={U.openingProject}
-            onClick={() => void A.projectNew(true).then(ok => { if (ok) setU('settings', false); })}>{t('d.set.demo.open')}</button>
         </Row>
       </div>
       <div class="sechd">{t('d.set.sec.edit')}</div>
