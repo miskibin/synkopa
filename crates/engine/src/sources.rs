@@ -147,6 +147,10 @@ pub struct SourceStore {
     aligned: HashMap<AlignKey, (u64, Arc<Alignment>)>,
     align_tick: u64,
     music: HashMap<Variant, Arc<crate::music::SourceMusic>>,
+    /// What the chord model heard in each variant (dropped when the model changes).
+    chords: HashMap<Variant, Arc<crate::chords::ChordFrames>>,
+    /// Chord recognizer (`None` until its model is installed).
+    chord_model: Option<Arc<dyn crate::chords::ChordModel>>,
     /// clip id → (hash of its edits, rendered audio)
     tuned: HashMap<u64, (u64, Arc<Audio>)>,
     /// Pitch-preserving time-stretches of clips' audio.
@@ -310,6 +314,7 @@ impl SourceStore {
         self.content.retain(|k, _| k.0 != id);
         self.aligned.retain(|k, _| k.0 .0 != id && k.1 .0 != id);
         self.music.retain(|k, _| k.0 != id);
+        self.chords.retain(|k, _| k.0 != id);
         self.stretch.forget_source(id);
         self.audio.insert(id, a);
     }
@@ -326,6 +331,7 @@ impl SourceStore {
         self.content.retain(|k, _| k.0 != id);
         self.aligned.retain(|k, _| k.0 .0 != id && k.1 .0 != id);
         self.music.retain(|k, _| k.0 != id);
+        self.chords.retain(|k, _| k.0 != id);
         self.stretch.forget_source(id);
         self.audio.remove(&id);
     }
@@ -447,6 +453,7 @@ impl SourceStore {
         self.content.retain(|k, _| sources.contains(&k.0));
         self.aligned.retain(|k, _| sources.contains(&k.0 .0) && sources.contains(&k.1 .0));
         self.music.retain(|k, _| sources.contains(&k.0));
+        self.chords.retain(|k, _| sources.contains(&k.0));
         self.origin.retain(|k, _| sources.contains(k));
         let mut freed = 0;
         self.parked.retain(|(id, _), (_, a)| {
@@ -577,6 +584,31 @@ impl SourceStore {
             }
         };
         Some(Arc::new(target_for(c, &take, &al, params)))
+    }
+
+    /// Switches the chord recognizer; what the old one heard is forgotten.
+    pub fn set_chord_model(&mut self, m: Option<Arc<dyn crate::chords::ChordModel>>) {
+        self.chord_model = m;
+        self.chords.clear();
+    }
+    pub fn chord_model(&self) -> Option<Arc<dyn crate::chords::ChordModel>> {
+        self.chord_model.clone()
+    }
+    pub fn cached_chords(&self, id: u64, norm: bool, rev: bool) -> Option<Arc<crate::chords::ChordFrames>> {
+        self.chords.get(&(id, norm, rev)).cloned()
+    }
+    /// Stores frames heard outside the store, unless the model changed meanwhile.
+    pub fn put_chords(
+        &mut self,
+        id: u64,
+        norm: bool,
+        rev: bool,
+        model: &Arc<dyn crate::chords::ChordModel>,
+        f: Arc<crate::chords::ChordFrames>,
+    ) {
+        if self.chord_model.as_ref().is_some_and(|m| Arc::ptr_eq(m, model)) {
+            self.chords.insert((id, norm, rev), f);
+        }
     }
 
     pub fn cached_music(&self, id: u64, norm: bool, rev: bool) -> Option<Arc<crate::music::SourceMusic>> {

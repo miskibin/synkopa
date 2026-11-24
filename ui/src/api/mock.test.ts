@@ -448,3 +448,62 @@ describe('import as an undo step (engine import_audio_with)', () => {
     expect((await be.getState()).canUndo).toBe(false);
   });
 });
+
+describe('chords in the mock (app/src/chords_actions.rs)', () => {
+  async function setup() {
+    const be = new MockBackend();
+    await be.projectNew();
+    const r = await be.importAudio({ paths: ['C:/loops/song.wav'], track: 0, beat: 4 });
+    const c = (await be.getState()).project.clips.find(x => x.id === r.clipIds[0])!;
+    // eight bars of the song from its start
+    await be.applyOps([{ op: 'putClips', clips: [{ ...c, offset: 0, len: 32 }] }]);
+    return { be, clipId: c.id };
+  }
+  it('needs the model, then reads the clip on its bars, spelled for the key and folded at "simple"', async () => {
+    const { be, clipId } = await setup();
+    await expect(be.chordsAnalyze(clipId)).rejects.toThrow(/^CHORD_MODEL_MISSING:/);
+    await expect(be.chordsToPattern({ clipId })).rejects.toThrow(/^CHORD_MODEL_MISSING:/);
+    const seen: number[] = [];
+    await be.on('model-progress', p => { if (p.id === 'chordmini') seen.push(p.done); });
+    const m = await be.chordsModelInstall();
+    expect(m.installed).toBe(true);
+    expect(seen.at(-1)).toBe(m.bytes);
+    const a = await be.chordsAnalyze(clipId);
+    expect(a.flats).toBe(true);
+    expect(a.segments.slice(0, 4).map(s => s.name)).toEqual(['Cm7', 'Abmaj7', 'Eb', 'Bb7']);
+    expect(a.segments[0].start).toBe(4);
+    expect(a.segments.every(s => s.start >= a.start && s.end <= a.end)).toBe(true);
+    const simple = await be.chordsAnalyze(clipId, 'simple');
+    expect(simple.segments.slice(0, 4).map(s => s.name)).toEqual(['Cm', 'Ab', 'Eb', 'Bb']);
+  });
+  it('writes the picked chords to a new pattern on a new piano in one undo step', async () => {
+    const { be, clipId } = await setup();
+    await be.chordsModelInstall();
+    const before = structuredClone((await be.getState()).project);
+    const r = await be.chordsToPattern({ clipId, from: 8, to: 16 });
+    expect(r).toMatchObject({ newChannel: true, chords: 2, start: 8 });
+    const p = (await be.getState()).project;
+    const pat = p.patterns.find(x => x.id === r.patternId)!;
+    expect(pat.name).toBe('Chords – song');
+    expect(pat.len).toBe(8);
+    // Abmaj7 (bass + 4) then Eb (bass + 3), bass notes Ab and Eb
+    expect(pat.notes).toHaveLength(9);
+    expect(pat.notes.filter(n => n.step === 0).map(n => n.p! % 12)).toContain(8);
+    expect(Math.min(...pat.notes.filter(n => n.step === 16).map(n => n.p!)) % 12).toBe(3);
+    expect(p.channels!.find(c => c.id === r.channelId)).toMatchObject({ kind: 'keys' });
+    const pc = p.clips.find(c => c.id === r.clipId)!;
+    expect(pc).toMatchObject({ kind: 'pat', ref: r.patternId, start: 8, len: 8 });
+    expect(pc.track).not.toBe(0);
+    await be.undo();
+    const after = (await be.getState()).project;
+    expect(after.patterns).toEqual(before.patterns);
+    expect(after.channels).toEqual(before.channels);
+    expect(after.clips).toEqual(before.clips);
+    // onto an existing channel; a second pattern gets its own name; a range with no chord is refused
+    await be.redo();
+    const r2 = await be.chordsToPattern({ clipId, channel: r.channelId, detail: 'simple' });
+    expect(r2.newChannel).toBe(false);
+    expect((await be.getState()).project.patterns.some(x => x.name === 'Chords – song 2')).toBe(true);
+    await expect(be.chordsToPattern({ clipId, channel: 99999 })).rejects.toThrow(/no channel/);
+  });
+});

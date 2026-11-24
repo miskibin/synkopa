@@ -8,7 +8,7 @@ import type {
   PreviewWave,
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
   KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
-  ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
+  ExtractStemsResult, StemId, StemModelStatus, StemsProgress, ChordAnalysis, ChordDetail, ChordModelStatus, ChordsToPatternResult,
 } from './types';
 
 export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[]; x: number; y: number }
@@ -75,6 +75,17 @@ export interface Backend {
   f0ModelInstall(): Promise<F0ModelStatus>;
   /** Tempo (BPM) and musical key of an audio clip, or key/tempo of the project's active audio clips (excluding `excludeFx`'s insert). */
   musicAnalyze(args?: { clipId?: Id; excludeFx?: Id }): Promise<MusicAnalysis>;
+  /** The chord recognition model (ChordMini): size, licence, whether it is installed. */
+  chordsModelStatus(): Promise<ChordModelStatus>;
+  /** Downloads the chord model (progress: `model-progress` with id `chordmini`), SHA-256 checked. */
+  chordsModelInstall(): Promise<ChordModelStatus>;
+  /** The chords of an audio clip on the project's beats. Rejects with `ERR_NO_CHORD_MODEL` when the model is missing.
+   *  The first call per source takes a second or two; later ones (other detail, moved clip, new tempo) are instant. */
+  chordsAnalyze(clipId: Id, detail?: ChordDetail): Promise<ChordAnalysis>;
+  /** "Send to piano roll": the clip's chords between project beats `from..to` (default the whole clip) as block chords
+   *  (root in the bass, smooth voice leading) in a new pattern on `channel` (default a new Synkopa Keys piano), placed on
+   *  the Playlist from the bar of the first chord on a free track below the audio. One undo step. */
+  chordsToPattern(args: { clipId: Id; from?: number; to?: number; detail?: ChordDetail; channel?: Id | null }): Promise<ChordsToPatternResult>;
   /** "Auto wokal": measures a vocal clip (key from `beatClipId`, else from the other tracks) and returns the calibrated
    *  insert chain. Read-only; takes a few seconds per minute of audio. `bakeRider`: the rider is left out of
    *  `chain` and returned as `riderBake` — pass its params to `bakeRider` (no live look-ahead delay on the insert). */
@@ -389,6 +400,10 @@ export function tauriBackend(): Backend {
     f0ModelStatus: () => invoke('f0_model_status'),
     f0ModelInstall: () => invoke('f0_model_install'),
     musicAnalyze: a => invoke('music_analyze', { clipId: a?.clipId ?? null, excludeFx: a?.excludeFx ?? null }),
+    chordsModelStatus: () => invoke('chords_model_status'),
+    chordsModelInstall: () => invoke('chords_model_install'),
+    chordsAnalyze: (clipId, detail) => invoke('chords_analyze', { clipId, detail: detail ?? null }),
+    chordsToPattern: args => invoke('chords_to_pattern', { args }),
     autoVocalPlan: a => invoke('auto_vocal_plan', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, bakeRider: a.bakeRider ?? null }),
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
     autoVocal: async (a, onStage) => {

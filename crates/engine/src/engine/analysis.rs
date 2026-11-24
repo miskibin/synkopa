@@ -192,6 +192,55 @@ impl Engine {
         self.core.lock().sources.backend()
     }
 
+    /// Uses `m` for chord detection from now on (`None` = no chord detection).
+    pub fn set_chord_model(&self, m: Option<Arc<dyn crate::chords::ChordModel>>) {
+        self.core.lock().sources.set_chord_model(m);
+    }
+
+    /// Name of the chord model in use, if one is loaded.
+    pub fn chord_backend(&self) -> Option<&'static str> {
+        self.core.lock().sources.chord_model().map(|m| m.name())
+    }
+
+    /// What the chord model hears in a source variant (cached). Slow the first time (about a
+    /// second per minute of audio): runs without the engine lock.
+    fn source_chords(&self, id: Id, norm: bool, rev: bool) -> Result<Arc<crate::chords::ChordFrames>, EngineError> {
+        let model = {
+            let c = self.core.lock();
+            if let Some(f) = c.sources.cached_chords(id, norm, rev) {
+                return Ok(f);
+            }
+            c.sources.chord_model()
+        };
+        let model =
+            model.ok_or_else(|| EngineError::Msg(format!("{} chord detection needs its model", crate::errors::ERR_NO_CHORD_MODEL)))?;
+        let audio = self.core.lock().sources.variant(id, norm, rev).ok_or(EngineError::Msg("audio not loaded".into()))?;
+        let f = Arc::new(model.analyze(&crate::sources::mono_of(&audio), audio.sr).map_err(EngineError::Msg)?);
+        self.core.lock().sources.put_chords(id, norm, rev, &model, f.clone());
+        Ok(f)
+    }
+
+    /// The chords an audio clip plays, on the project's beats (see [`crate::chords::decode`]):
+    /// transposed with the clip's own pitch shift, spelled for the clip's key.
+    pub fn chord_analysis(&self, clip_id: Id, detail: crate::chords::Detail) -> Result<crate::chords::ChordAnalysis, EngineError> {
+        let (clip, bpm) = {
+            let c = self.core.lock();
+            let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
+            (clip, c.project.bpm)
+        };
+        if clip.kind != ClipKind::Audio {
+            return Err(EngineError::Msg("only audio clips have chords".into()));
+        }
+        let frames = self.source_chords(clip.source, clip.norm, clip.rev)?;
+        let flats = self
+            .music_analysis(Some(clip_id), None)
+            .ok()
+            .and_then(|m| m.key)
+            .is_some_and(|k| crate::chords::key_uses_flats(k.root, k.minor));
+        let model = self.chord_backend().unwrap_or("").to_string();
+        Ok(chords_of_clip(&clip, bpm, &frames, detail, flats, model))
+    }
+
     fn source_music(&self, id: Id, norm: bool, rev: bool) -> Option<Arc<crate::music::SourceMusic>> {
         if let Some(m) = self.core.lock().sources.cached_music(id, norm, rev) {
             return Some(m);
@@ -479,4 +528,29 @@ impl PitchView {
     pub fn spans(&self) -> Vec<(f64, f64)> {
         self.notes.iter().map(|n| (n.start, n.end)).collect()
     }
+}
+
+/// The semitones a clip sounds away from its source: its transposition, and an octave per
+/// halving of speed when it is stretched by resampling.
+pub fn clip_transpose(clip: &Clip) -> i32 {
+    let speed = if clip.resample { -12.0 * clip.stretch.max(crate::model::STRETCH_MIN).log2() } else { 0.0 };
+    (clip.pitch as f64 + speed).round() as i32
+}
+
+/// [`Engine::chord_analysis`] once the frames are known.
+pub fn chords_of_clip(
+    clip: &Clip,
+    bpm: f64,
+    frames: &crate::chords::ChordFrames,
+    detail: crate::chords::Detail,
+    flats: bool,
+    model: String,
+) -> crate::chords::ChordAnalysis {
+    let spb = 60.0 / bpm.max(1.0);
+    let s = clip.stretch.max(crate::model::STRETCH_MIN);
+    let beat_of = |t: f64| clip.start + t * s / spb - clip.offset;
+    let span = (clip.start, clip.start + clip.len);
+    let transpose = clip_transpose(clip);
+    let segments = crate::chords::decode(frames, clip.source_span(bpm), beat_of, span, detail, transpose, flats);
+    crate::chords::ChordAnalysis { clip_id: clip.id, start: span.0, end: span.1, detail, transpose, flats, segments, model }
 }

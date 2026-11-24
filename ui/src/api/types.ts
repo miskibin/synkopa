@@ -353,6 +353,25 @@ export interface KeyEstimate {
 export interface PreviewWave { secs: number; peaks: number[] }
 export interface MusicAnalysis { tempo: TempoEstimate | null; key: KeyEstimate | null }
 
+/** `chords_*` (crates/engine/src/chords.rs): the qualities the chord model names. */
+export type ChordQuality = 'maj' | 'min' | '7' | 'maj7' | 'm7' | 'sus2' | 'sus4' | 'dim';
+/** `full`: every quality; `simple`: major and minor triads only. */
+export type ChordDetail = 'full' | 'simple';
+/** One detected chord: project beats `start..end` (changes on beats), `root` 0 = C, `name` like "Bbmaj7". */
+export interface ChordSegment { start: number; end: number; root: number; quality: ChordQuality; name: string; confidence: number }
+/** `chords_analyze`: the chords of an audio clip (`start..end` = the clip, project beats), transposed by the
+ *  clip's own pitch shift (`transpose`), spelled with flats when the clip is in a flat key. */
+export interface ChordAnalysis {
+  clipId: Id; start: number; end: number; detail: ChordDetail; transpose: number; flats: boolean;
+  segments: ChordSegment[]; model: string;
+}
+/** `chords_model`: the chord recognition model (downloaded on first use). */
+export interface ChordModelStatus { id: string; name: string; bytes: number; installed: boolean; licenseNote: string; licenseUrl: string; path: string }
+/** `chords_to_pattern`: the new pattern (and channel, when `newChannel`) and its Playlist clip. */
+export interface ChordsToPatternResult {
+  patternId: Id; channelId: Id; newChannel: boolean; clipId: Id | null; track: number; start: number; chords: number; revision: number;
+}
+
 /** `auto_vocal_plan` (crates/engine/src/autovocal.rs): `natural` = sung, gentle tune; `hard` = rap windows, fast retune. */
 export type AutoVocalStyle = 'natural' | 'hard';
 /** One insert effect of the planned chain, in chain order. Apply as `PutFx` with these params and `mix`. */

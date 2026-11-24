@@ -142,6 +142,8 @@ steps is read once.
 | `synkopa catalog` | effect types, parameter ids/ranges/units, presets, command list |
 | `synkopa schema` | every op `apply` accepts, with units and an example |
 | `synkopa analyze [--clip ID] [--exclude-fx ID]` | detect tempo (BPM, ½×/2× candidates) and musical key (top 3 candidates, 12-note chroma, tuning offset) |
+| `synkopa chords --clip ID [--simple]` | the chords of an audio clip on the project's beats: per chord `start`/`end` (beats), `root` (0 = C), `quality` (`maj`, `min`, `7`, `maj7`, `m7`, `sus2`, `sus4`, `dim`), `name` ("Bbmaj7", spelled for the clip's key) and `confidence`; transposed with the clip's own pitch shift. `--simple`: major and minor only. Needs the ChordMini model (`synkopa chords --install`, ~17 MB, MIT) |
+| `synkopa chords --clip ID --to-pattern [--from B --to B] [--channel ID] [--simple]` | those chords as block chords in a new pattern on the Playlist (default: the whole clip, on a new piano channel); one undo step |
 
 ## Editing
 

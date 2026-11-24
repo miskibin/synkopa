@@ -8,6 +8,7 @@ import * as A from '../state/actions';
 import { findFx, insName, S } from '../state/store';
 import { U } from '../state/ui';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { ChordsPanel } from './ChordsPanel';
 
 const keyLabel = (root: number, minor: boolean) => `${NOTE_NAMES[root % 12]} ${t(minor ? 'd.music.minor' : 'd.music.major')}`;
 
@@ -66,9 +67,9 @@ export function MusicDialog() {
     <Show when={U.musicWin}>
       <DialogBoundary name={t('d.ui.pn.music')} close={A.closeMusicAnalysis}>
       <div class="overlay" onPointerDown={A.closeMusicAnalysis}>
-        <div class="dialog" style={{ width: 'min(520px, 92vw)' }} onPointerDown={e => e.stopPropagation()} data-music-dialog>
+        <div class="dialog" style={{ width: U.musicWin?.clipId != null ? 'min(720px, 94vw)' : 'min(520px, 92vw)' }} onPointerDown={e => e.stopPropagation()} data-music-dialog>
           <div class="hd">
-            <span>{t('d.music.title', { name: srcName() })}</span>
+            <span>{t(U.musicWin?.clipId != null ? 'd.music.titleClip' : 'd.music.title', { name: srcName() })}</span>
             <button onClick={A.closeMusicAnalysis}>×</button>
           </div>
           <Show when={loading()}>
@@ -191,6 +192,11 @@ export function MusicDialog() {
                     )}
                   </Show>
                 </div>
+
+                {/* ---- CHORDS (an audio clip) ---- */}
+                <Show when={U.musicWin?.clipId != null}>
+                  <ChordsPanel clipId={U.musicWin!.clipId!} />
+                </Show>
               </div>
             )}
           </Show>

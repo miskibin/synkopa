@@ -2,6 +2,7 @@
 
 pub mod autovocal;
 pub mod catalog;
+pub mod chords;
 mod clipmix;
 pub mod comp;
 pub mod content;

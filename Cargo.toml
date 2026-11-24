@@ -19,6 +19,7 @@ members = [
     "crates/stretch",
     "crates/demo-synth",
     "crates/stems",
+    "crates/chords",
     # the vendored automation bridge: a member so its handshake regression test runs in CI
     "crates/vendor/mcp-bridge",
 ]
@@ -60,6 +61,7 @@ wave-plugin-scan = { path = "crates/plugin-scan" }
 wave-session = { path = "crates/session" }
 wave-rmvpe = { path = "crates/rmvpe" }
 wave-stems = { path = "crates/stems" }
+wave-chords = { path = "crates/chords" }
 wave-midi-in = { path = "crates/midi-in" }
 wave-stretch = { path = "crates/stretch" }
 
