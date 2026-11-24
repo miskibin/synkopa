@@ -57,7 +57,7 @@ test('a window that fails to render shows it in place, the app keeps working, it
   await page.keyboard.press('Space');
   await expect(play).not.toHaveClass(/(^| )play( |$)/);
   // another window opens, works and closes
-  await page.getByRole('button', { name: 'Piano roll' }).click();
+  await page.keyboard.press('F7');
   const roll = page.locator('.rollwin');
   await expect(roll).toBeVisible();
   await expect(roll.getByRole('alert')).toHaveCount(0);

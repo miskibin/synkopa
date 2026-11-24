@@ -12,7 +12,7 @@ const setLang = (page: Page, lang: 'en' | 'pl') =>
 const same = (a: Note) => (b: Note) => b.step === a.step && b.p === a.p;
 
 test('Piano roll: draw, move, transpose and delete a note, with undo', async ({ app }) => {
-  await app.getByRole('button', { name: 'Piano roll' }).click();
+  await app.keyboard.press('F7');
   const roll = app.locator('.rollwin');
   await expect(roll).toBeVisible();
   const chName = await roll.getByRole('combobox', { name: /Channel being edited/ }).locator('option:checked').textContent();
@@ -55,7 +55,7 @@ test('Piano roll: draw, move, transpose and delete a note, with undo', async ({ 
 });
 
 test('Piano roll: the note properties box — knobs act at once, typed text survives, Reset, Accept, Esc', async ({ app }) => {
-  await app.getByRole('button', { name: 'Piano roll' }).click();
+  await app.keyboard.press('F7');
   const roll = app.locator('.rollwin');
   await expect(roll).toBeVisible();
   const chName = await roll.getByRole('combobox', { name: /Channel being edited/ }).locator('option:checked').textContent();

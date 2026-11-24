@@ -697,6 +697,7 @@ function PitchBody(props: { clipId: number }) {
     const ts = tOfBeat(U.start), from = ts > t0() && ts < t1() ? ts : t0();
     // optimistic: telemetry reports the preview a frame later, and a close before that must still stop it
     setU('previewing', true);
+    setU('previewPath', null); // not a Browser preview: the status line must not show the last sample's waveform
     be().previewClip(c().id, from).catch(e => { setU('previewing', false); say(String(e?.message ?? e)); });
   };
   const resize = (e: PointerEvent) => {
