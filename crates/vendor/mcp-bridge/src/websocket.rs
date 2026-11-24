@@ -836,14 +836,25 @@ mod origin_tests {
         let mut eof_after_frame = false;
         loop {
             let mut chunk = [0u8; 4096];
-            let n = tokio::time::timeout(std::time::Duration::from_secs(2), c.read(&mut chunk)).await.unwrap().unwrap();
-            if n == 0 {
-                // the server closed: with a live session it would still be open (the other
-                // test's accept side holds it). Whatever we sent after the response got no
-                // reply, and if that response was a 403 the frame was never read.
-                if frame_sent {
-                    eof_after_frame = true;
+            let n = match tokio::time::timeout(std::time::Duration::from_secs(2), c.read(&mut chunk)).await.unwrap() {
+                // the refused handshake ends the socket. A clean EOF on Linux; on Windows the
+                // abort (10053) when the server side drops a socket with the 403 and the frame
+                // unread in it. Either way nothing was read or processed after the response.
+                Ok(0) => {
+                    if frame_sent {
+                        eof_after_frame = true;
+                    }
+                    break;
                 }
+                Err(e) if matches!(e.kind(), std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::ConnectionReset) => {
+                    if frame_sent {
+                        eof_after_frame = true;
+                    }
+                    break;
+                }
+                r => r.unwrap(),
+            };
+            if n == 0 {
                 break;
             }
             buf.extend_from_slice(&chunk[..n]);
@@ -876,7 +887,10 @@ mod origin_tests {
         let (status, eof_after_frame, verdict) = attempt(Some("http://evil.example")).await;
         assert_eq!(status, 403, "the upgrade is refused with 403");
         assert_eq!(verdict, "refused", "no WebSocket session ever forms");
-        assert!(eof_after_frame, "the server closes after the 403: the masked frame written after it is never read");
+        assert!(
+            eof_after_frame,
+            "the server ends the connection after the 403 (EOF, or Windows' connection-abort): the masked frame written after it is never read"
+        );
     }
 
     #[tokio::test]
