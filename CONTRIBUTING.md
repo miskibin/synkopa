@@ -26,6 +26,8 @@ pnpm --dir ui test
 pnpm --dir ui build
 ```
 
+Tip: a one-off full run does not benefit from incremental compilation — `CARGO_INCREMENTAL=0 cargo test --workspace` is faster and keeps `target/` tens of GB smaller.
+
 [`docs/architecture.md`](docs/architecture.md) explains how the engine, UI and CLI fit together.
 [`AGENTS.md`](AGENTS.md) holds the project's quality bar and applies to AI coding agents too.
 
