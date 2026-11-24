@@ -146,6 +146,9 @@ FREESOUND = {
     "513413": ("https://cdn.freesound.org/previews/513/513413_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 03.wav"),
     "513419": ("https://cdn.freesound.org/previews/513/513419_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 05.wav"),
     "532245": ("https://cdn.freesound.org/previews/532/532245_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 08.wav"),
+    "683256": ("https://cdn.freesound.org/previews/683/683256_5544184-hq.mp3", "MathewHenry", "Orchestral Hits 3 in C minor (13 Variations)"),
+    "871200": ("https://cdn.freesound.org/previews/871/871200_17675683-hq.mp3", "CAT-FOX_ALEX", "Slap House Horn Stab"),
+    "531425": ("https://cdn.freesound.org/previews/531/531425_7554526-hq.mp3", "SieuAmThanh", "Orchestra Hit A7-A6"),
     "532246": ("https://cdn.freesound.org/previews/532/532246_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 07.wav"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
@@ -211,7 +214,7 @@ PIZZ = [
 
 # (output file, display name, group, source, max seconds, root key[, options])
 # root key None = measured (`pitch`). Options: tune (resample so the note is exactly on the
-# root key given), soft (keep a quiet start: swells), drive (dB into a tanh saturator),
+# root key given), hp (high-pass, Hz), cut ((from, to) seconds of the source: one hit out of a file with several), soft (keep a quiet start: swells), drive (dB into a tanh saturator),
 # unlisted (keep embedded for saved projects, omit from the browser),
 # loop ((bpm, bars): a loop of that many bars, see the module comment; max seconds unused).
 T = {"tune": True}
@@ -444,6 +447,10 @@ PICKS = [
     ("orch-hit.flac", "Orchestra Hit", "Orchestra", hit(None), 2.5, 60),
     ("orch-hit-minor.flac", "Orchestra Hit Minor", "Orchestra", hit(3), 2.5, 60),
     ("orch-hit-major.flac", "Orchestra Hit Major", "Orchestra", hit(4), 2.5, 60),
+    # trap stabs: single hits of whole sections, loud and dark, a short tail, tuned to their root
+    ("orch-stab-dark.flac", "Orchestra Stab Dark", "Orchestra", "fs:683256", 2.0, 48, {"tune": True, "cut": (9.58, 13.2)}),
+    ("brass-stab-low.flac", "Brass Stab Low", "Orchestra", "fs:871200", 1.1, 43, {"tune": True, "cut": (3.70, 5.56), "hp": 80}),
+    ("orch-stab-tutti.flac", "Orchestra Stab Tutti", "Orchestra", "fs:531425", 1.5, 43, {"tune": True, "cut": (27.55, 30.55), "hp": 90}),
     ("strings-stab.flac", "Strings Stab", "Orchestra", STRINGS_STAB, 2.0, 60),
     ("brass-stab.flac", "Brass Stab", "Orchestra", BRASS_STAB, 2.0, 60),
     ("pizzicato.flac", "Pizzicato", "Orchestra", PIZZ, 2.0, 60),
@@ -607,9 +614,24 @@ def key_near(x, expected):
     return float((keys * mag[j] ** 2).sum() / (mag[j] ** 2).sum())
 
 
-def retuned(path, x, semis):
-    """The file `semis` semitones higher: decoded at another rate and played at ours."""
-    return x if abs(semis) < 0.03 else read(path, int(round(SR / 2 ** (semis / 12))))
+def sliced(x, cut, rate=SR):
+    """The part of `x` (decoded at `rate`) between the two times of `cut`, in seconds; all of it when None."""
+    return x if cut is None else x[int(cut[0] * rate):int(cut[1] * rate)]
+
+
+def highpassed(x, hz):
+    """`x` through a 12 dB/oct high-pass: a stab keeps off the 808's and kick's octaves."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", "-", "-af", f"highpass=f={hz}:poles=2", "-f", "f32le", "-"], input=x.astype("<f4").tobytes(), capture_output=True, check=True).stdout
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).astype(np.float64)
+
+
+def retuned(path, x, semis, cut=None):
+    """The file `semis` semitones higher: decoded at another rate and played at ours. `x` is
+    the file as it is used (already sliced by `cut`)."""
+    if abs(semis) < 0.03:
+        return x
+    rate = int(round(SR / 2 ** (semis / 12)))
+    return sliced(read(path, rate), cut, rate)
 
 
 def layers(fetch, spec):
@@ -789,11 +811,13 @@ def main():
             x = layers(fetch, src)
         else:
             path = fetch.path(src)
-            x = read(path)
+            x = sliced(read(path), opt.get("cut"))
             if opt.get("tune"):
-                x = retuned(path, x, root - key_near(x, root))
+                x = retuned(path, x, root - key_near(x, root), opt.get("cut"))
             elif root is None:
                 root = int(round(pitch(x)))
+        if "hp" in opt:
+            x = highpassed(x, opt["hp"])
         if "drive" in opt:
             x = np.tanh(x / np.abs(x).max() * 10 ** (opt["drive"] / 20))
         dst = os.path.join(OUT, out)

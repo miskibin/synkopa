@@ -7,6 +7,11 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Three orchestra stabs made for trap** in the Standard library (Orchestra): **Orchestra Stab
+  Dark** (a full orchestra on a C minor chord, hard attack, short tail), **Brass Stab Low** (low
+  brass, gritty and heavy, high-passed to stay off the 808) and **Orchestra Stab Tutti** (strings,
+  brass and timpani in unison, for the big accent). All are tuned to their root key, so a melody on
+  the piano roll plays in tune. The older hits and stabs stay for existing projects.
 - **Two guitars in Synkopa Instruments:** a **Hollow Body Guitar** (a Gretsch, clean: chords,
   rhythm and lines) and a **Jazz Club Guitar** (a Höfner Club archtop, warm and round). Every
   semitone is recorded, with three dynamics, several takes per note and the soft sound of the hand

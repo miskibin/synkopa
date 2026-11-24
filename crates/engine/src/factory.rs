@@ -236,6 +236,9 @@ mod tests {
             "harp-high.flac",
             "choir-shot.flac",
             "steel-drum.flac",
+            "orch-stab-dark.flac",
+            "brass-stab-low.flac",
+            "orch-stab-tutti.flac",
         ];
         for name in pitched {
             let f = file(name).unwrap_or_else(|| panic!("{name} is not in the library"));
