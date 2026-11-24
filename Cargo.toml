@@ -70,6 +70,10 @@ opt-level = 1           # DSP in debug is unusably slow otherwise
 
 [profile.dev.package."*"]
 opt-level = 3
+# No DWARF for dependencies: a full `cargo test --workspace` links ~110
+# binaries, and dep debuginfo was the bulk of the multi-100-GB target growth.
+# "*" never matches workspace members, so own crates stay fully debuggable.
+debug = false
 
 [profile.release]
 lto = "thin"
