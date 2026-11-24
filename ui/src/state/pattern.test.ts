@@ -74,7 +74,7 @@ describe('the wheel over the pattern selector (FL)', () => {
     P.scrollPattern(-1);
     expect(ui.U.pat).toBe(before[0]); // no wrap to the last one
     P.setCurPattern(before[before.length - 1], true);
-    if (!last().notes.length) P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }]);
+    if (!last().notes.length) edit.commit([P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }])], 'test');
     await sync();
     P.scrollPattern(1);
     await sync();
@@ -88,14 +88,14 @@ describe('the wheel over the pattern selector (FL)', () => {
   it('drops the untouched blank pattern when wheeling back off it, keeps one with notes', async () => {
     const n0 = ids().length;
     P.setCurPattern(ids()[n0 - 1], true);
-    if (!last().notes.length) P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }]);
+    if (!last().notes.length) edit.commit([P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }])], 'test');
     await sync();
     P.scrollPattern(1); await sync();
     P.scrollPattern(-1); await sync();
     expect(store.S.project.patterns.length).toBe(n0);
     P.scrollPattern(1); await sync();
     const blank = last();
-    P.putNotes(blank, [{ ch: P.channels()[0].id, step: 4, len: 1 }]); await sync();
+    edit.commit([P.putNotes(blank, [{ ch: P.channels()[0].id, step: 4, len: 1 }])], 'test'); await sync();
     P.scrollPattern(-1); await sync();
     expect(store.S.project.patterns.some(p => p.id === blank.id)).toBe(true);
   });
