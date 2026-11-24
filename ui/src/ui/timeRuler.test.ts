@@ -88,4 +88,29 @@ describe('ruler presses (FL)', () => {
     expect(r.rec.sets.at(-1)).toEqual({ a: 4, b: 16 });
     expect(r.rec.ended).toBe(1);
   });
+  it('a right-drag draws the loop like a left drag, and opens no menu', () => {
+    const r = host(), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(40, { button: 2 }));
+    r.move(80); r.move(120); r.up(120);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 4, b: 12 });
+    expect(r.rec.ended).toBe(1);
+    expect(r.rec.seeks).toEqual([]);
+    expect(menu).not.toHaveBeenCalled();
+  });
+  it('a right-drag over an existing loop draws a new one instead of moving its edge', () => {
+    const r = host({ a: 4, b: 12 });
+    rulerDown(r.h, r.ev(120, { button: 2 }));
+    r.move(200); r.up(200);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 12, b: 20 });
+  });
+  it('a right-click without a drag opens the menu on release and leaves the loop and position alone', () => {
+    const r = host({ a: 4, b: 12 }), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(40, { button: 2 }));
+    r.move(42); r.up(42);
+    expect(menu).toHaveBeenCalledOnce();
+    expect(r.rec.sets).toEqual([]);
+    expect(r.rec.seeks).toEqual([]);
+  });
 });

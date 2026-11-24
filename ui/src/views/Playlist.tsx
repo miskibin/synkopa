@@ -1399,10 +1399,11 @@ export function Playlist() {
     drawn: r => A.seekSong(r.a),
     track: (m, u, c) => trackEdge(m, u, c, { x: true }),
     key: 'ruler',
+    menu: e => timelineMenu(e),
   };
   const rulerHover = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.cursor = rulerCursor(ruler, e); };
   const rulerDown = (e: PointerEvent) => { if (e.button === 0) closeMenu(); rulerPress(ruler, e); };
-  /** Right-click on the ruler or an empty part of the marker strip: add a marker there (FL). */
+  /** Right-click (no drag) on the ruler or an empty part of the marker strip: add a marker there (FL). The ruler opens it on release (`ruler.menu`); the keyboard's menu key still reaches it here. */
   const timelineMenu = (e: MouseEvent) => {
     e.preventDefault();
     const at = clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL);
@@ -1557,7 +1558,7 @@ export function Playlist() {
                   onPointerDown={markerDown} onPointerMove={markerHover} onPointerLeave={() => setMkHover(null)} onContextMenu={markerMenu} />
               </Show>
               <canvas ref={rulerCv} class="ruler" title={tl('a.pl.rulerTip')} style={{ top: mkH() + 'px' }}
-                onPointerDown={rulerDown} onPointerMove={rulerHover} onContextMenu={timelineMenu} />
+                onPointerDown={rulerDown} onPointerMove={rulerHover} onContextMenu={e => { e.preventDefault(); if (e.button !== 2) timelineMenu(e); }} />
 
             </div>
           </div>

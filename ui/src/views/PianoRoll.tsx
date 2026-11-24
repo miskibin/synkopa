@@ -984,7 +984,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div class="rollruler">
           <div class="corner" style={{ width: KW + 'px' }} />
           <div class="rcv">
-            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }}
+            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }} onContextMenu={e => e.preventDefault()}
               onPointerMove={e => { if (!e.buttons) rulerCv.style.cursor = rulerCursor(ruler, e); }} />
             <div ref={phRuler} class="pphead" />
           </div>
