@@ -1058,7 +1058,9 @@ select option { background: var(--bg4); color: var(--fg); }
 .setdlg .setph p { margin: 2px 0 0; font: 12px var(--sans); color: var(--fg4); }
 .setdlg .setx { flex: none; width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--fg3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .setdlg .setx:hover { background: var(--line); color: var(--fg-hi); }
-.setdlg .setpane { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 4px 12px 22px 22px; }
+/* overflow-anchor off: a tab switch swaps the whole content and the tab's scroll resets to the
+   top — anchoring would drag the pane back down while the new section's async sections settle. */
+.setdlg .setpane { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; overflow-anchor: none; padding: 4px 12px 22px 22px; }
 .setdlg .setpane::-webkit-scrollbar-thumb { background: var(--fg5); }
 .setdlg .setpane:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
 .setdlg .setpane > .form:first-child { margin-top: 18px; }
