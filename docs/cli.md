@@ -157,6 +157,7 @@ synkopa unroute --from 6 --to 8
 synkopa sidechain --from 1 --to 3                           # the kick (1) ducks the bass (3): keys its compressor or adds one
 synkopa sidechain --from 1 --to 3 --off                     # the bass's compressor hears itself again
 synkopa sidechain --fx 1204 --from 1                        # this compressor (or gate, or filter) listens to insert 1
+synkopa sidechain --from 1 --to 3 --label "Duck the bass"   # names the undo step (defaults to "Sidechain")
 synkopa set-param --fx 1203 --param mix --value 30
 synkopa preset --fx 1203 --index 4
 synkopa import kick.wav loop.wav --track 3 --beat 16
@@ -623,6 +624,7 @@ synkopa auto-vocal --clip 412                              # measure, and put th
 synkopa auto-vocal --clip 412 --style hard                 # rap / hard-tune windows
 synkopa auto-vocal --clip 412 --beat-clip 300              # take the key and level from the beat
 synkopa auto-vocal --clip 412 --plan > plan.json           # read-only: the plan, nothing changes
+synkopa auto-vocal --clip 412 --label "Tune verse"         # names the undo steps (defaults to "Auto Vocal")
 ```
 
 The rider (a long look-ahead, so seconds of delay if it ran live) is rendered into the clip's

@@ -39,7 +39,8 @@
 //! ```
 //!
 //! [`PluginInfo`] and [`ParamInfo`] serialise to the camelCase shapes of the
-//! `vst3_scan` / `vst3_params` Tauri commands in `docs/architecture.md`.
+//! `plugin_scan` / `plugin_params` commands in `docs/architecture.md` (the older
+//! `vst3_scan` / `vst3_params` session and CLI verb names serve the same shapes).
 //!
 //! # How the app wires it (Tauri)
 //!
@@ -66,7 +67,7 @@
 //! ```
 //!
 //! **3. Commands.**
-//! - `vst3_scan {rescan}` -> [`scan`]. Slow on a cold rescan: use an `async`
+//! - `plugin_scan {rescan}` -> [`scan`]. Slow on a cold rescan: use an `async`
 //!   command (a worker thread), never the UI thread.
 //! - Building an insert chain (`putFx` with a `vst3` effect, project open) ->
 //!   [`instantiate`] off the audio thread and off the UI thread (it blocks
@@ -74,9 +75,9 @@
 //!   engine like any built-in effect, keep the [`Vst3Handle`] by fx id. Store
 //!   [`Vst3Handle::get_state`] in the project's `plugin.state` on save (and
 //!   whenever [`Vst3Handle::take_state_changed`] says so).
-//! - `vst3_params {fxId}` -> [`Vst3Handle::params`]; `vst3_set_param` ->
+//! - `plugin_params {fxId}` -> [`Vst3Handle::params`]; `plugin_set_param` ->
 //!   [`Vst3Handle::set_param`] (never blocks). From an `async` command.
-//! - `vst3_editor {fxId, open}` -> must run on the UI thread:
+//! - `plugin_editor {fxId, open, title?, subtitle?}` -> must run on the UI thread:
 //!
 //!   ```ignore
 //!   let app2 = app.clone();

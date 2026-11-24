@@ -2,9 +2,10 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockBackend } from '../api/mock';
 import { syncEngine } from '../test/engine';
 
-// Every builtin effect window opens at its type's default width (PLUG_W in state/actions.ts).
-// Gate and Filter once landed with widths only in a dead copy of that table, so their windows
-// fell back to the generic 580 px.
+// Every effect type's window width is decided in PLUG_W (state/actions.ts) — the table is
+// exhaustive over Fx['type'] and `null` means the generic 580 px on purpose, so a new effect
+// cannot skip the decision. Gate and Filter once landed with widths only in a dead copy of
+// that table, so their windows fell back to the generic 580 px.
 vi.mock('../ui/Confirm', () => ({ confirmUnsaved: async () => 'discard', confirmRecover: async () => 'later' }));
 beforeAll(() => {
   const noop = () => {};

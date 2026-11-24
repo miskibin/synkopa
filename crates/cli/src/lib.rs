@@ -60,7 +60,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
                                                   --only: no longer to the master; --to 0: to the master again)
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)
   sidechain --from ID --to ID [--off]             insert FROM ducks insert TO: keys TO's compressor, or adds one
-                                                  set up for ducking (--off: back to its own input)
+                                                  set up for ducking (--off: back to its own input)   [--label TEXT]
   sidechain --fx ID --from ID | --off             what that compressor, gate or filter listens to
   set-param --fx ID --param NAME --value V
   preset --fx ID --index N
@@ -181,7 +181,7 @@ PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come fr
             [--model rmvpe.onnx | --yin] [same options as tune-ref]   headless; needs no running app
 
 AUTO VOCAL  (one call: measure the take, bake the rider into the audio, put the tuned chain on the insert)
-  auto-vocal --clip ID [--style natural|hard] [--beat-clip ID] [--no-bake] [--plan]
+  auto-vocal --clip ID [--style natural|hard] [--beat-clip ID] [--no-bake] [--plan] [--label TEXT]
                                            the calibrated chain (tune, rider, fet comp, deess, reverb, limit)
                                            replaces the insert's effects of the same kinds; the key comes from
                                            the beat clip or the other tracks. Default renders the rider into
@@ -572,7 +572,8 @@ fn send(cx: &Cx, a: &Args, command: &str, args: Value) -> Result<Value, Fail> {
     let rev = a.num("if-revision").map_err(Fail::Usage)?.map(|v| v as u64);
     // the CLI names an undo step even when the caller did not pass --label, like the app's
     // buttons do: without it the Edit menu shows the engine's default name for the verb. An
-    // explicit --label wins and travels in the args (file mode has no session header field)
+    // explicit --label wins and travels in the args (file mode has no session header field).
+    // The top-level `label` arg key is reserved for undo naming — no verb may use it for content
     let default_label = default_undo_label(command);
     let mut args = args;
     if let Some(m) = args.as_object_mut() {

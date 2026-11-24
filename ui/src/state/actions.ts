@@ -778,8 +778,8 @@ export function stepPreset(fxId: Id, d: number) {
 }
 
 // ---------- windows ----------
-/** Default window width per effect type (the window opens at it, narrower on a small screen). */
-export const PLUG_W: Partial<Record<string, number>> = { eq: 780, reverb: 700, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760, stereo: 660, analyzer: 900, multiband: 720 };
+/** Default window width per effect type (the window opens at it, narrower on a small screen). `null` = the generic 580 px on purpose. Exhaustive over `Fx['type']`, so a new effect has to decide this. */
+export const PLUG_W: Record<Fx['type'], number | null> = { eq: 780, comp: null, sat: null, delay: 760, reverb: 700, limit: null, fet: 700, deess: 680, tune: 800, denoise: 640, voice: 700, rider: null, half: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760, stereo: 660, multiband: 720, analyzer: 900, plugin: 560 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
 /** Playlist to the front: floating windows go behind it (they keep their place and state); docked panels stay. */
 /** F5 / a click on the Playlist: every floating window steps aside (effects, pattern windows, the sample, channel and pitch editors). */
@@ -832,8 +832,8 @@ export function openPlug(fxId: Id, settings = false) {
 function openPlugWindow(fxId: Id) {
   const ex = U.plugs.find(p => p.fxId === fxId);
   if (ex) { plugFront(fxId, true); return; }
-  const ty = findFx(fxId)?.f.type ?? '';
-  const w = Math.min(PLUG_W[ty] ?? 580, window.innerWidth - 40), n = U.plugs.length;
+  const ty = findFx(fxId)?.f.type;
+  const w = Math.min((ty && PLUG_W[ty]) ?? 580, window.innerWidth - 40), n = U.plugs.length;
   const z = U.zTop + 1;
   setU({ zTop: z, plugs: [...U.plugs, { fxId, x: clamp(140 + (n % 8) * 28, 10, window.innerWidth - w - 10), y: clamp(64 + (n % 8) * 28, 10, window.innerHeight - 200), w, z }] });
 }

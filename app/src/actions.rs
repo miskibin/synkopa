@@ -1960,7 +1960,8 @@ pub fn tune_ref(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<u64> {
 pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, label: Option<&str>) -> R<Value> {
     let e = app.engine();
     // the CLI's file mode carries the undo label in the args (no session header field), so every
-    // label-named verb honors `--label` there too; the session header keeps precedence
+    // label-named verb honors `--label` there too; the session header keeps precedence. The
+    // top-level `label` arg key is reserved for this — verbs must not use it for content
     let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
     let ok_rev = |r: u64| json!({ "revision": r });
     if !app.live() && LIVE_ONLY.contains(&cmd) {
