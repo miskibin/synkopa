@@ -3,7 +3,7 @@
 // playhead page-wise). Units as in `pattern.ts`: note `step`/`len` in 16ths, `p` MIDI key,
 // `v` velocity 0..1.
 import { TOTAL_BEATS, type Channel, type Id, type Note } from '../api/types';
-import { keyOf, velOf } from './pattern';
+import { keyOf, rollSnapName, velOf } from './pattern';
 import { NOTE_NAMES } from './pitch';
 import { clampLen, clampPos, type ZLimits, type ZRange } from './zoomBar';
 
@@ -106,24 +106,25 @@ export function followPage(x: number, r: ZRange, lead: number): number | null {
 
 // ---------------------------------------------------------------- note properties
 
-/** "2:3:1" = bar 2, beat 3, first 16th (all from 1); fractional 16ths keep up to 3 decimals. */
+/** "2:3:1" = bar 2, beat 3, first 16th (all from 1). */
 export function fmtStart(step: number): string {
-  const bar = Math.floor(step / 16 + 1e-9), beat = Math.floor((step - bar * 16) / 4 + 1e-9), s = r6(step - bar * 16 - beat * 4);
-  return `${bar + 1}:${beat + 1}:${+(s + 1).toFixed(3)}`;
+  const at = r6(step);
+  const bar = Math.floor(at / 16), beat = Math.floor((at - bar * 16) / 4);
+  return `${bar + 1}:${beat + 1}:${r6(at - bar * 16 - beat * 4 + 1)}`;
 }
 
-/** Parses "bar:beat:16th", "bar:beat" or "bar" (from 1) to steps; null when it is not one. */
+/** Parses transport-style "2:03:01" or ruler-style "2.3", with missing fields defaulting to 1. */
 export function parseStart(text: string): number | null {
-  // "2:1:1.5" — only the last part may carry decimals (checked below)
-  const p = text.trim().split(':').map(x => x.trim());
+  // A fractional 16th uses colons so "2:1:1.5" has an unambiguous decimal separator.
+  const p = text.trim().split(text.includes(':') ? ':' : '.').map(x => x.trim());
   if (p.length > 3 || p.some(x => !/^\d+(\.\d+)?$/.test(x))) return null;
   const [bar, beat = 1, s = 1] = p.map(Number);
   if (!Number.isInteger(bar) || bar < 1 || !Number.isInteger(beat) || beat < 1 || beat > 4 || s < 1 || s >= 5) return null;
   return r6((bar - 1) * 16 + (beat - 1) * 4 + (s - 1));
 }
 
-/** Length in steps as text ("2", "0.5"). */
-export const fmtLen = (len: number) => String(+len.toFixed(4));
+/** Use the same note values as the snap menu, with custom lengths shown in 16ths. */
+export const fmtLen = (len: number) => rollSnapName(len) ?? String(r6(len));
 
 /** Parses a length: 16ths ("2", "0.5") or a note value ("1/8" = 2 steps, "3/16"); null when invalid. */
 export function parseLen(text: string): number | null {
@@ -133,7 +134,7 @@ export function parseLen(text: string): number | null {
   if (f) { const d = Number(f[2]); if (!d) return null; v = (16 * Number(f[1])) / d; }
   else if (/^\d+(\.\d+)?$/.test(s) || /^\.\d+$/.test(s)) v = Number(s);
   else return null;
-  v = Math.round(v * 32) / 32; // the roll's free resolution (1/128 note)
+  v = r6(v); // match the precision of the roll's grid, including triplets
   return v > 0 && v <= MAX_STEP ? v : null;
 }
 

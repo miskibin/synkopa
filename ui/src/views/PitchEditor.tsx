@@ -462,7 +462,7 @@ function PitchBody(props: { clipId: number }) {
   const down = (e: PointerEvent) => {
     root.focus();
     const { x, y } = pos(e);
-    if (y < RH && x >= KW && e.button === 0) return rulerPress(ruler, e);
+    if (y < RH && x >= KW && (e.button === 0 || e.button === 2)) return rulerPress(ruler, e);
     if (!an()) return;
     if (e.button === 1 || (e.button === 0 && e.altKey && tool() !== 'pencil' && tool() !== 'main')) return pan(e);
     if (e.button !== 0) return;

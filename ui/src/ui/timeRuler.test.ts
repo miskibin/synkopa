@@ -1,21 +1,36 @@
-import { describe, expect, it } from 'vitest';
-import { rulerDown, rulerLabel, rulerSubdivision, type RulerHost } from './timeRuler';
+import { describe, expect, it, vi } from 'vitest';
+import { drawRuler, rulerDown, RULER_H, type RulerHost } from './timeRuler';
+import { T } from './theme';
 
-describe('ruler labels when zoomed in', () => {
-  it('names beats, then 16ths, once they have room', () => {
-    expect(rulerSubdivision(22)).toBe(0);
-    expect(rulerSubdivision(48)).toBe(1);
-    expect(rulerSubdivision(191)).toBe(1);
-    expect(rulerSubdivision(192)).toBe(0.25);
-    expect(rulerSubdivision(1024)).toBe(0.25);
+describe('ruler labels and ticks', () => {
+  const render = (bw: number, offX = 0) => {
+    const labels: { text: string; font: string; color: string }[] = [];
+    const g = {
+      fillRect: vi.fn(), save: vi.fn(), translate: vi.fn(), restore: vi.fn(),
+      fillStyle: '', font: '',
+      fillText(text: string) { labels.push({ text, font: this.font, color: this.fillStyle }); },
+    };
+    drawRuler(g as unknown as CanvasRenderingContext2D, offX, 4 * bw, bw, null, null);
+    return { labels, rects: g.fillRect };
+  };
+
+  it('shows beat labels and shorter subdivision ticks as space allows', () => {
+    const zoomedOut = render(22);
+    expect(zoomedOut.labels.map(l => l.text)).toEqual(['1', '2']);
+    const beatZoom = render(48);
+    expect(beatZoom.labels.map(l => l.text)).toEqual(['1.2', '1.3', '1.4', '1', '2']);
+    expect(beatZoom.rects).not.toHaveBeenCalledWith(12, RULER_H - 4, 1, 4);
+    const highZoom = render(192);
+    expect(highZoom.labels).toEqual(beatZoom.labels);
+    expect(highZoom.rects).toHaveBeenCalledWith(48, RULER_H - 4, 1, 4);
+    expect(highZoom.rects).toHaveBeenCalledWith(192, RULER_H - 8, 1, 8);
   });
-  it('labels bar.beat and bar.beat.16th, leaving bar lines to the bar number', () => {
-    expect(rulerLabel(0)).toBe('');
-    expect(rulerLabel(16)).toBe('');
-    expect(rulerLabel(17)).toBe('5.2');
-    expect(rulerLabel(17.75)).toBe('5.2.4');
-    expect(rulerLabel(0.25)).toBe('1.1.2');
-    expect(rulerLabel(3.5)).toBe('1.4.3');
+
+  it('keeps bar labels prominent and counts beats correctly after scrolling', () => {
+    const { labels } = render(192, 16.5 * 192);
+    expect(labels).toContainEqual({ text: '5', font: expect.stringContaining('600 12px'), color: T.fgHi });
+    expect(labels).toContainEqual({ text: '5.2', font: expect.stringContaining('500 10px'), color: T.fg4 });
+    expect(labels.map(l => l.text)).toEqual(['5.2', '5.3', '5.4', '5', '6']);
   });
 });
 
@@ -72,5 +87,47 @@ describe('ruler presses (FL)', () => {
     r.move(160); r.up(160);
     expect(r.rec.sets.at(-1)).toEqual({ a: 4, b: 16 });
     expect(r.rec.ended).toBe(1);
+  });
+  it('a right-drag draws the loop like a left drag, and opens no menu', () => {
+    const r = host(), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(40, { button: 2 }));
+    r.move(80); r.move(120); r.up(120);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 4, b: 12 });
+    expect(r.rec.ended).toBe(1);
+    expect(r.rec.seeks).toEqual([]);
+    expect(menu).not.toHaveBeenCalled();
+  });
+  it('a right-press grabs the nearer boundary of a loop and the drag moves it; past the other they swap (FL)', () => {
+    // 3..7 bars as beats 12..28, press at 20 (a tie: the start is taken), drag to 36 → 28..36 (FL: 7–9)
+    const r = host({ a: 12, b: 28 });
+    rulerDown(r.h, r.ev(200, { button: 2 }));
+    r.move(280); r.move(360); r.up(360);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 28, b: 36 });
+    expect(r.rec.ended).toBe(1);
+    expect(r.rec.seeks).toEqual([]);
+  });
+  it('a right-press outside the loop extends its nearer end (FL)', () => {
+    const r = host({ a: 28, b: 36 });
+    rulerDown(r.h, r.ev(480, { button: 2 }));
+    r.move(600); r.up(600);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 28, b: 60 });
+  });
+  it('a right-click on a loop moves its nearer boundary there, as one undo step, with no menu', () => {
+    const r = host({ a: 4, b: 12 }), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(100, { button: 2 })); r.up(100);
+    expect(r.rec.sets).toEqual([{ a: 4, b: 10 }]);
+    expect(r.rec.ended).toBe(1);
+    expect(menu).not.toHaveBeenCalled();
+  });
+  it('with no loop, a right-click without a drag opens the menu on release and changes nothing', () => {
+    const r = host(), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(40, { button: 2 }));
+    r.move(42); r.up(42);
+    expect(menu).toHaveBeenCalledOnce();
+    expect(r.rec.sets).toEqual([]);
+    expect(r.rec.seeks).toEqual([]);
   });
 });

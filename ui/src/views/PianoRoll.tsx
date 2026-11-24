@@ -31,7 +31,7 @@ import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPat
 } from '../state/pattern';
 import { arrVersion, rawOf, S } from '../state/store';
 import { openMenu, say, setU, U } from '../state/ui';
-import { ChipSelect, ToolSeg, type ChipOption } from '../ui/EditorBar';
+import { GridChip, ToolSeg, type ChipOption } from '../ui/EditorBar';
 import { Knob } from '../ui/Knob';
 import { LANE_ICONS, LaneSwitch } from '../ui/LaneSwitch';
 import { selectionSpan, vocalsUnder } from '../lib/melody';
@@ -812,7 +812,9 @@ function Roll(props: { z: number; docked?: boolean }) {
       const value = shown[name];
       return (
         <label class="rpf" title={t(tip)}>
-          <span>{t(label)}</span>
+          <span>{t(label)}
+            <Show when={name !== 'key'}><small>{t(name === 'start' ? 'b.pr.pStartUnit' : 'b.pr.pLenUnit')}</small></Show>
+          </span>
           <input ref={ref} name={name} value={value} placeholder={value ? '' : t(name === 'len' && pp.idx.every(i => notesRaw()[i]?.trig) ? 'b.pr.trigger' : 'b.pr.pMixed')} spellcheck="false" autocomplete="off" onInput={() => setErr('')} />
         </label>
       );
@@ -882,8 +884,10 @@ function Roll(props: { z: number; docked?: boolean }) {
           </button>
         </div>
         <div class="vsep" />
-        <ChipSelect label="Snap" title={rollSnap() < 0 ? t('a.tb.snapTipAuto', { unit: rollSnapName(snapNow()) ?? '' }) : t('b.pe.snapTitle')} value={String(rollSnap())}
-          options={[['auto', '-1'], ...ROLL_SNAPS.map(([l, v]): ChipOption => [l, String(v)])]} group={{ label: t('b.pe.snapTriplets'), options: ROLL_SNAPS_TRIPLET.map(([l, v]) => [l, String(v)]) }}
+        <GridChip label="Snap" title={rollSnap() < 0 ? t('a.tb.snapTipAuto', { unit: rollSnapName(snapNow()) ?? '' }) : t('b.pe.snapTitle')} value={String(rollSnap())}
+          modes={[{ label: 'auto', value: '-1', note: t('a.snap.autoNow', { unit: rollSnapName(autoRollSnap(geo().pps)) ?? '' }) }]}
+          sections={[{ options: ROLL_SNAPS.map(([l, v]): ChipOption => [l, String(v)]) }, { label: t('b.pe.snapTriplets'), options: ROLL_SNAPS_TRIPLET.map(([l, v]): ChipOption => [l, String(v)]) }]}
+          implied={rollSnap() < 0 ? String(snapNow()) : undefined}
           onChange={(v, el) => { setRollSnap(+v); backToRoll(el); }} />
         {/* the song's key, always in view: a tiny keyboard marks the scale's notes (root brightest), the name beside it;
             a click opens the root and scale pickers. One key for the whole project. */}
@@ -980,7 +984,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div class="rollruler">
           <div class="corner" style={{ width: KW + 'px' }} />
           <div class="rcv">
-            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }}
+            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }} onContextMenu={e => e.preventDefault()}
               onPointerMove={e => { if (!e.buttons) rulerCv.style.cursor = rulerCursor(ruler, e); }} />
             <div ref={phRuler} class="pphead" />
           </div>

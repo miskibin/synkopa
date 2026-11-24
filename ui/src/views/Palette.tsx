@@ -1,7 +1,7 @@
 // The command palette (Ctrl+K): every menu command, found by typing what you want to do instead of
 // knowing which menu holds it. It reads the app menus themselves, so a command added to a menu is
 // here too, with the same shortcut, the same disabled state and the same action. A question that is
-// not a command goes to "Ask AI" (the Ask dialog, with the text filled in).
+// not a command can be sent to ChatGPT from the palette.
 import { createMemo, For, Show } from 'solid-js';
 import { createSignal, effect } from '../lib/reactive';
 import { matchCommand } from '../lib/commandMatch';
@@ -13,7 +13,7 @@ import * as A from '../state/actions';
 import { curPat } from '../state/pattern';
 import { S } from '../state/store';
 import { setU, U } from '../state/ui';
-import { askAbout } from './Ask';
+import { askChatGPT } from './Ask';
 import { patItems } from './patternShared';
 import { DialogBoundary } from '../ui/PanelBoundary';
 
@@ -28,7 +28,7 @@ interface Cmd { danger?: boolean; menu: string; sub: string; label: string; glyp
 
 function flatten(items: MenuItem[], menu: string, sub: string, out: Cmd[]) {
   for (const it of items) {
-    if (it.t === 'item') out.push({ menu, sub, label: it.label, danger: it.danger, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
+    if (it.t === 'item') out.push({ menu, sub, label: it.paletteLabel ?? it.label, danger: it.danger, glyph: it.glyph ?? menuGlyph(it.label) ?? null, kbd: it.kbd, disabled: it.disabled, act: it.act });
     else if (it.t === 'sub') flatten(it.items, menu, sub ? sub + ' › ' + it.label : it.label, out);
   }
 }
@@ -74,7 +74,10 @@ export function Palette() {
   effect(() => { q(); setAt(0); });
   const close = () => setPaletteOpen(false);
   const run = (c: Cmd | undefined) => { if (!c || c.disabled) return; close(); c.act(); };
-  const ask = () => { const text = q().trim(); close(); askAbout(text); };
+  const ask = async () => {
+    const text = q().trim();
+    if (await askChatGPT(text) && q().trim() === text) close();
+  };
   const enter = () => (at() < shown().length ? run(shown()[at()]) : asks() ? ask() : undefined);
   const move = (d: number) => {
     const n = rows(); if (!n) return;
@@ -124,7 +127,6 @@ export function Palette() {
                 onPointerMove={() => setAt(shown().length)} onClick={ask}>
                 <svg width="14" height="14" viewBox={APP_GLYPH.ask.vb} aria-hidden="true"><path d={APP_GLYPH.ask.d} fill="currentColor" /></svg>
                 <span class="name ell">{t('a.cmd.ask', { q: q().trim() })}</span>
-                <span class="badge ai">AI</span>
                 <span class="fill" />
                 <kbd>Enter</kbd>
               </div>

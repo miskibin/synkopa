@@ -27,7 +27,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "plugins": {
     "updater": {
@@ -41,7 +42,10 @@
     }
   },
   "bundle": {
-    "macOS": { "minimumSystemVersion": "13.4", "signingIdentity": "-" },
+    "macOS": {
+      "minimumSystemVersion": "13.4",
+      "signingIdentity": "-"
+    },
     "active": true,
     "targets": "all",
     "icon": [
@@ -56,10 +60,14 @@
     },
     "linux": {
       "deb": {
-        "depends": ["liblilv-0-0"]
+        "depends": [
+          "liblilv-0-0"
+        ]
       },
       "rpm": {
-        "depends": ["liblilv-0.so.0()(64bit)"]
+        "depends": [
+          "liblilv-0.so.0()(64bit)"
+        ]
       }
     }
   }

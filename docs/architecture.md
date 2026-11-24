@@ -740,15 +740,26 @@ device), so plain edits and bounces do not pay for them. `crates/cli` owns load 
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs
 `script` files with one load and one save.
 
-**Auto vocal as one session command.** `auto_vocal {clipId, beatClipId?, style?, noBake?}`
-(`synkopa auto-vocal`) is the button's whole journey on the shared path: `auto_vocal_plan`, then
-`bake_rider` unless `noBake` or the clip's source name already ends " (rider)", then the chain
-as `RemoveFx`/`PutFx` ops with the level suggestion folded into the limiter's gain — the same
-composition `ui/src/state/actions.ts` `autoVocal()` does for the click, and the insert must not
-be the master. The entry checks `if_revision` first (a stale guard refuses before the bake);
-the apply's own guard skips the bake's own step. `f0_model_install` is the model download as a
-session request too (same `models::install`/`activate`, no progress events — the CLI prints the
-licence note and result instead). Both work on a file (`NEEDS_APP` does not apply).
+**One action per verb.** A verb that carries policy is implemented once in the action layer
+(`app/src/actions.rs`) behind `actions::Host`, and every front door forwards: the Tauri command,
+the session command and the mock in the browser (which composes its own pieces the same way).
+The policy verbs are `auto_vocal` (plan, then `bake_rider` unless `noBake` or the clip's source
+name already ends " (rider)", then the chain as `RemoveFx`/`PutFx` ops with the level
+suggestion folded into the limiter's gain; the insert must not be the master; a stale
+`if_revision` refuses before the bake, and the apply's own guard skips the bake's own step),
+`sidechain` (key the target's Compressor or add one set up for ducking), `f0_model_install`
+(install, activate, remember the cause), `export_in_place` (waits for the Synkopa Keys piano; a
+cancelled bounce comes back as the error `"cancelled"`), `bake_rider`, `make_unique`,
+`flatten_comp`, and the reads that need a guard (`pitch_analyze`, `pitch_target`,
+`auto_vocal_plan`, `plugin_params` and its family ensure the model or live plugins through the
+host). Callers name the undo step: a Tauri command takes `label`, the session passes its
+`label`, and the engine's own steps keep their names ("Apply Vocal Rider"). Adapters keep their
+own reply shapes (the CLI's are documented here); where the app's reply grew the fields the CLI
+already carried, that is additive. `ui/src/state/actions.ts` keeps only what the UI owns — the
+call, the resync, the menus, the readout. Pure pass-throughs (undo, redo, auditions, pattern
+playback) are one engine method with thin adapters. Reply parity is pinned by tests
+(`read_verb_tests.rs` counts the guard asks through a probe host; `export_in_place_tests.rs`
+asserts the session command and the shared action answer identically).
 
 **`synkopa watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
 headless `Doc`, as for `--project`), reset to the project as it was when the watch started, runs

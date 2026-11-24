@@ -696,6 +696,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .rollprops { z-index: 5; gap: 1px; }
 .rollprops .rpnote { padding: 0 8px 4px; font: 500 10px var(--sans); color: var(--fg4); white-space: normal; line-height: 1.35; }
 .rollprops .rpf { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center; padding-left: 8px; font: 500 11px var(--sans); color: var(--fg3); }
+.rollprops .rpf small { display: block; color: var(--fg4); font-size: 9px; }
 .rollprops .rpf input { min-width: 0; font: 500 11px var(--mono); border-color: var(--line3); }
 .rollprops .rpf input:focus { border-color: var(--blue); }
 /* FL's note properties: a head, a row of knobs with the Slide switch, the fields, Reset / Accept */
@@ -1008,7 +1009,9 @@ select option { background: var(--bg4); color: var(--fg); }
 .setdlg .setph p { margin: 2px 0 0; font: 12px var(--sans); color: var(--fg4); }
 .setdlg .setx { flex: none; width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--fg3); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .setdlg .setx:hover { background: var(--line); color: var(--fg-hi); }
-.setdlg .setpane { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 22px 22px; }
+.setdlg .setpane { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 4px 12px 22px 22px; }
+.setdlg .setpane::-webkit-scrollbar-thumb { background: var(--fg5); }
+.setdlg .setpane:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
 .setdlg .setpane > .form:first-child { margin-top: 18px; }
 .setdlg .sechd { margin: 18px 0 8px; padding: 0 2px; border: 0; font: 600 10.5px var(--sans); letter-spacing: .09em; color: var(--fg4); text-transform: uppercase; }
 /* each .form is a card; rows are label | control, separated by hairlines */
@@ -1526,25 +1529,10 @@ select option { background: var(--bg4); color: var(--fg); }
 .fxcl-ft { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .fxcl-ft .note { flex: 1; min-width: 0; }
 
-/* Ask AI: the labelled button in the menu row and its dialog */
+/* Ask ChatGPT button in the menu row */
 .askbtn { flex: none; display: flex; align-items: center; gap: 5px; height: 22px; margin-left: 0; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; color: var(--blue-hi); font: 600 11px var(--sans); cursor: pointer; white-space: nowrap; }
-.askbtn:hover, .askbtn.on { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--fg-hi); }
+.askbtn:hover { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--fg-hi); }
 .askbtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.askdlg { width: min(520px, 92vw); display: flex; flex-direction: column; gap: 10px; }
-.askintro { margin: 0; font: 400 12px/1.45 var(--sans); color: var(--fg2); }
-.askq { width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line3); border-radius: 5px; background: var(--bg1); color: var(--fg-hi); font: 400 13px/1.4 var(--sans); }
-.askq:focus { outline: none; border-color: var(--blue); }
-.askto { display: flex; align-items: center; gap: 10px; }
-.askto .cl { font: 500 11px var(--sans); color: var(--fg3); }
-.asksvc > button { width: auto; padding: 0 12px; font: 500 11px var(--sans); color: var(--fg2); }
-.asksvc > button.on { background: var(--line3); color: var(--fg-hi); }
-.asknote { font: 400 11px/1.4 var(--sans); color: var(--fg3); }
-.asknote.warn { color: var(--amber); }
-.askerr { font: 500 11px/1.4 var(--sans); color: var(--red); }
-.askfoot { display: flex; align-items: center; gap: 8px; }
-.askfoot .askpriv { flex: 1; min-width: 0; font: 400 10px/1.3 var(--sans); color: var(--fg4); }
-.askfoot .smallbtn { height: 24px; padding: 0 12px; }
-.askfoot .smallbtn:disabled { opacity: .45; cursor: default; }
 
 /* an effect (or a whole chain) dragged over a mixer strip: where it lands */
 .strip[data-fx-drop] { outline: 2px solid var(--blue); outline-offset: -2px; background: color-mix(in srgb, var(--blue) 10%, transparent); }
@@ -1619,6 +1607,25 @@ button.chip { color: var(--fg); }
 .keypop .scalelist button { background: transparent; text-align: left; padding: 0 9px; font-weight: 500; }
 .keypop .rootgrid button:hover, .keypop .scalelist button:hover { background: var(--bg6); color: var(--fg-hi); }
 .keypop .rootgrid button.on, .keypop .scalelist button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+
+/* the grid chip (Snap): every value in view as a small grid, coarse → fine */
+.gridchip .chip { gap: 6px; }
+.gridchip .chip .gcval { font-weight: 600; color: var(--fg-hi); }
+.gridchip .chip svg { color: var(--fg5); margin-left: -1px; }
+.gcpop { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  width: max-content; background: var(--bg4); border: 1px solid var(--line2); border-radius: 9px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.gcpop button { height: 26px; border: 0; border-radius: 5px; background: var(--bg2); color: var(--fg3); font: 600 11px var(--mono, var(--sans)); cursor: pointer; padding: 0 6px; outline: 0; }
+.gcpop button:hover, .gcpop button:focus-visible { background: var(--bg6); color: var(--fg-hi); }
+.gcpop button:focus-visible { box-shadow: 0 0 0 1px var(--line3); }
+.gcpop button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+/* what auto resolves to right now */
+.gcpop button.implied { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 55%, transparent); color: var(--fg-hi); }
+.gcmodes { display: flex; gap: 4px; }
+.gcmodes button { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; font-family: var(--sans); padding: 0 10px; white-space: nowrap; }
+.gcmodes button small { font: 500 10px var(--sans); color: var(--fg5); }
+.gcmodes button.on small { color: color-mix(in srgb, var(--blue-hi) 70%, var(--fg5)); }
+.gcgrid { display: grid; grid-template-columns: repeat(var(--cols), minmax(36px, 1fr)); gap: 3px; }
+.gccap { font: 600 9px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--fg5); margin: 2px 0 -2px 2px; }
 
 /* shared editor bar pieces in the Playlist header */
 .pltools .chip { height: 24px; padding: 0 6px 0 7px; font-size: 11px; }
@@ -1745,13 +1752,12 @@ button.chip { color: var(--fg); }
 /* the master stands apart from the inserts: its own panel, a gap after it */
 .strip[data-ins="0"] { margin-right: 10px; background: var(--bg5); border-right: 0; border-radius: 0 8px 8px 0; box-shadow: 1px 0 0 var(--line); }
 
-/* palette: sections per menu, badges, Ask AI */
+/* palette: sections per menu, badges, Ask ChatGPT */
 .cmdsec { padding: 10px 10px 4px; font: 600 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg5); }
 .cmdsec:first-child { padding-top: 4px; }
 .cmd .name { flex: 0 1 auto; }
 .cmd .fill { flex: 1; }
 .cmd .badge { flex: none; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg4); font: 500 10px var(--sans); white-space: nowrap; }
-.cmd .badge.ai { background: color-mix(in srgb, var(--blue) 26%, transparent); color: var(--blue-hi); font-weight: 600; }
 .cmd.ask { color: var(--blue-hi); }
 .cmd.ask .name { color: var(--fg-hi); }
 .cmd.ask kbd { visibility: hidden; }
