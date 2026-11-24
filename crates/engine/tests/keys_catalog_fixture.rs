@@ -1,11 +1,11 @@
-//! The browser mock lists Synkopa Keys instruments like the engine: this test writes the
+//! The browser mock lists Synkopa Instruments instruments like the engine: this test writes the
 //! catalog (with each instrument's articulations) to `ui/src/lib/__fixtures__/keys-catalog.json`,
 //! which the mock's `keysStatus` and the UI's op validation read. A catalog change the
 //! fixture has not caught up with fails CI. `WAVE_WRITE_FIXTURES=1 cargo test -p wave-engine
 //! --test keys_catalog_fixture` rewrites it.
 
 use serde_json::{json, Value};
-use wave_engine::keys::{articulations, CATALOG, RELEASE_MS};
+use wave_engine::keys::{articulations, release_noise, CATALOG, RELEASE_MS};
 
 /// Download size of each library kit (`assets-manifest.json`), for the mock's download button.
 fn kit_bytes(kit: &str) -> u64 {
@@ -27,6 +27,7 @@ fn fixture() -> Value {
                 let mut v = serde_json::to_value(i).unwrap();
                 v["articulations"] = json!(articulations(i.id));
                 v["bytes"] = json!(kit_bytes(i.kit));
+                v["releaseNoise"] = json!(release_noise(i.id));
                 v
             })
             .collect::<Vec<_>>(),

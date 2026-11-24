@@ -23,6 +23,20 @@ Synkopa is a desktop music production program (a DAW) for Windows, macOS and Lin
 source is open, and it is made for one job: making a beat and recording
 a vocal over it, the way you would in FL Studio.
 
+
+## Product Philosophy
+
+> These rules act as a filter for features, native plugins, factory content, and pull requests.
+
+- **Curated over comprehensive.** One great stock EQ or reverb beats five mediocre ones. Every built-in plugin, preset, and sample must have a distinct musical role and pass a listening test. If a native tool feels like filler, improve or cut it—never pad the list.
+- **Shared project context, backed by DSP.** The DAW already knows the tempo, key, track routing, and audio signal. Native tools should use that state automatically—tempo matching, scale guides, vocal tuning key, and DSP-based mix checks—always with A/B preview and one-click dismissal. Keep AI automation in the CLI and external agents, not in a chat sidebar.
+- **Automate the housekeeping.** Track naming, coloring, mixer routing, and crash-safe autosave should happen without manual setup. Treat unnecessary dialogs, window switches, and lost sessions as bugs.
+- **Built to finish songs.** Pattern-based beatmaking is only half the workflow. Recording, comping, vocal tuning, mixing, and mastering belong in the same app so a track can go from loop to export without switching DAWs.
+- **One UI language.** Native plugins share the same layout rules, controls, shortcuts, and metering. Visuals exist to show what the audio is doing—clear curves and meters over skeuomorphic knobs.
+- **Local-first and open.** Free, open-source, offline by default, and scriptable via CLI. No accounts, no subscriptions, no paywalled core features.
+
+**Non-goals before 1.0:** duplicate synths or effects, built-in AI song generators, in-app chatbots, DJ modes, and feature-checklist parity with legacy DAWs.
+
 ## Note from developer
 
 ![From the first FL Studio in 2010 to Synkopa in 2026](site/img/journey.svg)
@@ -99,7 +113,7 @@ about 17 % of one core at 48 kHz with 64-sample blocks, and the oscillators stay
 | --- | --- |
 | **Arranging** | Pattern, audio and automation clips on free lanes; slice, fade, reverse, normalise; stretch audio clips by dragging their edges (Shift+M), keeping pitch or resampled; automation curves edited on the clip; export selected clips in place; named markers on the timeline (Alt+T) to jump between and loop song sections |
 | **Writing** | Step sequencer with swing and velocity, piano roll, computer keyboard or MIDI keyboard as the instrument |
-| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Keys](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
+| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Instruments](docs/keys.md), a sampled concert grand; a sampler with a slice mode (chop at transients or into equal parts, dump to the pattern) and a built-in drum and tonal library plus downloadable CC0 kits |
 | **Mixing** | 24-band dynamic EQ, compressor, FET compressor, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, chorus and phaser, stereo imager with bass mono, OTT-style multiband, loudness analyzer (LUFS, true peak); presets and saved mixer FX chains; a mixer that docks on any side, floats or maximizes (F9); channel-to-insert and insert-to-insert routing |
 | **Recording** | Takes and comping, latency compensation, live monitoring |
 | **Vocals** | Pitch editor, live correction, Tune to Reference, vocal rider, vocal chain |
@@ -174,7 +188,7 @@ change, and a benchmark that counts allocations in the audio callback.
 ## Install
 
 Download the installer from the [latest release](https://github.com/miskibin/synkopa/releases/latest).
-The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Keys piano.
+The Windows build includes ASIO support (Settings → Audio → ASIO) and the Synkopa Instruments piano.
 If a Focusrite USB interface is disconnected, use **Switch to WASAPI** in the audio notification
 or in Settings → Audio to resume playback through the default Windows output. Connect the
 interface and choose ASIO again to go back. With Focusrite USB ASIO installed, Synkopa waits for
@@ -192,7 +206,7 @@ To share an editable project, choose **File → Export project as ZIP**. Unzip t
 and open the `.synkopa` file inside it. Keep the `Audio` folder beside the project. The ZIP includes
 the project's samples and recorded takes. Synkopa looks for third-party plugins at the locations
 stored in the project (LV2 plugins by their URI), and files a plugin itself loads (an impulse
-response, a sample) are not collected into the ZIP. Synkopa Keys uses its bundled or separately
+response, a sample) are not collected into the ZIP. Synkopa Instruments uses its bundled or separately
 installed piano library.
 
 ## Build from source
@@ -215,7 +229,7 @@ the Steinberg SDK by itself.
 cd app; cargo tauri build --features asio
 ```
 
-**Synkopa Keys in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
+**Synkopa Instruments in your own build:** `node scripts/fetch-keys.mjs` downloads the piano (138 MB,
 checksummed, cached in `target/keys-src`) and prepares it in `app/resources/keys` (cut to what
 the app plays, 16-bit FLAC, about 23 MB) so `tauri build` ships it. It needs `cargo`. Without it the app offers to
 download the piano the first time you add the instrument.
@@ -232,7 +246,7 @@ Claude Code work on your song, start it in any folder and tell it to run `synkop
 Full reference: [`docs/cli.md`](docs/cli.md).
 
 ```sh
-synkopa channels --keys                      # add the Synkopa Keys piano
+synkopa channels --keys                      # add the Synkopa Instruments piano
 synkopa undo                                 # or press Ctrl+Z in the app
 ```
 

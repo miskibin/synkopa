@@ -6,7 +6,30 @@ shown in the app after an update and is published as the release notes (see
 
 ## Unreleased
 
+### Added
+- **Two guitars in Synkopa Instruments:** a **Hollow Body Guitar** (a Gretsch, clean: chords,
+  rhythm and lines) and a **Jazz Club Guitar** (a Höfner Club archtop, warm and round). Every
+  semitone is recorded, with three dynamics, several takes per note and the soft sound of the hand
+  damping the strings. They play like a guitar: each note goes onto one of six strings, a chord
+  spreads over the strings the way a guitarist would voice it, and a new note on a string stops the
+  one it was ringing, so strums and fast lines stay clean instead of piling up. On **Auto**, short
+  notes use real staccato recordings. Free downloads (306 and 211 MB) of public-domain recordings
+  by Karoryfer Samples.
+- **More knobs for every instrument:** **Tone** (darker or brighter), **Width** (narrow a wide
+  piano to sit in a mix, or widen it), **Tune** (±1 semitone in cents, to match a recording),
+  **Attack** (fade notes in for swells and pads) and **Noise** (the level of the dampers and
+  string noises). All can be automated.
+- **Scroll through patterns with the mouse wheel** over the pattern name in the Channel Rack or
+  the toolbar. Scrolling past the last pattern starts a new empty one; leave it without adding
+  anything and it disappears again, so browsing leaves no empty patterns behind.
+
 ### Changed
+- **Synkopa Keys is now Synkopa Instruments**, with a new, larger window. Choosing an instrument
+  is a library of cards with each instrument's picture, a short description, category filters
+  (Pianos, Electric pianos, Guitars, Strings, Mallets) and a Download button on the ones you do not
+  have yet. Click through them while playing the keyboard below, or step with the ‹ › arrows on the
+  instrument. The knobs are grouped into Sound, Envelope, Playing and Channel. A new channel is
+  named after its instrument ("Grand Piano").
 - **The toolbar has two rows, like FL Studio's.** The top row holds what you use all the time at
   one size: the menus, PAT / SONG (orange and green), play / stop / record, the tempo with the
   song key beside it, the pattern selector, one output block (main volume, master level, CPU) and
@@ -25,6 +48,15 @@ shown in the app after an update and is published as the release notes (see
   filter them (FL's *Auto resize*), floating or docked at the bottom. Turn it off with **Auto
   height** in the rack's title-bar menu to keep the height you give it.
 - The CPU meter is on by default, beside the main volume (Settings → Audio turns it off).
+
+### Fixed
+- **Switching the Piano roll's lane between VEL and PAN** shows the new lane at once.
+- **A wide melody in the Channel Rack** (an 808 spanning two octaves) stays inside its own row
+  instead of drawing over the channels above and below.
+- **The typing keyboard plays the channel selected in the Channel Rack,** also while another
+  channel's window is still open.
+- **The `synkopa` command now works in Git Bash on Windows,** the shell coding agents use there;
+  before, only PowerShell and cmd found it.
 
 ## 0.9.33 — 2026-11-23
 
@@ -90,6 +122,13 @@ shown in the app after an update and is published as the release notes (see
 ## 0.9.32 — 2026-11-22
 
 ### Fixed
+- **Bouncing in place from the command line now waits for the Synkopa Keys piano.** A
+  `synkopa export-in-place` of a song that plays Synkopa Keys could render while the piano was
+  still loading and bounce silence; it now refuses with a clear message until the piano is
+  there, exactly like the app's Export in place. Auto vocal, sidechain and the model download
+  run through one shared action too, so the button, the session commands and the command line
+  can no longer disagree about guards (a stale project refuses before the rider bake, the
+  ducking compressor is chosen the same way) and undo steps keep the names the UI gave them.
 - **Zooming the Playlist on Linux no longer flickers.** With Ctrl+wheel on a big song, the view
   could jump sideways or show blank strips (sometimes the whole grid) for a moment on every
   step. Synkopa now starts Linux's web view without the renderer that caused it. If you want that

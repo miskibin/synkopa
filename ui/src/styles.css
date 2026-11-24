@@ -1117,33 +1117,38 @@ select option { background: var(--bg4); color: var(--fg); }
 .chanwin .chinst { display: flex; align-items: center; gap: 14px; padding: 16px 14px 4px; }
 .chanwin .chinst .nm { font: 600 13px var(--sans); color: var(--fg-hi); letter-spacing: .04em; }
 .chanwin .chinst .note { font-size: 11.5px; color: var(--fg3); margin-top: 3px; }
-/* Synkopa Keys (views/KeysPanel): the instrument library on the left, the chosen instrument's face on the right */
-.chanwin .keyspanel { display: grid; grid-template-columns: 196px minmax(0, 1fr); min-height: 304px; margin-bottom: 14px; border-bottom: 1px solid var(--sep); }
-.chanwin .kbrowse { display: flex; flex-direction: column; min-height: 0; background: var(--bg2); border-right: 1px solid var(--sep); }
-.chanwin .kbrand { padding: 12px 12px 4px; font: 700 11px var(--sans); letter-spacing: .18em; color: var(--fg-hi); }
-.chanwin .kbrand span { color: var(--fg4); font-weight: 600; }
-.chanwin .klist { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 0 6px 8px; }
-.chanwin .kcat { padding: 7px 6px 2px; font: 600 9.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg5); }
-.chanwin .kitem { display: flex; align-items: baseline; gap: 6px; width: 100%; height: 22px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); font: 500 11.5px var(--sans); text-align: left; cursor: pointer; }
-.chanwin .kitem:hover { background: var(--line); color: var(--fg-hi); }
-.chanwin .kitem.on { background: var(--sel-bg); color: var(--fg-hi); box-shadow: inset 2px 0 0 var(--blue); }
-.chanwin .kitem .nm { flex: 1; min-width: 0; }
-.chanwin .kitem .meta { flex: none; font: 500 9.5px var(--mono); color: var(--fg5); }
-.chanwin .kitem.off .nm { color: var(--fg4); }
-.chanwin .kface { display: flex; flex-direction: column; min-width: 0; }
-.chanwin .kplate { position: relative; display: flex; align-items: flex-end; gap: 14px; height: 168px; margin: 12px 12px 0; padding: 14px 16px; border-radius: 6px; overflow: hidden;
-  background: #0c0e12; border: 1px solid var(--line2); isolation: isolate; }
+
+/* Synkopa Instruments: one fixed-height panel for both views, so stepping between the face and the
+   library never resizes the window under the pointer */
+.chanwin .keyspanel { display: flex; flex-direction: column; height: 432px; margin-bottom: 14px; border-bottom: 1px solid var(--sep); }
+.chanwin .kface { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* the plate takes the room the messages and articulations leave */
+.chanwin .kplate { position: relative; display: flex; flex-direction: column; justify-content: space-between; flex: 1 1 auto; min-height: 150px; margin: 12px 12px 0; padding: 10px 14px 16px;
+  border-radius: 6px; overflow: hidden; background: #0c0e12; border: 1px solid var(--line2); isolation: isolate; }
 /* the instrument's artwork fills the plate; the text side fades to the plate's black so it stays readable */
 .chanwin .kplate .kart-img { position: absolute; top: 0; right: 0; height: 100%; width: auto; z-index: -2; pointer-events: none;
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 34%); mask-image: linear-gradient(90deg, transparent 0%, #000 34%); }
 /* the plate's own dark studio backdrop, lit warm behind the instrument like its artwork */
 .chanwin .kplate::before { content: ''; position: absolute; inset: 0; z-index: -3; pointer-events: none;
   background: radial-gradient(60% 120% at 85% 40%, #1d2230 0%, #10131a 55%, #0b0d11 100%); }
-.chanwin .kplate .ktitle { flex: 1; min-width: 0; }
+.chanwin .kplate .ktop { display: flex; align-items: center; gap: 8px; }
+.chanwin .kplate .kstep { display: flex; gap: 2px; }
+/* the plate is always dark (it is the artwork's backdrop), in either theme */
+.chanwin .kplate { --green: #4ec08a; --amber: #e0a44a; --red: #e05263; --blue: #4f8ef7; --blue-hi: #8fb6ff; --line: #2a303b; --fg3: #a8b0bb; }
+.chanwin .kplate .kstepbtn, .chanwin .kplate .kbrowsebtn { height: 22px; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; background: rgba(12,14,18,.55);
+  color: #dde1e8; font: 500 11px var(--sans); cursor: pointer; backdrop-filter: blur(6px); }
+.chanwin .kplate .kstepbtn { width: 22px; padding: 0; font-size: 15px; line-height: 18px; }
+.chanwin .kplate .kbrowsebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; }
+.chanwin .kplate .kstepbtn:hover, .chanwin .kplate .kbrowsebtn:hover { background: rgba(40,46,58,.8); color: #fff; border-color: rgba(255,255,255,.22); }
+.chanwin .kplate .kstepbtn:focus-visible, .chanwin .kplate .kbrowsebtn:focus-visible, .chanwin .kplate .knm:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.chanwin .kplate .ktitle { min-width: 0; }
 .chanwin .kplate .kcatlbl { font: 600 9.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: #a8b0bb; }
-.chanwin .kplate .knm { margin-top: 2px; font: 600 21px var(--sans); color: #f4f6f9; letter-spacing: .01em; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
-.chanwin .kplate .kdesc { margin-top: 3px; max-width: 58%; font-size: 11.5px; line-height: 1.4; color: #c0c6cf; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
-.chanwin .kbadge { flex: none; align-self: flex-start; backdrop-filter: blur(6px); padding: 2px 7px; border-radius: 10px; font: 600 9.5px var(--sans); letter-spacing: .04em; background: var(--line); color: var(--fg3); }
+.chanwin .kplate .knm { display: inline-flex; align-items: baseline; gap: 8px; max-width: 60%; padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+  font: 600 24px var(--sans); color: #f4f6f9; letter-spacing: .01em; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+.chanwin .kplate .knm .kchev { font-size: 12px; color: #a8b0bb; transition: color .09s; }
+.chanwin .kplate .knm:hover .kchev { color: #f4f6f9; }
+.chanwin .kplate .kdesc { margin-top: 4px; max-width: 56%; font-size: 12px; line-height: 1.4; color: #c0c6cf; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.chanwin .kbadge { flex: none; backdrop-filter: blur(6px); padding: 2px 7px; border-radius: 10px; font: 600 9.5px var(--sans); letter-spacing: .04em; background: var(--line); color: var(--fg3); }
 .chanwin .kbadge.ok { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
 .chanwin .kbadge.busy { color: var(--blue-hi); background: color-mix(in srgb, var(--blue) 16%, transparent); }
 .chanwin .kbadge.bad { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
@@ -1153,13 +1158,54 @@ select option { background: var(--bg4); color: var(--fg); }
 .chanwin .keysmsg.bad { color: var(--red); }
 .chanwin .keysbar { flex: 0 0 120px; height: 4px; border-radius: 2px; background: var(--line2); overflow: hidden; }
 .chanwin .keysbar div { height: 100%; background: var(--blue); }
-.chanwin .kart { display: flex; align-items: center; gap: 10px; margin: 12px 12px 0; }
+.chanwin .kart { display: flex; align-items: center; gap: 10px; margin: 10px 12px 0; }
 .chanwin .kart .lab { font: 600 9.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg4); }
 .chanwin .kart .seg > button { width: auto; padding: 0 10px; font: 500 11px var(--sans); color: var(--fg2); }
 .chanwin .kart .seg > button.on { color: var(--blue-hi); }
-.chanwin .keysknobs { display: flex; align-items: flex-end; gap: 18px; padding: 14px 14px 0; }
-.chanwin .keysknobs .ksep { align-self: stretch; width: 1px; margin: 4px 2px 6px; background: var(--line); }
-.chanwin .keyscredit { margin-top: auto; padding: 10px 14px 10px; font-size: 10.5px; line-height: 1.4; color: var(--fg5); }
+/* the knobs in labelled sections: what the sound is, how a note starts and ends, how it answers the
+   player, and the channel's own level */
+.chanwin .keysknobs { display: flex; align-items: stretch; margin: 12px 12px 0; }
+.chanwin .ksec { display: flex; flex-direction: column; gap: 6px; padding: 0 16px; border-left: 1px solid var(--line); }
+.chanwin .ksec:first-child { padding-left: 4px; border-left: 0; }
+.chanwin .ksec-lab { font: 600 9.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg5); }
+.chanwin .ksec-row { display: flex; align-items: flex-end; gap: 14px; }
+.chanwin .kna { opacity: .38; }
+.chanwin .kna > * { pointer-events: none; }
+.chanwin .keyscredit { margin-top: auto; padding: 8px 14px 10px; font-size: 10.5px; line-height: 1.4; color: var(--fg5); }
+/* the library: category filters over a grid of instrument cards */
+.chanwin .klib { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.chanwin .klibhd { display: flex; align-items: center; gap: 10px; padding: 12px 12px 10px; }
+.chanwin .kchips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chanwin .kchip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: transparent;
+  color: var(--fg2); font: 500 11.5px var(--sans); cursor: pointer; }
+.chanwin .kchip .n { font: 500 10px var(--mono); color: var(--fg5); }
+.chanwin .kchip:hover { background: var(--line); color: var(--fg-hi); }
+.chanwin .kchip.on { background: var(--sel-bg); border-color: var(--sel-ring); color: var(--fg-hi); }
+.chanwin .kchip.on .n { color: var(--fg3); }
+.chanwin .kchip:focus-visible, .chanwin .kcard:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.chanwin .kback { height: 24px; }
+.chanwin .kgrid { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows: 96px; gap: 8px;
+  align-content: start; padding: 0 12px 12px; }
+.chanwin .kcard { position: relative; display: flex; gap: 10px; min-width: 0; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg2); cursor: pointer;
+  transition: border-color .09s, background-color .09s; }
+.chanwin .kcard:hover { border-color: var(--line3); background: var(--bg3); }
+.chanwin .kcard.on { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--bg2)); box-shadow: 0 0 0 1px var(--blue) inset; }
+.chanwin .kcard-art { flex: none; width: 82px; height: 82px; border-radius: 4px; overflow: hidden; background: radial-gradient(70% 90% at 60% 40%, #1d2230 0%, #0b0d11 100%); }
+.chanwin .kcard-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chanwin .kcard.off .kcard-art img { filter: saturate(.55) brightness(.8); }
+.chanwin .kcard-ph { display: grid; place-items: center; height: 100%; font: 600 28px var(--sans); color: #a8b0bb; }
+.chanwin .kcard-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.chanwin .kcard-hd { display: flex; align-items: center; gap: 6px; }
+.chanwin .kcard-hd .nm { flex: 1; min-width: 0; font: 600 12.5px var(--sans); color: var(--fg-hi); }
+.chanwin .kcard-on { flex: none; padding: 1px 6px; border-radius: 8px; font: 600 9px var(--sans); letter-spacing: .04em; color: var(--blue-hi); background: color-mix(in srgb, var(--blue) 16%, transparent); }
+.chanwin .kcard-cat { margin-top: 1px; font: 600 9px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--fg5); }
+.chanwin .kcard-desc { margin-top: 3px; font-size: 11px; line-height: 1.35; color: var(--fg3); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chanwin .kcard-ft { display: flex; align-items: center; margin-top: auto; min-height: 18px; }
+.chanwin .kcard-st { font: 500 10px var(--mono); color: var(--fg5); }
+.chanwin .kcard-dl { height: 18px; padding: 0 7px; font-size: 10.5px; }
+.chanwin .kcard-bar { width: 100%; height: 4px; border-radius: 2px; background: var(--line2); overflow: hidden; }
+.chanwin .kcard-bar div { height: 100%; background: var(--blue); }
+.chanwin .klib-err { margin: 0 12px 10px; }
 .pkeys { position: relative; flex: none; height: 64px; margin: 0 14px 14px; border-radius: 3px; overflow: hidden; background: #0b0d10; cursor: pointer; touch-action: none; user-select: none; }
 .pkeys .w { position: absolute; top: 0; bottom: 0; box-sizing: border-box; background: linear-gradient(#dfe3ea, #f4f6f9 70%); border-right: 1px solid #8e97a6; border-radius: 0 0 2px 2px; }
 .pkeys .w.on { background: var(--amber); }
@@ -1607,6 +1653,25 @@ button.chip { color: var(--fg); }
 .keypop .scalelist button { background: transparent; text-align: left; padding: 0 9px; font-weight: 500; }
 .keypop .rootgrid button:hover, .keypop .scalelist button:hover { background: var(--bg6); color: var(--fg-hi); }
 .keypop .rootgrid button.on, .keypop .scalelist button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+
+/* the grid chip (Snap): every value in view as a small grid, coarse → fine */
+.gridchip .chip { gap: 6px; }
+.gridchip .chip .gcval { font-weight: 600; color: var(--fg-hi); }
+.gridchip .chip svg { color: var(--fg5); margin-left: -1px; }
+.gcpop { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  width: max-content; background: var(--bg4); border: 1px solid var(--line2); border-radius: 9px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.gcpop button { height: 26px; border: 0; border-radius: 5px; background: var(--bg2); color: var(--fg3); font: 600 11px var(--mono, var(--sans)); cursor: pointer; padding: 0 6px; outline: 0; }
+.gcpop button:hover, .gcpop button:focus-visible { background: var(--bg6); color: var(--fg-hi); }
+.gcpop button:focus-visible { box-shadow: 0 0 0 1px var(--line3); }
+.gcpop button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+/* what auto resolves to right now */
+.gcpop button.implied { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 55%, transparent); color: var(--fg-hi); }
+.gcmodes { display: flex; gap: 4px; }
+.gcmodes button { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; font-family: var(--sans); padding: 0 10px; white-space: nowrap; }
+.gcmodes button small { font: 500 10px var(--sans); color: var(--fg5); }
+.gcmodes button.on small { color: color-mix(in srgb, var(--blue-hi) 70%, var(--fg5)); }
+.gcgrid { display: grid; grid-template-columns: repeat(var(--cols), minmax(36px, 1fr)); gap: 3px; }
+.gccap { font: 600 9px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--fg5); margin: 2px 0 -2px 2px; }
 
 /* shared editor bar pieces in the Playlist header */
 .pltools .chip { height: 24px; padding: 0 6px 0 7px; font-size: 11px; }

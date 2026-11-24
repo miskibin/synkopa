@@ -65,6 +65,42 @@ describe('switching patterns shows them', () => {
   });
 });
 
+describe('the wheel over the pattern selector (FL)', () => {
+  const ids = () => store.S.project.patterns.map(p => p.id);
+  const last = () => store.S.project.patterns[store.S.project.patterns.length - 1];
+  it('steps without wrapping, and past the last pattern opens a new blank one', async () => {
+    const before = ids();
+    P.setCurPattern(before[0], true);
+    P.scrollPattern(-1);
+    expect(ui.U.pat).toBe(before[0]); // no wrap to the last one
+    P.setCurPattern(before[before.length - 1], true);
+    if (!last().notes.length) edit.commit([P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }])], 'test');
+    await sync();
+    P.scrollPattern(1);
+    await sync();
+    expect(store.S.project.patterns.length).toBe(before.length + 1);
+    expect(ui.U.pat).toBe(last().id);
+    // already on the blank one: the wheel adds no second blank pattern
+    P.scrollPattern(1);
+    await sync();
+    expect(store.S.project.patterns.length).toBe(before.length + 1);
+  });
+  it('drops the untouched blank pattern when wheeling back off it, keeps one with notes', async () => {
+    const n0 = ids().length;
+    P.setCurPattern(ids()[n0 - 1], true);
+    if (!last().notes.length) edit.commit([P.putNotes(last(), [{ ch: P.channels()[0].id, step: 0, len: 1 }])], 'test');
+    await sync();
+    P.scrollPattern(1); await sync();
+    P.scrollPattern(-1); await sync();
+    expect(store.S.project.patterns.length).toBe(n0);
+    P.scrollPattern(1); await sync();
+    const blank = last();
+    edit.commit([P.putNotes(blank, [{ ch: P.channels()[0].id, step: 4, len: 1 }])], 'test'); await sync();
+    P.scrollPattern(-1); await sync();
+    expect(store.S.project.patterns.some(p => p.id === blank.id)).toBe(true);
+  });
+});
+
 describe('sampler channels from project audio', () => {
   it('adds a sampler of a source at a rack position', async () => {
     const src = store.S.project.sources[0];
@@ -104,7 +140,7 @@ describe('sampler channels from project audio', () => {
   });
 });
 
-describe('Synkopa Keys instruments', () => {
+describe('Synkopa Instruments instruments', () => {
   const keysChan = () => P.channels().find(c => c.kind === 'keys') as Extract<ReturnType<typeof P.channels>[number], { kind: 'keys' }>;
   it('switches the instrument, renames a channel still named after it and drops the old articulation', async () => {
     P.addKeys();

@@ -91,6 +91,8 @@ export interface RulerHost {
   track?: (move: (e: PointerEvent) => void, up: (e: PointerEvent) => void, cursor: string) => void;
   /** Double-click key: one per ruler. */
   key: string;
+  /** A right-click that did not drag (the ruler's menu). Opened on release, so a right-drag never pops it. */
+  menu?: (e: PointerEvent) => void;
 }
 
 /** The cursor over a ruler at `e`: a loop edge resizes, Shift inside the loop grabs it. */
@@ -99,8 +101,12 @@ export function rulerCursor(h: RulerHost, e: PointerEvent | MouseEvent): string 
   return ed === 'a' || ed === 'b' ? 'ew-resize' : ed === 'body' ? 'grab' : 'pointer';
 }
 
-/** A left press on a ruler. */
+/**
+ * A press on a ruler. Right-drag draws the loop as a left drag does (FL: a time selection with
+ * either button), a right-click without a drag opens the ruler's menu instead.
+ */
 export function rulerDown(h: RulerHost, e: PointerEvent) {
+  if (e.button === 2) return rightDown(h, e);
   if (e.button !== 0) return;
   e.preventDefault();
   if (dblCheck(h.key)) { if (h.loop()) h.clear(); return; }
@@ -138,6 +144,38 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
     if (g && r && !sameRange(r, last)) { last = r; g.set(r); }
   }, () => {
     if (!g) { h.seek(b0); return; }
+    g.end();
+    const r = h.loop(); if (r) h.drawn(r);
+  }, 'ew-resize');
+}
+
+/**
+ * Right press (FL, checked in FL Studio 20.7). No loop yet: a drag draws one from the press point,
+ * a click opens the ruler's menu. A loop already there: the press grabs its nearer boundary (the
+ * start on a tie) and puts it under the pointer, and the drag moves that boundary; past the other
+ * one the two swap. So a right-click alone shortens or extends the loop to where it was clicked.
+ * The start position stays where it was.
+ */
+function rightDown(h: RulerHost, e: PointerEvent) {
+  e.preventDefault();
+  const tr = h.track ?? ((m, u, c) => track(m, u, c));
+  const snapAt = (ev: PointerEvent) => clamp(snapRound(h.beatAt(ev.clientX), h.unit(ev.altKey)), 0, h.max());
+  const b0 = snapAt(e), lp = h.loop();
+  let g: { set(r: BeatRange): void; end(): void } | null = null, last: BeatRange | null = lp;
+  const put = (r: BeatRange | null) => { if (r && !sameRange(r, last)) { last = r; g!.set(r); } };
+  if (lp) {
+    const raw = h.beatAt(e.clientX), other = Math.abs(raw - lp.a) <= Math.abs(raw - lp.b) ? lp.b : lp.a;
+    g = h.edit(t('a.pl.loopRange'));
+    put(drawnLoop(other, b0));
+    tr(ev => put(drawnLoop(other, snapAt(ev))), () => g!.end(), 'ew-resize');
+    return;
+  }
+  tr(ev => {
+    const r = drawnLoop(b0, snapAt(ev));
+    if (!g && r && Math.abs(ev.clientX - e.clientX) > 4) g = h.edit(t('a.pl.loop'));
+    if (g) put(r);
+  }, ev => {
+    if (!g) { h.menu?.(ev); return; }
     g.end();
     const r = h.loop(); if (r) h.drawn(r);
   }, 'ew-resize');

@@ -172,3 +172,18 @@ describe('working in the playlist lights SONG', () => {
     await mock.patternPlay(null);
   });
 });
+
+describe('a channel routed to a free insert of its own (double-click on an empty mixer box)', () => {
+  it('opens the hidden mixer on that insert, selected', async () => {
+    const P = await import('./pattern');
+    const { pickFreeInsert } = await import('../ui/InsertPicker');
+    ui.setU('mixMin', true);
+    const c = (store.S.project.channels ?? []).find(x => x.insert == null)!;
+    pickFreeInsert({ value: null, ops: id => [P.chanOp(c, { insert: id })], label: 'route', wheelKey: 'w', free: { name: c.name, color: c.color } });
+    await sync();
+    const routed = (store.S.project.channels ?? []).find(x => x.id === c.id)!.insert!;
+    expect(routed).not.toBeNull();
+    expect(ui.U.mixMin).toBe(false);
+    expect(ui.U.mixSel).toBe(routed);
+  });
+});

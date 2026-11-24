@@ -4,7 +4,7 @@ import { t } from '../lib/i18n';
 import { autoSnap, SNAPS, snapName } from '../lib/snap';
 import * as A from '../state/actions';
 import { setU, U } from '../state/ui';
-import { ChipSelect, ToolSeg } from '../ui/EditorBar';
+import { ChipSelect, GridChip, ToolSeg, type ChipOption } from '../ui/EditorBar';
 import { ICONS } from '../ui/icons';
 import { TOOL_HINT, TOOLS } from './Toolbar';
 
@@ -14,8 +14,10 @@ export function PlaylistTools() {
       <ToolSeg label={t('a.pl.toolsLabel')} size={13} sw={1.9} value={U.tool} onPick={id => setU('tool', id)}
         tools={TOOLS.map(([id, key, title]) => ({ id, icon: ICONS[id], title: t(title) + ' (' + key + ') — ' + t(TOOL_HINT[id]) }))} />
       {/* the chip names the setting only ("Snap auto"); what auto resolves to is in its tooltip and the status line */}
-      <ChipSelect label="Snap" title={U.snap < 0 ? t('a.tb.snapTipAuto', { unit: snapName(autoSnap(U.bw)) }) : t('a.tb.snapTip')} value={String(U.snap)}
-        options={SNAPS.map(([label, v]) => [(v === 0 ? t('a.snap.off') : label).replace(/^Snap: /, ''), String(v)])} onChange={v => A.setSnap(parseFloat(v))} />
+      <GridChip label="Snap" title={U.snap < 0 ? t('a.tb.snapTipAuto', { unit: snapName(autoSnap(U.bw)) }) : t('a.tb.snapTip')} value={String(U.snap)}
+        modes={[{ label: 'auto', value: '-1', note: t('a.snap.autoNow', { unit: snapName(autoSnap(U.bw)) }) }, { label: t('a.snap.offName'), value: '0' }]}
+        sections={[{ options: SNAPS.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([label, v]): ChipOption => [label.replace(/^Snap: /, ''), String(v)]) }]}
+        implied={U.snap < 0 ? String(autoSnap(U.bw)) : undefined} onChange={v => A.setSnap(parseFloat(v))} />
       {/* what dragging a clip edge does (FL's stretch switch, Shift+M) */}
       <ChipSelect label={t('a.pl.edges')} title={t(U.stretchMode ? 'a.pl.modeStretchTip' : 'a.pl.modeTrimTip')} value={U.stretchMode ? '1' : '0'}
         options={[[t('a.pl.modeTrim'), '0'], [t('a.pl.modeStretch'), '1']]} onChange={v => { if ((v === '1') !== U.stretchMode) A.toggleStretchMode(); }} />

@@ -108,7 +108,7 @@ the kit and its mixer routing in every pattern.
 * `channel.kind`: `sample` (the sampler: plays project source `source`; the note's key
   repitches it, `root` = the key at which the file plays at its own pitch, default 60 = C5 in
   FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (Synkopa
-  Keys, sampled SFZ instruments: `keys: {instrument, release?, dynamics, articulation?}`, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
+  Keys, sampled SFZ instruments: `keys: {instrument, release?, dynamics, articulation?, attack, tone, width, tune, noise}`, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
   parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)) or `plugin` (a hosted VST3
   instrument, `plugin: PluginRef`; see [Plugin instruments](#plugin-instruments)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
   1), `pan` −1..1 (balance law of the mixer), `mute`/`solo` (with any solo, only soloed
@@ -146,7 +146,7 @@ the kit and its mixer routing in every pattern.
   sustain < 1) with its envelope on and an untouched one-shot with it off.
 * `note`: `step`/`len` in 16ths, `p` MIDI key (absent = the channel's `root`), `v` velocity
   0..1 = linear gain (absent = 1). A Channel Rack step has `trig: true`. It occupies one grid
-  cell and plays a sampler without a note-off, even with its envelope on. Synth and Synkopa Keys
+  cell and plays a sampler without a note-off, even with its envelope on. Synth and Synkopa Instruments
   continue to use the grid duration. A sampler note with `trig: false` ends as soon as its
   set duration or the sample runs out; with the envelope on its end starts the release
   instead. Without it, a short fade just before the note boundary prevents clicks. The Piano Roll shows triggers as short marks. Drag their resize grip or use
@@ -643,8 +643,9 @@ Targets: `{kind:"fx", fxId, param}` (catalog id, or `band:<i>:f|g|q` for EQ:
 f log 20–20k, g −30..30 dB, q log 0.1–18), `{kind:"mix", fxId}`,
 `{kind:"insertVol"|"insertPan", id}`, `{kind:"trackVol", id}`,
 `{kind:"chanVol"|"chanPan", id}` (Channel Rack channel), `{kind:"synth", chanId, param}`
-(synth catalog id), `{kind:"keys", chanId, param:"release"|"dynamics"}` (release log
-40–3000 ms, dynamics 0–100 %), `{kind:"plugin", fxId, paramId}` (a hosted VST3
+(synth catalog id), `{kind:"keys", chanId, param:"release"|"dynamics"|"attack"|"tone"|"width"|"tune"|"noise"}` (release log
+40–3000 ms, attack 0 at the bottom then log 1–2000 ms, dynamics/noise 0–100 %, width 0–150 %, tone −100..100,
+tune ±100 cents; the rest linear), `{kind:"plugin", fxId, paramId}` (a hosted VST3
 or LV2 parameter, `paramId` as `plugin_params` reports it; `v` is normalised
 0..1; `apply` refuses unknown fx/param pairs), `{kind:"clipGain"|"clipPan", id}` (an audio clip; gain
 −24..+12 dB). `v` is 0..1; log parameters are normalised logarithmically, vol is the
@@ -685,7 +686,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `relink_sources` | `{args: {items: [{sourceId, path}]}}` | `{relinked: [{sourceId, path, error, lengthDiffers}]}` — decodes the files, then points the sources at them as one undo step (undo/redo also swap the decoded audio back; `SourceStore::relink`/`reconcile`). A file that does not decode leaves its source unchanged; none decoding is an error. `lib:` sources are refused |
 | `relink_search` | `{args: {folder}}` | `{search: {relinked, candidates: {[sourceId]: [{path, exactName, sharedFolders}]}, notFound, scanned, truncated}}` — walks the folder (≤ 250 000 entries, depth 24, no hidden or linked folders) for the missing sources' file names (`crates/engine/src/relink.rs`); relinks each one whose only best match has the remembered length, returns the rest ranked |
 | `midi` | `{cmd: "midi_inspect", args: {path}}` | `{bpm, tempoChanges, warnings, end, parts: [{index, track, channel (1–16), name, program, gmName, drums, notes, becomes}]}` — a standard MIDI file (format 0/1, `crates/engine/src/midi_file.rs`); `becomes` = `{kind:"drums", drums}` / `{kind:"keys"}` / `{kind:"synth", preset}` |
-| `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or Synkopa Keys) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
+| `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or Synkopa Instruments) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
 | `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + 4/4, one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
 | `fx_chain` | `{cmd: "fx_chains", args: {}}` | `{dir, presets: [{name, effects: [{type, name}], plugins, error?}]}` — FX chain presets in the user's library (`app/src/fx_chains.rs`): one `<name>.wavechain` JSON file each in `%LOCALAPPDATA%\WAVE\FX Chains` |
 | `fx_chain` | `{cmd: "fx_chain_save", args: {insert, name, overwrite?}}` | `{name, effects}` — the insert's effects in order (parameters, EQ bands, dry/wet, bypass, Warp maps, VST3 state); never its volume, pan, name, colour or routing; an existing name fails with `EXISTS:` |
@@ -739,15 +740,26 @@ device), so plain edits and bounces do not pay for them. `crates/cli` owns load 
 (`wave_cli::Files`/`Doc`), refuses to write a file a running app reports as open, and runs
 `script` files with one load and one save.
 
-**Auto vocal as one session command.** `auto_vocal {clipId, beatClipId?, style?, noBake?}`
-(`synkopa auto-vocal`) is the button's whole journey on the shared path: `auto_vocal_plan`, then
-`bake_rider` unless `noBake` or the clip's source name already ends " (rider)", then the chain
-as `RemoveFx`/`PutFx` ops with the level suggestion folded into the limiter's gain — the same
-composition `ui/src/state/actions.ts` `autoVocal()` does for the click, and the insert must not
-be the master. The entry checks `if_revision` first (a stale guard refuses before the bake);
-the apply's own guard skips the bake's own step. `f0_model_install` is the model download as a
-session request too (same `models::install`/`activate`, no progress events — the CLI prints the
-licence note and result instead). Both work on a file (`NEEDS_APP` does not apply).
+**One action per verb.** A verb that carries policy is implemented once in the action layer
+(`app/src/actions.rs`) behind `actions::Host`, and every front door forwards: the Tauri command,
+the session command and the mock in the browser (which composes its own pieces the same way).
+The policy verbs are `auto_vocal` (plan, then `bake_rider` unless `noBake` or the clip's source
+name already ends " (rider)", then the chain as `RemoveFx`/`PutFx` ops with the level
+suggestion folded into the limiter's gain; the insert must not be the master; a stale
+`if_revision` refuses before the bake, and the apply's own guard skips the bake's own step),
+`sidechain` (key the target's Compressor or add one set up for ducking), `f0_model_install`
+(install, activate, remember the cause), `export_in_place` (waits for the Synkopa Keys piano; a
+cancelled bounce comes back as the error `"cancelled"`), `bake_rider`, `make_unique`,
+`flatten_comp`, and the reads that need a guard (`pitch_analyze`, `pitch_target`,
+`auto_vocal_plan`, `plugin_params` and its family ensure the model or live plugins through the
+host). Callers name the undo step: a Tauri command takes `label`, the session passes its
+`label`, and the engine's own steps keep their names ("Apply Vocal Rider"). Adapters keep their
+own reply shapes (the CLI's are documented here); where the app's reply grew the fields the CLI
+already carried, that is additive. `ui/src/state/actions.ts` keeps only what the UI owns — the
+call, the resync, the menus, the readout. Pure pass-throughs (undo, redo, auditions, pattern
+playback) are one engine method with thin adapters. Reply parity is pinned by tests
+(`read_verb_tests.rs` counts the guard asks through a probe host; `export_in_place_tests.rs`
+asserts the session command and the shared action answer identically).
 
 **`synkopa watch FILE` (live coding).** `crates/cli/src/watch.rs` keeps a project of its own (a
 headless `Doc`, as for `--project`), reset to the project as it was when the watch started, runs

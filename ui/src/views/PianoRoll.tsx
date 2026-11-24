@@ -30,7 +30,7 @@ import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPat
 } from '../state/pattern';
 import { arrVersion, rawOf, S } from '../state/store';
 import { openMenu, say, setU, U } from '../state/ui';
-import { ChipSelect, ToolSeg, type ChipOption } from '../ui/EditorBar';
+import { GridChip, ToolSeg, type ChipOption } from '../ui/EditorBar';
 import { Knob } from '../ui/Knob';
 import { LANE_ICONS, LaneSwitch } from '../ui/LaneSwitch';
 import { selectionSpan, vocalsUnder } from '../lib/melody';
@@ -259,14 +259,14 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafMain = 0, rafVel = 0;
   effect(() => {
-    data(); sel(); laneMode(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
     if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
   // the ghost belongs to the stamp tool: gone the moment another tool is picked
   effect(() => { if (rollTool() !== 'stamp') setStampGhost(null); });
   effect(() => {
-    data(); sel(); laneSize(); view(); size(); ch(); pt().len;
+    data(); sel(); lane(); laneSize(); view(); size(); ch(); pt().len;
     if (U.mixView) return;
     if (!rafVel) rafVel = requestAnimationFrame(() => { rafVel = 0; untrack(drawVel); });
   });
@@ -523,7 +523,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       setViewS(v => ({ ...v, sx: clamp(v.sx + d, 0, maxSx()) }));
     } else { const rh = geo().rowH; setViewS(v => ({ ...v, sy: clamp(v.sy + d * 0.7, 0, maxSyAt(rh)) })); }
   };
-  // a note's own pan is played by sampler and Synkopa Keys channels; a synth or plugin channel has the lane on velocity only
+  // a note's own pan is played by sampler and Synkopa Instruments channels; a synth or plugin channel has the lane on velocity only
   const panPlays = () => ch().kind !== 'plugin';
   /** Slide notes bend the built-in instruments; a plugin is never told (as in FL). */
   const slidePlays = () => ch().kind !== 'plugin';
@@ -878,8 +878,10 @@ function Roll(props: { z: number; docked?: boolean }) {
           </button>
         </div>
         <div class="vsep" />
-        <ChipSelect label="Snap" title={rollSnap() < 0 ? t('a.tb.snapTipAuto', { unit: rollSnapName(snapNow()) ?? '' }) : t('b.pe.snapTitle')} value={String(rollSnap())}
-          options={[['auto', '-1'], ...ROLL_SNAPS.map(([l, v]): ChipOption => [l, String(v)])]} group={{ label: t('b.pe.snapTriplets'), options: ROLL_SNAPS_TRIPLET.map(([l, v]) => [l, String(v)]) }}
+        <GridChip label="Snap" title={rollSnap() < 0 ? t('a.tb.snapTipAuto', { unit: rollSnapName(snapNow()) ?? '' }) : t('b.pe.snapTitle')} value={String(rollSnap())}
+          modes={[{ label: 'auto', value: '-1', note: t('a.snap.autoNow', { unit: rollSnapName(autoRollSnap(geo().pps)) ?? '' }) }]}
+          sections={[{ options: ROLL_SNAPS.map(([l, v]): ChipOption => [l, String(v)]) }, { label: t('b.pe.snapTriplets'), options: ROLL_SNAPS_TRIPLET.map(([l, v]): ChipOption => [l, String(v)]) }]}
+          implied={rollSnap() < 0 ? String(snapNow()) : undefined}
           onChange={(v, el) => { setRollSnap(+v); backToRoll(el); }} />
         {/* the song's key, always in view (shared with the toolbar): views/KeyBadge.tsx */}
         <KeyBadge class="toolmenu" />
@@ -949,7 +951,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div class="rollruler">
           <div class="corner" style={{ width: KW + 'px' }} />
           <div class="rcv">
-            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }}
+            <canvas ref={rulerCv} title={t('b.pr.rulerTip')} onPointerDown={e => { if (propsFor()) setPropsFor(null); rulerDown(ruler, e); }} onContextMenu={e => e.preventDefault()}
               onPointerMove={e => { if (!e.buttons) rulerCv.style.cursor = rulerCursor(ruler, e); }} />
             <div ref={phRuler} class="pphead" />
           </div>

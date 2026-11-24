@@ -4,7 +4,8 @@
 import { For, Show } from 'solid-js';
 import { createSignal, watch } from '../lib/reactive';
 import { be } from '../api/backend';
-import type { MidiInfo, MidiPart } from '../api/types';
+import { KEYS_DEFAULT_INSTRUMENT, type MidiInfo, type MidiPart } from '../api/types';
+import { keysInstrument } from '../lib/keysCatalog';
 import { t } from '../lib/i18n';
 import { barsText, notesText } from '../lib/pattern';
 import { tName } from '../lib/i18n';
@@ -49,7 +50,7 @@ export function MidiImport() {
     const b = p.becomes;
     if (into()) return t('d.midi.intoCh', { name: S.project.channels?.find(c => c.id === into()!.ch)?.name ?? '?' });
     if (b.kind === 'drums') return t('d.midi.drums', { list: b.drums.map(d => d.name).join(', ') });
-    if (b.kind === 'keys') return 'Synkopa Keys';
+    if (b.kind === 'keys') return keysInstrument(KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano';
     return tName(b.preset);
   };
   const fileName = () => (U.midiWin?.path.split(/[\\/]/).pop() ?? '');

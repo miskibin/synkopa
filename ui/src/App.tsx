@@ -102,8 +102,11 @@ const clipKeysBlocked = () => !!clipKeysAway && clipKeysAway.isConnected && clip
 /** The channel the typing keyboard plays: the open channel window, the selected channel while the rack or the roll is open,
  * the channel feeding the top effect window's insert, the MIDI target, else the first instrument. */
 function typingTarget() {
-  const cw = chanWin(); if (cw) return cw.id;
-  if ((U.rackWin || U.rollWin) && U.selCh != null && channels().some(c => c.id === U.selCh)) return U.selCh;
+  // FL: the keys play the channel selected in the rack — picking another channel there retargets them
+  // even while an older channel's window is still open
+  const cw = chanWin();
+  if ((cw || U.rackWin || U.rollWin) && U.selCh != null && channels().some(c => c.id === U.selCh)) return U.selCh;
+  if (cw) return cw.id;
   const top = A.topPlug(), hit = top ? findFx(top.fxId) : null;
   const cs = channels();
   const fed = hit ? cs.find(c => c.insert === hit.m.id) : undefined; if (fed) return fed.id;

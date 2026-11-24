@@ -41,14 +41,14 @@ export function pickInsert(p: InsertChoice, id: Id | null) {
 
 /**
  * FL: route it to a mixer insert of its own: the first free one (no effects, nothing routed to it),
- * else a new one, named and coloured after the channel or sample. One undo step; the insert is
- * selected in the mixer.
+ * else a new one, named and coloured after the channel or sample. One undo step; the mixer opens
+ * (when hidden) on that insert, selected and scrolled into view, so its effects can go on next.
  */
 export function pickFreeInsert(p: InsertChoice) {
   if (!p.free) return;
   const plan = routeToFreeInsert(rawOf(S.project), p.free.name, p.free.color, allocId, p.ops);
   commit(plan.ops, p.label);
-  select(plan.insert.id);
+  showInsert(plan.insert.id);
   const n = S.project.inserts.findIndex(m => m.id === plan.insert.id);
   say(t(plan.created ? 'd.smp.freeNew' : 'd.smp.freeTo', { name: p.free.name, n }));
 }

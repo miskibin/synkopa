@@ -518,7 +518,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     return Err(OpError::Invalid(format!("keys release must be {}..{} ms", r.0, r.1)));
                 }
                 if crate::keys::instrument(&keys.instrument).is_none() {
-                    return Err(OpError::Invalid(format!("Synkopa Keys has no instrument `{}`", keys.instrument)));
+                    return Err(OpError::Invalid(format!("Synkopa Instruments has no instrument `{}`", keys.instrument)));
                 }
                 if let Some(a) = keys.articulation {
                     if !crate::keys::articulations(&keys.instrument).iter().any(|x| x.key == a) {
@@ -527,6 +527,18 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 }
                 if !(keys.dynamics.is_finite() && (y.0..=y.1).contains(&keys.dynamics)) {
                     return Err(OpError::Invalid("keys dynamics must be 0..100 %".into()));
+                }
+                use crate::keys::{ATTACK_MS, NOISE, TONE, TUNE, WIDTH};
+                for (name, v, (lo, hi, _), unit) in [
+                    ("attack", keys.attack, ATTACK_MS, "ms"),
+                    ("tone", keys.tone, TONE, ""),
+                    ("width", keys.width, WIDTH, "%"),
+                    ("tune", keys.tune, TUNE, "cents"),
+                    ("noise", keys.noise, NOISE, "%"),
+                ] {
+                    if !(v.is_finite() && (lo..=hi).contains(&v)) {
+                        return Err(OpError::Invalid(format!("keys {name} must be {lo}..{hi} {unit}").trim_end().to_string()));
+                    }
                 }
             }
             if let ChannelSrc::MusicBox { music_box } = &c.src {
