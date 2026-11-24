@@ -210,7 +210,9 @@ export function Toolbar() {
           <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
           <span class="readout" data-readout title={U.readout}>{U.readout}</span>
           <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
-          <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
+          <Show when={prefs().hints}>
+            <button type="button" class="hinttxt" title={hint()} onClick={() => notify(hint())}>{hint()}</button>
+          </Show>
           {/* Record armed: where the recording goes (the first free track, a new one, the looping pattern) */}
           <Show when={T().rec}>
             <span class="recdest" title={recDest().tip}>● {recDest().label}</span>
@@ -219,8 +221,6 @@ export function Toolbar() {
             <span class="tag9">IN</span>
             <div class="inmeter"><div ref={inEl} /></div>
           </div>
-          {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
-          <UpdateChip />
         </div>
         </ChipBoundary>
       </div>
@@ -269,6 +269,7 @@ export function Toolbar() {
       <ChipBoundary name={t('d.ui.pn.panels')}>
       <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
       <div data-drag class="dragfill" />
+      <UpdateChip />
       <Show when={prefs().cpuMeter}><CpuMeter /></Show>
       <Show when={wins()}>
         <button class={['tbtn icon winsbtn', { on: !anyTucked() }]} onClick={() => (anyTucked() ? A.showPlugs() : A.playlistFront())}

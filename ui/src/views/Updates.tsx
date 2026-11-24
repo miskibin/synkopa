@@ -7,6 +7,7 @@ import type { Release } from '../lib/changelog';
 import { projectNew } from '../state/actions';
 import { checkUpdates, closeUpdateDialog, closeWelcome, closeWhatsNew, installUpdate, openReleasePage, openUpdateDialog, setAutoUpdate, showWhatsNew, startUpdate, upd } from '../state/updates';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { APP_GLYPH } from '../ui/menuIcons';
 
 const mb = (n: number) => (n / 1e6).toFixed(n >= 1e8 ? 0 : 1);
 
@@ -47,7 +48,7 @@ const fmtDate = (d: string | null) => {
 
 const pct = () => { const s = upd(); return s.total > 0 ? Math.min(100, Math.floor(s.done * 100 / s.total)) : null; };
 
-/** Button beside the menus while an update is found, downloading or waiting for the restart. */
+/** Toolbar button while an update is found, downloading or waiting for the restart. */
 export function UpdateChip() {
   const s = () => upd();
   const label = () => {
@@ -64,11 +65,17 @@ export function UpdateChip() {
     await installUpdate();
     if (upd().error) openUpdateDialog();
   };
-  const tip = () => s().phase === 'ready' ? t('d.upd.chip.ready.tip', { v: s().info?.version ?? '' }) : t('d.upd.chip.tip');
+  const tip = () => {
+    if (s().phase === 'ready') return t('d.upd.chip.ready.tip', { v: s().info?.version ?? '' });
+    return s().phase === 'available' ? t('d.upd.chip.tip') : label();
+  };
   return (
     <Show when={s().phase !== 'idle' && s().phase !== 'checking' && !(s().phase === 'downloading' && s().quiet)}>
       <button class={['updchip', { ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }]} title={tip()}
-        disabled={s().phase === 'installing'} style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => void click()}>{label()}</button>
+        aria-label={label()} disabled={s().phase === 'installing'} style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => void click()}>
+        <svg width="12" height="12" viewBox={APP_GLYPH.updates.vb} aria-hidden="true"><path d={APP_GLYPH.updates.d} fill="currentColor" /></svg>
+        <span class="updlbl">{label()}</span>
+      </button>
     </Show>
   );
 }

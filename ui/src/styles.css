@@ -751,8 +751,6 @@ select option { background: var(--bg4); color: var(--fg); }
 .pltools .snapsel { flex: 1; min-width: 84px; max-width: 110px; height: 26px; font-size: 11px; }
 .toolbar .panelbtn .lbl, .toolbar .typkb .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
 .tbmenu { display: flex; align-items: center; gap: 10px; height: 22px; min-width: 0; }
-/* "Restart to update" is the one control the update needs: it never shrinks, the readout and hint before it do */
-.tbhint .updchip { flex: none; margin-left: auto; height: 16px; padding: 0 9px; border-radius: 8px; font-size: 10.5px; }
 .menubar { flex: none; display: flex; gap: 1px; margin-left: -7px; }
 .mbtn { height: 22px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); font: 500 12px var(--sans); cursor: default; }
 .mbtn:hover, .mbtn.on { background: var(--line); color: var(--fg-hi); }
@@ -760,7 +758,10 @@ select option { background: var(--bg4); color: var(--fg); }
 .tbhint { display: flex; align-items: center; gap: 8px; height: 16px; min-width: 0; padding-left: 1px; font: 500 11px var(--sans); white-space: nowrap; }
 .tbhint .hled { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .tbhint .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
-.tbhint .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
+.tbhint:has(.hinttxt) .readout { max-width: 42%; }
+.tbhint .hinttxt { flex: 1 1 0; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--fg4); font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+.tbhint .hinttxt:hover { color: var(--fg-hi); }
+.tbhint .hinttxt:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
 .tbhint .offgrid { flex: none; }
 .tbhint .inrow { flex: none; }
 .toolbar .patselbox, .toolbar .patselbtn, .toolbar .patselarrow, .toolbar .patselnew { height: 28px; box-sizing: border-box; }
@@ -811,7 +812,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar.f1 .loopText { display: none; }
 .toolbar.f2 .panelbtn .lbl, .toolbar.f2 .clockbox .tag9, .toolbar.f2 .typoct { display: none; }
 .toolbar.f3 .count, .toolbar.f3 .monbtn { display: none; }
-.toolbar.f4 .metrobtn, .toolbar.f4 .hinttxt { display: none; }
+.toolbar.f4 .metrobtn { display: none; }
 .toolbar.f5 .typkb .lbl { display: none; }
 .toolbar.f6 .patselnew { display: none; }
 .toolbar.f6 .patselbtn { min-width: 80px; max-width: 120px; }
@@ -822,6 +823,8 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar.f9 .askbtn { display: none; }
 .toolbar.f9 .clockbox { gap: 6px; padding: 0 7px; }
 .toolbar.f9 .patselbtn { min-width: 64px; max-width: 96px; }
+.toolbar.f9 .updchip { padding: 0 6px; }
+.toolbar.f9 .updchip .updlbl { display: none; }
 .toolbar.f10 .masterout .cliplbl, .toolbar.f10 .cpumeter, .toolbar.f10 .cmdbtn kbd { display: none; }
 .toolbar.f11 .patselbtn { min-width: 0; max-width: none; }
 .toolbar.f11 .patselbtn .ell { display: none; }
@@ -1326,7 +1329,8 @@ select option { background: var(--bg4); color: var(--fg); }
 .typoct { font-size: 9.5px; font-weight: 600; }
 
 /* updates: status-bar button, update / What's new dialogs, Settings rows */
-.updchip { position: relative; overflow: hidden; height: 20px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--blue); color: var(--on-accent); font: 600 11px var(--sans); cursor: pointer; white-space: nowrap; }
+.updchip { position: relative; display: flex; flex: none; align-items: center; gap: 5px; overflow: hidden; height: 20px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--blue); color: var(--on-accent); font: 600 11px var(--sans); cursor: pointer; white-space: nowrap; }
+.updchip > * { position: relative; }
 .updchip:hover { filter: brightness(1.1); }
 .updchip.ready { background: var(--green); }
 .updchip.busy { background: var(--on-bg); color: var(--blue-hi); cursor: pointer; }

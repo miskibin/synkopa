@@ -10,12 +10,12 @@ export const FIT_LEVELS = [
   'loop',        // f1: the loop range text
   'labels',      // f2: the panel buttons' names (Browser, Channel rack, Piano roll, Mixer), the BPM tag, the typing octave
   'toggles',     // f3: 1 BAR count-in and monitor
-  'metro',       // f4: metronome, the tool hint
+  'metro',       // f4: metronome
   'typing',      // f5: the typing keyboard's name
   'pattern',     // f6: the pattern name trimmed, its + button
   'clock',       // f7: the song position (the tempo stays)
   'tap',         // f8: TAP, main volume, the unsaved mark
-  'ask',         // f9: Ask, the pattern name shorter still
+  'ask',         // f9: Ask, a shorter pattern name, icon-only update status
   'meters',      // f10: the clip label, the CPU meter, Ctrl K
   'patname',     // f11: the pattern selector down to its number
   'panels',      // f12: the panel buttons (F5–F9 and the View menu still open them)
