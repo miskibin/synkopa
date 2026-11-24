@@ -4,6 +4,19 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Chords from audio.** Right-click an audio clip → *Detect tempo, key and chords…* now also shows
+  the clip's chords on a strip of its bars (major, minor, 7ths, maj7, m7, sus and diminished, or
+  just major and minor with **Simple**), spelled for the song's key and following the clip's own
+  transposition. Drag on the strip to pick a part (the Playlist's time selection is picked to
+  start with), click a chord to pick it, then **Send to piano roll**: the chords become a new
+  pattern of block chords — root in the bass, each chord in the inversion nearest the one before —
+  on a new piano or a channel you choose, placed under the clip. Uses the ChordMini model (17 MB,
+  MIT licence), downloaded the first time. From the command line: `synkopa chords --clip ID
+  [--to-pattern]`.
+
 ## 0.9.33 — 2026-11-23
 
 ### Added

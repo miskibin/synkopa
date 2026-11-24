@@ -13,7 +13,8 @@ import { FACTORY_FILES, FACTORY_KIT, FACTORY_LISTED_FILES, factoryFile, LIB_SCHE
 
 /** Reverb mix (%) the engine computes for the research plate at a -18 dB send (autovocal::reverb_mix_for_send). */
 const MOCK_REVERB_MIX = 37.2;
-import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_EDITOR, ERR_NO_STEM_MODEL, ERR_REVISION_CONFLICT } from './errors';
+import { ERR_EXISTS, ERR_INVALID_TARGET, ERR_NO_CHORD_MODEL, ERR_NO_EDITOR, ERR_NO_STEM_MODEL, ERR_REVISION_CONFLICT } from './errors';
+import { chordName, chordsIn, keyUsesFlats, simpleQuality, voiceChord } from '../lib/chords';
 import { projectEq } from '../lib/projectEq';
 import { applyAll, stripClipDefaults } from '../lib/applyOps';
 import { stripPatternDefaults } from '../lib/pattern';
@@ -32,7 +33,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, ChordAnalysis, ChordDetail, ChordModelStatus, ChordQuality, ChordSegment, ChordsToPatternResult, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
@@ -49,6 +50,7 @@ const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#
 const BAND_F = new Float32Array(SPEC_BANDS).map((_, k) => 20 * Math.pow(1000, k / (SPEC_BANDS - 1)));
 const delay = (ms = 0) => new Promise<void>(r => setTimeout(r, ms));
 /** The stem model download (crates/stems `MODEL_BYTES`). */
+const MOCK_CHORD_MODEL_BYTES = 17_080_550;
 const MOCK_STEM_MODEL_BYTES = 90_358_774;
 const STEM_IDS: StemId[] = ['drums', 'bass', 'other', 'vocals'];
 /** stems_actions.rs `STEMS` (names and colours of the new tracks); `scale` shapes the mock's fake waveforms. */
@@ -1033,6 +1035,93 @@ export class MockBackend implements Backend {
     const chosen = nonEx.length ? nonEx : active;
     if (!chosen.length) return { tempo: null, key: null };
     return this.musicAnalyze({ clipId: chosen[0].id });
+  }
+  // ---------- chords (app/src/chords_actions.rs, crates/engine/src/chords.rs) ----------
+  private chordModel = false;
+  async chordsModelStatus(): Promise<ChordModelStatus> {
+    return {
+      id: 'chordmini', name: 'ChordMini chord recognition model', bytes: MOCK_CHORD_MODEL_BYTES, installed: this.chordModel,
+      licenseNote: 'ChordMini by Nghia Phan et al.: code and pretrained weights under the MIT licence (ONNX export by the musetric project, also MIT).',
+      licenseUrl: 'https://github.com/ptnghia-j/ChordMini/blob/main/LICENSE',
+      path: 'C:\Users\michal\AppData\Local\WAVE\Models\chordmini.onnx',
+    };
+  }
+  async chordsModelInstall(): Promise<ChordModelStatus> {
+    const total = MOCK_CHORD_MODEL_BYTES;
+    for (let k = 0; k <= 10; k++) {
+      if (this.stemsOffline) { this.emit('model-progress', { id: 'chordmini', done: 0, total: 0, error: 'download failed: offline' }); throw new Error('download failed: io: offline'); }
+      this.emit('model-progress', { id: 'chordmini', done: Math.round(total * k / 10), total });
+      await delay(40);
+    }
+    this.chordModel = true;
+    return this.chordsModelStatus();
+  }
+  /** The demo audio "plays" a bar-long i–VI–III–VII loop in C minor (Cm7 Abmaj7 Eb Bb7) from the source's first beat;
+   *  like the engine: on the project's beats, transposed by the clip's pitch, spelled for its key, folded at "simple". */
+  async chordsAnalyze(clipId: Id, detail: ChordDetail = 'full'): Promise<ChordAnalysis> {
+    await delay(60);
+    const c = this.p.clips.find(x => x.id === clipId);
+    if (!c) throw new Error('no such clip');
+    if (c.kind !== 'audio') throw new Error('only audio clips have chords');
+    if (!this.chordModel) throw new Error(`${ERR_NO_CHORD_MODEL} chord detection needs its model (17 MB), which is not installed`);
+    const loop: [number, ChordQuality][] = [[0, 'm7'], [8, 'maj7'], [3, 'maj'], [10, '7']];
+    const stretch = c.stretch ?? 1;
+    const transpose = Math.round((c.pitch ?? 0) + (c.resample ? -12 * Math.log2(Math.max(0.25, stretch)) : 0));
+    const flats = keyUsesFlats(0, true);
+    // source bars at the project's tempo: bar k of the audio plays at clip.start - offset + 4k
+    const origin = c.start - c.offset, end = c.start + c.len;
+    const segs: ChordSegment[] = [];
+    for (let k = Math.max(0, Math.floor((c.start - origin) / 4)); origin + 4 * k < end - 1e-6; k++) {
+      const [r, q0] = loop[k % 4];
+      const q = detail === 'simple' ? simpleQuality(q0) : q0;
+      const root = (r + transpose + 120) % 12;
+      const prev = segs[segs.length - 1];
+      const a = Math.max(origin + 4 * k, c.start), b = Math.min(origin + 4 * k + 4, end);
+      if (b - a < 0.5 - 1e-9 && prev) { prev.end = b; continue; }
+      segs.push({ start: a, end: b, root, quality: q, name: chordName(root, q, flats), confidence: 0.62 + 0.08 * ((k * 7) % 5) });
+    }
+    return { clipId, start: c.start, end, detail, transpose, flats, segments: segs, model: 'chordmini' };
+  }
+  async chordsToPattern(a: { clipId: Id; from?: number; to?: number; detail?: ChordDetail; channel?: Id | null }): Promise<ChordsToPatternResult> {
+    const an = await this.chordsAnalyze(a.clipId, a.detail ?? 'full');
+    const from = Math.min(Math.max(a.from ?? an.start, an.start), an.end), to = Math.min(Math.max(a.to ?? an.end, from), an.end);
+    const segs = chordsIn(an.segments, from, to);
+    if (!segs.length) throw new Error('no chords were detected in that part of the clip');
+    if (a.channel != null && !(this.p.channels ?? []).some(ch => ch.id === a.channel)) throw new Error(`no channel ${a.channel}`);
+    const clip = this.p.clips.find(x => x.id === a.clipId)!;
+    const prev = this.p, ops: Op[] = [];
+    let next = this.p.nextId;
+    let ch = a.channel ?? null;
+    if (ch == null) {
+      ch = next++;
+      ops.push({ op: 'putChannel', channel: { id: ch, name: KEYS_CATALOG.find(i => i.id === KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano', color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 } });
+    }
+    const start = Math.floor(segs[0].start / 4) * 4;
+    const notes: Note[] = [];
+    let up: number[] | null = null;
+    for (const s of segs) {
+      const keys = voiceChord(s.root, s.quality, up);
+      for (const k of keys) notes.push({ ch, step: (s.start - start) * 4, len: (s.end - s.start) * 4, p: k, v: 0.8, trig: false });
+      up = keys.slice(1);
+    }
+    const len = Math.max(4, Math.ceil((segs[segs.length - 1].end - start) / 4) * 4);
+    const src = this.p.sources.find(x => x.id === clip.ref)?.name ?? '';
+    const base = src ? `Chords – ${src}` : 'Chords';
+    const taken = (n: string) => this.p.patterns.some(p => p.name === n);
+    let name = base;
+    for (let k = 2; taken(name); k++) name = `${base} ${k}`;
+    const patternId = next++;
+    ops.push({ op: 'putPattern', pattern: { id: patternId, name, color: '#e0a44a', len, minLen: 4, notes } });
+    const nt = this.p.tracks.length;
+    const free = (t: number) => !this.p.clips.some(x => x.track === t && x.start < start + len && x.start + x.len > start);
+    const order = [...Array.from({ length: Math.max(0, nt - clip.track - 1) }, (_, i) => clip.track + 1 + i), ...Array.from({ length: Math.min(clip.track + 1, nt) }, (_, i) => i)];
+    const track = order.find(free) ?? Math.max(0, nt - 1);
+    const clipId = next++;
+    if (nt > 0) ops.push({ op: 'putClips', clips: [mkClip(clipId, track, start, len, 'pat', patternId)] });
+    try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
+    this.p.nextId = Math.max(this.p.nextId, next);
+    this.pushUndo(prev); this.changed();
+    return { patternId, channelId: ch, newChannel: a.channel == null, clipId: nt > 0 ? clipId : null, track, start, chords: segs.length, revision: this.revision };
   }
   /** Same contract as the engine's `auto_vocal_plan`, with fixed measurements of a typical take
    *  (the real calibration renders the audio; the mock has no audio to render). */

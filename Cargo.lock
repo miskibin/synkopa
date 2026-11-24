@@ -5661,6 +5661,7 @@ dependencies = [
  "tempfile",
  "ureq",
  "wave-audio-io",
+ "wave-chords",
  "wave-cli",
  "wave-engine",
  "wave-lv2",
@@ -5696,6 +5697,19 @@ dependencies = [
  "serde_json",
  "wave-engine",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "wave-chords"
+version = "0.4.0"
+dependencies = [
+ "ort",
+ "parking_lot",
+ "realfft",
+ "sha2",
+ "wave-engine",
+ "wave-rmvpe",
+ "wave-stems",
 ]
 
 [[package]]

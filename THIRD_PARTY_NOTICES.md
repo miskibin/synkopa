@@ -179,3 +179,15 @@ through its own SFZ mappings (`crates/engine/instruments`).
   [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) and the Vibraphone from the
   [Versilian Community Sample Library](https://github.com/sgossner/VCSL), both by Versilian Studios
   LLC, released to the public domain under [CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+## ChordMini chord recognition (downloaded on demand)
+
+"Detect tempo, key and chords" uses the ChordMini "2E1D" chord recognizer by Nghia Phan et al.
+(<https://github.com/ptnghia-j/ChordMini>), MIT licence, in the ONNX export published by the
+musetric project (<https://huggingface.co/musetric/chordmini-onnx>), also MIT. The model is not
+shipped: the app downloads it the first time chords are detected. The export's constant-Q
+transform plan (`crates/chords/src/cqt-plan.bin`: a basis and filter computed with librosa, ISC
+licence) is built into Synkopa; it is © the musetric contributors under the MIT licence
+(<https://github.com/popelenkow/musetric>), whose terms require this notice: permission is granted,
+free of charge, to deal in it without restriction, provided the copyright and permission notice
+are included; it is provided "as is", without warranty of any kind.

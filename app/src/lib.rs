@@ -4,6 +4,9 @@
 
 mod actions;
 mod boot;
+mod chords_actions;
+#[cfg(test)]
+mod chords_actions_tests;
 mod cli_shim;
 mod fx_chains;
 mod headless;
@@ -476,6 +479,50 @@ async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>, range: Option<(f64, f6
         Err(wave_engine::EngineError::Cancelled) => Ok(json!({ "cancelled": true })),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+async fn chords_model_status() -> R<chords_actions::ChordModelStatus> {
+    Ok(chords_actions::status())
+}
+
+/// Downloads the chord model (`model-progress` with id "chordmini").
+#[tauri::command]
+async fn chords_model_install(handle: AppHandle) -> R<chords_actions::ChordModelStatus> {
+    let h = handle.clone();
+    let res = tauri::async_runtime::spawn_blocking(move || {
+        models::fetch(&chords_actions::download(), None, |done, total| {
+            let _ = h.emit("model-progress", json!({ "id": wave_chords::MODEL_ID, "done": done, "total": total }));
+        })
+    })
+    .await
+    .map_err(es)?;
+    match res {
+        Ok(()) => Ok(chords_actions::status()),
+        Err(e) => {
+            let _ = handle.emit("model-progress", json!({ "id": wave_chords::MODEL_ID, "done": 0, "total": 0, "error": e }));
+            Err(e)
+        }
+    }
+}
+
+/// The chords of an audio clip, off the IPC thread (the first analysis of a source takes a second or two).
+#[tauri::command]
+async fn chords_analyze(app: St<'_>, clip_id: u64, detail: Option<String>) -> R<Value> {
+    let e = app.engine.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let d = chords_actions::detail_arg(&json!({ "detail": detail }))?;
+        chords_actions::analyze(&e, clip_id, d).map(|a| json!(a))
+    })
+    .await
+    .map_err(es)?
+}
+
+/// "Send to piano roll": see `chords_actions::to_pattern`.
+#[tauri::command]
+async fn chords_to_pattern(app: St<'_>, args: Value) -> R<Value> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || chords_actions::to_pattern(&*a, &args, None)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1373,6 +1420,10 @@ pub fn run(project_arg: Option<&str>) {
             melody_reference,
             f0_model_status,
             f0_model_install,
+            chords_model_status,
+            chords_model_install,
+            chords_analyze,
+            chords_to_pattern,
             stems_model_status,
             stems_model_install,
             extract_stems,

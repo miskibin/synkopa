@@ -9,3 +9,5 @@ export const ERR_REVISION_CONFLICT = 'REVISION_CONFLICT:';
 export const ERR_INVALID_TARGET = 'INVALID_TARGET:';
 export const ERR_NO_EDITOR = 'NO_EDITOR:';
 export const ERR_NO_STEM_MODEL = 'STEM_MODEL_MISSING:';
+/** Chord detection needs its model (the tempo and key dialog offers the download). */
+export const ERR_NO_CHORD_MODEL = 'CHORD_MODEL_MISSING:';

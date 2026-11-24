@@ -19,6 +19,7 @@ members = [
     "crates/stretch",
     "crates/demo-synth",
     "crates/stems",
+    "crates/chords",
 ]
 
 [workspace.package]
@@ -58,6 +59,7 @@ wave-plugin-scan = { path = "crates/plugin-scan" }
 wave-session = { path = "crates/session" }
 wave-rmvpe = { path = "crates/rmvpe" }
 wave-stems = { path = "crates/stems" }
+wave-chords = { path = "crates/chords" }
 wave-midi-in = { path = "crates/midi-in" }
 wave-stretch = { path = "crates/stretch" }
 

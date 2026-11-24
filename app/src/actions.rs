@@ -1784,6 +1784,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
     if let Some(r) = crate::stems_actions::control(app, cmd, a, if_revision) {
         return r;
     }
+    if let Some(r) = crate::chords_actions::control(app, cmd, a, if_revision) {
+        return r;
+    }
     match cmd {
         "status" => {
             let st = e.state();
@@ -1793,7 +1796,7 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         }
         "context" => Ok(context(app, arg(a, "full").and_then(Value::as_bool).unwrap_or(false))),
         "catalog" => Ok(
-            json!({ "effects": catalog::catalog(), "keys": keys_catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","sidechain","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
+            json!({ "effects": catalog::catalog(), "keys": keys_catalog(), "commands": ["status","context","catalog","schema","apply","undo","redo","play","stop","render","import","add_fx","route","unroute","sidechain","set_param","load_preset","save","open","export_project_zip","pitch_analyze","pitch_target","pitch_inspect","pitch_compare","pitch_suggest","pitch_edit","pitch_render","melody_channels","melody_reference","tune_ref","f0_model","f0_model_install","music_analyze","chords_model","chords_model_install","chords_analyze","chords_to_pattern","auto_vocal_plan","auto_vocal","bake_rider","midi_inspect","midi_import","midi_export","fx_chains","fx_chain_save","fx_chain_load","fx_chain_rename","fx_chain_delete","missing","relink","set_project","make_unique","export_in_place","stems_model","stems_model_install","extract_stems","takes","comp","flatten_comp","comp_audition","channels","markers","pattern","pattern_play","pattern_loop","note_audition","plugin_scan","plugin_add","plugin_params","plugin_set_param","plugin_load_anyway","vst3_scan","vst3_add","vst3_params","vst3_set_param"] }),
         ),
         "schema" => Ok(schema()),
         "apply" => {

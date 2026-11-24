@@ -50,6 +50,13 @@ READ
   catalog                                  effect types, parameters and presets
   schema                                   every op `apply` accepts, with an example
   analyze [--clip ID] [--exclude-fx ID]    detect tempo (BPM) and musical key
+  chords --clip ID [--simple]              the chords of an audio clip on the project's beats (ChordMini;
+                                           --simple: major and minor only)
+  chords --clip ID --to-pattern [--from B --to B] [--channel ID] [--simple]
+                                           those chords as block chords in a new pattern on the Playlist
+                                           (default: the whole clip, on a new piano channel; one undo step)
+  chords [--install]                       chord model install state (--install: downloads ~17 MB, MIT,
+                                           SHA-256 checked)
 
 EDIT  (all edits are one undo step each; --if-revision N refuses to act if the project moved on)
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
@@ -268,9 +275,11 @@ const SWITCHES: &[&str] = &[
     "remove-unused",
     "replace",
     "rescan",
+    "simple",
     "stems",
     "stop",
     "tempo",
+    "to-pattern",
     "wrap-tail",
     "yin",
 ];
@@ -994,6 +1003,27 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             }
             send(cx, a, "export_in_place", args)
         }
+        "chords" if a.has("install") => {
+            eprintln!("downloading the ChordMini chord model (~17 MB; MIT licence)");
+            send(cx, a, "chords_model_install", json!({}))
+        }
+        "chords" => match a.num("clip").map_err(u)? {
+            Some(clip) => {
+                let detail = if a.has("simple") { "simple" } else { "full" };
+                if a.has("to-pattern") {
+                    let channel = a.num("channel").map_err(u)?.map(|v| v as u64);
+                    send(
+                        cx,
+                        a,
+                        "chords_to_pattern",
+                        json!({ "clipId": clip as u64, "detail": detail, "from": a.num("from").map_err(u)?, "to": a.num("to").map_err(u)?, "channel": channel }),
+                    )
+                } else {
+                    send(cx, a, "chords_analyze", json!({ "clipId": clip as u64, "detail": detail }))
+                }
+            }
+            None => send(cx, a, "chords_model", json!({})),
+        },
         "stems" if a.has("install") => {
             eprintln!("downloading the HTDemucs stem model (~90 MB; MIT licence)");
             send(cx, a, "stems_model_install", json!({}))
