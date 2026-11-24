@@ -326,14 +326,14 @@
   </div>
   <p class="cap"><b>The dark strip is reason 3 arriving early.</b> Those are real <code>synkopa</code> commands for the pattern you see. Edit a step string and the grid follows. In the app a terminal does the same thing to the project on your screen.</p>
 
-  <figure class="screen"><img src="img/hero.png" width="1918" height="1032" alt="Synkopa with its demo project open: drum, 808 and melody patterns on the playlist, three automation clips, and the mixer docked below"></figure>
+  <figure class="screen"><img src="img/demo-beat.png" width="1913" height="1137" loading="lazy" alt="Synkopa with a trap beat open: the pattern list on the left, drum and 808 patterns and audio clips on the playlist, and the mixer docked below with eight inserts and a limiter on the master"></figure>
   <div class="tape">
     <div>
       <div class="label">The project in this screenshot</div>
-      <h3>OBSIDIAN 2093</h3>
-      <p>It ships with the app: File → Open demo project. Built-in sounds and effects only, so it plays the same on your computer.</p>
+      <h3>Trap beat, 130 BPM</h3>
+      <p>Made in Synkopa: trap drums and an 808 from patterns, an audio loop, eight mixer inserts and the built-in effects. A finished song also ships with the app: File → Open demo project.</p>
     </div>
-    <audio id="a-obsidian" controls preload="none" src="audio/obsidian-2093.mp3"></audio>
+    <audio id="a-demo" controls preload="none" src="audio/demo-beat.mp3"></audio>
   </div>
 </section>
 
@@ -613,7 +613,7 @@
   function typing(e) { var t = e.target.tagName; return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || t === 'AUDIO' || t === 'A' || !!e.target.closest('#gate'); }
   document.addEventListener('keydown', function (e) { if (e.code === 'Space' && !typing(e)) { e.preventDefault(); if (!e.repeat) toggle(); } });
   document.addEventListener('keyup', function (e) { if (e.code === 'Space' && !typing(e)) e.preventDefault(); });
-  ['a-obsidian', 'a-pazur'].forEach(function (id) { $(id).addEventListener('play', function () { if (playing) toggle(); }); });
+  ['a-demo', 'a-pazur'].forEach(function (id) { $(id).addEventListener('play', function () { if (playing) toggle(); }); });
 
   // The video loads from YouTube only when asked for, so the page itself makes no request to it.
   $('video-play').addEventListener('click', function () {
