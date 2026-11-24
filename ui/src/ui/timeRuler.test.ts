@@ -98,14 +98,31 @@ describe('ruler presses (FL)', () => {
     expect(r.rec.seeks).toEqual([]);
     expect(menu).not.toHaveBeenCalled();
   });
-  it('a right-drag over an existing loop draws a new one instead of moving its edge', () => {
-    const r = host({ a: 4, b: 12 });
-    rulerDown(r.h, r.ev(120, { button: 2 }));
-    r.move(200); r.up(200);
-    expect(r.rec.sets.at(-1)).toEqual({ a: 12, b: 20 });
+  it('a right-press grabs the nearer boundary of a loop and the drag moves it; past the other they swap (FL)', () => {
+    // 3..7 bars as beats 12..28, press at 20 (a tie: the start is taken), drag to 36 → 28..36 (FL: 7–9)
+    const r = host({ a: 12, b: 28 });
+    rulerDown(r.h, r.ev(200, { button: 2 }));
+    r.move(280); r.move(360); r.up(360);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 28, b: 36 });
+    expect(r.rec.ended).toBe(1);
+    expect(r.rec.seeks).toEqual([]);
   });
-  it('a right-click without a drag opens the menu on release and leaves the loop and position alone', () => {
+  it('a right-press outside the loop extends its nearer end (FL)', () => {
+    const r = host({ a: 28, b: 36 });
+    rulerDown(r.h, r.ev(480, { button: 2 }));
+    r.move(600); r.up(600);
+    expect(r.rec.sets.at(-1)).toEqual({ a: 28, b: 60 });
+  });
+  it('a right-click on a loop moves its nearer boundary there, as one undo step, with no menu', () => {
     const r = host({ a: 4, b: 12 }), menu = vi.fn();
+    r.h.menu = menu;
+    rulerDown(r.h, r.ev(100, { button: 2 })); r.up(100);
+    expect(r.rec.sets).toEqual([{ a: 4, b: 10 }]);
+    expect(r.rec.ended).toBe(1);
+    expect(menu).not.toHaveBeenCalled();
+  });
+  it('with no loop, a right-click without a drag opens the menu on release and changes nothing', () => {
+    const r = host(), menu = vi.fn();
     r.h.menu = menu;
     rulerDown(r.h, r.ev(40, { button: 2 }));
     r.move(42); r.up(42);

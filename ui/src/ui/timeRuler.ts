@@ -149,17 +149,31 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
   }, 'ew-resize');
 }
 
-/** Right press: drag = a new loop range from the press point (never an edge move), click = the menu. */
+/**
+ * Right press (FL, checked in FL Studio 20.7). No loop yet: a drag draws one from the press point,
+ * a click opens the ruler's menu. A loop already there: the press grabs its nearer boundary (the
+ * start on a tie) and puts it under the pointer, and the drag moves that boundary; past the other
+ * one the two swap. So a right-click alone shortens or extends the loop to where it was clicked.
+ * The start position stays where it was.
+ */
 function rightDown(h: RulerHost, e: PointerEvent) {
   e.preventDefault();
   const tr = h.track ?? ((m, u, c) => track(m, u, c));
   const snapAt = (ev: PointerEvent) => clamp(snapRound(h.beatAt(ev.clientX), h.unit(ev.altKey)), 0, h.max());
-  const b0 = snapAt(e);
-  let g: { set(r: BeatRange): void; end(): void } | null = null, last: BeatRange | null = h.loop();
+  const b0 = snapAt(e), lp = h.loop();
+  let g: { set(r: BeatRange): void; end(): void } | null = null, last: BeatRange | null = lp;
+  const put = (r: BeatRange | null) => { if (r && !sameRange(r, last)) { last = r; g!.set(r); } };
+  if (lp) {
+    const raw = h.beatAt(e.clientX), other = Math.abs(raw - lp.a) <= Math.abs(raw - lp.b) ? lp.b : lp.a;
+    g = h.edit(t('a.pl.loopRange'));
+    put(drawnLoop(other, b0));
+    tr(ev => put(drawnLoop(other, snapAt(ev))), () => g!.end(), 'ew-resize');
+    return;
+  }
   tr(ev => {
     const r = drawnLoop(b0, snapAt(ev));
     if (!g && r && Math.abs(ev.clientX - e.clientX) > 4) g = h.edit(t('a.pl.loop'));
-    if (g && r && !sameRange(r, last)) { last = r; g.set(r); }
+    if (g) put(r);
   }, ev => {
     if (!g) { h.menu?.(ev); return; }
     g.end();
