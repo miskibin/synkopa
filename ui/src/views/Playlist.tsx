@@ -7,20 +7,20 @@ import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, type Automation, type AutoPoint, t
 import { boundaries, boundaryXfade, moveBoundary, setBoundaryXfade, takeEnd, toComp, toTimeline, unusedTakes, usedBeats, writeRange } from '../lib/comp';
 import * as CA from '../state/comp';
 import { compById, LANE_H, takeRow, type TakeRow } from '../state/comp';
-import { clampMove, moveClips, newTrack, paintCells, placeClipCopy, resizeClip, resizeClips, sliceAcross, stackPatternClips, stretchClip, stretchClips, sharedSound, TOTAL } from '../lib/clipOps';
+import { clampMove, moveClips, newClip, newTrack, paintCells, placeClipCopy, resizeClip, resizeClips, sliceAcross, stackPatternClips, stretchClip, stretchClips, sharedSound, TOTAL } from '../lib/clipOps';
 import { clamp, fmtPos, volText } from '../lib/format';
 import { snapFloor, snapRes, snapRound } from '../lib/snap';
 import * as A from '../state/actions';
 import { MuteSolo } from '../ui/MuteSolo';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { peaksVersion } from '../state/peaks';
-import { allocId, anyTrackSolo, arrVersion, clipSrcLen, onArrangementChange, plain, rawOf, S, srcLenBeats, srcOf } from '../state/store';
+import { allocId, anyTrackSolo, arrVersion, clipSrcLen, insName, onArrangementChange, plain, rawOf, S, srcLenBeats, srcOf } from '../state/store';
 import { curBeat, recState, tele } from '../state/telemetry';
 import { recTarget, recUntil } from '../lib/recTarget';
 import { closeMenu, openMenu, openRename, revealReq, say, setU, U, type MenuItem } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { openStems } from '../state/stems';
-import { dblCheck, dragCursor, edgeScroller, fineMul, panDrag, track } from '../ui/drag';
+import { dblCheck, dragCursor, edgeScroller, escCancels, fineMul, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
 import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
@@ -84,7 +84,7 @@ export function dropClipAt(clientX: number, clientY: number, kind: Clip['kind'],
   const p = gridPoint(clientX, clientY);
   if (!p.inside || p.track < 0) return false;
   const len = srcLenBeats(kind, ref), start = clamp(snapFloor(p.beat, unit(alt)), 0, TOTAL - Math.min(len, TOTAL));
-  const nc: Clip = { id: allocId(), track: p.track, start, len: Math.min(len, TOTAL - start), offset: 0, kind, ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...(kind === 'audio' ? sharedSound(S.project.clips, ref) : {}) };
+  const nc: Clip = { ...newClip(allocId(), p.track, start, Math.min(len, TOTAL - start), kind, ref), ...(kind === 'audio' ? sharedSound(S.project.clips, ref) : {}) };
   commit([{ op: 'putClips', clips: [nc] }], tl('a.pl.insertClip'));
   setU('sel', [nc.id]);
   return true;
@@ -174,13 +174,9 @@ export function Playlist() {
       say(to === from ? tl('a.pl.dragTrackSame') : tl('a.pl.dragTrackTo', { name: S.project.tracks[from].name, n: to + 1 }));
     };
     const es = edgeScroller(() => scrollEl.getBoundingClientRect(), (_dx, dy) => { const b = scrollEl.scrollTop; scrollEl.scrollTop += dy; return scrollEl.scrollTop !== b; }, run, { y: true });
-    const esc = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Escape' || !lifted) return;
-      ev.preventDefault(); ev.stopPropagation(); cancelled = true; setLaneDrag(null); es.stop(); dragCursor(null); say(tl('a.pl.dragTrackCancel'));
-    };
-    window.addEventListener('keydown', esc, true);
+    const esc = escCancels(() => lifted, () => { cancelled = true; setLaneDrag(null); es.stop(); dragCursor(null); say(tl('a.pl.dragTrackCancel')); });
     track(ev => { run(ev); if (lifted) es.move(ev); }, () => {
-      window.removeEventListener('keydown', esc, true);
+      esc.off();
       es.stop();
       if (lifted) dragCursor(null);
       setLaneDrag(null);
@@ -760,7 +756,6 @@ export function Playlist() {
     // right-click on a clip's name bar: its menu; on the rest of the clip: delete (FL)
     if (e.button === 2 && h?.head && h.edge !== 'cb') {
       e.preventDefault(); closeMenu();
-      if (!U.sel.includes(h.c.id)) setU('sel', [h.c.id]);
       return openClipMenu(e.clientX, e.clientY, h.c, p);
     }
     if (h?.c.kind === 'auto' && editable() && (e.button === 0 || e.button === 2) && envDown(e, h.c, p.x, p.y)) return;
@@ -795,7 +790,7 @@ export function Playlist() {
     if (h) {
       const clip = h.c;
       if (clip.kind !== 'comp') setU('cur', { kind: clip.kind, ref: clip.ref, clipId: clip.id });
-      if (h.edge === 'menu') { if (!U.sel.includes(clip.id)) setU('sel', [clip.id]); return openClipMenu(e.clientX, e.clientY, clip, p); }
+      if (h.edge === 'menu') return openClipMenu(e.clientX, e.clientY, clip, p);
       if (h.edge === 'fi' || h.edge === 'fo') return fadeDrag(e, clip, h.edge);
       if (h.edge === 'cb') return boundaryDrag(e, clip, h.bnd!);
       if (h.edge === 'l' || h.edge === 'r') return resizeDrag(e, clip, h.edge);
@@ -810,7 +805,7 @@ export function Playlist() {
     const start = clamp(snapFloor(p.beat, unit(e.altKey)), 0, TOTAL - Math.min(len, TOTAL));
     const nc: Clip = template
       ? placeClipCopy(plain(template), allocId(), p.track, start)
-      : { id: allocId(), track: p.track, start, len: Math.min(len, TOTAL - start), offset: 0, kind: cur.kind, ref: cur.ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false, ...(cur.kind === 'audio' ? sharedSound(S.project.clips, cur.ref) : {}) };
+      : { ...newClip(allocId(), p.track, start, Math.min(len, TOTAL - start), cur.kind, cur.ref), ...(cur.kind === 'audio' ? sharedSound(S.project.clips, cur.ref) : {}) };
     const g = new Gesture(tool === 'paint' ? tl('a.pl.paintClips') : tl('a.pl.insertClip'));
     g.update([{ op: 'putClips', clips: [nc] }]);
     setU('sel', [nc.id]);
@@ -1444,11 +1439,7 @@ export function Playlist() {
     if (dblCheck('mk' + m.id)) { MK.loopSection(m.id); return; }
     const x0 = e.clientX, from = m.at;
     let lifted = false, cancelled = false, at = from;
-    const esc = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Escape' || !lifted) return;
-      ev.preventDefault(); ev.stopPropagation(); cancelled = true; setMkDrag(null); say(tl('a.mk.moveCancel'));
-    };
-    window.addEventListener('keydown', esc, true);
+    const esc = escCancels(() => lifted, () => { cancelled = true; setMkDrag(null); say(tl('a.mk.moveCancel')); });
     trackEdge(ev => {
       if (cancelled) return;
       if (!lifted) { if (Math.abs(ev.clientX - x0) < 4) return; lifted = true; }
@@ -1457,7 +1448,7 @@ export function Playlist() {
       at = b; setMkDrag({ id: m.id, at });
       say(`${m.name || tl('a.mk.unnamed')} · ${fmtPos(at)}`);
     }, () => {
-      window.removeEventListener('keydown', esc, true);
+      esc.off();
       setMkDrag(null);
       if (!lifted) { MK.jumpTo(m.id); return; }
       if (cancelled || at === from) return;
@@ -1597,11 +1588,15 @@ export function openRouteMenu(i: number, x: number, y: number) {
 /** Where track `i` plays: the master (the default) or a mixer insert the user picks. */
 function routeItems(i: number): MenuItem[] {
   const t = S.project.tracks[i]; if (!t) return [];
-  return S.project.inserts.map(m => ({ t: 'item', label: insLabel(m.id), kbd: t.insert === m.id ? '●' : '', act: () => {
-    A.setTrack(i, { insert: m.id }, 'Routing'); A.selectInsert(m.id); say(t.name + ' → ' + insLabel(m.id));
-  } }) as MenuItem);
+  return S.project.inserts.map(m => {
+    // the label is captured at menu build: the row's toast matches what the row showed,
+    // even if the insert was renamed (or replaced in the array) while the menu was open
+    const label = insName(m);
+    return { t: 'item', label, kbd: t.insert === m.id ? '●' : '', act: () => {
+      A.setTrack(i, { insert: m.id }, 'Routing'); A.selectInsert(m.id); say(t.name + ' → ' + label);
+    } } as MenuItem;
+  });
 }
-const insLabel = (id: Id) => { const i = S.project.inserts.findIndex(m => m.id === id); const m = S.project.inserts[i]; return !m ? '?' : id === 0 ? 'Master' : 'Ins ' + i + ' · ' + m.name; };
 
 function openLaneMenu(x: number, y: number, i: number) {
   const t = S.project.tracks[i];

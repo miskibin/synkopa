@@ -16,7 +16,7 @@ import {
   deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, scrollPattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved,
 } from '../state/pattern';
-import { arrVersion, S } from '../state/store';
+import { arrVersion, insName, S } from '../state/store';
 import { openMenu, openRename, say, setU, U, type MenuItem, type PatWin } from '../state/ui';
 import { libGlyph, PICK_GLYPH, synthCategoryGlyph } from '../ui/menuIcons';
 import { theme } from '../ui/theme';
@@ -85,7 +85,7 @@ export function chanInsertChoice(c: Channel): InsertChoice {
 export function insertMenu(c: Channel, x: number, y: number) {
   const items: MenuItem[] = [{ t: 'title', label: t('b.pe.mixChName', { name: c.name }) },
     { t: 'item', label: t('b.pe.clipTrack'), kbd: c.insert == null ? '✓' : '', title: t('b.pe.clipTrackTitle'), act: () => pickInsert(chanInsertChoice(c), null) }, { t: 'sep' }];
-  S.project.inserts.forEach((m, i) => items.push({ t: 'item', label: i === 0 ? 'Master' : i + ' · ' + m.name, kbd: c.insert === m.id ? '✓' : '', act: () => pickInsert(chanInsertChoice(c), m.id) }));
+  S.project.inserts.forEach(m => items.push({ t: 'item', label: insName(m), kbd: c.insert === m.id ? '✓' : '', act: () => pickInsert(chanInsertChoice(c), m.id) }));
   openMenu(x, y, items, Math.min(window.innerHeight - 20, 60 + items.length * 26));
 }
 

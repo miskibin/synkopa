@@ -288,14 +288,13 @@ impl Engine {
             let c = self.core.lock();
             let p = &c.project;
             let ex_ins = exclude_insert.or_else(|| exclude_fx.and_then(|fid| p.find_fx(fid).map(|(ins, _)| ins.id)));
-            let any_solo = p.tracks.iter().any(|t| t.solo);
             let active: Vec<(Clip, bool)> = p
                 .clips
                 .iter()
                 .filter(|cl| cl.kind == ClipKind::Audio && !cl.muted)
                 .filter_map(|cl| {
                     let tr = p.tracks.get(cl.track as usize)?;
-                    if tr.muted || (any_solo && !tr.solo) {
+                    if !p.track_audible(tr) {
                         return None;
                     }
                     let is_excluded = ex_ins == Some(tr.insert);

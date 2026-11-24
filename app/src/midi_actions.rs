@@ -16,6 +16,9 @@ use wave_engine::{factory, Channel, ChannelSrc, Clip, ClipKind, Id, Note, Op, Pa
 
 use crate::actions::{arg, as_index, need_str, opt_f64, Host, R};
 
+/// The verbs this module answers (`crate::midi`'s whitelist walks it, like `fx_chains::COMMANDS`).
+pub const COMMANDS: &[&str] = &["midi_inspect", "midi_import", "midi_export"];
+
 pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -> Option<R<Value>> {
     Some(match cmd {
         "midi_inspect" => inspect(app, a),
@@ -261,10 +264,8 @@ fn voice(p: &Project, c: &Channel) -> Voice {
         // a hosted plugin's sound is its own: no General MIDI program stands for it
         ChannelSrc::Plugin { .. } => Voice { drum_key: None, program: None },
         ChannelSrc::Synth { synth } => {
-            let cat = synth
-                .preset
-                .as_deref()
-                .and_then(|n| wave_engine::poly::presets::all().into_iter().find(|x| x.name == n).map(|x| x.category));
+            let cat =
+                synth.preset.as_deref().and_then(|n| wave_engine::poly::presets::all().iter().find(|x| x.name == n).map(|x| x.category));
             Voice { drum_key: None, program: Some(cat.map(midi_file::program_for_category).unwrap_or(81)) }
         }
         ChannelSrc::Sample { source, .. } => {

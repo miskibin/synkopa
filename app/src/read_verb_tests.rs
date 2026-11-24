@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use wave_engine::autovocal::Style;
 use wave_engine::Project;
 
-use crate::actions::{auto_vocal, control, music_analysis, pitch_analysis, pitch_target, vocal_plan, Host, R};
+use crate::actions::{auto_vocal, control, music_analysis, pitch_analysis, pitch_target, vocal_plan, Host, ALL_COMMANDS, R};
 use crate::headless::Headless;
 use crate::plugins::Plugins;
 
@@ -103,4 +103,26 @@ fn the_session_plugin_scan_reply_keeps_the_documented_shape() {
     let r = control(&h, "plugin_scan", &json!({}), None, None).unwrap();
     assert!(r.get("plugins").is_some(), "the ScanResult fields sit at the top level: {r}");
     assert!(r.get("Err").is_none() && r.get("Ok").is_none(), "a Result wrapper would break every documented caller: {r}");
+}
+
+/// The `catalog` reply's verb list is what scripts are told to consult: every name in
+/// [`ALL_COMMANDS`] must reach [`control`] — refusals (live-only, missing args) are fine,
+/// `UNKNOWN_COMMAND` is not. A typo'd entry fails this test; the other direction (a verb
+/// missing from the catalog) is what [`ALL_COMMANDS`]'s own doc warns about.
+#[test]
+fn every_cataloged_command_reaches_control() {
+    let h = Headless::new(Project::sketch());
+    let p = Probed(&h, AtomicUsize::new(0), AtomicUsize::new(0));
+    for cmd in ALL_COMMANDS {
+        // the installers with empty args would download the real models on a machine (or CI
+        // runner) that has none; their names are what this walk is about, and their behavior
+        // has tests of its own
+        if *cmd == "f0_model_install" || *cmd == "stems_model_install" || *cmd == "chords_model_install" {
+            continue;
+        }
+        match control(&p, cmd, &json!({}), None, None) {
+            Ok(_) => {}
+            Err(e) => assert!(!e.contains("UNKNOWN_COMMAND"), "{cmd} is not a verb: {e}"),
+        }
+    }
 }

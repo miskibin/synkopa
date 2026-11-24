@@ -9,6 +9,7 @@ import { createSignal } from '../lib/reactive';
 import type { AutoPoint, AutoTarget, Automation, Id, Op } from '../api/types';
 import { automationSpans, autoValueText, createAutomationOps, denormalize, normalize, parseAutoValue, readTarget, spansValue, targetKey, targetLabel, trackForAutomation, writeTargetOps } from '../lib/automation';
 import { fmtPos } from '../lib/format';
+import { newClip } from '../lib/clipOps';
 import { addFrameTask } from '../ui/frameLoop';
 import { commit, enqueue, Gesture, wheelEdit } from './edit';
 import { be } from '../api/backend';
@@ -210,8 +211,7 @@ export class CaptureBuf {
  * the song plays (a pattern preview's clock is not the playlist's; there a tweak writes static). */
 export const captureArmed = () => S.transport.rec && S.transport.recAutomation && U.playing;
 
-const autoClip = (id: Id, ref: Id, track: number, start: number, len: number) =>
-  ({ id, track, start, len, offset: 0, kind: 'auto' as const, ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+const autoClip = (id: Id, ref: Id, track: number, start: number, len: number) => newClip(id, track, start, len, 'auto', ref);
 
 /** What one control's tweak captures into: its automation and the clip that drives it at the
  * capture beat — the one under the playhead (the latest-starting one where they overlap),

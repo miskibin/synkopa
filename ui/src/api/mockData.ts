@@ -2,6 +2,7 @@
 // demo song of crates/engine/src/demo.rs. Only the mock uses these; the real UI reads `fx_catalog`.
 import { VOL_UNITY, type AnyBuiltinKind, type Catalog, type Clip, type EqBand, type Note, type ParamDef, type Preset, type Project, type WarpMaps } from './types';
 import { defaultBands, loadPreset, newFx } from '../lib/presets';
+import { newClip } from '../lib/clipOps';
 import { addStarterKit, factoryChannel } from '../lib/factory';
 export { demoProject, emptyProject } from '../lib/factory';
 import { SYNTH_CATALOG } from './synthCatalog';
@@ -399,8 +400,7 @@ export function sketchProject(cat: Catalog): Project {
     { id: 3, name: 'Bass', color: '#7c8cf8', len: 8,
       notes: [[0, 3, 33], [4, 2, 33], [6, 2, 40], [8, 4, 36], [14, 2, 38], [16, 3, 29], [20, 2, 29], [22, 2, 36], [24, 6, 31], [30, 2, 34]].map(([s, l, k]) => note(bass, s, l, k)) },
   ];
-  const clip = (id: number, track: number, start: number, len: number, ref: number): Clip =>
-    ({ id, track, start, len, offset: 0, kind: 'pat', ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+  const clip = (id: number, track: number, start: number, len: number, ref: number): Clip => newClip(id, track, start, len, 'pat', ref);
   p.clips = [clip(1, 0, 0, 16, 1), clip(2, 0, 16, 16, 1), clip(3, 1, 8, 24, 2), clip(4, 2, 0, 32, 3)];
   const eq = loadPreset(cat, newFx(cat, 902, 'eq', p.bpm), 1, p.bpm);
   p.inserts[6].fx = [eq, newFx(cat, 903, 'comp', p.bpm), newFx(cat, 904, 'reverb', p.bpm)];

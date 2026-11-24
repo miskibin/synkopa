@@ -101,7 +101,7 @@ fn levels() {
     println!("| preset | category | key | LUFS-I | dBTP | trim now | trim suggested |");
     println!("|---|---|---|---|---|---|---|");
     for p in presets::all() {
-        let (l, r) = lab::probe(&p, SR);
+        let (l, r) = lab::probe(p, SR);
         let (lu, tp) = lab::loudness(&l, &r, SR);
         let now = p.patch[ix::FX_OUT] as f64;
         // polyphonic patches play POLY_HEADROOM (−12 dB) lower so chords fit
@@ -182,7 +182,7 @@ fn click_scenarios(p: &Patch, next: &Patch, key: u8) -> [usize; 6] {
 }
 
 fn clickdbg(name: &str) {
-    let p = presets::all().into_iter().find(|p| p.name == name).unwrap();
+    let p = presets::all().iter().find(|p| p.name == name).unwrap();
     let ms = |x: f32| (x * SR / 1000.0) as u32;
     let key = p.probe_key();
     let mut s = SynthInst::new(1, p.patch, SR);
@@ -493,7 +493,7 @@ fn demos(dir: &Path) {
     let probes: PathBuf = dir.join("probes");
     std::fs::create_dir_all(&probes).unwrap();
     let all = presets::all();
-    for p in &all {
+    for p in all {
         let (l, r) = lab::probe(p, SR);
         let x: Vec<f32> = l.iter().zip(&r).flat_map(|(a, b)| [*a, *b]).collect();
         wave_engine::sources::write_wav(&probes.join(format!("{}.wav", slug(p.name))), &x, SR as u32).unwrap();

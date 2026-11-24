@@ -1,8 +1,13 @@
 // Pure builders for playlist edits. They return new clips / ops; nothing here touches the store.
-import { STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, VOL_UNITY, type Clip, type Op, type Project, type Track } from '../api/types';
+import { STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, VOL_UNITY, type Clip, type Id, type Op, type Project, type Track } from '../api/types';
 import { clamp } from './format';
 
 export const TOTAL = TOTAL_BEATS;
+
+/** A new playlist clip of `kind` with the house defaults; audio callers spread `sharedSound` over it. */
+export function newClip(id: Id, track: number, start: number, len: number, kind: Clip['kind'], ref: Id): Clip {
+  return { id, track, start, len, offset: 0, kind, ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false };
+}
 
 /** Clamp a group move so every clip stays on the timeline and on an existing track. */
 export function clampMove(orig: Clip[], d: number, dt: number, nTracks: number): [number, number] {
@@ -260,7 +265,7 @@ export function stackPatternClips(refs: readonly number[], track: number, start:
   lenOf: (ref: number) => number, newId: () => number): { clips: Clip[]; newTracks: number } {
   const clips = refs.map((ref, i): Clip => {
     const len = Math.max(1e-3, Math.min(lenOf(ref), total - start));
-    return { id: newId(), track: track + i, start, len, offset: 0, kind: 'pat', ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false };
+    return newClip(newId(), track + i, start, len, 'pat', ref);
   });
   return { clips, newTracks: Math.max(0, track + refs.length - tracks) };
 }

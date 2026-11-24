@@ -3,6 +3,7 @@
 // streams binary telemetry frames (encoded exactly like the real ones).
 import { filterEnvStep, gateStep } from './mockGateFilter';
 import { askUrl, DISCORD_URL, MAX_ASK_URL, type AskService } from '../lib/askLink';
+import { newClip } from '../lib/clipOps';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
 import type { Backend, EventMap, OsDropEvent } from './backend';
@@ -880,7 +881,7 @@ export class MockBackend implements Backend {
       if (a.track != null && a.beat != null) {
         const tr = clamp(a.track + k, 0, this.p.tracks.length - 1), cid = this.p.nextId++;
         const len = Math.min(dur / this.spb(), 512 - a.beat);
-        this.p.clips.push(mkClip(cid, tr, a.beat, len, 'audio', id)); clipIds.push(cid);
+        this.p.clips.push(newClip(cid, tr, a.beat, len, 'audio', id)); clipIds.push(cid);
       }
     });
     // like the engine (import_audio_with): one undo step, unless the caller loads the files for an edit
@@ -1128,7 +1129,7 @@ export class MockBackend implements Backend {
     const order = [...Array.from({ length: Math.max(0, nt - clip.track - 1) }, (_, i) => clip.track + 1 + i), ...Array.from({ length: Math.min(clip.track + 1, nt) }, (_, i) => i)];
     const track = order.find(free) ?? Math.max(0, nt - 1);
     const clipId = next++;
-    if (nt > 0) ops.push({ op: 'putClips', clips: [mkClip(clipId, track, start, len, 'pat', patternId)] });
+    if (nt > 0) ops.push({ op: 'putClips', clips: [newClip(clipId, track, start, len, 'pat', patternId)] });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
     this.pushUndo(prev); this.changed();
@@ -1470,7 +1471,7 @@ export class MockBackend implements Backend {
     const free = (t: number) => !this.p.clips.some(c => c.track === t && c.start < beat + len && c.start + c.len > beat);
     const track = a.track != null && a.track < this.p.tracks.length ? a.track : Math.max(0, this.p.tracks.findIndex((_, i) => free(i)));
     const clipId = next++;
-    ops.push({ op: 'putClips', clips: [mkClip(clipId, track, beat, len, 'pat', patternId)] });
+    ops.push({ op: 'putClips', clips: [newClip(clipId, track, beat, len, 'pat', patternId)] });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
     this.pushUndo(prev); this.changed();
@@ -1619,7 +1620,7 @@ export class MockBackend implements Backend {
     });
     for (const c of outside) this.p.clips.push({ ...c, id: this.p.nextId++ });
     const clipId = this.p.nextId++;
-    this.p.clips.push(mkClip(clipId, at, from, to - from, 'audio', sourceId));
+    this.p.clips.push(newClip(clipId, at, from, to - from, 'audio', sourceId));
     this.pushUndo(prev); this.changed();
     return { sourceId, clipId, track: at };
   }
@@ -2250,8 +2251,5 @@ export class MockBackend implements Backend {
 function strip(s: MockSource): Source {
   const { seed: _s, trimFrom: _t, ...rest } = s; void _s; void _t;
   return rest;
-}
-function mkClip(id: Id, track: number, start: number, len: number, kind: Clip['kind'], ref: Id): Clip {
-  return { id, track, start, len, offset: 0, kind, ref, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false };
 }
 void BUILTIN;

@@ -474,7 +474,7 @@ async fn fx_chain(app: St<'_>, cmd: String, args: Value) -> R<Value> {
 /// `midi_inspect` / `midi_import` / `midi_export` (`midi_actions.rs`), off the UI thread.
 #[tauri::command]
 async fn midi(app: St<'_>, cmd: String, args: Value) -> R<Value> {
-    if !matches!(cmd.as_str(), "midi_inspect" | "midi_import" | "midi_export") {
+    if !midi_actions::COMMANDS.contains(&cmd.as_str()) {
         return Err(format!("not a MIDI command: {cmd}"));
     }
     let a = app.inner().clone();
