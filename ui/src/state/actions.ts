@@ -964,11 +964,11 @@ export async function autoVocal(clipId: Id, style: 'natural' | 'hard' = 'natural
     }));
     await resync();
     setU({ mixSel: r.insertId });
-    say(t(r.riderBaked ? 'd.act.av.done.rb' : 'd.act.av.done', { n: r.fxIds.length, name: insName(ins) })
+    say(t(r.riderBaked ? 'd.act.av.done.rb' : 'd.act.av.done', { n: r.fxCount, name: insName(ins) })
       + t('d.act.av.spread', { a: r.spread[0].toFixed(1), b: r.spread[1].toFixed(1) })
       + (r.key ? t('d.act.av.key', { key: r.key }) : t('d.act.av.nokey'))
       + (r.warnings.length ? ' · ' + r.warnings[0] : ''));
-  } catch (e) { say(t('d.act.av.fail', { err: String(e) })); }
+  } catch (e) { say(t('d.act.av.fail', { err: String(e) })); void resync(); }
   autoVocalBusy = false;
 }
 

@@ -115,6 +115,8 @@ fn auto_vocal_bakes_the_rider_and_puts_the_chain_on_the_insert() {
     assert!(r["revision"].as_u64().unwrap() >= rev0 + 2, "the bake and the chain are two undo steps: {r}");
     assert_eq!(r["riderBaked"]["clipId"], clip);
     assert_eq!(r["fxIds"].as_array().unwrap().len(), chain.len());
+    let enabled = plan["chain"].as_array().unwrap().iter().filter(|p| p["enabled"].as_bool().unwrap()).count();
+    assert_eq!(r["fxCount"], enabled, "the toast counts active stages, not the bypassed Tune");
     assert_eq!(r["warnings"].as_array().unwrap(), plan["warnings"].as_array().unwrap());
     assert_eq!(r["insertId"], 1);
     assert_eq!(r["style"], "natural");
@@ -187,6 +189,21 @@ fn auto_vocal_refuses_clips_it_cannot_serve() {
 }
 
 #[test]
+fn a_refused_journey_reports_no_stage() {
+    let d = tmp("refusal-stages");
+    let (h, clip, beat) = control_project(&d);
+    // the imported lanes play the master: the journey refuses at the entry checks
+    let seen: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    let e = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, false, None, None, &|s| {
+        seen.lock().unwrap().push(s.to_owned());
+    })
+    .unwrap_err();
+    assert!(e.contains("master insert"), "{e}");
+    assert!(seen.lock().unwrap().is_empty(), "nothing reports before the checks pass (the mock and the UI count the same way)");
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
 fn f0_model_install_surfaces_a_bad_model_file_instead_of_downloading() {
     no_model();
     let doc = Files.create("empty").unwrap();
@@ -225,6 +242,7 @@ fn a_reroute_during_the_bake_conflicts_and_leaves_the_old_insert_alone() {
     let d = tmp("reroute-bake");
     let (h, clip, beat) = control_project(&d);
     route_to_insert(&h, clip, 1);
+    let src0 = h.engine().project().clips.iter().find(|c| c.id == clip).unwrap().source;
 
     let seen: Mutex<Vec<String>> = Mutex::new(Vec::new());
     let e = auto_vocal(&h, clip, Some(beat), wave_engine::autovocal::Style::Natural, false, None, None, &|s| {
@@ -238,6 +256,8 @@ fn a_reroute_during_the_bake_conflicts_and_leaves_the_old_insert_alone() {
     assert!(e.contains("already baked"), "{e} — the caller must learn the audio changed");
     assert_eq!(*seen.lock().unwrap(), ["plan", "bake", "chain"], "every stage still reports");
     assert!(h.engine().project().insert(1).unwrap().fx.is_empty(), "the stale chain never landed");
+    let baked = h.engine().project().clips.iter().find(|c| c.id == clip).unwrap().source;
+    assert_ne!(baked, src0, "the bake survived the failed chain: the clip now plays the rider render");
 }
 
 #[test]

@@ -305,7 +305,6 @@ pub fn auto_vocal(
 ) -> R<Value> {
     let e = app.engine();
     app.ensure_pitch_model();
-    progress("plan");
     // the guard is checked at entry as well: a stale one refuses before the bake, not
     // after half of the job is done
     if let Some(r) = if_revision {
@@ -321,6 +320,9 @@ pub fn auto_vocal(
     if insert == 0 {
         return Err("the clip plays on the master insert; route its track to its own mixer insert first".into());
     }
+    // every refusal is done: only now does the journey report its first stage, so a refused
+    // run reports none (the mock and the UI's stage list count the same way)
+    progress("plan");
     let plan = e.auto_vocal_plan(clip, beat, style, !no_bake).map_err(|x| x.to_string())?;
     // the rider is rendered into the audio instead of living on the insert (no playback
     // delay); a clip that was baked before is not baked twice (same guard as the app)
@@ -351,7 +353,8 @@ pub fn auto_vocal(
     }
     Ok(json!({
         "revision": e.revision(), "clipId": clip, "insertId": insert, "style": plan.style,
-        "riderBaked": baked, "fxIds": fx_ids, "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
+        "riderBaked": baked, "fxIds": fx_ids, "fxCount": plan.chain.iter().filter(|s| s.enabled).count(),
+        "trackGainDb": plan.track_gain_db, "warnings": plan.warnings,
         "key": plan.analysis.key.as_ref().map(|k| k.name.clone()), "spread": plan.stages.iqr400_db,
     }))
 }
@@ -443,7 +446,7 @@ pub fn bake_rider(app: &dyn Host, clip: u64, params: &std::collections::BTreeMap
 
 /// FL's *Export in place*: the selected clips rendered to one audio clip on a new track below
 /// them (originals muted, one undo step). A bounce waits for the Synkopa Keys piano first; a
-/// cancelled bounce comes back as the error `"cancelled"`.
+/// cancelled bounce comes back as the error [`wave_engine::errors::ERR_CANCELLED`].
 pub fn export_in_place(
     app: &dyn Host,
     ids: &[u64],
@@ -2023,6 +2026,8 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "sidechain" => {
             let off = arg(a, "off").map(|v| v.as_bool().ok_or("`off` must be a boolean")).transpose()?.unwrap_or(false);
             let num = |k: &str| arg(a, k).and_then(Value::as_u64);
+            // the CLI's file mode carries the label in the args (no session header field)
+            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
             sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision, label)
         }
         "set_param" => {
@@ -2098,9 +2103,6 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 None if range.is_some() => vec![],
                 None => return Err("`clipIds` (array of clip ids) or `fromBeat`/`toBeat` is required".into()),
             };
-            // a bounce must not start while the piano is still loading (it would be silent):
-            // the same wait the app's export_in_place command makes
-            app.wait_keys()?;
             export_in_place(app, &ids, range, &std::sync::atomic::AtomicBool::new(false), &mut |_| {})
         }
         "flatten_comp" => flatten_comp(app, comp_clip(&e.project(), a)?.id),
@@ -2173,6 +2175,8 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 _ => wave_engine::autovocal::Style::Natural,
             };
             let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
+            // the CLI's file mode carries the label in the args (no session header field)
+            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
             auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
         "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false))?)),

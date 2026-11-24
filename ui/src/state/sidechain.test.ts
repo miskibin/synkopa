@@ -125,6 +125,14 @@ describe('Sidechain to ▸', () => {
     const { canSend } = await import('../lib/routing');
     expect(canSend(store.S.project, bass, kick)).toBe(false);
   });
+
+  it('the mock honours ifRevision like the engine (apply_labeled\'s guard)', async () => {
+    const { kick, bass } = await pair();
+    const rev = (await mock.getState()).revision;
+    await expect(mock.sidechain({ from: kick, to: bass, ifRevision: rev - 1 })).rejects.toThrow(/REVISION_CONFLICT/);
+    expect(ins(bass).fx.some(f => f.type === 'comp')).toBe(false);
+    await expect(mock.sidechain({ from: kick, to: bass, ifRevision: rev })).resolves.toMatchObject({ added: true });
+  });
 });
 
 describe('the Compressor window source menu', () => {

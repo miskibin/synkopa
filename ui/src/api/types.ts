@@ -391,6 +391,8 @@ export interface AutoVocalResult {
   riderBaked: { sourceId: Id; clipId: Id } | null;
   /** The chain stage ids, in chain order. */
   fxIds: Id[];
+  /** How many chain stages are active (the Tune stage is bypassed when no key was detected). */
+  fxCount: number;
   trackGainDb: number | null;
   warnings: string[];
   /** Musical key of the vocal (the beat clip joins the analysis), for the done toast. */

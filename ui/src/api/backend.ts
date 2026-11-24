@@ -390,11 +390,18 @@ export function tauriBackend(): Backend {
     autoVocalPlan: a => invoke('auto_vocal_plan', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, bakeRider: a.bakeRider ?? null }),
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
     autoVocal: async (a, onStage) => {
-      const off = onStage ? listen('auto-vocal', e => onStage((e.payload as { stage?: string }).stage ?? '')) : null;
+      // stage events are best-effort: a failed listen() must never mask the command's result,
+      // and a journey only hears its own clip's stages (the payload carries the clipId)
+      const off = onStage
+        ? listen('auto-vocal', e => {
+            const p = e.payload as { clipId?: Id; stage?: string };
+            if (p.clipId === a.clipId) onStage(p.stage ?? '');
+          }).catch(() => null)
+        : null;
       try {
         return await invoke('auto_vocal', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, noBake: a.noBake ?? null, label: a.label ?? null });
       } finally {
-        (await off)?.();
+        void off?.then(unlisten => unlisten?.(), () => {});
       }
     },
     sidechain: a => invoke('sidechain', { fxId: a.fxId ?? null, from: a.from ?? null, to: a.to ?? null, off: a.off ?? null, ifRevision: a.ifRevision ?? null, label: a.label ?? null }),

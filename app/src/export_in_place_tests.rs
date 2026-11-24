@@ -161,3 +161,28 @@ fn the_session_command_and_the_shared_actions_answer_alike() {
     assert_eq!(a2, b2, "bake_rider: one action, one reply");
     assert_eq!(a3, b3, "export_in_place: one action, one reply");
 }
+
+#[test]
+fn a_cancelled_bounce_comes_back_as_the_cancelled_error() {
+    let d = tmp("cancel");
+    let (h, clip) = with_a_clip(&d);
+    let rev = h.engine().revision();
+    // the app's command maps exactly this string to `{cancelled: true}` (lib.rs matches
+    // `wave_engine::errors::ERR_CANCELLED`), so the action must surface the engine's
+    // `Cancelled` unchanged — not wrapped, not reworded
+    let cancelled = std::sync::atomic::AtomicBool::new(true);
+    let e = export_in_place(&h, &[clip], None, &cancelled, &mut |_| {}).unwrap_err();
+    assert_eq!(e, wave_engine::errors::ERR_CANCELLED, "exactly the shared constant");
+    assert_eq!(h.engine().revision(), rev, "a cancelled bounce is not an edit");
+}
+
+#[test]
+fn frombeat_and_tobeat_go_together() {
+    let d = tmp("range-pair");
+    let (h, clip) = with_a_clip(&d);
+    // the pairing rule lives in the session parser, before any keys or model work
+    let e = control(&h, "export_in_place", &json!({ "clipIds": [clip], "fromBeat": 0.0 }), None, None).unwrap_err();
+    assert!(e.contains("go together"), "{e}");
+    let e = control(&h, "export_in_place", &json!({ "clipIds": [clip], "toBeat": 2.0 }), None, None).unwrap_err();
+    assert!(e.contains("go together"), "{e}");
+}

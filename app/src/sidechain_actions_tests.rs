@@ -100,6 +100,17 @@ fn the_command_is_dispatched() {
 }
 
 #[test]
+fn the_session_command_and_the_shared_action_answer_alike() {
+    // two identically built projects: one asked through the session command, one through the
+    // shared action — one action per verb, one reply (success payload and error shapes)
+    let (h, kick, bass) = host();
+    let via_session = control(&h, "sidechain", &json!({ "from": kick, "to": bass }), None, None).unwrap();
+    let (h2, kick2, bass2) = host();
+    let via_fn = sidechain(&h2, None, Some(kick2), Some(bass2), false, None, None).unwrap();
+    assert_eq!(via_session, via_fn, "one action, one reply — the front doors only shape the transport");
+}
+
+#[test]
 fn sidechain_to_adds_a_compressor_beside_a_gate_keyed_from_the_same_source() {
     // a Gate keyed from the kick in its own window is not "already sidechained"
     let (h, kick, bass) = host();

@@ -1182,6 +1182,7 @@ export class MockBackend implements Backend {
     const { revision } = await this.applyOps(ops, { label: a.label });
     return {
       revision, clipId: a.clipId, insertId: ins, style: plan.style, riderBaked: baked, fxIds,
+      fxCount: plan.chain.filter(s => s.enabled).length,
       trackGainDb: plan.trackGainDb, warnings: plan.warnings, key: plan.analysis.key?.name ?? null, spread: plan.stages.iqr400Db,
     };
   }
@@ -1191,7 +1192,9 @@ export class MockBackend implements Backend {
   /** The engine's action (app/src/actions.rs `sidechain`) on the mock's pieces. The policy is
    *  the same — keyed Compressor kept, the first free one keyed, else a ducking one added — and
    *  every key the ops carry is validated like the engine's (the ops fixture pins putFx). */
-  async sidechain(a: { fxId?: Id; from?: Id; to?: Id; off?: boolean; label?: string }): Promise<{ fxId: Id | null; added: boolean; revision: number }> {
+  async sidechain(a: { fxId?: Id; from?: Id; to?: Id; off?: boolean; ifRevision?: number; label?: string }): Promise<{ fxId: Id | null; added: boolean; revision: number }> {
+    // the same optimistic-concurrency guard the engine applies (apply_labeled's if_revision)
+    if (a.ifRevision != null && a.ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
     if (a.fxId != null) {
       const m = this.p.inserts.find(x => x.fx.some(f => f.id === a.fxId));
       const f = m?.fx.find(x => x.id === a.fxId);
@@ -1214,7 +1217,7 @@ export class MockBackend implements Backend {
     const keyed = dst.fx.filter(f => f.type === 'comp' && f.key === a.from);
     if (a.off) {
       const ops: Op[] = keyed.map(f => { const x = structuredClone(f); delete x.key; return { op: 'putFx', insertId: a.to!, fx: x } as Op; });
-      if (!ops.length) throw new Error(`no compressor on insert ${a.to} listens to insert ${a.from}`);
+      if (!ops.length) throw new Error(`no effect on insert ${a.to} listens to insert ${a.from}`);
       return { fxId: null, added: false, revision: (await this.applyOps(ops, { label: a.label })).revision };
     }
     if (keyed.length) return { fxId: keyed[0].id, added: false, revision: this.revision };

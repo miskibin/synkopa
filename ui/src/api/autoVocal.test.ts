@@ -36,6 +36,7 @@ describe('the mock answers autoVocal as one journey, like the engine action', ()
     expect(r.insertId).toBe(1);
     expect(r.riderBaked).toEqual({ sourceId: expect.any(Number), clipId: clip });
     expect(r.fxIds).toHaveLength(plan.chain.length);
+    expect(r.fxCount).toBe(plan.chain.filter(s => s.enabled).length);
     expect(r.revision).toBe(rev + 2);
 
     const p = (await be.getState()).project;

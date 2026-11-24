@@ -40,8 +40,9 @@ impl wave_cli::Files for Files {
 pub struct Headless {
     engine: Arc<Engine>,
     plugins: Arc<Plugins>,
-    /// Why the pitch model could not be used, once an attempt was made (None = usable).
-    model: Mutex<Option<String>>,
+    /// The pitch model guard: outer `None` = not tried yet; `Some(err)` = tried once, with
+    /// `err` saying why it is unusable (inner `None` = usable).
+    model: Mutex<Option<Option<String>>>,
     /// Synkopa Keys instruments loaded (or that failed to load) so far, by catalog id.
     keys: Mutex<std::collections::HashMap<&'static str, R<()>>>,
     /// The audio-thread half nobody plays: it makes the engine instantiate hosted plugins
@@ -97,10 +98,11 @@ impl Host for Headless {
         Value::Null
     }
     fn model_error(&self) -> Option<String> {
-        self.model.lock().clone()
+        self.model.lock().clone().and_then(|tried| tried)
     }
     fn set_model_error(&self, e: Option<String>) {
-        *self.model.lock() = e;
+        // a reported error is an attempt: the guard must not reactivate over it
+        *self.model.lock() = Some(e);
     }
     fn wait_keys(&self) -> R<()> {
         for id in self.engine.keys_instruments() {
@@ -126,9 +128,7 @@ impl Host for Headless {
     }
     fn ensure_pitch_model(&self) {
         let mut m = self.model.lock();
-        if m.is_none() {
-            *m = crate::models::activate(&self.engine).err();
-        }
+        tried_once(&mut m, || crate::models::activate(&self.engine).err());
     }
     fn ensure_live_plugins(&self) {
         let mut rt = self.rt.lock();
@@ -155,11 +155,52 @@ impl wave_cli::Doc for Headless {
     }
 }
 
+/// Runs `activate` only when the slot says "not tried yet", then remembers the outcome (the
+/// error `Option`: inner `None` = the model is usable). A usable model is not reactivated on
+/// every call: `activate` builds a fresh ONNX Runtime session from the ~345 MB file each time.
+fn tried_once<T>(slot: &mut Option<Option<T>>, activate: impl FnOnce() -> Option<T>) {
+    if slot.is_none() {
+        *slot = Some(activate());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Files;
     use serde_json::json;
     use wave_cli::Files as _;
+
+    #[test]
+    fn a_usable_model_is_not_reactivated_on_every_call() {
+        let mut slot: Option<Option<String>> = None;
+        let mut calls = 0;
+        super::tried_once(&mut slot, || {
+            calls += 1;
+            None
+        });
+        super::tried_once(&mut slot, || {
+            calls += 1;
+            None
+        });
+        assert_eq!(calls, 1, "the model loads once per process, not once per ensure call");
+        assert_eq!(slot, Some(None), "a usable model leaves no remembered error");
+    }
+
+    #[test]
+    fn a_failed_activation_is_remembered_and_not_retried() {
+        let mut slot = None;
+        super::tried_once(&mut slot, || Some("junk bytes, not a model".to_owned()));
+        super::tried_once(&mut slot, || Some("a different failure".to_owned()));
+        assert_eq!(slot, Some(Some("junk bytes, not a model".to_owned())), "the first error sticks");
+    }
+
+    #[test]
+    fn a_reported_model_error_counts_as_tried() {
+        // f0_model_install reports its failure through set_model_error; a later ensure must
+        // not reactivate over it (the OnceLock this replaces behaved the same way)
+        let mut slot: Option<Option<String>> = Some(Some("no model file".to_owned()));
+        super::tried_once(&mut slot, || panic!("must not run past a reported error"));
+    }
 
     fn tmp(name: &str) -> std::path::PathBuf {
         let d = std::env::temp_dir().join(format!("wave-headless-{name}-{}", std::process::id()));

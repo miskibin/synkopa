@@ -515,13 +515,13 @@ async fn flatten_comp(app: St<'_>, clip_id: u64) -> R<Value> {
 async fn export_in_place(app: St<'_>, clip_ids: Vec<u64>, range: Option<(f64, f64)>) -> R<Value> {
     app.export_cancel.store(false, Ordering::Relaxed);
     let a = app.inner().clone();
-    // the shared action waits for the piano; a cancelled bounce comes back as "cancelled"
+    // the shared action waits for the piano; a cancelled bounce comes back as ERR_CANCELLED
     let r = tauri::async_runtime::spawn_blocking(move || actions::export_in_place(&*a, &clip_ids, range, &a.export_cancel, &mut |_| {}))
         .await
         .map_err(es)?;
     match r {
         Ok(v) => Ok(v),
-        Err(e) if e == "cancelled" => Ok(json!({ "cancelled": true })),
+        Err(e) if e == wave_engine::errors::ERR_CANCELLED => Ok(json!({ "cancelled": true })),
         Err(e) => Err(e),
     }
 }
