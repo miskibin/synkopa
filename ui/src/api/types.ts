@@ -327,6 +327,9 @@ export interface KeyEstimate {
   root: number; minor: boolean; confidence: number;
   candidates: KeyCandidate[]; chroma: number[]; tuningCents: number;
 }
+/** A previewed file or source (engine `PreviewWave`): its length and its waveform as [min,max] pairs
+ *  spread over that length (at most 1024 pairs). */
+export interface PreviewWave { secs: number; peaks: number[] }
 export interface MusicAnalysis { tempo: TempoEstimate | null; key: KeyEstimate | null }
 
 /** `auto_vocal_plan` (crates/engine/src/autovocal.rs): `natural` = sung, gentle tune; `hard` = rap windows, fast retune. */

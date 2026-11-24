@@ -51,8 +51,8 @@ describe('output underrun counter', () => {
 });
 
 describe('cpu meter', () => {
-  it('is off in the toolbar until turned on in Settings → Audio (the bar is short on room)', () => {
-    expect(prefs().cpuMeter).toBe(false);
+  it('is on in the toolbar by default (the output block, beside the volume); Settings → Audio turns it off', () => {
+    expect(prefs().cpuMeter).toBe(true);
   });
   it('turns amber from 60 % and red from 85 %, where the output starts to crackle', () => {
     expect(cpuBand(0)).toBe('ok');

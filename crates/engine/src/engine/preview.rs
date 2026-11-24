@@ -2,6 +2,39 @@
 
 use super::*;
 
+/// Most [min,max] pairs a preview's waveform carries: enough for a status line, small on the wire.
+pub const PREVIEW_WAVE_PAIRS: usize = 1024;
+
+/// What a previewed file or source looks like, for the toolbar's status line: its length and its
+/// waveform as [min,max] pairs over the whole length (at most [`PREVIEW_WAVE_PAIRS`]).
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct PreviewWave {
+    pub secs: f64,
+    pub peaks: Vec<f32>,
+}
+
+/// The waveform of `a` in at most `PREVIEW_WAVE_PAIRS` pairs: neighbouring peak bins merged (min of
+/// mins, max of maxes), so a short click keeps its 100/s detail and a long loop stays small.
+pub(crate) fn preview_wave(a: &Audio) -> PreviewWave {
+    let n = a.peaks.len() / 2;
+    let secs = if a.sr > 0 { a.frames as f64 / a.sr as f64 } else { 0.0 };
+    if n <= PREVIEW_WAVE_PAIRS {
+        return PreviewWave { secs, peaks: a.peaks[..n * 2].to_vec() };
+    }
+    let mut peaks = Vec::with_capacity(PREVIEW_WAVE_PAIRS * 2);
+    for i in 0..PREVIEW_WAVE_PAIRS {
+        let (lo, hi) = (i * n / PREVIEW_WAVE_PAIRS, ((i + 1) * n / PREVIEW_WAVE_PAIRS).max(i * n / PREVIEW_WAVE_PAIRS + 1));
+        let (mut mn, mut mx) = (0f32, 0f32);
+        for j in lo..hi.min(n) {
+            mn = mn.min(a.peaks[j * 2]);
+            mx = mx.max(a.peaks[j * 2 + 1]);
+        }
+        peaks.push(mn);
+        peaks.push(mx);
+    }
+    PreviewWave { secs, peaks }
+}
+
 impl Engine {
     /// Plays one clip alone on the output. `from` (seconds of the source) starts there and plays
     /// the take with its pitch edits at the source's own speed (the pitch editor's Solo), to the
@@ -79,18 +112,20 @@ impl Engine {
         Ok(())
     }
 
-    pub fn preview_file(&self, path: &Path) -> Result<(), EngineError> {
+    /// Plays a file alone on the output (the Browser's preview); returns its waveform for the toolbar.
+    pub fn preview_file(&self, path: &Path) -> Result<PreviewWave, EngineError> {
         let audio = Arc::new(match path.to_str() {
             Some(s) if s.starts_with(crate::factory::SCHEME) => Audio::load_path(s, Path::new("."))?,
             _ => Audio::load(path)?,
         });
+        let wave = preview_wave(&audio);
         let mut c = self.core.lock();
         let end = audio.frames as f64;
         send(
             &mut c,
             Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0, rate: 1.0 }))),
         );
-        Ok(())
+        Ok(wave)
     }
 
     pub fn preview_stop(&self) {
@@ -100,15 +135,16 @@ impl Engine {
 
     /// Plays a project source alone (Browser ▸ Project ▸ Audio), from its loaded audio: no
     /// file I/O, and a recorded take with no file of its own yet plays too.
-    pub fn preview_source(&self, id: Id) -> Result<(), EngineError> {
+    pub fn preview_source(&self, id: Id) -> Result<PreviewWave, EngineError> {
         let mut c = self.core.lock();
         let audio = c.sources.get(id).cloned().ok_or(EngineError::Msg("audio not loaded".into()))?;
         let end = audio.frames as f64;
+        let wave = preview_wave(&audio);
         send(
             &mut c,
             Cmd::Preview(Some(Box::new(Preview { audio, pos: 0.0, start: 0.0, end, gain: 0.8, fade_in: 0.0, fade_out: 0.0, rate: 1.0 }))),
         );
-        Ok(())
+        Ok(wave)
     }
 
     /// Panic: cut everything still ringing after a stop (see [`Cmd::Silence`]). Not an edit.
@@ -188,5 +224,42 @@ impl Engine {
             self.changed(c);
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn audio_of_secs(secs: f64, sr: u32) -> Audio {
+        let frames = (secs * sr as f64) as usize;
+        // a decaying 1 kHz tone: loud at the start, quiet at the end
+        let mut data = Vec::with_capacity(frames * 2);
+        for i in 0..frames {
+            let t = i as f64 / sr as f64;
+            let v = ((t * 1000.0 * std::f64::consts::TAU).sin() * (-t * 2.0).exp()) as f32;
+            data.push(v);
+            data.push(v);
+        }
+        Audio::from_stereo(data, sr, 2)
+    }
+
+    #[test]
+    fn a_short_file_keeps_every_peak() {
+        let a = audio_of_secs(1.5, 44_100);
+        let w = preview_wave(&a);
+        assert!((w.secs - 1.5).abs() < 1e-3);
+        assert_eq!(w.peaks, a.peaks, "under the bound the 100/s peaks go as they are");
+    }
+
+    #[test]
+    fn a_long_file_is_merged_down_keeping_the_loudest() {
+        let a = audio_of_secs(30.0, 8_000);
+        let w = preview_wave(&a);
+        assert_eq!(w.peaks.len(), PREVIEW_WAVE_PAIRS * 2);
+        let max_src = a.peaks.chunks(2).map(|p| p[1]).fold(0f32, f32::max);
+        let max_w = w.peaks.chunks(2).map(|p| p[1]).fold(0f32, f32::max);
+        assert!((max_src - max_w).abs() < 1e-6, "merging keeps the loudest peak ({max_src} vs {max_w})");
+        assert!(w.peaks[1] > w.peaks[w.peaks.len() - 1], "the decay still reads left to right");
     }
 }

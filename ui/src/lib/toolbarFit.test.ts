@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barFits, fitLevel, FIT_MAX } from './toolbarFit';
+import { fitLevel, FIT_MAX, gridFits } from './toolbarFit';
 
 /** A bar whose content needs `need` px at level 0 and frees `free[i]` px at level i + 1. */
 function bar(room: number, need: number, free: number[]) {
@@ -32,16 +32,10 @@ describe('fitLevel', () => {
   });
 });
 
-describe('barFits', () => {
-  const ok = { bar: { left: 0, right: 1000 }, left: { left: 0, right: 300 }, mid: { left: 310, right: 700 }, right: { left: 710, right: 1000 }, leftOver: false, midOver: false, rightOver: false };
-  it('fits when nothing clips or overlaps', () => expect(barFits(ok)).toBe(true));
-  it('does not fit when a section clips its content (the clock cut short)', () => {
-    expect(barFits({ ...ok, midOver: true })).toBe(false);
-    expect(barFits({ ...ok, leftOver: true })).toBe(false);
+describe('gridFits', () => {
+  it('fits when the columns need no more than the bar is wide', () => {
+    expect(gridFits({ scrollWidth: 1000, clientWidth: 1000 })).toBe(true);
+    expect(gridFits({ scrollWidth: 1001, clientWidth: 1000 })).toBe(true); // a sub-pixel rounding
   });
-  it('does not fit when the sections overlap or run off the bar', () => {
-    expect(barFits({ ...ok, mid: { left: 280, right: 700 } })).toBe(false);
-    expect(barFits({ ...ok, right: { left: 690, right: 1000 } })).toBe(false);
-    expect(barFits({ ...ok, right: { left: 710, right: 1040 } })).toBe(false);
-  });
+  it('does not fit when the columns run past the bar', () => expect(gridFits({ scrollWidth: 1010, clientWidth: 1000 })).toBe(false));
 });

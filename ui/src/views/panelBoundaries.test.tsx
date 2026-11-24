@@ -216,45 +216,51 @@ describe('panels in the main window', () => {
   it('Toolbar: the transport fails as one line in its place; the window buttons and the other parts stay', async () => {
     await journey({
       cause: { make: () => engineSends(p => { (p as { bpm: unknown }).bpm = null; }), undo: engineFixed },
-      where: '.tbmid', text: 'Transport: error',
-      ok: () => { expect(document.querySelector('.tbmid .bpm')!.textContent).toBe(store.S.project.bpm.toFixed(2)); },
+      where: '.tbtempo', text: 'Transport: error',
+      ok: () => { expect(document.querySelector('.tbtempo .bpm')!.textContent).toBe(store.S.project.bpm.toFixed(2)); },
     });
   });
 
   it('Toolbar: the menus', async () => journey({
-    cause: bombed('d.ask.button'), where: '.tbleft', text: 'Menus: error', retry: true, readout: false,
+    cause: bombed('d.ask.button'), where: '.tbmenus', text: 'Menus: error', retry: true, readout: false,
     ok: () => { expect(screen.getByRole('button', { name: /Ask/ })).toBeTruthy(); },
   }));
 
   it('Toolbar: the panel buttons', async () => journey({
-    cause: bombed('a.tb.browserTip'), where: '.tbright', text: 'Panel buttons: error', retry: true,
-    ok: () => { expect(document.querySelector('.tbright .panelbtn')).not.toBeNull(); },
+    cause: bombed('a.tb.browserTip'), where: '.tbpanels', text: 'Panel buttons: error', retry: true,
+    ok: () => { expect(document.querySelector('.tbpanels .panelbtn')).not.toBeNull(); },
   }));
 });
+
+/** A failure inside the Piano roll's content: its snap chip's tooltip, rendered only there. */
+const rollBomb = bombed('b.pe.snapTitle');
 
 describe('windows', () => {
   it('Piano roll (floating): content failure, the title bar stays and still closes it', async () => {
     await journey({
       open: () => pat.openRoll(),
-      cause: { make: () => engineSends(p => { Object.assign(p, { key: 0, scale: 99 }); }), undo: engineFixed },
+      // (an invalid key from the engine no longer breaks it: the song key reads any scale id)
+      cause: rollBomb, retry: true,
       where: '.rollwin', frame: '.rollwin .winhd .closebtn', text: 'Piano roll stopped because of an error',
       ok: () => { expect(document.querySelector('.rollwin .keybadge')).not.toBeNull(); },
     });
-    engineSends(p => { Object.assign(p, { key: 0, scale: 99 }); }); await ticks();
+    rollBomb.make(); tryAgain(document.querySelector('.rollwin')!); await ticks();
+    expect(alertIn('.rollwin')).not.toBeNull();
     fireEvent.click(document.querySelector('.rollwin .winhd .closebtn')!);
     expect(document.querySelector('.rollwin')).toBeNull();
     expect(ui.U.rollWin).toBeNull();
-    engineFixed();
+    rollBomb.undo();
   });
 
   it('Piano roll: Try again while it still fails, then its cause undone: the new note area is the one measured', async () => {
     pat.openRoll(); settle(); await ticks();
     const area0 = document.querySelector('.rollwin .parea')!;
     expect(observed.els()).toContain(area0);
-    engineSends(p => { Object.assign(p, { key: 0, scale: 99 }); }); await ticks();
+    rollBomb.make(); tryAgain(document.querySelector('.rollwin')!); await ticks();
+    expect(alertIn('.rollwin'), 'failing').not.toBeNull();
     tryAgain(document.querySelector('.rollwin')!); await ticks();
     expect(alertIn('.rollwin'), 'still failing').not.toBeNull();
-    engineFixed(); await ticks();
+    rollBomb.undo(); tryAgain(document.querySelector('.rollwin')!); await ticks();
     expect(alertIn('.rollwin')).toBeNull();
     const area = document.querySelector('.rollwin .parea')!;
     expect(area).not.toBe(area0); // built again
@@ -307,7 +313,7 @@ describe('windows', () => {
     const dk = await import('../state/docking');
     await journey({
       open: () => { pat.openRoll(); settle(); if (!document.querySelector('.rollwin.docked')) dk.dockPaneTo('roll', 'bottom'); },
-      cause: { make: () => engineSends(p => { Object.assign(p, { key: 0, scale: 99 }); }), undo: engineFixed },
+      cause: rollBomb, retry: true,
       where: '.rollwin.docked', frame: '.rollwin.docked .winhd .closebtn', text: 'Piano roll stopped because of an error',
       ok: () => { expect(document.querySelector('.rollwin.docked .keybadge')).not.toBeNull(); },
     });

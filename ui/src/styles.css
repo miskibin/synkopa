@@ -44,7 +44,7 @@ a { color: var(--blue); }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- toolbar ---------- */
-.toolbar { height: 54px; flex: none; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: center; column-gap: 14px; padding: 0 8px 0 10px; background: var(--bg5); border-bottom: 1px solid var(--sep); }
+.toolbar { height: 60px; flex: none; display: flex; align-items: stretch; padding: 0 0 0 10px; background: var(--bg5); border-bottom: 1px solid var(--sep); position: relative; }
 .ibtn { width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
 .ibtn:hover { background: var(--line); color: var(--fg-hi); }
 .ibtn.on { background: var(--line); }
@@ -57,8 +57,6 @@ a { color: var(--blue); }
 .seg > button.on { background: var(--on-bg); color: var(--blue-hi); }
 .seg > button.count { width: auto; padding: 0 6px; font: 600 9px var(--mono); letter-spacing: .04em; white-space: nowrap; color: var(--fg4); }
 .seg > button.count.on { color: var(--blue-hi); }
-/* in the top bar the transport buttons stand on the bar itself: the clock is the one framed readout */
-.toolbar .tbmid > .seg:not(.patsong) { background: transparent; padding: 0; }
 .clockbox { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 10px; background: var(--bg0); border: 1px solid transparent; border-radius: 6px; }
 .clock { font: 500 14px var(--mono); color: var(--fg-hi); min-width: 68px; font-variant-numeric: tabular-nums; }
 .bpm { font: 500 14px var(--mono); color: var(--blue); cursor: ns-resize; touch-action: none; font-variant-numeric: tabular-nums; }
@@ -742,31 +740,23 @@ select option { background: var(--bg4); color: var(--fg); }
 /* ---------- title bar (merged into the toolbar) ---------- */
 .toolbar .projName .dirty { margin-left: 4px; color: var(--amber); }
 .toolbar.native { padding-right: 0; }
-/* left: menus over the hint line; middle: transport, centred in the window; right: editing tools and panels */
-.tbleft { min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
 /* the Playlist's tools and snap, left of its overview */
 .ovrow.tools { grid-template-columns: auto minmax(0, 1fr); height: 32px; padding: 3px 14px 3px 0; }
 .pltools { display: flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; box-sizing: border-box; }
 .pltools .seg { height: 26px; box-sizing: border-box; align-items: center; }
 .pltools .seg > button { width: 27px; height: 20px; }
 .pltools .snapsel { flex: 1; min-width: 84px; max-width: 110px; height: 26px; font-size: 11px; }
-.toolbar .panelbtn .lbl, .toolbar .typkb .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
-.tbmenu { display: flex; align-items: center; gap: 10px; height: 22px; min-width: 0; }
 /* "Restart to update" is the one control the update needs: it never shrinks, the readout and hint before it do */
-.tbhint .updchip { flex: none; margin-left: auto; height: 16px; padding: 0 9px; border-radius: 8px; font-size: 10.5px; }
+.tbstatus .updchip { flex: none; margin-left: auto; height: 16px; padding: 0 9px; border-radius: 8px; font-size: 10.5px; }
 .menubar { flex: none; display: flex; gap: 1px; margin-left: -7px; }
 .mbtn { height: 22px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); font: 500 12px var(--sans); cursor: default; }
 .mbtn:hover, .mbtn.on { background: var(--line); color: var(--fg-hi); }
-.tbmenu .projName { flex: 0 1 auto; min-width: 0; max-width: none; }
-.tbhint { display: flex; align-items: center; gap: 8px; height: 16px; min-width: 0; padding-left: 1px; font: 500 11px var(--sans); white-space: nowrap; }
-.tbhint .hled { width: 6px; height: 6px; flex: none; border-radius: 50%; }
-.tbhint .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
-.tbhint .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
-.tbhint .offgrid { flex: none; }
-.tbhint .inrow { flex: none; }
-.toolbar .patselbox, .toolbar .patselbtn, .toolbar .patselarrow, .toolbar .patselnew { height: 28px; box-sizing: border-box; }
-.tbmid { min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.tbmid > * { flex-shrink: 0; }
+.tbmenus .projName { flex: 0 1 auto; min-width: 0; max-width: none; }
+.tbstatus .hled { width: 6px; height: 6px; flex: none; border-radius: 50%; }
+.tbstatus .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.tbstatus .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
+.tbstatus .offgrid { flex: none; }
+.tbstatus .inrow { flex: none; }
 .mainvol { display: flex; align-items: center; height: 30px; padding: 0 3px; }
 .masterout { display: flex; align-items: center; justify-content: center; min-width: 38px; height: 28px; box-sizing: border-box; padding: 0 4px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: default; }
 .masterout .mobars { position: relative; display: flex; flex-direction: column; gap: 2px; width: 30px; }
@@ -798,40 +788,99 @@ select option { background: var(--bg4); color: var(--fg); }
 .note.underruns .warn { color: var(--amber); }
 .cpumeter.off { color: var(--fg5); }
 .cpumeter.off .cpubar > span { visibility: hidden; }
-.tbright { min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.tbright .dragfill { flex: 1 1 0; min-width: 0; align-self: stretch; }
-/* one height for every control in the bar */
-.toolbar .seg { height: 28px; box-sizing: border-box; align-items: center; }
-.toolbar .seg > button { height: 22px; }
-.toolbar .tbtn { height: 28px; }
 .winbtns { display: flex; flex: none; align-self: stretch; margin-left: 2px; }
-/* One row, like FL Studio's bar. As room runs out the least needed parts step aside, one level
-   at a time, never half-clipped or overlapping: the Toolbar measures the bar and sets `.f1`…`.f12`
-   (lib/toolbarFit.ts lists the levels and where each hidden part stays reachable). */
-.toolbar .clocksep { width: 1px; height: 14px; background: var(--line); }
-.toolbar.f1 .loopText { display: none; }
-.toolbar.f2 .panelbtn .lbl, .toolbar.f2 .clockbox .tag9, .toolbar.f2 .typoct { display: none; }
-.toolbar.f3 .count, .toolbar.f3 .monbtn { display: none; }
-.toolbar.f4 .metrobtn, .toolbar.f4 .hinttxt { display: none; }
-.toolbar.f5 .typkb .lbl { display: none; }
-.toolbar.f6 .patselnew { display: none; }
-.toolbar.f6 .patselbtn { min-width: 80px; max-width: 120px; }
-.toolbar.f6 .tbmid, .toolbar.f6 .tbright { gap: 5px; }
-.toolbar.f6 .cpumeter { padding: 0 3px; column-gap: 2px; }
-.toolbar.f7 .clock, .toolbar.f7 .clocksep { display: none; }
-.toolbar.f8 .tapbtn, .toolbar.f8 .mainvol, .toolbar.f8 .projName { display: none; }
-.toolbar.f9 .askbtn { display: none; }
-.toolbar.f9 .clockbox { gap: 6px; padding: 0 7px; }
-.toolbar.f9 .patselbtn { min-width: 64px; max-width: 96px; }
-.toolbar.f10 .masterout .cliplbl, .toolbar.f10 .cpumeter, .toolbar.f10 .cmdbtn kbd { display: none; }
-.toolbar.f11 .patselbtn { min-width: 0; max-width: none; }
-.toolbar.f11 .patselbtn .ell { display: none; }
-.toolbar.f12 .panelbtn { display: none; }
-/* (the bar's own columns follow the window: a container query cannot style its container) */
-@media (max-width: 1070px) { .toolbar { grid-template-columns: minmax(170px, 1fr) minmax(0, auto) minmax(max-content, 1fr); column-gap: 10px; } }
 .winbtns > button { width: 46px; border: 0; background: transparent; color: var(--fg2); cursor: default; display: flex; align-items: center; justify-content: center; padding: 0; }
 .winbtns > button:hover { background: var(--line); color: var(--fg-hi); }
 .winbtns > button.close:hover { background: var(--win-close); color: #ffffff; }
+
+/* Two rows on shared columns, like FL Studio's bar (views/Toolbar.tsx): row 1 holds what is used all
+   the time at one height (26 px); row 2, on a slightly darker band, holds what belongs to the control
+   above it (20 px, quieter). Column 1 is as wide as the menus; the status line under them never widens it. */
+.tbgrid { flex: 1; min-width: 0; display: grid; box-sizing: border-box; padding: 3px 12px 3px 0;
+  grid-template-columns: max-content max-content max-content max-content minmax(0, 1fr) max-content max-content;
+  grid-template-rows: 28px 24px; row-gap: 2px; column-gap: 18px; align-items: center; position: relative; z-index: 1; }
+.toolbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 29px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, #000 14%, transparent) 40%, color-mix(in srgb, #000 17%, transparent)); }
+:root[data-theme="light"] .toolbar::after { background: linear-gradient(to bottom, transparent, color-mix(in srgb, #000 4%, transparent) 40%, color-mix(in srgb, #000 5%, transparent)); }
+.tbc { display: flex; align-items: center; gap: 6px; min-width: 0; height: 100%; }
+.tbmenus { grid-area: 1 / 1; gap: 10px; }
+.tbstatus { grid-area: 2 / 1; contain: inline-size; overflow: hidden; gap: 8px; font: 500 11px var(--sans); white-space: nowrap; }
+.tbtransport { grid-area: 1 / 2; gap: 4px; }
+.tbpos { grid-area: 2 / 2; }
+.tbtempo { grid-area: 1 / 3; }
+.tbtime { grid-area: 2 / 3; padding-left: 10px; }
+.tbpat { grid-area: 1 / 4; }
+.tbtoggles { grid-area: 2 / 4; gap: 2px; }
+.tbfill { grid-area: 1 / 5 / 3 / 6; align-self: stretch; }
+.tbout { grid-area: 1 / 6; gap: 8px; padding: 0 8px; height: 26px; border-radius: 6px; background: var(--well, var(--bg0)); }
+.tbpanels { grid-area: 1 / 7; gap: 8px; justify-content: flex-end; }
+.tbview { grid-area: 2 / 6 / 3 / 8; justify-content: flex-end; gap: 12px; }
+.toolbar .winbtns { align-self: flex-start; height: 32px; position: relative; z-index: 1; }
+/* row 1: one height */
+.toolbar .seg { height: 26px; box-sizing: border-box; align-items: center; }
+.toolbar .seg > button { height: 20px; }
+.toolbar .seg.tport > button { width: 32px; }
+.toolbar .seg.patsong > button { height: 20px; padding: 0 9px; font: 700 10px var(--mono); letter-spacing: .05em; color: var(--fg5); border-radius: 4px; }
+.toolbar .seg.patsong > button.pat.on { background: var(--amber); color: var(--on-warm); }
+.toolbar .seg.patsong > button.song.on { background: var(--green); color: var(--on-warm); }
+.toolbar .clockbox { height: 26px; box-sizing: border-box; gap: 6px; padding: 0 3px 0 10px; }
+.toolbar .clockbox .bpm { font: 600 15px var(--mono); }
+.toolbar .tapbtn { height: 20px; }
+.toolbar .keybadge { display: inline-flex; align-items: center; gap: 8px; height: 26px; box-sizing: border-box; padding: 0 9px 0 7px; border: 0; border-radius: 6px; background: var(--well, var(--bg0)); color: var(--fg4); cursor: pointer; }
+.toolbar .keybadge:hover, .toolbar .keybadge.on { background: var(--tone2, var(--bg6)); }
+.keybadge.none .kname { color: var(--fg5); font-weight: 500; }
+.keybox { position: relative; display: flex; }
+.toolbar .patselbox, .toolbar .patselbtn, .toolbar .patselarrow, .toolbar .patselnew { height: 26px; box-sizing: border-box; }
+.toolbar .patselbtn { min-width: 150px; }
+.tbout .mainvol { height: 26px; padding: 0; }
+.tbout .masterout { height: 22px; }
+.tbout .cpumeter { height: 22px; }
+.toolbar .tbtn { height: 26px; }
+.panelstrip { display: flex; gap: 2px; padding: 2px; border-radius: 7px; background: var(--well, var(--bg0)); }
+.toolbar .panelstrip .panelbtn { height: 22px; padding: 0 10px; gap: 6px; border-radius: 5px; color: var(--fg4); }
+.toolbar .panelstrip .panelbtn:hover { color: var(--fg-hi); }
+.toolbar .panelstrip .panelbtn.on { background: var(--on-bg); color: var(--blue-hi); }
+.toolbar .panelbtn .lbl, .toolbar .tsw .lbl { font: 500 11.5px var(--sans); white-space: nowrap; }
+.toolbar .tsw .lbl { font-size: 11px; }
+/* row 2: quieter, 20 px */
+.toolbar .tsw { height: 20px; min-width: 24px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--fg5); cursor: pointer; }
+.toolbar .tsw:hover { background: var(--line); color: var(--fg-hi); }
+.toolbar .tsw.on { color: var(--blue-hi); }
+.toolbar .tsw.count { font: 600 9.5px var(--mono); letter-spacing: .04em; }
+.tbtime .clock { font: 500 11px var(--mono); color: var(--fg4); min-width: 0; }
+.tbview .loopText { color: var(--green); max-width: 200px; cursor: default; }
+.tbstatus .pvline { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.tbstatus .pvname { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.tbstatus .pvwave { flex: 1 1 0; min-width: 0; width: 0; height: 13px; --pv-on: var(--fg2); --pv-off: color-mix(in srgb, var(--fg) 22%, transparent); }
+.tbstatus .pvtime { flex: none; font: 500 10px var(--mono); color: var(--fg5); font-variant-numeric: tabular-nums; }
+/* FL's song position slider: a thin line, the part played lit, a small round handle */
+.songpos { position: relative; width: 100%; height: 20px; cursor: pointer; touch-action: none; outline: none; }
+.songpos .sptrack, .songpos .sphead { pointer-events: none; }
+.songpos .sptrack { position: absolute; left: 6px; right: 6px; top: 9px; height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--fg) 14%, transparent); }
+.songpos .spfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 1px; background: var(--green); }
+.songpos .spfill.pat { background: var(--amber); }
+.songpos .sploop { position: absolute; top: -3px; height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--green) 60%, transparent); }
+.songpos .spmark { position: absolute; top: -2px; width: 1px; height: 6px; background: var(--amber); }
+/* the handle rides on the track (its 6 px insets keep it inside the slider) */
+.songpos .sphead { position: absolute; top: 4px; left: 0; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, var(--bg7), var(--bg2)); box-shadow: 0 0 0 1px color-mix(in srgb, #000 45%, transparent), 0 1px 2px var(--shadow); }
+.songpos .sphead::after { content: ''; position: absolute; left: 5px; top: 2px; width: 1px; height: 7px; background: var(--fg2); }
+.songpos:hover .sphead, .songpos:focus-visible .sphead { box-shadow: 0 0 0 1px var(--blue), 0 1px 2px var(--shadow); }
+/* As room runs out the least needed parts step aside, one level at a time, never half-clipped or
+   overlapping: the Toolbar measures the grid and sets .f1….f11 (lib/toolbarFit.ts lists the levels). */
+.toolbar.f1 .panelbtn .lbl { display: none; }
+.toolbar.f2 .typkb .lbl, .toolbar.f2 .typoct, .toolbar.f2 .follow .lbl { display: none; }
+.toolbar.f3 .loopText { display: none; }
+.toolbar.f4 .askbtn, .toolbar.f4 .cmdbtn kbd { display: none; }
+.toolbar.f5 .keybadge .kname, .toolbar.f5 .keybadge .kauto { display: none; }
+.toolbar.f6 .cpumeter { display: none; }
+.toolbar.f7 .tapbtn, .toolbar.f7 .clockbox .tag9 { display: none; }
+.toolbar.f8 .patselnew { display: none; }
+.toolbar.f8 .patselbtn { min-width: 80px; max-width: 120px; }
+.toolbar.f8 .tbgrid { column-gap: 12px; }
+.toolbar.f9 .keybox { display: none; }
+.toolbar.f10 .patselbtn { min-width: 0; max-width: none; }
+.toolbar.f10 .patselbtn .ell { display: none; }
+.toolbar.f11 .panelstrip { display: none; }
 .ibtn:disabled { color: var(--fg6); cursor: default; background: transparent; }
 .seg > button:disabled { color: var(--fg6); cursor: default; background: transparent; }
 .seg > button.play { background: var(--green); color: var(--on-accent); }
@@ -1221,9 +1270,6 @@ select option { background: var(--bg4); color: var(--fg); }
 .lane .lvtxt { width: 44px; flex: none; text-align: right; font-size: 10px; color: var(--fg3); }
 .lane .lvtxt.unity { opacity: 0; }
 .lane:hover .lvtxt.unity { opacity: 1; }
-/* PAT over SONG: two short rows take half the width of a side-by-side switch */
-.toolbar .seg.patsong { flex-direction: column; justify-content: center; gap: 1px; padding: 2px; }
-.toolbar .seg.patsong > button { height: 11px; width: 38px; padding: 0; font-size: 8.5px; line-height: 1; border-radius: 2px; }
 /* icon-only toolbar buttons (Mixer, Windows); the Windows button keeps its count */
 .toolbar .tbtn.icon { padding: 0 7px; }
 .toolbar .tbtn .cnt { font-size: 9.5px; font-weight: 600; min-width: 7px; }

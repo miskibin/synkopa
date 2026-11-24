@@ -105,7 +105,11 @@ fn preview_file_plays_a_file_and_reports_missing_ones() {
     let rev = e.revision();
     let mut rt = e.create_rt(SR, BLOCK);
     let (mut l, mut r) = (vec![0f32; BLOCK], vec![0f32; BLOCK]);
-    e.preview_file(&wav).unwrap();
+    let wave = e.preview_file(&wav).unwrap();
+    assert!(wave.secs > 0.0, "the preview says how long the file is");
+    assert!(!wave.peaks.is_empty() && wave.peaks.len() % 2 == 0, "the waveform is [min,max] pairs");
+    assert!(wave.peaks.len() / 2 <= wave_engine::PREVIEW_WAVE_PAIRS, "the waveform is bounded for the wire");
+    assert!(wave.peaks.chunks(2).any(|p| p[1] > 1e-3), "the tone shows in the waveform");
     let mut heard = 0f32;
     for _ in 0..60 {
         rt.process(&mut l, &mut r, None);

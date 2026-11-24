@@ -15,6 +15,7 @@ import { docked, openMenu, say, setU, U } from './ui';
 import { leaveMixView, mixFloated, mixFront, showMixer } from './mixView';
 import { curPat, openRack, openRoll, patWinFloated, RACK_LEFT, RACK_MIN_W, RACK_PAD_X, rollMoved, stepW } from './pattern';
 import { rackDockFitWidth } from '../lib/rack';
+import { prefs, setPref } from './prefs';
 import { stepsOf } from '../lib/pattern';
 
 const NAME: Record<PaneId, TranslationKey> = { rack: 'a.mn.rack', roll: 'a.mn.roll', mix: 'a.mn.mixer' };
@@ -73,6 +74,10 @@ export function dockMenu(id: PaneId): MenuItem[] {
     item('right', 'b.dk.toRight', 'b.dk.panelRight'),
     item('bottom', 'b.dk.toBottom', 'b.dk.panelBottom'),
     { t: 'item', label: t('b.dk.toFloat'), paletteLabel: t('b.dk.panelFloat', { name }), checked: !docked(id), act: () => (docked(id) ? floatPane(id) : showPane(id)) },
+    ...(id === 'rack' ? [{ t: 'sep' } as MenuItem, {
+      t: 'item', label: t('b.dk.autoH'), title: t('b.dk.autoHTip'), checked: prefs().rackAutoH,
+      act: () => { const on = !prefs().rackAutoH; setPref('rackAutoH', on); say(t(on ? 'b.dk.autoHOn' : 'b.dk.autoHOff')); },
+    } as MenuItem] : []),
   ];
 }
 /** The title bar's dock button: what it does, as a tooltip. */
