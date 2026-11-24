@@ -1,4 +1,4 @@
-import { prefs } from '../state/prefs';
+import { prefs, setPref } from '../state/prefs';
 import { t as tl } from '../lib/i18n';
 import { createMemo, For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
@@ -132,6 +132,10 @@ interface LaneHit extends TakeRow { ti: number; k: number; take: Take; cb: numbe
 const LANE_H_MIN = 28, LANE_H_MAX = 220;
 
 export function Playlist() {
+  const hasClips = () => S.project.clips.length > 0;
+  watch(hasClips, populated => {
+    if (populated && U.playlistFirstStep) setU('playlistFirstStep', false);
+  });
   let scrollEl!: HTMLDivElement, gridEl!: HTMLDivElement, gridCv!: HTMLCanvasElement, fadeCv!: HTMLCanvasElement, rulerCv!: HTMLCanvasElement;
   let phGrid!: HTMLDivElement, phRuler!: HTMLDivElement;
   let mkCv: HTMLCanvasElement | undefined, mkRow: HTMLDivElement | undefined;
@@ -1580,6 +1584,13 @@ export function Playlist() {
         </div>
       </div>
         <ZoomScrollbar orient="v" class="plv" range={vRange} limits={vLimits} onChange={setV} title={tl('a.pl.vbarTip')} />
+        <Show when={U.playlistFirstStep && !prefs().playlistFirstStepDismissed && !S.path && !hasClips() && !U.openingProject && !U.dragOver}>
+          <div class="plfirst">
+            <span>{tl('a.pl.firstStep')}</span>
+            <button type="button" class="xbtn" aria-label={tl('a.pl.dismissFirstStep')} title={tl('a.pl.dismissFirstStep')}
+              onPointerDown={e => e.stopPropagation()} onClick={() => setPref('playlistFirstStepDismissed', true)}>×</button>
+          </div>
+        </Show>
       </div>
       <Show when={U.dragOver}>
         <div class="dropHint"><span>{tl('a.pl.dropHint')}</span></div>

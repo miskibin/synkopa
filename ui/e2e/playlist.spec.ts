@@ -13,7 +13,51 @@ async function at(page: Page, track: number, beat: number) {
 const clipsOn = (page: Page, track: number) => engine(page).then(s => s.project.clips.filter(c => c.track === track));
 const only = (cs: Clip[]) => cs.map(c => ({ start: c.start, kind: c.kind }));
 
+const emptyTip = (page: Page) => page.getByText('Choose a pattern in the Browser, then click an empty Playlist lane with Draw (P).', { exact: true });
+async function newEmptyProject(page: Page) {
+  await page.getByRole('menuitem', { name: 'File', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^New project\b/ }).click();
+  await pollEngine(page, s => s.project.clips.length).toBe(0);
+}
+
 test.describe('Playlist', () => {
+  test('a fresh Playlist explains how to place a pattern and clears the tip after the first clip', async ({ app }) => {
+    await app.setViewportSize({ width: 1366, height: 768 });
+    await expect(emptyTip(app)).toBeHidden();
+    await newEmptyProject(app);
+    await expect(emptyTip(app)).toBeVisible();
+    const pattern = (await engine(app)).project.patterns[0];
+    await app.getByRole('button', { name: 'Channel rack', exact: true }).click();
+    const p = await at(app, 0, 0.5);
+    await app.mouse.click(p.x, p.y);
+    await pollEngine(app, s => s.project.clips.map(c => c.ref)).toEqual([pattern.id]);
+    await expect(emptyTip(app)).toBeHidden();
+    await app.keyboard.press(`${MOD}+z`);
+    await pollEngine(app, s => s.project.clips.length).toBe(0);
+    await expect(emptyTip(app)).toBeHidden();
+  });
+
+  test('dismissing the Playlist tip via keyboard remembers the choice for new projects', async ({ app }) => {
+    await newEmptyProject(app);
+    const dismiss = app.getByRole('button', { name: 'Dismiss Playlist tip' });
+    await expect(dismiss).toBeVisible();
+    await dismiss.focus();
+    await dismiss.press('Enter');
+    await expect(emptyTip(app)).toBeHidden();
+    await app.reload();
+    await newEmptyProject(app);
+    await expect(emptyTip(app)).toBeHidden();
+  });
+
+  test('saving an empty project hides the Playlist tip', async ({ app }) => {
+    await newEmptyProject(app);
+    await expect(emptyTip(app)).toBeVisible();
+    await app.getByRole('menuitem', { name: 'File', exact: true }).click();
+    await app.getByRole('menuitem', { name: /^Save\s*Ctrl\+S$/ }).click();
+    await pollEngine(app, s => s.path).not.toBeNull();
+    await expect(emptyTip(app)).toBeHidden();
+  });
+
   test('draw a clip, move it, delete it, with undo and redo', async ({ app }) => {
     const T = 6; // "Track 7": empty in the sketch
     expect(await clipsOn(app, T)).toEqual([]);

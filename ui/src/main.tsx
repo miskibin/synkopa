@@ -48,6 +48,7 @@ async function boot() {
   const p = S.project.patterns[0];
   setU('cur', p ? { kind: 'pat', ref: p.id, clipId: null } : S.project.sources[0] ? { kind: 'audio', ref: S.project.sources[0].id, clipId: null } : null);
   setU('playing', S.transport.playing);
+  setU('playlistFirstStep', !S.path && !S.dirty && S.project.clips.length === 0);
   const root = document.getElementById('root')!;
   root.replaceChildren(); // the loading bar from index.html
   // the last guard: a render failure no panel caught shows a full-window message (retry, reload)

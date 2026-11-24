@@ -73,6 +73,8 @@ export interface UiState {
   exportBusy: boolean;
   projectZipBusy: boolean;
   openingProject: boolean;
+  /** The current fresh project has yet to receive its first Playlist clip. */
+  playlistFirstStep: boolean;
   vstPicker: { insId: Id } | null;
   /** add-effect picker, anchored at (x, y) (−1 = centred) */
   fxPicker: { insId: Id; x: number; y: number } | null;
@@ -150,6 +152,7 @@ export const [U, setU] = createStore<UiState>({
   plugs: [], plugsHidden: false, tuckZ: 0, editor: null, menu: null, help: false, settings: false, exportOpen: false, exportBusy: false, vstPicker: null, fxPicker: null, fxChainWin: null, musicWin: null, missingOpen: false, midiWin: null,
   openingProject: false,
   projectZipBusy: false,
+  playlistFirstStep: false,
   readout: t('d.ui.ready'),
   headW: 196, pickW: 220, pickOpen: true, browserTab: 'patterns',
   browserSec: { std: undefined, kits: undefined, folders: undefined },

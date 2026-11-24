@@ -167,10 +167,12 @@ a { color: var(--blue); }
 /* the overview bar on top replaces the native horizontal scrollbar (vertical one stays) */
 .plscroll::-webkit-scrollbar:horizontal { height: 0; }
 /* … and the vertical one is the lane-zoom scrollbar beside it (FL): drag an end = every lane's height */
-.plbody { flex: 1; min-height: 0; min-width: 0; display: flex; }
+.plbody { flex: 1; min-height: 0; min-width: 0; display: flex; position: relative; }
 .plbody > .plscroll { scrollbar-width: none; }
 .plbody > .plscroll::-webkit-scrollbar:vertical { width: 0; }
 .plbody > .zbar.plv { flex: none; width: 14px; margin: 27px 1px 1px 2px; }
+.plfirst { position: absolute; z-index: 6; bottom: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 28px); display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border: 1px solid var(--line2); border-radius: 6px; background: var(--dialog-bg); color: var(--fg2); font: 500 11px/1.4 var(--sans); pointer-events: none; }
+.plfirst > .xbtn { width: 24px; height: 24px; flex: none; pointer-events: auto; }
 /* FL-style overview scrollbar on top: minimap of the song + a wide, easy-to-grab thumb */
 .rulerRow { position: sticky; top: 0; z-index: 5; display: flex; height: 26px; }
 .plhead { position: sticky; left: 0; z-index: 6; flex: none; background: var(--bg5); border-right: 1px solid var(--sep); border-bottom: 1px solid var(--sep); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }

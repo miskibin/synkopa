@@ -250,7 +250,7 @@ export async function projectNew(demo = false): Promise<boolean> {
   if (!(await guardUnsaved(t(demo ? 'd.act.guard.demo' : 'd.act.guard.new')))) return false;
   try {
     acceptReply(await enqueue(() => be().projectNew(demo)));
-    afterProjectLoad();
+    afterProjectLoad(!demo);
     if (demo) setPatMode(false);
     else if (!S.project.clips.length) openRack();
     say(t(demo ? 'd.act.demoproj' : 'd.act.newproj'));
@@ -378,12 +378,12 @@ function loadProjViews() { try { return parseViews(localStorage.getItem(PROJ_VIE
 function rememberProjView(path: string) {
   try { localStorage.setItem(PROJ_VIEWS_KEY, JSON.stringify(rememberView(loadProjViews(), path, { pat: U.pat, selCh: U.selCh, start: U.start }))); } catch { /* private window */ }
 }
-function afterProjectLoad() {
+function afterProjectLoad(fresh = false) {
   clearPeaks();
   batch(() => {
     // back where this project was last saved (FL): its pattern, channel and start marker; else the first ones
     const v = viewFor(loadProjViews(), S.path, S.project, TOTAL);
-    setU({ sel: [], chSel: [], plugs: [], editor: null, start: v.start, menu: null, mixMulti: [] });
+    setU({ sel: [], chSel: [], plugs: [], editor: null, start: v.start, menu: null, mixMulti: [], playlistFirstStep: fresh });
     const m = S.project.inserts[1] ?? S.project.inserts[0];
     if (m) setU({ mixSel: m.id, fxSel: m.fx[0]?.id ?? null });
     setU({ cur: v.pat != null ? { kind: 'pat', ref: v.pat, clipId: null } : null, pat: v.pat, selCh: v.selCh });
