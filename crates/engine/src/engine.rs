@@ -408,7 +408,7 @@ pub(crate) struct Core {
     /// `fx_errors`), with the plugin it hosts. A failed one is retried when its plugin changes
     /// or the audio device is rebuilt, not on every edit.
     plugs: HashMap<Id, PluginRef>,
-    /// Synkopa Keys instruments the app has loaded, by catalog id.
+    /// Synkopa Instruments instruments the app has loaded, by catalog id.
     keys: HashMap<String, Arc<crate::keys::KeysBank>>,
 }
 
@@ -1559,7 +1559,7 @@ impl Engine {
         v
     }
 
-    /// True when the project has a Synkopa Keys channel.
+    /// True when the project has a Synkopa Instruments channel.
     pub fn uses_keys(&self) -> bool {
         self.core.lock().project.channels.iter().any(|c| matches!(c.src, ChannelSrc::Keys { .. }))
     }

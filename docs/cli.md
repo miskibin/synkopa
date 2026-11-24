@@ -10,7 +10,8 @@ The CLI works in two ways, with the same commands:
 The old `wave` command still works as an alias.
 
 There is nothing to install: on start the app puts a `synkopa` launcher on your PATH
-(`%LOCALAPPDATA%\Microsoft\WindowsApps\wave.cmd` on Windows, `~/.local/bin/wave` elsewhere).
+(`%LOCALAPPDATA%\Microsoft\WindowsApps\synkopa.cmd` on Windows, plus an extensionless `synkopa`
+script there for Git Bash / MSYS, the shell coding agents use; `~/.local/bin/synkopa` elsewhere).
 Settings → CLI shows where it went. Open a new terminal after the first start and run:
 
 ```sh
@@ -52,7 +53,7 @@ missing sources play silence, as in the app).
 - **Saving.** The save works as it does in the app: a `(backup)` copy of the previous file, and
   recordings moved next to the project. `save` saves even an unchanged file; `save --path` is
   the same as `--save-as`.
-- **What is the same.** Renders and stems are the same bounce as the app's export (the Synkopa Keys
+- **What is the same.** Renders and stems are the same bounce as the app's export (the Synkopa Instruments
   piano is loaded, or the command fails with `KEYS_MISSING` instead of rendering silence;
   pitch-edited clips use the installed RMVPE model as the app does). VST3 effects load from the
   scan cache, LV2 effects (Linux) from the installed bundles. `plugin-params` and `plugin-set`
@@ -210,10 +211,10 @@ synkopa channels --sample 1001                       # a sampler channel playing
 synkopa channels --synth "808 Deep"                # a synth channel with a factory preset ("" = blank patch)
 synkopa channels --ch 1005 --preset "Pad Warm"     # load a synth preset (ids/names in `synkopa catalog` → effects.synth)
 synkopa channels --ch 1005 --param flt_cutoff --value 900   # one synth knob
-synkopa channels --keys                              # Synkopa Keys: the sampled grand piano (see docs/keys.md)
+synkopa channels --keys                              # Synkopa Instruments: the sampled grand piano (see docs/keys.md)
 synkopa channels --keys --instrument strings         # another Keys instrument (ids: `synkopa catalog`, "keys")
 synkopa channels --ch "String Section" --articulation pizzicato   # a Keys channel's instrument / articulation
-synkopa channels --ch "Synkopa Keys" --param release --value 600   # its knobs: release (ms), dynamics (%)
+synkopa channels --ch "Grand Piano" --param release --value 600    # its knobs: release, attack (ms), dynamics, width, noise (%), tone (−100..100), tune (cents)
 synkopa channels --musicbox                          # the Music Box: the modeled tine instrument (see docs/musicbox.md)
 synkopa channels --ch "Music Box" --param ring --value 140     # its knobs: ring, brightness, body, mechanical, spread (%); release (ms)
 synkopa channels --plugin serum                      # a scanned VST3 instrument (name, start of one, or class id; `synkopa plugins --rescan` first)
@@ -243,7 +244,7 @@ or the end of the sample, whichever comes first. Include `"trig":true` on any tr
 
 `"slide":true` makes an FL slide note: it starts no sound; the channel's notes sounding when it
 starts glide by the distance from the highest of them to its key `p`, over its `len`, and keep
-that pitch until they end (sampler, Synkopa Keys and Synth channels; plugin instruments ignore
+that pitch until they end (sampler, Synkopa Instruments and Synth channels; plugin instruments ignore
 it; MIDI export leaves it out). An 808 jumping an octave up for an eighth note:
 
 ```sh

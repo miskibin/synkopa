@@ -1,4 +1,4 @@
-//! Synkopa Keys: sampled SFZ instruments as Channel Rack channels (model, ops, rendering).
+//! Synkopa Instruments: sampled SFZ instruments as Channel Rack channels (model, ops, rendering).
 
 use std::sync::Arc;
 
@@ -64,7 +64,7 @@ fn project(notes: Vec<Note>, keys: KeysState) -> Project {
     let mut p = Project::empty();
     p.inserts[0].fx.clear();
     p.channels.push(Channel {
-        name: "Synkopa Keys".into(),
+        name: "Synkopa Instruments".into(),
         src: ChannelSrc::Keys { keys },
         root: 60,
         ..Channel::new(CH, "", "#4f8ef7", ChannelSrc::Keys { keys: Default::default() })
@@ -179,7 +179,13 @@ fn a_note_rings_for_its_length_then_fades_over_the_release() {
 fn settings_are_validated_saved_and_undone() {
     let mut p = project(vec![], KeysState::default());
     let ch = p.channels.iter().find(|c| c.id == CH).unwrap().clone();
-    let keys = |release, dynamics, instrument: &str| KeysState { instrument: instrument.into(), release, dynamics, articulation: None };
+    let keys = |release, dynamics, instrument: &str| KeysState {
+        instrument: instrument.into(),
+        release,
+        dynamics,
+        articulation: None,
+        ..Default::default()
+    };
     for k in [keys(Some(5.0), 100.0, DEFAULT_INSTRUMENT), keys(Some(300.0), 140.0, DEFAULT_INSTRUMENT), keys(None, 100.0, "kazoo")] {
         let bad = Channel { src: ChannelSrc::Keys { keys: k.clone() }, ..ch.clone() };
         assert!(ops::apply(&mut p, &Op::PutChannel { channel: bad, index: None }).is_err(), "{k:?}");
@@ -421,4 +427,180 @@ fn a_key_struck_again_drops_the_release_noise_of_the_note_it_damps() {
     let w = 4 * STEP + 200..4 * STEP + 2400;
     let diff: Vec<f32> = restruck[w.clone()].iter().zip(&short[w]).map(|(a, b)| a - b).collect();
     assert!(rms(&diff) < 1e-4, "a release noise sounded under the held note: {}", rms(&diff));
+}
+
+// ---------------------------------------------------------------- attack, tone, width, tune, noise
+
+fn render_lr(p: Project, bank: Arc<KeysBank>) -> (Vec<f32>, Vec<f32>) {
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    e.set_keys_bank(DEFAULT_INSTRUMENT, Some(bank));
+    let out = e.render(0.0, 4.0, 0.0, SR).unwrap();
+    out.as_chunks::<2>().0.iter().map(|f| (f[0], f[1])).unzip()
+}
+
+fn one_tone(hz: f64) -> Arc<KeysBank> {
+    Arc::new(bank_from("<region> sample=a lokey=0 hikey=127 pitch_keycenter=60 amp_veltrack=0", vec![("a", tone(hz, 0.5))]).unwrap())
+}
+
+#[test]
+fn tune_moves_the_pitch_by_cents() {
+    let at = |tune| {
+        let (l, _) = render_lr(project(vec![note(0.0, 8.0, 60, 0.9)], KeysState { tune, ..Default::default() }), one_tone(440.0));
+        freq(&l[2000..40000])
+    };
+    assert!((at(0.0) - 440.0).abs() < 3.0);
+    assert!((at(100.0) - 466.16).abs() < 3.0, "{}", at(100.0));
+    assert!((at(-50.0) - 427.47).abs() < 3.0, "{}", at(-50.0));
+}
+
+#[test]
+fn attack_fades_the_note_in() {
+    let start = |attack| {
+        let (l, _) = render_lr(project(vec![note(0.0, 8.0, 60, 0.9)], KeysState { attack, ..Default::default() }), one_tone(440.0));
+        (rms(&l[..2400]), rms(&l[30000..40000]))
+    };
+    let (sharp, held) = start(0.0);
+    let (slow, held_slow) = start(300.0);
+    // the first 50 ms of a 300 ms fade are far quieter; once in, the level is the same
+    assert!(slow < sharp * 0.2, "{slow} vs {sharp}");
+    assert!((held_slow / held - 1.0).abs() < 0.05, "{held_slow} vs {held}");
+}
+
+#[test]
+fn tone_tilts_the_highs_not_the_lows() {
+    let level = |hz, tone| {
+        let (l, _) = render_lr(project(vec![note(0.0, 8.0, 60, 0.9)], KeysState { tone, ..Default::default() }), one_tone(hz));
+        rms(&l[6000..40000])
+    };
+    let db = |a: f64, b: f64| 20.0 * (a / b).log10();
+    let (hi_dark, hi_flat, hi_bright) = (level(8000.0, -100.0), level(8000.0, 0.0), level(8000.0, 100.0));
+    assert!(db(hi_dark, hi_flat) < -6.0, "{}", db(hi_dark, hi_flat));
+    assert!(db(hi_bright, hi_flat) > 6.0, "{}", db(hi_bright, hi_flat));
+    let lo = db(level(100.0, -100.0), level(100.0, 0.0));
+    assert!(lo.abs() < 1.0, "the lows stay: {lo}");
+}
+
+#[test]
+fn width_narrows_a_stereo_recording_to_mono() {
+    // left: a tone, right: silence
+    let n = SR as usize * 2;
+    let mut d = Vec::with_capacity(n * 2);
+    for i in 0..n {
+        d.extend([(i as f64 * 440.0 * std::f64::consts::TAU / SR as f64).sin() as f32 * 0.5, 0.0]);
+    }
+    let bank =
+        Arc::new(bank_from("<region> sample=a lokey=0 hikey=127 pitch_keycenter=60", vec![("a", Audio::from_stereo(d, SR, 2))]).unwrap());
+    let side = |width| {
+        let (l, r) = render_lr(project(vec![note(0.0, 8.0, 60, 0.9)], KeysState { width, ..Default::default() }), bank.clone());
+        let s: Vec<f32> = l.iter().zip(&r).map(|(a, b)| a - b).collect();
+        let m: Vec<f32> = l.iter().zip(&r).map(|(a, b)| a + b).collect();
+        (rms(&s[2000..40000]), rms(&m[2000..40000]))
+    };
+    let (s100, m100) = side(100.0);
+    let (s0, m0) = side(0.0);
+    let (s150, _) = side(150.0);
+    assert!(s0 < s100 * 1e-3, "mono: no side left");
+    assert!((m0 / m100 - 1.0).abs() < 0.02, "the mid is untouched");
+    assert!((s150 / s100 - 1.5).abs() < 0.05);
+}
+
+#[test]
+fn noise_sets_the_level_of_the_key_release_noises() {
+    let tail = |noise| {
+        let x = render_with(
+            project(vec![note(0.0, 1.0, 60, 0.9)], KeysState { release: Some(40.0), noise, ..Default::default() }),
+            Some(bank_with_click()),
+        );
+        // from the key's release on: the note fading fast, and the click (50 ms)
+        x[STEP..STEP + 3000].to_vec()
+    };
+    let (full, half, none) = (tail(100.0), tail(50.0), tail(0.0));
+    let diff = |a: &[f32], b: &[f32]| rms(&a.iter().zip(b).map(|(x, y)| x - y).collect::<Vec<_>>());
+    // what the noise adds, measured against the note alone
+    let (click, half_click) = (diff(&full, &none), diff(&half, &none));
+    assert!(click > 1e-3);
+    assert!((half_click / click - 0.5).abs() < 0.05, "{half_click} vs {click}");
+    // at 0 nothing is left of the click: the tail is the plain instrument's
+    let plain = render(project(vec![note(0.0, 1.0, 60, 0.9)], KeysState { release: Some(40.0), ..Default::default() }), true);
+    assert!(diff(&none, &plain[STEP..STEP + 3000]) < 1e-6);
+}
+
+#[test]
+fn keys_knobs_out_of_range_are_rejected() {
+    let mut p = project(vec![], KeysState::default());
+    let ch = p.channels.iter().find(|c| c.id == CH).unwrap().clone();
+    for bad in [
+        KeysState { attack: 5000.0, ..Default::default() },
+        KeysState { tone: 101.0, ..Default::default() },
+        KeysState { width: -1.0, ..Default::default() },
+        KeysState { tune: f32::NAN, ..Default::default() },
+        KeysState { noise: 120.0, ..Default::default() },
+    ] {
+        let c = Channel { src: ChannelSrc::Keys { keys: bad }, ..ch.clone() };
+        assert!(ops::apply(&mut p, &Op::PutChannel { channel: c, index: None }).is_err());
+    }
+}
+
+// ---------------------------------------------------------------- fretted instruments
+
+/// Level of `hz` in `x` (Goertzel over a Hann window, so a neighbouring tone does not leak in), as an amplitude.
+fn tone_level(x: &[f32], hz: f64) -> f64 {
+    let w = std::f64::consts::TAU * hz / SR as f64;
+    let n = x.len() as f64;
+    let (mut s1, mut s2) = (0.0, 0.0);
+    for (i, &v) in x.iter().enumerate() {
+        let hann = 1.0 - (std::f64::consts::TAU * i as f64 / n).cos();
+        let s = v as f64 * hann + 2.0 * w.cos() * s1 - s2;
+        s2 = s1;
+        s1 = s;
+    }
+    (s1 * s1 + s2 * s2 - 2.0 * w.cos() * s1 * s2).sqrt() * 2.0 / x.len() as f64
+}
+
+/// One sine region per key, at that key's pitch, as a guitar's instrument plays it.
+fn sines() -> Arc<KeysBank> {
+    let keys = [(60u8, "k60"), (64, "k64"), (67, "k67")];
+    let text: String = keys
+        .iter()
+        .map(|(k, n)| {
+            format!(
+                "<region> sample={n} key={k} amp_veltrack=0
+"
+            )
+        })
+        .collect();
+    let hz = |k: u8| 440.0 * 2f64.powf((k as f64 - 69.0) / 12.0);
+    Arc::new(bank_from(&text, keys.iter().map(|&(k, n)| (n, tone(hz(k), 0.3))).collect()).unwrap())
+}
+
+fn render_on(instrument: &str, notes: Vec<Note>, release: f32) -> Vec<f32> {
+    let p = project(notes, KeysState { instrument: instrument.into(), release: Some(release), ..Default::default() });
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    e.set_keys_bank(instrument, Some(sines()));
+    e.render(0.0, 4.0, 0.0, SR).unwrap().as_chunks::<2>().0.iter().map(|f| f[0]).collect()
+}
+
+#[test]
+fn a_guitar_string_stops_the_note_it_was_ringing() {
+    // E4 let go after a sixteenth rings on for 2 s; G4 a sixteenth later takes the same string (the high E)
+    let notes = vec![note(0.0, 1.0, 64, 0.9), note(2.0, 2.0, 67, 0.9)];
+    let window = |x: &[f32]| x[2 * STEP + 2400..3 * STEP + 2400].to_vec();
+    let piano = window(&render_on("vibraphone", notes.clone(), 2000.0));
+    let guitar = window(&render_on("hollow-body-guitar", notes, 2000.0));
+    let (e4, g4) = (329.63, 392.0);
+    // the vibraphone (no strings) lets both ring; on the guitar the string's old note is gone
+    assert!(tone_level(&piano, e4) > 0.02, "{}", tone_level(&piano, e4));
+    assert!(tone_level(&guitar, e4) < tone_level(&piano, e4) * 0.01, "{} vs {}", tone_level(&guitar, e4), tone_level(&piano, e4));
+    assert!((tone_level(&guitar, g4) / tone_level(&piano, g4) - 1.0).abs() < 0.05, "the new note plays as before");
+}
+
+#[test]
+fn the_notes_of_a_guitar_chord_take_their_own_strings() {
+    // C4, E4, G4 struck together: three strings, all sounding (nothing stops another)
+    let chord = vec![note(0.0, 4.0, 60, 0.9), note(0.0, 4.0, 64, 0.9), note(0.0, 4.0, 67, 0.9)];
+    let x = render_on("hollow-body-guitar", chord, 300.0);
+    let w = &x[4000..20000];
+    for hz in [261.63, 329.63, 392.0] {
+        assert!(tone_level(w, hz) > 0.02, "{hz} Hz: {}", tone_level(w, hz));
+    }
 }

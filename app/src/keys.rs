@@ -1,4 +1,4 @@
-//! Synkopa Keys: finds each instrument's recordings (the grand piano ships inside the app,
+//! Synkopa Instruments: finds each instrument's recordings (the grand piano ships inside the app,
 //! the others are downloaded into the sample library) and loads an instrument the first time
 //! a project's Keys channel plays it. An instrument no channel plays any more is dropped, so
 //! browsing instruments does not pile them up in memory.
@@ -42,6 +42,11 @@ pub struct InstrumentStatus {
     pub license: &'static str,
     pub range: (u8, u8),
     pub articulations: &'static [Articulation],
+    pub auto: Option<wave_engine::keys::AutoArticulation>,
+    /// Stereo recordings (Width has an image to change).
+    pub stereo: bool,
+    /// It plays key-release noises (the Noise knob has something to change).
+    pub release_noise: bool,
     /// Download size of the kit, bytes.
     pub bytes: u64,
     /// The recordings are on disk (bundled or downloaded).
@@ -115,6 +120,9 @@ pub fn status(app: &App) -> KeysStatus {
                     license: i.license,
                     range: i.range,
                     articulations: wave_engine::keys::articulations(i.id),
+                    auto: i.auto,
+                    stereo: i.stereo,
+                    release_noise: wave_engine::keys::release_noise(i.id),
                     bytes: sizes.get(i.kit).copied().unwrap_or(0),
                     installed: s.phase == Phase::Ready || dir(app, i).is_some(),
                     state: s.phase,
@@ -176,7 +184,7 @@ fn load_now(app: &App, info: &'static InstrumentInfo) {
             set(app, info.id, Phase::Ready, None);
         }
         Err(e) => {
-            log::warn!("Synkopa Keys {}: {e}", info.id);
+            log::warn!("Synkopa Instruments {}: {e}", info.id);
             set(app, info.id, Phase::Error, Some(e));
         }
     }
@@ -240,18 +248,20 @@ pub fn retry(app: &Arc<App>, id: &str) {
 /// The bounce-refusal wording, shared with the headless host so both front doors say the same thing.
 pub fn missing_msg(info: &InstrumentInfo) -> String {
     format!(
-        "KEYS_MISSING: the project plays Synkopa Keys {}, but its recordings are not on this computer \
+        "KEYS_MISSING: the project plays Synkopa Instruments {}, but its recordings are not on this computer \
          (download it in the app: the Keys window, or Library → {}); the bounce would be silent",
         info.name, info.kit
     )
 }
 
 pub fn unknown_msg(id: &str) -> String {
-    format!("KEYS_UNKNOWN: the project plays a Synkopa Keys instrument `{id}` this version does not have; the bounce would be silent")
+    format!(
+        "KEYS_UNKNOWN: the project plays a Synkopa Instruments instrument `{id}` this version does not have; the bounce would be silent"
+    )
 }
 
 pub fn error_msg(info: &InstrumentInfo, e: &str) -> String {
-    format!("KEYS_ERROR: Synkopa Keys {}: {e}", info.name)
+    format!("KEYS_ERROR: Synkopa Instruments {}: {e}", info.name)
 }
 
 /// The bounce verdict for an instrument's final loader state (wait reads it once `Loading` is over).
@@ -341,7 +351,10 @@ mod tests {
 
     #[test]
     fn a_failed_load_reports_its_cause() {
-        assert_eq!(verdict(piano(), Phase::Error, Some("disk full")).unwrap_err(), "KEYS_ERROR: Synkopa Keys Grand Piano: disk full");
+        assert_eq!(
+            verdict(piano(), Phase::Error, Some("disk full")).unwrap_err(),
+            "KEYS_ERROR: Synkopa Instruments Grand Piano: disk full"
+        );
     }
 
     #[test]

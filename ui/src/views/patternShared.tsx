@@ -13,7 +13,7 @@ import { commit } from '../state/edit';
 import { pickInsert, type InsertChoice } from '../ui/InsertPicker';
 import {
   addBar, addKeys, addMusicBox, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, chanOp, channels, clonePattern, cloneChannel, curPat, deleteChannel,
-  deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
+  deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, scrollPattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved,
 } from '../state/pattern';
 import { arrVersion, S } from '../state/store';
@@ -259,8 +259,16 @@ export const patSummary = () => { const pt = curPat(); return pt ? notesText(pt.
 
 /** The pattern an editor window shows, as a chip: its colour and name; a click lists the patterns. One for the Channel rack and the Piano roll. */
 export function PatternChip(props: { pat: Pattern }) {
+  // the wheel over the chip steps through the patterns, past the last one into a new blank one (FL)
+  let acc = 0;
+  const wheel = (e: WheelEvent) => {
+    e.preventDefault();
+    acc += e.deltaY || e.deltaX;
+    if (Math.abs(acc) < 40) return;
+    scrollPattern(acc > 0 ? 1 : -1); acc = 0;
+  };
   return (
-    <button class="patname" title={t('b.rk.patTitle')} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4); }}>
+    <button class="patname" title={t('b.rk.patTitle')} onWheel={wheel} onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4); }}>
       <span class="sw" style={{ background: props.pat.color }} /><span class="ell">{props.pat.name}</span>
       <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
     </button>

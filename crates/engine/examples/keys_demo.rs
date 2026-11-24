@@ -1,4 +1,4 @@
-//! Renders a short phrase on every Synkopa Keys instrument whose recordings are on disk, and
+//! Renders a short phrase on every Synkopa Instruments instrument whose recordings are on disk, and
 //! reports load time, memory and levels: the check that instruments are levelled alike.
 //!   cargo run --release -p wave-engine --example keys_demo -- <kits folder> <out folder> [instrument ...]
 //! `<kits folder>` holds one folder per library kit (`node scripts/keys-kits.mjs` fills

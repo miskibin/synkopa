@@ -1,7 +1,8 @@
-# Synkopa Keys
+# Synkopa Instruments
 
 A sampled-instrument player as a Channel Rack channel (`kind: "keys"`), laid out like a sampler
-plugin: an instrument browser on the left, the chosen instrument on the right. Add it from the
+plugin: the chosen instrument's face (its artwork, knobs and articulations) and a library of every
+instrument as cards. Add it from the
 Channel Rack's **+** menu or with `synkopa channels --keys`; it plays from the piano roll, the
 typing keyboard and a MIDI keyboard (with the sustain pedal) like every other pitched channel, and
 slide notes glide it.
@@ -18,6 +19,8 @@ slide notes glide it.
 | String Section | `strings` | violins, violas, cellos: sustain, tremolo, pizzicato, spiccato | VSCO 2 CE, Versilian Studios | CC0 | 198 MB |
 | Solo Violin | `solo-violin` | one violin: arco with vibrato, tremolo, pizzicato, spiccato | VSCO 2 CE, Versilian Studios | CC0 | 135 MB |
 | Concert Harp | `harp` | rings out on its own | VSCO 2 CE | CC0 | 35 MB |
+| Hollow Body Guitar | `hollow-body-guitar` | Gretsch Anniversary, clean: every semitone E2–D6, 3 dynamics × up to 4 round robins, staccato, hand-damping noises | [Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars), Karoryfer Samples (Brian Wood) | CC0 | 306 MB |
+| Jazz Club Guitar | `jazz-guitar` | Höfner Club archtop: the same | same | CC0 | 211 MB |
 | Vibraphone | `vibraphone` | soft mallets, motor off, 2 dynamics | [VCSL](https://github.com/sgossner/VCSL), Versilian Studios | CC0 | 42 MB |
 
 Only the grand piano ships inside the app. The others are library kits: the instrument's
@@ -27,15 +30,45 @@ under its knobs; a song that uses it should credit the recordings.
 
 ## The window and the project
 
-Clicking an instrument in the browser makes the channel play it (one undo step). A channel still
-named after its instrument takes the new name; an articulation and a release set for the old
-instrument are dropped. Knobs:
+The window opens on the instrument's face. **‹ ›** on the plate step to the previous / next
+instrument while you play (FL's preset arrows); its name or **Instruments** opens the library:
+every instrument as a card with its artwork, category filters (All, Pianos, Electric pianos,
+Guitars, Strings, Mallets), and what is on this computer (**in app**, **Ready**, or a **Download**
+button with its size). A click on a card makes the channel play it and keeps the library open, so
+you can click through instruments with the keyboard below; a double click, Enter on the playing
+card, **Back** or Esc returns to its face. Arrow keys move between cards, Enter picks.
 
-| knob | range | what it does |
-| --- | --- | --- |
-| Release (`release`) | Auto, or 40 ms – 3 s | how long a note rings after its key is let go (−60 dB at the end). **Auto** (2× click) = each region's own time as the instrument was mapped: the piano's dampers 0.5 s, its top two octaves (no dampers) 3–4 s, the strings 1.4 s |
-| Dynamics (`dynamics`) | 0 – 100 %, default 100 % | how much the velocity changes the level; the timbre always follows it |
-| Volume, Pan | | the channel's own |
+Changing the instrument is one undo step. A channel still named after its instrument (a new channel
+is named "Grand Piano") takes the new name. The release and the articulation belong to the old
+instrument and are dropped; the other knobs stay. Knobs, in four sections:
+
+| section | knob | range | what it does |
+| --- | --- | --- | --- |
+| Sound | Tone (`tone`) | −100 … +100, default 0 | darker or brighter: a shelf of ±9 dB over the highs above about 1.8 kHz |
+| | Width (`width`) | 0 – 150 %, default 100 % | stereo width of the recordings (0 = mono). Dimmed for instruments recorded in mono (the electric pianos, the guitars): use Pan |
+| | Tune (`tune`) | ±100 cents | fine tune, e.g. to match a recording |
+| Envelope | Attack (`attack`) | 0 – 2 s, default 0 | a fade-in on every note, for swells and pads; it only slows an instrument's own attack |
+| | Release (`release`) | Auto, or 40 ms – 3 s | how long a note rings after its key is let go (−60 dB at the end). **Auto** (2× click) = each region's own time as the instrument was mapped: the piano's dampers 0.5 s, its top two octaves (no dampers) 3–4 s, the strings 1.4 s |
+| Playing | Dynamics (`dynamics`) | 0 – 100 %, default 100 % | how much the velocity changes the level; the timbre always follows it |
+| | Noise (`noise`) | 0 – 100 %, default 100 % | level of the key-release noises (the piano's dampers, fingers leaving guitar strings). Dimmed for instruments without them |
+| Channel | Volume, Pan | | the channel's own |
+
+Every knob can be automated (right-click → automation clip). Tone, Width, Tune and Noise glide over
+about 10 ms when turned or automated; Attack applies to notes that start after it changes.
+
+### Guitars
+
+The guitars play like a guitar, not like a keyboard. Each note is put on one of six strings in
+standard tuning (E2 A2 D3 G3 B3 E4): the highest string that reaches it, so a chord spreads over
+the strings the way a guitarist voices it (an open C, a G, an F barre each land one note per
+string), and a note whose string is still held moves one string down. A string sounds one note:
+a new note on it damps the one it was ringing over 30 ms, so repeated strums and fast lines do not
+pile up into a chorus of the same string. Their articulations are **Sustain** (C2) and
+**Staccato** (C♯2); on **Auto** a note shorter than 0.15 s plays the staccato recordings. The
+mappings level each note against its neighbours (the recordings vary from note to note) and the
+staccato against the sustain; `scripts/keys-kits.mjs` measures the files when it writes them.
+For a natural strum, spread a chord's notes by a few milliseconds per string (the piano roll's
+strum tool), lighter on the upstrokes.
 
 Instruments with articulations (the strings) show them as buttons; the choice is saved with the
 channel. The strings default to **Auto**, as modern string libraries do: a note shorter than
@@ -44,7 +77,8 @@ it starts, plays sustain. Their keyswitches (C1–D#1 for the strings) are tinte
 playing: a note on one picks the articulation instead of sounding, until the next edit. Keys outside
 an instrument's range are dimmed (they still play, pitched from the nearest recording).
 
-Project format: `{"kind": "keys", "keys": {"instrument": "strings", "dynamics": 100, "articulation": 26}}`.
+Project format: `{"kind": "keys", "keys": {"instrument": "strings", "dynamics": 100, "articulation": 26, "attack": 0, "tone": 0, "width": 100, "tune": 0, "noise": 100}}`
+(projects without the last five play them at their defaults).
 `instrument` defaults to `grand-piano`, `release` (ms) is absent for Auto, `articulation` absent for
 the instrument's first one. Projects made before there was a choice (`{"release": 350, "dynamics":
 100}`) play the grand piano with their saved release, as they did.
@@ -52,7 +86,8 @@ the instrument's first one. Projects made before there was a choice (`{"release"
 ```sh
 synkopa channels --keys --instrument wurlitzer
 synkopa channels --ch "String Section" --articulation pizzicato
-synkopa channels --ch "Synkopa Keys" --param release --value 600   # 0 = Auto
+synkopa channels --ch "Grand Piano" --param release --value 600    # 0 = Auto
+synkopa channels --ch "Grand Piano" --param tone --value -30        # attack, tone, width, tune, noise too
 synkopa catalog                                                       # "keys": the instruments and their articulations
 ```
 

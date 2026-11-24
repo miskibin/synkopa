@@ -20,7 +20,7 @@ export interface EventMap {
   /** The pin in a plugin window's header: the user pinned (`pinned`) or unpinned the window on top of the app. */
   'plugin-pin': { id: Id; pinned: boolean };
   'library-progress': LibraryProgress;
-  /** Synkopa Keys: the piano started loading, is ready, or is not on this computer. */
+  /** Synkopa Instruments: the piano started loading, is ready, or is not on this computer. */
   'keys-status': KeysStatus;
   'model-progress': ModelProgress;
   /** `extractStems` moved on (stage, fraction of the separation done). */
@@ -193,7 +193,7 @@ export interface Backend {
   midiSetVelocity(fixed: number | null): Promise<MidiStatus>;
   libraryList(): Promise<LibraryList>;
   libraryInstall(id: string): Promise<void>;
-  /** Synkopa Keys: whether the piano's recordings are on this computer and loaded. */
+  /** Synkopa Instruments: whether the piano's recordings are on this computer and loaded. */
   keysStatus(): Promise<KeysStatus>;
   /** Loads a missing or failed Keys instrument (or a kit's instruments) again. */
   keysRetry(id: string): Promise<KeysStatus>;

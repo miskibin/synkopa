@@ -1,5 +1,5 @@
 // Channel settings window (FL "Channel settings"): click a Channel Rack name to see what makes
-// the sound — the synth, Synkopa Keys or a hosted VST3 instrument (its editor and parameters) — plus level,
+// the sound — the synth, Synkopa Instruments or a hosted VST3 instrument (its editor and parameters) — plus level,
 // pan, root key, mixer routing and a keyboard to play it.
 import { Show } from 'solid-js';
 import { captureOn, effect } from '../lib/reactive';
@@ -58,7 +58,7 @@ export function toggleChannelWindow(id: Id, settings = false) {
   if (kind === 'plugin' && !settings) { togglePlugin(id, () => toggleChannelWindow(id, true)); return; }
   if (settings && chanWin()?.id === id) return;
   if (chanWin()?.id === id) { closeChannelWindow(); return; }
-  const width = kind === 'synth' ? 900 : kind === 'keys' ? 780 : kind === 'musicbox' ? 700 : kind === 'plugin' ? 560 : Math.min(620, window.innerWidth - 20);
+  const width = kind === 'synth' ? 900 : kind === 'keys' ? 980 : kind === 'musicbox' ? 700 : kind === 'plugin' ? 560 : Math.min(620, window.innerWidth - 20);
   // beside the Channel Rack: the floating window, or the docked panel's place on screen
   const dk = docked('rack') ? document.querySelector('.rackwin')?.getBoundingClientRect() : undefined;
   const r = dk ? { x: dk.left, y: dk.top, w: dk.width } : U.rackWin, W = window.innerWidth;
@@ -133,7 +133,7 @@ function Body(props: { w: Win; c: Channel }) {
         <Show when={plugin()?.cid} keyed>
           {_cid => <PluginBody id={c().id} plugin={plugin()} instrument />}
         </Show>
-        {/* Synkopa Keys puts the channel's level and pan beside its own knobs */}
+        {/* Synkopa Instruments puts the channel's level and pan beside its own knobs */}
         <Show when={c().kind !== 'keys'}>
           <div class="chknobs"><ChannelLevelKnobs channel={c()} /><Show when={c().kind === 'synth'}><ChannelRootKnob channel={c()} /></Show></div>
         </Show>
@@ -142,7 +142,7 @@ function Body(props: { w: Win; c: Channel }) {
             <PianoKeys player={{ ch: c().id }} lo={c().kind === 'musicbox' ? 48 : 36} hi={c().kind === 'musicbox' ? 108 : 96} root={c().root}
               onRoot={key => { commit([chanOp(live(), { root: key })], t('b.cw.rootCh')); say(t('b.pk.rootSay', { name: c().name, note: noteName(key) })); }} />
           }>
-            {/* Synkopa Keys plays every key at its own pitch (no root): the keyboard shows the instrument's range and keyswitches */}
+            {/* Synkopa Instruments plays every key at its own pitch (no root): the keyboard shows the instrument's range and keyswitches */}
             <PianoKeys player={{ ch: c().id }} lo={21} hi={108} range={keysKeyboard(c() as Extract<Channel, { kind: 'keys' }>).range}
               switches={keysKeyboard(c() as Extract<Channel, { kind: 'keys' }>).switches} />
           </Show>

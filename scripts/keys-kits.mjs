@@ -1,4 +1,4 @@
-// Builds the Synkopa Keys instrument kits: for every kit below it downloads the recordings it
+// Builds the Synkopa Instruments instrument kits: for every kit below it downloads the recordings it
 // plays (pinned to a commit), records each file's SHA-256 and size in assets-manifest.json,
 // and writes the instrument's SFZ mapping into crates/engine/instruments/. Run it when an
 // instrument is added or changed; the app only reads the results.
@@ -19,6 +19,7 @@ const CCBY3 = { license: 'CC-BY-3.0', license_url: 'https://creativecommons.org/
 const VSCO = { repo: 'sgossner/VSCO-2-CE', commit: '440300901dfe9275fd84e0b7763af1f8443ae62e', author: 'Versilian Studios LLC', ...CC0 };
 const VCSL = { repo: 'sgossner/VCSL', commit: 'c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e', author: 'Versilian Studios LLC', ...CC0 };
 const GSEP = { repo: 'sfzinstruments/GregSullivan.E-Pianos', commit: '8c3e581acda3594b553948ff0222d4f84a698376', author: 'Greg Sullivan', ...CCBY3 };
+const BG = { repo: 'sfzinstruments/karoryfer.black-and-green-guitars', commit: 'b3b3249d37dc977a1a297bd2dc053e6d9b6b805c', author: 'Karoryfer Samples (Brian Wood)', ...CC0 };
 const SAL = { repo: 'sfzinstruments/SalamanderGrandPiano', commit: '3382bf9496bba2486f5ab0de55a264d1dfc38404', author: 'Alexander Holm', ...CCBY3 };
 
 const NOTE = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
@@ -40,7 +41,7 @@ function spans(roots, lo, hi) {
 }
 
 const header = (title, credit, src, notes = []) =>
-  [`// Synkopa Keys: ${title}.`, `// ${credit}, ${src.license}.`, `// https://github.com/${src.repo} (${src.commit.slice(0, 10)})`, ...notes.map(n => `// ${n}`), ''].join('\n');
+  [`// Synkopa Instruments: ${title}.`, `// ${credit}, ${src.license}.`, `// https://github.com/${src.repo} (${src.commit.slice(0, 10)})`, ...notes.map(n => `// ${n}`), ''].join('\n');
 
 // ------------------------------------------------------------------ the kits
 
@@ -64,11 +65,111 @@ async function vscoTree() {
   return treeCache;
 }
 
+/** One guitar of Karoryfer's Black and Green Guitars: every semitone from E2 to D6, played
+ *  sustained ("twang": three dynamics, up to four round robins) or staccato (four round robins),
+ *  with a release sample per note. Keyswitches as Karoryfer placed them: C2 sustain, C#2 staccato. */
+/** RMS level in dB of the first `seconds` of a PCM WAV (16/24-bit or float, every channel). */
+async function wavDb(path, seconds) {
+  const b = await readFile(path);
+  let p = 12, fmt, data;
+  while (p + 8 <= b.length) {
+    const id = b.toString('ascii', p, p + 4), size = b.readUInt32LE(p + 4);
+    if (id === 'fmt ') fmt = { tag: b.readUInt16LE(p + 8), ch: b.readUInt16LE(p + 10), sr: b.readUInt32LE(p + 12), bits: b.readUInt16LE(p + 22) };
+    if (id === 'data') { data = { at: p + 8, size }; break; }
+    p += 8 + size + (size & 1);
+  }
+  if (!fmt || !data) throw new Error(`${path}: not a WAV`);
+  const bytes = fmt.bits / 8, frames = Math.min(Math.floor(data.size / bytes / fmt.ch), Math.floor(fmt.sr * seconds));
+  let sum = 0;
+  for (let i = 0; i < frames * fmt.ch; i++) {
+    const o = data.at + i * bytes;
+    const x = fmt.tag === 3 ? b.readFloatLE(o) : bytes === 3 ? b.readIntLE(o, 3) / 8388608 : b.readInt16LE(o) / 32768;
+    sum += x * x;
+  }
+  return 10 * Math.log10(sum / (frames * fmt.ch) + 1e-12);
+}
+
+let bgCache;
+/** Every sample file of Black and Green Guitars at the pinned commit (not every note has every
+ *  round robin), cached in target/keys-kits/. */
+async function bgTree() {
+  if (bgCache) return bgCache;
+  const cache = join(root, 'target', 'keys-kits', `bg-tree-${BG.commit.slice(0, 10)}.json`);
+  try { return (bgCache = JSON.parse(await readFile(cache, 'utf8'))); } catch { /* not cached */ }
+  const headers = process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {};
+  const res = await fetch(`https://api.github.com/repos/${BG.repo}/git/trees/${BG.commit}?recursive=1`, { headers });
+  if (!res.ok) throw new Error(`Black and Green tree: HTTP ${res.status}`);
+  bgCache = (await res.json()).tree.filter(t => t.type === 'blob').map(t => t.path);
+  await mkdir(dirname(cache), { recursive: true });
+  await writeFile(cache, JSON.stringify(bgCache));
+  return bgCache;
+}
+
+function bgGuitar({ id, name, folder, description, attribution, gain }) {
+  return {
+    id,
+    name,
+    description,
+    attribution,
+    source: BG,
+    files: async () => {
+      const tree = new Set(await bgTree());
+      const notes = [];
+      for (const oct of [3, 4, 5, 6, 7]) for (const n of ['c', 'db', 'd', 'eb', 'e', 'f', 'gb', 'g', 'ab', 'a', 'bb', 'b']) {
+        // Karoryfer names its notes an octave up: e3 is E2, key 40
+        const k = 12 * oct + ['c', 'db', 'd', 'eb', 'e', 'f', 'gb', 'g', 'ab', 'a', 'bb', 'b'].indexOf(n);
+        if (k >= 40 && k <= 86) notes.push({ n: n + oct, k });
+      }
+      const files = [];
+      const take = (dir, f) => { if (!files.some(x => x.file === f)) files.push({ file: f, path: `Samples/${folder}/${dir}/${f}` }); return f; };
+      /** The round robins `pattern(i)` (i = 1..) that exist. */
+      const rrs = (dir, pattern) => { const out = []; for (let i = 1; tree.has(`Samples/${folder}/${dir}/${pattern(i)}`); i++) out.push(take(dir, pattern(i))); return out; };
+      const rr = (list, attrs) => list.map((f, i) => `<region> sample=${f}${list.length > 1 ? ` seq_length=${list.length} seq_position=${i + 1}` : ''}${attrs}\n`).join('');
+      const layers = [['p', 1, 42], ['mf', 43, 84], ['f', 85, 127]];
+      const ord = notes.map(({ n }) => layers.map(([d]) => {
+        const list = rrs('ord', i => `twang_${n}_${d}_rr${i}.wav`);
+        if (!list.length) throw new Error(`${id}: no ${d} take of ${n}`);
+        return list;
+      }));
+      const stac = notes.map(({ n }) => rrs('stac', i => `staccato_${n}_rr${i}.wav`));
+      const rel = notes.map(({ n }) => rrs('rel', i => `release_${n}_rr${i}.wav`));
+      // the mapping is written once the recordings are here: it evens out their levels
+      const after = async dir => {
+        // each note's pick, as loud as the first 150 ms of its mf takes; the staccato's the same way
+        const lvl = async list => { let s = 0; for (const f of list) s += await wavDb(join(dir, f), 0.15); return s / list.length; };
+        const sus = [], st = [];
+        for (let i = 0; i < notes.length; i++) { sus.push(await lvl(ord[i][1])); st.push(await lvl(stac[i])); }
+        // a note that stands out from its neighbours is brought to them, and the slope from the
+        // booming low strings to the thin top is halved; the staccato is matched to the sustain
+        const mean = sus.reduce((a, b) => a + b, 0) / sus.length;
+        const near = i => { const w = sus.slice(Math.max(0, i - 3), i + 4).sort((a, b) => a - b); return w[w.length >> 1]; };
+        const fix = sus.map((l, i) => Math.max(-6, Math.min(6, mean + 0.5 * (near(i) - mean) - l)));
+        const fixSt = st.map((l, i) => Math.max(-15, Math.min(9, sus[i] + fix[i] - l)));
+        const db = x => x.toFixed(1);
+        let o = header(name, `${name.replace(/ Guitar$/, '')} from Black And Green Guitars by Karoryfer Samples`, BG,
+          ['Every semitone sampled; one velocity curve across the dynamic layers; each note levelled against its',
+            'neighbours (scripts/keys-kits.mjs measures the recordings); a release noise per note.']);
+        // a guitar string falls away slowly while held and stops in a quarter second when the hand lets go
+        o += `\n<global> sw_lokey=36 sw_hikey=37 sw_default=36 ampeg_attack=0.002 ampeg_release=0.25 amp_veltrack=70 global_volume=${gain}\n`;
+        o += '\n<master> sw_last=36 sw_label=Sustain\n';
+        notes.forEach(({ k }, i) => layers.forEach(([, lv, hv], j) => { o += `<group> key=${k} lovel=${lv} hivel=${hv} volume=${db(fix[i])}\n` + rr(ord[i][j], ''); }));
+        o += '\n<master> sw_last=37 sw_label=Staccato\n';
+        notes.forEach(({ k }, i) => { o += `<group> key=${k} volume=${db(fixSt[i])}\n` + rr(stac[i], ''); });
+        // the hand damping the string as it lets go (Karoryfer's default is about −12 dB; −9 is heard without a chord's six stacking into a thud), fainter the longer the note rang
+        o += '\n<master> trigger=release rt_decay=5 amp_veltrack=40\n';
+        notes.forEach(({ k }, i) => { o += `<group> key=${k} volume=${db(fix[i] - 9)}\n` + rr(rel[i], ''); });
+        return { [id]: o };
+      };
+      return { files, after };
+    },
+  };
+}
+
 const KITS = [
   {
     id: 'salamander-piano',
     name: 'Salamander Grand Piano',
-    description: 'Yamaha C5 grand for Synkopa Keys: 30 notes x 4 dynamics, 88 key-release noises',
+    description: 'Yamaha C5 grand for Synkopa Instruments: 30 notes x 4 dynamics, 88 key-release noises',
     attribution: 'Salamander Grand Piano V3 by Alexander Holm, licensed CC-BY-3.0. Source: https://github.com/sfzinstruments/SalamanderGrandPiano',
     source: SAL,
     // the mapping is hand-tuned (crates/engine/instruments/grand-piano.sfz): only the files
@@ -83,7 +184,7 @@ const KITS = [
   {
     id: 'e-pianos',
     name: 'Electric Pianos',
-    description: 'Wurlitzer EP200, Yamaha CP80 and Hohner Pianet T for Synkopa Keys',
+    description: 'Wurlitzer EP200, Yamaha CP80 and Hohner Pianet T for Synkopa Instruments',
     attribution: "Greg Sullivan's E-Pianos (Wurlitzer EP200, Yamaha CP80, Hohner Pianet T) by Greg Sullivan, SFZ mapping by kinwie, licensed CC-BY-3.0. Source: https://github.com/sfzinstruments/GregSullivan.E-Pianos",
     source: GSEP,
     files: async () => {
@@ -119,7 +220,7 @@ const KITS = [
   {
     id: 'upright-piano',
     name: 'Upright Piano',
-    description: 'VSCO 2 upright piano for Synkopa Keys: C and G of every octave, 3 dynamics, 2 round robins',
+    description: 'VSCO 2 upright piano for Synkopa Instruments: C and G of every octave, 3 dynamics, 2 round robins',
     attribution: 'Upright Nr1 from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.',
     source: VSCO,
     files: () => {
@@ -154,7 +255,7 @@ const KITS = [
   {
     id: 'string-section',
     name: 'String Section',
-    description: 'VSCO 2 violin, viola and cello sections for Synkopa Keys: sustain, tremolo, pizzicato, spiccato',
+    description: 'VSCO 2 violin, viola and cello sections for Synkopa Instruments: sustain, tremolo, pizzicato, spiccato',
     attribution: 'Violin, viola and cello sections from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.',
     source: VSCO,
     files: async () => {
@@ -222,7 +323,7 @@ const KITS = [
   {
     id: 'harp',
     name: 'Concert Harp',
-    description: 'VSCO 2 concert harp for Synkopa Keys: 23 notes across seven octaves',
+    description: 'VSCO 2 concert harp for Synkopa Instruments: 23 notes across seven octaves',
     attribution: 'Harp from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.',
     source: VSCO,
     files: () => {
@@ -240,7 +341,7 @@ const KITS = [
   {
     id: 'solo-violin',
     name: 'Solo Violin',
-    description: 'VSCO 2 solo violin for Synkopa Keys: arco with vibrato, tremolo, pizzicato, spiccato',
+    description: 'VSCO 2 solo violin for Synkopa Instruments: arco with vibrato, tremolo, pizzicato, spiccato',
     attribution: 'Solo violin from VSCO 2 Community Edition by Versilian Studios LLC, released to the public domain under CC0-1.0.',
     source: VSCO,
     files: async () => {
@@ -291,7 +392,7 @@ const KITS = [
   {
     id: 'vibraphone',
     name: 'Vibraphone',
-    description: 'VCSL soft-mallet vibraphone for Synkopa Keys: 11 notes x 2 dynamics',
+    description: 'VCSL soft-mallet vibraphone for Synkopa Instruments: 11 notes x 2 dynamics',
     attribution: 'Vibraphone from the Versilian Community Sample Library (VCSL) by Versilian Studios LLC, released to the public domain under CC0-1.0.',
     source: VCSL,
     files: () => {
@@ -313,6 +414,17 @@ const KITS = [
       return { files, sfz: { vibraphone: o } };
     },
   },
+
+  bgGuitar({
+    id: 'hollow-body-guitar', name: 'Hollow Body Guitar', folder: 'green', gain: 12.5,
+    description: 'Karoryfer Black And Green Guitars, the green Gretsch Anniversary: every semitone, 3 dynamics x 4 round robins, staccato, release noises',
+    attribution: 'Gretsch Anniversary from Black And Green Guitars by Karoryfer Samples (recorded by Brian Wood), released to the public domain under CC0-1.0. Source: https://github.com/sfzinstruments/karoryfer.black-and-green-guitars',
+  }),
+  bgGuitar({
+    id: 'jazz-guitar', name: 'Jazz Club Guitar', folder: 'black', gain: 7,
+    description: 'Karoryfer Black And Green Guitars, the black Hofner Club: every semitone, 3 dynamics x 4 round robins, staccato, release noises',
+    attribution: 'Hofner Club from Black And Green Guitars by Karoryfer Samples (recorded by Brian Wood), released to the public domain under CC0-1.0. Source: https://github.com/sfzinstruments/karoryfer.black-and-green-guitars',
+  }),
 ];
 
 // ------------------------------------------------------------------ download and record
@@ -342,7 +454,8 @@ const only = process.argv.slice(2);
 const manifestPath = join(root, 'assets-manifest.json');
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 for (const kit of KITS.filter(k => !only.length || only.includes(k.id))) {
-  const { files, sfz = {} } = await kit.files();
+  const { files, sfz: written = {}, after } = await kit.files();
+  let sfz = written;
   const cache = join(root, 'target', 'keys-kits', kit.id);
   await mkdir(cache, { recursive: true });
   const samples = [];
@@ -355,6 +468,7 @@ for (const kit of KITS.filter(k => !only.length || only.includes(k.id))) {
     }
   }));
   samples.sort((a, b) => files.findIndex(f => f.file === a.file) - files.findIndex(f => f.file === b.file));
+  if (after) sfz = await after(cache);
   const entry = {
     id: kit.id,
     name: kit.name,

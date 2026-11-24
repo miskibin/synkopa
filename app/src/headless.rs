@@ -43,7 +43,7 @@ pub struct Headless {
     /// The pitch model guard: outer `None` = not tried yet; `Some(err)` = tried once, with
     /// `err` saying why it is unusable (inner `None` = usable).
     model: Mutex<Option<Option<String>>>,
-    /// Synkopa Keys instruments loaded (or that failed to load) so far, by catalog id.
+    /// Synkopa Instruments instruments loaded (or that failed to load) so far, by catalog id.
     keys: Mutex<std::collections::HashMap<&'static str, R<()>>>,
     /// The audio-thread half nobody plays: it makes the engine instantiate hosted plugins
     /// live (their parameters and state are reachable), pumped by hand after each command.

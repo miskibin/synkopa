@@ -1,7 +1,7 @@
 # Music Box
 
 A built-in modeled instrument: a cylinder music box whose sound is synthesized from the
-physics of a comb tine. Channel kind `musicbox`, like Synkopa Keys but with no samples and
+physics of a comb tine. Channel kind `musicbox`, like Synkopa Instruments but with no samples and
 nothing to install — the DSP is in the program.
 
 A 47 s demo render (Für Elise, two Music Box channels) lives at

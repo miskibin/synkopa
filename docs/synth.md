@@ -57,7 +57,7 @@ chord of a pluck or keys patch (8–13 dB above one note) still lands near full 
 limits or compresses the instrument output: every note sounds in a chord exactly as it does
 alone (`a_chord_is_the_sum_of_its_notes`). The global drive works on the sum of all notes, so
 on a chord it adds intermodulation (−8 to −17 dB residual on a four-note chord at 12–40 %); poly
-factory presets therefore get their grit from the per-voice drive instead. Synkopa Keys plays its
+factory presets therefore get their grit from the per-voice drive instead. Synkopa Instruments plays its
 recordings 12 dB lower for the same reason (one loud note −11 dBFS, six −5.7, ten −1.8 dBFS on
 the Salamander bank).
 

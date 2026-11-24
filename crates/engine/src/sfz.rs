@@ -1,4 +1,4 @@
-//! A parser for the part of the SFZ format that Synkopa Keys plays.
+//! A parser for the part of the SFZ format that Synkopa Instruments plays.
 //!
 //! SFZ is the open, text-based description of a sampled instrument: which recording plays
 //! for which keys and velocities, how it is tuned, levelled and enveloped. This module turns
