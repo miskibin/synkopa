@@ -1562,6 +1562,25 @@ button.chip { color: var(--fg); }
 .keypop .rootgrid button:hover, .keypop .scalelist button:hover { background: var(--bg6); color: var(--fg-hi); }
 .keypop .rootgrid button.on, .keypop .scalelist button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
 
+/* the grid chip (Snap): every value in view as a small grid, coarse → fine */
+.gridchip .chip { gap: 6px; }
+.gridchip .chip .gcval { font-weight: 600; color: var(--fg-hi); }
+.gridchip .chip svg { color: var(--fg5); margin-left: -1px; }
+.gcpop { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  width: max-content; background: var(--bg4); border: 1px solid var(--line2); border-radius: 9px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.gcpop button { height: 26px; border: 0; border-radius: 5px; background: var(--bg2); color: var(--fg3); font: 600 11px var(--mono, var(--sans)); cursor: pointer; padding: 0 6px; outline: 0; }
+.gcpop button:hover, .gcpop button:focus-visible { background: var(--bg6); color: var(--fg-hi); }
+.gcpop button:focus-visible { box-shadow: 0 0 0 1px var(--line3); }
+.gcpop button.on { background: color-mix(in srgb, var(--blue) 28%, var(--bg4)); color: var(--blue-hi); }
+/* what auto resolves to right now */
+.gcpop button.implied { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 55%, transparent); color: var(--fg-hi); }
+.gcmodes { display: flex; gap: 4px; }
+.gcmodes button { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; font-family: var(--sans); padding: 0 10px; white-space: nowrap; }
+.gcmodes button small { font: 500 10px var(--sans); color: var(--fg5); }
+.gcmodes button.on small { color: color-mix(in srgb, var(--blue-hi) 70%, var(--fg5)); }
+.gcgrid { display: grid; grid-template-columns: repeat(var(--cols), minmax(36px, 1fr)); gap: 3px; }
+.gccap { font: 600 9px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--fg5); margin: 2px 0 -2px 2px; }
+
 /* shared editor bar pieces in the Playlist header */
 .pltools .chip { height: 24px; padding: 0 6px 0 7px; font-size: 11px; }
 .pltools .chip select { font-size: 11px; height: 22px; }
