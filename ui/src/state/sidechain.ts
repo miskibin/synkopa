@@ -9,8 +9,8 @@ import { be } from '../api/backend';
 import { t } from '../lib/i18n';
 import { keyError, takesKey } from '../lib/routing';
 import * as A from './actions';
-import { enqueue, resync } from './edit';
-import { findFx, insName, S } from './store';
+import { commit, enqueue, resync } from './edit';
+import { findFx, insName, plain, S } from './store';
 import { say, setU, type MenuItem } from './ui';
 
 const insertOf = (id: Id) => S.project.inserts.find(m => m.id === id);

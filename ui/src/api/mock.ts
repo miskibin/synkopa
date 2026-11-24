@@ -21,7 +21,6 @@ import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
 import { satDriveDb } from '../lib/saturator';
-import { takesKey } from '../lib/routing';
 import { onsetsFromPeaks } from '../lib/slicer';
 import { songEnd } from '../lib/export';
 import { eqCurve } from '../lib/eq';
@@ -1211,7 +1210,8 @@ export class MockBackend implements Backend {
     const dst = this.p.inserts.find(x => x.id === a.to);
     if (!dst) throw new Error(`no insert ${a.to}`);
     if (!this.p.inserts.some(x => x.id === a.from)) throw new Error(`no insert ${a.from}`);
-    const keyed = dst.fx.filter(f => takesKey(f.type) && f.key === a.from);
+    // the engine's off and reuse paths are Compressor-only (a keyed Gate or Filter is its own window's)
+    const keyed = dst.fx.filter(f => f.type === 'comp' && f.key === a.from);
     if (a.off) {
       const ops: Op[] = keyed.map(f => { const x = structuredClone(f); delete x.key; return { op: 'putFx', insertId: a.to!, fx: x } as Op; });
       if (!ops.length) throw new Error(`no compressor on insert ${a.to} listens to insert ${a.from}`);
