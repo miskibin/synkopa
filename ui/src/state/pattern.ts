@@ -93,6 +93,32 @@ export function stepPattern(d: number) {
   setCurPattern(ps[mod(i + d, ps.length)].id);
   showPatternWindow();
 }
+/** The blank pattern the wheel opened past the last one; dropped again if left untouched (FL). */
+let scratchPat: Id | null = null;
+const isBlank = (p: Pattern) => !p.notes.length && !S.project.clips.some(c => c.kind === 'pat' && c.ref === p.id);
+/**
+ * The wheel over a pattern selector (FL): previous / next without wrapping; past the last pattern a
+ * new blank one. That blank pattern only stays once something is put in it: wheeling back off it
+ * removes it again, so browsing does not leave a trail of empty patterns.
+ */
+export function scrollPattern(d: number) {
+  const ps = S.project.patterns; if (!ps.length) return;
+  const i = Math.max(0, ps.findIndex(p => p.id === curPat()?.id));
+  if (d > 0 && i === ps.length - 1) {
+    if (isBlank(ps[i])) { showPatternWindow(); return; } // already on a blank one: nothing to add
+    newPattern(); scratchPat = curPat()?.id ?? null;
+    showPatternWindow();
+    return;
+  }
+  const j = clamp(i + d, 0, ps.length - 1); if (j === i) return;
+  const left = ps[i];
+  setCurPattern(ps[j].id);
+  if (left.id === scratchPat) {
+    scratchPat = null;
+    if (isBlank(left)) commit([{ op: 'removePattern', id: left.id }], t('b.st.delPat'));
+  }
+  showPatternWindow();
+}
 /** Numpad 1–9: the n-th pattern (1-based). */
 export function pickPatternNum(n: number) {
   const pt = S.project.patterns[n - 1];
@@ -431,7 +457,7 @@ export function addSynth(name: string | null) {
 }
 /** A new channel's colour: one the rack uses least, so its steps and notes stand apart. */
 const freshColor = () => nextChannelColor(channels().map(c => c.color));
-const keysChannel = (id: Id): Channel => ({ id, name: 'Synkopa Keys', color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
+const keysChannel = (id: Id): Channel => ({ id, name: keysInstrument(KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano', color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
 /** A new Music Box channel: the modeled tine instrument. */
 const musicBoxChannel = (id: Id): Channel => ({
   id, name: 'Music Box', color: '#cf8e52', kind: 'musicbox',
@@ -449,7 +475,7 @@ const pluginChannel = (id: Id, p: PluginInfo): Channel => ({
 });
 
 /**
- * What a channel can play, for "add" and "replace": a synth preset, Synkopa Keys, a sampler of a source (`root`: the
+ * What a channel can play, for "add" and "replace": a synth preset, Synkopa Instruments, a sampler of a source (`root`: the
  * file's own pitch, if known), or a scanned VST3 instrument.
  */
 export type InstrumentPick =
@@ -513,7 +539,7 @@ export function addPlugin(p: PluginInfo) {
   selectChannel(c.id);
   say(t('b.st.pluginSay', { name: p.name }));
 }
-/** A new Synkopa Keys channel: the sampled grand piano. */
+/** A new Synkopa Instruments channel: the sampled grand piano. */
 export function addKeys() {
   const c = { ...keysChannel(allocId()), color: freshColor() };
   commit([chanOp(c)], t('b.st.addKeys'));
@@ -532,7 +558,11 @@ export function setKeysInstrument(id: Id, instrument: string) {
   const was = c.keys.instrument ?? KEYS_DEFAULT_INSTRUMENT;
   if (was === instrument) return;
   const named = c.name === 'Synkopa Keys' || c.name === keysInstrument(was)?.name;
-  const keys = { instrument, dynamics: c.keys.dynamics };
+  // the sound-shaping knobs stay (browsing instruments keeps the channel's tone); the release and
+  // the articulation were the old instrument's
+  const keys = { ...c.keys, instrument };
+  delete keys.release;
+  delete keys.articulation;
   commit([chanOp(c, { name: named ? inst.name : c.name, keys } as Partial<Channel>)], t('b.kp.instCh'));
   say(t('b.kp.instSay', { name: named ? inst.name : c.name, inst: inst.name }));
 }
@@ -705,7 +735,8 @@ export const playStep = (pt: Pattern) => { const b = patPlayhead(pt); return b <
 // below the window's edge), and both pattern windows stay reachable when the app window shrinks.
 createRoot(() => {
   watch(() => channels().length, (n, prev) => {
-    const w = U.rackWin; if (!w || docked('rack') || prev == null || n <= prev) return;
+    // with auto height the rack fits itself, both ways (views/ChannelRack.tsx)
+    const w = U.rackWin; if (!w || docked('rack') || prev == null || n <= prev || prefs().rackAutoH) return;
     const need = RACK_HEAD + (n + 1) * RACK_ROW + 12 + 2 * RACK_PAD_Y;
     if (need > w.h) setU('rackWin', 'h', Math.min(need, Math.max(220, window.innerHeight - w.y - 20)));
   });

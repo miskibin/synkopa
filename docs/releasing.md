@@ -28,7 +28,7 @@ show its notes after the restart.
 * A `.sig` beside each (the updater's signature) and `latest.json`.
 
 The bundle list is `bundles` in the matrix of `.github/workflows/release.yml`. Every installer
-carries the Synkopa Keys piano, which `scripts/fetch-keys.mjs` cuts to what the app plays before
+carries the Synkopa Instruments piano, which `scripts/fetch-keys.mjs` cuts to what the app plays before
 the build (138 MB of downloads become about 23 MB; see `docs/keys.md`). The AppImage is the
 largest because it also carries its own WebKit and GTK.
 

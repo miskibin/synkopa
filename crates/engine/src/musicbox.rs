@@ -8,7 +8,7 @@
 //! from per-note partials: each note is a fixed set of decaying sines whose ratios, decay
 //! times and excitation follow the note's pitch, the velocity (a harder pluck excites more
 //! of the overtone stack) and the channel's knobs. Voices live in
-//! [`crate::synth::VoicePool`] like Synkopa Keys; there are no samples and nothing to
+//! [`crate::synth::VoicePool`] like Synkopa Instruments; there are no samples and nothing to
 //! install.
 
 /// The note's partial frequencies, as multiples of its fundamental.

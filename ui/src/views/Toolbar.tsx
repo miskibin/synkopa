@@ -1,5 +1,5 @@
 import { isFullscreen, setFullscreen, toggleFullscreen } from '../state/fullscreen';
-import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, stepPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
+import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, scrollPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { APP_GLYPH as G } from '../ui/menuIcons';
 import { forgetRecent, recent, recentLabels, refreshRecent } from '../state/recent';
@@ -12,13 +12,13 @@ import { For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { be } from '../api/backend';
 import { notify } from '../state/notice';
-import { clamp, fmtClock, fmtPos, TapTracker } from '../lib/format';
+import { clamp, fmtPos, TapTracker } from '../lib/format';
 import { snapLabel } from '../lib/snap';
 import * as A from '../state/actions';
 import * as MK from '../state/markers';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { S } from '../state/store';
-import { curBeat, tele } from '../state/telemetry';
+import { tele } from '../state/telemetry';
 import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { anyTucked } from '../state/winOrder';
 import { checkUpdates, showWhatsNew } from '../state/updates';
@@ -39,7 +39,10 @@ import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
 import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../state/underruns';
 import { audioStatus, openAudioSettings } from '../state/audioWatch';
-import { barFits, fitLevel, FIT_MAX } from '../lib/toolbarFit';
+import { fitLevel, FIT_MAX, gridFits } from '../lib/toolbarFit';
+import { KeyBadge } from './KeyBadge';
+import { PosReadout, PreviewLine, SongPos } from './ToolbarParts';
+import { shownPreview } from '../state/previewWave';
 import { ChipBoundary, DialogBoundary } from '../ui/PanelBoundary';
 
 export const TOOLS: [Tool, string, TranslationKey][] = [
@@ -50,22 +53,16 @@ export const TOOL_HINT: Record<Tool, TranslationKey> = { draw: 'a.tb.hint_draw',
 const clampBpm = (v: number) => clamp(Math.round(v * 100) / 100, 20, 999);
 
 export function Toolbar() {
-  let clockEl!: HTMLSpanElement, inEl!: HTMLDivElement, barEl!: HTMLDivElement;
+  let inEl!: HTMLDivElement, barEl!: HTMLDivElement, gridEl!: HTMLDivElement;
   // the fit (lib/toolbarFit.ts): measured again when the bar's width or what it shows changes
   onMount(() => {
-    const q = (sel: string) => barEl.querySelector<HTMLElement>(sel);
-    const box = (el: Element | null) => { const r = el?.getBoundingClientRect(); return { left: r?.left ?? 0, right: r?.right ?? 0 }; };
-    const over = (el: HTMLElement | null) => !!el && el.scrollWidth > el.clientWidth + 1;
     const apply = (n: number) => { for (let i = 1; i <= FIT_MAX; i++) barEl.classList.toggle('f' + i, i <= n); };
-    const fits = () => {
-      const l = q('.tbleft'), m = q('.tbmid'), r = q('.tbright');
-      return barFits({ bar: box(barEl), left: box(l), mid: box(m), right: box(r), leftOver: over(q('.tbmenu')), midOver: over(m), rightOver: over(r) });
-    };
+    const fits = () => gridFits(gridEl);
     let raf = 0;
     const refit = () => { raf = 0; if (barEl.isConnected && barEl.clientWidth > 0) fitLevel(apply, fits); };
     const later = () => { if (!raf) raf = requestAnimationFrame(refit); };
-    // what ticks while playing (the clock, the hint line, the meters) never changes what fits
-    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .tbhint, .cpumeter, .inmeter');
+    // what ticks while playing (the position, the status line, the meters) never changes what fits
+    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .tbstatus, .cpumeter, .inmeter, .songpos');
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(later) : null;
     ro?.observe(barEl);
     const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(rs => { if (rs.some(r => !ticking(r.target))) later(); }) : null;
@@ -74,16 +71,13 @@ export function Toolbar() {
     later();
     onCleanup(() => { ro?.disconnect(); mo?.disconnect(); cancelAnimationFrame(raf); });
   });
-  let lastClock = '', inHold = 0;
+  let inHold = 0;
   onMount(() => {
     const stop = addFrameTask(() => {
-      const s = fmtClock(curBeat());
-      if (s !== lastClock) { lastClock = s; clockEl.textContent = s; }
-      if (inEl) {
-        inHold = Math.max(tele.frame.inLevel, inHold * 0.9);
-        inEl.style.transform = `scaleX(${Math.min(1, Math.sqrt(inHold))})`;
-        inEl.style.background = inHold > 0.89 ? 'var(--red)' : inHold > 0.5 ? 'var(--amber)' : 'var(--green)';
-      }
+      if (!inEl) return;
+      inHold = Math.max(tele.frame.inLevel, inHold * 0.9);
+      inEl.style.transform = `scaleX(${Math.min(1, Math.sqrt(inHold))})`;
+      inEl.style.background = inHold > 0.89 ? 'var(--red)' : inHold > 0.5 ? 'var(--amber)' : 'var(--green)';
     });
     onCleanup(stop);
   });
@@ -179,7 +173,7 @@ export function Toolbar() {
     if (!win || e.button !== 0) return;
     const el = e.target as HTMLElement;
     // Drag only from the bar itself or an element marked data-drag, never from a
-    // child of one (.tbmain holds every button: closest() swallowed their clicks).
+    // child of one (the cells hold every button: closest() swallowed their clicks).
     if (el !== e.currentTarget && !el.hasAttribute('data-drag')) return;
     const now = performance.now();
     if (isFullscreen()) return; // nothing to drag or maximize: the window is the screen
@@ -189,117 +183,156 @@ export function Toolbar() {
   };
   const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
   const hint = () => t('a.tb.statusHint', { tool: t(TOOLS.find(x => x[0] === U.tool)![2]), hint: t(TOOL_HINT[U.tool]), snap: U.alt ? 'off' : snapLabel(U.snap, U.bw).replace('Snap: ', '') });
+  // Two rows on shared columns (FL's bar): row 1 holds what is used all the time — menus, transport,
+  // tempo and key, pattern, output, panels — at one height; row 2, quieter, holds what belongs to
+  // the control above it: the status line under the menus, the song position under the transport,
+  // the time under the tempo, the transport's switches under the pattern, loop and follow on the right.
+  // Each part sits behind its own error boundary: a failed part says so in its place; the others,
+  // the window buttons (outside every part) and the drag areas keep working.
   return (
     <div ref={barEl} class={['toolbar', { native: !!win }]} onMouseDown={dragDown}>
-      {/* left: the menus over the hint line (FL): what the last action did, and what the tool does */}
-      {/* each part behind its own error boundary: a failed part says so in its place; the others,
-          the window buttons (outside every part) and the drag area keep working */}
-      <div class="tbleft" data-drag>
-        <ChipBoundary name={t('d.ui.pn.menus')}>
-        <div class="tbmenu" data-drag>
-          <MenuBar />
-          <button class="cmdbtn" title={t('a.cmd.title') + ' (Ctrl+K)'} aria-label={t('a.cmd.title')} onClick={() => setPaletteOpen(true)}>
-            <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
-          </button>
-          <AskButton />
-          <MissingChip />
-          {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
-          <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
+      <div ref={gridEl} class="tbgrid" data-drag>
+        <div class="tbc tbmenus" data-drag>
+          <ChipBoundary name={t('d.ui.pn.menus')}>
+            <MenuBar />
+            <button class="cmdbtn" title={t('a.cmd.title') + ' (Ctrl+K)'} aria-label={t('a.cmd.title')} onClick={() => setPaletteOpen(true)}>
+              <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
+            </button>
+            <AskButton />
+            <MissingChip />
+            {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
+            <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
+          </ChipBoundary>
         </div>
-        <div class="tbhint" data-drag>
-          <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
-          <span class="readout" data-readout title={U.readout}>{U.readout}</span>
-          <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
-          <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
-          {/* Record armed: where the recording goes (the first free track, a new one, the looping pattern) */}
-          <Show when={T().rec}>
-            <span class="recdest" title={recDest().tip}>● {recDest().label}</span>
-          </Show>
-          <div class="row inrow" title={t('a.tb.inLevel')} style={{ gap: '6px', display: T().rec || T().monitor ? 'flex' : 'none' }}>
-            <span class="tag9">IN</span>
-            <div class="inmeter"><div ref={inEl} /></div>
-          </div>
-          {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
-          <UpdateChip />
+        {/* the status line (FL's hint bar): the Browser's preview while it plays, else what the last action did and what the tool does */}
+        <div class="tbc tbstatus" data-drag>
+          <ChipBoundary name={t('d.ui.pn.menus')}>
+            <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
+            <Show when={shownPreview()} fallback={<>
+              <span class="readout" data-readout title={U.readout}>{U.readout}</span>
+              <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
+            </>}>
+              <PreviewLine />
+            </Show>
+            <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
+            {/* Record armed: where the recording goes (the first free track, a new one, the looping pattern) */}
+            <Show when={T().rec}>
+              <span class="recdest" title={recDest().tip}>● {recDest().label}</span>
+            </Show>
+            <div class="row inrow" title={t('a.tb.inLevel')} style={{ gap: '6px', display: T().rec || T().monitor ? 'flex' : 'none' }}>
+              <span class="tag9">IN</span>
+              <div class="inmeter"><div ref={inEl} /></div>
+            </div>
+            {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
+            <UpdateChip />
+          </ChipBoundary>
         </div>
-        </ChipBoundary>
+        <div class="tbc tbtransport">
+          <ChipBoundary name={t('d.ui.pn.transport')}>
+            <div class="seg patsong" title={t('a.tb.patSongTip')}>
+              <button class={['pat', { on: patMode() }]} onClick={() => A.switchMode(true)}>PAT</button>
+              <button class={['song', { on: !patMode() }]} onClick={() => A.switchMode(false)}>SONG</button>
+            </div>
+            <div class="seg tport">
+              <button title={patMode() ? t('a.tb.playPat') : t('a.tb.playSong')} data-act="play" class={{ play: U.playing || U.patPlaying }} onClick={() => void A.togglePlay()}>
+                <svg width="11" height="11" viewBox="0 0 14 14"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
+              </button>
+              <button title={t('a.tb.stopTip')} onClick={() => void A.stop(!(U.playing || U.patPlaying))}><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor" /></svg></button>
+              <button title={t('a.tb.recTip', { what: A.recFilterName() })} class={['rec', { armed: T().rec }]} onClick={A.toggleRec} onContextMenu={recMenu}>
+                <svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="currentColor" /></svg>
+              </button>
+            </div>
+          </ChipBoundary>
+        </div>
+        <div class="tbc tbpos"><ChipBoundary name={t('d.ui.pn.transport')}><SongPos /></ChipBoundary></div>
+        <div class="tbc tbtempo">
+          <ChipBoundary name={t('d.ui.pn.transport')}>
+            <div class="clockbox" onContextMenu={bpmMenu}>
+              <span class="bpm" title={t('a.tb.bpmTip')} onPointerDown={bpmDown} onWheel={bpmWheel}>{S.project.bpm.toFixed(2)}</span>
+              <span class="tag9">BPM</span>
+              <button class={['tapbtn', { on: tapping() }]} data-tap title={t('a.tb.tapTip')} onClick={e => doTap(e)}>TAP</button>
+            </div>
+            <KeyBadge />
+          </ChipBoundary>
+        </div>
+        <div class="tbc tbtime" data-drag><PosReadout /></div>
+        <div class="tbc tbpat"><ChipBoundary name={t('d.ui.pn.transport')}><PatSelector /></ChipBoundary></div>
+        {/* the transport's switches, under the pattern: plain icons, lit when on */}
+        <div class="tbc tbtoggles">
+          <ChipBoundary name={t('d.ui.pn.transport')}>
+            <button title={t('a.tb.monTip')} class={['tsw monbtn', { on: T().monitor }]} aria-pressed={T().monitor ? 'true' : 'false'} onClick={A.toggleMonitor}>
+              <Icon d="M4 15v-3a8 8 0 0 1 16 0v3 M3 14h4v7H3z M17 14h4v7h-4z" size={13} />
+            </button>
+            <button title={t('a.tb.metroTip')} class={['tsw metrobtn', { on: T().metro }]} aria-pressed={T().metro ? 'true' : 'false'} onClick={() => void A.setTransportFlag('metro', !T().metro)}>
+              <Icon d="M9 3h6l4 18H5z M12 16l6-9" size={13} />
+            </button>
+            <button class={['tsw count', { on: T().countIn }]} aria-pressed={T().countIn ? 'true' : 'false'} title={t('a.tb.countTip')} onClick={() => void A.setTransportFlag('countIn', !T().countIn)}>1 BAR</button>
+            {/* an input mode, like record and monitor: with the transport's switches */}
+            <button class={['tsw typkb', { on: typingOn() }]} aria-pressed={typingOn() ? 'true' : 'false'} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
+              onClick={() => setTypingOn(!typingOn())}>
+              <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={13} />
+              <span class="lbl">{t('a.tb.typLabel')}</span>
+              <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
+            </button>
+          </ChipBoundary>
+        </div>
+        <div class="tbc tbfill" data-drag />
+        {/* the output: main volume, the master's level (and clip latch), the engine's load */}
+        <div class="tbc tbout">
+          <ChipBoundary name={t('d.ui.pn.transport')}>
+            <MainVolume />
+            <MasterOut />
+            <Show when={prefs().cpuMeter}><CpuMeter /></Show>
+          </ChipBoundary>
+        </div>
+        <div class="tbc tbpanels">
+          <ChipBoundary name={t('d.ui.pn.panels')}>
+            <Show when={wins()}>
+              <button class={['tbtn icon winsbtn', { on: !anyTucked() }]} onClick={() => (anyTucked() ? A.showPlugs() : A.playlistFront())}
+                title={anyTucked() ? t('a.tb.showWins', { n: wins() }) : t('a.tb.hideWins')} aria-label={t('a.tb.windows', { n: wins() })}>
+                <Icon d="M4 7h12v12H4z M8 3h12v12" size={14} /><span class="cnt mono">{wins()}</span>
+              </button>
+            </Show>
+            {/* FL's window buttons: what is open is lit; a click brings a closed (or buried) window back. The Piano
+                roll opens from a channel or a clip (F7, View menu): a button for it would open whichever channel is selected */}
+            <div class="panelstrip">
+              <button class={['tbtn icon panelbtn', { on: U.pickOpen }]} onClick={() => setU('pickOpen', !U.pickOpen)} title={t('a.tb.browserTip')} aria-label={t('a.mn.browser')} aria-pressed={U.pickOpen ? 'true' : 'false'}>
+                <Icon d="M3 5h18v14H3z M9 5v14 M5 9h2 M5 12h2 M5 15h2" size={14} />
+                <span class="lbl">{t('a.mn.browser')}</span>
+              </button>
+              <button class={['tbtn icon panelbtn', { on: !!U.rackWin }]} onClick={toggleRackShown} title={t('a.tb.rackTip')} aria-label={t('a.mn.rack')} aria-pressed={U.rackWin ? 'true' : 'false'}>
+                <Icon d="M3 5h4v4H3z M10 5h4v4h-4z M17 5h4v4h-4z M3 15h4v4H3z M10 15h4v4h-4z M17 15h4v4h-4z" size={14} />
+                <span class="lbl">{t('a.mn.rack')}</span>
+              </button>
+              <button class={['tbtn icon panelbtn', { on: !U.mixMin }]} onClick={toggleMixer} title={t('a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={!U.mixMin ? 'true' : 'false'}>
+                <Icon d="M5 21v-7M5 10V3M12 21v-9M12 8V3M19 21v-5M19 12V3M2 14h6M9 8h6M16 16h6" size={14} />
+                <span class="lbl">{t('a.mn.mixer')}</span>
+              </button>
+            </div>
+            <Show when={midiStatus()?.selected}>
+              <button class="ibtn midibtn" onClick={() => setU('settings', true)}
+                title={midiStatus()?.connected ? t('a.tb.midiOn', { name: midiStatus()!.connected!.name }) : t('a.tb.midiOff')}>
+                <span class={['midiled', { on: !!midiStatus()?.connected, hit: midiFlash() }]} /><span class="tag9">MIDI</span>
+              </button>
+            </Show>
+          </ChipBoundary>
+        </div>
+        {/* under the output and the panels: the loop range (when there is one) and Follow (F) */}
+        <div class="tbc tbview" data-drag>
+          <ChipBoundary name={t('d.ui.pn.panels')}>
+            <Show when={S.project.loop}>{l => (
+              <span data-drag class="loopText" title={t('a.tb.loopTip')}
+                onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY, [{ t: 'item', label: t('a.pl.deleteLoop'), act: () => { A.setLoop(null, t('a.pl.deleteLoop')); say(t('a.pl.loopDeleted')); } }]); }}>
+                LOOP {fmtPos(l().a)} – {fmtPos(l().b)}
+              </span>
+            )}</Show>
+            <button class={['tsw follow', { on: U.follow }]} aria-pressed={U.follow ? 'true' : 'false'} title={t('a.tb.followTip')} onClick={() => setU('follow', !U.follow)}>
+              <Icon d="M5 4v16 M9 8l10 4-10 4z" size={12} />
+              <span class="lbl">{t('a.tb.follow')}</span>
+            </button>
+          </ChipBoundary>
+        </div>
       </div>
-      <div class="tbmid" data-drag>
-      <ChipBoundary name={t('d.ui.pn.transport')}>
-      <div class="seg">
-        <button title={patMode() ? t('a.tb.playPat') : t('a.tb.playSong')} data-act="play" class={{ play: U.playing || U.patPlaying }} onClick={() => void A.togglePlay()}>
-          <svg width="11" height="11" viewBox="0 0 14 14"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
-        </button>
-        <button title={t('a.tb.stopTip')} onClick={() => void A.stop(!(U.playing || U.patPlaying))}><svg width="10" height="10" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor" /></svg></button>
-        <button title={t('a.tb.recTip', { what: A.recFilterName() })} class={['rec', { armed: T().rec }]} onClick={A.toggleRec} onContextMenu={recMenu}>
-          <svg width="10" height="10" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="currentColor" /></svg>
-        </button>
-        <button title={t('a.tb.monTip')} class={['mon monbtn', { on: T().monitor }]} onClick={A.toggleMonitor}>
-          <Icon d="M4 15v-3a8 8 0 0 1 16 0v3 M3 14h4v7H3z M17 14h4v7h-4z" size={13} />
-        </button>
-        <button title={t('a.tb.metroTip')} class={['metrobtn', { on: T().metro, dim: !T().metro }]} onClick={() => void A.setTransportFlag('metro', !T().metro)}>
-          <Icon d="M9 3h6l4 18H5z M12 16l6-9" size={13} />
-        </button>
-        <button class={['count', { on: T().countIn }]} title={t('a.tb.countTip')} onClick={() => void A.setTransportFlag('countIn', !T().countIn)}>1 BAR</button>
-      </div>
-      {/* an input mode, like record and monitor: beside the transport, not among the panel buttons */}
-      <button class={['tbtn icon typkb', { on: typingOn() }]} aria-pressed={typingOn() ? 'true' : 'false'} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
-        onClick={() => setTypingOn(!typingOn())}>
-        <Icon d="M3 6h18v12H3z M7 6v7 M11 6v7 M15 6v7 M19 6v7 M3 13h18" size={14} />
-        <span class="lbl">{t('a.tb.typLabel')}</span>
-        <Show when={typingOn()}><span class="mono typoct">{noteName(typingBase())}</span></Show>
-      </button>
-      <MainVolume />
-      <MasterOut />
-      <div class="seg patsong" title={t('a.tb.patSongTip')}>
-        <button class={['pat', { on: patMode() }]} onClick={() => A.switchMode(true)}>PAT</button>
-        <button class={['song', { on: !patMode() }]} onClick={() => A.switchMode(false)}>SONG</button>
-      </div>
-      <PatSelector />
-      <div class="clockbox" onContextMenu={bpmMenu}>
-        <span ref={clockEl} class="clock">1:01:01</span>
-        <div class="clocksep" />
-        <span class="bpm" title={t('a.tb.bpmTip')} onPointerDown={bpmDown} onWheel={bpmWheel}>{S.project.bpm.toFixed(2)}</span>
-        <span class="tag9">BPM</span>
-        <button class={['tapbtn', { on: tapping() }]} data-tap title={t('a.tb.tapTip')} onClick={e => doTap(e)}>TAP</button>
-      </div>
-      </ChipBoundary>
-      </div>
-      <div class="tbright" data-drag>
-      <ChipBoundary name={t('d.ui.pn.panels')}>
-      <span data-drag class="loopText" style={{ color: S.project.loop ? 'var(--green)' : 'var(--fg5)' }}>{S.project.loop ? 'LOOP ' + fmtPos(S.project.loop.a) + ' – ' + fmtPos(S.project.loop.b) : ''}</span>
-      <div data-drag class="dragfill" />
-      <Show when={prefs().cpuMeter}><CpuMeter /></Show>
-      <Show when={wins()}>
-        <button class={['tbtn icon winsbtn', { on: !anyTucked() }]} onClick={() => (anyTucked() ? A.showPlugs() : A.playlistFront())}
-          title={anyTucked() ? t('a.tb.showWins', { n: wins() }) : t('a.tb.hideWins')} aria-label={t('a.tb.windows', { n: wins() })}>
-          <Icon d="M4 7h12v12H4z M8 3h12v12" size={14} /><span class="cnt mono">{wins()}</span>
-        </button>
-      </Show>
-      {/* FL's window buttons: what is open is lit; a click brings a closed (or buried) window back */}
-      <button class={['tbtn icon panelbtn', { on: U.pickOpen }]} onClick={() => setU('pickOpen', !U.pickOpen)} title={t('a.tb.browserTip')} aria-label={t('a.mn.browser')} aria-pressed={U.pickOpen ? 'true' : 'false'}>
-        <Icon d="M3 5h18v14H3z M9 5v14 M5 9h2 M5 12h2 M5 15h2" size={14} />
-        <span class="lbl">{t('a.mn.browser')}</span>
-      </button>
-      <button class={['tbtn icon panelbtn', { on: !!U.rackWin }]} onClick={toggleRackShown} title={t('a.tb.rackTip')} aria-label={t('a.mn.rack')} aria-pressed={U.rackWin ? 'true' : 'false'}>
-        <Icon d="M3 5h4v4H3z M10 5h4v4h-4z M17 5h4v4h-4z M3 15h4v4H3z M10 15h4v4h-4z M17 15h4v4h-4z" size={14} />
-        <span class="lbl">{t('a.mn.rack')}</span>
-      </button>
-      <button class={['tbtn icon panelbtn', { on: !!U.rollWin }]} onClick={toggleRollShown} title={t('a.tb.rollTip')} aria-label={t('a.mn.roll')} aria-pressed={U.rollWin ? 'true' : 'false'}>
-        <Icon d="M3 4h18v16H3z M3 9h18 M3 14h18 M7 6.5h5 M13 11.5h6 M5 16.5h7" size={14} />
-        <span class="lbl">{t('a.mn.roll')}</span>
-      </button>
-      <button class={['tbtn icon panelbtn', { on: !U.mixMin }]} onClick={toggleMixer} title={t('a.tb.mixerTip')} aria-label={t('a.mn.mixer')} aria-pressed={!U.mixMin ? 'true' : 'false'}>
-        <Icon d="M5 21v-7M5 10V3M12 21v-9M12 8V3M19 21v-5M19 12V3M2 14h6M9 8h6M16 16h6" size={14} />
-        <span class="lbl">{t('a.mn.mixer')}</span>
-      </button>
-      <Show when={midiStatus()?.selected}>
-        <button class="ibtn midibtn" onClick={() => setU('settings', true)}
-          title={midiStatus()?.connected ? t('a.tb.midiOn', { name: midiStatus()!.connected!.name }) : t('a.tb.midiOff')}>
-          <span class={['midiled', { on: !!midiStatus()?.connected, hit: midiFlash() }]} /><span class="tag9">MIDI</span>
-        </button>
-      </Show>
-      </ChipBoundary>
       <Show when={win}>
         <div class="winbtns">
           <button title={t('a.tb.minimize')} aria-label={t('a.tb.minimize')} onClick={() => void win!.minimize()}><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" /></svg></button>
@@ -316,7 +349,6 @@ export function Toolbar() {
           <button class="close" title={t('a.tb.close')} aria-label={t('a.tb.close')} onClick={() => void win!.close()}><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1.1" /></svg></button>
         </div>
       </Show>
-      </div>
     </div>
   );
 }
@@ -470,7 +502,7 @@ function PatSelector() {
     e.preventDefault();
     acc += e.deltaY || e.deltaX;
     if (Math.abs(acc) < 40) return;
-    stepPattern(acc > 0 ? 1 : -1); acc = 0;
+    scrollPattern(acc > 0 ? 1 : -1); acc = 0;
   };
   return (
     <div class="patselbox" data-patsel>

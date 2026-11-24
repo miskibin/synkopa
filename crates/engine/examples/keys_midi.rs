@@ -1,5 +1,5 @@
-//! Renders a MIDI file on a Synkopa Keys instrument (all parts merged on one channel).
-//!   cargo run --release -p wave-engine --example keys_midi -- <kit folder> <instrument> <file.mid> <out.wav> [tempo scale] [articulation key]
+//! Renders a MIDI file on a Synkopa Instruments instrument (all parts merged on one channel).
+//!   cargo run --release -p wave-engine --example keys_midi -- <kit folder | file.sfz> <instrument> <file.mid> <out.wav> [tempo scale] [articulation key]
 use std::path::Path;
 use std::sync::Arc;
 use wave_engine::keys::{instrument, KeysBank};
@@ -8,7 +8,10 @@ use wave_engine::*;
 fn main() {
     let a: Vec<String> = std::env::args().skip(1).collect();
     let info = instrument(&a[1]).expect("instrument");
-    let bank = KeysBank::load_instrument(info, Path::new(&a[0])).unwrap();
+    // `<kit folder>` may also be an .sfz file: its own mapping over its recordings (to compare mappings)
+    let bank =
+        if a[0].ends_with(".sfz") { KeysBank::load_sfz(Path::new(&a[0])) } else { KeysBank::load_instrument(info, Path::new(&a[0])) }
+            .unwrap();
     let m = wave_engine::midi_file::parse(&std::fs::read(&a[2]).unwrap()).unwrap();
     let bpm = m.bpm.unwrap_or(120.0) * a.get(4).and_then(|s| s.parse::<f64>().ok()).unwrap_or(1.0);
     const CH: Id = 7;

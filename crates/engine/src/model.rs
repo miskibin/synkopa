@@ -398,7 +398,7 @@ pub enum ChannelSrc {
         #[serde(default)]
         synth: SynthState,
     },
-    /// Synkopa Keys: the sampled grand piano (see `crate::keys`).
+    /// Synkopa Instruments: the sampled grand piano (see `crate::keys`).
     Keys {
         #[serde(default)]
         keys: KeysState,
@@ -565,7 +565,7 @@ impl Default for SamplerState {
     }
 }
 
-/// A Synkopa Keys channel's settings.
+/// A Synkopa Instruments channel's settings.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KeysState {
     /// Which instrument of `crate::keys::CATALOG` it plays (projects made before there was a
@@ -583,6 +583,21 @@ pub struct KeysState {
     /// = the instrument's default. Keyswitch notes switch it while playing.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub articulation: Option<u8>,
+    /// Fade-in of every note, ms (0 = as recorded), `crate::keys::ATTACK_MS`.
+    #[serde(default)]
+    pub attack: f32,
+    /// −100 (dark) .. +100 (bright), `crate::keys::TONE`.
+    #[serde(default)]
+    pub tone: f32,
+    /// Stereo width of the recordings, %, `crate::keys::WIDTH`.
+    #[serde(default = "keys_width")]
+    pub width: f32,
+    /// Fine tune, cents, `crate::keys::TUNE`.
+    #[serde(default)]
+    pub tune: f32,
+    /// Level of the key-release noises, %, `crate::keys::NOISE`.
+    #[serde(default = "keys_noise")]
+    pub noise: f32,
 }
 
 fn keys_instrument() -> String {
@@ -591,10 +606,26 @@ fn keys_instrument() -> String {
 fn keys_dynamics() -> f32 {
     crate::keys::DYNAMICS.2
 }
+fn keys_width() -> f32 {
+    crate::keys::WIDTH.2
+}
+fn keys_noise() -> f32 {
+    crate::keys::NOISE.2
+}
 
 impl Default for KeysState {
     fn default() -> Self {
-        Self { instrument: keys_instrument(), release: None, dynamics: keys_dynamics(), articulation: None }
+        Self {
+            instrument: keys_instrument(),
+            release: None,
+            dynamics: keys_dynamics(),
+            articulation: None,
+            attack: crate::keys::ATTACK_MS.2,
+            tone: crate::keys::TONE.2,
+            width: keys_width(),
+            tune: crate::keys::TUNE.2,
+            noise: keys_noise(),
+        }
     }
 }
 
@@ -762,12 +793,12 @@ pub struct Note {
     #[serde(default = "one", skip_serializing_if = "is_one")]
     pub v: f32,
     /// Pan of this note, -1 (left) ..= 1 (right), added to its channel's pan (FL's per-note
-    /// panning). Sampler and Synkopa Keys channels play it; Synth and plugin channels ignore it.
+    /// panning). Sampler and Synkopa Instruments channels play it; Synth and plugin channels ignore it.
     #[serde(default, skip_serializing_if = "is_zero_f32")]
     pub pan: f32,
     /// A step-sequencer trigger (FL Studio's zero-length step): a note-on without a note-off.
     /// A sampler plays its part to the end (or until a cut group or its own decay stops it),
-    /// whatever its One-shot / Gate mode. Synth and Synkopa Keys channels hold it for `len`.
+    /// whatever its One-shot / Gate mode. Synth and Synkopa Instruments channels hold it for `len`.
     /// `false` = a held Piano Roll note: a sampler stops at its end, or when the sample runs out.
     /// Legacy notes without this flag follow the channel's One-shot / Gate mode.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -919,7 +950,8 @@ pub enum AutoTarget {
         chan_id: Id,
         param: String,
     },
-    /// A Synkopa Keys channel's `release` (ms, logarithmic) or `dynamics` (%).
+    /// A Synkopa Instruments channel's knob: `release` or `attack` (ms, logarithmic), `dynamics`,
+    /// `width` or `noise` (%), `tone` (−100..100) or `tune` (cents).
     Keys {
         chan_id: Id,
         param: String,

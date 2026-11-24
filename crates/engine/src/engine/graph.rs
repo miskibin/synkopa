@@ -399,6 +399,9 @@ fn build_patterns(
             // a negative release = each region's own
             let (keys_release, keys_dynamics) =
                 ks.map(|k| (k.release.map_or(-1.0, |ms| ms / 1000.0), k.dynamics / 100.0)).unwrap_or((-1.0, 1.0));
+            let kd = crate::model::KeysState::default();
+            let kk = ks.unwrap_or(&kd);
+            let keys_knobs = crate::rt::KeysKnobs::from_state(kk);
             let mb = match &c.src {
                 ChannelSrc::MusicBox { music_box } => crate::musicbox::Params {
                     ring: (music_box.ring - crate::musicbox::RING.0) / (crate::musicbox::RING.1 - crate::musicbox::RING.0),
@@ -433,6 +436,8 @@ fn build_patterns(
                     .and_then(|i| i.auto),
                 keys_release,
                 keys_dynamics,
+                keys_knobs,
+                keys_strings: ks.and_then(|k| crate::keys::instrument(&k.instrument)).map_or(&[], |i| i.strings),
                 mb_ring: mb.ring,
                 mb_brightness: mb.brightness,
                 mb_body: mb.body,
@@ -738,6 +743,11 @@ fn resolve_target(p: &Project, t: &AutoTarget) -> Option<TargetRt> {
             match param.as_str() {
                 "release" => TargetRt::KeysRelease(i),
                 "dynamics" => TargetRt::KeysDynamics(i),
+                "attack" => TargetRt::KeysKnob(i, crate::rt::KeysKnob::Attack),
+                "tone" => TargetRt::KeysKnob(i, crate::rt::KeysKnob::Tone),
+                "width" => TargetRt::KeysKnob(i, crate::rt::KeysKnob::Width),
+                "tune" => TargetRt::KeysKnob(i, crate::rt::KeysKnob::Tune),
+                "noise" => TargetRt::KeysKnob(i, crate::rt::KeysKnob::Noise),
                 _ => return None,
             }
         }

@@ -100,12 +100,12 @@ MARKERS  (Playlist time markers: named points like Intro / Hook / Drop; never pl
 PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and | are ignored)
   channels                                 Channel Rack: ids, instrument/sample, volume, pan, insert
   channels --add kick-808|snare|marimba…   add a sampler of a standard-library sample (--sample SOURCE_ID: of a project source)
-  channels --keys [--instrument ID]        add Synkopa Keys (default the grand piano; instruments in `catalog`)
+  channels --keys [--instrument ID]        add Synkopa Instruments (default the grand piano; instruments in `catalog`)
   channels --ch C --instrument ID          switch a Keys channel's instrument; --articulation NAME picks one (strings)
   channels --musicbox                      add the Music Box, the modeled tine instrument
   channels --plugin "NAME|CID"             add a scanned VST3 instrument (name, start of a name, or class id)
   channels --synth "PRESET"                add a synth channel ("" = blank patch); --ch C --preset NAME loads one
-  channels --ch C --param ID --value V     one knob of a synth (ids in `catalog`), of Synkopa Keys (release ms, 0 = the
+  channels --ch C --param ID --value V     one knob of a synth (ids in `catalog`), of Synkopa Instruments (release ms, 0 = the
                                            instrument's; dynamics %)
                                            or of the Music Box (ring, brightness, body, mechanical, spread %; release ms)
   channels --remove ID|NAME                remove a channel and its notes

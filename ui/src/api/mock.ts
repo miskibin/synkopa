@@ -33,6 +33,7 @@ import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
+  PreviewWave,
   AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, ChordAnalysis, ChordDetail, ChordModelStatus, ChordQuality, ChordSegment, ChordsToPatternResult, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
@@ -58,6 +59,16 @@ const STEM_META: Record<StemId, { label: string; color: string; scale: number }>
   drums: { label: 'Drums', color: '#e8a33d', scale: 0.9 }, bass: { label: 'Bass', color: '#8f6ee8', scale: 0.7 },
   other: { label: 'Other', color: '#47b8a8', scale: 0.55 }, vocals: { label: 'Vocals', color: '#e05a8a', scale: 0.6 },
 };
+/** A believable waveform for a preview (a hit that decays, its seed's own wobble), like the engine's
+ *  `PreviewWave`: [min,max] pairs over the length, at most 1024 of them (100 per second below that). */
+function mockWave(secs: number, seed: number): PreviewWave {
+  const n = Math.max(1, Math.min(1024, Math.ceil(secs * 100))), peaks: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / n, env = Math.min(1, t * 60) * Math.exp(-t * (2 + (seed % 5))), w = 0.65 + 0.35 * Math.abs(Math.sin(i * 0.9 + seed));
+    peaks.push(-env * w, env * w);
+  }
+  return { secs, peaks };
+}
 const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 
 function rng(seed: number) {
@@ -163,9 +174,9 @@ export class MockBackend implements Backend {
   private kits = [
     { id: FACTORY_KIT, name: 'Standard library', description: 'Drums, percussion and tonal one-shots that ship with Synkopa', bytes: FACTORY_FILES.reduce((n, f) => n + f.bytes, 0), count: FACTORY_LISTED_FILES.length, installed: true },
     { id: 'wave-drums', name: 'Synkopa Drums', description: 'Stopy, werble, hi-haty i pętle perkusyjne', bytes: 86e6, count: 240, installed: false },
-    { id: 'wave-keys', name: 'Synkopa Keys & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
+    { id: 'wave-keys', name: 'Synkopa Instruments & Pads', description: 'Akordy, pady i tekstury', bytes: 142e6, count: 96, installed: true },
     { id: 'wave-fx', name: 'Synkopa FX', description: 'Uplightery, impakty, szumy', bytes: 38e6, count: 64, installed: false },
-    // the kits of the downloadable Synkopa Keys instruments (the grand piano ships with the app)
+    // the kits of the downloadable Synkopa Instruments instruments (the grand piano ships with the app)
     ...[...new Map(KEYS_CATALOG.filter(i => !i.bundled).map(i => [i.kit, i])).values()]
       .map(i => ({ id: i.kit, name: i.name, description: i.description, bytes: i.bytes, count: 1, installed: false })),
   ];
@@ -1718,12 +1729,17 @@ export class MockBackend implements Backend {
     const rate = 2 ** ((Math.min(127, a.key) - (c.root ?? SAMPLE_ROOT) + (c.pitch ?? 0)) / 12);
     this.preview = { t0: performance.now(), dur: (b0 - a0) / rate, off: a0, rate };
   }
-  async previewFile(path: string) { this.preview = { t0: performance.now(), dur: 0.6 + (hash(path) % 400) / 100, off: 0 }; }
+  async previewFile(path: string): Promise<PreviewWave> {
+    const dur = 0.6 + (hash(path) % 400) / 100;
+    this.preview = { t0: performance.now(), dur, off: 0 };
+    return mockWave(dur, hash(path));
+  }
   async previewStop() { this.preview = null; }
   async previewSource(id: Id) {
     const src = this.p.sources.find(s => s.id === id);
     if (!src) throw new Error('audio not loaded');
     this.preview = { t0: performance.now(), dur: src.dur, off: 0 };
+    return mockWave(src.dur, id);
   }
   /** Insert of the track of the pattern's first clip (rt.rs `PatRt.home`). */
   private patHome(id: Id): Id | null {

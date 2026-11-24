@@ -74,15 +74,18 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
     if (roll.has(c.id)) {
       // more than steps (lengths, chords): a mini piano roll over the pattern; a click opens the Piano roll
       const keys = notes.map(n => keyOf(n, c)), lo = Math.min(...keys), hi = Math.max(...keys);
-      const span = hi - lo + 1, ih = G.rh - 2 * vpad, nh = Math.max(2, Math.min(4, ih / span));
+      // the key range always fits the row: a wide range squeezes the keys, never spills into the next channel
+      const span = hi - lo + 1, ih = G.rh - 2 * vpad, nh = Math.min(4, ih / span);
       const top = y + vpad + (ih - nh * span) / 2;
       g.fillStyle = T.bg2; g.beginPath(); rr(g, -G.sx, y + vpad - 1, gridW(G.end, G.cw), G.rh - 2 * vpad + 2, 2); g.fill();
+      g.save(); g.beginPath(); g.rect(0, y + vpad, W, ih); g.clip();
       for (const n of notes) {
         const x = stepX(n.step, G.cw) - G.sx, w = Math.max(2, stepX(n.step + n.len, G.cw) - G.sx - x - 1);
         if (x > W || x + w < 0) continue;
         g.fillStyle = stepOn(velOf(n), dim);
         g.fillRect(x, top + (hi - keyOf(n, c)) * nh, w, Math.max(1.5, nh - 0.5));
       }
+      g.restore();
       continue;
     }
     // a trigger off the grid (a triplet) sits at its place inside the cell, as wide as the gap to the next one
