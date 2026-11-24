@@ -79,9 +79,12 @@ test('Piano roll: the note properties box — knobs act at once, typed text surv
   const start = box.locator('input[name=start]');
   await expect(start).toBeFocused();
   const shown = await start.inputValue();
+  await expect(box.getByText('Bar:beat:16th', { exact: true })).toBeVisible();
+  await expect(box.getByText('16ths or fraction', { exact: true })).toBeVisible();
 
   // typed, not accepted yet: survives a knob turn, a language switch and an engine state
-  await start.fill('2:1:1');
+  await start.fill('2.1');
+  await box.locator('input[name=len]').fill('1/12');
   const knob = box.locator('.knob').filter({ hasText: 'VEL' });
   const dial = (await knob.locator('.dial').boundingBox())!;
   await drag(app, { x: dial.x + dial.width / 2, y: dial.y + dial.height / 2 }, { x: dial.x + dial.width / 2, y: dial.y + dial.height / 2 + 60 });
@@ -94,7 +97,7 @@ test('Piano roll: the note properties box — knobs act at once, typed text surv
   await setLang(app, 'en');
   await app.evaluate(() => (window as unknown as { __waveMock: { applyOps(o: unknown[]): Promise<unknown> } }).__waveMock.applyOps([{ op: 'setBpm', bpm: 131 }]));
   await pollEngine(app, s => s.project.bpm).toBe(131);
-  await expect(start).toHaveValue('2:1:1');
+  await expect(start).toHaveValue('2.1');
 
   // Reset puts the velocity back, keeps the box open
   await reset.click();
@@ -105,6 +108,8 @@ test('Piano roll: the note properties box — knobs act at once, typed text surv
   await box.getByRole('button', { name: 'Accept' }).click();
   await expect(box).toBeHidden();
   await expect.poll(async () => (await notesOf(app, pat, ch)).some(n => n.p === drawn.p && n.step === 16)).toBe(true);
+  const moved = (await notesOf(app, pat, ch)).find(n => n.p === drawn.p && n.step === 16);
+  expect(moved!.len).toBeCloseTo(4 / 3, 6);
   await app.keyboard.press(`${MOD}+z`);
   await expect.poll(async () => (await notesOf(app, pat, ch)).some(same(drawn))).toBe(true);
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Channel, Note } from '../api/types';
 import {
-  applyProps, fitRange, fmtStart, followPage, invertSelection, legato, MAX_STEP, notesOfKey, nudgeNotes, nudgeVelocity, pasteStart,
+  applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, notesOfKey, nudgeNotes, nudgeVelocity, pasteStart,
   parseKey, parseLen, parseStart, panLine, quantizeStarts, readProps, velocityLine, wheelNotches,
 } from './rollEdit';
 
@@ -105,14 +105,23 @@ describe('note properties', () => {
     expect(fmtStart(21)).toBe('2:2:2');
     expect(fmtStart(4.5)).toBe('1:2:1.5');
     expect(parseStart('2:2:2')).toBe(21);
+    expect(parseStart('2:02:02')).toBe(21);
+    expect(parseStart('2.2.2')).toBe(21);
+    expect(parseStart('3.2')).toBe(36);
     expect(parseStart('1:2:1.5')).toBe(4.5);
     expect(parseStart('3')).toBe(32);
     expect(parseStart('3:2')).toBe(36);
+    expect(parseStart(fmtStart(3.99999))).toBe(3.99999);
+    expect(parseStart(fmtStart(4 / 3))).toBe(1.333333);
     for (const bad of ['', '0:1:1', '1:5:1', '1:1:5', 'x', '1:1:1:1', '1.5:1']) expect(parseStart(bad)).toBeNull();
   });
   it('parses lengths, keys and velocities', () => {
     expect(parseLen('2')).toBe(2);
     expect(parseLen('1/8')).toBe(2);
+    expect(fmtLen(2)).toBe('1/8');
+    expect(fmtLen(4 / 3)).toBe('1/12');
+    expect(parseLen(fmtLen(4 / 3))).toBe(1.333333);
+    expect(parseLen(fmtLen(2.001))).toBe(2.001);
     expect(parseLen('3/16')).toBe(3);
     expect(parseLen('.5')).toBe(0.5);
     for (const bad of ['0', '-1', 'a', '1/0']) expect(parseLen(bad)).toBeNull();

@@ -812,7 +812,9 @@ function Roll(props: { z: number; docked?: boolean }) {
       const value = shown[name];
       return (
         <label class="rpf" title={t(tip)}>
-          <span>{t(label)}</span>
+          <span>{t(label)}
+            <Show when={name !== 'key'}><small>{t(name === 'start' ? 'b.pr.pStartUnit' : 'b.pr.pLenUnit')}</small></Show>
+          </span>
           <input ref={ref} name={name} value={value} placeholder={value ? '' : t(name === 'len' && pp.idx.every(i => notesRaw()[i]?.trig) ? 'b.pr.trigger' : 'b.pr.pMixed')} spellcheck="false" autocomplete="off" onInput={() => setErr('')} />
         </label>
       );
