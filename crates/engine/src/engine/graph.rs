@@ -289,7 +289,8 @@ fn sync_plugs(c: &mut Core, sr: f32, max_block: usize, factory: &dyn PluginFacto
 }
 
 fn audible_tracks(p: &Project) -> Vec<(f32, bool)> {
-    p.tracks.iter().map(|t| (fader_gain(t.vol), p.track_audible(t))).collect()
+    let any_solo = p.tracks.iter().any(|t| t.solo);
+    p.tracks.iter().map(|t| (fader_gain(t.vol), p.track_audible_with(t, any_solo))).collect()
 }
 
 fn audible_inserts(p: &Project) -> Vec<(Id, f32, f32, f32, bool)> {

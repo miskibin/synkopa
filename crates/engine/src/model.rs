@@ -1749,7 +1749,11 @@ impl Project {
     /// A track plays: not muted, and when any track is soloed only the soloed ones do —
     /// the mixer's solo rule, which the graph, renders and analysis must agree on.
     pub fn track_audible(&self, t: &Track) -> bool {
-        let any_solo = self.tracks.iter().any(|t| t.solo);
+        self.track_audible_with(t, self.tracks.iter().any(|t| t.solo))
+    }
+    /// The same rule with the solo aggregate hoisted: callers that loop over tracks or clips
+    /// compute `any_solo` once per operation instead of rescanning per item.
+    pub fn track_audible_with(&self, t: &Track, any_solo: bool) -> bool {
         !t.muted && (!any_solo || t.solo)
     }
 

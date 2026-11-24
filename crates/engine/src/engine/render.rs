@@ -381,7 +381,8 @@ impl Engine {
         let (picked, from, to, bpm, at_rev) = {
             let c = self.core.lock();
             let p = &c.project;
-            let audible = |x: &Clip| !x.muted && p.tracks.get(x.track as usize).is_some_and(|t| p.track_audible(t));
+            let any_solo = p.tracks.iter().any(|t| t.solo);
+            let audible = |x: &Clip| !x.muted && p.tracks.get(x.track as usize).is_some_and(|t| p.track_audible_with(t, any_solo));
             let inside = |x: &Clip| range.is_none_or(|(a, b)| x.start < b - 1e-6 && x.start + x.len > a + 1e-6);
             let picked: Vec<Clip> = p
                 .clips
