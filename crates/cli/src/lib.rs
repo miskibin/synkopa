@@ -571,11 +571,21 @@ fn session(a: &Args) -> Result<ws::Endpoint, Fail> {
 fn send(cx: &Cx, a: &Args, command: &str, args: Value) -> Result<Value, Fail> {
     let rev = a.num("if-revision").map_err(Fail::Usage)?.map(|v| v as u64);
     // the CLI names an undo step even when the caller did not pass --label, like the app's
-    // buttons do: without it the Edit menu shows the engine's default name for the verb
+    // buttons do: without it the Edit menu shows the engine's default name for the verb. An
+    // explicit --label wins and travels in the args (file mode has no session header field)
     let default_label = default_undo_label(command);
     let mut args = args;
-    if let (Some(l), Some(m)) = (default_label, args.as_object_mut()) {
-        m.entry("label").or_insert(json!(l));
+    if let Some(m) = args.as_object_mut() {
+        match a.get("label") {
+            Some(l) => {
+                m.insert("label".into(), json!(l));
+            }
+            None => {
+                if let Some(l) = default_label {
+                    m.entry("label").or_insert(json!(l));
+                }
+            }
+        }
     }
     if let Some(doc) = cx.doc {
         let mut d = doc.call(command, &args, rev).map_err(|e| Fail::App(app_error(e)))?;
@@ -1709,6 +1719,50 @@ mod tests {
         assert_eq!(default_undo_label("auto_vocal"), Some("Auto Vocal"));
         assert_eq!(default_undo_label("sidechain"), Some("Sidechain"));
         assert_eq!(default_undo_label("route"), None, "the engine names the rest itself");
+    }
+
+    /// Records the args each verb call gets, so file-mode label travel can be pinned.
+    struct LabelSpy {
+        last: RefCell<Option<(String, Value)>>,
+    }
+
+    impl Doc for LabelSpy {
+        fn call(&self, command: &str, args: &Value, _: Option<u64>) -> Result<Value, String> {
+            *self.last.borrow_mut() = Some((command.to_string(), args.clone()));
+            Ok(json!({}))
+        }
+        fn revision(&self) -> u64 {
+            1
+        }
+        fn dirty(&self) -> bool {
+            false
+        }
+        fn save(&self, _: &Path) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn file_mode_forwards_an_explicit_label_and_defaults_the_rest() {
+        let spy = LabelSpy { last: RefCell::new(None) };
+        let cx = Cx { doc: Some(&spy) };
+        // an explicit --label travels to the verb even in file mode (it used to be dropped there)
+        let a = args(&["-p", "s.wave", "auto-vocal", "--clip", "1", "--label", "Verse"]);
+        send(&cx, &a, "auto_vocal", json!({ "clipId": 1 })).unwrap();
+        let (cmd, sent) = spy.last.borrow().clone().unwrap();
+        assert_eq!(cmd, "auto_vocal");
+        assert_eq!(sent["label"], json!("Verse"));
+        // without --label the verb keeps its default undo name
+        let a = args(&["-p", "s.wave", "sidechain"]);
+        send(&cx, &a, "sidechain", json!({})).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap().1["label"], json!("Sidechain"));
+        // a verb with no default carries no label unless the caller names it
+        let a = args(&["-p", "s.wave", "apply", "--json", "[]"]);
+        send(&cx, &a, "apply", json!({ "ops": [] })).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap().1.get("label"), None);
+        let a = args(&["-p", "s.wave", "apply", "--json", "[]", "--label", "Fix timing"]);
+        send(&cx, &a, "apply", json!({ "ops": [] })).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap().1["label"], json!("Fix timing"));
     }
 
     /// Keeps the tests away from Synkopa apps really running on this machine.

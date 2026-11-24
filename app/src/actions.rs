@@ -1959,6 +1959,9 @@ pub fn tune_ref(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<u64> {
 /// The CLI entry: one request → JSON data.
 pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, label: Option<&str>) -> R<Value> {
     let e = app.engine();
+    // the CLI's file mode carries the undo label in the args (no session header field), so every
+    // label-named verb honors `--label` there too; the session header keeps precedence
+    let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
     let ok_rev = |r: u64| json!({ "revision": r });
     if !app.live() && LIVE_ONLY.contains(&cmd) {
         return Err(live_only_error(cmd));
@@ -2026,8 +2029,6 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         "sidechain" => {
             let off = arg(a, "off").map(|v| v.as_bool().ok_or("`off` must be a boolean")).transpose()?.unwrap_or(false);
             let num = |k: &str| arg(a, k).and_then(Value::as_u64);
-            // the CLI's file mode carries the label in the args (no session header field)
-            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
             sidechain(app, num("fxId"), num("from"), num("to"), off, if_revision, label)
         }
         "set_param" => {
@@ -2175,8 +2176,6 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
                 _ => wave_engine::autovocal::Style::Natural,
             };
             let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
-            // the CLI's file mode carries the label in the args (no session header field)
-            let label = label.or_else(|| arg(a, "label").and_then(Value::as_str));
             auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
         "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false))?)),
@@ -2518,6 +2517,10 @@ mod read_verb_tests;
 #[cfg(test)]
 #[path = "sidechain_actions_tests.rs"]
 mod sidechain_tests;
+
+#[cfg(test)]
+#[path = "undo_label_tests.rs"]
+mod undo_label_tests;
 
 #[cfg(test)]
 mod keys_channel_tests {

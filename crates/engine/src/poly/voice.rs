@@ -5,6 +5,7 @@ use std::f32::consts::{FRAC_PI_4, PI, SQRT_2};
 
 use super::params::{ix, Patch, DEST_SCALE, SLOTS};
 use super::tables::{self, Bank, HB_TAPS, SAW, SINE, SQUARE};
+use crate::dsp::saturate_tanh;
 
 pub const MAX_UNI: usize = 7;
 /// Matrix source / destination indices (see `params::SOURCES` / `params::DESTS`).
@@ -189,14 +190,6 @@ impl Svf {
 }
 
 // ---------------------------------------------------------------- 2× oversampled shaper
-
-/// Rational tanh approximation (exact at 0, saturates at ±3).
-#[inline(always)]
-pub fn tanh(x: f32) -> f32 {
-    let x = x.clamp(-3.0, 3.0);
-    let x2 = x * x;
-    x * (27.0 + x2) / (27.0 + 9.0 * x2)
-}
 
 /// A waveshaper run at twice the sample rate through a halfband FIR (31 taps) up and down.
 /// Latency: 15 samples. One channel.
@@ -814,7 +807,7 @@ impl Voice {
             // drive into the filter
             if self.drive_on {
                 let (g, comp, w) = if drive_mod { shaper((fdrive0 + d[dst::DRIVE]).clamp(0.0, 1.0)) } else { drive_chunk };
-                let f = |x: f32| x + (tanh(g * x) * comp - x) * w;
+                let f = |x: f32| x + (saturate_tanh(g * x) * comp - x) * w;
                 xl = self.os[0].process(xl, &b.hb, f);
                 xr = self.os[1].process(xr, &b.hb, f);
             }

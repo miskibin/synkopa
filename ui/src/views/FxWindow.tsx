@@ -75,8 +75,6 @@ function makeViz(f: Fx): Viz | null {
   }
 }
 const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270 };
-/** Default window widths per type (actions.openPlug). */
-export const WIN_W: Partial<Record<Fx['type'], number>> = { eq: 780, reverb: 640, plugin: 560, tune: 800, fet: 700, deess: 680, denoise: 640, voice: 700, half: 760, delay: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
