@@ -23,6 +23,20 @@ Synkopa is a desktop music production program (a DAW) for Windows, macOS and Lin
 source is open, and it is made for one job: making a beat and recording
 a vocal over it, the way you would in FL Studio.
 
+
+## Product Philosophy
+
+> These rules act as a filter for features, native plugins, factory content, and pull requests.
+
+- **Curated over comprehensive.** One great stock EQ or reverb beats five mediocre ones. Every built-in plugin, preset, and sample must have a distinct musical role and pass a listening test. If a native tool feels like filler, improve or cut it—never pad the list.
+- **Shared project context, backed by DSP.** The DAW already knows the tempo, key, track routing, and audio signal. Native tools should use that state automatically—tempo matching, scale guides, vocal tuning key, and DSP-based mix checks—always with A/B preview and one-click dismissal. Keep AI automation in the CLI and external agents, not in a chat sidebar.
+- **Automate the housekeeping.** Track naming, coloring, mixer routing, and crash-safe autosave should happen without manual setup. Treat unnecessary dialogs, window switches, and lost sessions as bugs.
+- **Built to finish songs.** Pattern-based beatmaking is only half the workflow. Recording, comping, vocal tuning, mixing, and mastering belong in the same app so a track can go from loop to export without switching DAWs.
+- **One UI language.** Native plugins share the same layout rules, controls, shortcuts, and metering. Visuals exist to show what the audio is doing—clear curves and meters over skeuomorphic knobs.
+- **Local-first and open.** Free, open-source, offline by default, and scriptable via CLI. No accounts, no subscriptions, no paywalled core features.
+
+**Non-goals before 1.0:** duplicate synths or effects, built-in AI song generators, in-app chatbots, DJ modes, and feature-checklist parity with legacy DAWs.
+
 ## Note from developer
 
 ![From the first FL Studio in 2010 to Synkopa in 2026](site/img/journey.svg)
