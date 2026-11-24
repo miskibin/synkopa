@@ -1167,3 +1167,18 @@ fn a_lane_resized_after_a_rename_keeps_its_height_when_the_rename_is_undone() {
     assert!(e.redo());
     assert_eq!(e.project().tracks[0].h, 200.0);
 }
+
+#[test]
+fn an_undo_on_an_empty_stack_clears_a_live_gesture_and_changes_nothing() {
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    e.begin_gesture(Some("a drag".into()));
+    let rev = e.state().revision;
+    assert!(!e.undo(), "nothing to undo");
+    assert_eq!(e.state().revision, rev, "an empty-stack undo bumps no revision and pushes no step");
+    assert!(!e.state().can_undo);
+    e.end_gesture();
+    assert!(!e.state().can_undo, "the gesture was cleared, so ending it pushes no step");
+    assert_eq!(e.state().revision, rev);
+    assert!(!e.redo(), "nothing to redo either");
+    assert_eq!(e.state().revision, rev, "an empty-stack redo changes nothing the same way");
+}

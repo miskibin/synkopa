@@ -351,6 +351,13 @@ pub struct UndoStep {
     pub label: Option<String>,
 }
 
+/// Which way [`Engine::time_travel`] moves: pop an undo step (redo pushes back onto undo) or
+/// the reverse.
+enum Travel {
+    Back,
+    Forward,
+}
+
 pub(crate) struct Core {
     project: Project,
     undo: Vec<UndoStep>,
@@ -921,30 +928,42 @@ impl Engine {
         }
     }
 
-    pub fn undo(&self) -> bool {
-        let need = {
-            let mut c = self.core.lock();
-            c.gesture = None;
-            c.gesture_label = None;
-            c.gesture_unreported = false;
-            let Some(step) = c.undo.pop() else { return false };
-            let cur = std::mem::replace(&mut c.project, step.project);
-            c.redo.push(UndoStep { project: cur, label: step.label });
-            let need = {
-                let Core { sources, project, .. } = &mut *c;
-                sources.reconcile(&project.sources)
-            };
-            gc_sources(&mut c);
-            c.revision += 1;
-            need
+    /// The shared body of [`Self::undo`] and [`Self::redo`]: drop any live gesture, pop one
+    /// step off `dir`'s stack, push the displaced project onto the other, and reconcile the
+    /// sources. `None` when the stack was empty (no revision bump, no state event).
+    fn time_travel(&self, dir: Travel) -> Option<Vec<(Id, String)>> {
+        let mut c = self.core.lock();
+        c.gesture = None;
+        c.gesture_label = None;
+        c.gesture_unreported = false;
+        let Core { undo, redo, project, sources, .. } = &mut *c;
+        let (pop, push) = match dir {
+            Travel::Back => (undo, redo),
+            Travel::Forward => (redo, undo),
         };
-        // a relink undone after its parked audio aged out: the file is decoded again, without
-        // the lock (a long file must not stall the engine)
+        let step = pop.pop()?;
+        let cur = std::mem::replace(&mut *project, step.project);
+        push.push(UndoStep { project: cur, label: step.label });
+        let need = sources.reconcile(&project.sources);
+        gc_sources(&mut c);
+        c.revision += 1;
+        Some(need)
+    }
+
+    /// The tail of [`Self::undo`]/[`Self::redo`]: a relink whose parked audio aged out is
+    /// decoded again, without the lock (a long file must not stall the engine); then the whole
+    /// UI is synced — the timeline, the mixer and the params all moved.
+    fn settle_travel(&self, need: Vec<(Id, String)>) {
         let loaded = self.decode_again(need);
         let mut c = self.core.lock();
         self.adopt_redecoded(&mut c, loaded);
         self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
         self.changed(c);
+    }
+
+    pub fn undo(&self) -> bool {
+        let Some(need) = self.time_travel(Travel::Back) else { return false };
+        self.settle_travel(need);
         true
     }
     /// Replaces the whole project with `project` as one undo step, without stopping the
@@ -1011,27 +1030,8 @@ impl Engine {
     }
 
     pub fn redo(&self) -> bool {
-        let need = {
-            let mut c = self.core.lock();
-            c.gesture = None;
-            c.gesture_label = None;
-            c.gesture_unreported = false;
-            let Some(step) = c.redo.pop() else { return false };
-            let cur = std::mem::replace(&mut c.project, step.project);
-            c.undo.push(UndoStep { project: cur, label: step.label });
-            let need = {
-                let Core { sources, project, .. } = &mut *c;
-                sources.reconcile(&project.sources)
-            };
-            gc_sources(&mut c);
-            c.revision += 1;
-            need
-        };
-        let loaded = self.decode_again(need);
-        let mut c = self.core.lock();
-        self.adopt_redecoded(&mut c, loaded);
-        self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
-        self.changed(c);
+        let Some(need) = self.time_travel(Travel::Forward) else { return false };
+        self.settle_travel(need);
         true
     }
 

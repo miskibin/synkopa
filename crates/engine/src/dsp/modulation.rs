@@ -20,7 +20,7 @@
 
 use std::f32::consts::{PI, TAU};
 
-use super::{flush, Biquad, FilterType};
+use super::{flush, saturate_tanh, Biquad, FilterType};
 use crate::processor::{ParamBlock, ProcessCtx, Processor, METERS};
 
 /// LFO periods offered when `sync` is on, in beats.
@@ -82,13 +82,6 @@ impl Smooth {
     pub(crate) fn snap(&mut self) {
         self.v = self.target;
     }
-}
-
-/// Soft clipper for feedback paths: unity for small signals, saturating smoothly towards ±1.5.
-#[inline(always)]
-fn soft(x: f32) -> f32 {
-    let x = x.clamp(-3.0, 3.0);
-    x * (27.0 + x * x) / (27.0 + 9.0 * x * x)
 }
 
 /// The LFO's phase (0..1): free-running at `rate` Hz, or locked to the song position with a
@@ -337,7 +330,7 @@ impl Processor for Chorus {
             for (c, x) in [xl, xr].into_iter().enumerate() {
                 let hp_in = self.hp[c].tick(x);
                 lows[c] = x - hp_in;
-                let fed = hp_in + fb * soft(self.fb_state[c]);
+                let fed = hp_in + fb * saturate_tanh(self.fb_state[c]);
                 self.lines[c].push(flush(fed));
                 let off = if c == 1 { r_off } else { 0.0 };
                 let mut sum = 0.0;
@@ -521,7 +514,7 @@ impl Processor for Phaser {
                 self.freq[c] = f;
                 let a = allpass_coef(f, sr);
                 let x = if c == 0 { l[s] } else { r[s] };
-                let mut u = x + fb * soft(self.last[c]);
+                let mut u = x + fb * saturate_tanh(self.last[c]);
                 let (xs, ys) = (&mut self.x1[c], &mut self.y1[c]);
                 for st in 0..self.stages {
                     // y[n] = a·x[n] + x[n−1] − a·y[n−1]

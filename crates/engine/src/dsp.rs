@@ -32,13 +32,32 @@ pub fn gain_to_db(g: f32) -> f32 {
         -180.0
     }
 }
+/// Subnormal floats run an order of magnitude slower on the float unit, so state variables
+/// are flushed to zero once they fall below this (the house threshold). The reverb flushes a
+/// little earlier — see [`flush_to`].
+pub const FLUSH_BELOW: f32 = 1e-20;
+/// Flushes `x` to zero when it is smaller than `below` in magnitude.
 #[inline]
-fn flush(x: f32) -> f32 {
-    if x.abs() < 1e-20 {
+pub fn flush_to(x: f32, below: f32) -> f32 {
+    if x.abs() < below {
         0.0
     } else {
         x
     }
+}
+/// [`flush_to`] at the house threshold [`FLUSH_BELOW`].
+#[inline]
+pub fn flush(x: f32) -> f32 {
+    flush_to(x, FLUSH_BELOW)
+}
+/// Rational tanh approximation: exact at 0 with slope 1, saturating smoothly to ±1 (reached
+/// at inputs ±3). The shared shaper for the synth voice's drive and the modulated filters'
+/// feedback paths.
+#[inline]
+pub fn saturate_tanh(x: f32) -> f32 {
+    let x = x.clamp(-3.0, 3.0);
+    let x2 = x * x;
+    x * (27.0 + x2) / (27.0 + 9.0 * x2)
 }
 
 pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
@@ -962,5 +981,26 @@ mod tests {
         // the first preset is a synced 1/2 beat; the test context has no tempo, the delay assumes 120 bpm
         let t = 250 * 48;
         assert!(out[t - 2..t + 3].iter().any(|x| x.abs() > 0.05), "no echo at {t}");
+    }
+
+    #[test]
+    fn flush_kills_only_the_subnormals() {
+        assert_eq!(flush(1e-21), 0.0, "below the house threshold");
+        assert_eq!(flush(-1e-21), 0.0);
+        assert_eq!(flush(1e-19), 1e-19, "above it, untouched");
+        assert_eq!(flush_to(1e-19, 1e-18), 0.0, "the reverb's earlier threshold");
+        assert_eq!(flush_to(1e-17, 1e-18), 1e-17);
+        assert_eq!(flush(0.25), 0.25);
+    }
+
+    #[test]
+    fn saturate_tanh_is_exact_at_zero_with_slope_one_and_saturates_at_one() {
+        assert_eq!(saturate_tanh(0.0), 0.0);
+        assert!((saturate_tanh(0.001) - 0.001).abs() < 1e-6, "slope 1 at the origin");
+        assert_eq!(saturate_tanh(3.0), 1.0);
+        assert_eq!(saturate_tanh(-3.0), -1.0);
+        assert_eq!(saturate_tanh(2.0), -saturate_tanh(-2.0), "odd");
+        assert!(saturate_tanh(1.0) > saturate_tanh(0.5), "monotone");
+        assert_eq!(saturate_tanh(5.0), saturate_tanh(3.0), "clamped beyond ±3");
     }
 }

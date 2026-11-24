@@ -115,11 +115,9 @@ fn sign(mask: u16, k: usize) -> f32 {
 
 #[inline]
 fn flush(x: f32) -> f32 {
-    if x.abs() < 1e-18 {
-        0.0
-    } else {
-        x
-    }
+    // the long decay tail sits at very small values, so this flushes earlier than the
+    // house `dsp::flush` threshold
+    super::flush_to(x, 1e-18)
 }
 
 /// Cubic Hermite (Catmull–Rom) interpolation between x0 and x1.

@@ -731,7 +731,6 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `plugin_set_param` | `{fxId,id,value}` | – (`value` normalised 0..1) |
 | `plugin_load_anyway` | `{fxId}` | – (an effect or plugin channel the safety check refused, its `fx_errors` entry containing `UNSAFE_PLUGIN: `, loads from now on; every plugin that failed to load is tried again) |
 | `plugin_state` | `{fxId}` | the live instance's current state, base64 (what `PluginRef.state` stores) |
-| `vst3_scan` / `vst3_add` / `vst3_editor` / `vst3_params` / `vst3_set_param` | as before | older names: the same, with `vst3_scan` listing only VST3 effects as a plain array |
 | `cli_status` | – | `{installed, command, path, note?}` |
 
 **CLI on a file (`synkopa --project FILE`).** The same binary (`Synkopa --cli`) runs

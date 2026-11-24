@@ -1253,37 +1253,6 @@ async fn automation_override(app: St<'_>, id: u64, on: bool) -> R<wave_engine::T
     tauri::async_runtime::spawn_blocking(move || e.automation_override(id, on)).await.map_err(es)
 }
 
-// The VST3-era names, kept for scripts and older front ends: same behaviour, except that
-// `vst3_scan` lists only VST3 effects (as a plain array, as before).
-
-#[tauri::command]
-async fn vst3_scan(app: St<'_>, rescan: bool) -> R<Vec<plugins::ScanEntry>> {
-    let p = app.plugins.clone();
-    let r = tauri::async_runtime::spawn_blocking(move || p.scan(rescan)).await.map_err(es)?;
-    Ok(r.plugins.into_iter().filter(|p| p.format == wave_engine::PluginRef::VST3).collect())
-}
-
-#[tauri::command]
-async fn vst3_add(app: St<'_>, insert_id: u64, path: String, cid: String, index: Option<usize>) -> R<Value> {
-    let (id, rev) = actions::plugin_add(&**app, insert_id, wave_engine::PluginRef::VST3, &path, &cid, index)?;
-    Ok(json!({ "fxId": id, "revision": rev }))
-}
-
-#[tauri::command]
-async fn vst3_editor(app: St<'_>, handle: AppHandle, fx_id: u64, open: bool) -> R<()> {
-    app.plugins.editor(&handle, fx_id, open, wave_plugin_windows::Label { tag: fx_id, ..Default::default() }, false)
-}
-
-#[tauri::command]
-async fn vst3_params(app: St<'_>, fx_id: u64) -> R<Vec<plugins::ParamInfo>> {
-    app.plugins.params(fx_id)
-}
-
-#[tauri::command]
-async fn vst3_set_param(app: St<'_>, fx_id: u64, id: u32, value: f64) -> R<()> {
-    app.plugins.set_param(fx_id, id, value)
-}
-
 #[tauri::command]
 async fn app_info(app: St<'_>, handle: AppHandle) -> R<updater::AppInfo> {
     let s = app.settings.lock();
@@ -1552,11 +1521,6 @@ pub fn run(project_arg: Option<&str>) {
             plugin_params,
             plugin_state,
             plugin_set_param,
-            vst3_scan,
-            vst3_add,
-            vst3_editor,
-            vst3_params,
-            vst3_set_param,
             cli_status,
             app_info,
             update_set_auto,

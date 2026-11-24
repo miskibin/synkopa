@@ -6,18 +6,10 @@
 use std::f32::consts::TAU;
 
 use super::params::{ix, Patch, DELAY_BEATS};
+use crate::dsp::flush;
 use crate::dsp::reverb_v2::{idx, ReverbV2};
 use crate::dsp::saturator::{self, Settings as SatSettings};
 use crate::processor::{ParamBlock, ProcessCtx, Processor};
-
-#[inline(always)]
-fn flush(x: f32) -> f32 {
-    if x.abs() < 1e-20 {
-        0.0
-    } else {
-        x
-    }
-}
 
 /// A delay line with linear-interpolated reads (power-of-two ring).
 struct Line {
