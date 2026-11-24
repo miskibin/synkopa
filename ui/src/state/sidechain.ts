@@ -1,20 +1,17 @@
 // Sidechain compression: a Compressor whose detector listens to another insert (`Fx.key`), so a
 // kick ducks the bass. Two ways in, as in FL Studio and Ableton: from the Compressor window (pick
-// the source) and from the source's mixer strip ("Sidechain to ▸ Bass", which keys the target's
-// Compressor or adds one set up for ducking). The engine validates every key (`ops::validate_key`);
-// these helpers grey out what it would refuse and say why.
+// the source) and from the source's mixer strip ("Sidechain to ▸ Bass"). One action serves every
+// door (`synkopa sidechain`, the app's command, the mock): the engine keys the target's
+// Compressor or adds one set up for ducking, and validates every key (`ops::validate_key`); this
+// module is the menus, the greyed-out reasons and what the readout says.
 import type { Fx, Id, Insert } from '../api/types';
+import { be } from '../api/backend';
 import { t } from '../lib/i18n';
-import { newFx } from '../lib/presets';
 import { keyError, takesKey } from '../lib/routing';
 import * as A from './actions';
-import { commit } from './edit';
-import { allocId, findFx, insName, plain, S } from './store';
+import { commit, enqueue, resync } from './edit';
+import { findFx, insName, plain, S } from './store';
 import { say, setU, type MenuItem } from './ui';
-
-/** Ducking settings for a Compressor added by "Sidechain to": fast attack, a release that lets
- *  the sound swell back before the next beat, deep enough to hear the pump on a typical kick. */
-export const DUCK_PARAMS: Record<string, number> = { thr: -24, ratio: 6, att: 1, rel: 150, gain: 0, det: 0 };
 
 const insertOf = (id: Id) => S.project.inserts.find(m => m.id === id);
 
@@ -27,13 +24,14 @@ export function keyBlock(on: Id, key: Id, fx: Pick<Fx, 'type'> = { type: 'comp' 
 }
 
 /** Points the effect's detector at insert `key` (null = its own input). One undo step. */
-export function setKey(fxId: Id, key: Id | null) {
+export async function setKey(fxId: Id, key: Id | null) {
   const ff = findFx(fxId); if (!ff || !takesKey(ff.f.type) || (ff.f.key ?? null) === key) return;
-  const fx = plain(ff.f) as Fx;
-  if (key == null) delete fx.key; else fx.key = key;
-  commit([A.fxOp(fx, ff.m.id)], t('c.sc.undo'));
-  const k = key == null ? null : insertOf(key);
-  say(k ? t('c.sc.saidOn', { from: insName(k), to: insName(ff.m) }) : t('c.sc.saidOff', { to: insName(ff.m) }));
+  try {
+    await enqueue(() => be().sidechain({ fxId, from: key ?? undefined, off: key == null, label: t('c.sc.undo') }));
+    await resync();
+    const k = key == null ? null : insertOf(key);
+    say(k ? t('c.sc.saidOn', { from: insName(k), to: insName(ff.m) }) : t('c.sc.saidOff', { to: insName(ff.m) }));
+  } catch (e) { say(String(e)); void resync(); }
 }
 
 /** The Compressor window's source menu: its own input, or any other insert (greyed with why). */
@@ -73,36 +71,22 @@ export function unkey(from: Id, to: Id) {
 
 /**
  * FL's "Sidechain to this track", from the source strip: insert `from` drives a Compressor on
- * `to`. Keys the first Compressor of `to`'s chain that has no sidechain yet; without one, adds a
- * Compressor set up for ducking at the end of the chain and opens it. Already keyed: removes the
+ * `to`. Keys the first Compressor of `to`'s chain that has no sidechain yet; without one, a
+ * Compressor set up for ducking is added at the end and opened. Already keyed: removes the
  * sidechain (the Compressor stays, back on its own input). One undo step.
  */
-export function sidechainTo(from: Id, to: Id) {
-  const src = insertOf(from), dst = insertOf(to); if (!src || !dst || !S.catalog) return;
-  const keyed = keyedFrom(dst, from);
-  if (keyed.length) {
-    commit(keyed.map(f => { const x = plain(f) as Fx; delete x.key; return A.fxOp(x, to); }), t('c.sc.undo'));
-    say(t('c.sc.saidOff', { to: insName(dst) }));
-    return;
-  }
-  const why = keyBlock(to, from); if (why) { say(why); return; }
-  // ducking means a Compressor: a Gate or Filter is keyed from its own window
-  const free = dst.fx.find(f => f.type === 'comp' && f.key == null);
-  if (free) {
-    commit([A.fxOp({ ...(plain(free) as Fx), key: from }, to)], t('c.sc.undo'));
-    say(t('c.sc.saidOn', { from: insName(src), to: insName(dst) }));
-    setU({ mixSel: to, fxSel: free.id });
-    A.openPlug(free.id);
-    return;
-  }
-  const f = newFx(S.catalog, allocId(), 'comp', S.project.bpm);
-  f.params = { ...f.params, ...DUCK_PARAMS };
-  f.preset = null;
-  f.key = from;
-  commit([{ op: 'putFx', insertId: to, fx: f }], t('c.sc.undo'));
-  say(t('c.sc.saidAdded', { from: insName(src), to: insName(dst) }));
-  setU({ mixSel: to, fxSel: f.id });
-  A.openPlug(f.id);
+export async function sidechainTo(from: Id, to: Id) {
+  const src = insertOf(from), dst = insertOf(to); if (!src || !dst) return;
+  const off = keyedFrom(dst, from).length > 0;
+  const why = off ? null : keyBlock(to, from);
+  if (why) { say(why); return; }
+  try {
+    const r = await enqueue(() => be().sidechain({ from, to, off, label: t('c.sc.undo') }));
+    await resync();
+    if (r.fxId != null) { setU({ mixSel: to, fxSel: r.fxId }); A.openPlug(r.fxId); }
+    say(off ? t('c.sc.saidOff', { to: insName(dst) })
+      : t(r.added ? 'c.sc.saidAdded' : 'c.sc.saidOn', { from: insName(src), to: insName(dst) }));
+  } catch (e) { say(String(e)); void resync(); }
 }
 
 /** "Sidechain to ▸": every other insert, checked where this one already drives a Compressor. */

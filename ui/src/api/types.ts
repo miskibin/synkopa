@@ -380,6 +380,26 @@ export interface AutoVocalPlan {
    *  with `bakeRider({ clipId, params: riderBake.params })` before the chain goes on the insert. Else null. */
   riderBake: PlannedFx | null;
 }
+/** The reply of the whole Auto Vocal journey (`backend.autoVocal`): the plan applied — the rider baked into
+ *  the audio when it was not already there — and the calibrated chain on the clip's insert. */
+export interface AutoVocalResult {
+  revision: number;
+  clipId: Id;
+  insertId: Id;
+  style: AutoVocalStyle;
+  /** Set when this run baked the rider: the new source and the clip (same id) now playing it. */
+  riderBaked: { sourceId: Id; clipId: Id } | null;
+  /** The chain stage ids, in chain order. */
+  fxIds: Id[];
+  /** How many chain stages are active (the Tune stage is bypassed when no key was detected). */
+  fxCount: number;
+  trackGainDb: number | null;
+  warnings: string[];
+  /** Musical key of the vocal (the beat clip joins the analysis), for the done toast. */
+  key: string | null;
+  /** 400 ms loudness IQR before → after the dynamics, dB. */
+  spread: [number, number];
+}
 
 /** What an automation moves. `param`: catalog param id, or `band:<i>:f|g|q` of an EQ. */
 export type AutoTarget =

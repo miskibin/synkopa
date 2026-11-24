@@ -68,6 +68,13 @@ shown in the app after an update and is published as the release notes (see
 ## 0.9.32 — 2026-11-22
 
 ### Fixed
+- **Bouncing in place from the command line now waits for the Synkopa Keys piano.** A
+  `synkopa export-in-place` of a song that plays Synkopa Keys could render while the piano was
+  still loading and bounce silence; it now refuses with a clear message until the piano is
+  there, exactly like the app's Export in place. Auto vocal, sidechain and the model download
+  run through one shared action too, so the button, the session commands and the command line
+  can no longer disagree about guards (a stale project refuses before the rider bake, the
+  ducking compressor is chosen the same way) and undo steps keep the names the UI gave them.
 - **Zooming the Playlist on Linux no longer flickers.** With Ctrl+wheel on a big song, the view
   could jump sideways or show blank strips (sometimes the whole grid) for a moment on every
   step. Synkopa now starts Linux's web view without the renderer that caused it. If you want that
