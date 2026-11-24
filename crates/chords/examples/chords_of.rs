@@ -14,7 +14,13 @@ fn main() {
     let (cs, _) = music.chroma_sum(0.0, 1e9);
     let key = wave_engine::music::estimate_key(&cs, music.tuning_cents).unwrap();
     let flats = key_uses_flats(key.root, key.minor);
-    println!("{:.1} s, {:.2} BPM (first beat {:.3} s), key {}", secs, tempo.bpm, tempo.first_beat, wave_engine::music::key_name(key.root, key.minor));
+    println!(
+        "{:.1} s, {:.2} BPM (first beat {:.3} s), key {}",
+        secs,
+        tempo.bpm,
+        tempo.first_beat,
+        wave_engine::music::key_name(key.root, key.minor)
+    );
     let f = m.analyze(&mono, audio.sr).unwrap();
     let spb = 60.0 / tempo.bpm;
     let beat_of = |t: f64| (t - tempo.first_beat) / spb;
