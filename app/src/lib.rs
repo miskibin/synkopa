@@ -601,13 +601,13 @@ async fn preview_clip_key(app: St<'_>, clip_id: u64, key: u8, vel: Option<f32>) 
 }
 
 #[tauri::command]
-async fn preview_file(app: St<'_>, path: String) -> R<()> {
+async fn preview_file(app: St<'_>, path: String) -> R<wave_engine::PreviewWave> {
     let e = app.engine.clone();
     tauri::async_runtime::spawn_blocking(move || e.preview_file(&PathBuf::from(path))).await.map_err(es)?.map_err(es)
 }
 
 #[tauri::command]
-async fn preview_source(app: St<'_>, id: u64) -> R<()> {
+async fn preview_source(app: St<'_>, id: u64) -> R<wave_engine::PreviewWave> {
     app.engine.preview_source(id).map_err(es)
 }
 

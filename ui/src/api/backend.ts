@@ -5,6 +5,7 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { BeatRange } from '../lib/patLoop';
 import type {
+  PreviewWave,
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
   KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
@@ -159,10 +160,11 @@ export interface Backend {
   melodyChannels(clipId: Id): Promise<MelodyChannel[]>;
   /** The notes `channel` plays over the clip as a melody reference (a copy; `span`: seconds of the source). */
   melodyReference(clipId: Id, channel: Id, span?: [number, number] | null): Promise<{ melody: Melody; fit: number }>;
-  previewFile(path: string): Promise<void>;
+  /** Play a file alone (the Browser's preview); resolves with its length and waveform (the toolbar's status line). */
+  previewFile(path: string): Promise<PreviewWave>;
   previewStop(): Promise<void>;
-  /** Play a project source alone (Browser ▸ Project ▸ Audio), from its loaded audio. */
-  previewSource(id: Id): Promise<void>;
+  /** Play a project source alone (Browser ▸ Project ▸ Audio), from its loaded audio; resolves like `previewFile`. */
+  previewSource(id: Id): Promise<PreviewWave>;
   /** Play one note of a channel now (not an edit). `key` MIDI (default: the channel's root), `vel` 0..1, `pattern`: the one being edited (routing). */
   noteAudition(args: { ch: Id; key?: number; vel?: number; pattern?: Id }): Promise<void>;
   /** Computer keyboard as a piano: key down (`on`) / up on a channel. */

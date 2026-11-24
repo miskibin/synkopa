@@ -15,6 +15,7 @@ import { fitCanvas } from '../ui/frameLoop';
 import { dropClipAt, dropPatternsAt, gridPoint } from './Playlist';
 import { rangeSelect, toggleSelect } from '../lib/mixer';
 import { patternPreview } from './playlistDraw';
+import { setPreviewWave } from '../state/previewWave';
 import { addSampler, addSamplerFiles, chanById, channels, newPattern, openPattern, replaceWithFile, replaceWithSource, showPatternWindow, type SampleFile } from '../state/pattern';
 import { libGroup, STD_KIT } from '../state/library';
 import { browserSources, FACTORY_FILES } from '../lib/factory';
@@ -61,8 +62,9 @@ function pick(kind: ClipKind, ref: Id, name: string, color: string, e: PointerEv
 const srcKey = (id: Id) => 'src:' + id;
 /** A press on a project source: hear it alone from the top, every time (as a library file and FL's browser; Esc stops). */
 function previewSource(s: Source) {
-  setU('previewPath', srcKey(s.id));
-  be().previewSource(s.id).catch(e => { setU('previewPath', null); say(t('d.br.preverr', { err: String(e) })); });
+  const key = srcKey(s.id);
+  setU('previewPath', key);
+  be().previewSource(s.id).then(w => setPreviewWave(key, s.name, w)).catch(e => { setU('previewPath', null); say(t('d.br.preverr', { err: String(e) })); });
   say(t('d.br.prev', { name: s.name }));
 }
 
@@ -347,7 +349,7 @@ const [layoutTick, bumpLayout] = createSignal(0, { equals: false });
 
 function startPreview(f: LibFile) {
   setU('previewPath', f.path);
-  be().previewFile(f.path).catch(e => say(t('d.br.preverr', { err: String(e) })));
+  be().previewFile(f.path).then(w => setPreviewWave(f.path, f.name, w)).catch(e => say(t('d.br.preverr', { err: String(e) })));
   say(t('d.br.prev', { name: f.name }));
 }
 

@@ -735,7 +735,8 @@ export const playStep = (pt: Pattern) => { const b = patPlayhead(pt); return b <
 // below the window's edge), and both pattern windows stay reachable when the app window shrinks.
 createRoot(() => {
   watch(() => channels().length, (n, prev) => {
-    const w = U.rackWin; if (!w || docked('rack') || prev == null || n <= prev) return;
+    // with auto height the rack fits itself, both ways (views/ChannelRack.tsx)
+    const w = U.rackWin; if (!w || docked('rack') || prev == null || n <= prev || prefs().rackAutoH) return;
     const need = RACK_HEAD + (n + 1) * RACK_ROW + 12 + 2 * RACK_PAD_Y;
     if (need > w.h) setU('rackWin', 'h', Math.min(need, Math.max(220, window.innerHeight - w.y - 20)));
   });

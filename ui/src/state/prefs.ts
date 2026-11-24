@@ -21,17 +21,20 @@ export interface Prefs {
   autosaveMin: number;
   /** show the tool hint in the toolbar's hint line */
   hints: boolean;
-  /** FL's CPU meter (load + underrun count) in the toolbar; off by default, the bar is short
-   *  on room. The underrun count is always in Settings → Audio. */
+  /** FL's CPU meter (load + underrun count) in the toolbar's output block, beside the volume; on
+   *  by default. The underrun count is always in Settings → Audio. */
   cpuMeter: boolean;
   /** open the app in full screen (F11 toggles it any time) */
   startFullscreen: boolean;
   /** room between the Channel Rack's step buttons (state/pattern.ts RACK_SPACINGS) */
   rackSpacing: 'normal' | 'roomy' | 'wide';
+  /** FL's Channel Rack "Auto resize: Minimum height": the rack is as tall as its channels need
+   *  (floating, or alone in a bottom dock strip), up to the room there is */
+  rackAutoH: boolean;
 }
 
 const KEY = 'wave.prefs';
-const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: false, startFullscreen: false, rackSpacing: 'normal' };
+const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: true, startFullscreen: false, rackSpacing: 'normal', rackAutoH: true };
 
 function load(): Prefs {
   try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en', rackSpacing: ['roomy', 'wide'].includes(v.rackSpacing) ? v.rackSpacing : 'normal' }; } catch { return { ...DEFAULTS }; }

@@ -30,6 +30,24 @@ shown in the app after an update and is published as the release notes (see
   have yet. Click through them while playing the keyboard below, or step with the ‹ › arrows on the
   instrument. The knobs are grouped into Sound, Envelope, Playing and Channel. A new channel is
   named after its instrument ("Grand Piano").
+- **The toolbar has two rows, like FL Studio's.** The top row holds what you use all the time at
+  one size: the menus, PAT / SONG (orange and green), play / stop / record, the tempo with the
+  song key beside it, the pattern selector, one output block (main volume, master level, CPU) and
+  the Browser, Channel rack and Mixer buttons. The quieter row under it holds what belongs to the
+  control above: the status line under the menus, a **song position slider** under the transport
+  (drag it to move the playhead; in PAT it moves through the current pattern), the position under
+  the tempo, monitor / metronome / count-in / typing piano under the pattern, and the loop range
+  and **Follow** on the right. On a narrow window the least needed parts give way first. The
+  Piano roll button is gone: open the roll from a channel or a clip, with F7 or from View.
+- **The song key is in the toolbar.** The same tiny keyboard and picker as in the Piano roll; with
+  no key chosen it says *No key* and offers to detect one from the audio in the project, and a
+  chosen key can be cleared.
+- **The Browser's preview shows in the status line:** the sample's name, its waveform (the part
+  already heard lit) and the time, while it plays.
+- **The Channel Rack is as tall as its channels**, growing and shrinking as you add, remove or
+  filter them (FL's *Auto resize*), floating or docked at the bottom. Turn it off with **Auto
+  height** in the rack's title-bar menu to keep the height you give it.
+- The CPU meter is on by default, beside the main volume (Settings → Audio turns it off).
 
 ### Fixed
 - **Switching the Piano roll's lane between VEL and PAN** shows the new lane at once.

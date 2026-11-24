@@ -24,6 +24,7 @@ mod analysis;
 mod graph;
 mod import;
 mod preview;
+pub use preview::{PreviewWave, PREVIEW_WAVE_PAIRS};
 mod project_files;
 mod render;
 mod takes;

@@ -33,6 +33,8 @@ import { channelIcon, InstIcon } from '../ui/instIcons';
 import { MiniKnob, NumField, parseNum } from '../ui/Knob';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
+import { findPane, PANE_MIN } from '../lib/dock';
+import { prefs } from '../state/prefs';
 import { insertBoxClick, wheelInsert } from '../ui/InsertPicker';
 import { toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo, laneColor } from './patternDraw';
@@ -240,6 +242,35 @@ function Rack(props: { z: number; docked?: boolean }) {
     setU('rackGraph', on ? 'vel' : null);
     if (w && !props.docked) setU('rackWin', 'h', clamp(w.h + (on ? GRAPH_H : -GRAPH_H), 200, window.innerHeight - w.y - 10));
   };
+  // FL's Auto resize → Minimum height: the rack is as tall as its rows (and the add-channel row)
+  // need, up to the room there is, refitted both ways when the rows shown change (a channel added,
+  // removed, a group filter) or the graph editor opens. Floating: the window's height; docked: the
+  // height of a bottom strip it has to itself (on a side edge, or sharing a strip, the strip
+  // decides). The chrome (title bar, graph lane, status line) is measured, not assumed. A height
+  // set by hand stays until the rows change, as in FL; the title bar's menu turns it off.
+  let fitRaf = 0;
+  onCleanup(() => cancelAnimationFrame(fitRaf));
+  const fitHeight = () => {
+    fitRaf = 0;
+    const frame = gridWrap?.closest<HTMLElement>('.patwin');
+    if (!frame || !gridWrap.isConnected || !prefs().rackAutoH || hold() || U.mixView) return;
+    const want = frame.offsetHeight - gridWrap.clientHeight + contentH();
+    if (!props.docked) {
+      const w = U.rackWin; if (!w) return;
+      const h = Math.round(clamp(want, 200, Math.max(200, window.innerHeight - w.y - 20)));
+      if (Math.abs(h - w.h) > 1) setU('rackWin', 'h', h);
+      return;
+    }
+    const at = findPane(U.dock, 'rack');
+    if (!at || at.edge !== 'bottom' || U.dock.bottom[at.strip].length !== 1) return;
+    // the strip's splitter clamps it against the Playlist (fitStrips): the wish is stored as is
+    const h = Math.round(Math.max(PANE_MIN.rack.h, want));
+    if (Math.abs(h - U.paneSize.rack.h) > 1) setU('paneSize', 'rack', 'h', h);
+  };
+  effect(() => {
+    void chans().length; void graph(); void prefs().rackAutoH; void props.docked;
+    if (!fitRaf) fitRaf = requestAnimationFrame(fitHeight);
+  });
   // The window's width follows the pattern's length: the pattern and its greyed bar at the
   // comfortable step width, up to the screen's edge (beyond that the grid scrolls). Switching to
   // another pattern only ever widens it (FL keeps the rack's size as you browse patterns: a

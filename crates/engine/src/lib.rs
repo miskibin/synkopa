@@ -49,8 +49,9 @@ pub mod tune_render;
 pub mod vocal;
 
 pub use engine::{
-    pattern_project, Engine, EngineError, InPlace, MadeUnique, NoPlugins, PlacedStems, PluginFactory, Relink, RelinkSearch, Relinked,
-    RenderProgress, RenderTail, StateDto, StemFile, StemRegion, TransportDto, IN_PLACE_MAX_TAIL_S, STEMS_MAX_S,
+    pattern_project, Engine, EngineError, InPlace, MadeUnique, NoPlugins, PlacedStems, PluginFactory, PreviewWave, Relink, RelinkSearch,
+    Relinked, RenderProgress, RenderTail, StateDto, StemFile, StemRegion, TransportDto, IN_PLACE_MAX_TAIL_S, PREVIEW_WAVE_PAIRS,
+    STEMS_MAX_S,
 };
 pub use rt::Rt;
 /// The audio file extensions this build decodes: one list for the library, dialogs and relink.

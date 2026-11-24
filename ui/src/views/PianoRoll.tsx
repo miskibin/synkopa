@@ -16,11 +16,10 @@ import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
 import { clamp, panText } from '../lib/format';
-import { autoRollSnap, duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, SCALES, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
-import { NOTE_NAMES, noteName } from '../lib/pitch';
+import { autoRollSnap, duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
+import { noteName } from '../lib/pitch';
 
 /** The project key/scale as a setKey op (the roll header's key selectors commit it). */
-const setKeyOp = (key: number, scale: number) => ({ op: 'setKey' as const, key, scale });
 import {
   applyProps, fitRange, fmtLen, fmtStart, followPage, invertSelection, legato, MAX_STEP, nudgeNotes, nudgeVelocity, panLine, pasteStart, velocityLine,
   parseKey, parseLen, parseStart, quantizeStarts, readProps, wheelNotches,
@@ -46,6 +45,8 @@ import { Icon } from '../ui/icons';
 import { drawRollLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
 import { noteEndNear, onNoteEdge } from './roll/edge';
 import { patGeom, PatternChip, useDataVersion, useSize } from './patternShared';
+import { KeyBadge } from './KeyBadge';
+import { songKey } from '../state/songKey';
 import { PanelFrame, WinControls } from './PanelFrame';
 import { paneDock } from '../state/docking';
 import { KW, type RollCtx, type RollPtr, type Tool } from './roll/types';
@@ -102,15 +103,10 @@ const [stampType, setStampType] = createSignal('min');
 const [stampInv, setStampInv] = createSignal(0);
 const [rollSnap, setRollSnap] = createSignal(1);
 
-/** Key and scale to highlight: the project key (chosen here; also what scale-aware
- * transforms use), else the project's Pitch Correct (a detected key), else C in the
- * project scale — what the engine's melody generator falls back to without a key.
- * Always derived from the project, so undo and loading another project follow.
- * `scale` is the engine's scale id (pitch::scale_mask), not the list position. */
+/** Key and scale to highlight: the song's key (state/songKey.ts; C in the project scale when none is known). */
 function projectKey(): { root: number; scale: number } {
-  if (S.project.key != null) return { root: S.project.key, scale: S.project.scale ?? 1 };
-  for (const m of S.project.inserts) for (const f of m.fx) if (f.type === 'tune' && (f.params.scale ?? 0) > 0) return { root: Math.round(f.params.key ?? 0), scale: f.params.scale ?? 1 };
-  return { root: 0, scale: S.project.scale ?? 1 };
+  const k = songKey();
+  return { root: k.root, scale: k.scale };
 }
 
 function Roll(props: { z: number; docked?: boolean }) {
@@ -148,12 +144,12 @@ function Roll(props: { z: number; docked?: boolean }) {
   const setField = (i: number, v: unknown) => setVals(xs => { const c = xs.slice(); c[i] = v; return c; });
   const [toolSeed, setToolSeed] = createSignal('');
   // the note tools (humanize, strum, ...) live in a popover: used now and then, they do not hold toolbar space
-  const [pop, setPop] = createSignal<'tools' | 'key' | null>(null);
+  const [pop, setPop] = createSignal<'tools' | null>(null);
   const toolsOpen = () => pop() === 'tools', setToolsOpen = (f: boolean | ((v: boolean) => boolean)) => setPop((typeof f === 'function' ? f(toolsOpen()) : f) ? 'tools' : null);
-  let toolMenu!: HTMLDivElement, keyMenu!: HTMLDivElement;
+  let toolMenu!: HTMLDivElement;
   effect(() => {
     const open = pop(); if (!open) return;
-    const away = (e: PointerEvent) => { if (!(open === 'key' ? keyMenu : toolMenu).contains(e.target as Node)) setPop(null); };
+    const away = (e: PointerEvent) => { if (!toolMenu.contains(e.target as Node)) setPop(null); };
     document.addEventListener('pointerdown', away, true);
     onCleanup(() => document.removeEventListener('pointerdown', away, true));
   });
@@ -172,8 +168,6 @@ function Roll(props: { z: number; docked?: boolean }) {
   const numText = (v: number, step: number) => v.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2);
   /** The grid in steps: the chosen one, or (auto) the finest that is still comfortably wide at this zoom. */
   const snapNow = () => (rollSnap() < 0 ? autoRollSnap(geo().pps) : rollSnap());
-  /** A pitch class on the key badge's tiny keyboard: the root, a scale note, or outside the scale. */
-  const pcClass = (pc: number) => pc === root() ? 'root' : (mask() >> ((pc - root() + 12) % 12)) & 1 ? 'in' : 'out';
   /** After a pick in a toolbar list the keyboard goes back to the roll (arrows transpose, Delete deletes) instead of staying in the list. */
   const backToRoll = (el: HTMLElement) => el.closest<HTMLElement>('.win')?.focus({ preventScroll: true });
   /** Width of the note grid (px). */
@@ -889,35 +883,8 @@ function Roll(props: { z: number; docked?: boolean }) {
           sections={[{ options: ROLL_SNAPS.map(([l, v]): ChipOption => [l, String(v)]) }, { label: t('b.pe.snapTriplets'), options: ROLL_SNAPS_TRIPLET.map(([l, v]): ChipOption => [l, String(v)]) }]}
           implied={rollSnap() < 0 ? String(snapNow()) : undefined}
           onChange={(v, el) => { setRollSnap(+v); backToRoll(el); }} />
-        {/* the song's key, always in view: a tiny keyboard marks the scale's notes (root brightest), the name beside it;
-            a click opens the root and scale pickers. One key for the whole project. */}
-        <div class="toolmenu" ref={keyMenu}>
-          <button class={['keybadge', { on: pop() === 'key' }]} aria-expanded={pop() === 'key' ? 'true' : 'false'} title={S.project.key == null ? t('b.pe.keyAuto') : t('b.pr.songKeyTip')} onClick={() => setPop(v => v === 'key' ? null : 'key')}>
-            <svg class="minikeys" width="43" height="16" viewBox="0 0 43 16">
-              <For each={[0, 2, 4, 5, 7, 9, 11]}>{(pc, i) => <rect x={i() * 6 + 0.5} y="0.5" width="5" height="15" rx="1" class={pcClass(pc)} />}</For>
-              <For each={[[1, 0], [3, 1], [6, 3], [8, 4], [10, 5]]}>{([pc, i]) => <rect x={i * 6 + 4} y="0" width="4" height="9" rx="1" class={'bk ' + pcClass(pc)} />}</For>
-            </svg>
-            <span class="kname">{NOTE_NAMES[root()]} {t(SCALES.find(x => x[1] === scaleIdx())![0]).toLowerCase()}</span>
-            <Show when={S.project.key == null}><span class="kauto">auto</span></Show>
-            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
-          </button>
-          <Show when={pop() === 'key'}>
-            <div class="toolpop keypop" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setPop(null); } }}>
-              <div class="tphd">{t('b.pr.songKey')}</div>
-              <div class="rootgrid" role="radiogroup">
-                <For each={NOTE_NAMES}>{(n, i) => (
-                  <button role="radio" aria-checked={root() === i() ? 'true' : 'false'} class={{ on: root() === i(), bk: n.length > 1 }} onClick={() => commit([setKeyOp(i(), scaleIdx())], t('b.pr.keySet'))}>{n}</button>
-                )}</For>
-              </div>
-              <div class="scalelist" role="radiogroup">
-                <For each={SCALES}>{([l, id]) => (
-                  <button role="radio" aria-checked={scaleIdx() === id ? 'true' : 'false'} class={{ on: scaleIdx() === id }} onClick={() => commit([setKeyOp(root(), id)], t('b.pr.keySet'))}>{t(l)}</button>
-                )}</For>
-              </div>
-              <div class="tpnote">{t('b.pr.songKeyNote')}</div>
-            </div>
-          </Show>
-        </div>
+        {/* the song's key, always in view (shared with the toolbar): views/KeyBadge.tsx */}
+        <KeyBadge class="toolmenu" />
         <div style={{ flex: 1 }} />
         <Show when={vocals().length > 0 && chanNotes().length > 0}>
           <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pr.vocalTip')} onClick={vocalRef}>♪ {t('b.pr.vocal')}{vocals().length > 1 ? ' …' : ''}</button>
