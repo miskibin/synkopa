@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockBackend } from '../api/mock';
 import { syncEngine } from '../test/engine';
 
@@ -33,6 +33,8 @@ beforeEach(async () => {
   store.setS('catalog', await mock.fxCatalog());
   await sync();
 });
+// the mock backend starts a 60 Hz clock in its constructor: stop it so the timers do not pile up
+afterEach(() => { mock.dispose(); });
 
 describe('effect window widths', () => {
   it('Gate and Filter open at their type widths, not the generic fallback', async () => {
