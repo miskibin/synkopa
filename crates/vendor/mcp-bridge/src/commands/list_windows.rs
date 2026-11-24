@@ -56,14 +56,7 @@ pub async fn list_windows<R: Runtime>(app: AppHandle<R>) -> Result<Value, String
         let visible = window.is_visible().unwrap_or(false);
         let is_main = label == "main";
 
-        window_list.push(WindowInfo {
-            label: label.clone(),
-            title,
-            url,
-            focused,
-            visible,
-            is_main,
-        });
+        window_list.push(WindowInfo { label: label.clone(), title, url, focused, visible, is_main });
     }
 
     // Sort by label for consistent ordering, with "main" first
@@ -110,18 +103,13 @@ pub struct ResolvedWindow<R: Runtime> {
 ///
 /// * `Ok(ResolvedWindow)` - The resolved window with context
 /// * `Err(String)` - Error if window not found
-pub fn resolve_window_with_context<R: Runtime>(
-    app: &AppHandle<R>,
-    label: Option<String>,
-) -> Result<ResolvedWindow<R>, String> {
+pub fn resolve_window_with_context<R: Runtime>(app: &AppHandle<R>, label: Option<String>) -> Result<ResolvedWindow<R>, String> {
     let windows = app.webview_windows();
     let total_windows = windows.len();
     let explicit_label = label.is_some();
     let target_label = label.unwrap_or_else(|| "main".to_string());
 
-    let window = app
-        .get_webview_window(&target_label)
-        .ok_or_else(|| format!("Window '{target_label}' not found"))?;
+    let window = app.get_webview_window(&target_label).ok_or_else(|| format!("Window '{target_label}' not found"))?;
 
     let warning = if !explicit_label && total_windows > 1 {
         Some(format!(
@@ -134,14 +122,7 @@ pub fn resolve_window_with_context<R: Runtime>(
         None
     };
 
-    Ok(ResolvedWindow {
-        window,
-        context: WindowContext {
-            window_label: target_label,
-            total_windows,
-            warning,
-        },
-    })
+    Ok(ResolvedWindow { window, context: WindowContext { window_label: target_label, total_windows, warning } })
 }
 
 /// Resolves a window by label, defaulting to "main" if not specified.
@@ -156,11 +137,7 @@ pub fn resolve_window_with_context<R: Runtime>(
 ///
 /// * `Ok(WebviewWindow)` - The resolved window
 /// * `Err(String)` - Error if window not found
-pub fn resolve_window<R: Runtime>(
-    app: &AppHandle<R>,
-    label: Option<String>,
-) -> Result<tauri::WebviewWindow<R>, String> {
+pub fn resolve_window<R: Runtime>(app: &AppHandle<R>, label: Option<String>) -> Result<tauri::WebviewWindow<R>, String> {
     let label = label.unwrap_or_else(|| "main".to_string());
-    app.get_webview_window(&label)
-        .ok_or_else(|| format!("Window '{label}' not found"))
+    app.get_webview_window(&label).ok_or_else(|| format!("Window '{label}' not found"))
 }

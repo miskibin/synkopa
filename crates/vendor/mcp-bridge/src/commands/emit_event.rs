@@ -37,12 +37,7 @@ use tauri::{command, AppHandle, Emitter, Runtime};
 /// });
 /// ```
 #[command]
-pub async fn emit_event<R: Runtime>(
-    app: AppHandle<R>,
-    event_name: String,
-    payload: Value,
-) -> Result<String, String> {
-    app.emit(&event_name, payload)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+pub async fn emit_event<R: Runtime>(app: AppHandle<R>, event_name: String, payload: Value) -> Result<String, String> {
+    app.emit(&event_name, payload).map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(format!("Event '{event_name}' emitted successfully"))
 }

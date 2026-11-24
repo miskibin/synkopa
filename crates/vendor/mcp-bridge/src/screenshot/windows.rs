@@ -5,15 +5,12 @@ use tauri::{Runtime, WebviewWindow};
 ///
 /// This implementation captures only the visible viewport.
 /// WebView2's CapturePreview API naturally captures just the viewport.
-pub fn capture_viewport<R: Runtime>(
-    window: &WebviewWindow<R>,
-) -> Result<Screenshot, ScreenshotError> {
+pub fn capture_viewport<R: Runtime>(window: &WebviewWindow<R>) -> Result<Screenshot, ScreenshotError> {
     #[cfg(target_os = "windows")]
     {
         use std::sync::mpsc;
         use webview2_com::{
-            CapturePreviewCompletedHandler,
-            Microsoft::Web::WebView2::Win32::COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG,
+            CapturePreviewCompletedHandler, Microsoft::Web::WebView2::Win32::COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG,
         };
         use windows::Win32::Foundation::HGLOBAL;
         use windows::Win32::System::Com::IStream;
@@ -43,26 +40,17 @@ pub fn capture_viewport<R: Runtime>(
                                     Err(e) => Err(e),
                                 }
                             }
-                            Err(e) => Err(ScreenshotError::CaptureFailed(format!(
-                                "CapturePreview failed: {}",
-                                e
-                            ))),
+                            Err(e) => Err(ScreenshotError::CaptureFailed(format!("CapturePreview failed: {}", e))),
                         };
                         let _ = tx.send(screenshot_result);
                         Ok(())
                     }));
 
                     // Capture viewport as PNG
-                    let _ = core_webview.CapturePreview(
-                        COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG,
-                        &stream,
-                        &handler,
-                    );
+                    let _ = core_webview.CapturePreview(COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, &stream, &handler);
                 }
             })
-            .map_err(|e| {
-                ScreenshotError::CaptureFailed(format!("Failed to access webview: {}", e))
-            })?;
+            .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to access webview: {}", e)))?;
 
         // Wait for result
         match rx.recv_timeout(std::time::Duration::from_secs(10)) {
@@ -82,15 +70,11 @@ pub fn capture_viewport<R: Runtime>(
 /// # Safety
 /// The stream must be valid and readable.
 #[cfg(target_os = "windows")]
-unsafe fn read_stream_to_vec(
-    stream: &windows::Win32::System::Com::IStream,
-) -> Result<Vec<u8>, ScreenshotError> {
+unsafe fn read_stream_to_vec(stream: &windows::Win32::System::Com::IStream) -> Result<Vec<u8>, ScreenshotError> {
     use windows::Win32::System::Com::{STREAM_SEEK_END, STREAM_SEEK_SET};
 
     // Seek to beginning
-    stream
-        .Seek(0, STREAM_SEEK_SET, None)
-        .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to seek stream: {}", e)))?;
+    stream.Seek(0, STREAM_SEEK_SET, None).map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to seek stream: {}", e)))?;
 
     // Get stream size by seeking to end
     let mut end_pos: u64 = 0;
@@ -99,19 +83,13 @@ unsafe fn read_stream_to_vec(
         .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to get stream size: {}", e)))?;
 
     // Seek back to start
-    stream
-        .Seek(0, STREAM_SEEK_SET, None)
-        .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to seek stream: {}", e)))?;
+    stream.Seek(0, STREAM_SEEK_SET, None).map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to seek stream: {}", e)))?;
 
     // Read data
     let mut buffer = vec![0u8; end_pos as usize];
     let mut bytes_read: u32 = 0;
     stream
-        .Read(
-            buffer.as_mut_ptr() as *mut _,
-            buffer.len() as u32,
-            Some(&mut bytes_read),
-        )
+        .Read(buffer.as_mut_ptr() as *mut _, buffer.len() as u32, Some(&mut bytes_read))
         .ok()
         .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to read stream: {}", e)))?;
 

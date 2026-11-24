@@ -34,21 +34,11 @@ use tauri::{command, Runtime, WebviewWindow};
 /// ```
 #[command]
 pub async fn get_window_info<R: Runtime>(window: WebviewWindow<R>) -> Result<Value, String> {
-    let size = window
-        .outer_size()
-        .map_err(|e| format!("Failed to get size: {e}"))?;
-    let position = window
-        .outer_position()
-        .map_err(|e| format!("Failed to get position: {e}"))?;
-    let title = window
-        .title()
-        .map_err(|e| format!("Failed to get title: {e}"))?;
-    let is_focused = window
-        .is_focused()
-        .map_err(|e| format!("Failed to get focus: {e}"))?;
-    let is_visible = window
-        .is_visible()
-        .map_err(|e| format!("Failed to get visibility: {e}"))?;
+    let size = window.outer_size().map_err(|e| format!("Failed to get size: {e}"))?;
+    let position = window.outer_position().map_err(|e| format!("Failed to get position: {e}"))?;
+    let title = window.title().map_err(|e| format!("Failed to get title: {e}"))?;
+    let is_focused = window.is_focused().map_err(|e| format!("Failed to get focus: {e}"))?;
+    let is_visible = window.is_visible().map_err(|e| format!("Failed to get visibility: {e}"))?;
 
     Ok(serde_json::json!({
         "width": size.width,

@@ -7,11 +7,7 @@ use super::list_windows::resolve_window;
 
 /// Applies a window state action: `focus`, `minimize`, or `maximize`.
 #[cfg(desktop)]
-pub async fn set_window_state<R: Runtime>(
-    app: AppHandle<R>,
-    window_id: Option<String>,
-    action: &str,
-) -> Result<(), String> {
+pub async fn set_window_state<R: Runtime>(app: AppHandle<R>, window_id: Option<String>, action: &str) -> Result<(), String> {
     let window = resolve_window(&app, window_id)?;
 
     match action {
@@ -24,15 +20,10 @@ pub async fn set_window_state<R: Runtime>(
 
 /// Mobile implementation — returns unsupported error with clear explanation for the agent.
 #[cfg(mobile)]
-const MOBILE_UNSUPPORTED: &str =
-    "Window focus, minimize, and maximize are not supported on mobile platforms (Android/iOS).";
+const MOBILE_UNSUPPORTED: &str = "Window focus, minimize, and maximize are not supported on mobile platforms (Android/iOS).";
 
 #[cfg(mobile)]
-pub async fn set_window_state<R: Runtime>(
-    _app: AppHandle<R>,
-    _window_id: Option<String>,
-    action: &str,
-) -> Result<(), String> {
+pub async fn set_window_state<R: Runtime>(_app: AppHandle<R>, _window_id: Option<String>, action: &str) -> Result<(), String> {
     match action {
         "focus" | "minimize" | "maximize" => Err(MOBILE_UNSUPPORTED.to_string()),
         _ => Err(format!("Unknown window state action: {action}")),

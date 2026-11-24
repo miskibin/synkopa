@@ -8,9 +8,7 @@ const LOG_SCOPE: &str = "SCREENSHOT_MACOS";
 ///
 /// This implementation captures only the visible viewport, not the full document.
 /// It uses the native WKWebView takeSnapshot API to get a high-quality screenshot.
-pub fn capture_viewport<R: Runtime>(
-    window: &WebviewWindow<R>,
-) -> Result<Screenshot, ScreenshotError> {
+pub fn capture_viewport<R: Runtime>(window: &WebviewWindow<R>) -> Result<Screenshot, ScreenshotError> {
     #[cfg(target_os = "macos")]
     {
         use block2::RcBlock;
@@ -45,10 +43,7 @@ pub fn capture_viewport<R: Runtime>(
                                 let err = &*error;
                                 let desc = err.localizedDescription();
                                 let error_string = desc.to_string();
-                                crate::logging::mcp_log_error(
-                                    LOG_SCOPE,
-                                    &format!("takeSnapshot returned NSError: {error_string}"),
-                                );
+                                crate::logging::mcp_log_error(LOG_SCOPE, &format!("takeSnapshot returned NSError: {error_string}"));
                                 let _ = tx.send(Err(ScreenshotError::CaptureFailed(error_string)));
                             } else if !image.is_null() {
                                 let img = &*image;
@@ -58,10 +53,7 @@ pub fn capture_viewport<R: Runtime>(
                                         let _ = tx.send(Ok(Screenshot { data }));
                                     }
                                     Err(e) => {
-                                        crate::logging::mcp_log_error(
-                                            LOG_SCOPE,
-                                            &format!("NSImage -> PNG conversion failed: {e}"),
-                                        );
+                                        crate::logging::mcp_log_error(LOG_SCOPE, &format!("NSImage -> PNG conversion failed: {e}"));
                                         let _ = tx.send(Err(e));
                                     }
                                 }
@@ -70,23 +62,17 @@ pub fn capture_viewport<R: Runtime>(
                                     LOG_SCOPE,
                                     "takeSnapshot completion handler received nil image and nil error",
                                 );
-                                let _ = tx.send(Err(ScreenshotError::CaptureFailed(
-                                    "No image returned from snapshot".to_string(),
-                                )));
+                                let _ = tx.send(Err(ScreenshotError::CaptureFailed("No image returned from snapshot".to_string())));
                             }
                         }
                     });
 
                     // Take snapshot
-                    wkwebview
-                        .takeSnapshotWithConfiguration_completionHandler(Some(&config), &handler);
+                    wkwebview.takeSnapshotWithConfiguration_completionHandler(Some(&config), &handler);
                 }
             })
             .map_err(|e| {
-                crate::logging::mcp_log_error(
-                    LOG_SCOPE,
-                    &format!("with_webview failed before scheduling takeSnapshot: {e}"),
-                );
+                crate::logging::mcp_log_error(LOG_SCOPE, &format!("with_webview failed before scheduling takeSnapshot: {e}"));
                 ScreenshotError::CaptureFailed(format!("Failed to access webview: {e}"))
             })?;
 
@@ -94,10 +80,7 @@ pub fn capture_viewport<R: Runtime>(
         match rx.recv_timeout(std::time::Duration::from_secs(10)) {
             Ok(result) => result,
             Err(_) => {
-                crate::logging::mcp_log_error(
-                    LOG_SCOPE,
-                    "Timed out waiting 10s for takeSnapshot completion handler",
-                );
+                crate::logging::mcp_log_error(LOG_SCOPE, "Timed out waiting 10s for takeSnapshot completion handler");
                 Err(ScreenshotError::Timeout)
             }
         }
@@ -110,21 +93,17 @@ pub fn capture_viewport<R: Runtime>(
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn convert_nsimage_to_png(
-    image: &objc2_app_kit::NSImage,
-) -> Result<Vec<u8>, ScreenshotError> {
+unsafe fn convert_nsimage_to_png(image: &objc2_app_kit::NSImage) -> Result<Vec<u8>, ScreenshotError> {
     use objc2_app_kit::{NSBitmapImageFileType, NSBitmapImageRep};
     use objc2_foundation::NSDictionary;
 
     // Get TIFF representation
-    let tiff_data = image.TIFFRepresentation().ok_or_else(|| {
-        ScreenshotError::EncodeFailed("Failed to get TIFF representation".to_string())
-    })?;
+    let tiff_data =
+        image.TIFFRepresentation().ok_or_else(|| ScreenshotError::EncodeFailed("Failed to get TIFF representation".to_string()))?;
 
     // Create bitmap representation from TIFF data
-    let bitmap = NSBitmapImageRep::imageRepWithData(&tiff_data).ok_or_else(|| {
-        ScreenshotError::EncodeFailed("Failed to create bitmap representation".to_string())
-    })?;
+    let bitmap = NSBitmapImageRep::imageRepWithData(&tiff_data)
+        .ok_or_else(|| ScreenshotError::EncodeFailed("Failed to create bitmap representation".to_string()))?;
 
     // Convert to PNG
     let properties = NSDictionary::new();

@@ -19,6 +19,8 @@ members = [
     "crates/stretch",
     "crates/demo-synth",
     "crates/stems",
+    # the vendored automation bridge: a member so its handshake regression test runs in CI
+    "crates/vendor/mcp-bridge",
 ]
 
 [workspace.package]

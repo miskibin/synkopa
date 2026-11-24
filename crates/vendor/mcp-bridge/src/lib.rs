@@ -191,11 +191,7 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
             let port = find_available_port(&bind_address, base_port);
 
             // Log app information for debugging
-            let app_name = app
-                .config()
-                .product_name
-                .clone()
-                .unwrap_or_else(|| "Tauri App".to_string());
+            let app_name = app.config().product_name.clone().unwrap_or_else(|| "Tauri App".to_string());
 
             let identifier = app.config().identifier.clone();
 
@@ -208,8 +204,7 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
 
             // Start WebSocket server in background
             let app_handle = app.clone();
-            let ws_server =
-                websocket::WebSocketServer::new(port, &bind_address, app_handle, event_tx);
+            let ws_server = websocket::WebSocketServer::new(port, &bind_address, app_handle, event_tx);
 
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = ws_server.start().await {
@@ -217,12 +212,7 @@ pub fn init_with_config<R: Runtime>(config: Config) -> TauriPlugin<R> {
                 }
             });
 
-            mcp_log_info(
-                "PLUGIN",
-                &format!(
-                    "MCP Bridge plugin initialized for '{app_name}' ({identifier}) on {bind_address}:{port}"
-                ),
-            );
+            mcp_log_info("PLUGIN", &format!("MCP Bridge plugin initialized for '{app_name}' ({identifier}) on {bind_address}:{port}"));
             Ok(())
         })
         .build()

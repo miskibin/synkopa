@@ -15,11 +15,7 @@ use uuid::Uuid;
 ///
 /// On other platforms, falls back to the eval + event listener approach.
 #[command]
-pub async fn execute_js<R: Runtime>(
-    window: WebviewWindow<R>,
-    script: String,
-    state: State<'_, ScriptExecutor>,
-) -> Result<Value, String> {
+pub async fn execute_js<R: Runtime>(window: WebviewWindow<R>, script: String, state: State<'_, ScriptExecutor>) -> Result<Value, String> {
     // Try native evaluation first (macOS), fall back to eval + IPC
     #[cfg(target_os = "macos")]
     {
@@ -45,10 +41,7 @@ pub async fn execute_js<R: Runtime>(
             match native_evaluate_js(&window, &wrapped_script) {
                 Ok(result) => return Ok(result),
                 Err(e) => {
-                    mcp_log_error(
-                        "EXECUTE_JS",
-                        &format!("Native eval failed, falling back: {e}"),
-                    );
+                    mcp_log_error("EXECUTE_JS", &format!("Native eval failed, falling back: {e}"));
                 }
             }
         }
@@ -61,10 +54,7 @@ pub async fn execute_js<R: Runtime>(
 /// macOS: Use WKWebView's evaluateJavaScript:completionHandler: directly
 /// to get results without needing IPC callbacks.
 #[cfg(target_os = "macos")]
-fn native_evaluate_js<R: Runtime>(
-    window: &WebviewWindow<R>,
-    script: &str,
-) -> Result<Value, String> {
+fn native_evaluate_js<R: Runtime>(window: &WebviewWindow<R>, script: &str) -> Result<Value, String> {
     use block2::RcBlock;
     use objc2_foundation::{NSError, NSString};
     use objc2_web_kit::WKWebView;
@@ -85,55 +75,51 @@ fn native_evaluate_js<R: Runtime>(
                 let wkwebview: &WKWebView = &*(webview.inner() as *const _ as *const WKWebView);
 
                 let tx_clone = tx.clone();
-                let handler = RcBlock::new(
-                    move |result: *mut objc2::runtime::AnyObject, error: *mut NSError| {
-                        if let Some(tx) = tx_clone.lock().unwrap().take() {
-                            if !error.is_null() {
-                                let err = &*error;
-                                let desc = err.localizedDescription();
-                                let _ = tx.send(Err(desc.to_string()));
-                            } else if !result.is_null() {
-                                let result_str = result_to_string(result);
-                                match result_str {
-                                    Some(s) => {
-                                        // Check for error sentinel
-                                        if let Ok(val) = serde_json::from_str::<Value>(&s) {
-                                            if let Some(err) =
-                                                val.get("__mcp_error__").and_then(|v| v.as_str())
-                                            {
-                                                let _ = tx.send(Ok(serde_json::json!({
-                                                    "success": false,
-                                                    "error": err
-                                                })));
-                                            } else {
-                                                let _ = tx.send(Ok(serde_json::json!({
-                                                    "success": true,
-                                                    "data": val
-                                                })));
-                                            }
+                let handler = RcBlock::new(move |result: *mut objc2::runtime::AnyObject, error: *mut NSError| {
+                    if let Some(tx) = tx_clone.lock().unwrap().take() {
+                        if !error.is_null() {
+                            let err = &*error;
+                            let desc = err.localizedDescription();
+                            let _ = tx.send(Err(desc.to_string()));
+                        } else if !result.is_null() {
+                            let result_str = result_to_string(result);
+                            match result_str {
+                                Some(s) => {
+                                    // Check for error sentinel
+                                    if let Ok(val) = serde_json::from_str::<Value>(&s) {
+                                        if let Some(err) = val.get("__mcp_error__").and_then(|v| v.as_str()) {
+                                            let _ = tx.send(Ok(serde_json::json!({
+                                                "success": false,
+                                                "error": err
+                                            })));
                                         } else {
                                             let _ = tx.send(Ok(serde_json::json!({
                                                 "success": true,
-                                                "data": s
+                                                "data": val
                                             })));
                                         }
-                                    }
-                                    None => {
+                                    } else {
                                         let _ = tx.send(Ok(serde_json::json!({
                                             "success": true,
-                                            "data": null
+                                            "data": s
                                         })));
                                     }
                                 }
-                            } else {
-                                let _ = tx.send(Ok(serde_json::json!({
-                                    "success": true,
-                                    "data": null
-                                })));
+                                None => {
+                                    let _ = tx.send(Ok(serde_json::json!({
+                                        "success": true,
+                                        "data": null
+                                    })));
+                                }
                             }
+                        } else {
+                            let _ = tx.send(Ok(serde_json::json!({
+                                "success": true,
+                                "data": null
+                            })));
                         }
-                    },
-                );
+                    }
+                });
 
                 wkwebview.evaluateJavaScript_completionHandler(&script_for_closure, Some(&handler));
             }
@@ -178,6 +164,7 @@ fn should_use_native_evaluation(script: &str) -> bool {
 
 /// Fallback: eval + IPC event listener approach.
 /// Used on non-macOS platforms.
+#[allow(clippy::too_many_lines)] // upstream's control flow, vendored as published
 async fn eval_with_ipc_callback<R: Runtime>(
     window: &WebviewWindow<R>,
     script: &str,
@@ -206,11 +193,7 @@ async fn eval_with_ipc_callback<R: Runtime>(
                         tokio::spawn(async move {
                             let mut pending_guard = pending.lock().await;
                             if let Some(sender) = pending_guard.remove(&exec_id_for_task) {
-                                let result = if payload
-                                    .get("success")
-                                    .and_then(|v| v.as_bool())
-                                    .unwrap_or(false)
-                                {
+                                let result = if payload.get("success").and_then(|v| v.as_bool()).unwrap_or(false) {
                                     serde_json::json!({
                                         "success": true,
                                         "data": payload.get("data").cloned().unwrap_or(Value::Null)
@@ -230,10 +213,7 @@ async fn eval_with_ipc_callback<R: Runtime>(
                 }
             }
             Err(e) => {
-                mcp_log_error(
-                    "EXECUTE_JS",
-                    &format!("Failed to parse __script_result payload: {e}. Raw: {raw_payload}"),
-                );
+                mcp_log_error("EXECUTE_JS", &format!("Failed to parse __script_result payload: {e}. Raw: {raw_payload}"));
             }
         }
     });
@@ -320,11 +300,8 @@ fn prepare_script(script: &str) -> String {
     let trimmed = script.trim();
     let needs_return = !trimmed.starts_with("return ");
 
-    let has_real_semicolons = if let Some(without_trailing) = trimmed.strip_suffix(';') {
-        without_trailing.contains(';')
-    } else {
-        trimmed.contains(';')
-    };
+    let has_real_semicolons =
+        if let Some(without_trailing) = trimmed.strip_suffix(';') { without_trailing.contains(';') } else { trimmed.contains(';') };
 
     let is_multi_statement = has_real_semicolons
         || trimmed.starts_with("const ")
@@ -377,12 +354,8 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn skips_native_eval_for_async_scripts() {
-        assert!(!should_use_native_evaluation(
-            "return (async () => await document.title)();"
-        ));
-        assert!(!should_use_native_evaluation(
-            "return fetch('/').then((r) => r.text());"
-        ));
+        assert!(!should_use_native_evaluation("return (async () => await document.title)();"));
+        assert!(!should_use_native_evaluation("return fetch('/').then((r) => r.text());"));
         assert!(should_use_native_evaluation("return document.title;"));
     }
 }

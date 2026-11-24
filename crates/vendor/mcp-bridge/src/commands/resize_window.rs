@@ -65,14 +65,8 @@ pub struct ResizeWindowResult {
 /// - The resize may fail if the window has fixed size constraints
 /// - On mobile platforms (Android/iOS), this operation is not supported and returns an error
 #[cfg(desktop)]
-pub async fn resize_window<R: Runtime>(
-    app: AppHandle<R>,
-    params: ResizeWindowParams,
-) -> Result<ResizeWindowResult, String> {
-    let window_label = params
-        .window_id
-        .clone()
-        .unwrap_or_else(|| "main".to_string());
+pub async fn resize_window<R: Runtime>(app: AppHandle<R>, params: ResizeWindowParams) -> Result<ResizeWindowResult, String> {
+    let window_label = params.window_id.clone().unwrap_or_else(|| "main".to_string());
     let window = resolve_window(&app, params.window_id)?;
 
     // Check if window is resizable
@@ -117,14 +111,8 @@ pub async fn resize_window<R: Runtime>(
 
 /// Mobile implementation - returns unsupported error with clear explanation for the agent.
 #[cfg(mobile)]
-pub async fn resize_window<R: Runtime>(
-    _app: AppHandle<R>,
-    params: ResizeWindowParams,
-) -> Result<ResizeWindowResult, String> {
-    let window_label = params
-        .window_id
-        .clone()
-        .unwrap_or_else(|| "main".to_string());
+pub async fn resize_window<R: Runtime>(_app: AppHandle<R>, params: ResizeWindowParams) -> Result<ResizeWindowResult, String> {
+    let window_label = params.window_id.clone().unwrap_or_else(|| "main".to_string());
 
     Ok(ResizeWindowResult {
         success: false,

@@ -32,10 +32,7 @@ use tauri::{command, Runtime, State, WebviewWindow};
 /// * [`stop_ipc_monitor`] - Stop monitoring
 /// * [`get_ipc_events`] - Retrieve captured events
 #[command]
-pub async fn start_ipc_monitor<R: Runtime>(
-    window: WebviewWindow<R>,
-    monitor: State<'_, IPCMonitorState>,
-) -> Result<String, String> {
+pub async fn start_ipc_monitor<R: Runtime>(window: WebviewWindow<R>, monitor: State<'_, IPCMonitorState>) -> Result<String, String> {
     let mut mon = monitor.lock().map_err(|e| format!("Lock error: {e}"))?;
     mon.start();
 
@@ -74,10 +71,7 @@ pub async fn start_ipc_monitor<R: Runtime>(
 /// * [`start_ipc_monitor`] - Start monitoring
 /// * [`get_ipc_events`] - Retrieve captured events
 #[command]
-pub async fn stop_ipc_monitor<R: Runtime>(
-    window: WebviewWindow<R>,
-    monitor: State<'_, IPCMonitorState>,
-) -> Result<String, String> {
+pub async fn stop_ipc_monitor<R: Runtime>(window: WebviewWindow<R>, monitor: State<'_, IPCMonitorState>) -> Result<String, String> {
     // Trigger JS-side IPC interception stop first
     let _ = window.eval("window.__MCP_STOP_IPC_MONITOR__ && window.__MCP_STOP_IPC_MONITOR__();");
 
@@ -160,14 +154,7 @@ pub async fn report_ipc_event(
 
     let mut mon = monitor.lock().map_err(|e| format!("Lock error: {e}"))?;
 
-    let event = IPCEvent {
-        timestamp: current_timestamp(),
-        command,
-        args,
-        result,
-        error,
-        duration_ms,
-    };
+    let event = IPCEvent { timestamp: current_timestamp(), command, args, result, error, duration_ms };
 
     mon.add_event(event);
     Ok(())

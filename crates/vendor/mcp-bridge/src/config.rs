@@ -17,28 +17,19 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            bind_address: "0.0.0.0".to_string(),
-            base_port: 9223,
-        }
+        Self { bind_address: "0.0.0.0".to_string(), base_port: 9223 }
     }
 }
 
 impl Config {
     /// Creates a new configuration with the specified bind address.
     pub fn new(bind_address: &str) -> Self {
-        Self {
-            bind_address: bind_address.to_string(),
-            base_port: 9223,
-        }
+        Self { bind_address: bind_address.to_string(), base_port: 9223 }
     }
 
     /// Creates a configuration that binds to localhost only.
     pub fn localhost_only() -> Self {
-        Self {
-            bind_address: "127.0.0.1".to_string(),
-            base_port: 9223,
-        }
+        Self { bind_address: "127.0.0.1".to_string(), base_port: 9223 }
     }
 }
 
@@ -70,9 +61,7 @@ impl Default for Builder {
 impl Builder {
     /// Creates a new builder with default configuration.
     pub fn new() -> Self {
-        Self {
-            config: Config::default(),
-        }
+        Self { config: Config::default() }
     }
 
     /// Sets the bind address for the WebSocket server.

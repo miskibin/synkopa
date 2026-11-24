@@ -72,21 +72,13 @@ fn get_effective_max_width(param: Option<u32>) -> Option<u32> {
         return param;
     }
 
-    env::var(ENV_MAX_WIDTH)
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok())
+    env::var(ENV_MAX_WIDTH).ok().and_then(|s| s.parse::<u32>().ok())
 }
 
 /// Resize image data if it exceeds max_width, preserving aspect ratio.
 /// Returns the original data if no resizing is needed.
-fn resize_if_needed(
-    data: Vec<u8>,
-    max_width: u32,
-    format: &str,
-    quality: u8,
-) -> Result<Vec<u8>, ScreenshotError> {
-    let img = image::load_from_memory(&data)
-        .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to decode image: {e}")))?;
+fn resize_if_needed(data: Vec<u8>, max_width: u32, format: &str, quality: u8) -> Result<Vec<u8>, ScreenshotError> {
+    let img = image::load_from_memory(&data).map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to decode image: {e}")))?;
 
     let current_width = img.width();
 
@@ -109,13 +101,9 @@ fn resize_if_needed(
     if format == "jpeg" {
         let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality);
 
-        resized
-            .write_with_encoder(encoder)
-            .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode JPEG: {e}")))?;
+        resized.write_with_encoder(encoder).map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode JPEG: {e}")))?;
     } else {
-        resized
-            .write_to(&mut buffer, ImageFormat::Png)
-            .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode PNG: {e}")))?;
+        resized.write_to(&mut buffer, ImageFormat::Png).map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to encode PNG: {e}")))?;
     }
 
     Ok(buffer.into_inner())
@@ -124,9 +112,7 @@ fn resize_if_needed(
 /// Platform-specific screenshot implementation trait
 pub trait PlatformScreenshot {
     /// Capture a screenshot of the current viewport
-    fn capture_viewport(
-        window: &WebviewWindow<impl Runtime>,
-    ) -> Result<Screenshot, ScreenshotError>;
+    fn capture_viewport(window: &WebviewWindow<impl Runtime>) -> Result<Screenshot, ScreenshotError>;
 }
 
 /// Capture a screenshot of the current viewport using platform-specific APIs
@@ -137,12 +123,8 @@ pub async fn capture_viewport_screenshot<R: Runtime>(
     max_width: Option<u32>,
 ) -> Result<CapturedScreenshot, ScreenshotError> {
     // Get CSS viewport dimensions before capturing
-    let physical_size = window
-        .inner_size()
-        .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to get inner size: {e}")))?;
-    let scale_factor = window
-        .scale_factor()
-        .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to get scale factor: {e}")))?;
+    let physical_size = window.inner_size().map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to get inner size: {e}")))?;
+    let scale_factor = window.scale_factor().map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to get scale factor: {e}")))?;
     let css_width = physical_size.width as f64 / scale_factor;
     let css_height = physical_size.height as f64 / scale_factor;
 
@@ -162,13 +144,7 @@ pub async fn capture_viewport_screenshot<R: Runtime>(
     #[cfg(target_os = "android")]
     let screenshot = android::capture_viewport(window)?;
 
-    #[cfg(not(any(
-        target_os = "macos",
-        target_os = "windows",
-        target_os = "linux",
-        target_os = "ios",
-        target_os = "android"
-    )))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux", target_os = "ios", target_os = "android")))]
     return Err(ScreenshotError::PlatformUnsupported);
 
     // Apply max_width constraint if specified (param or env var)
@@ -179,8 +155,7 @@ pub async fn capture_viewport_screenshot<R: Runtime>(
     };
 
     // Get final image dimensions
-    let img = image::load_from_memory(&resized_data)
-        .map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to decode image: {e}")))?;
+    let img = image::load_from_memory(&resized_data).map_err(|e| ScreenshotError::ResizeFailed(format!("Failed to decode image: {e}")))?;
     let image_width = img.width();
     let image_height = img.height();
 
@@ -206,13 +181,7 @@ pub async fn capture_viewport_screenshot<R: Runtime>(
     let base64_data = base64::engine::general_purpose::STANDARD.encode(&final_data);
     let data_url = format!("data:{mime_type};base64,{base64_data}");
 
-    Ok(CapturedScreenshot {
-        data_url,
-        image_width,
-        image_height,
-        css_width,
-        css_height,
-    })
+    Ok(CapturedScreenshot { data_url, image_width, image_height, css_width, css_height })
 }
 
 /// Check if data is JPEG by examining magic bytes
@@ -228,8 +197,7 @@ fn convert_png_to_jpeg(png_data: &[u8], quality: u8) -> Result<Vec<u8>, Screensh
     let mut jpeg_buffer = Cursor::new(Vec::new());
     let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buffer, quality);
 
-    img.write_with_encoder(encoder)
-        .map_err(|e| ScreenshotError::EncodeFailed(format!("Failed to encode JPEG: {e}")))?;
+    img.write_with_encoder(encoder).map_err(|e| ScreenshotError::EncodeFailed(format!("Failed to encode JPEG: {e}")))?;
 
     Ok(jpeg_buffer.into_inner())
 }

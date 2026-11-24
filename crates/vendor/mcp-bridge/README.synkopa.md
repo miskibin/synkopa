@@ -12,3 +12,11 @@ Our only delta is the handshake check in `src/websocket.rs`
 "VENDORED PATCH" in the source. The bridge itself is registered only in
 debug builds and only when `SYNKOPA_MCP_BRIDGE` is set, bound to 127.0.0.1.
 Re-vendor from crates.io when upstream publishes the origin check.
+
+The vendored crate is a workspace member so its handshake regression tests
+(`src/websocket.rs` `origin_tests`: an Origin-bearing handshake is refused
+with 403 and a masked frame written after it is never read; a no-Origin
+client upgrades and holds a live session) run with `cargo test --workspace`,
+and so clippy and rustfmt gate it like the rest of the house. Upstream
+source was reformatted and lint-annotated for those gates; the behavioural
+delta is the marked handshake check only.

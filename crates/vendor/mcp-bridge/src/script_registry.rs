@@ -40,9 +40,7 @@ pub struct ScriptRegistry {
 impl ScriptRegistry {
     /// Creates a new empty script registry.
     pub fn new() -> Self {
-        Self {
-            scripts: HashMap::new(),
-        }
+        Self { scripts: HashMap::new() }
     }
 
     /// Adds a script entry to the registry.
@@ -105,11 +103,8 @@ mod tests {
     #[test]
     fn test_add_and_get() {
         let mut registry = ScriptRegistry::new();
-        let entry = ScriptEntry {
-            id: "test-script".to_string(),
-            script_type: ScriptType::Inline,
-            content: "console.log('hello')".to_string(),
-        };
+        let entry =
+            ScriptEntry { id: "test-script".to_string(), script_type: ScriptType::Inline, content: "console.log('hello')".to_string() };
 
         registry.add(entry.clone());
 
@@ -141,16 +136,8 @@ mod tests {
     #[test]
     fn test_clear() {
         let mut registry = ScriptRegistry::new();
-        registry.add(ScriptEntry {
-            id: "script1".to_string(),
-            script_type: ScriptType::Inline,
-            content: "1".to_string(),
-        });
-        registry.add(ScriptEntry {
-            id: "script2".to_string(),
-            script_type: ScriptType::Inline,
-            content: "2".to_string(),
-        });
+        registry.add(ScriptEntry { id: "script1".to_string(), script_type: ScriptType::Inline, content: "1".to_string() });
+        registry.add(ScriptEntry { id: "script2".to_string(), script_type: ScriptType::Inline, content: "2".to_string() });
 
         assert_eq!(registry.len(), 2);
 
@@ -161,16 +148,8 @@ mod tests {
     #[test]
     fn test_get_all() {
         let mut registry = ScriptRegistry::new();
-        registry.add(ScriptEntry {
-            id: "a".to_string(),
-            script_type: ScriptType::Inline,
-            content: "a".to_string(),
-        });
-        registry.add(ScriptEntry {
-            id: "b".to_string(),
-            script_type: ScriptType::Url,
-            content: "b".to_string(),
-        });
+        registry.add(ScriptEntry { id: "a".to_string(), script_type: ScriptType::Inline, content: "a".to_string() });
+        registry.add(ScriptEntry { id: "b".to_string(), script_type: ScriptType::Url, content: "b".to_string() });
 
         let all = registry.get_all();
         assert_eq!(all.len(), 2);
@@ -179,16 +158,8 @@ mod tests {
     #[test]
     fn test_replace_existing() {
         let mut registry = ScriptRegistry::new();
-        registry.add(ScriptEntry {
-            id: "same-id".to_string(),
-            script_type: ScriptType::Inline,
-            content: "original".to_string(),
-        });
-        registry.add(ScriptEntry {
-            id: "same-id".to_string(),
-            script_type: ScriptType::Inline,
-            content: "replaced".to_string(),
-        });
+        registry.add(ScriptEntry { id: "same-id".to_string(), script_type: ScriptType::Inline, content: "original".to_string() });
+        registry.add(ScriptEntry { id: "same-id".to_string(), script_type: ScriptType::Inline, content: "replaced".to_string() });
 
         assert_eq!(registry.len(), 1);
         assert_eq!(registry.get("same-id").unwrap().content, "replaced");

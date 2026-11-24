@@ -95,10 +95,7 @@ impl IPCMonitor {
     /// assert!(!monitor.enabled);
     /// ```
     pub fn new() -> Self {
-        Self {
-            enabled: false,
-            events: Vec::new(),
-        }
+        Self { enabled: false, events: Vec::new() }
     }
 
     /// Starts IPC monitoring and clears previous events.
@@ -217,8 +214,5 @@ pub type IPCMonitorState = Arc<Mutex<IPCMonitor>>;
 /// assert!(timestamp > 0);
 /// ```
 pub fn current_timestamp() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64
 }

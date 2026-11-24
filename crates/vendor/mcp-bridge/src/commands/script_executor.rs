@@ -16,9 +16,7 @@ pub struct ScriptExecutor {
 
 impl ScriptExecutor {
     pub fn new() -> Self {
-        Self {
-            pending_results: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self { pending_results: Arc::new(Mutex::new(HashMap::new())) }
     }
 }
 

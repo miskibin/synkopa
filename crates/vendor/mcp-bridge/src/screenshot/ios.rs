@@ -10,9 +10,7 @@ use tauri::{Runtime, WebviewWindow};
 /// objc2-web-kit's WKWebView requires objc2-app-kit which is macOS-only.
 /// On iOS, WKWebView inherits from UIView (via objc2-ui-kit), not NSView.
 /// The takeSnapshotWithConfiguration:completionHandler: method returns UIImage on iOS.
-pub fn capture_viewport<R: Runtime>(
-    window: &WebviewWindow<R>,
-) -> Result<Screenshot, ScreenshotError> {
+pub fn capture_viewport<R: Runtime>(window: &WebviewWindow<R>) -> Result<Screenshot, ScreenshotError> {
     #[cfg(target_os = "ios")]
     {
         use block2::RcBlock;
@@ -66,9 +64,7 @@ pub fn capture_viewport<R: Runtime>(
                                     }
                                 }
                             } else {
-                                let _ = tx.send(Err(ScreenshotError::CaptureFailed(
-                                    "No image returned from snapshot".to_string(),
-                                )));
+                                let _ = tx.send(Err(ScreenshotError::CaptureFailed("No image returned from snapshot".to_string())));
                             }
                         }
                     });
@@ -82,9 +78,7 @@ pub fn capture_viewport<R: Runtime>(
                     ];
                 }
             })
-            .map_err(|e| {
-                ScreenshotError::CaptureFailed(format!("Failed to access webview: {e}"))
-            })?;
+            .map_err(|e| ScreenshotError::CaptureFailed(format!("Failed to access webview: {e}")))?;
 
         // Wait for result while running the event loop
         // This is necessary because the completion handler is called asynchronously
@@ -129,9 +123,7 @@ unsafe fn wait_for_blocking_operation(
 
 /// Convert UIImage to PNG data using UIImagePNGRepresentation
 #[cfg(target_os = "ios")]
-unsafe fn convert_uiimage_to_png(
-    image: &objc2_ui_kit::UIImage,
-) -> Result<Vec<u8>, ScreenshotError> {
+unsafe fn convert_uiimage_to_png(image: &objc2_ui_kit::UIImage) -> Result<Vec<u8>, ScreenshotError> {
     use objc2_foundation::NSData;
 
     // Use UIImagePNGRepresentation function (available since iOS 2.0)
@@ -143,9 +135,7 @@ unsafe fn convert_uiimage_to_png(
     let png_data = UIImagePNGRepresentation(image);
 
     if png_data.is_null() {
-        return Err(ScreenshotError::EncodeFailed(
-            "Failed to create PNG data".to_string(),
-        ));
+        return Err(ScreenshotError::EncodeFailed("Failed to create PNG data".to_string()));
     }
 
     let data = &*png_data;

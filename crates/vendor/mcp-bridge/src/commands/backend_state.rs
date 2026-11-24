@@ -44,9 +44,7 @@ pub async fn get_backend_state<R: Runtime>(app: AppHandle<R>) -> Result<Value, S
     // Host-process CWD. Lets MCP clients disambiguate concurrent Tauri
     // instances running from different worktrees or checkouts (bundle id
     // is identical across them).
-    let cwd: Option<String> = std::env::current_dir()
-        .ok()
-        .map(|p| p.display().to_string());
+    let cwd: Option<String> = std::env::current_dir().ok().map(|p| p.display().to_string());
 
     Ok(serde_json::json!({
         "app": {

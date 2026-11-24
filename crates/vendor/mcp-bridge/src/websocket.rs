@@ -75,19 +75,10 @@ impl<R: Runtime> WebSocketServer<R> {
     /// let (event_tx, _event_rx) = tokio::sync::broadcast::channel(100);
     /// let server = WebSocketServer::new(9223, "0.0.0.0", app_handle, event_tx);
     /// ```
-    pub fn new(
-        port: u16,
-        bind_address: &str,
-        app: AppHandle<R>,
-        event_tx: broadcast::Sender<String>,
-    ) -> Self {
+    pub fn new(port: u16, bind_address: &str, app: AppHandle<R>, event_tx: broadcast::Sender<String>) -> Self {
         let addr: SocketAddr = format!("{bind_address}:{port}").parse().unwrap();
 
-        Self {
-            addr,
-            event_tx,
-            app,
-        }
+        Self { addr, event_tx, app }
     }
 
     /// Starts the WebSocket server and begins accepting connections.
@@ -120,10 +111,7 @@ impl<R: Runtime> WebSocketServer<R> {
     /// ```
     pub async fn start(self) -> Result<(), Box<dyn std::error::Error>> {
         let listener = TcpListener::bind(&self.addr).await?;
-        mcp_log_info(
-            "WS_SERVER",
-            &format!("WebSocket server listening on: {}", self.addr),
-        );
+        mcp_log_info("WS_SERVER", &format!("WebSocket server listening on: {}", self.addr));
 
         loop {
             let (stream, _) = listener.accept().await?;
@@ -185,11 +173,7 @@ async fn handle_invoke_tauri<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Va
         return error_response(id, "Missing command in args");
     };
 
-    let window_label = args
-        .get("args")
-        .and_then(|a| a.get("windowLabel"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let window_label = args.get("args").and_then(|a| a.get("windowLabel")).and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match tauri_cmd {
         "plugin:mcp-bridge|get_window_info" => match commands::resolve_window(app, window_label) {
@@ -199,12 +183,10 @@ async fn handle_invoke_tauri<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Va
             },
             Err(e) => error_response(id, e),
         },
-        "plugin:mcp-bridge|get_backend_state" => {
-            match commands::get_backend_state(app.clone()).await {
-                Ok(data) => success_response(id, data),
-                Err(e) => error_response(id, e),
-            }
-        }
+        "plugin:mcp-bridge|get_backend_state" => match commands::get_backend_state(app.clone()).await {
+            Ok(data) => success_response(id, data),
+            Err(e) => error_response(id, e),
+        },
         "plugin:mcp-bridge|start_ipc_monitor" => {
             let Some(window) = app.webview_windows().values().next().cloned() else {
                 return error_response(id, "No window available");
@@ -228,18 +210,10 @@ async fn handle_invoke_tauri<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Va
             Err(e) => error_response(id, e),
         },
         "plugin:mcp-bridge|emit_event" => {
-            let Some(event_name) = args
-                .get("args")
-                .and_then(|a| a.get("eventName"))
-                .and_then(|v| v.as_str())
-            else {
+            let Some(event_name) = args.get("args").and_then(|a| a.get("eventName")).and_then(|v| v.as_str()) else {
                 return error_response(id, "Missing eventName in args");
             };
-            let payload = args
-                .get("args")
-                .and_then(|a| a.get("payload"))
-                .cloned()
-                .unwrap_or(serde_json::json!(null));
+            let payload = args.get("args").and_then(|a| a.get("payload")).cloned().unwrap_or(serde_json::json!(null));
             match commands::emit_event(app.clone(), event_name.to_string(), payload).await {
                 Ok(data) => success_response(id, data),
                 Err(e) => error_response(id, e),
@@ -251,20 +225,14 @@ async fn handle_invoke_tauri<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Va
 
 /// Handles window focus, minimize, and maximize actions (desktop); unsupported on mobile.
 async fn handle_set_window_state<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
-    let window_id = args
-        .get("windowId")
-        .and_then(|value| value.as_str())
-        .map(|s| s.to_string());
+    let window_id = args.get("windowId").and_then(|value| value.as_str()).map(|s| s.to_string());
     let window_label = window_id.as_deref().unwrap_or("main").to_string();
     let Some(action) = args.get("action").and_then(|value| value.as_str()) else {
         return error_response(id, "Missing action in args");
     };
 
     match commands::set_window_state(app.clone(), window_id, action).await {
-        Ok(()) => success_response(
-            id,
-            serde_json::json!({ "action": action, "windowId": window_label }),
-        ),
+        Ok(()) => success_response(id, serde_json::json!({ "action": action, "windowId": window_label })),
         Err(error) => error_response(id, error),
     }
 }
@@ -278,16 +246,8 @@ async fn handle_list_windows<R: Runtime>(app: &AppHandle<R>, id: &str) -> Value 
 }
 
 /// Handles the get_window_info command.
-async fn handle_get_window_info<R: Runtime>(
-    app: &AppHandle<R>,
-    id: &str,
-    command: &Value,
-) -> Value {
-    let window_id = command
-        .get("args")
-        .and_then(|a| a.get("windowId"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+async fn handle_get_window_info<R: Runtime>(app: &AppHandle<R>, id: &str, command: &Value) -> Value {
+    let window_id = command.get("args").and_then(|a| a.get("windowId")).and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match commands::resolve_window(app, window_id) {
         Ok(window) => match commands::get_window_info(window).await {
@@ -304,17 +264,12 @@ async fn handle_execute_js<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Valu
         return error_response(id, "Missing script argument");
     };
 
-    let window_label = args
-        .get("windowLabel")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let window_label = args.get("windowLabel").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match resolve_window_with_context(app, window_label) {
         Ok(resolved) => {
             let executor_state: tauri::State<'_, ScriptExecutor> = app.state();
-            match commands::execute_js(resolved.window.clone(), script.to_string(), executor_state)
-                .await
-            {
+            match commands::execute_js(resolved.window.clone(), script.to_string(), executor_state).await {
                 Ok(result) => serde_json::json!({
                     "id": id,
                     "success": result.get("success").and_then(|v| v.as_bool()).unwrap_or(true),
@@ -335,47 +290,27 @@ async fn handle_execute_js<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Valu
 }
 
 /// Handles the capture_native_screenshot command.
-async fn handle_capture_screenshot<R: Runtime>(
-    app: &AppHandle<R>,
-    id: &str,
-    args: Option<&Value>,
-) -> Value {
-    let format = args
-        .and_then(|a| a.get("format"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-    let quality = args
-        .and_then(|a| a.get("quality"))
-        .and_then(|v| v.as_u64())
-        .map(|q| q as u8);
-    let max_width = args
-        .and_then(|a| a.get("maxWidth"))
-        .and_then(|v| v.as_u64())
-        .map(|w| w as u32);
-    let window_label = args
-        .and_then(|a| a.get("windowLabel"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+async fn handle_capture_screenshot<R: Runtime>(app: &AppHandle<R>, id: &str, args: Option<&Value>) -> Value {
+    let format = args.and_then(|a| a.get("format")).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let quality = args.and_then(|a| a.get("quality")).and_then(|v| v.as_u64()).map(|q| q as u8);
+    let max_width = args.and_then(|a| a.get("maxWidth")).and_then(|v| v.as_u64()).map(|w| w as u32);
+    let window_label = args.and_then(|a| a.get("windowLabel")).and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match resolve_window_with_context(app, window_label) {
-        Ok(resolved) => {
-            match commands::capture_native_screenshot(resolved.window, format, quality, max_width)
-                .await
-            {
-                Ok(data_url) => serde_json::json!({
-                    "id": id,
-                    "success": true,
-                    "data": data_url,
-                    "windowContext": resolved.context
-                }),
-                Err(e) => serde_json::json!({
-                    "id": id,
-                    "success": false,
-                    "error": e,
-                    "windowContext": resolved.context
-                }),
-            }
-        }
+        Ok(resolved) => match commands::capture_native_screenshot(resolved.window, format, quality, max_width).await {
+            Ok(data_url) => serde_json::json!({
+                "id": id,
+                "success": true,
+                "data": data_url,
+                "windowContext": resolved.context
+            }),
+            Err(e) => serde_json::json!({
+                "id": id,
+                "success": false,
+                "error": e,
+                "windowContext": resolved.context
+            }),
+        },
         Err(e) => error_response(id, e),
     }
 }
@@ -383,29 +318,15 @@ async fn handle_capture_screenshot<R: Runtime>(
 /// Handles the resize_window command.
 async fn handle_resize_window<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) -> Value {
     let width = args.get("width").and_then(|v| v.as_u64()).map(|w| w as u32);
-    let height = args
-        .get("height")
-        .and_then(|v| v.as_u64())
-        .map(|h| h as u32);
-    let window_id = args
-        .get("windowId")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-    let logical = args
-        .get("logical")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
+    let height = args.get("height").and_then(|v| v.as_u64()).map(|h| h as u32);
+    let window_id = args.get("windowId").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let logical = args.get("logical").and_then(|v| v.as_bool()).unwrap_or(true);
 
     let (Some(w), Some(h)) = (width, height) else {
         return error_response(id, "Missing width or height argument");
     };
 
-    let params = commands::ResizeWindowParams {
-        width: w,
-        height: h,
-        window_id,
-        logical,
-    };
+    let params = commands::ResizeWindowParams { width: w, height: h, window_id, logical };
 
     match commands::resize_window(app.clone(), params).await {
         Ok(result) => serde_json::json!({
@@ -424,8 +345,7 @@ fn handle_register_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value
     let script_type_str = args.get("type").and_then(|v| v.as_str());
     let content = args.get("content").and_then(|v| v.as_str());
 
-    let (Some(id_str), Some(type_str), Some(content_str)) = (script_id, script_type_str, content)
-    else {
+    let (Some(id_str), Some(type_str), Some(content_str)) = (script_id, script_type_str, content) else {
         return error_response(id, "Missing required args: id, type, content");
     };
 
@@ -434,11 +354,7 @@ fn handle_register_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value
         _ => ScriptType::Inline,
     };
 
-    let entry = ScriptEntry {
-        id: id_str.to_string(),
-        script_type,
-        content: content_str.to_string(),
-    };
+    let entry = ScriptEntry { id: id_str.to_string(), script_type, content: content_str.to_string() };
 
     let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
     {
@@ -446,10 +362,7 @@ fn handle_register_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value
         reg.add(entry.clone());
     }
 
-    let window_label = args
-        .get("windowLabel")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let window_label = args.get("windowLabel").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match inject_script_to_webview(app, &entry, window_label) {
         Ok(result) => serde_json::json!({
@@ -478,10 +391,7 @@ fn handle_remove_script<R: Runtime>(app: &AppHandle<R>, id: &str, args: &Value) 
         reg.remove(script_id).is_some()
     };
 
-    let window_label = args
-        .get("windowLabel")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let window_label = args.get("windowLabel").and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match remove_script_from_webview(app, script_id, window_label) {
         Ok(result) => serde_json::json!({
@@ -516,11 +426,7 @@ fn handle_clear_scripts<R: Runtime>(app: &AppHandle<R>, id: &str, command: &Valu
         count
     };
 
-    let window_label = command
-        .get("args")
-        .and_then(|a| a.get("windowLabel"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let window_label = command.get("args").and_then(|a| a.get("windowLabel")).and_then(|v| v.as_str()).map(|s| s.to_string());
 
     match clear_scripts_from_webview(app, window_label) {
         Ok(result) => serde_json::json!({
@@ -575,10 +481,7 @@ fn handle_get_scripts<R: Runtime>(app: &AppHandle<R>, id: &str) -> Value {
 /// Dispatches a WebSocket command to the appropriate handler.
 async fn dispatch_command<R: Runtime>(app: &AppHandle<R>, command: &Value) -> Value {
     let id = command.get("id").and_then(|v| v.as_str()).unwrap_or("");
-    let cmd_name = command
-        .get("command")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let cmd_name = command.get("command").and_then(|v| v.as_str()).unwrap_or("unknown");
     let args = command.get("args");
 
     match cmd_name {
@@ -643,16 +546,35 @@ fn is_benign_handshake_error(err: &tokio_tungstenite::tungstenite::Error) -> boo
     match err {
         Error::ConnectionClosed | Error::AlreadyClosed => true,
         Error::Protocol(ProtocolError::HandshakeIncomplete) => true,
-        Error::Io(io_err) => matches!(
-            io_err.kind(),
-            ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof | ErrorKind::BrokenPipe
-        ),
+        Error::Io(io_err) => matches!(io_err.kind(), ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof | ErrorKind::BrokenPipe),
         _ => false,
     }
 }
 
 /// Handles a single WebSocket client connection.
 ///
+/// Our vendored delta (see README.synkopa.md): a browser page cannot suppress the Origin
+/// header its WebSocket API always sends, while automation clients send none — so
+/// Origin-bearing handshakes are refused outright. Returning Err (not an Ok 403 response)
+/// matters: tungstenite builds a live session from an Ok response even when the status is
+/// 403, and a raw client could ignore the status and keep sending frames; from Err the
+/// server replies with the error and never builds a session, and frames sent after it go
+/// nowhere. Upstream issue: hypothesi/mcp-server-tauri#38.
+#[allow(clippy::result_large_err)] // tungstenite's callback type fixes the large ErrorResponse
+pub(crate) fn reject_browser_handshake(
+    req: &tokio_tungstenite::tungstenite::http::Request<()>,
+    resp: tokio_tungstenite::tungstenite::http::Response<()>,
+) -> std::result::Result<tokio_tungstenite::tungstenite::http::Response<()>, tokio_tungstenite::tungstenite::handshake::server::ErrorResponse>
+{
+    if req.headers().contains_key("origin") {
+        return Err(tokio_tungstenite::tungstenite::http::Response::builder()
+            .status(tokio_tungstenite::tungstenite::http::StatusCode::FORBIDDEN)
+            .body(Some("this bridge does not accept browser connections".into()))
+            .expect("a static error response always builds"));
+    }
+    Ok(resp)
+}
+
 /// This function manages the lifecycle of a WebSocket connection, including:
 /// - Upgrading the TCP stream to WebSocket
 /// - Forwarding broadcast events to the client
@@ -677,26 +599,7 @@ async fn handle_connection<R: Runtime>(
     // Origin header its WebSocket API always sends, while automation clients send none — so
     // rejecting Origin-bearing handshakes closes the same-machine browser path to the driver
     // (execute_js runs in the app webview). Upstream issue: hypothesi/mcp-server-tauri#38.
-    let ws_stream = match accept_hdr_async(
-        stream,
-        |req: &tokio_tungstenite::tungstenite::http::Request<()>,
-         _resp: tokio_tungstenite::tungstenite::http::Response<()>| {
-            // a browser page cannot suppress its Origin header: refuse the handshake outright.
-            // Returning Err (not an Ok 403 response) matters — tungstenite 0.28 builds a live
-            // session from an Ok response even when its status is 403, so a raw client could
-            // ignore the status and keep sending frames; from Err the server replies with the
-            // error and never builds a session, and frames sent after it go nowhere.
-            if req.headers().contains_key("origin") {
-                return Err(tokio_tungstenite::tungstenite::http::Response::builder()
-                    .status(tokio_tungstenite::tungstenite::http::StatusCode::FORBIDDEN)
-                    .body(Some("this bridge does not accept browser connections".into()))
-                    .expect("a static error response always builds"));
-            }
-            Ok(_resp)
-        },
-    )
-    .await
-    {
+    let ws_stream = match accept_hdr_async(stream, reject_browser_handshake).await {
         Ok(ws_stream) => ws_stream,
         // A client that opens the TCP connection but drops before completing the WebSocket
         // upgrade (port probes, health checks, browsers/agents reconnecting) surfaces here as a
@@ -762,10 +665,7 @@ struct ScriptOperationResult {
 }
 
 /// Injects a script into a specific webview window.
-fn inject_script_to_window<R: Runtime>(
-    window: &WebviewWindow<R>,
-    entry: &ScriptEntry,
-) -> Result<(), String> {
+fn inject_script_to_window<R: Runtime>(window: &WebviewWindow<R>, entry: &ScriptEntry) -> Result<(), String> {
     let script = match entry.script_type {
         ScriptType::Inline => format!(
             r#"
@@ -804,9 +704,7 @@ fn inject_script_to_window<R: Runtime>(
         ),
     };
 
-    window
-        .eval(&script)
-        .map_err(|e| format!("Failed to inject script: {e}"))
+    window.eval(&script).map_err(|e| format!("Failed to inject script: {e}"))
 }
 
 /// Injects a script into the webview DOM.
@@ -821,16 +719,11 @@ fn inject_script_to_webview<R: Runtime>(
 
     inject_script_to_window(&resolved.window, entry)?;
 
-    Ok(ScriptOperationResult {
-        window_context: resolved.context,
-    })
+    Ok(ScriptOperationResult { window_context: resolved.context })
 }
 
 /// Removes a script from a specific window's DOM.
-fn remove_script_from_window<R: Runtime>(
-    window: &WebviewWindow<R>,
-    script_id: &str,
-) -> Result<(), String> {
+fn remove_script_from_window<R: Runtime>(window: &WebviewWindow<R>, script_id: &str) -> Result<(), String> {
     let script = format!(
         r#"
         (function() {{
@@ -842,9 +735,7 @@ fn remove_script_from_window<R: Runtime>(
         "#
     );
 
-    window
-        .eval(&script)
-        .map_err(|e| format!("Failed to remove script: {e}"))
+    window.eval(&script).map_err(|e| format!("Failed to remove script: {e}"))
 }
 
 /// Removes a script from the webview DOM by ID.
@@ -858,9 +749,7 @@ fn remove_script_from_webview<R: Runtime>(
 
     remove_script_from_window(&resolved.window, script_id)?;
 
-    Ok(ScriptOperationResult {
-        window_context: resolved.context,
-    })
+    Ok(ScriptOperationResult { window_context: resolved.context })
 }
 
 /// Clears all MCP-managed scripts from a specific window's DOM.
@@ -872,32 +761,22 @@ fn clear_scripts_from_window<R: Runtime>(window: &WebviewWindow<R>) -> Result<()
         })();
     "#;
 
-    window
-        .eval(script)
-        .map_err(|e| format!("Failed to clear scripts: {e}"))
+    window.eval(script).map_err(|e| format!("Failed to clear scripts: {e}"))
 }
 
 /// Clears all MCP-managed scripts from the webview DOM.
 /// Returns window context for the response.
-fn clear_scripts_from_webview<R: Runtime>(
-    app: &AppHandle<R>,
-    window_label: Option<String>,
-) -> Result<ScriptOperationResult, String> {
+fn clear_scripts_from_webview<R: Runtime>(app: &AppHandle<R>, window_label: Option<String>) -> Result<ScriptOperationResult, String> {
     let resolved = resolve_window_with_context(app, window_label)?;
 
     clear_scripts_from_window(&resolved.window)?;
 
-    Ok(ScriptOperationResult {
-        window_context: resolved.context,
-    })
+    Ok(ScriptOperationResult { window_context: resolved.context })
 }
 
 /// Injects all registered scripts into the webview.
 /// Called when a page loads to re-inject persistent scripts.
-pub fn inject_all_scripts<R: Runtime>(
-    app: &AppHandle<R>,
-    window_label: Option<String>,
-) -> Result<usize, String> {
+pub fn inject_all_scripts<R: Runtime>(app: &AppHandle<R>, window_label: Option<String>) -> Result<usize, String> {
     let registry: tauri::State<'_, SharedScriptRegistry> = app.state();
     let scripts: Vec<ScriptEntry> = {
         let reg = registry.lock().unwrap();
@@ -911,4 +790,99 @@ pub fn inject_all_scripts<R: Runtime>(
     }
 
     Ok(scripts.len())
+}
+
+#[cfg(test)]
+mod origin_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    /// A raw client handshake against a real accept: `origin` goes into the request (a browser
+    /// page cannot leave it out); the response status, whether the socket closed by itself,
+    /// and what the accept side decided are reported.
+    async fn attempt(origin: Option<&str>) -> (u16, bool, &'static str) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            match accept_hdr_async(stream, reject_browser_handshake).await {
+                Ok(_ws) => {
+                    // a session exists: hold it a moment, then close
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    "session"
+                }
+                Err(_) => {
+                    // the handshake aborted: no session ever existed
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    "refused"
+                }
+            }
+        });
+
+        let mut c = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        let key = "MzAxNV9icmlkZ2VfcHJvYmVfa2V5";
+        let mut req = format!("GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n");
+        if let Some(o) = origin {
+            req.push_str(&format!("Origin: {o}\r\n"));
+        }
+        req.push_str("\r\n");
+        c.write_all(req.as_bytes()).await.unwrap();
+
+        let mut buf = Vec::new();
+        let mut head_end = None;
+        let mut status = 0u16;
+        // an attacker ignores the error status and sends a masked text frame anyway
+        let mut frame_sent = false;
+        let mut eof_after_frame = false;
+        loop {
+            let mut chunk = [0u8; 4096];
+            let n = tokio::time::timeout(std::time::Duration::from_secs(2), c.read(&mut chunk)).await.unwrap().unwrap();
+            if n == 0 {
+                // the server closed: with a live session it would still be open (the other
+                // test's accept side holds it). Whatever we sent after the response got no
+                // reply, and if that response was a 403 the frame was never read.
+                if frame_sent {
+                    eof_after_frame = true;
+                }
+                break;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+            if head_end.is_none() {
+                if let Some(i) = find(buf.as_slice(), b"\r\n\r\n") {
+                    head_end = Some(buf.len() + i);
+                    status = std::str::from_utf8(&buf).unwrap().lines().next().unwrap()[9..12].parse().unwrap();
+                    if status != 101 {
+                        let payload = b"{\"id\":1,\"method\":\"execute_js\"}";
+                        let mask = [0x11, 0x22, 0x33, 0x44];
+                        let mut frame = vec![0x81, 0x80 | payload.len() as u8];
+                        frame.extend_from_slice(&mask);
+                        frame.extend(payload.iter().zip(mask.iter()).map(|(b, k)| b ^ k));
+                        c.write_all(&frame).await.unwrap();
+                        frame_sent = true;
+                    }
+                }
+            }
+        }
+        let verdict = server.await.unwrap_or("refused");
+        (status, eof_after_frame, verdict)
+    }
+
+    fn find(h: &[u8], n: &[u8]) -> Option<usize> {
+        (0..h.len().saturating_sub(n.len() - 1)).find(|i| &h[*i..*i + n.len()] == n)
+    }
+
+    #[tokio::test]
+    async fn a_browser_handshake_is_refused_and_its_frames_are_never_read() {
+        let (status, eof_after_frame, verdict) = attempt(Some("http://evil.example")).await;
+        assert_eq!(status, 403, "the upgrade is refused with 403");
+        assert_eq!(verdict, "refused", "no WebSocket session ever forms");
+        assert!(eof_after_frame, "the server closes after the 403: the masked frame written after it is never read");
+    }
+
+    #[tokio::test]
+    async fn an_automation_client_without_origin_still_connects() {
+        let (status, _eof, verdict) = attempt(None).await;
+        assert_eq!(status, 101, "the upgrade succeeds");
+        assert_eq!(verdict, "session", "the accept side holds a live session");
+    }
 }

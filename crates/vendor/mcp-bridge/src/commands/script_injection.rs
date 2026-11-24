@@ -11,9 +11,7 @@ pub async fn request_script_injection<R: Runtime>(
     registry: State<'_, SharedScriptRegistry>,
 ) -> Result<serde_json::Value, String> {
     let scripts: Vec<ScriptEntry> = {
-        let reg = registry
-            .lock()
-            .map_err(|e| format!("Failed to lock registry: {e}"))?;
+        let reg = registry.lock().map_err(|e| format!("Failed to lock registry: {e}"))?;
         reg.get_all().iter().map(|e| (*e).clone()).collect()
     };
 
@@ -44,9 +42,7 @@ pub async fn request_script_injection<R: Runtime>(
         serde_json::to_string(&scripts_json).unwrap_or_else(|_| "[]".to_string())
     );
 
-    window
-        .eval(&inject_script)
-        .map_err(|e| format!("Failed to inject scripts: {e}"))?;
+    window.eval(&inject_script).map_err(|e| format!("Failed to inject scripts: {e}"))?;
 
     Ok(serde_json::json!({
         "injected": scripts.len(),

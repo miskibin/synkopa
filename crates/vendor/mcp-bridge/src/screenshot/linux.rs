@@ -5,9 +5,7 @@ use tauri::{Runtime, WebviewWindow};
 ///
 /// WebKit renders only the visible region directly into a Cairo surface. This
 /// avoids traversing or rasterizing offscreen DOM content in JavaScript.
-pub fn capture_viewport<R: Runtime>(
-    window: &WebviewWindow<R>,
-) -> Result<Screenshot, ScreenshotError> {
+pub fn capture_viewport<R: Runtime>(window: &WebviewWindow<R>) -> Result<Screenshot, ScreenshotError> {
     #[cfg(target_os = "linux")]
     {
         use std::sync::mpsc;
@@ -20,39 +18,25 @@ pub fn capture_viewport<R: Runtime>(
             .with_webview(move |platform_webview| {
                 let webview = platform_webview.inner();
 
-                webview.snapshot(
-                    SnapshotRegion::Visible,
-                    SnapshotOptions::NONE,
-                    None::<&gio::Cancellable>,
-                    move |result| {
-                        let screenshot = result
-                            .map_err(|error| {
-                                ScreenshotError::CaptureFailed(format!(
-                                    "WebKitGTK snapshot failed: {error}"
-                                ))
-                            })
-                            .and_then(|surface| {
-                                let mut data = Vec::new();
+                webview.snapshot(SnapshotRegion::Visible, SnapshotOptions::NONE, None::<&gio::Cancellable>, move |result| {
+                    let screenshot = result
+                        .map_err(|error| ScreenshotError::CaptureFailed(format!("WebKitGTK snapshot failed: {error}")))
+                        .and_then(|surface| {
+                            let mut data = Vec::new();
 
-                                surface.write_to_png(&mut data).map_err(|error| {
-                                    ScreenshotError::EncodeFailed(format!(
-                                        "Failed to encode WebKitGTK snapshot as PNG: {error}"
-                                    ))
-                                })?;
+                            surface.write_to_png(&mut data).map_err(|error| {
+                                ScreenshotError::EncodeFailed(format!("Failed to encode WebKitGTK snapshot as PNG: {error}"))
+                            })?;
 
-                                Ok(Screenshot { data })
-                            });
+                            Ok(Screenshot { data })
+                        });
 
-                        let _ = tx.send(screenshot);
-                    },
-                );
+                    let _ = tx.send(screenshot);
+                });
             })
-            .map_err(|error| {
-                ScreenshotError::CaptureFailed(format!("Failed to access webview: {error}"))
-            })?;
+            .map_err(|error| ScreenshotError::CaptureFailed(format!("Failed to access webview: {error}")))?;
 
-        rx.recv_timeout(Duration::from_secs(10))
-            .map_err(|_| ScreenshotError::Timeout)?
+        rx.recv_timeout(Duration::from_secs(10)).map_err(|_| ScreenshotError::Timeout)?
     }
 
     #[cfg(not(target_os = "linux"))]

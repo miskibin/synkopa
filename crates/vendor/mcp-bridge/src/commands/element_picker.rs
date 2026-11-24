@@ -20,10 +20,7 @@ use tokio::sync::broadcast;
 /// ```json
 /// { "type": "element_picked", "payload": { ... } }
 /// ```
-pub fn setup_element_picker_listeners<R: Runtime>(
-    app: &AppHandle<R>,
-    event_tx: broadcast::Sender<String>,
-) {
+pub fn setup_element_picker_listeners<R: Runtime>(app: &AppHandle<R>, event_tx: broadcast::Sender<String>) {
     // Forward __element_picked events
     let tx_picked = event_tx.clone();
     app.listen("__element_picked", move |event| {
@@ -48,8 +45,5 @@ pub fn setup_element_picker_listeners<R: Runtime>(
         mcp_log_info("ELEMENT_PICKER", "Forwarded element_pointed event");
     });
 
-    mcp_log_info(
-        "ELEMENT_PICKER",
-        "Element picker event listeners registered",
-    );
+    mcp_log_info("ELEMENT_PICKER", "Element picker event listeners registered");
 }
