@@ -236,7 +236,7 @@ impl Engine {
             .music_analysis(Some(clip_id), None)
             .ok()
             .and_then(|m| m.key)
-            .is_some_and(|k| crate::chords::key_uses_flats(k.root, k.minor));
+            .is_some_and(|k| transposed_key_uses_flats(k.root, k.minor, clip_transpose(&clip)));
         let model = self.chord_backend().unwrap_or("").to_string();
         Ok(chords_of_clip(&clip, bpm, &frames, detail, flats, model))
     }
@@ -532,6 +532,13 @@ impl PitchView {
 
 /// The semitones a clip sounds away from its source: its transposition, and an octave per
 /// halving of speed when it is stretched by resampling.
+/// Whether chords in a key are spelled with flats once the clip shifts it by `transpose`
+/// semitones: the key is detected on the source, but the clip sounds (and its chords are named) in
+/// the shifted key, so a C major source pitched up a fourth reads Bb, not A#.
+fn transposed_key_uses_flats(root: u8, minor: bool, transpose: i32) -> bool {
+    crate::chords::key_uses_flats((i32::from(root) + transpose).rem_euclid(12) as u8, minor)
+}
+
 pub fn clip_transpose(clip: &Clip) -> i32 {
     let speed = if clip.resample { -12.0 * clip.stretch.max(crate::model::STRETCH_MIN).log2() } else { 0.0 };
     (clip.pitch as f64 + speed).round() as i32
@@ -553,4 +560,21 @@ pub fn chords_of_clip(
     let transpose = clip_transpose(clip);
     let segments = crate::chords::decode(frames, clip.source_span(bpm), beat_of, span, detail, transpose, flats);
     crate::chords::ChordAnalysis { clip_id: clip.id, start: span.0, end: span.1, detail, transpose, flats, segments, model }
+}
+
+#[cfg(test)]
+mod spelling_tests {
+    use super::transposed_key_uses_flats;
+
+    #[test]
+    fn chords_are_spelled_for_the_key_the_clip_sounds_in() {
+        // C major: sharps either way; pitched up a fourth it is F major, which uses flats
+        assert!(!transposed_key_uses_flats(0, false, 0));
+        assert!(transposed_key_uses_flats(0, false, 5));
+        // F major pitched down a fourth is C major again; wraps below zero and past an octave
+        assert!(!transposed_key_uses_flats(5, false, -5));
+        assert!(transposed_key_uses_flats(0, false, 17));
+        // A minor (relative of C) up a semitone: Bb minor, flats
+        assert!(transposed_key_uses_flats(9, true, 1));
+    }
 }

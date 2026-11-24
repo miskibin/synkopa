@@ -343,7 +343,8 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
   const siblings = () => S.project.clips.filter(x => x.kind === 'audio' && x.ref === c().ref);
   const put = (patch: Partial<Clip>): Op => putSoundClips(siblings().map(x => plain(x)), plain(c()), patch);
   // every click on the waveform plays from the top (FL); the header's ■ stops
-  const preview = () => void be().previewClip(c().id).catch(e => say(String(e)));
+  // not a Browser preview: the status line must not keep showing the last sample's waveform
+  const preview = () => { setU('previewPath', null); void be().previewClip(c().id).catch(e => say(String(e))); };
   const previewPosition = () => {
     const f = tele.frame;
     if (!f.previewing || f.previewPos < 0) return null;
@@ -429,7 +430,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
     </>}
     level={<>{level('gain')}{level('pan')}</>}
     keys={{
-      player: { play: (key, vel, on) => on ? be().previewClipKey({ clipId: c().id, key, vel }) : undefined },
+      player: { play: (key, vel, on) => { if (!on) return undefined; setU('previewPath', null); return be().previewClipKey({ clipId: c().id, key, vel }); } },
       root: () => c().root ?? SAMPLE_ROOT,
       setRoot: key => { commit([put({ root: key })], t('d.smp.rootCh')); say(t('b.pk.rootSay', { name: src().name, note: noteName(key) })); },
     }}

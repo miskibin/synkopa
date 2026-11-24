@@ -4,7 +4,7 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.34 — 2026-11-24
 
 ### Added
 - **Chords from audio.** Right-click an audio clip → *Detect tempo, key and chords…* now also shows
@@ -31,6 +31,9 @@ shown in the app after an update and is published as the release notes (see
 - **Scroll through patterns with the mouse wheel** over the pattern name in the Channel Rack or
   the toolbar. Scrolling past the last pattern starts a new empty one; leave it without adding
   anything and it disappears again, so browsing leaves no empty patterns behind.
+- **Right-drag on the time rulers, as in FL Studio** (Playlist, Piano roll, Pitch editor): with no
+  time selection it draws one; with a selection it grabs the nearer end and moves it, so a right-click
+  alone shortens or extends the loop. With no loop, a right-click still opens the ruler menu.
 
 ### Changed
 - **Synkopa Keys is now Synkopa Instruments**, with a new, larger window. Choosing an instrument
@@ -57,6 +60,18 @@ shown in the app after an update and is published as the release notes (see
   filter them (FL's *Auto resize*), floating or docked at the bottom. Turn it off with **Auto
   height** in the rack's title-bar menu to keep the height you give it.
 - The CPU meter is on by default, beside the main volume (Settings → Audio turns it off).
+- **Snap is a compact grid** in the Piano roll and the Playlist: auto (and off) on top, straight
+  values in one row and triplets in the next. On auto it shows what auto means at the current zoom
+  and outlines that cell. Arrows and Enter pick, Esc closes without nudging notes.
+- **Picking a free mixer insert opens the Mixer** on that insert when it is hidden.
+- **Clearer time ruler:** bar numbers stand out from beats, and sixteenths are short ticks instead
+  of numbers, in the Playlist, Piano roll and Pitch editor alike.
+- **Piano roll note properties name their units:** the start is bar, beat and sixteenth (typed with
+  colons or dots, like the ruler), and common lengths show as fractions such as 1/8 or 1/12.
+- **Ask ChatGPT** (toolbar, Help, F1 and the command palette) opens ChatGPT directly with a Synkopa
+  starter prompt and your question; a question too long for a link is copied for you to paste.
+- The command palette names the panel in every dock and float command ("Dock Mixer at the bottom").
+- **File → Open demo project** opens the demo, asking first about unsaved changes.
 
 ### Fixed
 - **Switching the Piano roll's lane between VEL and PAN** shows the new lane at once.
@@ -66,6 +81,10 @@ shown in the app after an update and is published as the release notes (see
   channel's window is still open.
 - **The `synkopa` command now works in Git Bash on Windows,** the shell coding agents use there;
   before, only PowerShell and cmd found it.
+- **The Gate and Filter windows open wide enough** for their controls instead of at the generic size.
+- **Each Settings tab starts at the top** instead of where the previous tab was scrolled to.
+- `synkopa --project FILE ... --label TEXT` names the undo step as asked; before, the label was
+  ignored when working on a project file.
 
 ## 0.9.33 — 2026-11-23
 

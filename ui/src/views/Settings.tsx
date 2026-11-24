@@ -1,6 +1,6 @@
 import { createMemo, For, Show } from 'solid-js';
 import type { JSX } from '@solidjs/web';
-import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
+import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { ICONS } from '../ui/icons';
 import { kept } from '../ui/keptValue';
 import { be } from '../api/backend';
@@ -37,9 +37,7 @@ function SettingsDialog() {
   // the request itself is taken by the effect below (no write while rendering)
   if (audioTabRequested()) lastTab = 'audio';
   const [tab, setTab] = createSignal<Tab>(lastTab);
-  let pane: HTMLDivElement | undefined;
   const pickTab = (next: Tab) => { lastTab = next; setTab(next); };
-  watch(tab, () => { if (pane) pane.scrollTop = 0; }, { defer: true });
   // "Audio settings" on a notice while Settings is already open switches it to the Audio tab
   effect(() => { if (audioTabRequested() && takeAudioTabRequest()) pickTab('audio'); });
   const cur = () => TABS.find(x => x.id === tab()) ?? TABS[0];
@@ -96,7 +94,9 @@ function SettingsDialog() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </header>
-          <div ref={pane} class="setpane" role="tabpanel" aria-label={t(cur().label)} tabindex="0">
+          {/* keyed: each tab gets its own scroll box, so it starts at the top even while the old one
+              is still finishing a smooth End / Page Down scroll (resetting scrollTop does not stop that) */}
+          <Show when={tab()} keyed>{_tab => <div class="setpane" role="tabpanel" aria-label={t(cur().label)} tabindex="0">
             <Show when={tab() === 'general'}><GeneralSection /></Show>
             <Show when={tab() === 'look'}><LookSection /></Show>
             <Show when={tab() === 'updates'}><UpdatesSettings OnOff={OnOff} /></Show>
@@ -197,7 +197,7 @@ function SettingsDialog() {
         </Show>
             </Show>
             <Show when={tab() === 'midi'}><MidiSection /></Show>
-          </div>
+          </div>}</Show>
         </div>
       </div>
     </div>

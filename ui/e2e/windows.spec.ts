@@ -69,7 +69,7 @@ test.describe('Windows', () => {
   });
 
   test('the Piano roll opens maximised and restores to a window', async ({ app }) => {
-    await app.getByRole('button', { name: 'Piano roll' }).click();
+    await app.keyboard.press('F7');
     const roll = app.locator('.rollwin');
     await expect(roll).toBeVisible();
     const full = (await roll.boundingBox())!;
