@@ -3,7 +3,7 @@ import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Pattern, typ
 import { applyAll } from './applyOps';
 import {
   followChanges, migrateSamplerEnvelope,
-  BEAT_GAP, burnChannelLoop, cellStep, cellsBetween, fitCw, fitLen, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
+  BEAT_GAP, burnChannelLoop, cellStep, channelStepsOf, cellsBetween, fitCw, fitLen, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
   rotate, samplerError, setChannelLoop, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
 } from './pattern';
 
@@ -378,6 +378,16 @@ describe('channel loops (FL 20.1 channel looping)', () => {
     const p2 = { ...mkPt([hat(0), hat(7)]), channelLoops: { [String(BASS)]: 3 } };
     const b2 = burnChannelLoop(p2, BASS);
     expect(steps(b2.notes, BASS)).toEqual([0, 3, 6, 9, 12, 15]);
+  });
+
+  it('Fill and Shift work inside the loop cell when the channel has one', () => {
+    const pt = mkPt([hat(0)], { [String(BASS)]: 3 }, 4); // 16-step pattern, 3-step loop
+    const span = channelStepsOf(pt, BASS);
+    expect(span).toBe(3);
+    const filled = fillEvery(pt.notes, BASS, span, 2);
+    expect(filled.every(n => n.ch !== BASS || n.step < 3)).toBe(true);
+    const rotated = rotate(filled, BASS, span, 1);
+    expect(rotated.every(n => n.ch !== BASS || n.step < 3)).toBe(true);
   });
 
   it('cellStep wraps the playhead into the cell', () => {

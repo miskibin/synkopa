@@ -869,6 +869,27 @@ fn a_loop_stays_inside_the_pattern_and_ignores_notes_past_the_loop() {
 }
 
 #[test]
+fn played_notes_matches_what_the_render_plays() {
+    // the export mirror (`played_notes`, the MIDI export's note source) agrees with the
+    // expansion the render tests above hear: the cell repeats over the pattern, a note a
+    // script wrote past the loop stays silent, a channel without a loop is untouched
+    let p0 = Project::routed();
+    let (h, k) = (chan(&p0, "Hat"), chan(&p0, "Kick"));
+    let mut pt = one_pattern(
+        vec![Note::trigger(h, 0.0, None), Note::trigger(h, 1.0, None), Note::trigger(h, 9.0, None), Note::trigger(k, 0.0, None)],
+        4.0,
+        0.0,
+    );
+    pt.patterns[0].channel_loops.insert(h, 3);
+    let mut got: Vec<(Id, u32)> =
+        wave_engine::model::played_notes(&pt.patterns[0]).iter().map(|n| (n.ch, f64::from(n.step).round() as u32)).collect();
+    got.sort();
+    let mut want: Vec<(Id, u32)> = (0..16u32).filter(|s| s % 3 < 2).map(|s| (h, s)).chain(std::iter::once((k, 0))).collect();
+    want.sort();
+    assert_eq!(got, want, "hat repeats at 0,1,3,4,6,7,9,10,12,13,15; the kick once; the past-loop hat at 9 dropped");
+}
+
+#[test]
 fn removing_a_channel_removes_its_loop_entries() {
     let p0 = Project::routed();
     let h = chan(&p0, "Hat");

@@ -235,6 +235,31 @@ describe('Channel Rack step spacing', () => {
   });
 });
 
+describe('bar removal against channel loops', () => {
+  it('refuses while a loop would stick out of the shorter pattern, drops the bar once it fits', async () => {
+    const ch = P.channels()[0].id;
+    const looped = () => store.S.project.patterns[0];
+    P.addBar(looped()); // two bars: there is a bar to remove
+    await sync();
+    const steps = Math.round(looped().len * 4);
+    // a loop reaching into the last bar: "− bar" would cut it, so the pattern is untouched
+    edit.commit([P.putChannelLoop(looped(), ch, steps - 3)], 'loop');
+    await sync();
+    expect(looped().channelLoops?.[String(ch)]).toBe(steps - 3);
+    P.removeBar(looped());
+    await sync();
+    expect(looped().len * 4).toBe(steps);
+    expect(looped().channelLoops?.[String(ch)]).toBe(steps - 3);
+    // shrunk into what stays, the bar drops and the loop survives it
+    edit.commit([P.putChannelLoop(looped(), ch, 3)], 'loop');
+    await sync();
+    P.removeBar(looped());
+    await sync();
+    expect(looped().len * 4).toBe(steps - 16);
+    expect(looped().channelLoops?.[String(ch)]).toBe(3);
+  });
+});
+
 describe('inserting a lane', () => {
   it('moves the open takes with the lanes that shift down', () => {
     const s1 = store.S.project.tracks[1].id;

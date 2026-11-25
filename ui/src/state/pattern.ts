@@ -636,8 +636,19 @@ export async function cloneChannel(c: Channel) {
   }
   const id = allocId(), idx = channels().findIndex(x => x.id === c.id) + 1;
   const ops: Op[] = [chanOp({ ...src, id, name: c.name + ' 2', mute: false, solo: false }, {}, idx)];
-  // FL clones the channel's steps too: in every pattern
-  for (const pt of S.project.patterns) if (pt.notes.some(n => n.ch === c.id)) ops.push(putNotes(pt, cloneNotes(pt.notes, c.id, id)));
+  // FL clones the channel's steps too: in every pattern — and the clone keeps the loop, so
+  // it plays exactly like the original
+  for (const pt of S.project.patterns) {
+    const l = rawOf(pt).channelLoops?.[String(c.id)];
+    if (pt.notes.some(n => n.ch === c.id)) {
+      const notes = cloneNotes(pt.notes, c.id, id);
+      const op = putNotes(pt, notes) as Extract<Op, { op: 'putPattern' }>;
+      if (l != null) op.pattern.channelLoops = { ...op.pattern.channelLoops, [String(id)]: l };
+      ops.push(op);
+    } else if (l != null) {
+      ops.push(patOp(pt, { channelLoops: { ...rawOf(pt).channelLoops, [String(id)]: l } }));
+    }
+  }
   commit(ops, t('b.st.cloneCh'));
   selectChannel(id);
   say(t('b.st.cloned', { name: c.name }));

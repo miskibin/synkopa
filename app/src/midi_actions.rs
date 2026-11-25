@@ -292,7 +292,7 @@ fn clip_notes(c: &Clip, pat: &Pattern, out: &mut Vec<(Id, SmfNote, Option<u8>)>)
     while base < end {
         // a slide note bends other notes and has no sound of its own: a MIDI file has no
         // such note, so it is left out (it would play as an extra note)
-        for n in pat.notes.iter().filter(|n| !n.slide) {
+        for n in wave_engine::model::played_notes(pat).iter().filter(|n| !n.slide) {
             let t = f64::from(n.step) / 4.0;
             if t >= plen {
                 continue;

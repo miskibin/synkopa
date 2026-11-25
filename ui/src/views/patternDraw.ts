@@ -87,6 +87,14 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
       const span = hi - lo + 1, ih = G.rh - 2 * vpad, nh = Math.min(4, ih / span);
       const top = y + vpad + (ih - nh * span) / 2;
       g.fillStyle = T.bg2; g.beginPath(); rr(g, -G.sx, y + vpad - 1, gridW(G.end, G.cw), G.rh - 2 * vpad + 2, 2); g.fill();
+      // the mini roll's background painted over the row's early boundary: redraw the tail
+      // dim and the loop line above it
+      if (loop > 0) {
+        g.fillStyle = rgba('#000000', theme.light ? 0.07 : 0.14);
+        g.fillRect(stepX(loop, G.cw) - G.sx, y, W, G.rh);
+        g.fillStyle = rgba(c.color, 0.85);
+        g.fillRect(stepX(loop, G.cw) - G.sx - 1, y + 2, 2, G.rh - 4);
+      }
       g.save(); g.beginPath(); g.rect(0, y + vpad, W, ih); g.clip();
       for (const n of notes) {
         const x = stepX(n.step, G.cw) - G.sx, w = Math.max(2, stepX(n.step + n.len, G.cw) - G.sx - x - 1);

@@ -226,3 +226,25 @@ fn a_channel_joins_and_leaves_a_filter_group_from_the_cli() {
     assert_eq!(row["group"], Value::Null);
     assert!(doc.call("channels", &json!({ "ch": ch, "group": "x".repeat(41) }), None).unwrap_err().contains("40 characters"));
 }
+
+#[test]
+fn midi_export_includes_channel_loop_repeats() {
+    // the exported file matches what plays: a looped channel writes its cell's repeats,
+    // and (the write path trims it) nothing past the loop exists to export
+    let d = tmp("loops");
+    let doc = Files.create("sketch").unwrap();
+    let r = call(&*doc, "pattern", json!({ "new": true }));
+    let pid = r["id"].as_u64().unwrap();
+    call(&*doc, "pattern", json!({ "id": pid, "ch": "Hat", "steps": "x.x", "loop": 3 }));
+    let out = d.join("loops.mid");
+    let x = call(&*doc, "midi_export", json!({ "out": out, "pattern": pid }));
+    // the 2-step cell repeats every 3 steps over 16: hits at 0,2,3,5,6,8,9,11,12,14,15
+    assert_eq!(x["notes"], 11, "{x}");
+    let back = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
+    let starts: Vec<i64> = back.parts.iter().flat_map(|p| &p.notes).map(|n| (n.start * 4.0 * 1e4).round() as i64).collect();
+    let want: Vec<i64> = [0.0, 2.0, 3.0, 5.0, 6.0, 8.0, 9.0, 11.0, 12.0, 14.0, 15.0].iter().map(|s| (s * 1e4) as i64).collect();
+    let mut got = starts.clone();
+    got.sort();
+    assert_eq!(got, want, "steps in the file: {:?}", starts.iter().map(|s| *s as f64 / 1e4).collect::<Vec<_>>());
+    std::fs::remove_dir_all(&d).ok();
+}

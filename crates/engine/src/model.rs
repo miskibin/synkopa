@@ -914,6 +914,39 @@ impl Pattern {
     }
 }
 
+/// The notes of a pattern as the audio plays them: a channel's loop repeats its cell
+/// (the steps below the loop) across the pattern and that channel's own notes from the
+/// loop step on are dropped — exactly like the timeline's expansion (`engine/graph.rs`).
+/// Consumers that must match playback (the MIDI export, for one) use this instead of the
+/// raw notes.
+pub fn played_notes(pat: &Pattern) -> Vec<Note> {
+    let steps = (pat.len * 4.0).round();
+    let loops = pat.channel_loops.clone();
+    let (mut base, mut extra): (Vec<Note>, Vec<Note>) = (vec![], vec![]);
+    for (ch, &l) in &loops {
+        if l == 0 {
+            continue;
+        }
+        let cell: Vec<Note> = pat.notes.iter().filter(|n| n.ch == *ch && (n.step as f64) < f64::from(l)).cloned().collect();
+        base.extend(cell.iter().cloned());
+        let reps = (steps / f64::from(l)).ceil() as u32;
+        'reps: for k in 1..=reps {
+            for n in &cell {
+                let step = n.step + (k * l) as f32;
+                if f64::from(step) >= steps {
+                    break 'reps;
+                }
+                extra.push(Note { step, ..*n });
+            }
+        }
+    }
+    let mut out: Vec<Note> = pat.notes.iter().filter(|n| !loops.contains_key(&n.ch)).cloned().collect();
+    out.append(&mut base);
+    out.append(&mut extra);
+    out.sort_by(|a, b| a.step.total_cmp(&b.step));
+    out
+}
+
 /// Swing, in steps, added to a note that starts on an odd 16th (0-based 1, 3, 5 …).
 /// `swing` 1 (100 %) delays it by half a step: the off-beat 16th lands at 75 % of its
 /// 8th (MPC 75 %); 0.67 is close to a triplet feel (MPC 66 %). Notes off the 16th grid
