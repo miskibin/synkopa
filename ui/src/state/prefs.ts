@@ -6,6 +6,7 @@ import { be } from '../api/backend';
 import * as A from './actions';
 import { U } from './ui';
 import { setFullscreen } from './fullscreen';
+import { setAssistant } from './mixAssist';
 
 export interface Prefs {
   /** interface language */
@@ -31,10 +32,12 @@ export interface Prefs {
   /** FL's Channel Rack "Auto resize: Minimum height": the rack is as tall as its channels need
    *  (floating, or alone in a bottom dock strip), up to the room there is */
   rackAutoH: boolean;
+  /** the mix assistant: while playing, inserts covering each other get a badge on their strip */
+  mixAssistant: boolean;
 }
 
 const KEY = 'wave.prefs';
-const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: true, startFullscreen: false, rackSpacing: 'normal', rackAutoH: true };
+const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: true, startFullscreen: false, rackSpacing: 'normal', rackAutoH: true, mixAssistant: true };
 
 function load(): Prefs {
   try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en', rackSpacing: ['roomy', 'wide'].includes(v.rackSpacing) ? v.rackSpacing : 'normal' }; } catch { return { ...DEFAULTS }; }
@@ -63,6 +66,7 @@ function applyPref(k: keyof Prefs, p: Prefs) {
   if (k === 'uiScale') void applyScale(p.uiScale);
   // switching it on (or off) in Settings shows what it does now, not only at the next start
   if (k === 'startFullscreen') void setFullscreen(p.startFullscreen);
+  if (k === 'mixAssistant') void setAssistant(p.mixAssistant);
   if (k === 'autosaveMin') {
     if (timer) clearInterval(timer);
     timer = null;

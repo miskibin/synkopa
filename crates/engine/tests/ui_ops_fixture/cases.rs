@@ -776,6 +776,35 @@ pub fn cases() -> Vec<Case> {
         "removeInsert returns compressors keyed from it to their own signal",
         vec![Op::PutFx { insert_id: 2, fx: keyed(950, 1), index: None }, Op::RemoveInsert { id: 1 }],
     ));
+    // ---- mix assistant: an EQ keyed through the same sidechain, ignored pairs
+    let keyed_eq = |key: Id| {
+        let mut f = eq_fx(953, vec![eq_band(50.0, 0.0)]);
+        if let Some(b) = f.bands.as_mut().and_then(|b| b.first_mut()) {
+            b.dynamic = Some(DynBand { range: -6.0, thr: -27.0 });
+        }
+        f.key = Some(key);
+        f
+    };
+    c.push(("main", "putFx adds an EQ keyed from another insert", vec![Op::PutFx { insert_id: 2, fx: keyed_eq(1), index: None }]));
+    c.push(("main", "putFx refuses an EQ keyed from its own insert", vec![Op::PutFx { insert_id: 2, fx: keyed_eq(2), index: None }]));
+    c.push((
+        "main",
+        "removeInsert drops keyed EQs from it and its ignored pairs",
+        vec![
+            Op::PutFx { insert_id: 2, fx: keyed_eq(1), index: None },
+            Op::SetMaskIgnore { pairs: vec![[1, 2]] },
+            Op::RemoveInsert { id: 1 },
+        ],
+    ));
+    c.push(("main", "setMaskIgnore sorts and dedupes the pairs", vec![Op::SetMaskIgnore { pairs: vec![[2, 1], [1, 2]] }]));
+    c.push((
+        "main",
+        "setMaskIgnore clears the pairs",
+        vec![Op::SetMaskIgnore { pairs: vec![[1, 2]] }, Op::SetMaskIgnore { pairs: vec![] }],
+    ));
+    c.push(("main", "setMaskIgnore refuses the master", vec![Op::SetMaskIgnore { pairs: vec![[0, 1]] }]));
+    c.push(("main", "setMaskIgnore refuses a pair of one insert", vec![Op::SetMaskIgnore { pairs: vec![[1, 1]] }]));
+    c.push(("main", "setMaskIgnore refuses a missing insert", vec![Op::SetMaskIgnore { pairs: vec![[1, 77]] }]));
     c.push((
         "main",
         "putComp replaces and normalises the regions",

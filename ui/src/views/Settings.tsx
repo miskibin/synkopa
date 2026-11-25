@@ -263,6 +263,7 @@ function GeneralSection() {
       <div class="sechd">{t('d.set.sec.edit')}</div>
       <div class="form">
         <Row label={t('d.set.audition')} desc={t('d.set.audition.tip')}><OnOff on={() => prefs().noteAudition} set={v => setPref('noteAudition', v)} /></Row>
+        <Row label={t('d.set.mixAssist')} desc={t('d.set.mixAssist.tip')}><OnOff on={() => prefs().mixAssistant} set={v => setPref('mixAssistant', v)} /></Row>
         <Row label={t('d.set.hints')} desc={t('d.set.hints.tip')}><OnOff on={() => prefs().hints} set={v => setPref('hints', v)} /></Row>
       </div>
       <div class="sechd">{t('d.set.sec.rec')}</div>

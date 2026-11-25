@@ -161,6 +161,11 @@ pub enum Op {
         #[serde(rename = "loop")]
         range: Option<LoopRange>,
     },
+    /// Replace the pairs of inserts the mix assistant does not report as masking each other
+    /// (`crate::masking`). Never touches the audio.
+    SetMaskIgnore {
+        pairs: Vec<[Id; 2]>,
+    },
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -388,6 +393,8 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     f.key = None;
                 }
             }
+            // ...and the mix assistant forgets the pairs it was in
+            p.mask_ignore.retain(|q| q[0] != *id && q[1] != *id);
             for t in &mut p.tracks {
                 if t.insert == *id {
                     t.insert = 0;
@@ -1012,6 +1019,24 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             p.bpm = *bpm;
             d.timeline = true;
         }
+        Op::SetMaskIgnore { pairs } => {
+            let mut out: Vec<[Id; 2]> = vec![];
+            for q in pairs {
+                for id in q {
+                    if *id == 0 || p.insert(*id).is_none() {
+                        return Err(OpError::Invalid(format!("mask ignore: insert {id} is not a mixer insert")));
+                    }
+                }
+                if q[0] == q[1] {
+                    return Err(OpError::Invalid("mask ignore: a pair needs two different inserts".into()));
+                }
+                let q = [q[0].min(q[1]), q[0].max(q[1])];
+                if !out.contains(&q) {
+                    out.push(q);
+                }
+            }
+            p.mask_ignore = out;
+        }
         Op::SetLoop { range } => {
             if let Some(r) = range {
                 if !(r.b > r.a && r.a >= 0.0) {
@@ -1150,7 +1175,7 @@ pub fn validate_comp(p: &Project, comp: &Comp) -> Result<Comp, OpError> {
 fn validate_key(p: &Project, insert_id: Id, fx: &Fx) -> Result<(), OpError> {
     let Some(k) = fx.key else { return Ok(()) };
     if !fx.kind.takes_key() {
-        return Err(OpError::Invalid("only a Compressor, Gate or Filter takes a sidechain (`key`)".into()));
+        return Err(OpError::Invalid("only a Compressor, Gate, Filter or EQ takes a sidechain (`key`)".into()));
     }
     if k == 0 {
         return Err(OpError::Invalid("the master cannot be a sidechain: it is processed last".into()));

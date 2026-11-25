@@ -431,6 +431,12 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
     case 'removeMarker': try { removeMarker(p, op.id); } catch { /* already gone */ } return;
     case 'setBpm': p.bpm = op.bpm; return;
     case 'setLoop': p.loop = op.loop ? { ...op.loop } : null; return;
+    case 'setMaskIgnore': {
+      const out: [Id, Id][] = [];
+      for (const q of op.pairs) { const r: [Id, Id] = [Math.min(q[0], q[1]), Math.max(q[0], q[1])]; if (r[0] !== r[1] && !out.some(x => x[0] === r[0] && x[1] === r[1])) out.push(r); }
+      if (out.length) p.maskIgnore = out; else delete p.maskIgnore;
+      return;
+    }
     case 'setKey': p.key = op.key; p.scale = op.scale ?? 1; return;
     case 'putAutomation': {
       const a = clone(op.automation); a.points.sort((x, y) => x.t - y.t);
