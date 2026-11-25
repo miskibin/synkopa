@@ -309,3 +309,87 @@ with a glissando reference, MedleyDB Tune to Reference on slips: P90 17 ct, limi
   MIR-ST500 / ROSVOT systems) would be the next step and is not part of this change.
 * MIR-ST500 was not run: its audio is links to commercial recordings (mixes needing vocal
   separation).
+
+---
+
+# Sung notes from a note model: GAME (issue #76, part 2)
+
+Measured 2026-11-25, RMVPE, same machine. Every number comes from the JSON reports of the
+commands below; the screening comparisons (model sizes, decoding steps, end trimming) were run in
+Python on the same recordings with mir_eval and are marked as such.
+
+## Why a model
+
+The note tracker above decides notes from the pitch curve (plus a spectral onset for repeated
+notes). Its remaining errors are the ones a pitch curve cannot settle: a syllable sung again on
+the same pitch (vocadito: both annotators mark 88 such pairs; the tracker kept 38 apart) and the
+exact onset. Learned singing transcribers predict note boundaries from the audio itself.
+Candidates (sourced from their repositories and papers): openvpi **GAME** (2026; MIT code,
+CC BY-NC-SA 4.0 weights, ONNX releases small 46 MB / medium 180 MB / large 362 MB), its
+predecessor SOME (same licences, 435 MB), ROSVOT (ACL 2024; weights trained on M4Singer,
+CC BY-NC-SA, no ONNX). Spotify Basic Pitch (Apache-2.0; what Nota DAW uses for its Melody and
+Harmony conversions) was measured before: COnP 0.13 on VocalSet, below even the first segmenter.
+
+GAME was chosen: ONNX graphs that take the waveform, explicit boundaries (so repeated notes),
+the smallest download. It is optional, downloaded by the user after the licence note, like RMVPE.
+
+## Decisions (screening, Python + mir_eval, 40 vocadito + 113 GTSinger plain-singing segments)
+
+| variant | vocadito COnP A1 / A2 | repeats kept | GTSinger COnP (vowel onsets) | real-time factor |
+| --- | --- | --- | --- | --- |
+| note tracker | 0.629 / 0.631 | 38/88 | 0.539 | — |
+| GAME small, 8 D3PM steps (reference default) | 0.631 / 0.782 | 59/88 | 0.610 | 0.52 |
+| GAME small, 1 step | 0.642 / 0.779 | **65/88** | 0.608 | 0.11 |
+| GAME medium, 1 step, ends trimmed | 0.642 / 0.765 | 64/88 | 0.603 | 0.72 |
+
+* **One step**: the segmenter samples D3PM noise; at t = 0 it first removes every boundary, so
+  one step is deterministic. It was as good as eight and 5× faster.
+* **Small**: medium was no better and is 4× the download.
+* **Ends**: GAME runs each note on to the next one (a score's legato). A note now ends where the
+  singing falls 8 dB below the note's peak (vocadito COnPOff A1 0.32 → 0.44, A2 0.43 → 0.59;
+  4–12 dB all within 0.04; 8 best).
+* **Pitch**: the key is GAME's (A2 COnP 0.785 vs 0.761 with the F0 median); the note's centre is
+  the sung median kept within that key's half-step, so pitch correction moves what was sung.
+
+## Results (Rust, the shipped pipeline: `--game` on every suite)
+
+```sh
+B="cargo run --release -p wave-tune-bench --"; G="--game <dir of GAME-1.0.3-small-onnx>"
+$B transcribe --vocadito D:/wave-datasets/vocadito $G --json game-vocadito.json
+$B transcribe-grid --maximin --root D:/wave-datasets/vocalset --limit 300 \
+   --gtsinger D:/wave-datasets/gtsinger --glimit 185 $G --json game-grid.json   # "analysis" rows
+```
+
+Held-out recordings, note tracker → GAME:
+
+| data | COn | COnP | COnPOff | notes / annotated | extra pieces |
+| --- | --- | --- | --- | --- | --- |
+| vocadito, annotator A1 | | 0.629 → **0.660** | 0.426 → **0.454** | 2153 → 1980 / 2237 | |
+| vocadito, annotator A2 | | 0.631 → **0.788** | 0.431 → **0.592** | 2153 → 1980 / 1876 | |
+| vocadito, repeated notes both annotators mark | | 38 → **67** of 88 kept apart | | | |
+| VocalSet test singers, mid onsets | 0.671 → **0.736** | 0.570 → **0.673** | 0.419 → **0.479** | 984 → 675 / 687 | 290 → 65 |
+| VocalSet test singers, settled onsets | 0.257 → 0.273 | 0.194 → **0.242** | 0.123 → **0.151** | | |
+| GTSinger songs (Alto-2), vowel onsets | 0.657 → **0.725** | 0.547 → **0.604** | 0.346 → 0.351 | 753 → 776 / 647 | |
+| GTSinger technique groups, vowel onsets | 0.617 → **0.719** | 0.495 → **0.565** | 0.311 → 0.311 | | |
+| GTSinger songs, onsets as annotated | 0.471 → 0.410 | 0.384 → 0.339 | 0.236 → 0.176 | | |
+
+**GTSinger's onsets** are the word's start: the first consonant (in "step", *S* at 1.183 s, the
+vowel and the pitch at 1.380 s). GAME starts a note where the pitch does, a median 44 ms after
+the annotation, outside the 50 ms tolerance for many notes; the tracker, tuned on two GTSinger
+singers, learned to start earlier. With each word's first note starting at its first vowel
+(from the dataset's own phoneme alignment) GAME is ahead. vocadito, annotated from the pitch,
+agrees with GAME's convention (median onset offset −1 ms against A2).
+
+VocalSet COnP by technique (all singers, mid onsets), tracker → GAME: belt 0.56 → 0.69,
+vibrato 0.53 → 0.70, forte 0.44 → 0.62, fast forte 0.64 → 0.77, fast piano 0.70 → 0.80,
+slow piano 0.57 → 0.65, straight 0.63 → 0.68, trill 0.14 → 0.18; **worse**: breathy
+0.62 → 0.54, messa di voce 0.34 → 0.31.
+
+## Limitations of the note model
+
+* Breathy singing and long crescendo–decrescendo notes (messa di voce) are transcribed worse than
+  by the tracker; GAME also leaves out some notes it hears as unvoiced (VocalSet "missed" 0 → 69
+  of 687).
+* The weights are non-commercial (CC BY-NC-SA 4.0): Synkopa does not ship them; the user
+  downloads them after the licence note. Without them nothing changes.
+* Cost: one encoder, one segmenter and one estimator pass per chunk (≤ 30 s, cut at silences).

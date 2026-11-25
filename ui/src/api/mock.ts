@@ -1009,7 +1009,7 @@ export class MockBackend implements Backend {
       id: 'game', name: 'GAME singing note model', bytes: 45_676_364, installed: this.noteBackend === 'game', backend: this.noteBackend,
       licenseNote: 'GAME by Team OpenVPI: the code is MIT, the model weights are licensed CC BY-NC-SA 4.0 (non-commercial). Downloading is your decision; without the model Synkopa finds notes with its built-in note tracker.',
       licenseUrl: 'https://github.com/openvpi/GAME/releases/tag/v1.0.0',
-      path: 'C:\Users\michal\AppData\Local\WAVE\Models\game-small', error: null,
+      path: 'C:\\Users\\michal\\AppData\\Local\\WAVE\\Models\\game-small', error: null,
     };
   }
   async noteModelInstall(): Promise<F0ModelStatus> {
