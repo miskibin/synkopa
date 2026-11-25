@@ -4122,7 +4122,7 @@
       "name": "Master",
       "params": [
         {
-          "def": 2.0,
+          "def": 1.0,
           "id": "target",
           "label": "Target",
           "log": false,
@@ -4338,6 +4338,15 @@
           "max": 12.0,
           "min": -12.0,
           "unit": "dB"
+        },
+        {
+          "def": 100.0,
+          "id": "gt",
+          "label": "Glue time",
+          "log": true,
+          "max": 400.0,
+          "min": 25.0,
+          "unit": "%"
         }
       ]
     },

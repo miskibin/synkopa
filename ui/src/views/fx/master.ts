@@ -295,7 +295,7 @@ export class MasterViz implements Viz {
     }
     // loudness
     const lx = D.lx; if (W - lx < 34) return;
-    const tgt = Math.round(fx.params.target ?? 2);
+    const tgt = Math.round(fx.params.target ?? 1);
     const aim = fx.listen?.guarded && fx.listen.target === tgt && fx.listen.aim != null ? fx.listen.aim : MASTER_TARGETS[tgt] ?? -12;
     const fmt = (v: number) => (this.live && v > -70 ? v.toFixed(1) : '–');
     g.font = MONO9; g.fillStyle = T.vizLabel; g.fillText('LUFS', lx, 12);

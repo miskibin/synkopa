@@ -77,7 +77,50 @@ const TONE_FIT: [(f64, f64, f64, f64, f64, f64); 5] = [
     (2500.0, 5000.0, 2.0, 2.0, 3.0, 3.0),
     (8000.0, 12500.0, 3.0, 3.0, 3.0, 3.0),
 ];
-const TONE_SHARE: f64 = 0.5;
+/// What the assistant aims for. `Default` is what the Master ships with; the fields are the
+/// knobs a listening test tunes (`examples/master_eval.rs`).
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct Config {
+    /// Share of a clear balance deviation the tone EQ takes back (0 = no tone EQ).
+    pub tone_share: f64,
+    /// Mean glue reduction on each band's louder half, dB (0 = no glue).
+    pub glue_db: f64,
+    /// Glue ratio.
+    pub ratio: f64,
+    /// Glue time, % of the base attack / release.
+    pub time: f64,
+    /// Clipper share per dB of peak reduction beyond 2 dB, and its cap (%).
+    pub clip_per_db: f64,
+    pub max_clip: f64,
+    /// Most peak reduction asked for, dB.
+    pub max_clean_cut: f64,
+    /// Take back the tilt heavy limiting causes.
+    pub keep_balance: bool,
+    /// Most cut / boost a tone band may make, dB (the sub band boosts at most 2 dB).
+    pub max_cut: f64,
+    pub max_boost: f64,
+    /// Set the band widths from the song (else 100 %).
+    pub widths: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            tone_share: 0.5,
+            glue_db: 1.5,
+            ratio: 2.0,
+            time: 100.0,
+            clip_per_db: 6.0,
+            max_clip: 35.0,
+            max_clean_cut: MAX_CLEAN_CUT_DB,
+            keep_balance: true,
+            widths: true,
+            max_cut: 3.0,
+            max_boost: 3.0,
+        }
+    }
+}
 /// The band widths (%) for the stereo the song arrives with (side against mid energy per band,
 /// dB). Mastering practice: the lows go narrow or mono when they carry real side energy
 /// (phase trouble on mono systems, a wandering kick), the mids stay, unless they are so wide
@@ -103,7 +146,6 @@ pub fn band_widths(side_db: [f32; 3]) -> [f64; 3] {
     };
     [lo, mid, hi]
 }
-const RATIO: f64 = 2.0;
 /// Most limiter input gain (= the parameter's range).
 const DRIVE_MAX: f64 = 24.0;
 const TOLERANCE_LU: f64 = 0.1;
@@ -113,8 +155,6 @@ const TOLERANCE_LU: f64 = 0.1;
 pub const MAX_CLEAN_CUT_DB: f64 = 7.5;
 /// The clipper takes this share of the peak reduction beyond its first 2 dB, at most
 /// [`MAX_CLIP`] % (67 % crunched the 808; 30 % relieved the limiter without grit).
-const CLIP_PER_DB: f64 = 6.0;
-const MAX_CLIP: f64 = 35.0;
 const MAX_RENDERS: usize = 7;
 
 /// Integrated loudness, true peak, loudness range of a stereo signal. `None` = silent.
@@ -272,6 +312,12 @@ pub fn balance(spec: &[f64]) -> Vec<f64> {
 
 /// The five tone gains (dB) for a balance.
 pub fn tone_gains(bal: &[f64]) -> [f64; 5] {
+    tone_gains_with(bal, &Config::default())
+}
+
+/// [`tone_gains`] taking `share` of each deviation beyond its dead zone.
+pub fn tone_gains_with(bal: &[f64], cfg: &Config) -> [f64; 5] {
+    let share = cfg.tone_share;
     let mut g = [0.0; 5];
     for (b, &(lo, hi, dead_lo, dead_hi, cut, boost)) in TONE_FIT.iter().enumerate() {
         let vals: Vec<f64> = bal.iter().zip(THIRDS).filter(|(_, f)| *f >= lo && *f <= hi).map(|(d, _)| *d).collect();
@@ -283,21 +329,23 @@ pub fn tone_gains(bal: &[f64]) -> [f64; 5] {
         } else {
             0.0
         };
-        let v = (-over * TONE_SHARE).clamp(-cut, boost);
+        // the table's caps are the shipped ones; the config scales them (the sub boosts at most 2 dB)
+        let (cut, boost) = (cut * cfg.max_cut / 3.0, if b == 0 { boost.min(cfg.max_boost) } else { boost * cfg.max_boost / 3.0 });
+        let v = (-over * share).clamp(-cut, boost);
         g[b] = (v * 10.0).round() / 10.0;
     }
     g
 }
 
-/// Mean gain reduction the glue aims at in every band, over the band's active (louder) half, dB.
-const GLUE_DB: f64 = 1.5;
-
 /// Band threshold from a detector trace: the one at which this band's louder half gets
-/// [`GLUE_DB`] of reduction on average (static curve, `ratio`). Every band gets the same amount,
+/// `glue_db` ([`Config::glue_db`]) of reduction on average (static curve, `ratio`). Every band gets the same amount,
 /// so the glue holds the song together without tilting its balance (a threshold set from each
 /// band's own spread squeezed the transient-rich top much harder than the lows: the master
 /// came out darker than the mix).
-fn threshold(levels: &[f32], ratio: f64) -> f64 {
+fn threshold(levels: &[f32], ratio: f64, glue_db: f64) -> f64 {
+    if glue_db <= 0.0 {
+        return 0.0;
+    }
     let mut v: Vec<f32> = levels.iter().copied().filter(|x| *x > -90.0).collect();
     if v.len() < 10 {
         return 0.0;
@@ -316,15 +364,15 @@ fn threshold(levels: &[f32], ratio: f64) -> f64 {
     };
     // the reduction grows as the threshold falls: bisect
     let (mut hi, mut lo) = (-0.1f64, floor.clamp(-40.0, -0.1));
-    if mean_gr(hi) >= GLUE_DB {
+    if mean_gr(hi) >= glue_db {
         return hi;
     }
-    if mean_gr(lo) < GLUE_DB {
+    if mean_gr(lo) < glue_db {
         return lo;
     }
     for _ in 0..40 {
         let mid = 0.5 * (hi + lo);
-        if mean_gr(mid) < GLUE_DB {
+        if mean_gr(mid) < glue_db {
             hi = mid;
         } else {
             lo = mid;
@@ -384,6 +432,21 @@ pub fn listen(
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(f32),
 ) -> Result<Listened, String> {
+    listen_with(l, r, sr, current, target, &Config::default(), cancel, progress)
+}
+
+/// [`listen`] aiming for `cfg` instead of the shipped [`Config`].
+#[allow(clippy::too_many_arguments)]
+pub fn listen_with(
+    l: &[f32],
+    r: &[f32],
+    sr: f32,
+    current: &BTreeMap<String, f64>,
+    target: usize,
+    cfg: &Config,
+    cancel: &AtomicBool,
+    progress: &mut dyn FnMut(f32),
+) -> Result<Listened, String> {
     let target = target.min(TARGETS.len() - 1);
     let goal = f64::from(TARGETS[target]);
     let check = |p: f32, progress: &mut dyn FnMut(f32)| {
@@ -397,7 +460,7 @@ pub fn listen(
     let (in_lufs, in_tp, in_lra) = measure(l, r, sr).ok_or("the song is silent where the Master is: nothing to listen to")?;
     check(0.05, progress)?;
     let bal = balance(&spectrum(l, r, sr));
-    let tone = tone_gains(&bal);
+    let tone = tone_gains_with(&bal, cfg);
     let mut p = crate::catalog::default_params(FxKind::Master);
     // the user's own choices the listen builds on: the ceiling, where the bands split, the band
     // levels they set and how they compare
@@ -419,10 +482,12 @@ pub fn listen(
     // glue thresholds and band widths from the toned song
     let trace = master::band_trace(l, r, sr, &block_of(&p));
     for (k, lv) in ["tl", "tm", "th"].iter().zip(&trace.levels) {
-        p.insert((*k).into(), threshold(lv, RATIO));
+        p.insert((*k).into(), threshold(lv, cfg.ratio, cfg.glue_db));
     }
-    p.insert("ratio".into(), RATIO);
-    for (k, w) in ["wl", "wm", "wh"].iter().zip(band_widths(trace.side_db)) {
+    p.insert("ratio".into(), cfg.ratio);
+    p.insert("gt".into(), cfg.time);
+    let widths = if cfg.widths { band_widths(trace.side_db) } else { [100.0; 3] };
+    for (k, w) in ["wl", "wm", "wh"].iter().zip(widths) {
         p.insert((*k).into(), w);
     }
     check(0.25, progress)?;
@@ -438,10 +503,10 @@ pub fn listen(
     let peak = robust_peak_db(l, r, sr).min(in_tp);
     let need = (peak - in_lufs) - (ceil - goal);
     // a target that needs more than stays clean is lowered to the loudest clean level
-    let guarded = need > MAX_CLEAN_CUT_DB;
-    let goal = if guarded { ceil - (peak - in_lufs - MAX_CLEAN_CUT_DB) } else { goal };
-    let reduction = need.min(MAX_CLEAN_CUT_DB);
-    let clip = if reduction > 2.0 { ((reduction - 2.0) * CLIP_PER_DB).clamp(0.0, MAX_CLIP).round() } else { 0.0 };
+    let guarded = need > cfg.max_clean_cut;
+    let goal = if guarded { ceil - (peak - in_lufs - cfg.max_clean_cut) } else { goal };
+    let reduction = need.min(cfg.max_clean_cut);
+    let clip = if reduction > 2.0 { ((reduction - 2.0) * cfg.clip_per_db).clamp(0.0, cfg.max_clip).round() } else { 0.0 };
     p.insert("clip".into(), clip);
     p.insert("drive".into(), 0.0);
     let (_, _, m0) = render(&p);
@@ -484,7 +549,7 @@ pub fn listen(
     // and taken back with the same five bands (at most 2 dB each), then the loudness re-solved.
     let mut bal_out = balance(&spectrum(&ol, &or, sr));
     let drift = tone_drift(&bal, &bal_out, &tone_now(&p), sr);
-    if drift.iter().any(|d| d.abs() >= DRIFT_MIN_DB) {
+    if cfg.keep_balance && drift.iter().any(|d| d.abs() >= DRIFT_MIN_DB) {
         for (k, d) in ["sub", "low", "mid", "pres", "air"].iter().zip(drift) {
             if d.abs() >= DRIFT_MIN_DB {
                 let g = p[*k] - d.clamp(-DRIFT_MAX_DB, DRIFT_MAX_DB);

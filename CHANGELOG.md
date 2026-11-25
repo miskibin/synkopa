@@ -4,6 +4,16 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Changed
+
+- **Master aims for Streaming −14 LUFS by default.** Blind listening tests on six mixes (each
+  version loudness-matched and rated twice under anonymous names) put the assistant at −14 above
+  the same chain at −12, a plain limiter and the unmastered mix; pushing to −12 cost more punch
+  than it gave. Streaming services turn louder masters down to about −14 anyway; the louder
+  targets are one click away. **Glue time** (under Advanced) makes the band glue faster or slower.
+
 ## 0.9.35 — 2026-11-25
 
 ### Added
