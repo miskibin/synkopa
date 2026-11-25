@@ -238,7 +238,9 @@ synkopa pattern --id 2 --play --from 4 --loop 4:8    # from beat 4, looping beat
 `--ch` takes a channel id or name (`kick`, `Hats 2` …). With `apply`, the ops are
 `putPattern` / `putChannel` / `removeChannel` (see `synkopa schema`). When a pattern's
 length changes (notes added past its end or removed, `--bars`), clips that show exactly one
-whole pass of it follow; clips sized on purpose keep their length.
+whole pass of it follow, but a growing clip stops at the next clip on its track (never
+overlapping it); a shrinking pattern cuts back clips that would otherwise loop it. Clips sized
+on purpose keep their length.
 
 `--steps` creates explicit triggers. A sampler trigger rings out even with the envelope on.
 `--notes` creates held notes by default. For a sampler, a held note stops at its set length

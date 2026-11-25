@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Project, type SamplerState } from '../api/types';
 import { applyAll } from './applyOps';
 import {
-  migrateSamplerEnvelope,
+  followChanges, migrateSamplerEnvelope,
   BEAT_GAP, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
   rotate, samplerError, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
 } from './pattern';
@@ -271,6 +271,36 @@ describe('mock engine ops (mirror of ops.rs)', () => {
     p = applyAll(p, [{ op: 'removeChannel', id: K }]);
     expect(p.patterns[0].notes).toEqual([{ ch: C, step: 4, len: 1 }]);
     expect(p.channels!.some(c => c.id === K)).toBe(false);
+  });
+});
+
+describe('pattern clips follow the pattern without overlapping (#245)', () => {
+  const pc = (id: number, track: number, start: number, len: number, offset = 0) =>
+    ({ id, track, start, len, offset, kind: 'pat' as const, ref: 5, muted: false, gain: 0, fadeIn: 0, fadeOut: 0, pan: 0, norm: false, rev: false });
+  const K = 1001; // the starter kit's kick
+  const grow = (p: Project, notes: Note[]) => applyAll(p, [{ op: 'putPattern', pattern: { ...p.patterns[0], notes } }]);
+  const start = (): Project => {
+    const p: Project = { version: 2, bpm: 128, tracks: [1, 2, 3, 4].map(id => ({ id, name: 'T' + id, color: '#fff', muted: false, solo: false, arm: false, vol: 0.79, h: 56, insert: 0 })),
+      inserts: [{ id: 0, name: 'M', color: '#fff', vol: 0.79, pan: 0, muted: false, solo: false, fx: [] }],
+      patterns: [], sources: [], clips: [], loop: null, nextId: 1000 };
+    migrateProject(p);
+    return applyAll(p, [{ op: 'putPattern', pattern: { id: 5, name: 'Beat', color: '#fff', len: 4, notes: [{ ch: K, step: 0, len: 1 }] } },
+      { op: 'putClips', clips: [pc(1, 0, 0, 4), pc(2, 0, 6, 4), pc(3, 1, 0, 4), pc(4, 1, 2, 2), pc(5, 2, 0, 16), pc(6, 3, 0, 2, 2)] }]);
+  };
+  it('grows whole-pass clips up to the next clip on their track, and reports which stopped', () => {
+    const p0 = start();
+    const before = new Map(p0.clips.map(c => [c.id, c.len]));
+    const p = grow(p0, [{ ch: K, step: 0, len: 1 }, { ch: K, step: 16, len: 1 }]);
+    expect(p.patterns[0].len).toBe(8);
+    expect(p.clips.map(c => [c.id, c.len])).toEqual([[1, 6], [2, 8], [3, 4], [4, 2], [5, 16], [6, 2]]);
+    expect(followChanges(new Map([[5, 4]]), before, p)).toEqual([{ pattern: 5, len: 8, followed: [2], stopped: [1] }]);
+    // nothing changed: no report
+    expect(followChanges(new Map([[5, 8]]), new Map(p.clips.map(c => [c.id, c.len])), p)).toEqual([]);
+  });
+  it('shrinking cuts back clips within the old pattern, never an older loop', () => {
+    const p = grow(start(), [{ ch: K, step: 0, len: 1 }, { ch: K, step: 16, len: 1 }]);
+    const back = grow(p, [{ ch: K, step: 0, len: 1 }]);
+    expect(back.clips.map(c => [c.id, c.len])).toEqual([[1, 4], [2, 4], [3, 4], [4, 2], [5, 16], [6, 2]]);
   });
 });
 

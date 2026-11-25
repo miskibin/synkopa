@@ -57,18 +57,22 @@ export function pasteClips(cb: Clip[], beat: number, track: number | null, nTrac
 }
 
 /**
- * Resize from an edge. `srcLen` is the source length in beats (audio only; Infinity for patterns).
+ * Resize from an edge. `srcLen` is the length in beats of what the clip shows (the audio, the comp,
+ * the pattern; Infinity for automation): an edge stops at its end and at its start, so a pattern
+ * clip shows its pattern at most once (#245). A clip that already reaches further (a pattern loop
+ * from an older project, a pattern since shortened) keeps what it has, but does not grow.
  * `minL` is the shortest a trim leaves a clip, but a clip that is already shorter keeps its length
  * as its floor: an edge never moves against the drag, so trimming a short clip cannot make it longer.
  */
 export function resizeClip(o: Clip, edge: 'l' | 'r', target: number, minL: number, srcLen: number): Clip {
   const n = { ...o };
+  const bounded = o.kind === 'audio' || o.kind === 'comp' || o.kind === 'pat';
   if (edge === 'r') {
     let len = Math.max(Math.min(minL, o.len), target - o.start);
-    if (o.kind === 'audio' || o.kind === 'comp') len = Math.min(len, srcLen - o.offset);
+    if (bounded) len = Math.min(len, Math.max(srcLen - o.offset, o.len));
     n.len = Math.min(len, TOTAL - o.start);
   } else {
-    const lo = o.kind === 'audio' || o.kind === 'comp' ? o.start - o.offset : 0;
+    const lo = bounded ? o.start - Math.max(0, o.offset) : 0;
     const ns = clamp(target, Math.max(0, lo), o.start + o.len - Math.min(minL, o.len));
     n.start = ns; n.offset = o.offset + (ns - o.start); n.len = o.len - (ns - o.start);
   }

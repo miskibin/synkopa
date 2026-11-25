@@ -9,6 +9,7 @@ import { openRack } from './state/pattern';
 import { startTelemetry } from './state/telemetry';
 import { restoreRecFilter } from './state/actions';
 import './state/recFeedback';
+import './state/patternFollow';
 import { say, setU } from './state/ui';
 import { watchAudio } from './state/audioWatch';
 import { App } from './App';

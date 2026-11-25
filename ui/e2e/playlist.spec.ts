@@ -46,6 +46,54 @@ test.describe('Playlist', () => {
     await pollEngine(app, s => s.project.clips.find(c => c.id === made.id)?.start).toBe(16);
   });
 
+  test('a pattern clip\'s right edge stops at the pattern\'s end (#245)', async ({ app }) => {
+    const T = 6; // "Track 7": empty in the sketch
+    const pat = (await engine(app)).project.patterns[0];
+    const p = await at(app, T, 8);
+    await app.mouse.click(p.x + 2, p.y);
+    await pollEngine(app, s => s.project.clips.filter(c => c.track === T).length).toBe(1);
+    const [made] = await clipsOn(app, T);
+    expect(made.len).toBe(pat.len);
+    // dragged far past the pattern's end: it stays one pass long, and the hint says why
+    const edge = await at(app, T, made.start + made.len - 0.1);
+    const far = await at(app, T, made.start + made.len + 12);
+    await app.mouse.move(edge.x, edge.y);
+    await app.mouse.down();
+    await app.mouse.move(far.x, far.y, { steps: 8 });
+    await expect(app.getByText(`the clip ends where “${pat.name}” ends`)).toBeVisible();
+    await app.mouse.up();
+    await expect.poll(async () => (await clipsOn(app, T))[0].len).toBe(pat.len);
+    // shortened, it grows back only up to the pattern's end
+    await drag(app, await at(app, T, made.start + made.len - 0.1), await at(app, T, made.start + 1));
+    await expect.poll(async () => (await clipsOn(app, T))[0].len).toBe(1);
+    await drag(app, await at(app, T, made.start + 0.95), await at(app, T, made.start + 20));
+    await expect.poll(async () => (await clipsOn(app, T))[0].len).toBe(pat.len);
+  });
+
+  test('a longer pattern grows its clips up to the next clip, says so, and undoes in one step (#245)', async ({ app }) => {
+    const T = 6;
+    const pat = (await engine(app)).project.patterns[0];
+    const L = pat.len;
+    // two clips of the current pattern, two beats apart (separate clicks, not a double-click)
+    for (const [i, b] of [0.2, L + 2.2].entries()) {
+      const q = await at(app, T, b);
+      await app.mouse.click(q.x, q.y);
+      await pollEngine(app, s => s.project.clips.filter(c => c.track === T).length).toBe(i + 1);
+      await app.keyboard.press('Escape');
+    }
+    expect((await clipsOn(app, T)).map(c => [c.start, c.len]).sort((a, b) => a[0] - b[0])).toEqual([[0, L], [L + 2, L]]);
+    // "+ bar" in the Channel Rack
+    await app.getByRole('button', { name: 'Channel rack' }).click();
+    await app.locator('.rackwin').getByTitle('Add an empty bar at the end (kept even while empty)').click();
+    await pollEngine(app, s => s.project.clips.filter(c => c.track === T).sort((a, b) => a.start - b.start).map(c => c.len)).toEqual([L + 2, L + 4]);
+    const note = app.getByText(`“${pat.name}” is now`);
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('stopped at the next clip: 1');
+    await app.getByRole('button', { name: 'Undo', exact: true }).click();
+    await pollEngine(app, s => [s.project.patterns[0].len, ...s.project.clips.filter(c => c.track === T).map(c => c.len)]).toEqual([L, L, L]);
+    await expect(note).toHaveCount(0);
+  });
+
   test('clicking a pattern clip makes its pattern the current one', async ({ app }) => {
     const { patterns, clips } = (await engine(app)).project;
     const sel = app.locator('.patselbtn');

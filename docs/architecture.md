@@ -163,9 +163,18 @@ the kit and its mixer routing in every pattern.
   the user keeps on purpose with "+ bar", e.g. a crash every second bar). The engine sets it
   on every `putPattern` and on load (`Pattern::fit_len`); a `len` sent by a client is
   ignored. Drawing past the end makes a pattern longer, deleting its last notes shorter.
-  When `len` changes, pattern clips that show exactly one whole pass (`offset` 0, `len` = the
-  old length) take the new length; clips sized on purpose (repeats, offsets) keep theirs. New
-  clips use the pattern's length. Notes must end within the song (`TOTAL_BEATS`).
+  When `len` grows, pattern clips that show exactly one whole pass (`offset` 0, `len` = the
+  old length) take the new length, but stop at the next clip on their track (any kind), so a
+  longer pattern never runs over the arrangement; clips sized on purpose (repeats, offsets)
+  keep theirs. When it shrinks, clips whose window lay within the old pattern and now reach
+  past its end are cut back to it (they would otherwise start looping it); clips that already
+  reached past the old end (loops from older projects) are left alone. It is all part of the
+  edit's one undo step. The UI says which clips followed or stopped in a notice with Undo and
+  flashes them on the Playlist (`state/patternFollow.ts`), since the edit is usually made in
+  the Channel Rack or the Piano roll. Dragging a pattern clip's edge stops at the pattern's end
+  (`len ≤ pattern.len − offset`) and start (`offset ≥ 0`): a clip plays its pattern at most
+  once; a clip that already reaches further keeps it but cannot grow. New clips use the
+  pattern's length. Notes must end within the song (`TOTAL_BEATS`).
 * `pattern.swing` 0..1: a note that starts exactly on an odd 16th (0-based 1, 3, 5 …) is
   delayed by `swing × ½` step. 100 % puts the off-beat 16th at 75 % of its 8th (MPC 75 %),
   ~67 % is close to triplet feel; 0 is straight. Even 16ths and off-grid notes never move.
