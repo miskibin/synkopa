@@ -273,11 +273,6 @@ function GeneralSection() {
         <Row label={t('d.set.mixAssist')} desc={t('d.set.mixAssist.tip')}><OnOff on={() => prefs().mixAssistant} set={v => setPref('mixAssistant', v)} /></Row>
         <Row label={t('d.set.hints')} desc={t('d.set.hints.tip')}><OnOff on={() => prefs().hints} set={v => setPref('hints', v)} /></Row>
       </div>
-      <div class="sechd">{t('d.set.sec.rec')}</div>
-      <div class="form">
-        <Row label={t('d.set.metro')}><OnOff on={() => S.transport.metro} set={v => void A.setTransportFlag('metro', v)} /></Row>
-        <Row label={t('d.set.countin')} desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
-      </div>
       <div class="sechd">{t('d.set.sec.net')}</div>
       <div class="form">
         <Row label={t('d.set.nocert')} desc={t('d.set.nocert.tip')}><OnOff on={noCert} set={pickNoCert} /></Row>
