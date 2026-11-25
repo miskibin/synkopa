@@ -757,11 +757,12 @@ select option { background: var(--bg4); color: var(--fg); }
 .tbmenus .projName { flex: 0 1 auto; min-width: 0; max-width: none; }
 .tbstatus .hled { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .tbstatus .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
-/* a long readout (a project's name and key) leaves the tool hint at least half the line */
-.tbstatus .readout:has(+ .hinttxt) { max-width: 50%; }
-.tbstatus .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
-/* what the last action did and what the tool does are two messages: a rule between them */
-.tbstatus .readout:not(:empty) + .hinttxt { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--line2); }
+/* The status message wins the line: the tool hint is the first to give way (it may collapse to nothing),
+   then the record-destination chip; the readout ellipsizes only when the whole line is too small for it. */
+.tbstatus .hinttxt { flex: 1 200 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
+.tbstatus .recdest { flex: 0 20 auto; min-width: 0; }
+/* what the last action did and what the tool does are two messages: a rule between them (a background, not a border or padding, so it vanishes with the hint) */
+.tbstatus .readout:not(:empty) + .hinttxt { text-indent: 12px; background: linear-gradient(var(--line2), var(--line2)) no-repeat left center / 1px 100%; }
 .tbstatus .offgrid { flex: none; }
 .tbstatus .inrow { flex: none; }
 .mainvol { display: flex; align-items: center; height: 30px; padding: 0 3px; }
