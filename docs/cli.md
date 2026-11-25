@@ -430,6 +430,18 @@ synkopa note-model --install
 `WAVE_GAME_MODEL=dir` points at an unpacked copy. `tune-bench … --game [DIR]` scores any suite
 with it.
 
+**Convert to MIDI.** The melody of an audio clip as Piano roll notes, as the Playlist's *Convert to MIDI…*
+does: a new pattern under the clip, on a new piano channel or `--channel ID`, in one undo step. The notes are
+the pitch editor's (GAME's when installed), with the clip's pitch edits.
+
+```sh
+synkopa audio-to-midi --clip 412 --preview                 # the notes it would write; nothing changes
+synkopa audio-to-midi --clip 412 --quantize 1 --low 48 --high 84   # snapped to 1/16, keys C3–C6 only
+synkopa audio-to-midi --clip 412 --channel 1003 --velocity 0.8     # onto an existing channel, flat velocity
+```
+
+`--shortest` (seconds, default 0.06) leaves out shorter notes; `--quantize` is in steps (0 = as sung).
+
 **Stems.** `synkopa stems --clip ID` splits an audio clip with HTDemucs into drums, bass, other and vocals
 (`--only` picks some) exactly as the Playlist's *Extract stems…* does: the region the clip plays plus 3 s either
 side is separated, each stem is written next to the project's audio as a WAV (44.1 kHz, 32-bit float), goes on

@@ -145,17 +145,48 @@ pub fn to_pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Valu
         let clip = p.clips.iter().find(|c| c.id == clip_id).ok_or("no such clip")?;
         p.sources.iter().find(|s| s.id == clip.source).map(|s| s.name.clone()).unwrap_or_default()
     };
+    let name = if src_name.is_empty() { "Chords".to_string() } else { format!("Chords – {src_name}") };
+    // the pattern starts on the bar of the first chord, so it lines up with the grid
+    let start = (segs[0].start / 4.0).floor() * 4.0;
+    let end = segs.last().map(|s| s.end).unwrap_or(start);
+    let notes = |ch: u64| chord_notes(&segs, start, ch);
+    let mut made = put_pattern_under_clip(
+        e,
+        &PatternPlan { clip_id, channel, name: &name, color: "#e0a44a", start, end, label: "Send chords to piano roll" },
+        if_revision,
+        notes,
+    )?;
+    made["chords"] = json!(segs.len());
+    Ok(made)
+}
+
+/// Where a converted part goes: a new pattern (on `channel`, else a new Synkopa Keys piano)
+/// from beat `start` (a bar line) to at least `end`, its Playlist clip on the first free track
+/// below the audio clip.
+pub struct PatternPlan<'a> {
+    pub clip_id: u64,
+    pub channel: Option<u64>,
+    pub name: &'a str,
+    pub color: &'a str,
+    pub start: f64,
+    pub end: f64,
+    pub label: &'a str,
+}
+
+/// Makes the pattern of `plan` with the notes `notes(channel id)`, in one undo step labelled
+/// `plan.label`. Returns `{patternId, channelId, newChannel, clipId, track, start, revision}`.
+pub fn put_pattern_under_clip(e: &Engine, plan: &PatternPlan, if_revision: Option<u64>, notes: impl Fn(u64) -> Vec<Note>) -> R<Value> {
     let mut made = Value::Null;
     let rev = e
-        .apply_with_library_labeled(&[], if_revision, Some("Send chords to piano roll"), |p: &Project, _| {
-            let clip = p.clips.iter().find(|c| c.id == clip_id).ok_or("the clip is gone")?.clone();
+        .apply_with_library_labeled(&[], if_revision, Some(plan.label), |p: &Project, _| {
+            let clip = p.clips.iter().find(|c| c.id == plan.clip_id).ok_or("the clip is gone")?.clone();
             let mut next = p.next_id;
             let mut id = || {
                 next += 1;
                 next - 1
             };
             let mut ops = vec![];
-            let ch = match channel {
+            let ch = match plan.channel {
                 Some(c) => {
                     p.channel(c).ok_or(format!("no channel {c}"))?;
                     c
@@ -164,21 +195,18 @@ pub fn to_pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Valu
                     let c = id();
                     let name =
                         wave_engine::keys::instrument(wave_engine::keys::DEFAULT_INSTRUMENT).map(|i| i.name).unwrap_or("Grand Piano");
-                    let mut chan = Channel::new(c, name, "#e0a44a", ChannelSrc::Keys { keys: Default::default() });
+                    let mut chan = Channel::new(c, name, plan.color, ChannelSrc::Keys { keys: Default::default() });
                     chan.root = 60;
                     ops.push(Op::PutChannel { channel: chan, index: None });
                     c
                 }
             };
-            // the pattern starts on the bar of the first chord, so it lines up with the grid
-            let start = (segs[0].start / 4.0).floor() * 4.0;
-            let notes = chord_notes(&segs, start, ch);
-            let end = segs.last().map(|s| s.end).unwrap_or(start);
-            let len = (((end - start) / 4.0).ceil() * 4.0).max(4.0);
+            let start = plan.start;
+            let len = (((plan.end - start) / 4.0).ceil() * 4.0).max(4.0);
             let pattern_id = id();
-            let name = fresh_name(p, &if src_name.is_empty() { "Chords".to_string() } else { format!("Chords – {src_name}") });
+            let name = fresh_name(p, plan.name);
             ops.push(Op::PutPattern {
-                pattern: Pattern { id: pattern_id, name, color: "#e0a44a".into(), len, min_len: 4.0, notes, swing: 0.0 },
+                pattern: Pattern { id: pattern_id, name, color: plan.color.into(), len, min_len: 4.0, notes: notes(ch), swing: 0.0 },
             });
             let ntracks = p.tracks.len() as u32;
             let free = |t: u32| !p.clips.iter().any(|c| c.track == t && c.start < start + len && c.start + c.len > start);
@@ -216,11 +244,10 @@ pub fn to_pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Valu
             made = json!({
                 "patternId": pattern_id,
                 "channelId": ch,
-                "newChannel": channel.is_none(),
+                "newChannel": plan.channel.is_none(),
                 "clipId": if ntracks > 0 { json!(pclip) } else { Value::Null },
                 "track": track,
                 "start": start,
-                "chords": segs.len(),
             });
             Ok(ops)
         })
