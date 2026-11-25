@@ -746,14 +746,14 @@ select option { background: var(--bg4); color: var(--fg); }
 .pltools .seg { height: 26px; box-sizing: border-box; align-items: center; }
 .pltools .seg > button { width: 27px; height: 20px; }
 .pltools .snapsel { flex: 1; min-width: 84px; max-width: 110px; height: 26px; font-size: 11px; }
-/* "Restart to update" is the one control the update needs: it never shrinks, the readout and hint before it do */
-.tbstatus .updchip { flex: none; margin-left: auto; height: 16px; padding: 0 9px; border-radius: 8px; font-size: 10.5px; }
 .menubar { flex: none; display: flex; gap: 1px; margin-left: -7px; }
 .mbtn { height: 22px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg2); font: 500 12px var(--sans); cursor: default; }
 .mbtn:hover, .mbtn.on { background: var(--line); color: var(--fg-hi); }
 .tbmenus .projName { flex: 0 1 auto; min-width: 0; max-width: none; }
 .tbstatus .hled { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .tbstatus .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+/* a long readout (a project's name and key) leaves the tool hint at least half the line */
+.tbstatus .readout:has(+ .hinttxt) { max-width: 50%; }
 .tbstatus .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
 .tbstatus .offgrid { flex: none; }
 .tbstatus .inrow { flex: none; }
@@ -849,6 +849,12 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar .tsw.count { font: 600 9.5px var(--mono); letter-spacing: .04em; }
 .tbtime .clock { font: 500 11px var(--mono); color: var(--fg4); min-width: 0; }
 .tbview .loopText { color: var(--green); max-width: 200px; cursor: default; }
+/* the update, a row 2 switch like Follow: coloured text, no pill; while downloading a thin bar under it fills */
+.toolbar .updsw { position: relative; flex: none; color: var(--blue-hi); }
+.toolbar .updsw.ready { color: var(--green); }
+.toolbar .updsw.busy { color: var(--fg4); }
+.toolbar .updsw.busy::after { content: ''; position: absolute; left: 6px; bottom: 2px; height: 2px; width: calc((100% - 12px) * var(--pf, 0)); border-radius: 1px; background: var(--blue); }
+.toolbar .updsw:disabled { cursor: default; }
 .tbstatus .pvline { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
 .tbstatus .pvname { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
 .tbstatus .pvwave { flex: 1 1 0; min-width: 0; width: 0; height: 13px; --pv-on: var(--fg2); --pv-off: color-mix(in srgb, var(--fg) 22%, transparent); }
@@ -881,6 +887,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar.f10 .patselbtn { min-width: 0; max-width: none; }
 .toolbar.f10 .patselbtn .ell { display: none; }
 .toolbar.f11 .panelstrip { display: none; }
+.toolbar.f11 .updsw .lbl { display: none; }
 .ibtn:disabled { color: var(--fg6); cursor: default; background: transparent; }
 .seg > button:disabled { color: var(--fg6); cursor: default; background: transparent; }
 .seg > button.play { background: var(--green); color: var(--on-accent); }
