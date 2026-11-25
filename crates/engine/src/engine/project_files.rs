@@ -146,6 +146,14 @@ impl Engine {
         let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("not a Synkopa project: {e}"))?;
         let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a Synkopa project: {e}"))?;
         p.migrate();
+        // the channel-loop bound is a write-path check; a hand-edited file skips it, and the
+        // graph build trusts what it is given — so the loaded project re-validates, and a
+        // pattern whose loops would expand past the bound refuses the file with the same
+        // error the write path uses (the summed bound, not per entry)
+        for i in 0..p.patterns.len() {
+            p.patterns[i].fit_len();
+            crate::ops::check_channel_loops(&p, &p.patterns[i]).map_err(|e| format!("not a Synkopa project: {e}"))?;
+        }
         // media paths are joined against the project's directory: that join must produce
         // absolute paths even when the caller passed a relative one (or a bare file name,
         // whose parent is the empty string, not ".")

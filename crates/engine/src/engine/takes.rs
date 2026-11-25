@@ -296,7 +296,20 @@ impl Engine {
             }
         }
         midi::quantize(&mut played, c.transport.rec_quantize);
-        let notes = midi::fold_loop(&played, ch, pl.la, pl.span);
+        let mut notes = midi::fold_loop(&played, ch, pl.la, pl.span);
+        let Some(pat_loops) = c.project.patterns.iter().find(|p| p.id == pl.id).map(|p| p.channel_loops.clone()) else { return true };
+        // a channel whose loop is set folds what was played into its cell, so the take
+        // joins the loop it was heard with instead of writing notes past it (which would
+        // not play)
+        if !pat_loops.is_empty() {
+            for n in notes.iter_mut() {
+                if let Some(&l) = pat_loops.get(&n.ch) {
+                    if l > 0 {
+                        n.step = n.step.rem_euclid(l as f32);
+                    }
+                }
+            }
+        }
         let Some(mut pat) = c.project.patterns.iter().find(|p| p.id == pl.id).cloned() else { return true };
         if notes.is_empty() {
             return true;
@@ -348,8 +361,16 @@ impl Engine {
         let n = c.project.patterns.iter().filter(|p| p.name.starts_with("MIDI take")).count() + 1;
         let pid = c.project.alloc_id();
         let cid = c.project.alloc_id();
-        let pattern =
-            Pattern { id: pid, name: format!("MIDI take {n}"), color, len: laid.len, min_len: laid.len, notes: laid.notes, swing: 0.0 };
+        let pattern = Pattern {
+            id: pid,
+            name: format!("MIDI take {n}"),
+            color,
+            len: laid.len,
+            min_len: laid.len,
+            notes: laid.notes,
+            swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
+        };
         let clip = Clip {
             id: cid,
             track: track as u32,

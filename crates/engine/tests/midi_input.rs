@@ -220,6 +220,7 @@ fn live_keys_play_where_the_song_plays_the_channel_not_through_the_armed_track()
         min_len: 4.0,
         notes: vec![Note::new(id, 0.0, 4.0, Some(45))],
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     }];
     p.clips = vec![Clip {
         id: 2,
@@ -271,6 +272,7 @@ fn with_pattern() -> (Project, Id) {
         min_len: 4.0,
         notes: vec![Note::trigger(ch, 0.0, None)],
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     }];
     (p, 7000)
 }

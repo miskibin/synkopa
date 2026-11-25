@@ -9,7 +9,7 @@ import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
+import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, loopStepsOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
 import { moveIndex, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
@@ -125,9 +125,11 @@ function Rack(props: { z: number; docked?: boolean }) {
     if (s === lastHead) return;
     lastHead = s;
     const { w, h } = size(); if (!w) return;
+    const loops = rawOf(pt()).channelLoops ?? {};
+    const loopRows = chans().map((c, i) => ({ row: i, loop: loops[String(c.id)] ?? 0 })).filter(x => x.loop > 0);
     const g = head.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawRackHead(g, w, h, geo(), s);
+    drawRackHead(g, w, h, geo(), s, loopRows);
   })));
 
   const cellAt = (e: PointerEvent | MouseEvent) => {
@@ -146,6 +148,13 @@ function Rack(props: { z: number; docked?: boolean }) {
       if (e.button === 0) { e.stopPropagation(); openRoll(c.id); }
       return;
     }
+    // a looped row is editable only inside its cell: the rest does not play (FL's looping
+    // channel), and the honest answer is the say, not a silent no-op
+    const loop = loopStepsOf(rawOf(pt()), c.id);
+    if (loop > 0 && step >= loop) {
+      if (e.button === 0) say(t('b.rk.loopGridTip', { n: loop }));
+      return;
+    }
     // FL: the left button lights steps, the right one clears them. A left press on a lit step keeps it
     // (and a drag from it paints, never erases a run you only meant to extend)
     const on = e.button === 0;
@@ -162,7 +171,9 @@ function Rack(props: { z: number; docked?: boolean }) {
       if (r === last.row && s === last.step) return;
       for (const [rr, ss] of cellsBetween(last.row, last.step, r, s)) {
         const cc = chans()[rr];
-        if (cc && (!rollRows().has(cc.id) || ss >= G.end)) notes = setStep(notes, cc.id, ss, on);
+        const l = cc ? loopStepsOf(rawOf(pt()), cc.id) : 0;
+        if (!cc || (l > 0 && ss >= l)) continue;
+        if (!rollRows().has(cc.id) || ss >= G.end) notes = setStep(notes, cc.id, ss, on);
       }
       last = { row: r, step: s };
       g.update([putNotes(pt(), notes)]);

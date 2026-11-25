@@ -158,7 +158,16 @@ fn synth_parameter_automation_closes_the_filter() {
         ..Channel::new(ch, "", "#4f8ef7", ChannelSrc::Keys { keys: Default::default() })
     });
     let notes = vec![Note { v: 0.9, ..Note::new(ch, 0.0, 64.0, Some(48)) }];
-    p.patterns = vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: 4.0, min_len: 4.0, notes, swing: 0.0 }];
+    p.patterns = vec![Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     p.clips = vec![Clip {
         id: 1,
         track: 0,

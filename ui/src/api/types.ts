@@ -247,8 +247,11 @@ export interface Note { ch: Id; step: number; len: number; p?: number; v?: numbe
 /**
  * `len` (beats) is derived by the engine: the end of the last note rounded up to a bar, at least
  * `minLen` (whole bars the user keeps on purpose, ≥ 1 bar). A `len` sent in `putPattern` is ignored.
+ * `channelLoops` maps a channel id to a loop length in whole steps (the engine's `channel_loops`):
+ * the channel's steps 0..n repeat to fill the pattern, phase-anchored to the start; notes of that
+ * channel from step n on are not played.
  */
-export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number }
+export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number> }
 
 export interface Source {
   id: Id; name: string; color: string; path: string;

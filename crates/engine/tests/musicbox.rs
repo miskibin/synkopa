@@ -22,7 +22,16 @@ fn project(notes: Vec<Note>, music_box: MusicBoxState) -> Project {
         root: 60,
         ..Channel::new(CH, "", "#cf8e52", ChannelSrc::MusicBox { music_box: Default::default() })
     });
-    p.patterns = vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: 4.0, min_len: 4.0, notes, swing: 0.0 }];
+    p.patterns = vec![Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     p.clips = vec![Clip {
         id: 1,
         track: 0,

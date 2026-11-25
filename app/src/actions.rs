@@ -1246,7 +1246,7 @@ pub fn schema() -> Value {
             "putFx": {"insertId": 1, "fx": {"id": 0, "type": "comp", "bypass": false, "params": {"thr": -18}}, "index": null},
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
-            "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
+            "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "channelLoops": "optional: {channel id: loop length in whole steps} — the channel's steps 0..n repeat to fill the pattern (notes from step n on are ignored)", "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
             "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "keys": "kind keys, optional: {instrument (catalog id, default grand-piano), release (ms; absent = the instrument's own), dynamics (0..100 %), articulation (keyswitch key of the instrument's articulations; absent = its default), attack (0..2000 ms), tone (-100..100), width (0..150 %), tune (-100..100 cents), noise (0..100 %)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
@@ -1765,12 +1765,24 @@ pub fn parse_steps(s: &str, vel: f32) -> R<Vec<(f32, f32)>> {
     Ok(out)
 }
 
+/// Parses `--loop`: a step count sets the loop, `0` or `"off"` clears it (`Ok(None)`), and
+/// anything else — including a bare value-less flag — is a usage error naming the bounds.
+fn parse_loop(l: &Value, steps: u32) -> Result<Option<u32>, String> {
+    if l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0) {
+        return Ok(None);
+    }
+    l.as_u64()
+        .filter(|n| *n > 0 && *n <= steps as u64)
+        .map(|n| Some(n as u32))
+        .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))
+}
+
 fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
     let steps = (pt.len * 4.0).round().max(1.0) as usize;
     let rows: Vec<Value> = p
         .channels
         .iter()
-        .filter(|c| pt.notes.iter().any(|n| n.ch == c.id))
+        .filter(|c| pt.notes.iter().any(|n| n.ch == c.id) || pt.channel_loops.contains_key(&c.id))
         .map(|c| {
             let mut line = vec!['.'; steps];
             let notes: Vec<_> = pt.notes.iter().filter(|n| n.ch == c.id).collect();
@@ -1786,6 +1798,9 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
                 n.trig == Some(true) && n.len == 1.0 && n.p.is_none() && n.step.fract() == 0.0 && occupied.insert(n.step as usize)
             });
             let mut row = json!({ "ch": c.id, "name": c.name, "steps": s });
+            if let Some(&l) = pt.channel_loops.get(&c.id) {
+                row["loop"] = json!(l);
+            }
             if !simple {
                 row["notes"] = json!(notes
                     .iter()
@@ -1820,6 +1835,7 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             min_len: 4.0,
             notes: vec![],
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         }
     } else {
         let id = match arg(a, "id").and_then(as_index) {
@@ -1888,6 +1904,10 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             }
         }
     }
+    // prospective length: `--bars` just raised the minimum, and the loop/stamp checks below
+    // must see the length the pattern will actually have (the engine derives it the same way)
+    pt.fit_len();
+    let pre_loop_len = pt.len;
     // `synkopa notes stamp` lands here: one chord written through the existing note op
     let mut stamped: Option<Value> = stamp.map(|st| -> Result<Value, String> {
         let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --stamp")?)?.id;
@@ -1902,6 +1922,16 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         if wave_engine::transform::chord_intervals(ty).is_none() {
             return Err(format!("stamp: unknown chord type `{}` ({})", ty, wave_engine::transform::CHORD_TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>().join(", ")));
         }
+        // an effective loop (an explicit --loop wins, else the channel's own) bounds the
+        // stamp: a chord past it would be trimmed right after, and a successful reply must
+        // not report notes nothing plays
+        let eff_loop = match arg(a, "loop").map(|l| parse_loop(l, (pt.len * 4.0).round() as u32)).transpose()? {
+            Some(l) => l,
+            None => pt.channel_loops.get(&ch).copied(),
+        };
+        if eff_loop.is_some_and(|l| step >= l as f32) {
+            return Err(format!("stamp: the channel loops its first {} steps — stamp inside the cell, or raise or clear the loop", eff_loop.unwrap()));
+        }
         let pitches = wave_engine::transform::chord_pitches(root, ty, inv as u32)
             .ok_or_else(|| format!("stamp: root {root} pushes the top voice past MIDI 127"))?;
         // re-stamping a step replaces its notes on that channel: no pile-up
@@ -1909,6 +1939,45 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         pt.notes.extend(pitches.iter().map(|&k| Note { v: 0.8, ..Note::new(ch, step, len, Some(k)) }));
         Ok(json!({ "notes": pitches.iter().map(|&k| json!({ "step": step, "len": len, "p": k, "v": 0.8 })).collect::<Vec<_>>(), "label": wave_engine::transform::chord_name(&pitches) }))
     }).transpose()?;
+    // A per-channel loop (FL Studio 20.1's channel looping): the channel's steps 0..n
+    // repeat to fill the pattern, so setting it trims that channel's notes from step n on
+    // (one undo step, nothing hidden); 0 or "off" clears the loop and keeps the cell. It
+    // runs after every note write above, so `--loop` + `--steps`/`--stamp` in one call
+    // trim the final notes.
+    let mut loop_touched = false;
+    if let Some(l) = arg(a, "loop") {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --loop")?)?.id;
+        let loop_steps = parse_loop(l, (pt.len * 4.0).round() as u32)?;
+        match loop_steps {
+            None => {
+                pt.channel_loops.remove(&ch);
+            }
+            Some(n) => {
+                pt.notes.retain(|note| !(note.ch == ch && note.step >= n as f32));
+                pt.channel_loops.insert(ch, n);
+                loop_touched = true;
+            }
+        }
+    }
+    // the loop's invariant holds on every write: notes a steps/notes/stamp write put past
+    // an already-set loop would never play, so they go in the same op
+    if let Some(chv) = arg(a, "ch") {
+        if let Ok(c) = find_channel(&p, chv) {
+            if let Some(&l) = pt.channel_loops.get(&c.id) {
+                let had = pt.notes.len();
+                pt.notes.retain(|note| !(note.ch == c.id && note.step >= l as f32));
+                loop_touched |= pt.notes.len() != had;
+            }
+        }
+    }
+    // the loop contract: setting or trimming for a loop never shrinks the pattern. The
+    // length the pattern had becomes the minimum only when the remaining notes would
+    // otherwise fall short of it — if they still reach it, min_len stays the user's and a
+    // later deletion of the note that holds the length shrinks the pattern again
+    if loop_touched && Pattern::content_len(&pt.notes) < pre_loop_len {
+        pt.min_len = pt.min_len.max(pre_loop_len);
+        pt.fit_len();
+    }
     if let Some(s) = stamped.as_mut() {
         s["revision"] = json!(e.apply(&[Op::PutPattern { pattern: pt.clone() }], false, if_revision).map_err(|x| x.to_string())?);
         return Ok(s.clone());
@@ -2695,6 +2764,10 @@ mod sidechain_tests;
 #[cfg(test)]
 #[path = "undo_label_tests.rs"]
 mod undo_label_tests;
+
+#[cfg(test)]
+#[path = "pattern_loop_tests.rs"]
+mod pattern_loop_tests;
 
 #[cfg(test)]
 mod keys_channel_tests {

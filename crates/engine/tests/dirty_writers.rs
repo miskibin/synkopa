@@ -52,6 +52,7 @@ fn pattern_notes_mark_their_track() {
         len: 4.0,
         min_len: 4.0,
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
         notes: vec![Note::new(kick, 0.0, 0.5, Some(60)), Note::new(kick, 2.0, 0.5, Some(60))],
     }];
     p.clips = vec![clip(10, 1, 0.0, 4.0, 1)];
@@ -79,6 +80,7 @@ fn routed_notes_mark_their_insert() {
         len: 4.0,
         min_len: 4.0,
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
         notes: vec![Note::new(kick, 0.0, 0.5, Some(60))],
     }];
     p.clips = vec![clip(10, 1, 0.0, 4.0, 1)];

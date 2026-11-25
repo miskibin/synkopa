@@ -227,7 +227,16 @@ fn slicer_demo(out: &Path) {
         t += len_s;
     }
     let beats = to - from;
-    let pattern = wave_engine::Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: beats, min_len: beats, notes, swing: 0.0 };
+    let pattern = wave_engine::Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: beats,
+        min_len: beats,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    };
     let mut clip = e2.project().clips.first().cloned();
     let _ = clip.take();
     let clip = wave_engine::Clip {

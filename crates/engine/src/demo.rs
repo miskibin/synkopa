@@ -86,7 +86,16 @@ pub fn routed_project() -> Project {
     );
     p.add_starter_kit();
     // one empty pattern, as in FL Studio: the Channel Rack and the Piano roll have something to edit
-    p.patterns.push(Pattern { id: 1, name: "Pattern 1".into(), color: TC[0].into(), len: 4.0, min_len: 4.0, notes: vec![], swing: 0.0 });
+    p.patterns.push(Pattern {
+        id: 1,
+        name: "Pattern 1".into(),
+        color: TC[0].into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes: vec![],
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    });
     p
 }
 
@@ -162,6 +171,7 @@ pub fn sketch_project() -> Project {
                 .map(|&(s, i)| Note::trigger(i, s, None))
                 .collect(),
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         },
         Pattern {
             id: 2,
@@ -171,6 +181,7 @@ pub fn sketch_project() -> Project {
             min_len: 4.0,
             notes: [2., 6., 10., 14., 15., 7.].iter().map(|&s| Note::trigger(hat, s, None)).collect(),
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         },
         Pattern {
             id: 3,
@@ -194,6 +205,7 @@ pub fn sketch_project() -> Project {
             .map(|&(s, l, k)| n(bass, s, l, Some(k)))
             .collect(),
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         },
     ];
     let clip = |id, track, start, len, pat| Clip {

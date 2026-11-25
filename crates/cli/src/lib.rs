@@ -118,6 +118,8 @@ PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and
   pattern --id N --ch C --steps "x... x... x... x..." [--vel 0.8]   replace channel C's notes with step triggers
   pattern --id N --ch C --notes '[{"step":0,"len":4,"p":36,"v":0.9}]'  piano-roll notes (p = MIDI key, optional trig = true for a trigger)
   pattern --id N --ch C --clear            remove channel C's notes from the pattern
+  pattern --id N --ch C --loop N           loop the channel's first N steps to fill the pattern
+                                           (its notes from step N go; 0 or "off" clears the loop)
   pattern --id N [--bars N (minimum)] [--swing 0..100] [--name TEXT]      (--new instead of --id: a new pattern)
   pattern --id N --play [--from B] [--loop A:B] | --stop
                                            loop the pattern on its own (stops the song), from
@@ -1006,6 +1008,18 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 if let Some(v) = a.num(k).map_err(u)? {
                     args[k] = json!(v);
                 }
+            }
+            if a.has("loop") {
+                // here (without --play) it is a channel loop: a step count, 0 or "off" to clear.
+                // A bare --loop is a usage error, not a silent skip
+                let v = a.get("loop").ok_or_else(|| u("--loop needs a step count (0 or \"off\" clears the loop)".into()))?;
+                let n = v
+                    .trim()
+                    .parse::<u64>()
+                    .ok()
+                    .or(if v.trim().eq_ignore_ascii_case("off") { Some(0) } else { None })
+                    .ok_or_else(|| u(format!("--loop is a step count, 0 or \"off\" (with --play it is A:B in beats), not `{v}`")))?;
+                args["loop"] = json!(n);
             }
             if let Some(c) = a.get("ch") {
                 args["ch"] = id_or_name(c);
@@ -2029,6 +2043,42 @@ mod tests {
         assert_eq!(app_error("BAD_OPS: x".into()), "BAD_OPS: x");
         assert_eq!(app_error("no effect 5".into()), "REFUSED: no effect 5");
         assert_eq!(app_error("no: such".into()), "REFUSED: no: such");
+    }
+
+    #[test]
+    fn pattern_loop_takes_a_step_count_or_off_and_refuses_the_rest() {
+        struct Spy {
+            last: RefCell<Option<Value>>,
+        }
+        impl Doc for Spy {
+            fn call(&self, command: &str, args: &Value, _: Option<u64>) -> Result<Value, String> {
+                if command == "pattern" {
+                    *self.last.borrow_mut() = Some(args.clone());
+                }
+                Ok(json!({ "id": 1, "name": "P", "color": "#fff", "len": 4, "rows": [] }))
+            }
+            fn revision(&self) -> u64 {
+                1
+            }
+            fn dirty(&self) -> bool {
+                false
+            }
+            fn save(&self, _: &Path) -> Result<(), String> {
+                Ok(())
+            }
+        }
+        let spy = Spy { last: RefCell::new(None) };
+        let cx = Cx { doc: Some(&spy) };
+        // a step count travels as a number
+        run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "3"])).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap()["loop"], json!(3));
+        // "off" (any case) clears as 0
+        run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "OFF"])).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap()["loop"], json!(0));
+        // a bare --loop, a fraction and a negative are usage errors, not silent skips
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop"])), Err(Fail::Usage(_))));
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "3.5"])), Err(Fail::Usage(_))));
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "-1"])), Err(Fail::Usage(_))));
     }
 
     #[test]

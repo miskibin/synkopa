@@ -913,6 +913,14 @@ pub struct Pattern {
     /// 0..1: how far every second 16th is delayed (see [`swing_offset`]).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub swing: f32,
+    /// Per-channel loop lengths in whole steps (FL Studio 20.1's channel looping): the
+    /// channel's steps 0..n repeat to fill the pattern, phase-anchored to the pattern
+    /// start, so a 3-step shaker can sit under a 16-step kick. Setting a loop removed
+    /// that channel's notes beyond it in the same undo step, so nothing is ever hidden;
+    /// clearing the loop keeps the cell. A loop never changes the pattern's length and
+    /// never stretches its playlist clips.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty", rename = "channelLoops")]
+    pub channel_loops: BTreeMap<Id, u32>,
 }
 
 fn is_zero(v: &f32) -> bool {
@@ -930,6 +938,11 @@ fn major_scale() -> u32 {
 /// Beats in one bar (the project is in 4/4).
 pub const BAR_BEATS: f64 = 4.0;
 
+/// A channel loop may not expand into more scheduled notes than this (the bound that
+/// keeps a pathological 1-step loop in a long pattern from growing the audio graph's
+/// per-pattern note list without limit).
+pub const MAX_LOOP_NOTES: usize = 65_536;
+
 impl Pattern {
     /// The length its notes need: the end of the last note rounded up to a whole bar, at
     /// least one bar, at most [`TOTAL_BEATS`].
@@ -944,6 +957,39 @@ impl Pattern {
         self.min_len = min.min(TOTAL_BEATS);
         self.len = Self::content_len(&self.notes).max(self.min_len);
     }
+}
+
+/// The notes of a pattern as the audio plays them: a channel's loop repeats its cell
+/// (the steps below the loop) across the pattern and that channel's own notes from the
+/// loop step on are dropped — exactly like the timeline's expansion (`engine/graph.rs`).
+/// Consumers that must match playback (the MIDI export, for one) use this instead of the
+/// raw notes.
+pub fn played_notes(pat: &Pattern) -> Vec<Note> {
+    let steps = (pat.len * 4.0).round();
+    let loops = pat.channel_loops.clone();
+    let (mut base, mut extra): (Vec<Note>, Vec<Note>) = (vec![], vec![]);
+    for (ch, &l) in &loops {
+        if l == 0 {
+            continue;
+        }
+        let cell: Vec<Note> = pat.notes.iter().filter(|n| n.ch == *ch && (n.step as f64) < f64::from(l)).cloned().collect();
+        base.extend(cell.iter().cloned());
+        let reps = (steps / f64::from(l)).ceil() as u32;
+        'reps: for k in 1..=reps {
+            for n in &cell {
+                let step = n.step + (k * l) as f32;
+                if f64::from(step) >= steps {
+                    break 'reps;
+                }
+                extra.push(Note { step, ..*n });
+            }
+        }
+    }
+    let mut out: Vec<Note> = pat.notes.iter().filter(|n| !loops.contains_key(&n.ch)).cloned().collect();
+    out.append(&mut base);
+    out.append(&mut extra);
+    out.sort_by(|a, b| a.step.total_cmp(&b.step));
+    out
 }
 
 /// Swing, in steps, added to a note that starts on an odd 16th (0-based 1, 3, 5 …).

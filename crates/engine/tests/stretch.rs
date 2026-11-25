@@ -134,7 +134,16 @@ fn invalid_stretches_are_rejected() {
         assert!(put(&e, Clip { stretch: s, ..clip.clone() }).is_err(), "stretch {s} accepted");
     }
     let mut p = e.project();
-    let pat = Pattern { id: 77, name: "P".into(), color: "#fff".into(), len: 4.0, min_len: 4.0, notes: vec![], swing: 0.0 };
+    let pat = Pattern {
+        id: 77,
+        name: "P".into(),
+        color: "#fff".into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes: vec![],
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    };
     p.patterns.push(pat.clone());
     e.apply(&[Op::PutPattern { pattern: pat }], false, None).unwrap();
     let pc = Clip { id: 78, kind: ClipKind::Pat, source: 77, stretch: 2.0, ..clip.clone() };

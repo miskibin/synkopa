@@ -343,6 +343,7 @@ fn render_song(preset: &str, song: &Song) -> Vec<f32> {
         min_len: song.beats,
         notes,
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     }];
     let pid = p.patterns[0].id;
     let cid = p.alloc_id();

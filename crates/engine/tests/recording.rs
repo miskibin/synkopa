@@ -145,7 +145,16 @@ fn arming_while_playing_punches_in_at_the_playhead() {
 fn unarmed(busy: &[u32], at: f64) -> Project {
     let mut p = armed();
     p.tracks[0].arm = false;
-    p.patterns = vec![Pattern { id: 9000, name: "P".into(), color: "#4f8ef7".into(), len: 4.0, min_len: 4.0, notes: vec![], swing: 0.0 }];
+    p.patterns = vec![Pattern {
+        id: 9000,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes: vec![],
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     for (k, &t) in busy.iter().enumerate() {
         p.clips.push(Clip {
             id: 9001 + k as Id,

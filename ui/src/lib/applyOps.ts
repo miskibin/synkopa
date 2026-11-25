@@ -7,7 +7,7 @@ import { applyCompOp } from './comp';
 import { forgetInsert, keyError, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
 import { putMarker, removeMarker } from './markers';
-import { applyPatternOp, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
+import { applyPatternOp, checkChannelLoops, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
 import { applyTransform } from './transforms';
 import { applyTuneEdit } from './pitch';
 
@@ -218,6 +218,8 @@ export function applyOp(p: Project, op: Op): void {
       const oldLen = pt.len;
       pt.notes = notes;
       fitPatternLen(pt);
+      // a longer pattern (or rewritten channels) re-validates the loops' bounds, like the engine
+      checkChannelLoops(p, pt, true);
       // a generator can push notes past the pattern's end: whole-pass clips follow, like putPattern
       if (Math.abs(oldLen - pt.len) > 1e-9) followPatternLength(p, op.pattern, oldLen, pt.len);
       return;

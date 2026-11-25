@@ -63,6 +63,14 @@ shown in the app after an update and is published as the release notes (see
 - **Sidechain for the EQ.** An EQ with dynamic bands can listen to another mixer track (*Sidechain*
   under its graph): each dynamic band then moves only while that track is loud in the band — duck a
   pad's mids under the vocal, or a bass's low end under the kick.
+- **Channel loops.** Right-click a channel in the Channel Rack → *Loop* to make its first steps
+  repeat to fill the pattern, as in FL Studio: a 3-step shaker under a 16-step kick, no piano-roll
+  copying. The repeats show as ghost steps, a line in the channel's colour marks where the loop
+  ends, the playhead shows each row its own position, and *Burn repeats into steps* writes them
+  out for good. Setting a loop removes that channel's notes past it (one undo step, nothing
+  hidden), and every later write to that channel stops at the loop too; the pattern's
+  length and its playlist clips never change because of a loop. From the
+  command line: `synkopa pattern --id 2 --ch shaker --steps "x.x" --loop 3`.
 
 ### Changed
 - **A shorter audio clip menu.** Right-clicking an audio clip on the Playlist no longer lists what

@@ -98,6 +98,7 @@ fn song(state: Option<&str>, notes: &[(f32, f32, u8)], beats: f64) -> (Project, 
         min_len: beats,
         notes: notes.iter().map(|&(s, l, k)| Note::new(id, s, l, Some(k))).collect(),
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     }];
     let cid = p.alloc_id();
     p.clips = vec![Clip {
