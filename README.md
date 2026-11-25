@@ -1,5 +1,4 @@
-<p align="center"><img src="site/img/icon.png" width="96" alt="Synkopa logo"></p>
-<h1 align="center">Synkopa</h1>
+<p align="center"><img src="site/img/banner.png" alt="Synkopa: make the beat, record the vocal. A free, open-source DAW with the FL Studio workflow."></p>
 <p align="center">
   A free, open-source DAW that works the FL Studio way: patterns, Channel Rack, piano roll, playlist.<br>
   Audio recording and vocal tuning are included, and an AI agent can edit the project you have open.
