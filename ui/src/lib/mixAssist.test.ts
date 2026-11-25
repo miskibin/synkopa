@@ -38,14 +38,14 @@ function project(): Project {
 }
 
 describe('compared pairs (port of masking.rs compared_pairs)', () => {
-  it('skips inserts that feed each other, ignored pairs and handled pairs', () => {
+  it('skips related and ignored pairs but keeps existing sidechains', () => {
     const p = project();
     expect(comparedPairs(p)).toEqual([[1, 2], [2, 3]]);
     p.maskIgnore = [[2, 3]];
     expect(comparedPairs(p)).toEqual([[1, 2]]);
     p.inserts[2].fx.push(fixFx(mockCatalog(), 50, { ...KICK_808, masker: 2, protect: 1 }));
     expect(keyedFrom(p.inserts[2], 1)).toBe(true);
-    expect(comparedPairs(p)).toEqual([]);
+    expect(comparedPairs(p)).toEqual([[1, 2]]);
     p.inserts[2].fx[0].bypass = true;
     expect(comparedPairs(p)).toEqual([[1, 2]]);
   });

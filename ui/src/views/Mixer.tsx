@@ -31,6 +31,7 @@ import { canSend, sendsOf, toMaster } from '../lib/routing';
 import { drivesKey, pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
 import { listening, sidechainItems, sidechainSources, unkey } from '../state/sidechain';
 import { collisionText, fixCollision, ignoreCollision, maskedBy } from '../state/mixAssist';
+import { keyedEffects } from '../lib/mixAssist';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -100,11 +101,21 @@ function openMaskMenu(x: number, y: number, id: Id) {
   for (const c of maskedBy(id)) {
     const other = S.project.inserts.find(m => m.id === c.protect);
     const name = other ? other.name || insName(other) : '';
-    items.push(
-      { t: 'sec', label: collisionText(c) },
-      { t: 'item', label: tr('c.mask.fix', { b: name }), title: tr('c.mask.fixTip'), act: () => void fixCollision(c) },
-      { t: 'item', label: tr('c.mask.ignore'), title: tr('c.mask.ignoreTip'), act: () => void ignoreCollision(c) },
-    );
+    const masker = S.project.inserts.find(m => m.id === c.masker);
+    const existing = [
+      ...(masker ? keyedEffects(masker, c.protect).map(f => ({ f, insert: masker.id })) : []),
+      ...(other ? keyedEffects(other, c.masker).map(f => ({ f, insert: other.id })) : []),
+    ];
+    items.push({ t: 'sec', label: collisionText(c) });
+    if (existing.length) {
+      for (const { f, insert } of existing) {
+        items.push({ t: 'item', label: tr('c.mask.review', { fx: A.fxName(f) }), title: tr('c.mask.reviewTip'),
+          act: () => { setU({ mixSel: insert, fxSel: f.id }); A.openPlug(f.id); } });
+      }
+    } else {
+      items.push({ t: 'item', label: tr('c.mask.fix', { b: name }), title: tr('c.mask.fixTip'), act: () => void fixCollision(c) });
+    }
+    items.push({ t: 'item', label: tr('c.mask.ignore'), title: tr('c.mask.ignoreTip'), act: () => void ignoreCollision(c) });
   }
   openMenu(x, y, items, 160);
 }
