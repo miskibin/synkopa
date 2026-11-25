@@ -270,7 +270,7 @@ fn the_playhead_shows_the_heard_beat() {
     assert!((s.heard_beat() - want).abs() < 1e-9, "heard {} want {want}", s.heard_beat());
     assert!((s.heard_beat() - (4.0 + (total - pdc) as f64 * bps)).abs() < 1e-6);
     // the telemetry frame carries the heard beat
-    let frame = wave_engine::telemetry::frame(1, &s, &[], None, None);
+    let frame = wave_engine::telemetry::frame(1, &s, &[], None, None, &[]);
     let beat = f64::from_le_bytes(frame[8..16].try_into().unwrap());
     assert_eq!(beat, s.heard_beat());
 }

@@ -3,6 +3,7 @@ import { askChatGPT } from './views/Ask';
 import { t as tl } from './lib/i18n';
 import { closeNotebook, NB } from './state/notebook';
 import { ConfirmDialog } from './ui/Confirm';
+import { modalOpen, modalOwnsKey } from './ui/modal';
 import { For, Show } from 'solid-js';
 import { effect, onCleanup, onMount } from './lib/reactive';
 import { be } from './api/backend';
@@ -121,6 +122,8 @@ const patWinFocused = () => !!(document.activeElement as HTMLElement | null)?.cl
 function onKey(e: KeyboardEvent) {
   if (U.openingProject) { e.preventDefault(); return; }
   if (e.key === 'Alt') { e.preventDefault(); if (!U.alt) setU('alt', true); return; }
+  // a modal dialog has the keyboard: Tab, Esc and its own keys are its business (ui/modal.ts)
+  if (modalOwnsKey(e)) return;
   if (typingIn(e.target as HTMLElement)) return;
   const k = e.key.toLowerCase(), m = e.ctrlKey || e.metaKey;
   if (e.code === 'Space') {
@@ -139,16 +142,6 @@ function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     if (U.menu) return closeMenu();
     if (U.autoSel) return setU('autoSel', null);
-    if (U.musicWin) return A.closeMusicAnalysis();
-    if (STEMS.win != null) return closeStems();
-    if (U.missingOpen) return setU('missingOpen', false);
-    if (U.midiWin) return setU('midiWin', null);
-    if (U.fxPicker) return setU('fxPicker', null);
-    if (U.fxChainWin) return setU('fxChainWin', null);
-    if (U.vstPicker) return setU('vstPicker', null);
-    if (U.settings) return setU('settings', false);
-    if (U.exportOpen) return void A.cancelExportOrClose();
-    if (U.help) return setU('help', false);
     // a Browser preview playing: Esc stops it first (wherever the keyboard is), as in the library list
     if (U.previewing && U.previewPath) { setU('previewPath', null); return void be().previewStop(); }
     const top = topFloating();
@@ -263,7 +256,8 @@ function onKey(e: KeyboardEvent) {
 const onKeyUp = (e: KeyboardEvent) => {
   typingUp(e);
   if (e.key === 'Alt') { e.preventDefault(); setU('alt', false); }
-  if (e.code === 'Space' && (e.target as HTMLElement).tagName === 'BUTTON') e.preventDefault(); // no button click on Space
+  // no button click on Space (it is play / stop); in a modal dialog Space presses the focused button as usual
+  if (e.code === 'Space' && (e.target as HTMLElement).tagName === 'BUTTON' && !modalOpen()) e.preventDefault();
 };
 const onBlur = () => { if (U.alt) setU('alt', false); releaseAll(); };
 
@@ -397,7 +391,7 @@ export function App() {
     </div>
     <Show when={U.openingProject}>
       <div class="overlay" style={{ 'z-index': 400 }}>
-        <div class="dialog" role="status">{tl('d.act.opening')}</div>
+        <div class="dialog dlgstatus" role="status" aria-live="polite"><span class="spin" aria-hidden="true" />{tl('d.act.opening')}</div>
       </div>
     </Show>
     </>

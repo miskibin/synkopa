@@ -18,6 +18,7 @@ import { cancelExportOrClose } from '../state/actions';
 import { modePattern, patMode, previewPattern } from '../state/pattern';
 import { Segmented } from '../ui/Knob';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const TAILS = [0, 2, 8, 0] as const;
 const WRAP = 3;
@@ -198,10 +199,9 @@ function ExportDialog() {
 
   return (
     <div class="overlay" onPointerDown={() => close()}>
-      <div class="dialog exdlg" role="dialog" aria-modal="true" aria-label={t('a.ex.title')} onPointerDown={e => e.stopPropagation()}
+      <div class="dialog exdlg" aria-label={t('a.ex.title')} ref={el => modal(el, { close: () => void cancelExportOrClose() })} onPointerDown={e => e.stopPropagation()}
         onKeyDown={e => {
           if (e.key === 'Enter' && !e.repeat && !busy() && (e.target as HTMLElement).tagName !== 'BUTTON') { e.preventDefault(); void start(); }
-          if (e.key !== 'Escape') e.stopPropagation();
         }}>
         <div class="hd"><span>{t('a.ex.title')}</span><button disabled={busy()} onClick={() => setU('exportOpen', false)} aria-label={t('a.ex.cancel')}>×</button></div>
         <Show when={!busy()} fallback={
@@ -238,8 +238,8 @@ function ExportDialog() {
                 <For each={stemNames()}>{(n, i) => <span class={fileState(i())} title={n}>{fileState(i()) === 'ok' ? '✓ ' : ''}{n}</span>}</For>
               </div>
             </Show>
-            <div class="row" style={{ 'justify-content': 'flex-end', gap: '8px' }}>
-              <button class="smallbtn" onClick={cancel}>{t('a.ex.cancel')}</button>
+            <div class="dlgfoot">
+              <button class="smallbtn" data-autofocus onClick={cancel}>{t('a.ex.cancel')}</button>
             </div>
           </div>
         }>
@@ -304,9 +304,9 @@ function ExportDialog() {
           </Show>
           <Show when={!songEmpty() && stems() && nFiles() === 0}><div class="note err" style={{ 'margin-bottom': '10px' }}>{t('a.ex.stemsNone')}</div></Show>
           <Show when={err()}><div class="note err" style={{ 'margin-bottom': '10px' }}>{err()}</div></Show>
-          <div class="row" style={{ 'justify-content': 'flex-end', gap: '8px' }}>
+          <div class="dlgfoot">
             <button class="smallbtn" onClick={cancel}>{t('a.ex.cancel')}</button>
-            <button class="smallbtn primary" disabled={(stems() && nFiles() === 0) || songEmpty()} onClick={() => void start()}>{stems() ? t('a.ex.goStems') : t('a.ex.go')}</button>
+            <button class="smallbtn primary" data-autofocus disabled={(stems() && nFiles() === 0) || songEmpty()} onClick={() => void start()}>{stems() ? t('a.ex.goStems') : t('a.ex.go')}</button>
           </div>
         </Show>
       </div>

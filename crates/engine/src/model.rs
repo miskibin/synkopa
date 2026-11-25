@@ -70,6 +70,10 @@ pub struct Project {
     /// minor, 3 major pentatonic, 4 minor pentatonic). Meaningful once `key` is set.
     #[serde(default = "major_scale")]
     pub scale: u32,
+    /// Pairs of inserts the mix assistant no longer reports as masking each other
+    /// (`crate::masking`), sorted within the pair, no repeats.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mask_ignore: Vec<[Id; 2]>,
     /// Next id handed out by [`Project::alloc_id`]. Ids are never reused.
     pub next_id: Id,
 }
@@ -201,9 +205,10 @@ pub enum FxKind {
 
 impl FxKind {
     /// Whether the effect can listen to another insert ([`Fx::key`]): the Compressor's and the
-    /// Gate's detectors, the Filter's envelope follower.
+    /// Gate's detectors, the Filter's envelope follower, the EQ's dynamic bands (each through its
+    /// own band-pass: a band ducks while the key is loud *there*).
     pub fn takes_key(self) -> bool {
-        matches!(self, FxKind::Comp | FxKind::Gate | FxKind::Filter)
+        matches!(self, FxKind::Comp | FxKind::Gate | FxKind::Filter | FxKind::Eq)
     }
 }
 

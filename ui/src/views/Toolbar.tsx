@@ -7,7 +7,7 @@ import { samePath } from '../lib/paths';
 import { t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
-import { prefs } from '../state/prefs';
+import { prefs, setPref, UI_SCALES } from '../state/prefs';
 import { For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { be } from '../api/backend';
@@ -44,6 +44,7 @@ import { KeyBadge } from './KeyBadge';
 import { PosReadout, PreviewLine, SongPos } from './ToolbarParts';
 import { shownPreview } from '../state/previewWave';
 import { ChipBoundary, DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 export const TOOLS: [Tool, string, TranslationKey][] = [
   ['draw', 'P', 'a.tb.toolDraw'], ['paint', 'B', 'a.tb.toolPaint'], ['erase', 'D', 'a.tb.toolErase'], ['mute', 'T', 'a.tb.toolMute'], ['slice', 'C', 'a.tb.toolSlice'], ['select', 'E', 'a.tb.toolSelect'],
@@ -210,7 +211,7 @@ export function Toolbar() {
             <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
             <Show when={shownPreview()} fallback={<>
               <span class="readout" data-readout title={U.readout}>{U.readout}</span>
-              <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
+              <Show when={prefs().hints}><span class="hinttxt" title={hint()}>{hint()}</span></Show>
             </>}>
               <PreviewLine />
             </Show>
@@ -223,8 +224,6 @@ export function Toolbar() {
               <span class="tag9">IN</span>
               <div class="inmeter"><div ref={inEl} /></div>
             </div>
-            {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
-            <UpdateChip />
           </ChipBoundary>
         </div>
         <div class="tbc tbtransport">
@@ -320,6 +319,8 @@ export function Toolbar() {
         {/* under the output and the panels: the loop range (when there is one) and Follow (F) */}
         <div class="tbc tbview" data-drag>
           <ChipBoundary name={t('d.ui.pn.panels')}>
+            {/* a found, downloading or downloaded update: a quiet row 2 switch here, so the status line keeps its room for the hint */}
+            <UpdateChip />
             <Show when={S.project.loop}>{l => (
               <span data-drag class="loopText" title={t('a.tb.loopTip')}
                 onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY, [{ t: 'item', label: t('a.pl.deleteLoop'), act: () => { A.setLoop(null, t('a.pl.deleteLoop')); say(t('a.pl.loopDeleted')); } }]); }}>
@@ -455,6 +456,10 @@ function MenuBar() {
       { t: 'item', label: t('a.mn.zoomOut'), glyph: G.zoomOut, kbd: 'Ctrl+−', act: () => A.zoomAt(0.8) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.fullscreen'), kbd: 'F11', checked: isFullscreen(), act: () => void toggleFullscreen() },
+      // the whole interface's zoom, with its value in view: the same setting as Settings → Look
+      { t: 'sub', label: t('a.mn.uiScale', { pct: Math.round(prefs().uiScale * 100) }), items: UI_SCALES.map(z => ({
+        t: 'item' as const, label: Math.round(z * 100) + '%', checked: prefs().uiScale === z, act: () => setPref('uiScale', z),
+      })) },
     ]],
     ['a.mn.help', () => [
       { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
@@ -663,7 +668,7 @@ export function Help() {
     <Show when={U.help}>
       <DialogBoundary name={t('a.tb.helpTitle')} close={close}>
       <div class="overlay" onPointerDown={close}>
-        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+        <div class="dialog helpdlg" aria-label={t('a.tb.helpTitle')} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd"><span>{t('a.tb.helpTitle')}</span>
             <button class="chip helpcmd" onClick={() => { close(); setPaletteOpen(true); }}>{t('a.cmd.title')}<kbd>Ctrl K</kbd></button>
             <button aria-label={t('a.tb.close')} onClick={close}>×</button></div>

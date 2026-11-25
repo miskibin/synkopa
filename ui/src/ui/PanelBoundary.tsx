@@ -29,6 +29,7 @@ import type { JSX } from '@solidjs/web';
 import { captureOn, createSignal, watch } from '../lib/reactive';
 import { t } from '../lib/i18n';
 import { moveWindow } from './drag';
+import { modal } from './modal';
 
 /** Report a caught error the way an uncaught one is, without throwing into Solid. */
 function report(e: unknown): void {
@@ -143,22 +144,25 @@ export function WindowBoundary(props: {
  */
 function dialogKey(e: KeyboardEvent, close: () => void): void {
   if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); return; }
-  const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === 's' || k === 'z' || k === 'y')) return;
+  if (savesOrUndoes(e) || e.key === 'Tab') return;
   e.stopPropagation();
+}
+function savesOrUndoes(e: KeyboardEvent): boolean {
+  const k = e.key.toLowerCase();
+  return (e.ctrlKey || e.metaKey) && !e.altKey && (k === 's' || k === 'z' || k === 'y');
 }
 
 /**
  * A dialog behind an error boundary. Put it inside the dialog's open condition: closing disposes
  * the failure with the dialog. The failure is a small dialog that takes the keyboard while it is
- * shown (`dialogKey`) and lets go of it like any other: Tab, a press outside (closes it).
+ * shown (`dialogKey`, `modal`) like any other dialog: Tab stays in it, a press outside closes it.
  */
 export function DialogBoundary(props: { name: string; close: () => void; z?: number; children: JSX.Element }) {
   return (
     <Guard fallback={(err, reset) => {
       return (
         <div class="overlay" style={props.z != null ? { 'z-index': props.z } : undefined} onPointerDown={() => props.close()}>
-          <div ref={el => setTimeout(() => { if (el.isConnected && !el.contains(document.activeElement)) el.focus(); })} tabindex={-1}
+          <div ref={el => modal(el, { close: () => props.close(), passKeys: savesOrUndoes })} tabindex={-1}
             class="dialog faildlg" role="alertdialog" aria-label={props.name}
             onPointerDown={e => e.stopPropagation()} onKeyDown={e => dialogKey(e, props.close)}>
             <div class="hd"><span>{props.name}</span><button title={t('d.ui.panelFailed.close')} aria-label={t('d.ui.panelFailed.close')} onClick={() => props.close()}>×</button></div>

@@ -57,6 +57,9 @@ pub struct Shared {
     take_lat_n: AtomicU32,
     /// Beat where input capture began (f64 bits; NaN until the audio thread has started it).
     rec_start: AtomicU64,
+    /// The mix assistant listens (`crate::masking`): while playing, every non-master insert's
+    /// post-fader output goes to its mask tap.
+    pub assist: AtomicBool,
 }
 
 /// A callback that took longer (seconds) than the audio it rendered lasts: the device played
@@ -87,6 +90,7 @@ impl Shared {
             finishing_take: AtomicBool::new(false),
             stopped_at_end: AtomicBool::new(false),
             in_level: AtomicU32::new(0),
+            assist: AtomicBool::new(true),
             cpu: AtomicU32::new(0),
             underruns: AtomicU32::new(0),
             preview_pos: AtomicU32::new((-1f32).to_bits()),
@@ -1157,6 +1161,9 @@ pub struct Rt {
     dc: (f32, f32),
     dc_pos: usize,
     fade_pos: usize,
+    /// Mix assistant: per insert index, its post-fader mono output while playing
+    /// (`crate::masking`); empty = not listening.
+    mask_taps: Vec<rtrb::Producer<f32>>,
 }
 
 /// Declick ramp of a transport jump while sound is coming out.
@@ -1229,6 +1236,7 @@ impl Rt {
             dc: (0.0, 0.0),
             dc_pos: usize::MAX,
             fade_pos: usize::MAX,
+            mask_taps: vec![],
         }
     }
 
@@ -1295,6 +1303,12 @@ impl Rt {
     }
 
     /// The ring live keyboard events arrive on, drained together with the command ring.
+    /// The mix assistant's taps, one per insert index (master first; its tap stays unused).
+    /// Call before the stream starts (off the audio thread).
+    pub fn set_mask_taps(&mut self, taps: Vec<rtrb::Producer<f32>>) {
+        self.mask_taps = taps;
+    }
+
     pub fn set_midi_ring(&mut self, ring: rtrb::Consumer<Cmd>) {
         self.midi = Some(ring);
     }
@@ -2165,8 +2179,10 @@ impl Rt {
         if count > 0 {
             let (enabled, watch) = (self.skip_silent, &self.watch[..self.watch_n]);
             let aligned = ctx.playing || self.instant.is_none();
+            // the mix assistant hears what plays (song or pattern loop), not live auditions
+            let listen = ctx.playing && !self.mask_taps.is_empty() && self.shared.assist.load(Relaxed);
             for ins in g.inserts.iter_mut() {
-                ins.want_post = !ins.sends.is_empty() || ins.is_key;
+                ins.want_post = !ins.sends.is_empty() || ins.is_key || listen;
             }
             // level by level (`crate::routing`): an insert runs once everything sending into it
             // (and every insert it takes a sidechain from) has; the inserts of one level are
@@ -2231,6 +2247,18 @@ impl Rt {
                 }
             }
             process_insert(master, 0, n, &ctx, aligned, enabled, watch, &mut self.taps, &self.shared, &g.keys);
+            if listen {
+                for (ins, tap) in g.inserts.iter().zip(self.mask_taps.iter_mut()).skip(1) {
+                    // a full ring drops the block (the detector only loses a little time)
+                    if let Ok(mut chunk) = tap.write_chunk(n) {
+                        let (a, b) = chunk.as_mut_slices();
+                        for (i, x) in a.iter_mut().chain(b.iter_mut()).enumerate() {
+                            *x = if ins.idle { 0.0 } else { 0.5 * (ins.post_l[i] + ins.post_r[i]) };
+                        }
+                        chunk.commit_all();
+                    }
+                }
+            }
         }
 
         // ---- out: master + click (delayed like the music) + preview

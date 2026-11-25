@@ -120,6 +120,13 @@ describe('note properties', () => {
     expect(parseLen('1/8')).toBe(2);
     expect(fmtLen(2)).toBe('1/8');
     expect(fmtLen(4 / 3)).toBe('1/12');
+    // custom lengths are note values too, reduced: the Snap menu's and the toolbar's notation
+    expect(fmtLen(3)).toBe('3/16');
+    expect(fmtLen(6)).toBe('3/8');
+    expect(fmtLen(20)).toBe('5/4');
+    expect(fmtLen(32)).toBe('2/1');
+    expect(fmtLen(2.5)).toBe('2.5/16');
+    for (const l of [3, 6, 20, 32, 2.5, 12]) expect(parseLen(fmtLen(l))).toBe(l);
     expect(parseLen(fmtLen(4 / 3))).toBe(1.333333);
     expect(parseLen(fmtLen(2.001))).toBe(2.001);
     expect(parseLen('3/16')).toBe(3);

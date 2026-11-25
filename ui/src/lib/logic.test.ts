@@ -103,9 +103,9 @@ describe('telemetry decoder', () => {
   });
   it('carries the output underrun count last, like the engine, and reads 0 from older frames', () => {
     const base = { seq: 1, beat: 0, playing: false, recording: false, previewing: false, inLevel: 0, previewPos: -1, cpu: 0.5, ins: [], fx: [], rec: null };
-    // the same 56-byte layout crates/engine/tests/underruns.rs checks on the writer's side
+    // the same 60-byte layout crates/engine/tests/underruns.rs checks on the writer's side
     const buf = encodeFrame({ ...base, underruns: 2 });
-    expect(buf.byteLength).toBe(56);
+    expect(buf.byteLength).toBe(60);
     expect(new DataView(buf).getFloat64(44, true)).toBe(-1);
     expect(new DataView(buf).getUint32(52, true)).toBe(2);
     const d = new TelemetryDecoder();
@@ -210,6 +210,27 @@ describe('op builders', () => {
     expect(resizeClip(clip({ kind: 'pat', start: 4, len: 2 }), 'r', 4.1, 0.5, Infinity).len).toBe(0.5);
     // with the Alt minimum (a 64th) a trim goes below the grid unit
     expect(resizeClip(clip({ kind: 'pat', start: 4, len: 2 }), 'r', 4.125, 1 / 16, Infinity).len).toBe(0.125);
+  });
+  it('stops a pattern clip\'s edges at the pattern\'s end and start (#245)', () => {
+    // an 8-beat pattern
+    const c = clip({ kind: 'pat', start: 4, len: 4, offset: 0 });
+    expect(resizeClip(c, 'r', 40, 0.25, 8).len).toBe(8); // one pass, no loop
+    expect(resizeClip(c, 'r', 10, 0.25, 8).len).toBe(6); // within it: as dragged
+    // trimmed from the left: the window ends at the pattern's end
+    const t = clip({ kind: 'pat', start: 4, len: 2, offset: 3 });
+    expect(resizeClip(t, 'r', 40, 0.25, 8).len).toBe(5);
+    // the left edge stops at the pattern's start (offset 0)
+    expect(resizeClip(t, 'l', 0, 0.25, 8)).toMatchObject({ start: 1, offset: 0, len: 5 });
+    // a clip already longer than its pattern (an older loop, a pattern since shortened) keeps
+    // its length but cannot grow; it can still be shortened, and then not regrown past the pattern
+    const loop = clip({ kind: 'pat', start: 0, len: 16, offset: 0 });
+    expect(resizeClip(loop, 'r', 40, 0.25, 4).len).toBe(16);
+    expect(resizeClip(loop, 'r', 6, 0.25, 4).len).toBe(6);
+    expect(resizeClip(resizeClip(loop, 'r', 2, 0.25, 4), 'r', 40, 0.25, 4).len).toBe(4);
+    // an empty pattern is one bar long: the cap is that bar
+    expect(resizeClip(clip({ kind: 'pat', start: 0, len: 1 }), 'r', 40, 0.25, 4).len).toBe(4);
+    // automation clips are not bounded
+    expect(resizeClip(clip({ kind: 'auto', start: 0, len: 4 }), 'r', 40, 0.25, Infinity).len).toBe(40);
   });
   it('trims a selection together, each clip within its own limits', () => {
     const pat = clip({ id: 1, kind: 'pat', start: 0, len: 4 }), short = clip({ id: 2, kind: 'pat', start: 0, len: 1 });
@@ -357,8 +378,14 @@ describe('formatting & eq', () => {
     expect(volText(0.7937)).toBe('0.0 dB');
     expect(volText(0)).toBe('-∞ dB');
     expect(panText(-0.25)).toBe('25L');
-    expect(fmtPos(5.5)).toBe('2.2.3');
-    expect(fmtClock(5.5)).toBe('2:02:03');
+    // one notation: bar:beat:16th, counted from 1, in the status line and on the transport
+    expect(fmtPos(5.5)).toBe('2:2:3');
+    expect(fmtPos(0)).toBe('1:1:1');
+    expect(fmtPos(4)).toBe('2:1:1');
+    expect(fmtPos(1 / 3)).toBe('1:1:2.33'); // between 16ths: the fraction, not a floor
+    expect(fmtPos(3.999)).toBe('2:1:1'); // rounding carries into the bar
+    expect(fmtClock(5.5)).toBe('2:2:3');
+    expect(fmtClock(5.6)).toBe('2:2:3'); // the counter shows the 16th being played
     expect(fmtClock(-1.2)).toBe('COUNT 2');
   });
   it('a flat EQ is flat and a bell peaks at its gain', () => {

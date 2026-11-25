@@ -16,6 +16,7 @@ import { setU, U } from '../state/ui';
 import { askChatGPT } from './Ask';
 import { patItems } from './patternShared';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 type MenuSource = [TranslationKey, () => MenuItem[]][];
 let source: MenuSource = [];
@@ -85,9 +86,8 @@ export function Palette() {
     queueMicrotask(() => list?.querySelector('.on')?.scrollIntoView({ block: 'nearest' }));
   };
   const key = (e: KeyboardEvent) => {
-    // the palette owns the keyboard while it is open: no app shortcut fires from what is typed here
-    e.stopPropagation();
-    if (e.key === 'Escape') { e.preventDefault(); if (q()) setQ(''); else close(); }
+    // Esc clears the typed text first, then closes (ui/modal.ts closes it when the text is empty)
+    if (e.key === 'Escape') { if (q()) { e.preventDefault(); setQ(''); } }
     else if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
     else if (e.key === 'Enter') { e.preventDefault(); enter(); }
@@ -97,10 +97,10 @@ export function Palette() {
     <Show when={paletteOpen()}>
       <DialogBoundary name={t('a.cmd.title')} close={close}>
       <div class="overlay cmdover" onPointerDown={close}>
-        <div class="dialog cmddlg" role="dialog" aria-modal="true" aria-label={t('a.cmd.title')} onPointerDown={e => e.stopPropagation()} onKeyDown={key}>
+        <div class="dialog cmddlg" aria-label={t('a.cmd.title')} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()} onKeyDown={key}>
           <div class="cmdfind">
             <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={16} />
-            <input type="search" ref={el => queueMicrotask(() => el.focus())} value={q()} onInput={e => setQ(e.currentTarget.value)}
+            <input type="search" data-autofocus value={q()} onInput={e => setQ(e.currentTarget.value)}
               placeholder={t('a.cmd.placeholder')} aria-label={t('a.cmd.title')} spellcheck="false" />
             <kbd>Esc</kbd>
           </div>

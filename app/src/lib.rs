@@ -19,7 +19,9 @@ mod links;
 #[cfg(test)]
 mod markers_tests;
 mod midi_actions;
+mod mix_assist;
 mod models;
+mod net;
 mod pitch_actions;
 #[cfg(target_os = "linux")]
 mod plugin_loop;
@@ -120,6 +122,7 @@ impl actions::Host for App {
 /// `Synkopa --cli …`: the `synkopa` command. Commands go to the running app, or with
 /// `--project FILE` run here, on the file, with no window and no audio device.
 pub fn cli_main(args: Vec<String>) -> std::process::ExitCode {
+    net::init(settings::Settings::load().ignore_cert_errors);
     wave_cli::run_cli_with(args, Some(&headless::Files))
 }
 
@@ -484,6 +487,17 @@ async fn sidechain(
     })
     .await
     .map_err(es)?
+}
+
+/// Mix assistant (`mix_assist.rs`): the switch, collisions, the fix (on request), ignoring a pair.
+/// The undo label rides in `args.label`.
+#[tauri::command]
+async fn mix_assist(app: St<'_>, cmd: String, args: Value) -> R<Value> {
+    if !mix_assist::COMMANDS.contains(&cmd.as_str()) {
+        return Err(format!("not a mix assistant command: {cmd}"));
+    }
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None, None)).await.map_err(es)?
 }
 
 /// FX chain presets (`fx_chains.rs`): list, save, load onto an insert, rename, delete.
@@ -1297,6 +1311,21 @@ async fn app_info(app: St<'_>, handle: AppHandle) -> R<updater::AppInfo> {
     })
 }
 
+/// Whether downloads skip the certificate check.
+#[tauri::command]
+async fn net_ignore_cert_errors(app: St<'_>) -> R<bool> {
+    Ok(app.settings.lock().ignore_cert_errors)
+}
+
+#[tauri::command]
+async fn net_set_ignore_cert_errors(app: St<'_>, on: bool) -> R<()> {
+    let mut s = app.settings.lock();
+    s.ignore_cert_errors = on;
+    s.save();
+    net::set_insecure(on);
+    Ok(())
+}
+
 #[tauri::command]
 async fn update_set_auto(app: St<'_>, on: bool) -> R<()> {
     let mut s = app.settings.lock();
@@ -1503,6 +1532,7 @@ pub fn run(project_arg: Option<&str>) {
             relink_search,
             midi,
             fx_chain,
+            mix_assist,
             flatten_comp,
             export_in_place,
             comp_audition,
@@ -1558,6 +1588,8 @@ pub fn run(project_arg: Option<&str>) {
             plugin_set_param,
             cli_status,
             app_info,
+            net_ignore_cert_errors,
+            net_set_ignore_cert_errors,
             update_set_auto,
             update_mark_seen,
             update_check,
@@ -1587,6 +1619,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     // the plugins the installer ships (Synkopa Demo Synth): listed without a rescan
     plugins::register_bundled(tapp.path().resource_dir().ok());
     let settings = settings::Settings::load();
+    net::init(settings.ignore_cert_errors);
     // reopened on a thread of its own once the window exists (decoding its audio is slow)
     let last_project = settings.last_project.as_ref().filter(|p| reopen_last && std::path::Path::new(p).is_file()).cloned();
     let engine = Engine::new(Project::empty(), plugins.factory());

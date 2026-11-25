@@ -30,6 +30,7 @@ import { useSize } from './patternShared';
 import { canSend, sendsOf, toMaster } from '../lib/routing';
 import { drivesKey, pct, removeSend, routeSummary, sendBlock, sendGainOp, sendTo, setToMaster } from '../state/routing';
 import { listening, sidechainItems, sidechainSources, unkey } from '../state/sidechain';
+import { collisionText, fixCollision, ignoreCollision, maskedBy } from '../state/mixAssist';
 
 const L30 = 51.84, C30 = 69.12;
 
@@ -91,6 +92,21 @@ function openStripMenu(x: number, y: number, id: Id) {
     ...(id === 0 ? [] : sendItems(m)),
     ...(id === 0 ? [] : [{ t: 'sep' }, { t: 'item', label: tr('c.mix.removeInsert'), danger: true, act: () => A.removeInsert(id) }] as MenuItem[]),
   ], 330);
+}
+
+/** The mix assistant's dot: what this insert covers, and the two answers (make room / ignore). */
+function openMaskMenu(x: number, y: number, id: Id) {
+  const items: MenuItem[] = [{ t: 'title', label: tr('c.mask.title') }];
+  for (const c of maskedBy(id)) {
+    const other = S.project.inserts.find(m => m.id === c.protect);
+    const name = other ? other.name || insName(other) : '';
+    items.push(
+      { t: 'sec', label: collisionText(c) },
+      { t: 'item', label: tr('c.mask.fix', { b: name }), title: tr('c.mask.fixTip'), act: () => void fixCollision(c) },
+      { t: 'item', label: tr('c.mask.ignore'), title: tr('c.mask.ignoreTip'), act: () => void ignoreCollision(c) },
+    );
+  }
+  openMenu(x, y, items, 160);
 }
 
 /** "Send to ▸" (the master, then every other insert: checked = sends there, click = add / remove;
@@ -271,7 +287,13 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         </Show>
         <Show when={label().name}>
           <span ref={nmEl} class="nm" style={{ color: audible() ? 'var(--fg-hi)' : 'var(--fg4)' }}>
-            <Show when={!tight() && icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show><span ref={nmText}>{tName(label().name)}</span></span>
+            <Show when={!tight() && !maskedBy(m().id).length && icon()}>{id => <span class="micon" style={{ color: m().color }}><InstIcon id={id()} size={11} /></span>}</Show><span ref={nmText}>{tName(label().name)}</span></span>
+        </Show>
+        {/* the mix assistant: this insert covers another one (only while it does; it takes the instrument icon's room) */}
+        <Show when={maskedBy(m().id).length}>
+          <button class="maskdot" onPointerDown={stop} onDblClick={stop}
+            onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMaskMenu(r.left, r.bottom + 2, m().id); }}
+            title={maskedBy(m().id).map(collisionText).join('\n') + ' — ' + tr('c.mask.dotTip')} aria-label={tr('c.mask.title')} />
         </Show>
         <Show when={m().fx.length}>
           {/* docked: a dot and the count; the wider Mix view strips spell out "3 FX" */}
@@ -403,9 +425,9 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
       <div style={{ flex: 1, 'min-width': 0, display: 'flex', 'flex-direction': 'column', gap: '1px' }}>
         <span class="ell" style={{ font: '500 12px var(--sans)', color: f().bypass ? 'var(--fg4)' : 'var(--fg-hi)' }}>{A.fxName(f())}</span>
         <Show when={S.fxErrors[f().id]} fallback={
-          <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
+          <span class="ell mono" style={{ 'font-size': '10px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
         }>
-          {e => <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--red)' }} title={unsafeReason(e()) ?? e()}>{tr(unsafeReason(e()) ? 'c.mix.pluginUnsafe' : 'c.mix.pluginNotLoaded')}</span>}
+          {e => <span class="ell mono" style={{ 'font-size': '10px', color: 'var(--red)' }} title={unsafeReason(e()) ?? e()}>{tr(unsafeReason(e()) ? 'c.mix.pluginUnsafe' : 'c.mix.pluginNotLoaded')}</span>}
         </Show>
       </div>
       <Show when={f().type !== 'plugin'}>

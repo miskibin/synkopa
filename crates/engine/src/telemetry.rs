@@ -37,6 +37,7 @@ pub fn frame(
     insert_ids: &[Id],
     fx: Option<&[FxAnalysis]>,
     rec: Option<&(u32, f64, f32, u32, Vec<f32>)>,
+    collisions: &[crate::masking::Collision],
 ) -> Vec<u8> {
     let nfx = fx.map(|f| f.len()).unwrap_or(0);
     let mut w = W(Vec::with_capacity(
@@ -97,5 +98,17 @@ pub fn frame(
     w.f64(shared.pat_beat());
     // trailing: output underruns since the engine started (late callbacks + driver xruns)
     w.u32(shared.underruns());
+    // trailing: the mix assistant's collisions (masker, protect, lo Hz, hi Hz, centre Hz,
+    // overlap 0..1, key peak dBFS)
+    w.u32(collisions.len() as u32);
+    for x in collisions {
+        w.u32(x.masker as u32);
+        w.u32(x.protect as u32);
+        w.f32(x.lo);
+        w.f32(x.hi);
+        w.f32(x.center);
+        w.f32(x.overlap);
+        w.f32(x.key_db);
+    }
     w.0
 }

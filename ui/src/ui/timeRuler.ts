@@ -45,7 +45,8 @@ export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, 
       g.fillStyle = T.fg5; g.fillRect(x, H - 8, 1, 8);
       if (bw >= BEAT_LABEL_MIN_PX && b % 4) {
         g.fillStyle = T.fg4;
-        g.fillText(`${Math.floor(b / 4) + 1}.${b % 4 + 1}`, x + 4, H - 11);
+        // bar:beat, the first two fields of the transport's bar:beat:16th
+        g.fillText(`${Math.floor(b / 4) + 1}:${b % 4 + 1}`, x + 4, H - 11);
       }
     }
   }

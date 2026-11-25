@@ -27,7 +27,8 @@ export type AnyBuiltinKind = Exclude<FxKind, 'plugin'>;
 export type BandType = 'lowcut' | 'lowshelf' | 'peak' | 'highshelf' | 'highcut' | 'notch' | 'bandpass' | 'tilt';
 /** Which part of the stereo image a band works on. */
 export type Placement = 'stereo' | 'left' | 'right' | 'mid' | 'side';
-/** Dynamic EQ: the band's gain moves by up to `range` dB as its own level goes over `thr` dBFS. */
+/** Dynamic EQ: the band's gain moves by up to `range` dB as its level goes over `thr` dBFS: its own
+ *  level in the band, or with a sidechain (`Fx.key`) the key's level in the band. */
 export interface DynBand { range: number; thr: number }
 
 /** Up to 24 bands (MAX_BANDS). `slope` (cuts only): 12/24/36/48 dB/oct. Missing fields take the engine defaults. */
@@ -55,7 +56,7 @@ export interface Fx {
   plugin?: PluginRef;
   /** Warp only: its time and volume map slots. */
   maps?: WarpMaps;
-  /** Compressor only: the insert whose sound drives the detector (sidechain); absent = its own input. */
+  /** Compressor, Gate, Filter, EQ (its dynamic bands): the insert whose sound drives the detector (sidechain); absent = its own input. */
   key?: Id;
 }
 
@@ -509,6 +510,8 @@ export interface Project {
   key?: number | null;
   /** Which pitches are in: 0 chromatic, 1 major, 2 natural minor, 3/4 pentatonic (`pitch::scale_mask`). */
   scale?: number;
+  /** Pairs of inserts the mix assistant does not report (either order; absent = none). */
+  maskIgnore?: [Id, Id][];
 }
 
 /** A `transformNotes` verb: deterministic in `seed` and the pattern's notes. */
@@ -556,6 +559,7 @@ export type Op =
   | { op: 'removeSource'; id: Id }
   | { op: 'setBpm'; bpm: number }
   | { op: 'setLoop'; loop: LoopRange | null }
+  | { op: 'setMaskIgnore'; pairs: [Id, Id][] }
   | { op: 'putAutomation'; automation: Automation }
   | { op: 'transformNotes'; pattern: Id; verb: TransformVerb; seed?: number; select?: TransformSelect }
   | { op: 'editTune'; clip: Id; edit: TuneEdit }

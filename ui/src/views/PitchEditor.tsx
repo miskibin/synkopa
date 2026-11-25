@@ -299,7 +299,7 @@ function PitchBody(props: { clipId: number }) {
     const bgKey = [view.lo.toFixed(3), view.hi.toFixed(3), key(), scale(), W, H].join('|');
     g.drawImage(layer.get(W, H, bgKey, (b, w) => {
       b.fillStyle = T.viz; b.fillRect(0, 0, w, H);
-      b.font = '500 9px "Geist Mono Variable", monospace'; b.textBaseline = 'middle';
+      b.font = '500 10px "Geist Mono Variable", monospace'; b.textBaseline = 'middle';
       for (let m = Math.floor(view.lo); m <= Math.ceil(view.hi); m++) {
         const y = Y(m + 0.5), inS = inScale(m, key(), mask()), root = ((m - key()) % 12 + 12) % 12 === 0;
         b.fillStyle = root ? rgba(accent, 0.08 * T.tint) : inS ? T.vizPanel : T.viz; b.fillRect(KW, y, w - KW, rh);
@@ -391,7 +391,7 @@ function PitchBody(props: { clipId: number }) {
         if (n.drift) lab += ' · D' + Math.round(n.drift * 100) + '%';
         if (n.formant) lab += ' · F' + (n.formant > 0 ? '+' : '') + Math.round(n.formant);
         if (n.gain) lab += ' · ' + dbText(n.gain);
-        g.font = '500 9px "Geist Mono Variable", monospace'; g.fillStyle = isSel ? T.fgHi : T.fg3;
+        g.font = '500 10px "Geist Mono Variable", monospace'; g.fillStyle = isSel ? T.fgHi : T.fg3;
         g.fillText(lab, X(n.start) + 3, yc - Math.max(halfThick(n.gain ? 0.6 : 0.5), 6) - 4);
       }
     }
@@ -438,7 +438,7 @@ function PitchBody(props: { clipId: number }) {
       g.fill();
     }
     for (const [fa, fb] of runs) { g.fillStyle = rgba(T.amber, 0.12); g.fillRect(X(fa / a.rate), by + 1, X(fb / a.rate) - X(fa / a.rate), BH - 1); hatch(X(fa / a.rate), X(fb / a.rate), by + 1, H, 0.35); }
-    g.font = '600 8px "Geist Variable", sans-serif'; g.fillStyle = T.fg5; g.fillText(t('d.pitch.unvoiced'), KW + 6, by + 11);
+    g.font = '600 10px "Geist Variable", sans-serif'; g.fillStyle = T.fg5; g.fillText(t('d.pitch.unvoiced'), KW + 6, by + 11);
     // marquee
     const mq = marq();
     if (mq) { g.fillStyle = rgba(T.blue, 0.1); g.strokeStyle = T.blue; g.lineWidth = 1; const x = Math.min(mq.x0, mq.x1), y = Math.min(mq.y0, mq.y1); g.fillRect(x, y, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0)); g.strokeRect(x + 0.5, y + 0.5, Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0)); }

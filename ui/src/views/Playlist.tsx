@@ -25,7 +25,8 @@ import { dblCheck, dragCursor, edgeScroller, escCancels, fineMul, panDrag, track
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
 import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
-import { drawFades, drawGrid, drawOverlaps, type View } from './playlistDraw';
+import { drawFades, drawFollowFlash, drawGrid, drawOverlaps, type View } from './playlistDraw';
+import { FOLLOW_FLASH_MS, followFlash } from '../state/patternFollow';
 import { drawRuler, rulerCursor, rulerDown as rulerPress, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
 import { PlaylistTools } from './PlaylistTools';
@@ -397,6 +398,7 @@ export function Playlist() {
     setScroll({ x: scrollEl.scrollLeft, y: scrollEl.scrollTop });
   };
 
+  let flashOn = false;
   const draw = (now: number) => {
     applyView();
     if (U.mixView) return; // under the Mix view: nothing to paint (following catches up on the way back)
@@ -467,6 +469,9 @@ export function Playlist() {
       }
       tile = t;
     }
+    // clips a pattern-length change resized (#245): the overlay fades their outline out
+    const fl = followFlash(), flashK = fl ? 1 - (now - fl.at) / FOLLOW_FLASH_MS : 0;
+    if (flashK > 0 || flashOn) { dirtyFade = true; flashOn = flashK > 0; }
     // fades and the loop range: an overlay, so dragging them repaints no clip
     if (dirtyFade) {
       dirtyFade = false;
@@ -481,6 +486,7 @@ export function Playlist() {
       drawFades(g, fv, P);
       // stacked clips: recomputed with the overlay, i.e. on clip edits and tile moves, never per frame
       drawOverlaps(g, fv, P, laneOverlaps(P.clips));
+      if (fl && flashK > 0) drawFollowFlash(g, fv, P, fl.ids, fl.stopped, Math.min(1, flashK * 1.5));
     }
     // the ruler is cheap: redrawn whole whenever its tile moves
     if (dirtyRuler || !rulerTile || rulerTile.x !== t.x || rulerTile.w !== t.w) paintRuler(t, dpr);
@@ -860,7 +866,9 @@ export function Playlist() {
     }
     const g = new Gesture(tl('a.pl.resizeClip'));
     const o = plain(clip), sx = e.clientX, gx0 = sx - gridLeft();
-    const srcLenOf = (c: Clip) => (c.kind === 'audio' || c.kind === 'comp' ? clipSrcLen(c) : Infinity);
+    // what a clip shows: its audio, its comp, its pattern (a pattern clip stops at the pattern's end, #245)
+    const patLen = (c: Clip) => S.project.patterns.find(x => x.id === c.ref)?.len ?? Infinity;
+    const srcLenOf = (c: Clip) => (c.kind === 'audio' || c.kind === 'comp' ? clipSrcLen(c) : c.kind === 'pat' ? patLen(c) : Infinity);
     // the shortest a trim leaves a clip: one grid unit; with Alt (off the grid) a 64th, whatever the zoom
     const minOf = (alt: boolean) => (alt ? 1 / 16 : Math.max(1 / 16, snapRes(U.snap, U.bw) || 1 / 16));
     // the edge of a selected clip trims the whole selection by the same amount (FL / Ableton)
@@ -871,14 +879,20 @@ export function Playlist() {
       moved = true;
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw, edge0 = edge === 'r' ? o.start + o.len : o.start;
       const minL = minOf(ev.altKey);
-      const nc = resizeClip(o, edge, snapRound(edge0 + raw, unit(ev.altKey)), minL, srcLenOf(o));
+      const target = snapRound(edge0 + raw, unit(ev.altKey));
+      const nc = resizeClip(o, edge, target, minL, srcLenOf(o));
       const delta = (edge === 'r' ? nc.start + nc.len : nc.start) - edge0;
       const all = [nc, ...resizeClips(others, edge, delta, minL, srcLenOf)];
+      // a pattern clip's edge held at the pattern's end (or start), not at the song's: say why it stops
+      const held = o.kind === 'pat' && (edge === 'r'
+        ? target > nc.start + nc.len + 1e-9 && nc.start + nc.len < TOTAL - 1e-9
+        : target < nc.start - 1e-9 && nc.start > 1e-9);
+      const text = tl(held ? 'a.pl.patEnd' : 'a.pl.startLen', { pos: fmtPos(nc.start), len: nc.len.toFixed(2), name: srcOf(o)?.name ?? '' });
       const key = all.map(c => c.start + ':' + c.len).join('|');
-      if (key === last) return;
+      if (key === last) { if (held) say(text); return; }
       last = key;
       g.update([{ op: 'putClips', clips: all }]);
-      say(tl('a.pl.startLen', { pos: fmtPos(nc.start), len: nc.len.toFixed(2) }));
+      say(text);
     }, () => g.end(), 'ew-resize', { x: true });
   }
 

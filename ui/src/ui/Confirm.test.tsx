@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../lib/i18n';
 import { setS } from '../state/store';
 import { confirmRecover, confirmUnsaved, ConfirmDialog } from './Confirm';
+import { modalOwnsKey } from './modal';
 
 beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout'] }); setS({ dirty: true, path: 'C:\\Music\\Song.synkopa' }); render(() => <ConfirmDialog />); });
 afterEach(() => {
@@ -54,12 +55,23 @@ describe('confirmUnsaved', () => {
   });
 
   it('keys typed in the dialog do not reach the app shortcuts', async () => {
-    const app = vi.fn();
-    window.addEventListener('keydown', app); // where App.tsx listens
     void confirmUnsaved('closing');
-    fireEvent.keyDown(await screen.findByText(t('d.ui.unsaved')), { key: 'Delete' });
-    window.removeEventListener('keydown', app);
-    expect(app).not.toHaveBeenCalled();
+    await screen.findByText(t('d.ui.unsaved'));
+    await new Promise(r => queueMicrotask(() => r(null)));
+    // App.tsx's key handler asks this first
+    expect(modalOwnsKey(new KeyboardEvent('keydown', { key: 'Delete' }))).toBe(true);
+    expect(modalOwnsKey(new KeyboardEvent('keydown', { key: ' ' }))).toBe(true);
+    fireEvent.click(btn('d.ui.cancel'));
+  });
+
+  it('is a modal alert dialog whose Tab stays in it', async () => {
+    void confirmUnsaved('closing');
+    const dlg = await screen.findByRole('alertdialog', { name: t('d.ui.unsaved') });
+    expect(dlg.getAttribute('aria-modal')).toBe('true');
+    vi.runAllTimers();
+    btn('d.ui.save').focus();
+    fireEvent.keyDown(btn('d.ui.save'), { key: 'Tab' });
+    expect(dlg.contains(document.activeElement)).toBe(true);
     fireEvent.click(btn('d.ui.cancel'));
   });
 
