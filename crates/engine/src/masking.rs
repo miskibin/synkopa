@@ -21,8 +21,8 @@
 //!
 //! Scores count audio time, not wall time, so the detector behaves the same live, offline and
 //! in tests. Inserts that feed each other (a kick and the drum bus it goes into) are never
-//! compared: one contains the other. A pair the user ignored, or one already handled by a
-//! dynamic EQ on the masker keyed from the other insert, is not reported.
+//! compared: one contains the other. Ignored pairs are not reported. Existing ducking
+//! sidechains are rechecked on their post-fader output.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -45,6 +45,8 @@ const FLOOR: f32 = -60.0;
 const IMPORTANT: f32 = 15.0;
 /// Two levels this close compete; further apart, the louder one simply wins.
 const CLOSE: f32 = 12.0;
+const ROOM_DB: f32 = 3.0;
+const KEY_ACTIVE_DB: f32 = 6.0;
 /// Net seconds of collision before a pair is reported, and below which it is cleared. Net:
 /// a hit adds its time, a miss takes half of it back, so only a collision present most of
 /// the time *and* sustained over bars builds up (one loud fill does not).
@@ -204,7 +206,7 @@ impl Spectrum {
 }
 
 /// Live state of a reported pair.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Flag {
     masker: usize,
     protect: usize,
@@ -216,6 +218,7 @@ pub struct Detector {
     ids: Vec<Id>,
     /// Pairs (by lane, a < b) that are compared.
     pairs: Vec<(usize, usize)>,
+    keyed: HashMap<(usize, usize), Flag>,
     scores: HashMap<(usize, usize), [f32; NB]>,
     /// Seconds each compared pair has been evaluated with both inserts sounding.
     heard: HashMap<(usize, usize), f32>,
@@ -234,6 +237,7 @@ impl Detector {
             lanes: vec![],
             ids: vec![],
             pairs: vec![],
+            keyed: HashMap::new(),
             scores: HashMap::new(),
             heard: HashMap::new(),
             flags: HashMap::new(),
@@ -256,12 +260,36 @@ impl Detector {
         if ids != self.ids {
             self.lanes = ids.iter().map(|_| Lane::new()).collect();
             self.ids = ids;
+            self.keyed.clear();
             self.scores.clear();
             self.heard.clear();
             self.flags.clear();
             self.evals = 0;
         }
         self.pairs = compared_pairs(p);
+        let keyed: HashMap<_, _> = self
+            .pairs
+            .iter()
+            .filter_map(|&(a, b)| {
+                let (x, y) = (&p.inserts[a], &p.inserts[b]);
+                if keyed_from(x, y.id) {
+                    Some(((a, b), Flag { masker: a, protect: b }))
+                } else if keyed_from(y, x.id) {
+                    Some(((a, b), Flag { masker: b, protect: a }))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        // Start a fresh measurement when the ducking route changes.
+        for pair in &self.pairs {
+            if self.keyed.get(pair) != keyed.get(pair) {
+                self.scores.remove(pair);
+                self.heard.remove(pair);
+                self.flags.remove(pair);
+            }
+        }
+        self.keyed = keyed;
         self.reach = p.inserts.iter().map(|a| p.inserts.iter().map(|b| crate::routing::reaches(p, a.id, b.id)).collect()).collect();
         let keep: HashSet<(usize, usize)> = self.pairs.iter().copied().collect();
         self.scores.retain(|k, _| keep.contains(k));
@@ -335,10 +363,19 @@ impl Detector {
             let heard = self.heard.entry((a, b)).or_insert(0.0);
             *heard += dt;
             let warm = *heard >= WARMUP_S;
+            let direction = self.keyed.get(&(a, b)).copied();
             let s = self.scores.entry((a, b)).or_insert([0.0; NB]);
             for (k, sk) in s.iter_mut().enumerate() {
                 let (x, y) = (la.short[k], lb.short[k]);
-                let hit = x > FLOOR && y > FLOOR && x >= ma - IMPORTANT && y >= mb - IMPORTANT && (x - y).abs() <= CLOSE;
+                let mut hit = x > FLOOR && y > FLOOR && x >= ma - IMPORTANT && y >= mb - IMPORTANT && (x - y).abs() <= CLOSE;
+                if let Some(f) = direction {
+                    let (masker, protect) = (&self.lanes[f.masker], &self.lanes[f.protect]);
+                    // Only judge the gap during strong key activity.
+                    if protect.short[k] < protect.peak[k] - KEY_ACTIVE_DB {
+                        continue;
+                    }
+                    hit &= masker.short[k] >= protect.short[k] - ROOM_DB;
+                }
                 *sk = (*sk + if hit { dt } else { -0.5 * dt }).clamp(0.0, MAX_S);
             }
             let worst = s.iter().copied().fold(0.0, f32::max);
@@ -348,7 +385,7 @@ impl Detector {
                 let bands: Vec<usize> = (0..NB).filter(|&k| s[k] >= RANGE_S).collect();
                 let dev = |l: &Lane| bands.iter().map(|&k| l.dev[k]).sum::<f32>();
                 let (masker, protect) = if dev(la) >= dev(lb) { (b, a) } else { (a, b) };
-                self.flags.insert((a, b), Flag { masker, protect });
+                self.flags.insert((a, b), direction.unwrap_or(Flag { masker, protect }));
             } else if on && worst < OFF_S {
                 self.flags.remove(&(a, b));
             }
@@ -424,8 +461,8 @@ impl Detector {
 }
 
 /// Pairs of non-master inserts (by index, a < b) worth comparing: neither feeds the other
-/// (directly or through a bus), the user has not ignored the pair, and neither already has a
-/// dynamic EQ keyed from the other.
+/// (directly or through a bus) and the user has not ignored the pair. Existing sidechains
+/// are measured too.
 pub fn compared_pairs(p: &Project) -> Vec<(usize, usize)> {
     let n = p.inserts.len();
     let mut out = vec![];
@@ -436,9 +473,6 @@ pub fn compared_pairs(p: &Project) -> Vec<(usize, usize)> {
                 continue;
             }
             if p.mask_ignore.iter().any(|q| (q[0] == x.id && q[1] == y.id) || (q[0] == y.id && q[1] == x.id)) {
-                continue;
-            }
-            if keyed_from(x, y.id) || keyed_from(y, x.id) {
                 continue;
             }
             out.push((a, b));
