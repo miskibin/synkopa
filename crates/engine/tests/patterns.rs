@@ -995,6 +995,43 @@ fn an_audio_clip_reads_on_across_a_tempo_point() {
 }
 
 #[test]
+fn an_offset_clip_reads_on_across_a_tempo_point() {
+    // the same continuity with a clip offset: the offset's seconds are anchored at the
+    // clip's own start tempo — converting them with the block's current spb would step the
+    // position back at the point and replay (or drop) the source around it
+    let dir = tmp("clipoff");
+    let wav = dir.join("clicks2.wav");
+    let sr = 48000u32;
+    let mut tone = vec![0f32; (3.5 * sr as f64) as usize * 2];
+    for t in [0.25f64, 2.25] {
+        let at = (t * sr as f64) as usize;
+        for i in 0..(0.05 * sr as f64) as usize {
+            let v = (i as f32 * 440.0 * std::f32::consts::TAU / sr as f32).sin() * 0.5;
+            tone[at * 2 + i * 2] = v;
+            tone[at * 2 + i * 2 + 1] = v;
+        }
+    }
+    wave_engine::sources::write_wav(&wav, &tone, sr).unwrap();
+    let mut p = Project::routed();
+    p.inserts[0].fx.clear();
+    p.bpm = 120.0;
+    p.tempo_points = vec![TempoPoint { beat: 2.0, bpm: 240.0, ramp: false }];
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
+    // skip the first 2 beats (1 s at the start tempo) of the source, play 4 beats
+    let with_offset = Clip { offset: 2.0, len: 4.0, ..e.project().clips.iter().find(|c| c.id == clips[0]).unwrap().clone() };
+    e.apply(&[Op::PutClips { clips: vec![with_offset] }], false, None).unwrap();
+    let out = e.render(0.0, 4.0, 0.0, sr).unwrap();
+    let hits = peaks(&out, 1e-3, (0.1 * SR as f64) as usize);
+    assert_eq!(hits.len(), 1, "clicks at {:?}", hits.iter().map(|h| *h as f64 / SR as f64).collect::<Vec<_>>());
+    // the second click sits at source 2.25 s: 1 s of offset + 1 s of the first two beats,
+    // then 1 more beat at the faster tempo - heard 1.25 s; the old conversion replays the
+    // pre-point stretch instead and this click never sounds
+    assert!((hits[0] as f64 / SR as f64 - 1.25).abs() < 0.02, "click at {} s, want 1.25 s", hits[0] as f64 / SR as f64);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn a_held_note_ends_where_its_beats_really_are() {
     // a 2-beat held note from beat 3 with double time at beat 4: the instrument is
     // released after the 0.75 s the two beats really take (0.5 + 0.25), not after the

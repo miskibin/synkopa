@@ -276,3 +276,55 @@ fn an_effect_that_outputs_nan_does_not_poison_the_mix() {
         assert!(l.iter().chain(r.iter()).all(|x| x.is_finite()), "the output stays finite");
     }
 }
+
+#[test]
+fn a_plugin_sees_the_preview_playheads_tempo_while_the_song_is_stopped() {
+    // the pattern preview drives ProcessCtx when the song is stopped: its bpm follows the
+    // preview playhead (past the map's beat-2 point), not the stopped song playhead
+    struct Probe(Arc<Mutex<Vec<(f64, f64)>>>);
+    impl Processor for Probe {
+        fn prepare(&mut self, _sample_rate: f32, _max_block: usize) {}
+        fn process(&mut self, _l: &mut [f32], _r: &mut [f32], ctx: &ProcessCtx) {
+            self.0.lock().unwrap().push((ctx.bpm, ctx.beat));
+        }
+    }
+    struct Probes(Arc<Mutex<Vec<(f64, f64)>>>, Arc<std::sync::atomic::AtomicUsize>);
+    impl PluginFactory for Probes {
+        fn create(&self, _fx_id: Id, _p: &PluginRef, _sr: f32, _max_block: usize, _live: bool) -> Result<Box<dyn Processor>, String> {
+            self.1.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Ok(Box::new(Probe(self.0.clone())))
+        }
+    }
+    let seen = Arc::new(Mutex::new(Vec::<(f64, f64)>::new()));
+    let creates = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let mut p = routed_without_fx();
+    p.bpm = 120.0;
+    p.tempo_points = vec![TempoPoint { beat: 2.0, bpm: 240.0, ramp: false }];
+    let e = Engine::new(p, Arc::new(Probes(seen.clone(), creates.clone())));
+    let ins0 = e.project().tracks[0].insert;
+    // the stream first: the plugin instance rides a command to the audio thread
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.apply(&[Op::PutFx { insert_id: ins0, fx: plugin_fx(7001, "lv2", "urn:test:probe", None), index: None }], false, None).unwrap();
+    // a channel routed to the probe's insert and a note for it: the preview's audio makes
+    // the chain run (routed's own pattern is empty)
+    let mut ch = e.project().channels.iter().find(|c| c.name == "Kick").unwrap().clone();
+    ch.insert = Some(ins0);
+    let kick = ch.id;
+    e.apply(&[Op::PutChannel { channel: ch, index: None }], false, None).unwrap();
+    let mut pat = e.project().patterns.iter().find(|p| p.id == 1).unwrap().clone();
+    pat.notes = vec![Note::trigger(kick, 0.0, None)];
+    pat.len = 4.0;
+    pat.min_len = 4.0;
+    e.apply(&[Op::PutPattern { pattern: pat }], false, None).unwrap();
+    e.pattern_play(Some(1), 0.0, None).unwrap();
+    let (mut l, mut r) = (vec![0f32; BLOCK], vec![0f32; BLOCK]);
+    for _ in 0..400 {
+        rt.process(&mut l, &mut r, None);
+    }
+    let seen = seen.lock().unwrap();
+    assert!(!seen.is_empty(), "the plugin saw no context");
+    let slow = seen.iter().filter(|(_, b)| *b < 1.9).map(|(bpm, _)| *bpm).collect::<Vec<_>>();
+    let fast = seen.iter().filter(|(_, b)| *b > 2.1).map(|(bpm, _)| *bpm).collect::<Vec<_>>();
+    assert!(!slow.is_empty() && slow.iter().all(|b| (*b - 120.0).abs() < 1.0), "before the point: 120, got {slow:?}");
+    assert!(!fast.is_empty() && fast.iter().all(|b| (*b - 240.0).abs() < 1.0), "past the point: 240, got {fast:?}");
+}

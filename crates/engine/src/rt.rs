@@ -2015,7 +2015,7 @@ impl Rt {
                     seg = seg.min(to_point);
                 }
                 let b0 = self.beat;
-                let b1 = tempo.beat_at(tempo.seconds_between(0.0, b0) + seg as f64 / sr as f64);
+                let b1 = tempo.beat_at(tempo.seconds_at(b0) + seg as f64 / sr as f64);
 
                 // `seg` is rounded up to whole samples, so `b1` can pass the loop end by up to a
                 // sample; events in `[le, b1)` belong to the beat after the wrap (or after the
@@ -2351,7 +2351,7 @@ impl Rt {
         // the latency is a time: subtract it in seconds and come back through the map. Before
         // beat 0 the map back-extrapolates linearly at the opening tempo, and the wrap arms
         // below fold that (negative) position back into the loop.
-        let sec = tempo.seconds_between(0.0, beat) - self.graph.click.buf.len() as f64 / f64::from(self.sr);
+        let sec = tempo.seconds_at(beat) - self.graph.click.buf.len() as f64 / f64::from(self.sr);
         let h = if sec < 0.0 { sec / (60.0 / tempo.bpm_at(0.0)) } else { tempo.beat_at(sec) };
 
         match self.wrapped {
@@ -2487,10 +2487,12 @@ impl Rt {
                         // map's integral, so a tempo point inside the clip does not jump the
                         // audio back (clipmix advances within the block at its own rate)
                         // seconds already spent of the clip's source at the block start: the
-                        // map's integral, so a tempo point inside the clip does not jump the
-                        // audio back (clipmix advances within the block at its own rate);
-                        // negative before the clip's start (`seconds_between` needs a <= b)
-                        let sec0 = if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
+                        // offset at the clip's own start tempo (a stable conversion — at the
+                        // block's tempo a point inside the clip would step it back) plus the
+                        // map's integral, negative before the clip's start
+                        let off0 = c.offset * (60.0 / tempo.bpm_at(c.start));
+                        let sec0 =
+                            off0 + if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
                         crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, &mut tl_l[at..at + n], &mut tl_r[at..at + n]);
                     }
                     // its own insert: past the track's insert, still muted and scaled by the track (as a routed channel)
@@ -2504,7 +2506,8 @@ impl Rt {
                         let (bl, br) = (&mut self.comp_l[..n], &mut self.comp_r[..n]);
                         bl.fill(0.0);
                         br.fill(0.0);
-                        let sec0 = if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
+                        let sec0 = c.offset * (60.0 / tempo.bpm_at(c.start))
+                            + if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
                         crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, bl, br);
                         for i in 0..n {
                             ins.l[at + i] += bl[i] * gain;

@@ -98,8 +98,11 @@ impl TempoMap {
     }
 
     /// The beat at `secs` seconds from beat 0 (the inverse of [`Self::seconds_between`]).
-    #[allow(dead_code)]
+    /// Negative seconds back-extrapolate linearly at the opening tempo (a count-in).
     pub(crate) fn beat_at(&self, secs: f64) -> f64 {
+        if secs < 0.0 {
+            return secs * self.bpm_at(0.0) / 60.0;
+        }
         let i = match self.secs.partition_point(|&s| s <= secs) {
             0 => 0,
             n => n - 1,
@@ -133,8 +136,14 @@ impl TempoMap {
     }
 
     /// Seconds from beat 0 to `beat` (closed form over the prefix + one partial segment).
-    #[allow(dead_code)] // consumed by the offline render / export estimates next
-    fn seconds_at(&self, beat: f64) -> f64 {
+    /// Before the song's start (a count-in plays negative beats) it back-extrapolates
+    /// linearly at the opening tempo, so the walk crosses beat 0 without teleporting.
+    /// Callers that may pass negative beats use this — [`Self::seconds_between`] only
+    /// covers `a <= b` inside the song.
+    pub(crate) fn seconds_at(&self, beat: f64) -> f64 {
+        if beat < 0.0 {
+            return beat * 60.0 / self.bpm_at(0.0);
+        }
         let i = self.segment_of(beat);
         let (a, bpm_a, ramp) = self.points[i];
         let b = self.points.get(i + 1).map_or(beat.max(a) + 1.0, |&(b, ..)| b);
@@ -244,6 +253,19 @@ mod render_checks {
         let m = TempoMap::compile(&pts, 120.0);
         assert_eq!(m.seconds_between(0.0, 8.0), 3.0);
         assert_eq!(m.bpm_at(4.0), 240.0);
+    }
+
+    #[test]
+    fn negative_beats_back_extrapolate_at_the_opening_tempo() {
+        // a count-in plays negative beats: the conversions cover them linearly so the walk
+        // crosses beat 0 without teleporting (seconds_between itself assumes a <= b)
+        let m = TempoMap::compile(&[TempoPoint { beat: 2.0, bpm: 240.0, ramp: false }], 120.0);
+        assert_eq!(m.seconds_at(-4.0), -4.0 * 60.0 / 120.0);
+        assert_eq!(m.seconds_between(-4.0, 0.0), 4.0 * 60.0 / 120.0);
+        assert_eq!(m.beat_at(-2.0), -2.0 * 120.0 / 60.0);
+        // the walk's arrival: the seconds at a negative beat plus the block's time, then back
+        let b1 = m.beat_at(m.seconds_at(-4.0) + 0.5);
+        assert!((b1 - (-4.0 + 0.5 * 120.0 / 60.0)).abs() < 1e-12);
     }
 
     #[test]

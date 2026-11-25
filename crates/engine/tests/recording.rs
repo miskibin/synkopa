@@ -448,3 +448,47 @@ fn a_notes_only_take_refuses_new_project_too() {
     e.new_project(Project::empty()).expect("the take is over: the reset must work");
     assert!(e.project().bpm != 97.0, "the new project replaced the old one");
 }
+
+#[test]
+fn a_count_in_crosses_beat_zero_at_its_real_pace() {
+    // playing from 0 with a count-in walks negative beats: the transport must cross beat 0
+    // continuously (with a constant map and with a ramp starting there) — a seconds lookup
+    // that returns zero for negative beats would teleport the first block past the count
+    for (tag, points, opening) in [
+        ("constant", vec![], 120.0),
+        ("ramped", vec![TempoPoint { beat: 0.0, bpm: 90.0, ramp: true }, TempoPoint { beat: 4.0, bpm: 180.0, ramp: false }], 90.0),
+    ] {
+        let mut p = armed();
+        p.bpm = 120.0;
+        p.tempo_points = points;
+        let e = engine(p, "countin");
+        let mut rt = e.create_rt(SR as f32, BLOCK);
+        e.set_transport(None, Some(true), Some(true), None);
+        e.play(0.0);
+        let total = frames(6.0, 120.0);
+        let (mut l, mut r) = (vec![0f32; BLOCK], vec![0f32; BLOCK]);
+        let (mut at, mut jump, mut crossed_at) = (0usize, 0usize, None);
+        let mut prev = f64::NAN; // set from the first block, once Cmd::Play has landed
+        while at < total {
+            let n = BLOCK.min(total - at);
+            rt.process(&mut l[..n], &mut r[..n], None);
+            let b = e.shared().beat();
+            if prev.is_finite() && (b - prev).abs() > 1.0 {
+                jump += 1;
+            }
+            if (b - prev).abs() > 1.0 {
+                jump += 1;
+            }
+            if crossed_at.is_none() && prev.is_finite() && prev < 0.0 && b >= 0.0 {
+                crossed_at = Some(at);
+            }
+            prev = b;
+            at += n;
+        }
+        assert_eq!(jump, 0, "{tag}: the transport jumped a beat in one block");
+        let want = frames(4.0, opening);
+        let got = crossed_at.expect("the count-in crossed beat 0");
+        assert!((got as i64 - want as i64).abs() <= (2 * BLOCK) as i64, "{tag}: beat 0 crossed at frame {got}, want ~{want}");
+        let _ = e.stop();
+    }
+}
