@@ -53,3 +53,28 @@ test('Channel rack: a click lights a step (again keeps it, FL), right-click clea
   await expect(rack).toBeHidden();
   await expect(app.getByRole('button', { name: 'Channel rack' })).toHaveAttribute('aria-pressed', 'false');
 });
+
+test('Channel rack: keyboard shifts wrap inside the selected channel loop', async ({ app }) => {
+  await app.getByRole('button', { name: 'Channel rack' }).click();
+  const rack = app.locator('.rackwin');
+  const s = await engine(app);
+  const pat = s.project.patterns[0];
+  const hat = s.project.channels!.find(c => c.name === 'Hat')!;
+  // Seed a three-step cell with a hit at each edge. The shortcuts must rotate it, not the whole bar.
+  await app.evaluate(async ({ pattern, ch }) => {
+    const mock = (window as unknown as { __waveMock: import('../src/api/mock').MockBackend }).__waveMock;
+    await mock.applyOps([{ op: 'putPattern', pattern: {
+      ...pattern,
+      notes: [...pattern.notes.filter(n => n.ch !== ch), { ch, step: 0, len: 1, trig: true }, { ch, step: 2, len: 1, trig: true }],
+      channelLoops: { ...pattern.channelLoops, [String(ch)]: 3 },
+    } }]);
+  }, { pattern: pat, ch: hat.id });
+  await expect.poll(() => stepsOf(app, pat.id, hat.id)).toEqual([0, 2]);
+  const grid = await rack.locator('canvas').first().boundingBox();
+  const row = await centre(rack.getByRole('button', { name: 'Drums Hat' }));
+  await app.mouse.click(grid!.x + 6, row.y);
+  await app.keyboard.press(`${MOD}+Shift+ArrowRight`);
+  await expect.poll(() => stepsOf(app, pat.id, hat.id)).toEqual([0, 1]);
+  await app.keyboard.press(`${MOD}+Shift+ArrowLeft`);
+  await expect.poll(() => stepsOf(app, pat.id, hat.id)).toEqual([0, 2]);
+});
