@@ -615,9 +615,8 @@ select option { background: var(--bg4); color: var(--fg); }
 .win.docked:focus-within > .winhd { box-shadow: inset 0 2px 0 var(--blue); }
 .win.docked:focus-within > .winhd .wintitle { color: var(--fg-hi); }
 .dockempty { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; font: 500 12px var(--sans); color: var(--fg3); background: var(--bg2); }
-.patname { height: 24px; max-width: 220px; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--line2); border-radius: 4px; background: var(--bg1); color: var(--fg-hi); font: 600 11px var(--sans); cursor: pointer; }
-.patname:hover { border-color: var(--line3); }
-.patname .sw, .patselbtn .sw { width: 8px; height: 8px; flex: none; border-radius: 2px; }
+.patlabel { height: 24px; max-width: 220px; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px; color: var(--fg-hi); font: 600 11px var(--sans); cursor: default; }
+.patlabel .sw, .patselbtn .sw { width: 8px; height: 8px; flex: none; border-radius: 2px; }
 .patwin .bars { display: flex; align-items: center; height: 24px; border: 1px solid var(--line2); border-radius: 4px; background: var(--bg1); }
 .patwin .bars > span { min-width: 54px; text-align: center; font-size: 10px; color: var(--fg2); }
 .patwin .bars > button { width: 22px; height: 22px; border: 0; background: transparent; color: var(--fg3); font: 600 13px var(--sans); cursor: pointer; padding: 0; }
@@ -1753,8 +1752,8 @@ button.chip { color: var(--fg); }
 .laneswitch.row { position: static; flex-direction: row; gap: 4px; }
 
 /* round 7: window-bar controls are chips like the editor bars (no boxes until hovered) */
-.patwin .winhd .patname, .patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf { border-color: transparent; background: transparent; transition: background .12s; }
-.patwin .winhd .patname:hover, .patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover { background: var(--bg4); border-color: transparent; }
+.patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf { border-color: transparent; background: transparent; transition: background .12s; }
+.patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover { background: var(--bg4); border-color: transparent; }
 .patwin .winhd .numf { flex-direction: row; align-items: center; gap: 6px; height: 24px; box-sizing: border-box; padding: 0 8px; width: auto !important; }
 .patwin .winhd .numf .lab { display: inline-block; font: 500 11px var(--sans); letter-spacing: 0; color: var(--fg4); text-transform: lowercase; }
 .patwin .winhd .numf .lab::first-letter { text-transform: uppercase; }
@@ -1780,8 +1779,8 @@ button.chip { color: var(--fg); }
 .strip .pantxt { position: absolute; top: 32px; left: 50%; transform: translateX(-50%); white-space: nowrap; line-height: 12px; }
 .strip .clipcap { margin: 0; }
 /* anything clickable shows it at rest: a faint fill, stronger under the pointer */
-.chip, .patwin .winhd .patname, .patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf, .laneswitch button:not(.on):not(:disabled), .lane .mini.route, .bmore .plus { background-color: color-mix(in srgb, var(--fg) 6%, transparent); }
-.chip:hover, .chip:focus-within, .chip.on, .patwin .winhd .patname:hover, .patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover, .lane .mini.route:hover { background-color: color-mix(in srgb, var(--fg) 13%, transparent); }
+.chip, .patwin .winhd .chsel, .patwin .winhd .bars, .patwin .winhd .numf, .laneswitch button:not(.on):not(:disabled), .lane .mini.route, .bmore .plus { background-color: color-mix(in srgb, var(--fg) 6%, transparent); }
+.chip:hover, .chip:focus-within, .chip.on, .patwin .winhd .chsel:hover, .patwin .winhd .bars:hover, .patwin .winhd .numf:hover, .lane .mini.route:hover { background-color: color-mix(in srgb, var(--fg) 13%, transparent); }
 .patwin .winhd .numf { cursor: ns-resize; }
 
 /* command palette */
@@ -1958,7 +1957,7 @@ button.chip { color: var(--fg); }
 :root[data-theme="light"] { --well: color-mix(in srgb, var(--bg0) 35%, transparent); }
 /* outlined buttons and fields: a tone block (focus keeps its ring) */
 .tapbtn, .presetbar, .tog, .mixctl, .nb-tog, .syn-preset .arrow, .syn-preset .name, .fxcl-q, .askq, .clipcap, .consent, .cins,
-.patname, .patwin .bars, .patselbtn, .patselarrow, .patselnew, .themecard, .themesys { border-color: transparent; }
+.patwin .bars, .patselbtn, .patselarrow, .patselnew, .themecard, .themesys { border-color: transparent; }
 .tapbtn, .tog, .mixctl, .nb-tog, .syn-preset .arrow { background: var(--tone1); }
 .tapbtn:hover, .tog:hover, .mixctl:hover, .nb-tog:hover, .syn-preset .arrow:hover { background: var(--tone2); }
 .askq:focus, .fxcl-q:focus, .textin:focus { border-color: var(--blue); }

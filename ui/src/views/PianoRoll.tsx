@@ -44,7 +44,7 @@ import { addFrameTask, fitCanvas, fonts, Layer } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { drawRollLane, drawRoll, rollX, rollY, type RollGeo } from './patternDraw';
 import { noteEndNear, onNoteEdge } from './roll/edge';
-import { patGeom, PatternChip, useDataVersion, useSize } from './patternShared';
+import { patGeom, PatternLabel, useDataVersion, useSize } from './patternShared';
 import { KeyBadge } from './KeyBadge';
 import { songKey } from '../state/songKey';
 import { PanelFrame, WinControls } from './PanelFrame';
@@ -865,7 +865,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <select class="sel chsel" title={t('b.pr.chTitle')} value={String(ch().id)} style={{ color: ch().color }} onChange={e => { selectChannel(+e.currentTarget.value); backToRoll(e.currentTarget); }}>
           <For each={channels()}>{c => <option value={String(c.id)}>{c.name}</option>}</For>
         </select>
-        <PatternChip pat={pt()} />
+        <PatternLabel pat={pt()} />
       </>}>
     <div class="roll">
       <div class="ptools">

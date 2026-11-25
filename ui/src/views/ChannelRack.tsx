@@ -38,7 +38,7 @@ import { prefs } from '../state/prefs';
 import { insertBoxClick, wheelInsert } from '../ui/InsertPicker';
 import { toggleChannelWindow } from './ChannelWindow';
 import { drawKeyGraph, drawLane, drawRack, drawRackHead, type RackGeo, laneColor } from './patternDraw';
-import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, PatternChip, useDataVersion, useSize } from './patternShared';
+import { addChannelMenu, chanMenu, chanInsertChoice, insertMenu, insLabel, insTitle, patGeom, PatternLabel, useDataVersion, useSize } from './patternShared';
 
 const GRAPH_H = 92;
 const RACK_ICON = 'M4 5h4v4H4z M10 5h4v4h-4z M16 5h4v4h-4z M4 15h4v4H4z M10 15h4v4h-4z M16 15h4v4h-4z';
@@ -459,7 +459,7 @@ function Rack(props: { z: number; docked?: boolean }) {
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>
         <span class="wintitle">Channel rack</span>
-        <PatternChip pat={pt()} />
+        <PatternLabel pat={pt()} />
         <button class={['chip groupchip', { on: rackFilter() != null }]} title={t('b.rk.groupTip')} aria-haspopup="menu"
           onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); groupFilterMenu(r.left, r.bottom + 4); }}>
           <Icon d="M3 5h18l-7 8v6l-4 2v-8z" size={11} />
