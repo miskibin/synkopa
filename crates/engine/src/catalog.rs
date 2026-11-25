@@ -318,7 +318,7 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
     ];
     // order = dsp::master::idx
     const MASTER: &[ParamDef] = &[
-        choice("target", "Target", 2.0, &crate::dsp::master::TARGET_NAMES),
+        choice("target", "Target", 1.0, &crate::dsp::master::TARGET_NAMES),
         p("drive", "Loudness", 0.0, 24.0, 0.0, "dB", false),
         p("ceil", "Ceiling", -6.0, 0.0, -1.0, "dBTP", false),
         p("tone", "Tone", 0.0, 100.0, 100.0, "%", false),
@@ -341,6 +341,7 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         p("gl", "Low level", -12.0, 12.0, 0.0, "dB", false),
         p("gm", "Mid level", -12.0, 12.0, 0.0, "dB", false),
         p("gh", "High level", -12.0, 12.0, 0.0, "dB", false),
+        p("gt", "Glue time", 25.0, 400.0, 100.0, "%", true),
     ];
     match kind {
         FxKind::Master => MASTER,

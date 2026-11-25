@@ -236,3 +236,26 @@ fn each_band_has_its_own_width() {
         }
     }
 }
+
+#[test]
+fn glue_time_scales_how_fast_the_bands_clamp_down() {
+    // a burst into a low threshold: 15 ms in, a slow glue has reduced less than a fast one
+    let mut x = vec![0f32; 24_000];
+    x.extend(sine(800.0, -6.0, 0.5));
+    let gr_after = |time: f32| {
+        let mut m = Master::default();
+        let b = block(&[(idx::THR + 1, -30.0), (idx::RATIO, 2.0), (idx::TIME, time)]);
+        m.set_params(&b);
+        m.prepare(SR, 64);
+        m.set_params(&b);
+        let ctx = ProcessCtx { sample_rate: SR, bpm: 120.0, beat: 0.0, playing: true };
+        let (mut l, mut r) = (x.clone(), x.clone());
+        let stop = 24_000 + (0.015 * SR) as usize;
+        for (a, b) in l[..stop].chunks_mut(64).zip(r[..stop].chunks_mut(64)) {
+            m.process(a, b, &ctx);
+        }
+        m.gr_band[1]
+    };
+    let (fast, slow) = (gr_after(25.0), gr_after(400.0));
+    assert!(fast < slow - 2.0, "15 ms into the burst: fast glue {fast:.2} dB, slow glue {slow:.2} dB");
+}

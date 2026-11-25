@@ -198,7 +198,7 @@ impl Engine {
             if fx.kind != FxKind::Master {
                 return Err(EngineError::Msg(format!("effect {fx_id} is not a Master")));
             }
-            (fx.params.clone(), fx.params.get("target").copied().unwrap_or(2.0).round().max(0.0) as usize)
+            (fx.params.clone(), fx.params.get("target").copied().unwrap_or(1.0).round().max(0.0) as usize)
         };
         // the render is the first ~40 % of the work, the assistant's own renders the rest
         let mut on_render = |r: RenderProgress| {

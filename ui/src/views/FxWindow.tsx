@@ -428,7 +428,7 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.compare', items: [{ stack: [{ id: 'match', small: true }] }] },
     { title: 'c.fx.sec.toneBands', adv: true, items: [{ id: 'sub', size: 'sm' }, { id: 'low', size: 'sm' }, { id: 'mid', size: 'sm' }, { id: 'pres', size: 'sm' }, { id: 'air', size: 'sm' }] },
     { title: 'c.fx.sec.bandLevels', adv: true, items: [{ id: 'gl', size: 'sm' }, { id: 'gm', size: 'sm' }, { id: 'gh', size: 'sm' }] },
-    { title: 'c.fx.sec.thresholds', adv: true, items: [{ id: 'tl', size: 'sm' }, { id: 'tm', size: 'sm' }, { id: 'th', size: 'sm' }] },
+    { title: 'c.fx.sec.thresholds', adv: true, items: [{ id: 'tl', size: 'sm' }, { id: 'tm', size: 'sm' }, { id: 'th', size: 'sm' }, { id: 'gt', size: 'sm' }] },
     { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
     { title: 'c.fx.sec.clipper', adv: true, items: [{ id: 'clip', size: 'sm' }] },
   ],

@@ -1438,7 +1438,7 @@ export class MockBackend implements Backend {
       if (this.listenCancel) throw new Error('cancelled');
       onProgress?.(p);
     }
-    const target = a.target ?? Math.round(f.params.target ?? 2);
+    const target = a.target ?? Math.round(f.params.target ?? 1);
     const asked = MASTER_TARGETS[target];
     // the engine's clean-loudness guard: this typical mix peaks 16.3 dB over its loudness
     const cut = 16.3 - ((f.params.ceil ?? -1) - asked), guarded = cut > 7.5;

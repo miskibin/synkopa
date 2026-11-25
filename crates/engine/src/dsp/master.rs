@@ -70,6 +70,8 @@ pub mod idx {
     pub const MATCH: usize = 19;
     /// Three band levels (dB, after the glue): low, mid, high.
     pub const BAND_GAIN: usize = 20;
+    /// Glue time, % of the base attack / release (slower = more transient through).
+    pub const TIME: usize = 23;
 }
 
 /// Loudness targets the assistant aims at (integrated LUFS), in `TARGET` order.
@@ -228,6 +230,8 @@ pub struct Master {
     att: [f32; BANDS],
     rel: [f32; BANDS],
     k_param: f32,
+    /// glue time factor the attack / release are set for
+    time: f32,
     /// band side gains the audio is at (smoothed towards the params)
     width: [f32; BANDS],
     /// band levels (linear), smoothed the same way
@@ -248,13 +252,14 @@ pub struct Master {
 impl Default for Master {
     fn default() -> Self {
         let mut v = [0f32; MAX_PARAMS];
-        v[idx::TARGET] = 2.0;
+        v[idx::TARGET] = 1.0;
         v[idx::CEIL] = -1.0;
         v[idx::TONE] = 100.0;
         v[idx::X_LO] = 120.0;
         v[idx::X_HI] = 2800.0;
         v[idx::RATIO] = 2.0;
         v[idx::WIDTH] = 100.0;
+        v[idx::TIME] = 100.0;
         v[idx::WIDTH + 1] = 100.0;
         v[idx::WIDTH + 2] = 100.0;
         Self {
@@ -274,6 +279,7 @@ impl Default for Master {
             att: [0.0; BANDS],
             rel: [0.0; BANDS],
             k_param: 0.002,
+            time: 1.0,
             width: [1.0; BANDS],
             band_g: [1.0; BANDS],
             clip: [Clipper::default(); 2],
@@ -332,6 +338,17 @@ impl Master {
                 self.split_hi[c].set(f64::from(hi), sr);
                 self.low_ap[c].set(f64::from(hi), sr);
             }
+        }
+    }
+
+    fn set_times(&mut self) {
+        let sr = self.sr;
+        let time = (self.v[idx::TIME] / 100.0).clamp(0.25, 4.0);
+        self.time = time;
+        let k = |ms: f32| 1.0 - (-1.0 / (ms / 1000.0 * sr)).exp();
+        for b in 0..BANDS {
+            self.att[b] = k(ATTACK_MS[b] * time);
+            self.rel[b] = k(RELEASE_MS[b] * time);
         }
     }
 
@@ -419,10 +436,7 @@ impl Processor for Master {
         let k = |ms: f32| 1.0 - (-1.0 / (ms / 1000.0 * sr)).exp();
         self.k_rms = k(RMS_MS);
         self.k_param = k(20.0);
-        for b in 0..BANDS {
-            self.att[b] = k(ATTACK_MS[b]);
-            self.rel[b] = k(RELEASE_MS[b]);
-        }
+        self.set_times();
         self.k_match = 1.0 - (-1.0 / (f64::from(MATCH_S) * f64::from(sr))).exp();
         let kw = k_weighting(f64::from(sr));
         self.m_in.kw = [kw; 2];
@@ -443,6 +457,9 @@ impl Processor for Master {
         self.set_eq();
         self.set_xover();
         self.set_limiter();
+        if ((self.v[idx::TIME] / 100.0).clamp(0.25, 4.0) - self.time).abs() > 1e-4 {
+            self.set_times();
+        }
     }
 
     fn process(&mut self, l: &mut [f32], r: &mut [f32], ctx: &ProcessCtx) {
