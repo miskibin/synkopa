@@ -353,6 +353,28 @@ async fn f0_model_install(app: St<'_>, handle: AppHandle) -> R<models::ModelStat
 }
 
 #[tauri::command]
+async fn note_model_status(app: St<'_>) -> R<models::ModelStatus> {
+    Ok(models::note_status(&app.engine))
+}
+
+#[tauri::command]
+async fn note_model_install(app: St<'_>, handle: AppHandle) -> R<models::ModelStatus> {
+    let a = app.inner().clone();
+    let h = handle.clone();
+    let res = tauri::async_runtime::spawn_blocking(move || {
+        models::note_install(&a.engine, |done, total| {
+            let _ = h.emit("model-progress", json!({ "id": wave_game::MODEL_ID, "done": done, "total": total }));
+        })
+    })
+    .await
+    .map_err(es)?;
+    if let Err(e) = &res {
+        let _ = handle.emit("model-progress", json!({ "id": wave_game::MODEL_ID, "done": 0, "total": 0, "error": e }));
+    }
+    res
+}
+
+#[tauri::command]
 async fn music_analyze(app: St<'_>, clip_id: Option<u64>, exclude_fx: Option<u64>) -> R<wave_engine::music::MusicAnalysis> {
     let a = app.inner().clone();
     tauri::async_runtime::spawn_blocking(move || actions::music_analysis(&*a, clip_id, exclude_fx)).await.map_err(es)?
@@ -1450,6 +1472,8 @@ pub fn run(project_arg: Option<&str>) {
             melody_reference,
             f0_model_status,
             f0_model_install,
+            note_model_status,
+            note_model_install,
             chords_model_status,
             chords_model_install,
             chords_analyze,
@@ -1610,7 +1634,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     // the pitch model loads in the background; analysis uses YIN until it is ready
     let a = app.clone();
     std::thread::spawn(move || {
-        if let Err(e) = models::activate(&a.engine) {
+        if let Err(e) = models::activate_all(&a.engine) {
             log::warn!("{e}");
             *a.model_error.lock() = Some(e);
         }

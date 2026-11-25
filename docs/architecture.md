@@ -672,12 +672,14 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `fx_catalog` | – | `{types:{[type]:{name, params:[{id,label,min,max,def,unit,log}]}}, presets:{[type]:[{name, params?, bands?, beats?}]}}` |
 | `import_audio` | `{paths, track?, beat?}` | `{sourceIds, clipIds}` (placed clips only when track/beat given) |
 | `source_peaks` | `{id, norm?, rev?}` | `ArrayBuffer` of f32 `[min,max]` pairs, 100 per second of audio |
-| `pitch_analyze` | `{clipId}` | `{rate, curve: (midi\|null)[], levels: number[], confidence: number[], notes: [{start,end,pitch,level}], backend: "rmvpe"\|"yin"}` — pitch every 1/rate s (null = unvoiced: breath, sibilant, silence); times in seconds of the source |
+| `pitch_analyze` | `{clipId}` | `{rate, curve: (midi\|null)[], levels: number[], confidence: number[], notes: [{start,end,pitch,level}], backend: "rmvpe"\|"yin", noteBackend: "game"\|"tracker"}` — pitch every 1/rate s (null = unvoiced: breath, sibilant, silence); times in seconds of the source |
 | `pitch_target` | `{clipId, reference?: RefTune}` | `PitchTarget` (below) — Tune to Reference for the clip, with `reference` or the clip's own `tune.reference` (preview before applying) |
 | `melody_channels` | `{clipId}` | `[{channel, name, notes, fit}]` — channels whose notes the playlist plays over the clip, best `fit` (0..1, share of the sung frames within a semitone of a sounding note) first |
 | `melody_reference` | `{clipId, channel, span?: [s, s]}` | `{melody: Melody, fit}` — those notes as a melody reference (a copy, seconds of the source; `span` = only notes overlapping it) |
 | `f0_model_status` | – | `{id, name, bytes, installed, backend, licenseNote, licenseUrl, path, error}` |
 | `f0_model_install` | – | – ; downloads RMVPE, verifies size and SHA-256, activates it; progress as event `model-progress {id,done,total,error?}` |
+| `note_model_status` | – | same shape; `backend`: what finds the notes now, `"game"` or `"tracker"` |
+| `note_model_install` | – | – ; downloads the GAME note model archive, verifies size and SHA-256, unpacks it, activates it; progress as `model-progress` with `id: "game"` |
 | `music_analyze` | `{clipId?, excludeFx?}` | `{tempo: {bpm, confidence, candidates:[{bpm,score}], firstBeat}\|null, key: {root, minor, confidence, candidates:[{root,minor,score}], chroma:number[12], tuningCents}\|null}` — tempo and key of a clip, or of the project's active audio clips (excluding tracks routed to `excludeFx`'s insert) |
 | `auto_vocal_plan` | `{clipId, beatClipId?, style?: "natural"\|"hard"}` | `AutoVocalPlan` (`ui/src/api/types.ts`): `{version, style, analysis, chain: [{type, params, mix, enabled, note}], trackGainDb\|null, stages, warnings}` — "Auto wokal": measures the vocal clip's region and calibrates tune → rider → fet → comp → deess → reverb → limit on it (`crates/engine/src/autovocal.rs`; key from `beatClipId`, else from the tracks not routed to the vocal's insert). Read-only, seconds per minute of audio; the UI applies the chain with `apply_ops` |
 | `clip_peaks` | `{clipId}` | like `source_peaks`, but of what the clip actually plays (norm/rev/pitch edits applied), in source time: a stretched clip draws them stretched |
@@ -1206,6 +1208,17 @@ melody's place in the bar (from the pattern's start; a second paste lands a bar 
 The RMVPE model is not shipped: `f0_model_install` downloads it (URL,
 size, SHA-256 and licence link are constants in `crates/rmvpe`) to
 `<data>/Models/rmvpe.onnx`; `WAVE_RMVPE_MODEL` overrides the path.
+
+**Note model.** Where the notes start and which key each is comes from the built-in note tracker
+(`note_track.rs`, over the pitch curve), or, once the user downloads it, from GAME (openvpi; MIT
+code, CC BY-NC-SA 4.0 weights): `crates/game` runs its ONNX encoder, one deterministic segmenter
+step and its estimator on 44.1 kHz audio cut at silences (≤ 30 s chunks), and
+`note_track::from_model` fits those notes to the pitch curve (each ends where the singing falls
+8 dB below its peak; its pitch is the sung median within the model's key). It hears what a pitch
+curve cannot — a syllable sung again on the same pitch is a new note — and is behind the
+`NoteEstimator` trait like RMVPE is behind `F0Estimator`: a failure falls back to the tracker, and
+switching models drops every cached analysis (clips with pitch edits keep their own notes).
+`note_model_install` downloads it to `<data>/Models/game-small/`; `WAVE_GAME_MODEL` overrides it.
 `crates/tune-bench` measures the whole pipeline (see `docs/cli.md`).
 
 ## Stem separation

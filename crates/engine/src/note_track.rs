@@ -142,6 +142,58 @@ pub fn track(curve: &[f32], levels: &[f32], onsets: &[f32], rate: f32, p: &Track
     out
 }
 
+/// How far below a note's loudest frame the voice may fall before the note has ended, dB.
+/// A note-segmentation model (GAME) runs each note on until the next one starts, as a score
+/// would; the Piano roll wants the note to end where the singing does (vocadito: COnPOff
+/// 0.32 → 0.44 and 0.43 → 0.59 against the two annotators; 6–12 dB all within 0.02, see
+/// `crates/tune-bench/RESULTS.md`).
+pub const MODEL_END_DB: f32 = 8.0;
+/// Shortest note kept from a model, seconds.
+const MODEL_MIN_NOTE: f64 = 0.03;
+
+/// Notes from a note-segmentation model, fitted to the analysed pitch curve: each note ends at
+/// its last voiced frame within [`MODEL_END_DB`] of its peak level, and its pitch is the median
+/// of what was sung, kept within the half-step of the model's key (the model chooses the key
+/// better than the median does: a scoop or a vibrato leaning one way pulls the median; the
+/// median places the note's centre, which pitch correction moves).
+pub fn from_model(model: &[crate::pitch::ModelNote], curve: &[f32], levels: &[f32], rate: f32) -> Vec<NoteBlob> {
+    let fr = |s: f64| ((s * rate as f64).round().max(0.0) as usize).min(curve.len());
+    let db = |x: f32| 20.0 * x.max(1e-6).log10();
+    let mut sorted: Vec<_> = model.iter().filter(|n| n.end > n.start && n.start.is_finite() && n.end.is_finite()).copied().collect();
+    sorted.sort_by(|a, b| a.start.total_cmp(&b.start));
+    let mut out: Vec<NoteBlob> = vec![];
+    for n in sorted {
+        let (a, b) = (fr(n.start), fr(n.end));
+        let mut end = n.end;
+        if b > a {
+            let peak = levels.get(a..b).unwrap_or(&[]).iter().fold(0f32, |m, &x| m.max(x));
+            let last = (a..b).rev().find(|&f| curve[f].is_finite() && levels.get(f).is_some_and(|&l| db(l) >= db(peak) - MODEL_END_DB));
+            if let Some(f) = last {
+                end = end.min((f + 1) as f64 / rate as f64);
+            }
+        }
+        if end - n.start < MODEL_MIN_NOTE {
+            continue;
+        }
+        let e = fr(end).max(a);
+        let sung: Vec<f32> = curve[a..e].iter().copied().filter(|x| x.is_finite()).collect();
+        let key = n.pitch.round();
+        let pitch = match (n.pitch.is_finite(), sung.is_empty()) {
+            (true, true) => n.pitch,
+            (true, false) => median(sung).clamp(key - 0.49, key + 0.49),
+            (false, false) => median(sung),
+            (false, true) => continue,
+        };
+        let level = levels.get(a..e).unwrap_or(&[]).iter().fold(0f32, |m, &x| m.max(x));
+        // a model never overlaps its notes; keep it so after rounding to frames
+        if let Some(p) = out.last_mut() {
+            p.end = p.end.min(n.start);
+        }
+        out.push(NoteBlob { start: n.start, end, pitch, level });
+    }
+    out
+}
+
 /// The take's offset from A440 in semitones (−0.5..0.5): circular mean of the voiced frames.
 fn tuning(curve: &[f32]) -> f32 {
     let (mut s, mut c) = (0f64, 0f64);
@@ -596,6 +648,57 @@ mod tests {
         ]);
         vibrato(&mut c, 0.0, 2.0, 5.5, 0.4);
         assert_eq!(keys(&c), vec![60, 62, 64]);
+    }
+
+    fn mn(start: f64, end: f64, pitch: f32) -> crate::pitch::ModelNote {
+        crate::pitch::ModelNote { start, end, pitch }
+    }
+
+    #[test]
+    fn model_notes_end_where_the_singing_does() {
+        // two notes the model runs on into each other; the first is sung for 0.3 s, then a
+        // 0.2 s breath (unvoiced, quiet) before the second
+        let c = curve(&[(0.3, Some((60.0, 60.0))), (0.2, None), (0.5, Some((62.0, 62.0)))]);
+        let mut lv = vec![0.3; c.len()];
+        lv[60..100].fill(0.001);
+        let n = from_model(&[mn(0.0, 0.5, 60.0), mn(0.5, 1.0, 62.0)], &c, &lv, RATE);
+        assert_eq!(n.len(), 2);
+        assert!((n[0].end - 0.3).abs() < 0.011, "first note ends with its singing: {}", n[0].end);
+        assert!((n[1].end - 1.0).abs() < 0.011);
+        // a note fading out ends when it is 8 dB below its peak
+        let c = curve(&[(1.0, Some((64.0, 64.0)))]);
+        let lv: Vec<f32> = (0..c.len()).map(|i| if i < 100 { 0.5 } else { 0.5 * 10f32.powf(-0.6 * (i - 100) as f32 / 20.0) }).collect();
+        let n = from_model(&[mn(0.0, 1.0, 64.0)], &c, &lv, RATE);
+        // 8 dB at 0.6 dB per frame: 13 frames past the decay start
+        assert!((n[0].end - 0.57).abs() < 0.011, "ends at {}", n[0].end);
+    }
+
+    #[test]
+    fn model_notes_take_the_sung_centre_within_the_models_key() {
+        // sung 30 ct sharp: the note's centre is what was sung
+        let c = curve(&[(0.5, Some((60.3, 60.3)))]);
+        let n = from_model(&[mn(0.0, 0.5, 60.0)], &c, &vec![0.3; c.len()], RATE);
+        assert!((n[0].pitch - 60.3).abs() < 1e-4);
+        // a long scoop pulls the median below the half-step: the model's key holds
+        let c = curve(&[(0.3, Some((57.0, 59.4))), (0.2, Some((60.0, 60.0)))]);
+        let n = from_model(&[mn(0.0, 0.5, 60.0)], &c, &vec![0.3; c.len()], RATE);
+        assert_eq!(n[0].pitch.round(), 60.0);
+        // repeated notes on one pitch stay two notes
+        let c = curve(&[(1.0, Some((67.0, 67.0)))]);
+        let n = from_model(&[mn(0.0, 0.5, 67.0), mn(0.5, 1.0, 67.0)], &c, &vec![0.3; c.len()], RATE);
+        assert_eq!(n.iter().map(|x| x.pitch.round() as i32).collect::<Vec<_>>(), vec![67, 67]);
+    }
+
+    #[test]
+    fn model_notes_without_singing_keep_the_models_pitch_and_bad_notes_go() {
+        let c = vec![f32::NAN; 200];
+        let n =
+            from_model(&[mn(0.0, 0.4, 55.0), mn(0.5, 0.51, 57.0), mn(0.6, 0.6, 58.0), mn(0.7, 0.9, f32::NAN)], &c, &vec![0.3; 200], RATE);
+        // the unvoiced note keeps its key and length; the 10 ms blip, the empty one and the
+        // pitchless one over silence are dropped
+        assert_eq!(n.len(), 1);
+        assert_eq!((n[0].start, n[0].end, n[0].pitch), (0.0, 0.4, 55.0));
+        assert!(from_model(&[], &c, &[], RATE).is_empty());
     }
 
     /// Cost of the note decisions on a minute of singing (release: `cargo test --release -p

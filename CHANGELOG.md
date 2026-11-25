@@ -4,6 +4,17 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Better notes from singing.** Pitch Editor → **Better notes (46 MB)** downloads GAME, a neural
+  note finder made for singing (optional; its licence is non-commercial, shown before the
+  download). With it, a note sung again on the same pitch becomes two notes instead of one long
+  one, vibrato and scoops stay inside their note, and notes end where the singing does — so the
+  pitch editor's notes and **Copy notes** into the Piano roll follow the melody as it was sung.
+  Without it nothing changes. The chip beside **Copy notes** shows which finder is in use; also
+  `synkopa note-model [--install]`.
+
 ## 0.9.34 — 2026-11-24
 
 ### Added

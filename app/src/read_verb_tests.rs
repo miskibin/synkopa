@@ -117,7 +117,7 @@ fn every_cataloged_command_reaches_control() {
         // the installers with empty args would download the real models on a machine (or CI
         // runner) that has none; their names are what this walk is about, and their behavior
         // has tests of its own
-        if *cmd == "f0_model_install" || *cmd == "stems_model_install" || *cmd == "chords_model_install" {
+        if *cmd == "f0_model_install" || *cmd == "note_model_install" || *cmd == "stems_model_install" || *cmd == "chords_model_install" {
             continue;
         }
         match control(&p, cmd, &json!({}), None, None) {

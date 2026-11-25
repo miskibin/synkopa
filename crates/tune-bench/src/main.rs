@@ -45,6 +45,7 @@ const HELP: &str = "tune-bench — Tune to Reference benchmarks
                  --only TEXT (only the cases whose name contains it)
 
 common: --rmvpe model.onnx | --yin   (default: the installed RMVPE model, else YIN)
+        --game [DIR]   notes from the GAME note model (default: the installed one), else the note tracker
         --correction --vibrato --influence 0..100   --json report.json
 VocalSet: the folder holding `Annotated VocalSet` and `audio` (Zenodo 7061507).
 Exit code 0 when every criterion passes, 1 when one fails, 2 on usage errors.
@@ -403,7 +404,7 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
             }
             let best = r2[0].1;
             eprintln!("best {best:?}");
-            let groups: [(&str, transcribe::Pick, bool); 7] = [
+            let groups: [(&str, transcribe::Pick, bool); 10] = [
                 ("vocalset train mid", &|c: &transcribe::Cached| c.set == "vocalset" && !c.held_out, true),
                 ("vocalset test mid", &|c: &transcribe::Cached| c.set == "vocalset" && c.held_out, true),
                 ("vocalset train settled", &|c: &transcribe::Cached| c.set == "vocalset" && !c.held_out, false),
@@ -411,10 +412,16 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
                 ("gtsinger control train", &|c: &transcribe::Cached| c.set == "gtsinger" && !c.held_out, false),
                 ("gtsinger control test", &|c: &transcribe::Cached| c.set == "gtsinger" && c.held_out, false),
                 ("gtsinger technique", &|c: &transcribe::Cached| c.set == "gtsinger-technique", false),
+                ("gtsinger control train vowel", &|c: &transcribe::Cached| c.set == "gtsinger" && !c.held_out, true),
+                ("gtsinger control test vowel", &|c: &transcribe::Cached| c.set == "gtsinger" && c.held_out, true),
+                ("gtsinger technique vowel", &|c: &transcribe::Cached| c.set == "gtsinger-technique", true),
             ];
             let tuned = with(best);
             let default = with(d);
-            let methods: [(&str, transcribe::FromAnalysis); 3] = [("previous", &previous), ("default", &default), ("tuned", &tuned)];
+            // the notes the analysis itself carries: the note model's with `--game`, else the tracker's
+            let analysis = |an: &PitchAnalysis| transcribe::tracker_notes(an);
+            let methods: [(&str, transcribe::FromAnalysis); 4] =
+                [("previous", &previous), ("default", &default), ("tuned", &tuned), ("analysis", &analysis)];
             let mut out = serde_json::Map::new();
             for (g, pick, mid) in groups {
                 for (name, f) in methods {
@@ -422,6 +429,16 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
                     println!("{g:22} {name:8} pasted    {}", n.line());
                     println!("{g:22} {name:8} grid1/16  {}", r.line());
                     out.insert(format!("{g}/{name}"), json!({ "pasted": n.json(), "grid16": r.json() }));
+                }
+            }
+            // VocalSet by technique (all singers, transition-middle onsets): where each method gains or loses
+            let techs: std::collections::BTreeSet<&str> =
+                cache.iter().filter(|c| c.set == "vocalset").map(|c| transcribe::technique(&c.name)).collect();
+            for tech in techs {
+                for (name, f) in [("default", &default as transcribe::FromAnalysis), ("analysis", &analysis)] {
+                    let (n, _) = transcribe::score(&cache, |c| c.set == "vocalset" && transcribe::technique(&c.name) == tech, f, bpm, true);
+                    println!("technique {tech:12} {name:8} {}", n.line());
+                    out.insert(format!("technique {tech}/{name}"), n.json());
                 }
             }
             out.insert("tuned".into(), json!(format!("{best:?}")));
@@ -441,6 +458,32 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
                     .collect();
                 std::fs::write(Path::new(dir).join("all.json"), serde_json::to_string(&all).unwrap_or_default())
                     .map_err(|e| e.to_string())?;
+            }
+            Ok(true)
+        }
+        "dump-analysis" => {
+            // every listed WAV's pitch analysis and notes, for experiments outside Rust
+            use wave_engine::sources::{mono_of, Audio};
+            let model = estimator(a)?;
+            let est = model.as_ref().map(|m| m as &dyn F0Estimator);
+            let list: Vec<Value> =
+                serde_json::from_str(&std::fs::read_to_string(a.get("list").ok_or("--list is required")?).map_err(|e| e.to_string())?)
+                    .map_err(|e| e.to_string())?;
+            let out = Path::new(a.get("out").ok_or("--out is required")?);
+            std::fs::create_dir_all(out).map_err(|e| e.to_string())?;
+            for (k, it) in list.iter().enumerate() {
+                let (id, wav) = (it["id"].as_str().unwrap_or_default(), it["wav"].as_str().unwrap_or_default());
+                let au = Audio::load(Path::new(wav)).map_err(|e| format!("{wav}: {e}"))?;
+                let an = crate::analyze(&mono_of(&au), au.sr as f32, est);
+                let nan = |v: &[f32]| v.iter().map(|x| if x.is_finite() { json!(x) } else { Value::Null }).collect::<Vec<_>>();
+                let v = json!({
+                    "rate": an.rate, "curve": nan(&an.curve), "levels": an.levels, "onsets": an.onsets,
+                    "confidence": an.confidence,
+                    "notes": an.notes.iter().map(|n| [n.start, n.end, n.pitch as f64]).collect::<Vec<_>>(),
+                });
+                let name = id.replace('|', "__").replace(' ', "_");
+                std::fs::write(out.join(format!("{name}.json")), v.to_string()).map_err(|e| e.to_string())?;
+                eprintln!("[{k}] {id}");
             }
             Ok(true)
         }
@@ -535,13 +578,40 @@ fn run(cmd: &str, a: &Args) -> Result<bool, String> {
     }
 }
 
+/// The note model every analysis of this run uses (`--game DIR`), else the note tracker.
+static NOTE_MODEL: std::sync::OnceLock<Option<wave_game::Game>> = std::sync::OnceLock::new();
+
+/// The pitch analysis every suite scores: the detector `est` and the run's note model.
+pub fn analyze(mono: &[f32], sr: f32, est: Option<&dyn F0Estimator>) -> wave_engine::pitch::PitchAnalysis {
+    let notes = NOTE_MODEL.get().and_then(|m| m.as_ref()).map(|m| m as &dyn wave_engine::pitch::NoteEstimator);
+    wave_engine::pitch::analyze_full(mono, sr, est, notes)
+}
+
+fn note_model(a: &Args) -> Result<Option<wave_game::Game>, String> {
+    if !a.has("game") {
+        return Ok(None);
+    }
+    let dir = a.get("game").map(PathBuf::from).unwrap_or_else(wave_game::model_dir);
+    wave_game::Game::load(&dir).map(Some)
+}
+
 fn main() -> ExitCode {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = raw.first().cloned().filter(|c| c != "help" && c != "--help") else {
         eprint!("{HELP}");
         return ExitCode::SUCCESS;
     };
-    match run(&cmd, &Args(raw)) {
+    let args = Args(raw);
+    match note_model(&args) {
+        Ok(m) => {
+            let _ = NOTE_MODEL.set(m);
+        }
+        Err(e) => {
+            eprintln!("tune-bench: {e}");
+            return ExitCode::from(2);
+        }
+    }
+    match run(&cmd, &args) {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::from(1),
         Err(e) => {

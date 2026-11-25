@@ -304,7 +304,8 @@ export interface MelodyChannel { channel: Id; name: string; notes: number; fit: 
 /** `pitch_analyze`: pitch every 1/rate s (null = unvoiced), levels 0..1, segmented notes (seconds of the source).
  *  `confidence` 0..1 per frame; `backend` = the detector ("rmvpe" or "yin"). */
 export interface NoteBlob { start: number; end: number; pitch: number; level: number }
-export interface PitchAnalysis { rate: number; curve: (number | null)[]; levels: number[]; notes: NoteBlob[]; confidence?: number[]; backend?: string }
+/** `backend`: the pitch detector ("rmvpe" | "yin"); `noteBackend`: what found the notes ("game" = the GAME note model, "tracker" = built-in). */
+export interface PitchAnalysis { rate: number; curve: (number | null)[]; levels: number[]; notes: NoteBlob[]; confidence?: number[]; backend?: string; noteBackend?: string }
 
 /** `pitch_target`: per analysis frame from `start` (null = unvoiced/none). `targetF0` is the base pitch the
  *  engine renders; where `alignmentConfidence` is ~0 it equals the take's own pitch. `notes` are the
@@ -315,7 +316,8 @@ export interface PitchTarget {
   alignmentConfidence: number[]; refTime: (number | null)[];
   octave: number; notes: NoteBlob[]; score: number; reason: string | null;
 }
-/** The optional RMVPE pitch model (`f0_model_status`). */
+/** An optional analysis model: RMVPE pitch (`f0_model_status`) or the GAME note model (`note_model_status`;
+ *  `backend` is then "game" or "tracker"). */
 export interface F0ModelStatus {
   id: string; name: string; bytes: number; installed: boolean; backend: string;
   licenseNote: string; licenseUrl: string; path: string; error: string | null;

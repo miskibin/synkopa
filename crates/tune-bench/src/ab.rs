@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, F0Estimator};
+use wave_engine::pitch::F0Estimator;
 use wave_engine::reference::tune_audio;
 use wave_engine::singer::{sing, song, Voice};
 use wave_engine::sources::{mono_of, write_wav, Audio};
@@ -21,7 +21,7 @@ const MAX_SECONDS: f64 = 8.0;
 /// Classic pitch correction: every detected note moved to the nearest semitone,
 /// its vibrato kept: what a singer gets without a reference.
 fn snapped(take: &Audio, est: Option<&dyn F0Estimator>) -> Audio {
-    let a = analyze_with(&mono_of(take), take.sr as f32, est);
+    let a = crate::analyze(&mono_of(take), take.sr as f32, est);
     let notes = a
         .notes
         .iter()
@@ -76,7 +76,7 @@ fn fragments(root: Option<&Path>, n: usize, est: Option<&dyn F0Estimator>) -> Re
             };
             // a natural take, nudged off by 30–90 cents per note so there is something to fix
             let level = [30.0, 50.0, 70.0, 90.0][i % 4];
-            let a = analyze_with(&mono_of(&take), take.sr as f32, est);
+            let a = crate::analyze(&mono_of(&take), take.sr as f32, est);
             let notes = a
                 .notes
                 .iter()

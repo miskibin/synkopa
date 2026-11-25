@@ -21,16 +21,16 @@ impl Engine {
 
     /// Analysis of a source variant; slow detectors run without holding the project lock.
     fn source_analysis(&self, id: Id, norm: bool, rev: bool) -> Option<Arc<crate::pitch::PitchAnalysis>> {
-        let (audio, est) = {
+        let (audio, est, notes) = {
             let mut c = self.core.lock();
             if let Some(a) = c.sources.cached_analysis(id, norm, rev) {
                 return Some(a);
             }
-            (c.sources.variant(id, norm, rev)?, c.sources.estimator())
+            (c.sources.variant(id, norm, rev)?, c.sources.estimator(), c.sources.note_model())
         };
-        let a = Arc::new(crate::pitch::analyze_with(&crate::sources::mono_of(&audio), audio.sr as f32, est.as_deref()));
+        let a = Arc::new(crate::pitch::analyze_full(&crate::sources::mono_of(&audio), audio.sr as f32, est.as_deref(), notes.as_deref()));
         let mut c = self.core.lock();
-        c.sources.put_analysis(id, norm, rev, a.clone());
+        c.sources.put_analysis(id, norm, rev, a.clone(), notes.as_ref());
         Some(c.sources.cached_analysis(id, norm, rev).unwrap_or(a))
     }
 
@@ -190,6 +190,19 @@ impl Engine {
     /// Name of the pitch detector in use ("yin" or the estimator's).
     pub fn f0_backend(&self) -> &'static str {
         self.core.lock().sources.backend()
+    }
+
+    /// Uses `m` to find the notes of sung audio from now on (`None` = the built-in note
+    /// tracker). Analyses are redone; clips with pitch edits keep their own notes.
+    pub fn set_note_model(&self, m: Option<Arc<dyn crate::pitch::NoteEstimator>>) {
+        let mut c = self.core.lock();
+        c.sources.set_note_model(m);
+        self.sync(&mut c, Dirty { timeline: true, mixer: false, params: false });
+    }
+
+    /// Name of the note segmenter in use ("tracker" or the model's).
+    pub fn note_backend(&self) -> &'static str {
+        self.core.lock().sources.note_backend()
     }
 
     /// Uses `m` for chord detection from now on (`None` = no chord detection).

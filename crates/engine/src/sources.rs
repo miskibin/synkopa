@@ -157,6 +157,8 @@ pub struct SourceStore {
     stretch: Stretcher,
     /// Pitch detector for analysis (`None` = built-in YIN).
     estimator: Option<Arc<dyn F0Estimator>>,
+    /// Note segmenter for analysis (`None` = the built-in note tracker).
+    note_model: Option<Arc<dyn crate::pitch::NoteEstimator>>,
     /// The path a relinked source's audio was decoded from (only relinked sources).
     origin: HashMap<u64, String>,
     /// Audio a relink replaced, by (source id, path), so undo and redo of a relink play the
@@ -480,6 +482,20 @@ impl SourceStore {
     pub fn backend(&self) -> &'static str {
         self.estimator.as_ref().map(|e| e.name()).unwrap_or("yin")
     }
+    /// Switches the note segmenter; every analysis (and what depends on it) is redone. Clips
+    /// with pitch edits keep their own notes.
+    pub fn set_note_model(&mut self, m: Option<Arc<dyn crate::pitch::NoteEstimator>>) {
+        self.note_model = m;
+        self.analysis.clear();
+        self.aligned.clear();
+        self.tuned.clear();
+    }
+    pub fn note_model(&self) -> Option<Arc<dyn crate::pitch::NoteEstimator>> {
+        self.note_model.clone()
+    }
+    pub fn note_backend(&self) -> &'static str {
+        self.note_model.as_ref().map(|m| m.name()).unwrap_or("tracker")
+    }
     pub fn get(&self, id: u64) -> Option<&Arc<Audio>> {
         self.audio.get(&id)
     }
@@ -499,16 +515,31 @@ impl SourceStore {
             return Some(a.clone());
         }
         let audio = self.variant(id, norm, rev)?;
-        let a = Arc::new(crate::pitch::analyze_with(&mono_of(&audio), audio.sr as f32, self.estimator.as_deref()));
+        let a =
+            Arc::new(crate::pitch::analyze_full(&mono_of(&audio), audio.sr as f32, self.estimator.as_deref(), self.note_model.as_deref()));
         self.analysis.insert((id, norm, rev), a.clone());
         Some(a)
     }
     pub fn cached_analysis(&self, id: u64, norm: bool, rev: bool) -> Option<Arc<PitchAnalysis>> {
         self.analysis.get(&(id, norm, rev)).cloned()
     }
-    /// Stores an analysis made outside the store, unless the detector changed meanwhile.
-    pub fn put_analysis(&mut self, id: u64, norm: bool, rev: bool, a: Arc<PitchAnalysis>) {
-        if a.backend == self.backend() || (a.backend == "yin" && self.estimator.is_none()) {
+    /// Stores an analysis made outside the store with the note model `notes`, unless the
+    /// detector or the note model changed meanwhile. (A note model that failed leaves the
+    /// tracker's notes: kept, so a broken model is not run again on every request.)
+    pub fn put_analysis(
+        &mut self,
+        id: u64,
+        norm: bool,
+        rev: bool,
+        a: Arc<PitchAnalysis>,
+        notes: Option<&Arc<dyn crate::pitch::NoteEstimator>>,
+    ) {
+        let notes_ok = match (notes, &self.note_model) {
+            (None, None) => true,
+            (Some(x), Some(y)) => Arc::ptr_eq(x, y),
+            _ => false,
+        };
+        if notes_ok && (a.backend == self.backend() || (a.backend == "yin" && self.estimator.is_none())) {
             self.analysis.insert((id, norm, rev), a);
         }
     }

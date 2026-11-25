@@ -371,6 +371,7 @@ synkopa pitch-target --clip 412            # score, octave, the reference's note
 synkopa pitch-target --clip 412 --full     # plus every curve (source, reference, target, confidence)
 synkopa tune-ref --clip 412 --off          # back to manual pitch edits
 synkopa f0-model                           # which pitch detector runs (RMVPE or YIN) and its install state
+synkopa note-model                         # what finds the notes (GAME or the note tracker) and its install state
 ```
 
 A melody you played in the piano roll can be the reference instead: the notes a
@@ -413,6 +414,19 @@ prints the licence note, downloads the model (a few minutes, no live progress),
 checks its SHA-256 and switches the detector to it; works without the app too
 (`synkopa -p song.synkopa f0-model --install`). `WAVE_RMVPE_MODEL=path` points at a
 copy you already have.
+
+**Note model.** The notes of a vocal (the pitch editor's note blobs, what *Copy notes*
+pastes, what `pitch inspect` lists) come from the built-in note tracker. GAME (46 MB, openvpi;
+the weights are non-commercial, CC BY-NC-SA 4.0) finds them better: it separates a note
+sung again on the same pitch and ends notes where the singing does. Pitch Editor → *Better
+notes* downloads it after showing the licence, or:
+
+```sh
+synkopa note-model --install
+```
+
+`WAVE_GAME_MODEL=dir` points at an unpacked copy. `tune-bench … --game [DIR]` scores any suite
+with it.
 
 **Stems.** `synkopa stems --clip ID` splits an audio clip with HTDemucs into drums, bass, other and vocals
 (`--only` picks some) exactly as the Playlist's *Extract stems…* does: the region the clip plays plus 3 s either

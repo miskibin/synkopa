@@ -23,4 +23,5 @@ path = "src/wave_alias.rs"
 wave-session.workspace = true
 wave-engine.workspace = true
 wave-rmvpe.workspace = true
+wave-game.workspace = true
 serde_json.workspace = true

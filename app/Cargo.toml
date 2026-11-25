@@ -29,6 +29,7 @@ tauri-plugin-mcp-bridge = "0.13"
 wave-rmvpe.workspace = true
 wave-stems.workspace = true
 wave-chords.workspace = true
+wave-game.workspace = true
 hound.workspace = true
 wave-audio-io.workspace = true
 wave-session.workspace = true
