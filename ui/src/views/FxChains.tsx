@@ -13,6 +13,7 @@ import { insName, S } from '../state/store';
 import { openMenu, openRename, say, setU, U } from '../state/ui';
 import { FxTile } from '../ui/icons';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const errText = (e: unknown) => String(e).replace(/^Error: /, '');
 
@@ -142,7 +143,7 @@ function FxChainLoader(props: { insId: Id; x: number; y: number }) {
 
   return (
     <div class="fxpick-veil" onPointerDown={close}>
-      <div class="fxpick fxcl" role="dialog" aria-label={t('e.fxc.loadTitle', { ins: ins() ? insName(ins()!) : '' })}
+      <div class="fxpick fxcl" ref={el => modal(el, { close })} aria-label={t('e.fxc.loadTitle', { ins: ins() ? insName(ins()!) : '' })}
         style={{ left: pos().left + 'px', top: pos().top + 'px', width: pos().w + 'px', 'max-height': pos().h + 'px' }}
         onPointerDown={e => e.stopPropagation()} onKeyDown={key}>
         <div class="fxcl-hd">

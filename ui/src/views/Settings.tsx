@@ -21,6 +21,7 @@ import { UpdatesSettings } from './Updates';
 import { setPluginScan } from './FxPicker';
 import type { TranslationKey } from '../lib/i18n';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const RATES = [44100, 48000, 88200, 96000];
 const BUFFERS = [32, 64, 128, 256, 512, 1024, 2048];
@@ -70,7 +71,7 @@ function SettingsDialog() {
   let hostSel!: HTMLSelectElement, outSel!: HTMLSelectElement, inSel!: HTMLSelectElement, chanSel!: HTMLSelectElement, rateSel!: HTMLSelectElement, bufSel!: HTMLSelectElement;
   return (
     <div class="overlay" onPointerDown={() => setU('settings', false)}>
-      <div class="dialog setdlg" role="dialog" aria-modal="true" aria-label={t('d.set.title')} onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }}>
+      <div class="dialog setdlg" aria-label={t('d.set.title')} ref={el => modal(el, { close: () => setU('settings', false) })} onPointerDown={e => e.stopPropagation()}>
         <nav class="settabs" role="tablist" aria-orientation="vertical" onKeyDown={e => {
           if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
           e.preventDefault();
@@ -80,7 +81,7 @@ function SettingsDialog() {
         }}>
           <div class="settitle"><TabIcon d={ICONS.gear} color="var(--fg3)" plain />{t('d.set.title')}</div>
           <For each={TABS}>{x => (
-            <button role="tab" data-tab={x.id} aria-label={t(x.label)} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
+            <button role="tab" data-tab={x.id} aria-label={t(x.label)} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} data-autofocus={tab() === x.id || undefined} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
               <TabIcon d={x.icon} color={x.color} />
               <span>{t(x.label)}</span>
             </button>
@@ -429,11 +430,11 @@ function PluginPickerDialog(props: { insId: number }) {
   const pick = (p: PluginInfo) => { if (A.addPlugin(props.insId, p)) close(); };
   return (
     <div class="overlay" onPointerDown={close}>
-      <div class="dialog" style={{ width: 'min(480px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
-        <div class="hd" style={{ 'margin-bottom': 0 }}><span>{t('d.set.vst.title')}</span><button onClick={close}>×</button></div>
+      <div class="dialog" aria-label={t('d.set.vst.title')} ref={el => modal(el, { close })} style={{ width: 'min(480px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
+        <div class="hd" style={{ 'margin-bottom': 0 }}><span>{t('d.set.vst.title')}</span><button aria-label={t('d.upd.btn.close')} onClick={close}>×</button></div>
         <div class="row" style={{ gap: '8px' }}>
-          <input ref={input} class="textin" style={{ flex: 1 }} placeholder={t('d.set.search')} value={q()} onInput={e => setQ(e.currentTarget.value)}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') close(); const first = shown().find(p => !p.unsupported); if (e.key === 'Enter' && first) pick(first); }} />
+          <input ref={input} data-autofocus class="textin" style={{ flex: 1 }} placeholder={t('d.set.search')} value={q()} onInput={e => setQ(e.currentTarget.value)}
+            onKeyDown={e => { const first = shown().find(p => !p.unsupported); if (e.key === 'Enter' && first) pick(first); }} />
           <button class="smallbtn" style={{ height: '26px' }} onClick={() => scan(true)} title={t('d.set.rescan.tip')}>{t('d.set.rescan')}</button>
         </div>
         <Show when={err()}><span class="note err">{err()}</span></Show>

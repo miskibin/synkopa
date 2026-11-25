@@ -8,6 +8,7 @@ import type { PluginCrashSuspect } from '../api/types';
 import { t } from '../lib/i18n';
 import { say } from '../state/ui';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 export function PluginCrash() {
   const [suspects, setSuspects] = createSignal<PluginCrashSuspect[]>([]);
@@ -34,7 +35,7 @@ export function PluginCrash() {
     <Show when={suspects().length}>
       <DialogBoundary name={t('d.pcrash.title')} close={() => setSuspects([])}>
       <div class="overlay" onPointerDown={() => setSuspects([])}>
-        <div class="dialog" role="dialog" aria-modal="true" aria-label={t('d.pcrash.title')} onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }}>
+        <div class="dialog" aria-label={t('d.pcrash.title')} ref={el => modal(el, { close: () => setSuspects([]) })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd">
             <span>{t('d.pcrash.title')}</span>
             <button onClick={() => setSuspects([])} aria-label={t('d.pcrash.dismiss')}>×</button>
@@ -58,8 +59,8 @@ export function PluginCrash() {
             </For>
           </ul>
           <Show when={err()}><p class="note warn" role="alert">{err()}</p></Show>
-          <div class="row" style={{ 'justify-content': 'flex-end', 'margin-top': '12px' }}>
-            <button class="smallbtn primary" onClick={() => setSuspects([])}>{t('d.pcrash.dismiss')}</button>
+          <div class="dlgfoot">
+            <button class="smallbtn primary" data-autofocus onClick={() => setSuspects([])}>{t('d.pcrash.dismiss')}</button>
           </div>
         </div>
       </div>

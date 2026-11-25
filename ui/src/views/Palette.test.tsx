@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setU } from '../state/ui';
 import { settle } from '../test/settle';
 import { Palette, paletteOpen, setCommandMenus, setPaletteOpen } from './Palette';
+import { modalOwnsKey } from '../ui/modal';
 
 const acts = { newP: vi.fn(), open: vi.fn(), exp: vi.fn(), locked: vi.fn() };
 beforeEach(() => {
@@ -78,12 +79,9 @@ describe('Palette', () => {
   });
 
   it('with no match it offers to ask instead, and keys never reach the app shortcuts', () => {
-    const app = vi.fn();
-    window.addEventListener('keydown', app);
     type('how do I sidechain');
-    key('Delete');
-    window.removeEventListener('keydown', app);
-    expect(app).not.toHaveBeenCalled();
+    // App.tsx's key handler asks the open modal first (ui/modal.ts)
+    expect(modalOwnsKey(new KeyboardEvent('keydown', { key: 'Delete' }))).toBe(true);
     const opts = screen.getAllByRole('option');
     expect(opts).toHaveLength(1);
     expect(opts[0].textContent).toContain('how do I sidechain');

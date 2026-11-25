@@ -22,9 +22,11 @@ import { loadStdLib } from './state/library';
 import { offerRecovery, projectOpen } from './state/actions';
 
 import { installSelectPopups } from './ui/SelectPopup';
+import { install as installModals } from './ui/modal';
 
 initTheme();
 installSelectPopups();
+installModals();
 initPrefs();
 if (import.meta.env.VITE_PERF) void import('./perfHook'); // perf harness only; compiled out otherwise
 

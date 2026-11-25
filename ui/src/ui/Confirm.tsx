@@ -5,6 +5,7 @@ import { createSignal } from '../lib/reactive';
 import { lang, t } from '../lib/i18n';
 import { S } from '../state/store';
 import { DialogBoundary } from './PanelBoundary';
+import { modal } from './modal';
 
 type Answer = 'save' | 'discard' | 'cancel';
 const [ask, setAsk] = createSignal<{ what: string; done: (a: Answer) => void } | null>(null);
@@ -38,17 +39,17 @@ export function ConfirmDialog() {
       {q => (
         <DialogBoundary name={t('d.ui.recover')} close={() => q().done('later')} z={300}>
         <div class="overlay" style={{ 'z-index': 300 }}>
-          <div class="dialog" role="alertdialog" aria-labelledby="rec-hd" style={{ width: 'min(440px,92vw)' }}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') q().done('later'); if (e.key === 'Enter') q().done('restore'); }}>
-            <div class="hd"><span id="rec-hd">{t('d.ui.recover')}</span><button title={t('d.ui.recover.later.tip')} onClick={() => q().done('later')}>×</button></div>
-            <p style={{ margin: '4px 0 16px', color: 'var(--fg2)', 'font-size': '13px' }}>
+          <div class="dialog dlgsm" role="alertdialog" aria-labelledby="rec-hd" ref={el => modal(el, { close: () => q().done('later') })}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') { e.preventDefault(); q().done('restore'); } }}>
+            <div class="hd"><span id="rec-hd">{t('d.ui.recover')}</span><button title={t('d.ui.recover.later.tip')} aria-label={t('d.upd.btn.close')} onClick={() => q().done('later')}>×</button></div>
+            <p class="dlgtext">
               {q().project ? t('d.ui.recover.bodyNamed', { when: when(q().savedMs), name: t('d.ui.named', { name: fileName(q().project!) }) }) : t('d.ui.recover.body', { when: when(q().savedMs) })}
               <Show when={q().openPath}>{p => <> {t('d.ui.recover.replaces', { name: t('d.ui.named', { name: fileName(p()) }) })}</>}</Show>
             </p>
-            <div class="row" style={{ gap: '8px', 'justify-content': 'flex-end' }}>
+            <div class="dlgfoot">
               <button class="smallbtn" title={t('d.ui.recover.later.tip')} onClick={() => q().done('later')}>{t('d.ui.recover.later')}</button>
               <button class="smallbtn danger" onClick={() => q().done('discard')}>{t('d.ui.recover.discard')}</button>
-              <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => q().done('restore')}>{t('d.ui.recover.restore')}</button>
+              <button class="smallbtn primary" data-autofocus onClick={() => q().done('restore')}>{t('d.ui.recover.restore')}</button>
             </div>
           </div>
         </div>
@@ -59,16 +60,16 @@ export function ConfirmDialog() {
       {q => (
         <DialogBoundary name={t('d.ui.unsaved')} close={() => q().done('cancel')} z={300}>
         <div class="overlay" style={{ 'z-index': 300 }} onPointerDown={() => q().done('cancel')}>
-          <div class="dialog" style={{ width: 'min(420px,92vw)' }} onPointerDown={e => e.stopPropagation()}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') q().done('cancel'); if (e.key === 'Enter') q().done('save'); }}>
-            <div class="hd"><span>{t('d.ui.unsaved')}</span><button onClick={() => q().done('cancel')}>×</button></div>
-            <p style={{ margin: '4px 0 16px', color: 'var(--fg2)', 'font-size': '13px' }}>
+          <div class="dialog dlgsm" role="alertdialog" aria-labelledby="unsaved-hd" ref={el => modal(el, { close: () => q().done('cancel') })} onPointerDown={e => e.stopPropagation()}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') { e.preventDefault(); q().done('save'); } }}>
+            <div class="hd"><span id="unsaved-hd">{t('d.ui.unsaved')}</span><button aria-label={t('d.upd.btn.close')} onClick={() => q().done('cancel')}>×</button></div>
+            <p class="dlgtext">
               {t('d.ui.unsaved.body', { name: S.path ? t('d.ui.named', { name: fileName(S.path) }) : t('d.ui.unnamed'), what: q().what })}
             </p>
-            <div class="row" style={{ gap: '8px', 'justify-content': 'flex-end' }}>
+            <div class="dlgfoot">
               <button class="smallbtn" onClick={() => q().done('cancel')}>{t('d.ui.cancel')}</button>
               <button class="smallbtn danger" onClick={() => q().done('discard')}>{t('d.ui.discard')}</button>
-              <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => q().done('save')}>{t('d.ui.save')}</button>
+              <button class="smallbtn primary" data-autofocus onClick={() => q().done('save')}>{t('d.ui.save')}</button>
             </div>
           </div>
         </div>
