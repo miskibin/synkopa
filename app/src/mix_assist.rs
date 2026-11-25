@@ -103,6 +103,11 @@ pub fn unmask(e: &Engine, c: &Collision, if_revision: Option<u64>, label: Option
             return Err(format!("insert {id} is not a mixer insert"));
         }
     }
+    let masker = p.insert(c.masker).unwrap();
+    let protect = p.insert(c.protect).unwrap();
+    if wave_engine::masking::keyed_from(masker, c.protect) || wave_engine::masking::keyed_from(protect, c.masker) {
+        return Err("This pair already has a ducking sidechain; adjust the existing effect instead".into());
+    }
     let fx = fix_fx(p.next_id, c);
     let id = fx.id;
     // the key is validated like any sidechain (`ops::validate_key`: no loop through the sends)
@@ -146,6 +151,9 @@ mod tests {
         assert_eq!(fx.id, r["fxId"].as_u64().unwrap());
         assert_eq!(fx.key, Some(kick));
         assert!(wave_engine::masking::keyed_from(m, kick));
+        assert!(unmask(&e, &c, None, None).is_err());
+        assert!(unmask(&e, &Collision { masker: kick, protect: b808, ..c.clone() }, None, None).is_err());
+        assert_eq!(e.project().insert(b808).unwrap().fx.len(), n + 1);
         assert!(e.undo());
         assert_eq!(e.project().insert(b808).unwrap().fx.len(), n);
         assert!(unmask(&e, &Collision { masker: 0, ..c }, None, None).is_err());

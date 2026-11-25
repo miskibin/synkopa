@@ -27,9 +27,10 @@ export function fixFx(cat: Catalog, id: Id, c: Collision): Fx {
 
 /** `masking::keyed_from`: `m` already gives way to `key`: an active Compressor keyed from it, or
  *  an EQ keyed from it with a dynamic band (the fix). */
-export const keyedFrom = (m: Insert, key: Id) =>
-  m.fx.some(f => !f.bypass && f.key === key
+export const keyedEffects = (m: Insert, key: Id) =>
+  m.fx.filter(f => !f.bypass && f.key === key
     && (f.type === 'comp' || (f.type === 'eq' && (f.bands ?? []).some(b => b.on && !!b.dynamic))));
+export const keyedFrom = (m: Insert, key: Id) => keyedEffects(m, key).length > 0;
 
 /** `masking::compared_pairs`, by id. */
 export function comparedPairs(p: Project): [Id, Id][] {
@@ -39,7 +40,6 @@ export function comparedPairs(p: Project): [Id, Id][] {
     const [x, y] = [ins[i], ins[j]];
     if (reaches(p, x.id, y.id) || reaches(p, y.id, x.id)) continue;
     if ((p.maskIgnore ?? []).some(q => (q[0] === x.id && q[1] === y.id) || (q[0] === y.id && q[1] === x.id))) continue;
-    if (keyedFrom(x, y.id) || keyedFrom(y, x.id)) continue;
     out.push([x.id, y.id]);
   }
   return out;

@@ -91,7 +91,7 @@ fn a_held_808_under_a_kick_is_reported_after_a_few_seconds_and_the_808_gives_way
 }
 
 #[test]
-fn ignored_handled_and_related_pairs_are_not_reported() {
+fn ignored_and_related_pairs_are_not_reported_but_existing_keys_are_checked() {
     let mut p = two_inserts();
     p.mask_ignore = vec![[1, 2]];
     assert!(listen(&p, 8.0).collisions().is_empty());
@@ -104,10 +104,45 @@ fn ignored_handled_and_related_pairs_are_not_reported() {
     let mut comp = wave_engine::catalog::new_fx(900, FxKind::Comp, 120.0);
     comp.key = Some(1);
     p.inserts[2].fx.push(comp.clone());
-    assert!(listen(&p, 8.0).collisions().is_empty());
+    assert!(wave_engine::masking::compared_pairs(&p).contains(&(1, 2)));
     comp.bypass = true;
     p.inserts[2].fx = vec![comp];
     assert!(!listen(&p, 8.0).collisions().is_empty(), "a bypassed one does not count");
+}
+
+/// Test the actual keyed EQ output with effective and ineffective thresholds.
+#[test]
+fn keyed_eq_is_judged_by_its_output_not_its_presence() {
+    let mut p = two_inserts();
+    let c = Collision { masker: 2, protect: 1, lo: 44.5, hi: 56.1, center: 50.0, overlap: 0.9, key_db: -10.0 };
+    let mut fx = fix_fx(1000, &c);
+    p.inserts[2].fx.push(fx.clone());
+    let mut d = Detector::new(SR);
+    d.configure(&p);
+    let ctx = ProcessCtx { sample_rate: SR, ..Default::default() };
+    let mut eq = wave_engine::dsp::Eq::default();
+    eq.prepare(SR, 512);
+    let mut at = 0usize;
+    let cases = [(-60.0, 1.0, false), (-60.0, 0.5, true), (-60.0, 1.0, false), (-3.0, 1.0, true), (-60.0, 1.0, false)];
+    for (threshold, key_gain, expect_warning) in cases {
+        fx.bands.as_mut().unwrap()[0].dynamic.as_mut().unwrap().thr = threshold;
+        eq.set_params(&wave_engine::catalog::param_block(&fx));
+        for _ in 0..(16 * 48000 / 512) {
+            let mut l: Vec<f32> = (at..at + 512).map(bass).collect();
+            let mut r = l.clone();
+            let key: Vec<f32> = l.iter().map(|x| x * key_gain).collect();
+            eq.process_keyed(&mut l, &mut r, &key, &ctx);
+            d.push(1, &key);
+            d.push(2, &l);
+            for lane in 3..p.inserts.len() {
+                d.push(lane, &[0.0; 512]);
+            }
+            at += 512;
+        }
+        let found = d.collisions();
+        assert_eq!(found.iter().any(|c| (c.masker, c.protect) == (2, 1)), expect_warning, "{found:?}");
+        assert!(!found.iter().any(|c| (c.masker, c.protect) == (1, 2)));
+    }
 }
 
 /// The fix, sample by sample on the deterministic signals: the 808's band goes down while the
@@ -170,7 +205,7 @@ fn the_fix_ducks_the_808_only_while_the_kick_hits() {
 /// meet only on the Beat Bus, and they share the sub range on every downbeat. The fix goes in
 /// through the engine (the graph orders the key before the 808) and keeps working in a stem.
 #[test]
-fn the_demo_songs_808_masks_its_kick_and_the_fix_clears_it() {
+fn the_demo_songs_808_masks_its_kick_and_the_fix_ducks_it() {
     let p = wave_engine::demo::demo_project();
     let (kick, b808) = (insert_id(&p, "Kick"), insert_id(&p, "808"));
     let e = engine(p);
@@ -218,9 +253,9 @@ fn the_demo_songs_808_masks_its_kick_and_the_fix_clears_it() {
     assert!(duck_hit > 3.0, "the 808 makes room while the kick hits: {duck_hit} dB");
     assert!(duck_gap < 0.5, "and stays itself between hits: {duck_gap} dB");
 
-    // the handled pair is not reported again
+    // Residual competition may remain, but never reverse the existing sidechain.
     let again = scan(&e, from, to);
-    assert!(!again.iter().any(|x| [x.masker, x.protect].contains(&kick) && [x.masker, x.protect].contains(&b808)));
+    assert!(!again.iter().any(|x| (x.masker, x.protect) == (kick, b808)));
 }
 
 /// Mean energy (dB) of `x` (mono, 48 kHz) in a band, over the frames where `mask` is set.

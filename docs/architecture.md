@@ -298,9 +298,11 @@ UI in the telemetry frame; `Engine::masking_scan` runs the same detector over an
 `unmask` action — the badge's *Make room for X*, `synkopa mix fix N`) is an ordinary EQ appended
 to the masker, one bell over the range (Q ≤ 1.4), dynamic range −6 dB, threshold 15 dB under the
 protected insert's recent peak there, keyed from it through the standard sidechain above (same
-validation, ordering, stems and cables). Pairs in `Project.maskIgnore` (`setMaskIgnore`) and pairs
-the masker already gives way in (an active Compressor, or an EQ with a dynamic band, keyed from
-the other insert) are not reported.
+validation, ordering, stems and cables). Pairs in `Project.maskIgnore` (`setMaskIgnore`) are not
+reported. Existing ducking sidechains are rechecked on post-fader output, keeping their direction.
+During strong key activity (within 6 dB of its recent peak in the band), residual competition is
+reported if both tracks are audible and the masker is less than 3 dB below the key. The review
+menu opens the existing effect; `unmask` refuses duplicate or reverse ducking.
 
 PAT mode (L) loops the current pattern and follows
 it when it changes. The loop plays the pattern itself, not its place in the song: a channel

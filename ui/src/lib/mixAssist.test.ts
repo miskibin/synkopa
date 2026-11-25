@@ -38,14 +38,14 @@ function project(): Project {
 }
 
 describe('compared pairs (port of masking.rs compared_pairs)', () => {
-  it('skips inserts that feed each other, ignored pairs and handled pairs', () => {
+  it('skips related and ignored pairs but keeps existing sidechains', () => {
     const p = project();
     expect(comparedPairs(p)).toEqual([[1, 2], [2, 3]]);
     p.maskIgnore = [[2, 3]];
     expect(comparedPairs(p)).toEqual([[1, 2]]);
     p.inserts[2].fx.push(fixFx(mockCatalog(), 50, { ...KICK_808, masker: 2, protect: 1 }));
     expect(keyedFrom(p.inserts[2], 1)).toBe(true);
-    expect(comparedPairs(p)).toEqual([]);
+    expect(comparedPairs(p)).toEqual([[1, 2]]);
     p.inserts[2].fx[0].bypass = true;
     expect(comparedPairs(p)).toEqual([[1, 2]]);
   });
@@ -98,6 +98,7 @@ describe('MockBackend mix assistant', () => {
     const fx = p.inserts.find(m => m.id === 2)!.fx.at(-1)!;
     expect(fx.id).toBe(r.fxId);
     expect(fx.key).toBe(1);
+    await expect(be.mixAssist('unmask', { masker: 2, protect: 1, lo: 44.5, hi: 56.1, keyDb: -12 })).rejects.toThrow(/already has/);
     await be.undo();
     p = (await be.getState()).project;
     expect(p.inserts.find(m => m.id === 2)!.fx).toHaveLength(0);

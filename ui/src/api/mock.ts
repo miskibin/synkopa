@@ -34,7 +34,7 @@ import { midiToHz, noteAt, scaleMask, simpleTarget, snapNote } from '../lib/pitc
 import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { MELODY_DEFAULTS, melodyNotes, type HeardNote, type MelodyOptions } from '../lib/audioMidi';
 import { newFx } from '../lib/presets';
-import { comparedPairs, fixFx } from '../lib/mixAssist';
+import { comparedPairs, fixFx, keyedFrom } from '../lib/mixAssist';
 import type { Collision } from './telemetry';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
@@ -566,7 +566,13 @@ export class MockBackend implements Backend {
     const out: Collision[] = [];
     for (const [a, b] of comparedPairs(this.p)) {
       const kick = (id: Id) => /kick|stopa/i.test(name(id)), bass = (id: Id) => /808|bass|sub|bas\b/i.test(name(id));
-      const pair = kick(a) && bass(b) ? [b, a] : kick(b) && bass(a) ? [a, b] : null;
+      let pair = kick(a) && bass(b) ? [b, a] : kick(b) && bass(a) ? [a, b] : null;
+      // The mock has no DSP: simulate a residual warning in the existing direction.
+      if (pair) {
+        const x = this.p.inserts.find(m => m.id === a)!, y = this.p.inserts.find(m => m.id === b)!;
+        if (keyedFrom(x, b)) pair = [a, b];
+        else if (keyedFrom(y, a)) pair = [b, a];
+      }
       if (pair) out.push({ masker: pair[0], protect: pair[1], lo: 44.547726, hi: 56.126617, center: 50.00313, overlap: 0.9, keyDb: -12.7 });
     }
     return out;
@@ -1682,6 +1688,8 @@ export class MockBackend implements Backend {
         const c: Collision = { masker: num('masker'), protect: num('protect'), lo: num('lo'), hi: num('hi'), center: 0, overlap: 0, keyDb: num('keyDb') };
         if (!(c.lo > 0 && c.hi > c.lo && c.hi <= 24000)) throw new Error('`lo` and `hi` must be frequencies with lo < hi');
         for (const id of [c.masker, c.protect]) if (id === 0 || !this.p.inserts.some(m => m.id === id)) throw new Error(`insert ${id} is not a mixer insert`);
+        const masker = this.p.inserts.find(m => m.id === c.masker)!, protect = this.p.inserts.find(m => m.id === c.protect)!;
+        if (keyedFrom(masker, c.protect) || keyedFrom(protect, c.masker)) throw new Error('This pair already has a ducking sidechain; adjust the existing effect instead');
         const fx = fixFx(this.cat, this.p.nextId, c);
         // the key is checked like any sidechain (applyOps: keyError, no loop through the sends)
         const r = await this.applyOps([{ op: 'putFx', insertId: c.masker, fx }], { label: typeof args.label === 'string' ? args.label : undefined });
