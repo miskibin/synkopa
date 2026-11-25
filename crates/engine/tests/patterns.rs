@@ -652,3 +652,60 @@ fn a_pattern_exports_with_an_empty_playlist() {
     assert!(stems.iter().any(|(id, name)| *id == 1 && name == "Kick"), "{stems:?}");
     assert!(e.render_bounce(None, Some(999_999), 0.0, 4.0, RenderTail::Seconds(0.0), SR, &no, &mut |_| {}).is_err());
 }
+
+/// #245: a growing pattern never runs its clips into the next clip on their track, shrinking
+/// it does not leave clips looping it, and the whole change is the edit's one undo step.
+#[test]
+fn whole_pass_clips_grow_up_to_the_next_clip_and_shrink_back_within_the_pattern() {
+    let p0 = Project::routed();
+    let k = chan(&p0, "Kick");
+    let mut p = one_pattern(vec![Note::new(k, 0.0, 1.0, None)], 4.0, 0.0);
+    p.clips = vec![
+        clip(1, 0, 0.0, 4.0, 1),                                   // followed by clip 2 at beat 6
+        clip(2, 0, 6.0, 4.0, 1),                                   // free lane after it
+        clip(3, 1, 0.0, 4.0, 1),                                   // overlapped already by clip 4
+        clip(4, 1, 2.0, 2.0, 1),                                   // a part of it, sized on purpose
+        Clip { len: 12.0, ..clip(5, 2, 0.0, 12.0, 1) },            // a loop from an older project
+        Clip { offset: 2.0, len: 2.0, ..clip(6, 3, 0.0, 2.0, 1) }, // the second half only
+    ];
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let len = |id: Id| e.project().clips.iter().find(|c| c.id == id).unwrap().len;
+    // a note in bar 2: the pattern grows to 8 beats
+    let mut pat = e.project().patterns[0].clone();
+    pat.notes.push(Note::new(k, 16.0, 1.0, None));
+    e.apply(&[Op::PutPattern { pattern: pat.clone() }], false, None).unwrap();
+    assert_eq!(e.project().patterns[0].len, 8.0);
+    assert_eq!(len(1), 6.0, "stops where the next clip starts: no overlap");
+    assert_eq!(len(2), 8.0, "nothing after it: the whole pattern");
+    assert_eq!(len(3), 4.0, "already under the next clip: never shorter, never longer");
+    assert_eq!((len(4), len(5), len(6)), (2.0, 12.0, 2.0), "clips sized on purpose keep their length");
+    // back to one bar: clips that showed only the pattern are cut back, the loop stays
+    pat.notes.truncate(1);
+    e.apply(&[Op::PutPattern { pattern: pat.clone() }], false, None).unwrap();
+    assert_eq!(e.project().patterns[0].len, 4.0);
+    assert_eq!((len(1), len(2), len(3), len(5), len(6)), (4.0, 4.0, 4.0, 12.0, 2.0));
+    // the growth and the clips are one undo step
+    assert!(e.undo());
+    assert_eq!((e.project().patterns[0].len, len(1), len(2)), (8.0, 6.0, 8.0));
+    assert!(e.undo());
+    assert_eq!((e.project().patterns[0].len, len(1), len(2)), (4.0, 4.0, 4.0));
+}
+
+/// A clip that stopped short of the pattern (it shows part of it) is cut back when the pattern
+/// shrinks below it, and a clip trimmed from the left keeps its window within the pattern.
+#[test]
+fn a_shrinking_pattern_cuts_back_partial_clips_within_it() {
+    let p0 = Project::routed();
+    let k = chan(&p0, "Kick");
+    let mut p = one_pattern(vec![Note::new(k, 0.0, 1.0, None), Note::new(k, 28.0, 1.0, None)], 8.0, 0.0);
+    p.patterns[0].min_len = 4.0;
+    p.clips = vec![Clip { len: 6.0, ..clip(1, 0, 0.0, 6.0, 1) }, Clip { offset: 2.0, len: 6.0, ..clip(2, 1, 0.0, 6.0, 1) }];
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let mut pat = e.project().patterns[0].clone();
+    pat.notes.truncate(1);
+    e.apply(&[Op::PutPattern { pattern: pat }], false, None).unwrap();
+    let p = e.project();
+    assert_eq!(p.patterns[0].len, 4.0);
+    assert_eq!(p.clips[0].len, 4.0);
+    assert_eq!((p.clips[1].offset, p.clips[1].len), (2.0, 2.0), "pattern length minus the offset");
+}

@@ -16,7 +16,7 @@ import { batch, createSignal, createStore } from '../lib/reactive';
 import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
 import { putMarker, removeMarker } from '../lib/markers';
-import { applyPatternOp, fitLen as fitPatternLen, followPatternLength } from '../lib/pattern';
+import { applyPatternOp, fitLen as fitPatternLen, followChanges, followPatternLength, type FollowReport } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
 import { applyTransform } from '../lib/transforms';
 import { dropSourcePeaks } from './peaks';
@@ -488,10 +488,34 @@ const copyOp = (op: Op): Op => {
   try { return structuredClone(op); } catch { return plain(op); } // an op holding store proxies
 };
 
+/**
+ * Told when a local edit changed a pattern's length and with it the Playlist clips that show it
+ * (they follow it, or stop at the next clip): the edit may come from a view that hides the Playlist.
+ */
+export type FollowListener = (reports: FollowReport[]) => void;
+const followListeners = new Set<FollowListener>();
+export function onPatternFollow(f: FollowListener): () => void {
+  followListeners.add(f);
+  return () => { followListeners.delete(f); };
+}
+/** The patterns whose notes or length `ops` may change, with their length now; null if none. */
+function patternLens(ops: readonly Op[]): Map<Id, number> | null {
+  let out: Map<Id, number> | null = null;
+  for (const op of ops) {
+    const id = op.op === 'putPattern' ? op.pattern.id : op.op === 'transformNotes' ? op.pattern : null;
+    const pt = id == null ? undefined : M.patterns.find(x => x.id === id);
+    if (pt && !out?.has(pt.id)) (out ??= new Map()).set(pt.id, pt.len);
+  }
+  return out;
+}
+
 export function applyLocal(ops: Op[]) {
   if (!ops.length) return;
   const arrangement = ops.some(op => !NOT_ARRANGEMENT.has(op.op));
   if (arrangement) tellArrangement(ops);
+  // the length of the clips of edited patterns, to say which ones the edit resized
+  const lens = followListeners.size ? patternLens(ops) : null;
+  const clipLens = lens && new Map(M.clips.filter(c => c.kind === 'pat' && lens.has(c.ref)).map(c => [c.id, c.len]));
   const forStore = ops.map(copyOp);
   // one batch: memos that follow `arrVersion` are current before any effect of the edit runs
   batch(() => {
@@ -502,6 +526,10 @@ export function applyLocal(ops: Op[]) {
     bumpProject(arrangement);
     setS('dirty', true);
   });
+  if (lens && clipLens!.size) {
+    const reports = followChanges(lens, clipLens!, M);
+    if (reports.length) for (const f of followListeners) f(reports);
+  }
 }
 
 // ---- lookups ----

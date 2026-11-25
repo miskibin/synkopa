@@ -211,6 +211,27 @@ describe('op builders', () => {
     // with the Alt minimum (a 64th) a trim goes below the grid unit
     expect(resizeClip(clip({ kind: 'pat', start: 4, len: 2 }), 'r', 4.125, 1 / 16, Infinity).len).toBe(0.125);
   });
+  it('stops a pattern clip\'s edges at the pattern\'s end and start (#245)', () => {
+    // an 8-beat pattern
+    const c = clip({ kind: 'pat', start: 4, len: 4, offset: 0 });
+    expect(resizeClip(c, 'r', 40, 0.25, 8).len).toBe(8); // one pass, no loop
+    expect(resizeClip(c, 'r', 10, 0.25, 8).len).toBe(6); // within it: as dragged
+    // trimmed from the left: the window ends at the pattern's end
+    const t = clip({ kind: 'pat', start: 4, len: 2, offset: 3 });
+    expect(resizeClip(t, 'r', 40, 0.25, 8).len).toBe(5);
+    // the left edge stops at the pattern's start (offset 0)
+    expect(resizeClip(t, 'l', 0, 0.25, 8)).toMatchObject({ start: 1, offset: 0, len: 5 });
+    // a clip already longer than its pattern (an older loop, a pattern since shortened) keeps
+    // its length but cannot grow; it can still be shortened, and then not regrown past the pattern
+    const loop = clip({ kind: 'pat', start: 0, len: 16, offset: 0 });
+    expect(resizeClip(loop, 'r', 40, 0.25, 4).len).toBe(16);
+    expect(resizeClip(loop, 'r', 6, 0.25, 4).len).toBe(6);
+    expect(resizeClip(resizeClip(loop, 'r', 2, 0.25, 4), 'r', 40, 0.25, 4).len).toBe(4);
+    // an empty pattern is one bar long: the cap is that bar
+    expect(resizeClip(clip({ kind: 'pat', start: 0, len: 1 }), 'r', 40, 0.25, 4).len).toBe(4);
+    // automation clips are not bounded
+    expect(resizeClip(clip({ kind: 'auto', start: 0, len: 4 }), 'r', 40, 0.25, Infinity).len).toBe(40);
+  });
   it('trims a selection together, each clip within its own limits', () => {
     const pat = clip({ id: 1, kind: 'pat', start: 0, len: 4 }), short = clip({ id: 2, kind: 'pat', start: 0, len: 1 });
     const audio = clip({ id: 3, kind: 'audio', start: 0, len: 4, offset: 0 });

@@ -271,6 +271,28 @@ pub fn cases() -> Vec<Case> {
     ));
     c.push((
         "main",
+        "putPattern growth stops whole-pass clips at the next clip on their track",
+        vec![
+            Op::PutClips { clips: vec![clip(44, 0, 10.0, 4.0, ClipKind::Pat, 21)] },
+            Op::PutPattern { pattern: pat(20, "Verse", 8.0, 4.0, vec![Note::new(30, 0.0, 1.0, None), Note::new(30, 40.0, 4.0, None)]) },
+        ],
+    ));
+    c.push((
+        "main",
+        "putPattern shrink cuts back clips that would loop the pattern",
+        vec![
+            Op::PutClips {
+                clips: vec![
+                    clip(44, 1, 20.0, 6.0, ClipKind::Pat, 20),
+                    Clip { offset: 2.0, ..clip(45, 1, 30.0, 6.0, ClipKind::Pat, 20) },
+                    clip(46, 1, 40.0, 16.0, ClipKind::Pat, 20),
+                ],
+            },
+            Op::PutPattern { pattern: pat(20, "Verse", 8.0, 4.0, vec![Note::new(30, 0.0, 1.0, None)]) },
+        ],
+    ));
+    c.push((
+        "main",
         "putPattern keeps the user's minimum length",
         vec![Op::PutPattern { pattern: pat(21, "Hook", 4.0, 8.0, vec![Note::new(30, 0.0, 4.0, None)]) }],
     ));

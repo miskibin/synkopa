@@ -1025,14 +1025,46 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
     Ok(d)
 }
 
-/// A pattern's length went from `old` to `new` beats: clips that show exactly one whole
-/// pass of it (offset 0, length = old length) follow; longer, shorter or offset clips keep
-/// their length (they were sized on purpose). Clips never run past the playlist end.
+/// A pattern's length went from `old` to `new` beats; its clips follow without ever
+/// overlapping another clip or showing more than the pattern holds:
+///
+/// * grown: clips that show exactly one whole pass (offset 0, length = old length) take the
+///   new length, but stop at the next clip on their track (never shorter than they were), so
+///   a longer pattern does not silently run over the arrangement. Longer, shorter or offset
+///   clips keep their length (they were sized on purpose).
+/// * shrunk: clips whose window lay within the old pattern and now reaches past its end are
+///   cut back to it, so they do not start looping the pattern. Clips that already reached
+///   past the old end (loops from older projects) keep theirs: nothing is removed silently.
+///
+/// Clips never run past the playlist end. The same rule is `followPatternLength` in
+/// `ui/src/lib/pattern.ts`.
 fn follow_pattern_length(p: &mut Project, id: Id, old: f64, new: f64) {
-    for c in p.clips.iter_mut() {
-        if c.kind == ClipKind::Pat && c.source == id && c.offset.abs() < 1e-9 && (c.len - old).abs() < 1e-6 {
-            c.len = new.min(TOTAL_BEATS - c.start).max(1.0 / 16.0);
+    const EPS: f64 = 1e-6;
+    for i in 0..p.clips.len() {
+        let c = &p.clips[i];
+        if c.kind != ClipKind::Pat || c.source != id {
+            continue;
         }
+        let len = if new > old {
+            if c.offset.abs() >= 1e-9 || (c.len - old).abs() >= EPS {
+                continue;
+            }
+            // the next clip on the lane (any kind): growing stops at its start
+            let next = p
+                .clips
+                .iter()
+                .filter(|o| o.id != c.id && o.track == c.track && o.start > c.start + EPS)
+                .map(|o| o.start)
+                .fold(f64::INFINITY, f64::min);
+            new.min(next - c.start).max(c.len)
+        } else {
+            let end = c.offset + c.len;
+            if end > old + EPS || end <= new + EPS || c.offset >= new - EPS {
+                continue;
+            }
+            new - c.offset
+        };
+        p.clips[i].len = len.min(TOTAL_BEATS - p.clips[i].start).max(1.0 / 16.0);
     }
 }
 
