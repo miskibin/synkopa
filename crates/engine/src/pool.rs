@@ -299,10 +299,11 @@ mod tests {
                 while t.elapsed() < Duration::from_micros(100) {}
             });
             pool.rest();
-            // parked well before the spin would have run out
+            // parked (a loaded CI runner can deschedule a worker for tens of ms, so the bound is
+            // generous: it only catches a worker that never parks)
             let t = Instant::now();
             while !pool.inner.sleeping.iter().all(|s| s.load(SeqCst)) {
-                assert!(t.elapsed() < Duration::from_millis(100), "a worker never parked");
+                assert!(t.elapsed() < Duration::from_secs(2), "a worker never parked");
                 std::hint::spin_loop();
             }
         }

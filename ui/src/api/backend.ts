@@ -583,14 +583,19 @@ export function tauriBackend(): Backend {
 export const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 let instance: Backend | null = null;
-export async function getBackend(): Promise<Backend> {
-  if (instance) return instance;
-  if (isTauri()) instance = tauriBackend();
-  else {
-    const { MockBackend } = await import('./mock');
-    instance = new MockBackend();
-  }
-  return instance;
+let pending: Promise<Backend> | null = null;
+/** The one backend; callers racing at startup share the same instance. */
+export function getBackend(): Promise<Backend> {
+  if (instance) return Promise.resolve(instance);
+  pending ??= (async () => {
+    if (isTauri()) instance = tauriBackend();
+    else {
+      const { MockBackend } = await import('./mock');
+      instance = new MockBackend();
+    }
+    return instance;
+  })();
+  return pending;
 }
 /** Synchronous access after `getBackend()` resolved once (at startup). */
 export const be = (): Backend => {

@@ -1233,13 +1233,15 @@ export class MockBackend implements Backend {
       const v = an.curve.slice(f0, f1).filter((x): x is number => x != null).sort((x, y) => x - y);
       return v.length ? v[v.length >> 1] : null;
     };
+    // the keys the Playlist plays (the engine adds the same shift)
+    const transpose = Math.round((c.pitch ?? 0) + (c.resample ? -12 * Math.log2(Math.max(0.25, st)) : 0));
     const own = c.tune?.notes?.length ? c.tune.notes : null;
     const spans = own ?? an.notes.map(n => ({ start: n.start, end: n.end, shift: 0, gain: 0 }));
     const heard: HeardNote[] = spans.flatMap(n => {
       const f0 = Math.floor(n.start * an.rate), f1 = Math.min(an.levels.length, Math.ceil(n.end * an.rate));
       const m = median(f0, f1); if (m == null) return [];
       const lv = an.levels.slice(f0, f1).reduce((s, x) => s + x, 0) / Math.max(1, f1 - f0);
-      return [{ start: n.start, end: n.end, pitch: m + (n.shift ?? 0) / 100, level: lv * dbg(n.gain ?? 0) }];
+      return [{ start: n.start, end: n.end, pitch: m + (n.shift ?? 0) / 100 + transpose, level: lv * dbg(n.gain ?? 0) }];
     });
     const o: MelodyOptions = {
       shortest: clamp(a.shortest ?? MELODY_DEFAULTS.shortest, 0, 2), quantize: clamp(a.quantize ?? 0, 0, 16),
@@ -1687,6 +1689,7 @@ export class MockBackend implements Backend {
       case 'unmask': {
         const c: Collision = { masker: num('masker'), protect: num('protect'), lo: num('lo'), hi: num('hi'), center: 0, overlap: 0, keyDb: num('keyDb') };
         if (!(c.lo > 0 && c.hi > c.lo && c.hi <= 24000)) throw new Error('`lo` and `hi` must be frequencies with lo < hi');
+        if (c.keyDb < -120 || c.keyDb > 24) throw new Error('`keyDb` must be a level in dBFS');
         for (const id of [c.masker, c.protect]) if (id === 0 || !this.p.inserts.some(m => m.id === id)) throw new Error(`insert ${id} is not a mixer insert`);
         const masker = this.p.inserts.find(m => m.id === c.masker)!, protect = this.p.inserts.find(m => m.id === c.protect)!;
         if (keyedFrom(masker, c.protect) || keyedFrom(protect, c.masker)) throw new Error('This pair already has a ducking sidechain; adjust the existing effect instead');

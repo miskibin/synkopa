@@ -112,6 +112,10 @@ pub fn activate_notes(engine: &Engine) -> Result<bool, String> {
 /// Downloads the note model's archive (SHA-256 checked), unpacks its files and removes the
 /// archive.
 pub fn install_notes(progress: impl Fn(u64, u64)) -> Result<(), String> {
+    // one install at a time (the app's button and `synkopa note-model --install` may race): the
+    // second waits, then finds the model installed instead of unpacking over the first
+    static INSTALL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one = INSTALL.lock().unwrap_or_else(|e| e.into_inner());
     let dir = wave_game::model_dir();
     if wave_game::installed(&dir) {
         return Ok(());

@@ -226,6 +226,9 @@ pub struct Detector {
     flags: HashMap<(usize, usize), Flag>,
     /// `reach[a][b]`: insert `a` is `b` or feeds it through sends (by lane).
     reach: Vec<Vec<bool>>,
+    /// `gives_way[a][b]`: lane `a` already ducks for an insert that feeds lane `b` (the 808 keyed
+    /// from the kick, against the drum bus the kick goes into): the pair is not reported again.
+    gives_way: Vec<Vec<bool>>,
     evals: u64,
     fft: Spectrum,
     raw: [f32; NB],
@@ -243,6 +246,7 @@ impl Detector {
             heard: HashMap::new(),
             flags: HashMap::new(),
             reach: vec![],
+            gives_way: vec![],
             evals: 0,
             fft: Spectrum::new(sr),
             raw: [0.0; NB],
@@ -292,6 +296,17 @@ impl Detector {
         }
         self.keyed = keyed;
         self.reach = p.inserts.iter().map(|a| p.inserts.iter().map(|b| crate::routing::reaches(p, a.id, b.id)).collect()).collect();
+        self.gives_way = p
+            .inserts
+            .iter()
+            .map(|a| {
+                p.inserts
+                    .iter()
+                    .enumerate()
+                    .map(|(j, b)| p.inserts.iter().enumerate().any(|(k, key)| key.id != b.id && self.reach[k][j] && keyed_from(a, key.id)))
+                    .collect()
+            })
+            .collect();
         let keep: HashSet<(usize, usize)> = self.pairs.iter().copied().collect();
         self.scores.retain(|k, _| keep.contains(k));
         self.heard.retain(|k, _| keep.contains(k));
@@ -406,16 +421,21 @@ impl Detector {
             (Some(a), Some(b)) => self.reach.get(a).and_then(|r| r.get(b)).copied().unwrap_or(false),
             _ => false,
         };
+        let gives_way = |a: Id, b: Id| match (lane(a), lane(b)) {
+            (Some(a), Some(b)) => self.gives_way.get(a).and_then(|r| r.get(b)).copied().unwrap_or(false),
+            _ => false,
+        };
         all.iter()
             .filter(|c| {
-                !all.iter().any(|d| {
-                    !std::ptr::eq(*c, d)
-                        && (d.masker, d.protect) != (c.masker, c.protect)
-                        && feeds(d.masker, c.masker)
-                        && feeds(d.protect, c.protect)
-                        && d.lo < c.hi
-                        && c.lo < d.hi
-                })
+                !gives_way(c.masker, c.protect)
+                    && !all.iter().any(|d| {
+                        !std::ptr::eq(*c, d)
+                            && (d.masker, d.protect) != (c.masker, c.protect)
+                            && feeds(d.masker, c.masker)
+                            && feeds(d.protect, c.protect)
+                            && d.lo < c.hi
+                            && c.lo < d.hi
+                    })
             })
             .cloned()
             .collect()

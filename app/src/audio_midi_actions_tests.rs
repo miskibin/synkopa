@@ -118,3 +118,17 @@ fn refuses_what_it_cannot_convert() {
     assert!(doc.call("audio_to_midi", &json!({ "clipId": clip, "low": 100 }), None).unwrap_err().contains("no notes"));
     assert_eq!(doc.revision(), rev);
 }
+
+#[test]
+fn a_transposed_clip_converts_to_the_keys_the_playlist_plays() {
+    let d = tmp("transposed");
+    let (doc, clip) = project(&d);
+    let p = doc.call("context", &json!({ "full": true }), None).unwrap();
+    let mut c = p["project"]["clips"].as_array().unwrap().iter().find(|x| x["id"] == clip).unwrap().clone();
+    c["pitch"] = json!(3.0);
+    doc.call("apply", &json!({ "ops": [{ "op": "putClips", "clips": [c] }] }), None).unwrap();
+    let pv = doc.call("audio_to_midi", &json!({ "clipId": clip, "preview": true }), None).unwrap();
+    assert_eq!(keys(&pv), [63, 67, 70, 75, 70], "{pv:#}");
+    assert_eq!(pv["takeRange"], json!([63, 75]));
+    let _ = std::fs::remove_dir_all(&d);
+}

@@ -4,7 +4,7 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.35 — 2026-11-25
 
 ### Added
 - **Better notes from singing.** Pitch Editor → **Better notes (46 MB)** downloads GAME, a neural
@@ -87,6 +87,34 @@ shown in the app after an update and is published as the release notes (see
 - **A clearer Piano roll grid:** black-key rows are a shade darker than white-key rows (also with a
   song key set, which used to hide the difference), every row has a fine seam with a stronger one
   under each C, and bar lines stand out over quieter beat and 16th lines, in every theme.
+- **Pattern clips follow their pattern.** Making a pattern longer stretches its clips on the Playlist
+  up to the next clip on the track, making it shorter shortens them, and a pattern clip no longer
+  plays past the pattern's end.
+- **Dialogs keep the keyboard to themselves.** Tab cycles inside the open dialog, Esc closes it and
+  focus goes back where it was, and shortcuts no longer reach the song behind it. Every dialog has
+  the same look.
+- **Easier to read and hit.** The smallest text is now 10 px, and toolbar buttons are clickable over
+  their full height. The update status sits beside Follow in the toolbar, so the status line keeps
+  its room for hints.
+
+### Fixed
+- **Master with Level match on** now reaches the loudness target when it listens; before, it set
+  itself too quiet and said the target could not be reached.
+- **Stop on a Master listen** works as soon as the button appears, also while the listen is still
+  waiting for an edit to finish.
+- **Mix assistant switched off in Settings stays off** after a restart (it used to start listening
+  again while Settings said off).
+- **Mix assistant: one fix per clash.** After *Make room* ducks the 808 under the kick, the same clash
+  no longer comes back against the bus the kick feeds, offering a second ducking EQ.
+- **Convert to MIDI on a transposed clip** writes the keys you hear: the clip's own transpose and the
+  octave a resampled stretch moves are included, as in Chords to Pattern.
+- **Convert to MIDI opens faster on a clip not analysed yet:** the take is analysed once, instead of
+  once for the dialog and again for each preview.
+- **Channel loops:** MIDI export keeps every note of the last repeat, and Ctrl+Shift+←/→ shifts a
+  looped channel within its loop.
+- **Downloads:** a library kit download larger than expected is stopped instead of filling the
+  memory, and two note-model installs at once (the app and `synkopa note-model --install`) no
+  longer clash.
 
 ## 0.9.34 — 2026-11-24
 

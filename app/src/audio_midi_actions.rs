@@ -74,11 +74,15 @@ pub fn audio_to_midi(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<V
     let region = v.region();
     let stats = wave_engine::pitch_api::note_stats(&v.analysis, &v.notes, &v.out);
     let rate = v.analysis.rate as f64;
+    // the keys the Playlist plays: the clip's own transpose and, for a resampled stretch, the
+    // octaves its speed moves (the same shift Chords to Pattern applies)
+    let speed = if v.clip.resample { -12.0 * v.clip.stretch.max(wave_engine::model::STRETCH_MIN).log2() } else { 0.0 };
+    let transpose = (f64::from(v.clip.pitch) + speed).round() as f32;
     let heard: Vec<HeardNote> = stats
         .iter()
         .zip(&v.notes)
         .filter_map(|(s, n)| {
-            let pitch = s.out.or(s.sung)?;
+            let pitch = s.out.or(s.sung)? + transpose;
             let (f0, f1) = ((n.start * rate) as usize, ((n.end * rate).ceil() as usize).min(v.analysis.levels.len()));
             let lv = v.analysis.levels.get(f0..f1).filter(|l| !l.is_empty()).map(|l| l.iter().sum::<f32>() / l.len() as f32).unwrap_or(0.0);
             Some(HeardNote { start: n.start, end: n.end, pitch, level: lv * 10f32.powf(n.gain / 20.0) })

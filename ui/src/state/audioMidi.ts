@@ -45,6 +45,9 @@ export const AMIDI = st;
 
 let seq = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
+/** The clip's pitch analysis, started once when the dialog opens. Previews wait for it, so a
+ *  clip not analysed yet is analysed once, not once per preview (each a multi-second job). */
+let analysed: Promise<unknown> = Promise.resolve();
 
 const args = (clipId: Id) => ({ clipId, ...st.opts });
 
@@ -53,6 +56,9 @@ async function refresh() {
   const my = ++seq;
   setSt({ loading: true });
   try {
+    await analysed.catch(() => {});
+    // settings changed while the analysis ran: only the latest preview is worth asking for
+    if (my !== seq) return;
     const r = await be().audioToMidi({ ...args(clipId), preview: true });
     if (my === seq) setSt({ preview: r, error: null, loading: false });
   } catch (e) {
@@ -66,8 +72,8 @@ export function openAudioMidi(clipId: Id) {
   if (!c || c.kind !== 'audio') return;
   const keepChannel = st.opts.channel != null && (S.project.channels ?? []).some(ch => ch.id === st.opts.channel);
   setSt({ win: clipId, preview: null, curve: null, error: null, busy: false, opts: { ...st.opts, low: null, high: null, channel: keepChannel ? st.opts.channel : null } });
+  analysed = be().pitchAnalyze(clipId).then(a => { if (st.win === clipId) setSt('curve', a); });
   void refresh();
-  be().pitchAnalyze(clipId).then(a => { if (st.win === clipId) setSt('curve', a); }).catch(() => {});
 }
 export const closeAudioMidi = () => { seq++; setSt({ win: null, preview: null, curve: null }); };
 
