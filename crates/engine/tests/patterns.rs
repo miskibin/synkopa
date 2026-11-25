@@ -719,6 +719,7 @@ fn a_shrinking_pattern_cuts_back_partial_clips_within_it() {
     assert_eq!(p.patterns[0].len, 4.0);
     assert_eq!(p.clips[0].len, 4.0);
     assert_eq!((p.clips[1].offset, p.clips[1].len), (2.0, 2.0), "pattern length minus the offset");
+}
 
 // ---- Per-channel loops (FL Studio 20.1's channel looping)
 
@@ -844,5 +845,4 @@ fn removing_a_channel_removes_its_loop_entries() {
     let e = Engine::new(pt, Arc::new(NoPlugins));
     e.apply(&[Op::RemoveChannel { id: h }], false, None).unwrap();
     assert!(e.project().patterns.iter().all(|p| p.channel_loops.is_empty()));
-
 }
