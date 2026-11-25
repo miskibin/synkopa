@@ -52,6 +52,9 @@ export function KeysPanel(props: { c: KeysChannel }) {
   /** Kits being downloaded and their progress 0..1. */
   const [dl, setDl] = createSignal<Record<string, number>>({});
   const [err, setErr] = createSignal<string | null>(null);
+  /** A kit download's failure, kept apart from `err`: a successful status fetch (which clears
+   *  `err`) must not dismiss a download that still needs its Retry. */
+  const [dlErr, setDlErr] = createSignal<string | null>(null);
   /** The instrument's face, or the library (it stays open while you click through instruments). */
   const [view, setView] = createSignal<'face' | 'lib'>('face');
   // a successful status fetch clears a stale error (a Retry that lands must dismiss the banner)
@@ -68,7 +71,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
       be().on('keys-status', setSt),
       be().on('library-progress', p => {
         if (dl()[p.id] == null) return;
-        if (p.error) { setKit(p.id, null); setErr(p.error); return; }
+        if (p.error) { setKit(p.id, null); setDlErr(p.error); return; }
         if (p.total) setKit(p.id, p.done / p.total);
         if (p.total && p.done >= p.total) { setKit(p.id, null); refresh(); }
       }),
@@ -84,9 +87,9 @@ export function KeysPanel(props: { c: KeysChannel }) {
 
   const download = async (i: KeysInstrument) => {
     if (dl()[i.kit] != null) return;
-    setErr(null); setKit(i.kit, 0);
+    setErr(null); setDlErr(null); setKit(i.kit, 0);
     try { await be().libraryInstall(i.kit); say(t('b.kp.downloaded', { name: i.name })); }
-    catch (e) { setErr(String(e)); }
+    catch (e) { setDlErr(String(e)); }
     finally { setKit(i.kit, null); refresh(); }
   };
   // a failed load is tried again by the app; a failed download is downloaded again; with no
@@ -95,10 +98,10 @@ export function KeysPanel(props: { c: KeysChannel }) {
     const i = cur();
     if (!i) return refresh();
     if (!i.installed) return download(i);
-    setErr(null);
+    setErr(null); setDlErr(null);
     void be().keysRetry(instId()).then(setSt).catch(e => setErr(String(e)));
   };
-  const pick = (i: KeysInstrument) => { setErr(null); setKeysInstrument(props.c.id, i.id); };
+  const pick = (i: KeysInstrument) => { setErr(null); setDlErr(null); setKeysInstrument(props.c.id, i.id); };
   /** The instrument `d` places from the current one in the catalog's order (wrapping). */
   const step = (d: number) => {
     const list = all(); if (!list.length) return;
@@ -137,7 +140,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
   const busyOf = (i: KeysInstrument | null) => (i ? dl()[i.kit] ?? null : null);
   const busy = () => busyOf(cur());
   const missing = () => !!cur() && !cur()!.installed;
-  const failed = () => err() ?? (state() === 'error' ? cur()?.error ?? t('b.kp.loadFail') : null);
+  const failed = () => err() ?? dlErr() ?? (state() === 'error' ? cur()?.error ?? t('b.kp.loadFail') : null);
   const badge = () => {
     if (busy() != null) return { cls: 'busy', text: Math.round(busy()! * 100) + ' %' };
     switch (state()) {
@@ -247,7 +250,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
           <Show when={failed()}>
             {m => <div class="keysmsg bad"><span>{m()}</span><button class="smallbtn" onClick={retry}>{t('b.kp.retry')}</button></div>}
           </Show>
-          <Show when={!err() && state() === 'idle' && all().length === 0}>
+          <Show when={st() != null && !err() && state() === 'idle' && all().length === 0}>
             <div class="keysmsg"><span>{t('b.kp.libEmpty')}</span></div>
           </Show>
 
@@ -342,7 +345,7 @@ export function KeysPanel(props: { c: KeysChannel }) {
               </div>
             )}</Show>}</For>
           </div>
-          <Show when={!err() && all().length === 0}>
+          <Show when={st() != null && !err() && all().length === 0}>
             <div class="keysmsg">{t('b.kp.libEmpty')}</div>
           </Show>
           <Show when={err()}>{m => <div class="keysmsg bad klib-err"><span>{m()}</span></div>}</Show>

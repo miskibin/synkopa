@@ -41,8 +41,19 @@ export function KeyBadge(props: { class?: string; onPicked?: (el: HTMLElement) =
   effect(() => {
     if (!open()) return;
     const away = (e: PointerEvent) => { if (!box.contains(e.target as Node)) setOpen(null); };
+    // Esc dismisses the picker no matter where the keyboard lives (after a pick the roll's grid
+    // has it, and the window's own Escape clears the note selection): capture here, first
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      setOpen(null);
+    };
     document.addEventListener('pointerdown', away, true);
-    onCleanup(() => document.removeEventListener('pointerdown', away, true));
+    document.addEventListener('keydown', esc, true);
+    onCleanup(() => {
+      document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', esc, true);
+    });
   });
   const toggle = (el: HTMLElement) => {
     if (open()) return setOpen(null);
@@ -65,8 +76,7 @@ export function KeyBadge(props: { class?: string; onPicked?: (el: HTMLElement) =
         <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
       </button>
       <Show when={open()}>{pos => (
-        <div class="toolpop keypop" role="dialog" aria-label={t('b.pr.songKey')} style={{ position: 'fixed', left: pos().x + 'px', top: pos().y + 'px', right: 'auto' }}
-          onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(null); } }}>
+        <div class="toolpop keypop" role="dialog" aria-label={t('b.pr.songKey')} style={{ position: 'fixed', left: pos().x + 'px', top: pos().y + 'px', right: 'auto' }}>
           <div class="tphd">{t('b.pr.songKey')}</div>
           <div class="rootgrid" role="radiogroup">
             <For each={NOTE_NAMES}>{(n, i) => (
