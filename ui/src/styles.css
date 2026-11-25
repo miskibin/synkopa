@@ -851,7 +851,15 @@ select option { background: var(--bg4); color: var(--fg); }
 .tbview .loopText { color: var(--green); max-width: 200px; cursor: default; }
 /* the update, a row 2 switch like Follow: coloured text, no pill; while downloading a thin bar under it fills */
 .toolbar .updsw { position: relative; flex: none; color: var(--blue-hi); }
-.toolbar .updsw.ready { color: var(--green); }
+/* ready: the one call to action on the bar, a filled green button that rings once when it appears */
+.toolbar .updsw.ready { padding: 0 10px 0 8px; border-radius: 5px; background: var(--green); color: var(--on-warm); font-weight: 600;
+  box-shadow: 0 1px 2px var(--shadow2); animation: updring 1.2s ease-out 1; }
+.toolbar .updsw.ready .lbl { font-weight: 600; }
+.toolbar .updsw.ready:hover { background: color-mix(in srgb, var(--green) 86%, #fff); color: var(--on-warm); }
+.toolbar .updsw.ready:focus-visible { outline: 2px solid var(--fg-hi); outline-offset: 1px; }
+.toolbar.f11 .updsw.ready { padding: 0 6px; }
+@keyframes updring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 70%, transparent); } 100% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--green) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .toolbar .updsw.ready { animation: none; } }
 .toolbar .updsw.busy { color: var(--fg4); }
 .toolbar .updsw.busy::after { content: ''; position: absolute; left: 6px; bottom: 2px; height: 2px; width: calc((100% - 12px) * var(--pf, 0)); border-radius: 1px; background: var(--blue); }
 .toolbar .updsw:disabled { cursor: default; }

@@ -30,6 +30,25 @@ for (const size of [{ width: 1920, height: 1080 }, { width: 1366, height: 768 },
     expect(b.x + b.width).toBeLessThanOrEqual(size.width);
     expect(b.height).toBeGreaterThanOrEqual(20); // the row 2 switches' height
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // ready is the call to action: filled with the theme's green, unlike the neutral switches beside it
+    const fill = await update.evaluate(e => getComputedStyle(e).backgroundColor);
+    const green = await page.evaluate(() => { const p = document.createElement('i'); p.style.color = 'var(--green)'; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; });
+    expect(fill).toBe(green);
+    expect(await page.locator('.tbview .follow').evaluate(e => getComputedStyle(e).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  });
+}
+
+for (const theme of ['dark', 'light']) {
+  test(`on the narrowest bar (${theme}) the ready update is a filled icon button with its name`, async ({ page }) => {
+    await page.addInitScript(th => localStorage.setItem('wave.theme', th), theme);
+    await boot(page, { width: 760, height: 600 });
+    const update = page.getByRole('button', { name: 'Restart to update' });
+    await expect(update).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.toolbar')).toHaveClass(/(^| )f11( |$)/);
+    await expect(update.locator('.lbl')).toBeHidden();
+    expect(await update.evaluate(e => getComputedStyle(e).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+    const b = (await update.boundingBox())!;
+    expect(b.x + b.width).toBeLessThanOrEqual(760);
   });
 }
 
