@@ -12,6 +12,7 @@ import { snapName, snapRes } from '../lib/snap';
 import { samePath } from '../lib/paths';
 import { keyError } from '../lib/routing';
 import { deletePoints } from '../lib/envEdit';
+import { MASTER_TARGETS } from '../lib/master';
 import { acceptReply, commit, endWheelGestures, enqueue, inGesture, projectRevision, resync } from './edit';
 import { flushNotebook } from './notebook';
 import { clearPeaks } from './peaks';
@@ -970,7 +971,9 @@ export async function masterListen(fxId: Id, target?: number) {
     const r = await enqueue(() => be().masterListen({ fxId, target, label: t('c.ms.op') }, p => setListening(m => (m[fxId] == null ? m : { ...m, [fxId]: p }))));
     await resync();
     const L = r.listen;
-    say(L.short ? t('c.ms.short', { outL: L.outLufs.toFixed(1) }) : t('c.ms.done', { outL: L.outLufs.toFixed(1), tp: L.outTp.toFixed(1) }));
+    say(L.short ? t('c.ms.short', { outL: L.outLufs.toFixed(1) })
+      : L.guarded ? t('c.ms.doneGuard', { outL: L.outLufs.toFixed(1), target: MASTER_TARGETS[L.target] ?? -12 })
+      : t('c.ms.done', { outL: L.outLufs.toFixed(1), tp: L.outTp.toFixed(1) }));
   } catch (e) {
     const m = String((e as Error)?.message ?? e);
     say(/cancel/i.test(m) ? t('c.ms.cancelled') : t('c.ms.failed', { e: m }));

@@ -836,6 +836,7 @@ export class MockBackend implements Backend {
       for (let b = 0; b < 3; b++) {
         const thr = pr[['tl', 'tm', 'th'][b]] ?? 0, lvl = inL + 2 - 4 * b;
         meters[b] = level > 0 && thr < 0 ? Math.min(0, Math.max(0, lvl - thr) * (1 / ratio - 1)) : 0;
+        meters[8 + b] = level > 0 ? lvl + 4 * pulse : -120;
       }
       const over = level > 0 ? Math.max(0, lvDb + 0.6 + drive - ceil) : 0, clipShare = (pr.clip ?? 0) / 100 * 0.4;
       meters[3] = -over * clipShare; meters[4] = -over * (1 - clipShare);
@@ -1430,16 +1431,20 @@ export class MockBackend implements Backend {
       onProgress?.(p);
     }
     const target = a.target ?? Math.round(f.params.target ?? 2);
-    const goal = MASTER_TARGETS[target];
+    const asked = MASTER_TARGETS[target];
+    // the engine's clean-loudness guard: this typical mix peaks 16.3 dB over its loudness
+    const cut = 16.3 - ((f.params.ceil ?? -1) - asked), guarded = cut > 7.5;
+    const goal = Math.round((guarded ? asked - (cut - 7.5) : asked) * 10) / 10;
     const balance = THIRDS.map(fq => Math.round(((fq >= 125 && fq <= 315 ? 3.6 : 0) + (fq >= 8000 ? -4.2 : 0) + (fq < 40 ? -6 : 0)) * 10) / 10);
-    const params: Record<string, number> = { ...f.params, target, tone: 100, sub: 0, low: -0.6, mid: 0, pres: 0, air: 0.6, tl: -24.5, tm: -27.1, th: -33.8, ratio: 2, mono: 0, clip: 30 };
+    const params: Record<string, number> = { ...f.params, target, tone: 100, sub: 0, low: -0.6, mid: 0, pres: 0, air: 0.6, tl: -24.5, tm: -27.1, th: -33.8, ratio: 2, wl: 50, wm: 100, wh: 120, clip: 26 };
     params.drive = Math.round(Math.max(0, Math.min(24, goal + 18.4 + 1.2)) * 100) / 100;
     const ceil = params.ceil ?? -1;
     const listen = {
       seconds: Math.round(this.songEnd() * 60 / this.p.bpm * 10) / 10, target,
       inLufs: -18.4, inTp: -2.1, inLra: 7.2, outLufs: goal, outTp: Math.min(ceil, -0.1) - 0.1, outLra: 5.1,
       balance, balanceOut: balance.map((v, i) => Math.round((v + toneDb(params, THIRDS[i])) * 10) / 10), short: false,
-      peakCut: Math.max(0, Math.round((16.3 - (ceil - goal)) * 10) / 10),
+      peakCut: Math.max(0, Math.round(cut * 10) / 10),
+      guarded, aim: goal,
     };
     if (this.revision !== base) throw new Error(`${ERR_REVISION_CONFLICT} the project changed while the Master was listening; listen again`);
     const fx: Fx = { ...structuredClone(f), params, listen, preset: null };

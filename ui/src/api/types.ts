@@ -75,8 +75,12 @@ export interface MasterListen {
   balanceOut: number[];
   /** The target was out of the limiter's reach. */
   short?: boolean;
-  /** How far the peaks had to come down for the target, dB (> `HEAVY_CUT_DB` sounds squashed). */
+  /** How far the peaks would have to come down for the target, dB. */
   peakCut?: number;
+  /** The target needed more than `MAX_CLEAN_CUT_DB` of peak cut: the listen aimed at `aim` instead. */
+  guarded?: boolean;
+  /** The loudness the settings were made for (the target, or the loudest clean level). */
+  aim?: number;
 }
 
 /** The reply of `master_listen`. */

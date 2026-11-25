@@ -22,8 +22,10 @@
 //!    threshold is the one at which that band's louder half (of its active part: within 20 dB of
 //!    its loud level) gets 1.5 dB of 2:1 on average — the same amount in every band, so the glue
 //!    holds the song together without tilting it — but never more than 10 dB under the band's
-//!    loud level, so a band of short hits is not squashed on its peaks. A low band with a lot of side energy
-//!    (> −15 dB against the mid) gets bass mono.
+//!    loud level, so a band of short hits is not squashed on its peaks.
+//!
+//!    **Width per band** comes from each band's side-to-mid energy ([`band_widths`]): wide lows
+//!    go mono, phasey mids narrow a little, narrow highs open up (≤ 130 %).
 //! 4. **Clipper and loudness.** From the song's peak-to-loudness ratio and the target's, the
 //!    peak reduction the master must do is known; when it is more than 2 dB the clipper takes the
 //!    tallest transients of it (FL- and Ableton-style "clip, then limit"), so the limiter does not
@@ -75,14 +77,43 @@ const TONE_FIT: [(f64, f64, f64, f64, f64, f64); 5] = [
     (8000.0, 12500.0, 3.0, 3.0, 3.0, 3.0),
 ];
 const TONE_SHARE: f64 = 0.5;
-/// Low-band side energy (against mid) above which bass mono is switched on.
-const MONO_SIDE_DB: f32 = -15.0;
+/// The band widths (%) for the stereo the song arrives with (side against mid energy per band,
+/// dB). Mastering practice: the lows go narrow or mono when they carry real side energy
+/// (phase trouble on mono systems, a wandering kick), the mids stay, unless they are so wide
+/// they are phasey, and narrow highs open up a little — never past 130 %, so the mono fold-down
+/// loses at most a fraction of a dB of the highs' level.
+pub fn band_widths(side_db: [f32; 3]) -> [f64; 3] {
+    let lo = if side_db[0] > -15.0 {
+        0.0
+    } else if side_db[0] > -25.0 {
+        50.0
+    } else {
+        100.0
+    };
+    let mid = if side_db[1] > -3.0 { 85.0 } else { 100.0 };
+    let hi = if side_db[2] < -18.0 {
+        130.0
+    } else if side_db[2] < -12.0 {
+        120.0
+    } else if side_db[2] < -8.0 {
+        110.0
+    } else {
+        100.0
+    };
+    [lo, mid, hi]
+}
 const RATIO: f64 = 2.0;
 /// Most limiter input gain (= the parameter's range).
 const DRIVE_MAX: f64 = 24.0;
 const TOLERANCE_LU: f64 = 0.1;
-/// Peak reduction (dB) past which a master is audibly squashed: the report flags it.
-pub const HEAVY_CUT_DB: f64 = 8.0;
+/// Most peak reduction (clipper + limiter, dB) the assistant asks for. Past it a master is
+/// audibly squashed (listening tests on a trap mix: 6.7 dB clean, 8.7 dB crunchy and pumping),
+/// so a louder target stops here and says so; the Loudness knob still goes further by hand.
+pub const MAX_CLEAN_CUT_DB: f64 = 7.5;
+/// The clipper takes this share of the peak reduction beyond its first 2 dB, at most
+/// [`MAX_CLIP`] % (67 % crunched the 808; 30 % relieved the limiter without grit).
+const CLIP_PER_DB: f64 = 6.0;
+const MAX_CLIP: f64 = 35.0;
 const MAX_RENDERS: usize = 7;
 
 /// Integrated loudness, true peak, loudness range of a stereo signal. `None` = silent.
@@ -210,6 +241,24 @@ pub fn spectrum(l: &[f32], r: &[f32], sr: f32) -> Vec<f64> {
             10.0 * p.max(1e-30).log10()
         })
         .collect()
+}
+
+/// The song's recurring peak level, dBFS: the largest sample peak of 50 ms blocks once the top
+/// 0.5 % of blocks are set aside.
+pub fn robust_peak_db(l: &[f32], r: &[f32], sr: f32) -> f64 {
+    let hop = ((sr * 0.05) as usize).max(1);
+    let n = l.len().min(r.len());
+    let mut pk: Vec<f32> = (0..n)
+        .step_by(hop)
+        .map(|i| l[i..(i + hop).min(n)].iter().chain(&r[i..(i + hop).min(n)]).fold(0f32, |m, v| m.max(v.abs())))
+        .filter(|p| *p > 1e-6)
+        .collect();
+    if pk.is_empty() {
+        return f64::from(crate::dsp::loudness::FLOOR);
+    }
+    pk.sort_by(f32::total_cmp);
+    let p = pk[((pk.len() - 1) as f64 * 0.995) as usize];
+    20.0 * f64::from(p).log10()
 }
 
 /// `spectrum` minus the reference balance, levelled over 100 Hz–5 kHz.
@@ -349,7 +398,9 @@ pub fn listen(
     let bal = balance(&spectrum(l, r, sr));
     let tone = tone_gains(&bal);
     let mut p = crate::catalog::default_params(FxKind::Master);
-    for k in ["ceil", "xlo", "xhi", "width", "match"] {
+    // the user's own choices the listen builds on: the ceiling, where the bands split, the band
+    // levels they set and how they compare
+    for k in ["ceil", "xlo", "xhi", "match", "gl", "gm", "gh"] {
         if let Some(v) = current.get(k) {
             p.insert(k.into(), *v);
         }
@@ -360,13 +411,15 @@ pub fn listen(
         p.insert((*k).into(), g);
     }
     check(0.12, progress)?;
-    // glue thresholds and bass mono from the toned song
+    // glue thresholds and band widths from the toned song
     let trace = master::band_trace(l, r, sr, &block_of(&p));
     for (k, lv) in ["tl", "tm", "th"].iter().zip(&trace.levels) {
         p.insert((*k).into(), threshold(lv, RATIO));
     }
     p.insert("ratio".into(), RATIO);
-    p.insert("mono".into(), if trace.low_side_db > MONO_SIDE_DB { 1.0 } else { 0.0 });
+    for (k, w) in ["wl", "wm", "wh"].iter().zip(band_widths(trace.side_db)) {
+        p.insert((*k).into(), w);
+    }
     check(0.25, progress)?;
     let ceil = p.get("ceil").copied().unwrap_or(-1.0);
     let render = |p: &BTreeMap<String, f64>| {
@@ -376,8 +429,14 @@ pub fn listen(
     };
     // the clipper's share from the peak-to-loudness ratio the song arrives with (the limiter is
     // in every render, so the reduction it will do is read from the input, before it)
-    let reduction = (in_tp - in_lufs) - (ceil - goal);
-    let clip = if reduction > 2.0 { ((reduction - 2.0) * 10.0).clamp(0.0, 70.0).round() } else { 0.0 };
+    // the peaks that recur (a stray spike must not decide how loud the song can go)
+    let peak = robust_peak_db(l, r, sr).min(in_tp);
+    let need = (peak - in_lufs) - (ceil - goal);
+    // a target that needs more than stays clean is lowered to the loudest clean level
+    let guarded = need > MAX_CLEAN_CUT_DB;
+    let goal = if guarded { ceil - (peak - in_lufs - MAX_CLEAN_CUT_DB) } else { goal };
+    let reduction = need.min(MAX_CLEAN_CUT_DB);
+    let clip = if reduction > 2.0 { ((reduction - 2.0) * CLIP_PER_DB).clamp(0.0, MAX_CLIP).round() } else { 0.0 };
     p.insert("clip".into(), clip);
     p.insert("drive".into(), 0.0);
     let (_, _, m0) = render(&p);
@@ -451,7 +510,9 @@ pub fn listen(
             balance: bal.iter().map(|v| round(*v)).collect(),
             balance_out: bal_out.iter().map(|v| round(*v)).collect(),
             short: out_lufs < goal - 0.5,
-            peak_cut: round(reduction.max(0.0)),
+            peak_cut: round(need.max(0.0)),
+            guarded,
+            aim: round(goal),
         },
         params: p,
     })

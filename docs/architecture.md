@@ -434,7 +434,7 @@ envelope follower, `docs/gate-filter.md`), `stereo` (width,
 mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
 compression, the OTT sound, `dsp/multiband.rs`), `master` (tone EQ, three-band glue with width and bass mono, 2×
 soft clipper, true-peak limiter, level match; `dsp/master.rs`, set by a whole-song listen in `mastering.rs` through
-the `master_listen` action, which stores its report in `Fx.listen`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
+the `master_listen` action, which stores its report in `Fx.listen`; a target that needs more than 7.5 dB of peak cut is lowered to the loudest clean level: `guarded`, `aim`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
 field; the sound passes unchanged, `dsp/loudness.rs`), `reverb`, `limit`,
 `plugin` (a hosted VST3 or LV2 effect: `plugin: {format,path,cid,name,vendor,state}`, see
 [Hosted plugins](#hosted-plugins); files from before LV2 support say `vst3`, which still loads

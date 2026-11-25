@@ -333,10 +333,14 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         p("tm", "Mid thresh", -40.0, 0.0, 0.0, "dB", false),
         p("th", "High thresh", -40.0, 0.0, 0.0, "dB", false),
         p("ratio", "Ratio", 1.0, 4.0, 2.0, ":1", false),
-        p("width", "Width", 0.0, 150.0, 100.0, "%", false),
-        choice("mono", "Bass mono", 0.0, &["Off", "On"]),
+        p("wl", "Low width", 0.0, 150.0, 100.0, "%", false),
+        p("wm", "Mid width", 0.0, 150.0, 100.0, "%", false),
+        p("wh", "High width", 0.0, 150.0, 100.0, "%", false),
         p("clip", "Clip", 0.0, 100.0, 0.0, "%", false),
         choice("match", "Level match", 0.0, &["Off", "On"]),
+        p("gl", "Low level", -12.0, 12.0, 0.0, "dB", false),
+        p("gm", "Mid level", -12.0, 12.0, 0.0, "dB", false),
+        p("gh", "High level", -12.0, 12.0, 0.0, "dB", false),
     ];
     match kind {
         FxKind::Master => MASTER,

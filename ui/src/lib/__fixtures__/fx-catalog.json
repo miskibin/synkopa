@@ -4265,25 +4265,30 @@
         },
         {
           "def": 100.0,
-          "id": "width",
-          "label": "Width",
+          "id": "wl",
+          "label": "Low width",
           "log": false,
           "max": 150.0,
           "min": 0.0,
           "unit": "%"
         },
         {
-          "def": 0.0,
-          "id": "mono",
-          "label": "Bass mono",
+          "def": 100.0,
+          "id": "wm",
+          "label": "Mid width",
           "log": false,
-          "max": 1.0,
+          "max": 150.0,
           "min": 0.0,
-          "options": [
-            "Off",
-            "On"
-          ],
-          "unit": ""
+          "unit": "%"
+        },
+        {
+          "def": 100.0,
+          "id": "wh",
+          "label": "High width",
+          "log": false,
+          "max": 150.0,
+          "min": 0.0,
+          "unit": "%"
         },
         {
           "def": 0.0,
@@ -4306,6 +4311,33 @@
             "On"
           ],
           "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "gl",
+          "label": "Low level",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "gm",
+          "label": "Mid level",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "gh",
+          "label": "High level",
+          "log": false,
+          "max": 12.0,
+          "min": -12.0,
+          "unit": "dB"
         }
       ]
     },

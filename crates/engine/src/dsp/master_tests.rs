@@ -128,7 +128,7 @@ fn bass_mono_folds_the_low_band_only() {
     let hi = sine(5000.0, -12.0, 1.0);
     let l: Vec<f32> = lo.iter().zip(&hi).map(|(a, b)| a + b).collect();
     let r: Vec<f32> = hi.clone();
-    let (ol, or, _) = run(&[(idx::MONO, 1.0)], &l, &r);
+    let (ol, or, _) = run(&[(idx::WIDTH, 0.0)], &l, &r);
     let diff: Vec<f32> = ol.iter().zip(&or).map(|(a, b)| a - b).collect();
     // a mono low band leaves no difference between the channels (the 5 kHz part is identical in
     // both); what is left is the 50 Hz that leaks through the 24 dB/oct crossover's upper side
@@ -193,5 +193,46 @@ fn the_clipper_leaves_the_highs_alone() {
         let rel = 10.0 * (at(side) / tone).log10();
         // what is left is the hat's −40 dB copy the 24 dB/oct crossover leaves in the mid band
         assert!(rel < -50.0, "sideband at {side} Hz: {rel:.1} dB under the hat");
+    }
+}
+
+#[test]
+fn band_levels_move_their_band_only() {
+    for (hz, b) in [(50.0, 0usize), (800.0, 1), (9000.0, 2)] {
+        let x = sine(hz, -24.0, 1.0);
+        let (o0, _, _) = run(&[], &x, &x);
+        let (o1, _, _) = run(&[(idx::BAND_GAIN + b, 6.0)], &x, &x);
+        let (o2, _, _) = run(&[(idx::BAND_GAIN + (b + 1) % 3, 6.0)], &x, &x);
+        let d = rms_db(&o1[24000..]) - rms_db(&o0[24000..]);
+        let other = rms_db(&o2[24000..]) - rms_db(&o0[24000..]);
+        assert!((d - 6.0).abs() < 0.3, "{hz} Hz: own band +{d:.2} dB");
+        assert!(other.abs() < 0.3, "{hz} Hz: another band's level moved it {other:.2} dB");
+    }
+}
+
+#[test]
+fn each_band_has_its_own_width() {
+    // a wide signal in every band (opposite-polarity sines in L and R): widening only the highs
+    // and narrowing only the lows changes the side energy of those bands alone
+    let side_in = |hz: f32| -> (Vec<f32>, Vec<f32>) {
+        let x = sine(hz, -18.0, 1.0);
+        (x.clone(), x.iter().map(|v| -v * 0.5).collect())
+    };
+    let side_db = |l: &[f32], r: &[f32]| {
+        let s: Vec<f32> = l.iter().zip(r).map(|(a, b)| 0.5 * (a - b)).collect();
+        rms_db(&s[24000..])
+    };
+    for (hz, band, want) in [(50.0, 0usize, 0.0f32), (800.0, 1, 100.0), (9000.0, 2, 150.0)] {
+        let (l, r) = side_in(hz);
+        let (ol0, or0, _) = run(&[], &l, &r);
+        let w = [(idx::WIDTH, 0.0), (idx::WIDTH + 1, 100.0), (idx::WIDTH + 2, 150.0)];
+        let (ol, or, _) = run(&w, &l, &r);
+        let d = side_db(&ol, &or) - side_db(&ol0, &or0);
+        let expect = if want <= 0.0 { f32::NEG_INFINITY } else { 20.0 * (want / 100.0).log10() };
+        if expect.is_finite() {
+            assert!((d - expect).abs() < 0.3, "band {band} at {hz} Hz: side {d:.2} dB, want {expect:.2}");
+        } else {
+            assert!(d < -25.0, "band {band} at {hz} Hz: side only {d:.2} dB down at 0 %");
+        }
     }
 }

@@ -20,6 +20,21 @@ shown in the app after an update and is published as the release notes (see
   the shortest note kept, timing as sung or on a grid, velocity following the singing or fixed, and a
   key range that drops octave slips. Pitch edits on the clip are included. Also `synkopa audio-to-midi`.
 
+- **Master: a richer, hands-on display.** Drag the five blue dots on the balance graph to shape the
+  tone EQ, the dashed lines to move the glue's crossovers, and the orange marks to set each band's
+  glue threshold (double-click resets); hovering reads the mix, the master and the EQ at that
+  frequency. A Maximus-style column shows each band's level against its threshold and the reduction
+  it gets, and a ten-second history shows the peaks in and out with the clipper and limiter at work.
+- **Master: stereo width and level per band, and a calmer first view.** Like Maximus, each of the
+  three bands has its own width (keep the lows tight or mono, open the highs) and its own level;
+  the listen sets the widths from how wide each band arrives (wide lows go mono, narrow highs open
+  up to 130 %). The first view shows only loudness, tone, glue, width and the comparison; the
+  tone bands, band levels, thresholds, crossovers and clipper are under **Advanced** (and most can
+  be dragged in the display).
+- **Master stays clean when the target is too loud for the mix.** When reaching the target would
+  cut the song's peaks by more than 7.5 dB (audible crunch and pumping), the listen stops at the
+  loudest clean level and says so; turn Loudness up to push further. The clipper also takes a
+  smaller share (at most 35 %).
 - **Master: a mastering chain that listens to your whole song.** Put **Master** on the master
   track and it renders the song up to itself, measures it and sets itself: a gentle tone EQ
   where the balance is clearly off, three-band glue that holds the mix together without tilting
