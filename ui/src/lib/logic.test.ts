@@ -341,8 +341,14 @@ describe('formatting & eq', () => {
     expect(volText(0.7937)).toBe('0.0 dB');
     expect(volText(0)).toBe('-∞ dB');
     expect(panText(-0.25)).toBe('25L');
-    expect(fmtPos(5.5)).toBe('2.2.3');
-    expect(fmtClock(5.5)).toBe('2:02:03');
+    // one notation: bar:beat:16th, counted from 1, in the status line and on the transport
+    expect(fmtPos(5.5)).toBe('2:2:3');
+    expect(fmtPos(0)).toBe('1:1:1');
+    expect(fmtPos(4)).toBe('2:1:1');
+    expect(fmtPos(1 / 3)).toBe('1:1:2.33'); // between 16ths: the fraction, not a floor
+    expect(fmtPos(3.999)).toBe('2:1:1'); // rounding carries into the bar
+    expect(fmtClock(5.5)).toBe('2:2:3');
+    expect(fmtClock(5.6)).toBe('2:2:3'); // the counter shows the 16th being played
     expect(fmtClock(-1.2)).toBe('COUNT 2');
   });
   it('a flat EQ is flat and a bell peaks at its gain', () => {

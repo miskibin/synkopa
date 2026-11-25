@@ -989,6 +989,6 @@ function Roll(props: { z: number; docked?: boolean }) {
 
 function lastLenText() {
   if (lastTrig()) return t('b.pe.newStep');
-  const l = lastLen();
-  return l >= 4 && l % 4 === 0 ? t(l === 4 ? 'b.pe.beat1' : 'b.pe.beatN', { n: l / 4 }) : rollSnapName(l) ?? t('b.pe.stepsN', { n: +l.toFixed(2) });
+  // the Length field's notation, so the readout and the note properties agree
+  return fmtLen(lastLen());
 }
