@@ -121,6 +121,9 @@ jobs:
               $have = Get-ChildItem $sdk -Recurse -Filter *.h | Select-Object -ExpandProperty Name
               $missing = @($need | Where-Object { $_ -notin $have })
               if ($missing.Count -gt 0) { throw "the SDK is missing headers: $($missing -join ', ')" }
+              foreach ($d in 'common', 'host', 'host\pc') {
+                if (-not (Test-Path (Join-Path $sdk $d))) { throw "the SDK is missing the $d directory" }
+              }
               "CPAL_ASIO_DIR=$sdk" >> $env:GITHUB_ENV
               Write-Host "ASIO SDK ready at $sdk (attempt $try)"
               break
