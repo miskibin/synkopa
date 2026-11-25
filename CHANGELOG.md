@@ -4,6 +4,15 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Downloads work behind a company proxy.** Library kits and models used to fail with
+  "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.
+  Synkopa now trusts the Windows certificate store like your browser does, and when that is still
+  not enough, **Settings → General → Network → Ignore certificate errors** skips the check. The
+  error message points to it. Downloads are still verified against their checksums.
+
 ## 0.9.34 — 2026-11-24
 
 ### Added

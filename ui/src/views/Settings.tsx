@@ -245,6 +245,13 @@ const SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
 const RACK_SPACING_KEYS = Object.keys(RACK_SPACINGS) as RackSpacing[];
 
 function GeneralSection() {
+  // off until the saved choice arrives; a failed save puts the switch back
+  const [noCert, setNoCert] = createSignal(false);
+  onMount(() => { be().netIgnoreCertErrors().then(setNoCert).catch(() => {}); });
+  const pickNoCert = (on: boolean) => {
+    const was = noCert(); setNoCert(on);
+    be().netSetIgnoreCertErrors(on).catch(e => { setNoCert(was); say(String(e)); });
+  };
   return (
     <>
       <div class="form">
@@ -269,6 +276,10 @@ function GeneralSection() {
       <div class="form">
         <Row label={t('d.set.metro')}><OnOff on={() => S.transport.metro} set={v => void A.setTransportFlag('metro', v)} /></Row>
         <Row label={t('d.set.countin')} desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
+      </div>
+      <div class="sechd">{t('d.set.sec.net')}</div>
+      <div class="form">
+        <Row label={t('d.set.nocert')} desc={t('d.set.nocert.tip')}><OnOff on={noCert} set={pickNoCert} /></Row>
       </div>
       <div class="setfoot">
         <span class="note">{t('d.set.reset.note')}</span>
