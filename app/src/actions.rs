@@ -100,6 +100,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "audio_to_midi",
     "auto_vocal_plan",
     "auto_vocal",
+    "master_listen",
     "bake_rider",
     "midi_inspect",
     "midi_import",
@@ -181,7 +182,7 @@ pub(crate) fn opt_f64(a: &Value, k: &str) -> Option<f64> {
 
 pub fn parse_kind(s: &str) -> R<FxKind> {
     serde_json::from_value(json!(s)).map_err(|_| {
-        format!("unknown effect type `{s}` (eq, comp, gate, filter, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, fet, deess, tune, denoise, voice, rider)")
+        format!("unknown effect type `{s}` (eq, comp, gate, filter, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, master, fet, deess, tune, denoise, voice, rider)")
     })
 }
 
@@ -446,6 +447,52 @@ pub fn auto_vocal(
     }))
 }
 
+/// Set while a Master listen runs; `master_listen_cancel` raises it.
+pub static MASTER_LISTEN_CANCEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The Master's "listen to the whole song" as one action — the effect window's button, the
+/// automatic first listen when a Master is added, and `synkopa master-listen` share it: render
+/// what reaches the effect over the whole song, measure, set every control
+/// (`wave_engine::mastering`), and store the report on the effect. One undo step (`label`,
+/// default "Master: listen"). `target` overrides the effect's own Target. The apply is guarded on
+/// the revision the listen started from: a project edited meanwhile is refused (listen again)
+/// rather than given settings for a song it no longer is. `progress` gets 0..1.
+pub fn master_listen(
+    app: &dyn Host,
+    fx_id: u64,
+    target: Option<usize>,
+    if_revision: Option<u64>,
+    label: Option<&str>,
+    progress: &mut dyn FnMut(f32),
+) -> R<Value> {
+    use std::sync::atomic::Ordering::Relaxed;
+    let e = app.engine();
+    if let Some(r) = if_revision {
+        if e.revision() != r {
+            return Err(format!("{} project is at revision {}, not {r}", wave_engine::errors::ERR_REVISION_CONFLICT, e.revision()));
+        }
+    }
+    if let Some(t) = target {
+        if t >= wave_engine::dsp::master::TARGETS.len() {
+            return Err(format!("`target` is 0..{}", wave_engine::dsp::master::TARGETS.len() - 1));
+        }
+    }
+    let base = e.revision();
+    MASTER_LISTEN_CANCEL.store(false, Relaxed);
+    let got = e.master_listen(fx_id, target, &MASTER_LISTEN_CANCEL, progress).map_err(|x| x.to_string())?;
+    let p = e.project();
+    let (insert, old) = p.find_fx(fx_id).ok_or("the effect was removed while listening")?;
+    let mut fx = old.clone();
+    fx.params = got.params;
+    fx.listen = Some(got.report.clone());
+    fx.preset = None;
+    let ops = [Op::PutFx { insert_id: insert.id, fx, index: None }];
+    e.apply_labeled(&ops, false, Some(if_revision.unwrap_or(base)), Some(label.unwrap_or("Master: listen")))
+        .map_err(|x| format!("{x} (the project changed while the Master was listening; listen again)"))?;
+    let fx = e.project().find_fx(fx_id).map(|(_, f)| f.clone());
+    Ok(json!({ "revision": e.revision(), "fxId": fx_id, "fx": fx, "listen": got.report }))
+}
+
 /// The RMVPE model download as one action, the button and `synkopa f0-model-install` share:
 /// install (SHA-256 checked inside `models::install`), activate, and remember why the model
 /// still cannot be used. `progress` reports (done, total) for front doors that show a bar.
@@ -642,6 +689,7 @@ pub fn plugin_add(app: &dyn Host, insert_id: u64, format: &str, path: &str, cid:
             state: None,
         }),
         maps: None,
+        listen: None,
         key: None,
     };
     let rev = app.engine().apply(&[Op::PutFx { insert_id, fx, index }], false, None).map_err(|e| e.to_string())?;
@@ -2365,6 +2413,11 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             let no_bake = arg(a, "noBake").and_then(Value::as_bool).unwrap_or(false);
             auto_vocal(app, cid, beat, style, no_bake, if_revision, label, &|_| {})
         }
+        "master_listen" => {
+            let fx = need_u64(a, "fxId")?;
+            let target = arg(a, "target").and_then(as_index).map(|t| t as usize);
+            master_listen(app, fx, target, if_revision, label, &mut |_| {})
+        }
         "plugin_scan" => Ok(json!(plugin_scan(app, arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false))?)),
         "vst3_scan" => {
             let r = app.plugins().scan(arg(a, "rescan").and_then(Value::as_bool).unwrap_or(false));
@@ -2692,6 +2745,9 @@ mod tests {
 #[cfg(test)]
 #[path = "autovocal_actions_tests.rs"]
 mod autovocal_tests;
+#[cfg(test)]
+#[path = "master_actions_tests.rs"]
+mod master_tests;
 
 #[cfg(test)]
 #[path = "export_in_place_tests.rs"]

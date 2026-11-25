@@ -1242,6 +1242,9 @@ fn validate_fx(fx: &Fx) -> Result<(), OpError> {
         (Some(m), true) => validate_maps(m)?,
         (None, false) => {}
     }
+    if fx.listen.is_some() && fx.kind != FxKind::Master {
+        return Err(OpError::Invalid("only a Master has `listen`".into()));
+    }
     for (k, v) in &fx.params {
         if !v.is_finite() {
             return Err(OpError::Invalid(format!("parameter {k} is not a number")));

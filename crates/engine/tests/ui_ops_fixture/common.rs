@@ -7,7 +7,19 @@ use std::collections::BTreeMap;
 use wave_engine::model::*;
 
 pub fn fx(id: Id, kind: FxKind) -> Fx {
-    Fx { id, kind, bypass: false, mix: 1.0, preset: None, params: BTreeMap::new(), bands: None, plugin: None, maps: None, key: None }
+    Fx {
+        id,
+        kind,
+        bypass: false,
+        mix: 1.0,
+        preset: None,
+        params: BTreeMap::new(),
+        bands: None,
+        plugin: None,
+        maps: None,
+        key: None,
+        listen: None,
+    }
 }
 
 pub fn eq_band(f: f64, g: f64) -> EqBand {

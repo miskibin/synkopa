@@ -19,7 +19,7 @@ export interface Track {
 }
 
 /** `plugin`: a hosted VST3 or LV2 effect (`Fx.plugin.format`); projects from before LV2 said `vst3`, which the engine reads as `plugin`. */
-export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'chorus' | 'phaser' | 'gate' | 'filter' | 'stereo' | 'multiband' | 'analyzer' | 'plugin';
+export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'chorus' | 'phaser' | 'gate' | 'filter' | 'stereo' | 'multiband' | 'master' | 'analyzer' | 'plugin';
 /** Built-in kinds the effect picker lists (the views keep a label and blurb per kind). */
 export type BuiltinKind = Exclude<FxKind, 'plugin'>;
 /** Every built-in kind, including ones the picker does not list yet ('rider': added by "Auto wokal"). */
@@ -58,7 +58,29 @@ export interface Fx {
   maps?: WarpMaps;
   /** Compressor, Gate, Filter, EQ (its dynamic bands): the insert whose sound drives the detector (sidechain); absent = its own input. */
   key?: Id;
+  /** Master only: what its last whole-song listen measured and decided (`master_listen`). */
+  listen?: MasterListen;
 }
+
+/** A Master's whole-song listen (crates/engine/src/model.rs `MasterListen`). */
+export interface MasterListen {
+  /** Seconds of audio heard. */
+  seconds: number;
+  /** Target index (`MASTER_TARGETS`) the settings were made for. */
+  target: number;
+  inLufs: number; inTp: number; inLra: number;
+  outLufs: number; outTp: number; outLra: number;
+  /** Input minus the reference balance per third octave (`THIRDS`), dB; `balanceOut` after the master. */
+  balance: number[];
+  balanceOut: number[];
+  /** The target was out of the limiter's reach. */
+  short?: boolean;
+  /** How far the peaks had to come down for the target, dB (> `HEAVY_CUT_DB` sounds squashed). */
+  peakCut?: number;
+}
+
+/** The reply of `master_listen`. */
+export interface MasterListenResult { revision: number; fxId: Id; fx: Fx | null; listen: MasterListen }
 
 /** A Warp map over one bar: `t` 0..4 beats, `v` 0..1 (time: 1 = now, 0 = 8 beats back; volume: gain). */
 export interface WarpSlot { name: string; points: AutoPoint[] }

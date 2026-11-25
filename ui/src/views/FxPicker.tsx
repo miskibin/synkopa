@@ -38,6 +38,7 @@ const DESC: Record<BuiltinKind, TranslationKey> = {
   phaser: 'c.picker.desc.phaser',
   stereo: 'c.picker.desc.stereo',
   multiband: 'c.picker.desc.multiband',
+  master: 'c.picker.desc.master',
   analyzer: 'c.picker.desc.analyzer',
   reverb: 'c.picker.desc.reverb',
   limit: 'c.picker.desc.limit',
@@ -49,7 +50,7 @@ const KW: Record<BuiltinKind, TranslationKey> = {
   eq: 'c.picker.kw.eq', deess: 'c.picker.kw.deess', rider: 'c.picker.kw.rider', comp: 'c.picker.kw.comp', gate: 'c.picker.kw.gate', filter: 'c.picker.kw.filter',
   fet: 'c.picker.kw.fet', sat: 'c.picker.kw.sat', delay: 'c.picker.kw.delay', half: 'c.picker.kw.half', warp: 'c.picker.kw.warp',
   chorus: 'c.picker.kw.chorus', phaser: 'c.picker.kw.phaser',
-  stereo: 'c.picker.kw.stereo', multiband: 'c.picker.kw.multiband', analyzer: 'c.picker.kw.analyzer',
+  stereo: 'c.picker.kw.stereo', multiband: 'c.picker.kw.multiband', master: 'c.picker.kw.master', analyzer: 'c.picker.kw.analyzer',
   reverb: 'c.picker.kw.reverb', limit: 'c.picker.kw.limit',
 };
 
@@ -60,7 +61,7 @@ const CATS: Cat[] = [
   { id: 'fav', label: 'c.picker.cat.fav' },
   { id: 'vocal', label: 'c.picker.cat.vocal', types: ['tune', 'voice', 'rider', 'deess'] },
   { id: 'repair', label: 'c.picker.cat.repair', types: ['denoise', 'gate', 'deess'] },
-  { id: 'dyn', label: 'c.picker.cat.dyn', types: ['rider', 'comp', 'fet', 'gate', 'multiband', 'limit'] },
+  { id: 'dyn', label: 'c.picker.cat.dyn', types: ['rider', 'comp', 'fet', 'gate', 'multiband', 'limit', 'master'] },
   { id: 'tone', label: 'c.picker.cat.tone', types: ['eq', 'filter', 'sat'] },
   { id: 'mod', label: 'c.picker.cat.mod', types: ['chorus', 'phaser', 'filter'] },
   { id: 'space', label: 'c.picker.cat.space', types: ['delay', 'half', 'warp', 'reverb'] },

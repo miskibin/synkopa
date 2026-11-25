@@ -67,7 +67,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
   undo | redo                              (running app only)
   bpm <value>
-  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|... [--preset N]
+  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|master|... [--preset N]
   route --from ID --to ID [--gain 0..2] [--only]   mixer routing: insert FROM sends to TO (post-fader;
                                                   --only: no longer to the master; --to 0: to the master again)
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)
@@ -204,6 +204,11 @@ PITCH EDITING  (the pitch editor's notes for scripts and agents; indices come fr
   pitch render --clip ID --out take.wav [--original]   the clip alone with its edits (or without), 32-bit WAV
   tune-file --take u.wav --reference r.wav --out o.wav [--json target.json]
             [--model rmvpe.onnx | --yin] [same options as tune-ref]   headless; needs no running app
+
+MASTER  (the Master effect listens to the whole song and sets itself; one undo step)
+  master-listen --fx ID [--target 0..4] [--label TEXT]
+                                           target: 0 Dynamic −16, 1 Streaming −14, 2 Balanced −12,
+                                           3 Loud −10, 4 Club −8 LUFS (default: the effect's own)
 
 AUTO VOCAL  (one call: measure the take, bake the rider into the audio, put the tuned chain on the insert)
   auto-vocal --clip ID [--style natural|hard] [--beat-clip ID] [--no-bake] [--plan] [--label TEXT]
@@ -642,6 +647,7 @@ fn send(cx: &Cx, a: &Args, command: &str, args: Value) -> Result<Value, Fail> {
 fn default_undo_label(command: &str) -> Option<&'static str> {
     match command {
         "auto_vocal" => Some("Auto Vocal"),
+        "master_listen" => Some("Master: listen"),
         "sidechain" => Some("Sidechain"),
         "unmask" => Some("Make room"),
         "mask_ignore" => Some("Ignore masking pair"),
@@ -1475,6 +1481,16 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
         "auto-vocal" => {
             let (command, args) = auto_vocal_args(a)?;
             send(cx, a, command, args)
+        }
+        "master-listen" => {
+            let fx: u64 =
+                a.get("fx").ok_or_else(|| u("missing --fx".into()))?.parse().map_err(|_| u("--fx must be a whole number".into()))?;
+            let mut args = json!({ "fxId": fx });
+            if let Some(t) = a.get("target") {
+                let t: u64 = t.parse().map_err(|_| u("--target is 0 (−16), 1 (−14), 2 (−12), 3 (−10) or 4 (−8)".into()))?;
+                args["target"] = json!(t);
+            }
+            send(cx, a, "master_listen", args)
         }
         "f0-model" if a.has("install") => {
             eprintln!("downloading the RMVPE model (~345 MB); licence: {}", wave_rmvpe::LICENSE_NOTE);

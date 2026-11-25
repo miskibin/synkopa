@@ -102,6 +102,7 @@ fn a_project_with_the_first_delay_loads_as_the_same_echo() {
         bands: None,
         plugin: None,
         maps: None,
+        listen: None,
         key: None,
     };
     p.inserts.iter_mut().find(|m| m.id == ins).unwrap().fx = vec![old];

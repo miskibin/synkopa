@@ -25,6 +25,7 @@ import { newTrack } from '../lib/clipOps';
 import { satDriveDb } from '../lib/saturator';
 import { onsetsFromPeaks } from '../lib/slicer';
 import { songEnd } from '../lib/export';
+import { MASTER_TARGETS, THIRDS, toneDb } from '../lib/master';
 import { eqCurve } from '../lib/eq';
 import { ATTACK as MB_ATTACK, BAND_IN_DB as MB_BAND_IN_DB, bandGain as mbBandGain, MAKEUP_DB as MB_MAKEUP_DB, RELEASE as MB_RELEASE } from '../lib/multiband';
 import { clamp, dbg } from '../lib/format';
@@ -39,7 +40,7 @@ import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
   AudioToMidiArgs, AudioToMidiResult,
   PreviewWave,
-  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, ChordAnalysis, ChordDetail, ChordModelStatus, ChordQuality, ChordSegment, ChordsToPatternResult, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
+  AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Catalog, MasterListenResult, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, ChordAnalysis, ChordDetail, ChordModelStatus, ChordQuality, ChordSegment, ChordsToPatternResult, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
 } from './types';
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
@@ -828,6 +829,22 @@ export class MockBackend implements Backend {
         specOut[k] = specIn[k] + 20 * Math.log10(Math.max(1e-6, (1 - depth) + depth * dbg(wet)));
       }
       out = level * ((1 - depth) + depth * dbg((gains[0] + gains[1] + gains[2]) / 3 + 12));
+    } else if (fx.type === 'master') {
+      // dsp::master: [0..3] band gain dB, [3] clipper dB, [4] limiter dB, [5] in / [6] out loudness, [7] level-match dB
+      const drive = pr.drive ?? 0, ceil = pr.ceil ?? -1, ratio = Math.max(1, pr.ratio ?? 2);
+      const inL = level > 0 ? lvDb - 7 : -200;
+      for (let b = 0; b < 3; b++) {
+        const thr = pr[['tl', 'tm', 'th'][b]] ?? 0, lvl = inL + 2 - 4 * b;
+        meters[b] = level > 0 && thr < 0 ? Math.min(0, Math.max(0, lvl - thr) * (1 / ratio - 1)) : 0;
+      }
+      const over = level > 0 ? Math.max(0, lvDb + 0.6 + drive - ceil) : 0, clipShare = (pr.clip ?? 0) / 100 * 0.4;
+      meters[3] = -over * clipShare; meters[4] = -over * (1 - clipShare);
+      const outL = level > 0 ? inL + drive + meters[3] + meters[4] : -200;
+      meters[5] = inL; meters[6] = outL;
+      meters[7] = (pr.match ?? 0) >= 0.5 && level > 0 ? inL - outL : 0;
+      const gain = drive + meters[3] + meters[4] + meters[7];
+      for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + gain + toneDb(pr, BAND_F[k]);
+      out = level * dbg(gain);
     } else if (fx.type === 'delay') {
       // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms, [8] ducking dB
       const model = Math.round(pr.model ?? 1), base = delayMs(pr, this.p.bpm), lfo = Math.sin(t * 2 * Math.PI * (pr.rate ?? 0.5));
@@ -1393,6 +1410,43 @@ export class MockBackend implements Backend {
       trackGainDb: plan.trackGainDb, warnings: plan.warnings, key: plan.analysis.key?.name ?? null, spread: plan.stages.iqr400Db,
     };
   }
+  private listenCancel = false;
+  /** The engine's `master_listen` (app/src/actions.rs, mastering.rs) on the mock's pieces: the same
+   *  refusals, progress 0..1, the same parameters set (tone, glue, bass mono, clip, loudness; ceiling,
+   *  crossovers, width and level match kept) and a report — from fixed measurements of a typical
+   *  unmastered mix (−18.4 LUFS, a little boomy and dull), as the mock has no audio to render. */
+  async masterListen(a: { fxId: Id; target?: number; label?: string }, onProgress?: (p: number) => void): Promise<MasterListenResult> {
+    const m = this.p.inserts.find(x => x.fx.some(f => f.id === a.fxId));
+    const f = m?.fx.find(x => x.id === a.fxId);
+    if (!m || !f) throw new Error(`no effect ${a.fxId}`);
+    if (f.type !== 'master') throw new Error(`effect ${a.fxId} is not a Master`);
+    if (this.songEnd() <= 0 || !this.p.clips.length) throw new Error('the song is empty: there is nothing to listen to');
+    if (a.target != null && (a.target < 0 || a.target >= MASTER_TARGETS.length)) throw new Error(`\`target\` is 0..${MASTER_TARGETS.length - 1}`);
+    const base = this.revision;
+    this.listenCancel = false;
+    for (const p of [0.1, 0.4, 0.6, 0.8, 1]) {
+      await new Promise(r => setTimeout(r, 40));
+      if (this.listenCancel) throw new Error('cancelled');
+      onProgress?.(p);
+    }
+    const target = a.target ?? Math.round(f.params.target ?? 2);
+    const goal = MASTER_TARGETS[target];
+    const balance = THIRDS.map(fq => Math.round(((fq >= 125 && fq <= 315 ? 3.6 : 0) + (fq >= 8000 ? -4.2 : 0) + (fq < 40 ? -6 : 0)) * 10) / 10);
+    const params: Record<string, number> = { ...f.params, target, tone: 100, sub: 0, low: -0.6, mid: 0, pres: 0, air: 0.6, tl: -24.5, tm: -27.1, th: -33.8, ratio: 2, mono: 0, clip: 30 };
+    params.drive = Math.round(Math.max(0, Math.min(24, goal + 18.4 + 1.2)) * 100) / 100;
+    const ceil = params.ceil ?? -1;
+    const listen = {
+      seconds: Math.round(this.songEnd() * 60 / this.p.bpm * 10) / 10, target,
+      inLufs: -18.4, inTp: -2.1, inLra: 7.2, outLufs: goal, outTp: Math.min(ceil, -0.1) - 0.1, outLra: 5.1,
+      balance, balanceOut: balance.map((v, i) => Math.round((v + toneDb(params, THIRDS[i])) * 10) / 10), short: false,
+      peakCut: Math.max(0, Math.round((16.3 - (ceil - goal)) * 10) / 10),
+    };
+    if (this.revision !== base) throw new Error(`${ERR_REVISION_CONFLICT} the project changed while the Master was listening; listen again`);
+    const fx: Fx = { ...structuredClone(f), params, listen, preset: null };
+    const { revision } = await this.applyOps([{ op: 'putFx', insertId: m.id, fx } as Op], { label: a.label ?? 'Master: listen' });
+    return { revision, fxId: a.fxId, fx: structuredClone(fx), listen };
+  }
+  async masterListenCancel() { this.listenCancel = true; }
   /** The ducking setup a Compressor is added with by "Sidechain to" (the engine's
    *  `actions.rs` DUCK_PARAMS): fast attack, a release that swells back before the next beat. */
   static readonly DUCK_PARAMS: Record<string, number> = { thr: -24, ratio: 6, att: 1, rel: 150, gain: 0, det: 0 };
