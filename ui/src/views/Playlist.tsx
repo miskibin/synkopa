@@ -19,6 +19,7 @@ import { curBeat, recState, tele } from '../state/telemetry';
 import { recTarget, recUntil } from '../lib/recTarget';
 import { closeMenu, openMenu, openRename, revealReq, say, setU, U, type MenuItem } from '../state/ui';
 import { showInsert } from '../state/mixView';
+import { pickFreeInsert } from '../ui/InsertPicker';
 import { openStems } from '../state/stems';
 import { dblCheck, dragCursor, edgeScroller, escCancels, fineMul, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
@@ -1602,14 +1603,19 @@ export function openRouteMenu(i: number, x: number, y: number) {
 /** Where track `i` plays: the master (the default) or a mixer insert the user picks. */
 function routeItems(i: number): MenuItem[] {
   const t = S.project.tracks[i]; if (!t) return [];
-  return S.project.inserts.map(m => {
+  // as the Channel Rack's picker: the first free insert (or a new one), named and coloured after the track, one undo step
+  const own: MenuItem[] = [
+    { t: 'item', label: tl('d.smp.freeOpt'), act: () => pickFreeInsert({ value: t.insert ?? null, ops: id => { const o = A.trackOp(i, { insert: id ?? 0 }); return o ? [o] : []; }, label: 'Routing', wheelKey: 'plroute' + t.id, master: true, free: { name: t.name, color: t.color } }) },
+    { t: 'sep' },
+  ];
+  return [...own, ...S.project.inserts.map(m => {
     // the label is captured at menu build: the row's toast matches what the row showed,
     // even if the insert was renamed (or replaced in the array) while the menu was open
     const label = insName(m);
     return { t: 'item', label, kbd: t.insert === m.id ? '●' : '', act: () => {
       A.setTrack(i, { insert: m.id }, 'Routing'); A.selectInsert(m.id); say(t.name + ' → ' + label);
     } } as MenuItem;
-  });
+  })];
 }
 
 function openLaneMenu(x: number, y: number, i: number) {
