@@ -10,7 +10,7 @@ import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
 import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
-import { moveIndex, rackMoveIndex } from '../lib/rack';
+import { moveIndex, RACK_COMPACT_H, rackFitHeight, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
 import { commit, Gesture } from '../state/edit';
@@ -254,7 +254,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     fitRaf = 0;
     const frame = gridWrap?.closest<HTMLElement>('.patwin');
     if (!frame || !gridWrap.isConnected || !prefs().rackAutoH || hold() || U.mixView) return;
-    const want = frame.offsetHeight - gridWrap.clientHeight + contentH();
+    const want = rackFitHeight({ chrome: frame.offsetHeight - gridWrap.clientHeight, content: contentH(), footerShown: !frame.classList.contains('compact'), borders: frame.offsetHeight - frame.clientHeight });
     if (!props.docked) {
       const w = U.rackWin; if (!w) return;
       const h = Math.round(clamp(want, 200, Math.max(200, window.innerHeight - w.y - 20)));
@@ -454,7 +454,7 @@ function Rack(props: { z: number; docked?: boolean }) {
     scrollPattern(headAcc > 0 ? 1 : -1); headAcc = 0;
   };
   return (
-    <PanelFrame name={t('a.mn.rack')} {...patGeom('rackWin')} z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={230} docked={props.docked} dockId="rack" front={rackFront} onKey={onKey} onHeadWheel={headWheel}
+    <PanelFrame name={t('a.mn.rack')} {...patGeom('rackWin')} z={props.z} class="rackwin" minW={RACK_MIN_W} minH={200} compactH={RACK_COMPACT_H} docked={props.docked} dockId="rack" front={rackFront} onKey={onKey} onHeadWheel={headWheel}
       controls={<WinControls dock={paneDock('rack')} close={{ tip: t(props.docked ? 'b.dk.closeRack' : 'b.pe.close'), act: closeRack }} />}
       head={<>
         <span class="tile" style={{ width: '20px', height: '20px', background: pt().color + '2e', color: pt().color }}><Icon d={RACK_ICON} size={12} /></span>

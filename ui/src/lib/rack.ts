@@ -63,3 +63,18 @@ export function rackSampleDrop(offset: number, height: number): 'before' | 'afte
   if (offset >= height - edge) return 'after';
   return 'replace';
 }
+
+/** The Channel Rack's status footer: its height (22 + its top rule) and the window height under which it is hidden (`compactH`). */
+export const RACK_FOOT_H = 23, RACK_COMPACT_H = 230;
+
+/**
+ * The window height (px) that fits `content` (all the rows and the "+ Channel" row). `chrome` is what
+ * the window spends besides the grid right now, measured with or without the footer (`footerShown`);
+ * the footer is hidden below `compactH`, so a height reached without it has to make room for it when
+ * it is tall enough to bring it back, or the footer lands over the last row.
+ */
+export function rackFitHeight(o: { chrome: number; content: number; footerShown: boolean; borders: number; footerH?: number; compactH?: number }): number {
+  const foot = o.footerH ?? RACK_FOOT_H, compact = o.compactH ?? RACK_COMPACT_H;
+  const bare = o.chrome - (o.footerShown ? foot : 0) + o.content;
+  return bare - o.borders >= compact ? bare + foot : bare;
+}

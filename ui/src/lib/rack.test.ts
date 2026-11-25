@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { samplerDefault, type Channel, type Note, type Project } from '../api/types';
 import { applyAll } from './applyOps';
 import { copyChannelNotes, gridW, pasteChannelNotes } from './pattern';
-import { fitOnScreen, moveIndex, RACK_DOCK_FIT_STEPS, RACK_FIT_STEPS, rackDockFitWidth, rackFitWidth, rackMoveIndex, rackSampleDrop } from './rack';
+import { fitOnScreen, moveIndex, RACK_DOCK_FIT_STEPS, RACK_FIT_STEPS, rackDockFitWidth, rackFitWidth, rackFitHeight, rackMoveIndex, rackSampleDrop } from './rack';
 
 const geo = { left: 212, cw: 22, pad: 8, min: 480, room: 5000 };
 const ch = (id: number, name: string): Channel => ({ id, name, color: '#4f8ef7', kind: 'sample', source: 1, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 });
@@ -117,5 +117,22 @@ describe('rackDockFitWidth', () => {
   it('stops at one bar, so a long pattern scrolls instead of squeezing the Playlist', () => {
     expect(rackDockFitWidth(64, g)).toBe(rackDockFitWidth(RACK_DOCK_FIT_STEPS, g));
     expect(rackDockFitWidth(64, g)).toBeLessThan(rackFitWidth(64, { ...g, room: 5000 }));
+  });
+});
+
+describe('rack auto height', () => {
+  const o = { chrome: 36, borders: 2, footerShown: false };
+  it('leaves the footer out while the window stays below the compact height', () => {
+    expect(rackFitHeight({ ...o, content: 160 })).toBe(196);
+  });
+  it('adds the footer once the rows are tall enough to bring it back', () => {
+    // 6 rows of 32 px = 192: 228 stays compact; 7 rows = 224: 260 is past 230, so the 23 px footer comes too
+    expect(rackFitHeight({ ...o, content: 192 })).toBe(228);
+    expect(rackFitHeight({ ...o, content: 200 })).toBe(236 + 23);
+    expect(rackFitHeight({ ...o, content: 224 })).toBe(260 + 23);
+  });
+  it('measures the same with the footer shown', () => {
+    expect(rackFitHeight({ chrome: 36 + 23, content: 224, footerShown: true, borders: 2 })).toBe(283);
+    expect(rackFitHeight({ chrome: 36 + 23, content: 160, footerShown: true, borders: 2 })).toBe(196);
   });
 });
