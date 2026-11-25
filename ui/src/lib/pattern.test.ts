@@ -329,8 +329,8 @@ describe('autoRollSnap', () => {
 });
 
 describe('channel loops (FL 20.1 channel looping)', () => {
-  const mkPt = (notes: Note[], loops?: Record<string, number>) =>
-    ({ id: 2, name: 'P', color: '#fff', len: 4, minLen: 4, notes, channelLoops: loops } as Pattern);
+  const mkPt = (notes: Note[], loops?: Record<string, number>, len = 4) =>
+    ({ id: 2, name: 'P', color: '#fff', len, minLen: 4, notes, channelLoops: loops } as Pattern);
   const hat = (step: number, v = 1): Note => ({ ch: BASS, step, len: 1, trig: true, ...(v === 1 ? {} : { v }) });
 
   it('setChannelLoop keeps the cell and trims the rest; clear keeps the cell', () => {
@@ -345,11 +345,32 @@ describe('channel loops (FL 20.1 channel looping)', () => {
     expect(p3.channelLoops).toEqual({ [String(BASS)]: 4 });
   });
 
+  it('setChannelLoop holds the pattern length as the minimum when it trims', () => {
+    // the trimmed note at step 24 was the pattern's last content: the length the pattern
+    // had becomes minLen, so fitting never shrinks it and whole-pass clips never re-target
+    const p1 = setChannelLoop({ ...mkPt([hat(0), hat(24)]), len: 8 }, BASS, 3);
+    expect(p1.minLen).toBe(8);
+    expect(steps(p1.notes, BASS)).toEqual([0]);
+    // clearing keeps the cell and leaves minLen alone
+    const p2 = setChannelLoop(p1, BASS, 0);
+    expect(p2.minLen).toBe(8);
+    // a pattern whose remaining content still sets a longer length is unaffected
+    const p3 = setChannelLoop({ ...mkPt([hat(0), hat(24)], undefined, 8), minLen: 8 }, BASS, 3);
+    expect(p3.minLen).toBe(8);
+  });
+
   it('burnChannelLoop writes every repeat as a real step and removes the loop', () => {
     const p1 = setChannelLoop(mkPt([hat(0), hat(1)]), BASS, 3);
     const burned = burnChannelLoop(p1, BASS);
     expect(steps(burned.notes, BASS)).toEqual([0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15]);
     expect(burned.channelLoops).toBeUndefined();
+    // a repeat that would ring past the pattern end is capped there: burning must never
+    // grow the pattern (fit_len counts note ends) or re-target its clips
+    const held: Note = { ch: BASS, step: 2, len: 3, trig: false };
+    const b3 = burnChannelLoop(setChannelLoop({ ...mkPt([held]), len: 4 }, BASS, 3), BASS);
+    const last = b3.notes.filter(n => n.ch === BASS).sort((a, b) => a.step - b.step).at(-1)!;
+    expect(last.step).toBe(14);
+    expect(last.len).toBe(2);
     // a pattern still carrying notes past the loop (a script could): they never played, they go
     const p2 = { ...mkPt([hat(0), hat(7)]), channelLoops: { [String(BASS)]: 3 } };
     const b2 = burnChannelLoop(p2, BASS);

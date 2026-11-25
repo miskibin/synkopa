@@ -878,3 +878,25 @@ fn removing_a_channel_removes_its_loop_entries() {
     e.apply(&[Op::RemoveChannel { id: h }], false, None).unwrap();
     assert!(e.project().patterns.iter().all(|p| p.channel_loops.is_empty()));
 }
+
+#[test]
+fn an_open_refuses_a_file_whose_loops_expand_past_the_bound() {
+    // a hand-edited file skips the write-path validation: opening it must refuse with the
+    // write path's error instead of letting the graph expand into millions of notes
+    let dir = std::env::temp_dir().join(format!("wave-pat-loop-open-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("loop-bound.wave");
+    let p0 = Project::routed();
+    let k = chan(&p0, "Kick");
+    let notes: Vec<Note> = (0..4096).map(|i| Note::trigger(k, i as f32 / 256.0, None)).collect();
+    let mut pt = one_pattern(notes, 256.0, 0.0);
+    let mut loops = std::collections::BTreeMap::new();
+    loops.insert(k, 1);
+    pt.patterns[0].channel_loops = loops;
+    let e = Engine::new(pt, Arc::new(NoPlugins));
+    e.save(&path).unwrap();
+    let f = Engine::new(Project::routed(), Arc::new(NoPlugins));
+    let err = f.open(&path).unwrap_err().to_string();
+    assert!(err.contains("may not repeat into more than"), "{err}");
+    let _ = std::fs::remove_dir_all(dir);
+}

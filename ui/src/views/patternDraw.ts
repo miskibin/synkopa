@@ -69,6 +69,15 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
     const c = chans[r], y = r * G.rh - G.sy;
     const dim = c.mute || (anySolo && !c.solo);
     if (c.id === selCh) { g.fillStyle = rgba(T.blue, theme.light ? 0.07 : 0.06); g.fillRect(0, y, W, G.rh); }
+    // FL 20.1's channel looping: the tail dims and a line in the channel's colour marks the
+    // loop's end, on every kind of row — steps, a mini roll, or an empty looped channel
+    const loop = loopStepsOf(pt, c.id);
+    if (loop > 0) {
+      g.fillStyle = rgba('#000000', theme.light ? 0.07 : 0.14);
+      g.fillRect(stepX(loop, G.cw) - G.sx, y, W, G.rh);
+      g.fillStyle = rgba(c.color, 0.85);
+      g.fillRect(stepX(loop, G.cw) - G.sx - 1, y + 2, 2, G.rh - 4);
+    }
     const notes = pt.notes.filter(n => n.ch === c.id);
     if (!notes.length) continue;
     if (roll.has(c.id)) {
@@ -84,6 +93,24 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
         if (x > W || x + w < 0) continue;
         g.fillStyle = stepOn(velOf(n), dim);
         g.fillRect(x, top + (hi - keyOf(n, c)) * nh, w, Math.max(1.5, nh - 0.5));
+      }
+      // the loop's repeats, faint like the step rows show them
+      if (loop > 0) {
+        const cell = notes.filter(n => n.step < loop);
+        for (let k = 1; ; k++) {
+          const s0 = k * loop;
+          if (s0 >= G.end) break;
+          if (stepX(s0, G.cw) - G.sx > W) break;
+          for (const n of cell) {
+            if (n.step + s0 >= G.end) continue;
+            const x = stepX(n.step + s0, G.cw) - G.sx, w = Math.max(2, stepX(n.step + n.len + s0, G.cw) - G.sx - x - 1);
+            if (x > W || x + w < 0) continue;
+            g.globalAlpha = 0.38;
+            g.fillStyle = stepOn(velOf(n), dim);
+            g.fillRect(x, top + (hi - keyOf(n, c)) * nh, w, Math.max(1.5, nh - 0.5));
+            g.globalAlpha = 1;
+          }
+        }
       }
       g.restore();
       continue;
@@ -106,18 +133,11 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
       g.globalAlpha = 1;
     };
     notes.forEach((n, k) => drawStepAt(n, n.step));
-    // FL 20.1's channel looping: the cell repeats as faint ghost steps, a line in the channel's
-    // colour marks the loop's end, and the rest of the row dims (it does not play on this channel)
-    const loop = loopStepsOf(pt, c.id);
+    // FL 20.1's channel looping: the cell repeats as faint ghost steps — exactly what the
+    // engine plays (repeats land inside the pattern only; the boundary and the dim are
+    // drawn above, on every kind of row)
     if (loop > 0) {
       const cellSteps = notes.filter(n => n.step < loop);
-      g.fillStyle = rgba('#000000', theme.light ? 0.07 : 0.14);
-      g.fillRect(stepX(loop, G.cw) - G.sx, y, W, G.rh);
-      g.fillStyle = rgba(c.color, 0.85);
-      g.fillRect(stepX(loop, G.cw) - G.sx - 1, y + 2, 2, G.rh - 4);
-      // exactly what the engine plays: repeats land inside the pattern only (the cycle
-      // re-anchors at every pattern pass), so a ghost never sits past the end or in the
-      // greyed bar
       for (let k = 1; ; k++) {
         const s0 = k * loop;
         if (s0 >= G.end) break;

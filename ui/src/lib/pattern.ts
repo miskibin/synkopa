@@ -50,7 +50,9 @@ export function setChannelLoop(p: Pattern, ch: Id, loop: number): Pattern {
   const loops: Record<string, number> = { ...(p.channelLoops ?? {}) };
   if (loop > 0) loops[String(ch)] = loop; else delete loops[String(ch)];
   const notes = loop > 0 ? p.notes.filter(n => !(n.ch === ch && n.step >= loop)) : p.notes;
-  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined };
+  // the trim can remove the pattern's last content: the length the pattern had stays the
+  // minimum, so fitting never shrinks it and whole-pass clips never re-target
+  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined, ...(loop > 0 ? { minLen: Math.max(p.minLen ?? BAR, p.len) } : {}) };
 }
 /** The channel's loop materialized: every repeat becomes a real step, the loop goes (FL's
  * "Burn to pattern"). Notes already past the old loop are cleared first (they never played). */
@@ -62,7 +64,7 @@ export function burnChannelLoop(p: Pattern, ch: Id): Pattern {
   const notes = p.notes.filter(n => n.ch !== ch || n.step < l);
   for (let k = 1; k * l < steps; k++) for (const n of cell) {
     const s = n.step + k * l;
-    if (s < steps) notes.push({ ...n, step: s });
+    if (s < steps) notes.push({ ...n, step: s, len: Math.min(n.len, steps - s) });
   }
   const loops: Record<string, number> = { ...(p.channelLoops ?? {}) };
   delete loops[String(ch)];

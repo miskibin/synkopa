@@ -1717,6 +1717,18 @@ pub fn parse_steps(s: &str, vel: f32) -> R<Vec<(f32, f32)>> {
     Ok(out)
 }
 
+/// Parses `--loop`: a step count sets the loop, `0` or `"off"` clears it (`Ok(None)`), and
+/// anything else — including a bare value-less flag — is a usage error naming the bounds.
+fn parse_loop(l: &Value, steps: u32) -> Result<Option<u32>, String> {
+    if l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0) {
+        return Ok(None);
+    }
+    l.as_u64()
+        .filter(|n| *n > 0 && *n <= steps as u64)
+        .map(|n| Some(n as u32))
+        .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))
+}
+
 fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
     let steps = (pt.len * 4.0).round().max(1.0) as usize;
     let rows: Vec<Value> = p
@@ -1844,6 +1856,10 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             }
         }
     }
+    // prospective length: `--bars` just raised the minimum, and the loop/stamp checks below
+    // must see the length the pattern will actually have (the engine derives it the same way)
+    pt.fit_len();
+    let pre_loop_len = pt.len;
     // `synkopa notes stamp` lands here: one chord written through the existing note op
     let mut stamped: Option<Value> = stamp.map(|st| -> Result<Value, String> {
         let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --stamp")?)?.id;
@@ -1858,6 +1874,16 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         if wave_engine::transform::chord_intervals(ty).is_none() {
             return Err(format!("stamp: unknown chord type `{}` ({})", ty, wave_engine::transform::CHORD_TYPES.iter().map(|(id, _)| *id).collect::<Vec<_>>().join(", ")));
         }
+        // an effective loop (an explicit --loop wins, else the channel's own) bounds the
+        // stamp: a chord past it would be trimmed right after, and a successful reply must
+        // not report notes nothing plays
+        let eff_loop = match arg(a, "loop").map(|l| parse_loop(l, (pt.len * 4.0).round() as u32)).transpose()? {
+            Some(l) => l,
+            None => pt.channel_loops.get(&ch).copied(),
+        };
+        if eff_loop.is_some_and(|l| step >= l as f32) {
+            return Err(format!("stamp: the channel loops its first {} steps — stamp inside the cell, or raise or clear the loop", eff_loop.unwrap()));
+        }
         let pitches = wave_engine::transform::chord_pitches(root, ty, inv as u32)
             .ok_or_else(|| format!("stamp: root {root} pushes the top voice past MIDI 127"))?;
         // re-stamping a step replaces its notes on that channel: no pile-up
@@ -1870,20 +1896,19 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     // (one undo step, nothing hidden); 0 or "off" clears the loop and keeps the cell. It
     // runs after every note write above, so `--loop` + `--steps`/`--stamp` in one call
     // trim the final notes.
+    let mut loop_touched = false;
     if let Some(l) = arg(a, "loop") {
         let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --loop")?)?.id;
-        let steps = (pt.len * 4.0).round() as u32;
-        let off = l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0);
-        if off {
-            pt.channel_loops.remove(&ch);
-        } else {
-            let loop_steps = l
-                .as_u64()
-                .filter(|n| *n > 0 && *n <= steps as u64)
-                .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))?
-                as u32;
-            pt.notes.retain(|note| !(note.ch == ch && note.step >= loop_steps as f32));
-            pt.channel_loops.insert(ch, loop_steps);
+        let loop_steps = parse_loop(l, (pt.len * 4.0).round() as u32)?;
+        match loop_steps {
+            None => {
+                pt.channel_loops.remove(&ch);
+            }
+            Some(n) => {
+                pt.notes.retain(|note| !(note.ch == ch && note.step >= n as f32));
+                pt.channel_loops.insert(ch, n);
+                loop_touched = true;
+            }
         }
     }
     // the loop's invariant holds on every write: notes a steps/notes/stamp write put past
@@ -1891,9 +1916,18 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     if let Some(chv) = arg(a, "ch") {
         if let Ok(c) = find_channel(&p, chv) {
             if let Some(&l) = pt.channel_loops.get(&c.id) {
+                let had = pt.notes.len();
                 pt.notes.retain(|note| !(note.ch == c.id && note.step >= l as f32));
+                loop_touched |= pt.notes.len() != had;
             }
         }
+    }
+    // the loop contract: setting or trimming for a loop never shrinks the pattern (the
+    // trimmed late note can be the pattern's last content), so the length the pattern had
+    // when the loop ran becomes the minimum — whole-pass clips never re-target
+    if loop_touched {
+        pt.min_len = pt.min_len.max(pre_loop_len);
+        pt.fit_len();
     }
     if let Some(s) = stamped.as_mut() {
         s["revision"] = json!(e.apply(&[Op::PutPattern { pattern: pt.clone() }], false, if_revision).map_err(|x| x.to_string())?);

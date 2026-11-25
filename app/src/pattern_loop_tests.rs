@@ -109,3 +109,46 @@ fn a_write_past_an_existing_loop_is_trimmed_in_the_same_step() {
     let notes: Vec<_> = proj.patterns.iter().find(|x| x.id == pid).unwrap().notes.iter().filter(|n| n.ch == ch).collect();
     assert_eq!(notes.iter().map(|n| n.step as u32).collect::<Vec<_>>(), vec![0, 2]);
 }
+
+#[test]
+fn a_loop_validates_against_the_requested_bars() {
+    // `--bars 2` makes the pattern 8 beats: a 32-step loop is valid against the length the
+    // pattern will have, not against its length before the bars landed
+    let h = host();
+    let pid = pattern_id(&h);
+    pattern(&h, &json!({ "id": pid, "bars": 2, "ch": "Hat", "steps": "x.", "loop": 32 }), None).unwrap();
+    assert_eq!(loops_of(&h, pid), std::collections::BTreeMap::from([(hat(&h), 32)]));
+}
+
+#[test]
+fn setting_a_loop_keeps_the_pattern_length_and_its_clips() {
+    // the trimmed note can be the pattern's last content: the length the pattern had stays
+    // the minimum, so fitting never shrinks it and whole-pass clips never re-target
+    let h = host();
+    let pid = pattern_id(&h);
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "notes": [{ "step": 0, "len": 1 }, { "step": 24, "len": 1 }] }), None).unwrap();
+    let proj = h.engine().project();
+    let clip = proj
+        .clips
+        .iter()
+        .find(|c| c.kind == wave_engine::ClipKind::Pat && c.source == pid)
+        .map(|c| (c.id, c.len))
+        .expect("a whole-pass clip of the pattern");
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "loop": 3 }), None).unwrap();
+    let proj = h.engine().project();
+    let pt = proj.patterns.iter().find(|x| x.id == pid).unwrap();
+    assert_eq!((pt.len, pt.min_len), (8.0, 8.0), "the length the pattern had becomes the minimum");
+    assert_eq!(proj.clips.iter().find(|c| c.id == clip.0).unwrap().len, clip.1, "the clip never re-targets");
+}
+
+#[test]
+fn a_stamp_past_the_loop_refuses() {
+    // a chord past the loop would be trimmed right after: the stamp refuses instead of
+    // returning a successful reply full of notes nothing plays
+    let h = host();
+    let pid = pattern_id(&h);
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "steps": "x.", "loop": 3 }), None).unwrap();
+    assert!(pattern(&h, &json!({ "id": pid, "ch": "Hat", "stamp": { "step": 4, "root": 60, "type": "min" } }), None).is_err());
+    // inside the cell it works
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "stamp": { "step": 1, "root": 60, "type": "min" } }), None).unwrap();
+}

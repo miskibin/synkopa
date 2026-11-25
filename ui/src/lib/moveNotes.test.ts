@@ -62,4 +62,15 @@ describe('moving notes to a new pattern', () => {
     expect(planMoveNotes(project(1, [src], []), src, [], 'x', '#0', ids())).toBeNull();
     expect(planMoveNotes(project(1, [src], []), src, [99], 'x', '#0', ids())).toBeNull();
   });
+
+  it('every moved channel keeps its loop, so the repeats still play', () => {
+    const src2 = pat(1, [note(0, 36, 1), note(4, 38, 2)], 16);
+    (src2 as Pattern).channelLoops = { '1': 3, '2': 4 };
+    const plan = planMoveNotes(project(1, [src2], []), src2, [0, 1], 'x', '#f00', ids())!;
+    const made = putPats(plan.ops).find(x => x.id === 1000)!;
+    expect(made.channelLoops).toEqual({ '1': 3, '2': 4 });
+    // a channel without a loop stays out of the map
+    const plan2 = planMoveNotes(project(1, [src], []), src, [0], 'y', '#0f0', ids())!;
+    expect(putPats(plan2.ops).find(x => x.id === 1000)!.channelLoops).toBeUndefined();
+  });
 });

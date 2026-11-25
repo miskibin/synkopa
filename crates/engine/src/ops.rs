@@ -227,7 +227,7 @@ fn check_notes(p: &Project, pt: &Pattern) -> Result<(), OpError> {
 /// Checks a pattern's per-channel loops (FL Studio 20.1's channel looping): each entry
 /// names a channel, sits inside the pattern, and expands into a bounded number of
 /// scheduled notes.
-fn check_channel_loops(p: &Project, pt: &Pattern) -> Result<(), OpError> {
+pub(crate) fn check_channel_loops(p: &Project, pt: &Pattern) -> Result<(), OpError> {
     let mut extra = 0u64;
     for (ch, &l) in &pt.channel_loops {
         if p.channel(*ch).is_none() {
