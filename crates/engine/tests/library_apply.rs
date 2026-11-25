@@ -37,3 +37,14 @@ fn a_failing_build_or_op_changes_nothing() {
     assert_eq!(e.project(), p0);
     assert_eq!(e.revision(), rev);
 }
+
+#[test]
+fn the_step_is_named_by_the_caller() {
+    let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
+    e.apply_with_library(&[], None, |_, _| Ok(vec![])).unwrap();
+    assert_eq!(e.state().undo_label.as_deref(), Some("Relink audio"), "the plain path keeps its name");
+    e.apply_with_library_labeled(&[], None, Some("Import MIDI"), |_, _| Ok(vec![])).unwrap();
+    assert_eq!(e.state().undo_label.as_deref(), Some("Import MIDI"));
+    e.apply_with_library_labeled(&[], None, None, |_, _| Ok(vec![])).unwrap();
+    assert_eq!(e.state().undo_label.as_deref(), None, "an unnamed step stays unnamed");
+}

@@ -2,7 +2,7 @@
 // for the in-browser mock), chord names, and the dialog's range helpers.
 import type { ChordQuality, ChordSegment } from '../api/types';
 
-export const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
+const CHORD_INTERVALS: Record<ChordQuality, number[]> = {
   maj: [0, 4, 7], min: [0, 3, 7], '7': [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], sus2: [0, 2, 7], sus4: [0, 5, 7], dim: [0, 3, 6],
 };
 const SUFFIX: Record<ChordQuality, string> = { maj: '', min: 'm', '7': '7', maj7: 'maj7', m7: 'm7', sus2: 'sus2', sus4: 'sus4', dim: 'dim' };

@@ -268,7 +268,7 @@ function GeneralSection() {
       <div class="sechd">{t('d.set.sec.rec')}</div>
       <div class="form">
         <Row label={t('d.set.metro')}><OnOff on={() => S.transport.metro} set={v => void A.setTransportFlag('metro', v)} /></Row>
-        <Row label="Count-in" desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
+        <Row label={t('d.set.countin')} desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
       </div>
       <div class="setfoot">
         <span class="note">{t('d.set.reset.note')}</span>

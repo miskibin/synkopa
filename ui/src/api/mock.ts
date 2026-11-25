@@ -1132,7 +1132,8 @@ export class MockBackend implements Backend {
     if (nt > 0) ops.push({ op: 'putClips', clips: [newClip(clipId, track, start, len, 'pat', patternId)] });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
-    this.pushUndo(prev); this.changed();
+    // the engine commits this through `apply_with_library_labeled` with the same name
+    this.pushUndo(prev, 'Send chords to piano roll'); this.changed();
     return { patternId, channelId: ch, newChannel: a.channel == null, clipId: nt > 0 ? clipId : null, track, start, chords: segs.length, revision: this.revision };
   }
   /** Same contract as the engine's `auto_vocal_plan`, with fixed measurements of a typical take
@@ -1474,7 +1475,8 @@ export class MockBackend implements Backend {
     ops.push({ op: 'putClips', clips: [newClip(clipId, track, beat, len, 'pat', patternId)] });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
-    this.pushUndo(prev); this.changed();
+    // the engine commits this through `apply_with_library_labeled` with the same name
+    this.pushUndo(prev, 'Import MIDI'); this.changed();
     return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && f.bpm) };
   }
   async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {

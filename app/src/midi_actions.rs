@@ -125,7 +125,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     let mut made: Value = Value::Null;
     let track_arg = opt_f64(a, "track").map(|t| t.max(0.0) as u32);
     let rev = e
-        .apply_with_library(&files, if_revision, |p: &Project, src: &HashMap<String, Id>| {
+        .apply_with_library_labeled(&files, if_revision, Some("Import MIDI"), |p: &Project, src: &HashMap<String, Id>| {
             let mut next = p.next_id;
             let mut id = || {
                 next += 1;
