@@ -379,6 +379,11 @@ describe('channel loops (FL 20.1 channel looping)', () => {
     expect(out.patterns.find(x => x.id === 1)!.channelLoops).toBeUndefined();
     out = applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 4, notes: [hat(0)], channelLoops: { [String(BASS)]: 3 } } }]);
     expect(out.patterns.find(x => x.id === 1)!.channelLoops).toEqual({ [String(BASS)]: 3 });
+    // the repeats' total stays bounded (the engine checks the sum across entries)
+    const many: Note[] = [];
+    for (let i = 0; i < 200; i++) many.push(hat(i % 4));
+    expect(() => applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 2048, minLen: 2048, notes: many, channelLoops: { [String(BASS)]: 4 } } }]))
+      .toThrow('may not repeat into more than 65536 notes');
   });
 
   it('removeChannel removes its loop entries', () => {

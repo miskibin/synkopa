@@ -125,14 +125,18 @@ export function chanMenu(c: Channel, x: number, y: number, clipboardItems: MenuI
 function loopItems(pt: Pattern, c: Channel): MenuItem[] {
   const cur = loopStepsOf(pt, c.id), steps = stepsOf(pt);
   const set = (l: number) => {
-    commit([putChannelLoop(pt, c.id, l)], t('b.rk.loopSet', { n: l }));
+    commit([putChannelLoop(pt, c.id, l)], t('b.rk.loopSet'));
     say(t('b.rk.loopSaid', { n: l, name: c.name }));
   };
+  const clear = () => {
+    commit([putChannelLoop(pt, c.id, 0)], t('b.rk.loopClear'));
+    say(t('b.rk.loopOffSaid', { name: c.name }));
+  };
   return [
-    { t: 'item', label: t('b.rk.loopOff'), checked: cur === 0, act: () => { if (cur) set(0); } },
+    { t: 'item', label: t('b.rk.loopOff'), checked: cur === 0, act: () => { if (cur) clear(); } },
     ...[1, 2, 3, 4, 6, 8, 16].filter(l => l < steps).map((l): MenuItem => ({
       t: 'item',
-      label: l === 16 ? t('b.rk.loopBar') : t('b.rk.loopN', { n: l }),
+      label: l === 16 ? t('b.rk.loopBar') : l === 1 ? t('b.rk.loopN1') : l <= 4 ? t('b.rk.loopN2', { n: l }) : t('b.rk.loopN5', { n: l }),
       checked: cur === l,
       act: () => set(l),
     })),

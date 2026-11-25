@@ -163,6 +163,23 @@ export function followPatternLength(p: Project, id: Id, oldLen: number, len: num
   }
 }
 
+/** The engine's `check_channel_loops` (throws when `strict`): each entry names a channel, sits
+ * inside the pattern, and the repeats of all entries together stay bounded. */
+export function checkChannelLoops(p: Project, pt: Pattern, strict: boolean): void {
+  const fail = (m: string) => { if (strict) throw new PatternOpError(m); };
+  const steps = Math.round(pt.len * 4);
+  let extra = 0;
+  for (const [k, l] of Object.entries(pt.channelLoops ?? {})) {
+    const ch = Number(k);
+    if (strict && !(p.channels ?? []).some(c => c.id === ch)) fail(`no channel with id ${ch}`);
+    if (!(l >= 1 && l <= steps && Number.isInteger(l))) fail(`pattern ${pt.id}: a channel loop must be 1..=${steps} steps`);
+    const cell = pt.notes.filter(n => n.ch === ch).length;
+    const reps = Math.max(0, Math.ceil(steps / l) - 1);
+    extra += reps * cell;
+  }
+  if (pt.notes.length + extra > MAX_LOOP_NOTES) fail(`pattern ${pt.id}: the channel loops may not repeat into more than ${MAX_LOOP_NOTES} notes`);
+}
+
 /** What a pattern-length change did to the clips that show it (`followChanges`). */
 export interface FollowReport {
   /** The pattern, its new length in beats. */
@@ -219,17 +236,7 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
       stripPatternDefaults(pt);
       fitLen(pt);
-      // per-channel loops (the engine's `check_channel_loops`): each names a channel, sits
-      // inside the pattern, and expands into a bounded number of scheduled notes
-      const steps = Math.round(pt.len * 4);
-      for (const [k, l] of Object.entries(pt.channelLoops ?? {})) {
-        const ch = Number(k);
-        if (strict && !(p.channels ?? []).some(c => c.id === ch)) fail(`no channel with id ${ch}`);
-        if (!(l >= 1 && l <= steps && Number.isInteger(l))) fail(`pattern ${pt.id}: a channel loop must be 1..=${steps} steps`);
-        const cell = pt.notes.filter(n => n.ch === ch && n.step < l).length;
-        const reps = Math.max(0, Math.ceil(steps / l) - 1);
-        if (pt.notes.length + reps * cell > MAX_LOOP_NOTES) fail(`pattern ${pt.id}: a channel loop may not repeat into more than ${MAX_LOOP_NOTES} notes`);
-      }
+      checkChannelLoops(p, pt, strict);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);
       if (i >= 0) {

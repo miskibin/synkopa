@@ -1844,25 +1844,6 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             }
         }
     }
-    // A per-channel loop (FL Studio 20.1's channel looping): the channel's steps 0..n
-    // repeat to fill the pattern, so setting it trims that channel's notes from step n on
-    // (one undo step, nothing hidden); 0 or "off" clears the loop and keeps the cell.
-    if let Some(l) = arg(a, "loop") {
-        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --loop")?)?.id;
-        let steps = (pt.len * 4.0).round() as u32;
-        let off = l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0);
-        if off {
-            pt.channel_loops.remove(&ch);
-        } else {
-            let loop_steps = l
-                .as_u64()
-                .filter(|n| *n > 0 && *n <= steps as u64)
-                .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))?
-                as u32;
-            pt.notes.retain(|note| !(note.ch == ch && note.step >= loop_steps as f32));
-            pt.channel_loops.insert(ch, loop_steps);
-        }
-    }
     // `synkopa notes stamp` lands here: one chord written through the existing note op
     let mut stamped: Option<Value> = stamp.map(|st| -> Result<Value, String> {
         let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --stamp")?)?.id;
@@ -1884,6 +1865,36 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         pt.notes.extend(pitches.iter().map(|&k| Note { v: 0.8, ..Note::new(ch, step, len, Some(k)) }));
         Ok(json!({ "notes": pitches.iter().map(|&k| json!({ "step": step, "len": len, "p": k, "v": 0.8 })).collect::<Vec<_>>(), "label": wave_engine::transform::chord_name(&pitches) }))
     }).transpose()?;
+    // A per-channel loop (FL Studio 20.1's channel looping): the channel's steps 0..n
+    // repeat to fill the pattern, so setting it trims that channel's notes from step n on
+    // (one undo step, nothing hidden); 0 or "off" clears the loop and keeps the cell. It
+    // runs after every note write above, so `--loop` + `--steps`/`--stamp` in one call
+    // trim the final notes.
+    if let Some(l) = arg(a, "loop") {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --loop")?)?.id;
+        let steps = (pt.len * 4.0).round() as u32;
+        let off = l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0);
+        if off {
+            pt.channel_loops.remove(&ch);
+        } else {
+            let loop_steps = l
+                .as_u64()
+                .filter(|n| *n > 0 && *n <= steps as u64)
+                .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))?
+                as u32;
+            pt.notes.retain(|note| !(note.ch == ch && note.step >= loop_steps as f32));
+            pt.channel_loops.insert(ch, loop_steps);
+        }
+    }
+    // the loop's invariant holds on every write: notes a steps/notes/stamp write put past
+    // an already-set loop would never play, so they go in the same op
+    if let Some(chv) = arg(a, "ch") {
+        if let Ok(c) = find_channel(&p, chv) {
+            if let Some(&l) = pt.channel_loops.get(&c.id) {
+                pt.notes.retain(|note| !(note.ch == c.id && note.step >= l as f32));
+            }
+        }
+    }
     if let Some(s) = stamped.as_mut() {
         s["revision"] = json!(e.apply(&[Op::PutPattern { pattern: pt.clone() }], false, if_revision).map_err(|x| x.to_string())?);
         return Ok(s.clone());

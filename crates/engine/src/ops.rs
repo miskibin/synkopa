@@ -228,6 +228,7 @@ fn check_notes(p: &Project, pt: &Pattern) -> Result<(), OpError> {
 /// names a channel, sits inside the pattern, and expands into a bounded number of
 /// scheduled notes.
 fn check_channel_loops(p: &Project, pt: &Pattern) -> Result<(), OpError> {
+    let mut extra = 0u64;
     for (ch, &l) in &pt.channel_loops {
         if p.channel(*ch).is_none() {
             return Err(OpError::Missing { what: "channel", id: *ch });
@@ -238,13 +239,15 @@ fn check_channel_loops(p: &Project, pt: &Pattern) -> Result<(), OpError> {
         }
         let cell = pt.notes.iter().filter(|n| n.ch == *ch).count() as u64;
         let reps = ((f64::from(steps) / f64::from(l)).ceil() as u64).saturating_sub(1);
-        if pt.notes.len() as u64 + reps * cell > crate::model::MAX_LOOP_NOTES as u64 {
-            return Err(OpError::Invalid(format!(
-                "pattern {}: a channel loop may not repeat into more than {} notes",
-                pt.id,
-                crate::model::MAX_LOOP_NOTES
-            )));
-        }
+        extra += reps * cell;
+    }
+    // the expansion adds every entry's repeats: the bound is on the sum, not per entry
+    if pt.notes.len() as u64 + extra > crate::model::MAX_LOOP_NOTES as u64 {
+        return Err(OpError::Invalid(format!(
+            "pattern {}: the channel loops may not repeat into more than {} notes",
+            pt.id,
+            crate::model::MAX_LOOP_NOTES
+        )));
     }
     Ok(())
 }
@@ -966,6 +969,8 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             // a generator can push notes past the pattern's end: grow the pattern like
             // putPattern does, so whole-pass clips follow
             p.patterns[pi].fit_len();
+            // and a longer pattern (or rewritten channels) re-validates the loops' bounds
+            check_channel_loops(p, &p.patterns[pi])?;
             let new_len = p.patterns[pi].len;
             if (old_len - new_len).abs() > 1e-9 {
                 follow_pattern_length(p, *pid, old_len, new_len);

@@ -186,12 +186,17 @@ the kit and its mixer routing in every pattern.
   live readers and the offline render consume the same list), never in the project. Swing
   belongs to the absolute step, so repeats rotate through it like any other note. Setting a
   loop keeps only the notes below it (the UI and `synkopa pattern --loop` trim in the same
-  op; a script that writes notes past the loop writes notes that do not play), clearing it
-  keeps the cell, and "Burn repeats into steps" (the row menu) materializes them. A loop
-  never changes the pattern's length (`fit_len` reads real notes only) and never re-targets
-  its clips, so `follow_pattern_length` is untouched. Validation on `putPattern`: each entry
-  names a channel, `1..=len·4` steps, and the expansion stays within `MAX_LOOP_NOTES`
-  (65 536 scheduled notes per pattern); `removeChannel` removes the entries.
+  op, every later write to that channel is trimmed too, and the timeline skips anything at
+  or past the loop — so a script or a recording cannot make a note double the repeat that
+  lands on its step), clearing it keeps the cell, and "Burn repeats into steps" (the row
+  menu) materializes them. A recorded take on a looped channel folds into its cell (steps
+  wrap by `rem_euclid`), `TransformNotes` re-validates the loops after a generator rewrites
+  the pattern, and `removeBar` refuses while a loop would stick out of the shorter pattern.
+  A loop never changes the pattern's length (`fit_len` reads real notes only) and never
+  re-targets its clips, so `follow_pattern_length` is untouched. Validation on `putPattern`
+  and `TransformNotes`: each entry names a channel, `1..=len·4` steps, and the expansion of
+  all entries together stays within `MAX_LOOP_NOTES` (65 536 scheduled notes per pattern);
+  `removeChannel` removes the entries.
 * **Chord tools** (piano roll Tools strip + `synkopa notes chord|progression|stamp`): the chord
   theory lives in one place per language — `transform.rs`'s tables (`CHORD_TYPES`,
   `PROGRESSION_TEMPLATES`) and helpers (`chord_pitches`, `chord_name`, `progression`),

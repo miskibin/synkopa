@@ -41,7 +41,8 @@ shown in the app after an update and is published as the release notes (see
   copying. The repeats show as ghost steps, a line in the channel's colour marks where the loop
   ends, the playhead shows each row its own position, and *Burn repeats into steps* writes them
   out for good. Setting a loop removes that channel's notes past it (one undo step, nothing
-  hidden); the pattern's length and its playlist clips never change because of a loop. From the
+  hidden), and every later write to that channel stops at the loop too; the pattern's
+  length and its playlist clips never change because of a loop. From the
   command line: `synkopa pattern --id 2 --ch shaker --steps "x.x" --loop 3`.
 
 ### Changed

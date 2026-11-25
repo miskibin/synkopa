@@ -75,12 +75,37 @@ fn a_loop_put_never_touches_clips_or_the_length() {
     let h = host();
     let pid = pattern_id(&h);
     let p = h.engine().project();
-    let clip = p.clips.iter().find(|c| c.kind == wave_engine::ClipKind::Pat && c.source == pid).map(|c| (c.id, c.len));
+    let clip = p
+        .clips
+        .iter()
+        .find(|c| c.kind == wave_engine::ClipKind::Pat && c.source == pid)
+        .map(|c| (c.id, c.len))
+        .expect("the sketch has a pattern clip");
     let ch = hat(&h);
     pattern(&h, &json!({ "id": pid, "ch": "Hat", "steps": "x.x", "loop": 2 }), None).unwrap();
-    // the sketch's clip follows the pattern length; a loop alone must not re-target it
-    if let Some((id, len)) = clip {
-        assert_eq!(h.engine().project().clips.iter().find(|c| c.id == id).unwrap().len, len);
-    }
-    let _ = ch;
+    // the loop landed, the pattern's length is untouched
+    assert_eq!(loops_of(&h, pid), std::collections::BTreeMap::from([(ch, 2)]));
+    let proj = h.engine().project();
+    let pt = proj.patterns.iter().find(|x| x.id == pid).unwrap();
+    assert_eq!((pt.len, pt.min_len), (4.0, 4.0));
+    // and the sketch's clip follows the pattern length; a loop alone must not re-target it
+    let (id, len) = clip;
+    assert_eq!(h.engine().project().clips.iter().find(|c| c.id == id).unwrap().len, len);
+}
+
+#[test]
+fn a_write_past_an_existing_loop_is_trimmed_in_the_same_step() {
+    // the invariant holds on every write, not only --loop: steps past a set loop would
+    // never play, so they go instead of sitting in the pattern (and in the reply's steps)
+    let h = host();
+    let pid = pattern_id(&h);
+    let ch = hat(&h);
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "loop": 3 }), None).unwrap();
+    let r = pattern(&h, &json!({ "id": pid, "ch": "Hat", "steps": "x.x.x.x." }), None).unwrap();
+    let row = r["rows"].as_array().unwrap().iter().find(|row| row["ch"] == json!(ch)).unwrap().clone();
+    assert_eq!(row["steps"], json!("x.x. .... .... ...."));
+    assert_eq!(row["loop"], json!(3));
+    let proj = h.engine().project();
+    let notes: Vec<_> = proj.patterns.iter().find(|x| x.id == pid).unwrap().notes.iter().filter(|n| n.ch == ch).collect();
+    assert_eq!(notes.iter().map(|n| n.step as u32).collect::<Vec<_>>(), vec![0, 2]);
 }

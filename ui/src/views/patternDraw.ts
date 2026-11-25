@@ -115,11 +115,14 @@ export function drawRack(g: CanvasRenderingContext2D, W: number, H: number, G: R
       g.fillRect(stepX(loop, G.cw) - G.sx, y, W, G.rh);
       g.fillStyle = rgba(c.color, 0.85);
       g.fillRect(stepX(loop, G.cw) - G.sx - 1, y + 2, 2, G.rh - 4);
+      // exactly what the engine plays: repeats land inside the pattern only (the cycle
+      // re-anchors at every pattern pass), so a ghost never sits past the end or in the
+      // greyed bar
       for (let k = 1; ; k++) {
         const s0 = k * loop;
-        if (s0 >= G.steps) break;
+        if (s0 >= G.end) break;
         if (stepX(s0, G.cw) - G.sx > W) break;
-        for (const n of cellSteps) drawStepAt(n, n.step + s0, 0.38);
+        for (const n of cellSteps) if (n.step + s0 < G.end) drawStepAt(n, n.step + s0, 0.38);
       }
     }
   }

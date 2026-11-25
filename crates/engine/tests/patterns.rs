@@ -807,7 +807,9 @@ fn channel_loop_rules_are_checked() {
     // longer than the pattern refused
     *bad.get_mut(&k).unwrap() = 17;
     assert!(e.apply(&[Op::PutPattern { pattern: pt(bad.clone(), 4.0, vec![Note::trigger(k, 0.0, None)]) }], false, None).is_err());
-    // a channel the pattern does not know refused (and a note of it would be refused too)
+    // a channel the pattern does not know refused (and a note of it would be refused too):
+    // the earlier entry goes first, or the length error would fire before this branch
+    bad.remove(&k);
     bad.insert(424242, 3);
     assert!(e.apply(&[Op::PutPattern { pattern: pt(bad, 4.0, vec![]) }], false, None).is_err());
     // a loop that would expand into too many notes refused (1-step cell, 9 notes in it,
@@ -825,15 +827,45 @@ fn channel_loop_rules_are_checked() {
 
 #[test]
 fn a_loop_never_stretches_the_pattern_or_its_clips() {
-    // only a looped 3-step cell: the pattern keeps its minimum length, and the clip that
-    // follows the pattern's length keeps it too (a loop never triggers follow_pattern_length)
+    // only a looped 3-step cell, applied through the op (the only path that could stretch
+    // a clip): the pattern keeps its minimum length and the whole-pass clip keeps its
+    // length, because a loop never changes the pattern's length
     let p0 = Project::routed();
     let h = chan(&p0, "Hat");
     let mut pt = one_pattern(vec![Note::trigger(h, 0.0, None)], 4.0, 0.0);
-    pt.patterns[0].channel_loops.insert(h, 3);
+    let mut loops = std::collections::BTreeMap::new();
+    loops.insert(h, 3);
+    pt.patterns[0].channel_loops = loops;
     let e = Engine::new(pt, Arc::new(NoPlugins));
+    e.apply(&[Op::PutPattern { pattern: e.project().patterns[0].clone() }], false, None).unwrap();
     assert_eq!(e.project().patterns[0].len, 4.0);
     assert_eq!(e.project().clips.iter().find(|c| c.id == 1).unwrap().len, 4.0);
+}
+
+#[test]
+fn a_loop_stays_inside_the_pattern_and_ignores_notes_past_the_loop() {
+    // a 6-step cell with one hit at step 4, in a 1-bar pattern: the repeats land at 10 and
+    // would land at 16 — the pattern's end — but never past it (the cycle re-anchors at
+    // every pattern pass), and a note the pattern carries past the loop (a script could
+    // write one) does not double the repeat that lands on its step
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let mut pt = one_pattern(vec![Note::trigger(h, 4.0, None), Note::trigger(h, 9.0, None)], 4.0, 0.0);
+    let mut loops = std::collections::BTreeMap::new();
+    loops.insert(h, 6);
+    pt.patterns[0].channel_loops = loops;
+    let out = render(pt, 4.0);
+    let spb = 60.0 / 128.0;
+    let step_frames = spb / 4.0 * SR as f64;
+    let hits = peaks(&out, 1e-5, (step_frames * 0.75) as usize);
+    // 4 and 10 are the cell and its one repeat; 9 is past the loop — not played, so it
+    // does not add a hit of its own or double the repeat at 10 (which comes from step 4)
+    let want: Vec<f64> = [4.0, 10.0].iter().map(|s| s * step_frames).collect();
+    let got: Vec<f64> = hits.iter().map(|h| *h as f64).collect();
+    assert_eq!(hits.len(), want.len(), "steps at {:?}", got.iter().map(|g| g / step_frames).collect::<Vec<_>>());
+    for (g, exp) in got.iter().zip(&want) {
+        assert!((g - exp).abs() <= 0.25 * step_frames, "onset at step {}, expected {}", g / step_frames, exp / step_frames);
+    }
 }
 
 #[test]

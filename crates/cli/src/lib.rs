@@ -2030,6 +2030,42 @@ mod tests {
     }
 
     #[test]
+    fn pattern_loop_takes_a_step_count_or_off_and_refuses_the_rest() {
+        struct Spy {
+            last: RefCell<Option<Value>>,
+        }
+        impl Doc for Spy {
+            fn call(&self, command: &str, args: &Value, _: Option<u64>) -> Result<Value, String> {
+                if command == "pattern" {
+                    *self.last.borrow_mut() = Some(args.clone());
+                }
+                Ok(json!({ "id": 1, "name": "P", "color": "#fff", "len": 4, "rows": [] }))
+            }
+            fn revision(&self) -> u64 {
+                1
+            }
+            fn dirty(&self) -> bool {
+                false
+            }
+            fn save(&self, _: &Path) -> Result<(), String> {
+                Ok(())
+            }
+        }
+        let spy = Spy { last: RefCell::new(None) };
+        let cx = Cx { doc: Some(&spy) };
+        // a step count travels as a number
+        run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "3"])).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap()["loop"], json!(3));
+        // "off" (any case) clears as 0
+        run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "OFF"])).unwrap();
+        assert_eq!(spy.last.borrow().as_ref().unwrap()["loop"], json!(0));
+        // a bare --loop, a fraction and a negative are usage errors, not silent skips
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop"])), Err(Fail::Usage(_))));
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "3.5"])), Err(Fail::Usage(_))));
+        assert!(matches!(run(&cx, "pattern", &args(&["pattern", "--id", "1", "--ch", "Kick", "--loop", "-1"])), Err(Fail::Usage(_))));
+    }
+
+    #[test]
     fn an_edit_is_saved_back_and_a_read_saves_nothing() {
         let d = dir("save");
         let p = project(&d);

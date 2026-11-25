@@ -30,7 +30,11 @@ export function planMoveNotes(p: Project, src: Pattern, idx: readonly number[], 
   const moved: Note[] = [], kept: Note[] = [];
   src.notes.forEach((n, i) => (take.has(i) ? moved : kept).push({ ...n }));
   const minLen = Math.max(minLenOf(src), Math.ceil(src.len / BAR - EPS) * BAR);
-  const pattern: Pattern = { id: newId(), name, color, len: src.len, minLen, notes: moved, ...(src.swing != null ? { swing: src.swing } : {}) };
+  // the moved notes keep their channel's loop, so what they sound like does not change
+  // (single-channel moves only: mixed notes carry no one channel's loop)
+  const movedChs = new Set(moved.map(n => n.ch));
+  const loop = movedChs.size === 1 ? (src.channelLoops?.[String([...movedChs][0])] ?? 0) : 0;
+  const pattern: Pattern = { id: newId(), name, color, len: src.len, minLen, notes: moved, ...(src.swing != null ? { swing: src.swing } : {}), ...(loop > 0 ? { channelLoops: { [String([...movedChs][0])]: loop } } : {}) };
   const ops: Op[] = [
     { op: 'putPattern', pattern: { ...src, minLen, notes: kept } },
     { op: 'putPattern', pattern },

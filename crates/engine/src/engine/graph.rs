@@ -491,16 +491,22 @@ fn build_patterns(
                     continue;
                 }
                 let Some(ci) = p.channels.iter().position(|c| c.id == *ch) else { continue };
-                // the cell is the steps below the loop; anything the pattern still carries
-                // from the loop step on (a script can write it) is not played
-                let cell: Vec<NoteRt> = notes.iter().filter(|n| n.chan == ci && (n.beat * 4.0) < loop_steps as f64).cloned().collect();
+                // the cell is the steps below the loop. Anything the pattern still carries
+                // from the loop step on (the UI and the CLI trim it, but a script or a
+                // recording can write it) does not play: keeping it would double-trigger
+                // with the repeat that lands on the same step. The repeats themselves stay
+                // inside the pattern: the cycle re-anchors at every pattern pass, like the
+                // ghosts the rack draws.
+                notes.retain(|n| !(n.chan == ci && n.beat * 4.0 >= f64::from(loop_steps)));
+                let cell: Vec<NoteRt> = notes.iter().filter(|n| n.chan == ci).cloned().collect();
                 let reps = (end / loop_steps as f32).ceil() as u32 - 1;
                 for k in 1..=reps {
                     let shift = (k as f32 * loop_steps as f32) as f64 / 4.0;
                     for nt in &cell {
-                        let mut n2 = nt.clone();
-                        n2.beat += shift;
-                        notes.push(n2);
+                        let beat = nt.beat + shift;
+                        if beat * 4.0 < f64::from(end) - 1e-4 {
+                            notes.push(NoteRt { beat, ..nt.clone() });
+                        }
                     }
                 }
             }
