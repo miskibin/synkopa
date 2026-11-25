@@ -74,7 +74,6 @@ impl TempoMap {
     }
 
     /// One tempo everywhere: every conversion reduces to the constant case.
-    #[allow(dead_code)] // consumed by the offline render / export estimates next
     pub(crate) fn is_constant(&self) -> bool {
         self.points.len() == 1
     }
@@ -89,7 +88,6 @@ impl TempoMap {
     }
 
     /// Seconds from beat `a` to beat `b` (both inside the song), integrating the map.
-    #[allow(dead_code)] // consumed by the offline render / export estimates next
     pub(crate) fn seconds_between(&self, a: f64, b: f64) -> f64 {
         if b <= a {
             return 0.0;
@@ -231,5 +229,18 @@ mod tests {
             assert!((m.seconds_between(0.0, b) - t).abs() < 1e-9, "t {t} beat {b}");
         }
         assert!(b > 0.0);
+    }
+}
+
+#[cfg(test)]
+mod render_checks {
+    use super::*;
+
+    #[test]
+    fn double_time_from_beat_four_integrates_to_three_seconds() {
+        let pts = vec![TempoPoint { beat: 4.0, bpm: 240.0, ramp: false }];
+        let m = TempoMap::compile(&pts, 120.0);
+        assert_eq!(m.seconds_between(0.0, 8.0), 3.0);
+        assert_eq!(m.bpm_at(4.0), 240.0);
     }
 }

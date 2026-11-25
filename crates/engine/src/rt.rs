@@ -2005,6 +2005,9 @@ impl Rt {
                 // start and split the block at the next tempo point (the map is constant
                 // here unless a point falls inside, so the common case reuses bpm/spb/bps)
                 let bpm_seg = self.timeline.tempo.bpm_at(self.beat);
+                if std::env::var("WAVE_DEBUG_TEMPO").is_ok() {
+                    eprintln!("WALK beat={} bpm={bpm_seg} seg_points={:?}", self.beat, self.timeline.tempo);
+                }
                 let spb = 60.0 / bpm_seg;
                 let bps = 1.0 / (spb * sr as f64);
                 let left = ((le - self.beat) / bps).ceil().max(1.0) as usize;

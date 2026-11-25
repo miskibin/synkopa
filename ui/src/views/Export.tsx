@@ -86,7 +86,7 @@ function ExportDialog() {
   };
   const nFiles = () => stemNames().length;
   const range = () => exportRange(S.project, useLoop(), patId());
-  const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds());
+  const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds(), S.project.tempoPoints);
   const bytes = () => exportBytes(seconds(), RATES[rateI()], enc()) * (stems() ? nFiles() : 1);
   const songName = () => (S.path ? baseName(S.path).replace(/\.(synkopa|wave)$/i, '') : 'Song') + '.' + (mp3() ? 'mp3' : 'wav');
 

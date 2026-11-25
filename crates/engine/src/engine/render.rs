@@ -342,8 +342,10 @@ impl Engine {
         }
         let _ = cmd_tx.push(Cmd::Timeline(Box::new(tl)));
         let _ = cmd_tx.push(Cmd::Play { from, count_in: 0.0, rec: false, rec_loop: false });
-        let spb = 60.0 / project.bpm;
-        let duration = (to - from) * spb;
+        // the render walks the tempo map: the duration is the map's integral over the range
+        // (a constant project compiles to one point, so nothing changes for it)
+        let tempo = super::tempo::TempoMap::compile(&project.tempo_points, project.bpm);
+        let duration = tempo.seconds_between(from, to);
         let play_frames = (duration * f64::from(sample_rate)) as usize;
         let (frames, warmup) = match tail {
             RenderTail::Seconds(tail) | RenderTail::Decay { max: tail } => {
@@ -372,11 +374,15 @@ impl Engine {
         let mut stopped = false;
         let hold = (DECAY_HOLD_S * f64::from(sample_rate)) as usize;
         let mut quiet = 0usize;
-        let frames_per_beat = spb * f64::from(sample_rate);
         let beat_at = |done: usize| {
             let rendered = done.saturating_sub(pdc);
             let at = if wrap { rendered % frames } else { rendered };
-            from + at as f64 / frames_per_beat
+            if tempo.is_constant() {
+                from + at as f64 * (60.0 / project.bpm) / f64::from(sample_rate)
+            } else {
+                // the seconds position inside the (possibly wrapped) pass → the beat
+                tempo.beat_at(tempo.seconds_between(0.0, from) + at as f64 / f64::from(sample_rate))
+            }
         };
         let peak_of = |l: &[f32], r: &[f32]| l.iter().chain(r).fold(0f32, |m, x| if x.abs() > m { x.abs() } else { m });
         let keep = |out: &mut Vec<f32>, at: usize, l: &[f32], r: &[f32]| {

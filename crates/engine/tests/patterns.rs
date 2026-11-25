@@ -932,3 +932,24 @@ fn played_notes_keeps_earlier_steps_in_an_unsorted_final_repeat() {
     let got: Vec<u32> = wave_engine::model::played_notes(&pt.patterns[0]).iter().map(|n| n.step as u32).collect();
     assert_eq!(got, vec![0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15]);
 }
+
+fn a_tempo_change_is_audible_in_the_render() {
+    // kicks on beats 0, 4 and 7 (steps 0, 16, 28), double time from beat 4: they sound at
+    // 0 s, 2 s (4 beats at 120) and 2.75 s (beat 7 is 3 beats at 240), and the render of 8
+    // beats is 3 seconds, not 4
+    let p0 = Project::routed();
+    let k = chan(&p0, "Kick");
+    let mut p = one_pattern(vec![Note::trigger(k, 0.0, None), Note::trigger(k, 16.0, None), Note::trigger(k, 28.0, None)], 8.0, 0.0);
+    p.bpm = 120.0; // the constant base the test's timings assume
+    p.tempo_points = vec![TempoPoint { beat: 4.0, bpm: 240.0, ramp: false }];
+    let out = render(p, 8.0);
+    assert_eq!(out.len(), 3 * SR as usize * 2, "2 s at 120 + 1 s at 240");
+    let s120 = 60.0 / 120.0 * SR as f64; // a beat at 120, in (mono) frames
+    let s240 = 60.0 / 240.0 * SR as f64;
+    let hits = peaks(&out, 1e-4, (0.75 * s120) as usize).into_iter().map(|i| i as f64).collect::<Vec<_>>();
+    let want = [0.0, 4.0 * s120, 4.0 * s120 + 3.0 * s240];
+    assert_eq!(hits.len(), 3, "beats at {:?}", hits.iter().map(|h| h / s120).collect::<Vec<_>>());
+    for (g, exp) in hits.iter().zip(&want) {
+        assert!((g - exp).abs() <= 0.25 * s120, "onset at {} beats, expected {}", g / s120, exp / s120);
+    }
+}

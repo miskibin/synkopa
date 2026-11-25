@@ -48,10 +48,47 @@ export function patternSilent(p: Project, id: Id): boolean {
   return !pt || !pt.notes.some(n => chans.some(c => c.id === n.ch && !c.mute));
 }
 
-/** Wall-clock length of a bounce including the effect tail. */
-export function exportSeconds(from: number, to: number, bpm: number, tail: number): number {
-  const beats = Math.max(0, to - from);
-  return (beats * 60) / Math.max(1, bpm) + Math.max(0, tail);
+/** Wall-clock length of a bounce including the effect tail. With tempo points the length
+ * integrates the map segment by segment (engine `tempo.rs`), matching the render. */
+export function exportSeconds(from: number, to: number, bpm: number, tail: number, points?: { beat: number; bpm: number; ramp?: boolean }[]): number {
+  const a = Math.max(0, from), b = Math.max(a, to);
+  const seg = (p0: number, x: number, segEnd: number, bpm0: number, bpm1: number, ramp: boolean): number => {
+    const d = segEnd - p0;
+    if (x <= p0) return 0;
+    if (!ramp || d <= 0 || Math.abs(bpm0 - bpm1) < 1e-9) return ((x - p0) * 60) / bpm0;
+    const bx = bpm0 + (bpm1 - bpm0) * ((x - p0) / d);
+    return (60 * d * Math.log(bx / bpm0)) / (bpm1 - bpm0);
+  };
+  const pts = [...(points ?? [])].sort((x, y) => x.beat - y.beat);
+  let seconds = 0;
+  let pos = a;
+  let i = 0;
+  let cur = Math.max(1, bpm); // the tempo governing at `a` (before the first point past it)
+  while (i < pts.length && pts[i].beat <= a + 1e-9) { cur = Math.max(1, pts[i].bpm); i++; }
+  // the segment containing `a` starts at the point before it — its ramp still governs
+  if (i > 0) i--;
+  while (pos < b - 1e-9) {
+    if (i >= pts.length) {
+      seconds += ((b - pos) * 60) / cur;
+      break;
+    }
+    const pointBeat = pts[i].beat;
+    const nextBeat = pts[i + 1]?.beat ?? b;
+    const startBpm = Math.max(1, pts[i].bpm);
+    const nextBpm = Math.max(1, pts[i + 1]?.bpm ?? startBpm);
+    // the stretch up to this point plays at the current tempo
+    const edge = Math.min(pointBeat, b);
+    seconds += seg(pos, edge, pos, cur, cur, false);
+    pos = edge;
+    if (pos >= b - 1e-9) break;
+    // then the point's own segment, ramping to the next point's tempo
+    const segEnd = Math.min(nextBeat, b);
+    seconds += seg(pos, segEnd, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false);
+    pos = segEnd;
+    cur = startBpm;
+    i++;
+  }
+  return seconds + Math.max(0, tail);
 }
 
 export function fmtExportLen(seconds: number): string {
