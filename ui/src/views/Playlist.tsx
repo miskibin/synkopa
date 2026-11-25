@@ -1289,17 +1289,16 @@ export function Playlist() {
     if (c.kind === 'comp') return openCompMenu(x, y, c, p);
     const src = srcOf(c), isPat = c.kind === 'pat';
     // Rename and the swatches change what the clip plays (the pattern, sample or automation): every
-    // clip of it follows. The menu says so, with how many clips that is (FL: "Rename / color pattern")
+    // clip of it follows. Rename's tooltip says so, with how many clips that is (FL: "Rename / color
+    // pattern"); the swatches need no heading
     const copies = S.project.clips.filter(v => v.kind === c.kind && v.ref === c.ref).length;
     const what = (k: 'pat' | 'audio' | 'auto') => tl(k === 'pat' ? 'a.pl.whatPat' : k === 'audio' ? 'a.pl.whatAudio' : 'a.pl.whatAuto');
-    const scopeLabel = (k: 'pat' | 'audio' | 'auto') => copies > 1 ? tl('a.pl.colourOfN', { what: what(k), n: copies }) : tl('a.pl.colourOf', { what: what(k) });
     const scopeTip = (k: 'pat' | 'audio' | 'auto') => copies > 1 ? tl('a.pl.scopeTipN', { what: what(k), n: copies }) : tl('a.pl.scopeTip', { what: what(k) });
     if (c.kind === 'auto') {
       const a = autoById(c.ref);
       openMenu(x, y, [
         { t: 'title', label: tl('a.pl.autoPrefix') + (a?.name ?? '') },
         { t: 'item', label: tl('a.pl.renameAuto'), title: scopeTip('auto'), act: () => openRename(x, y, a?.name ?? '', v => A.setSrcProp(c, { name: v })) },
-        { t: 'sec', label: scopeLabel('auto') },
         { t: 'swatches', current: a?.color, pick: col => A.setSrcProp(c, { color: col }) },
         { t: 'sep' },
         { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
@@ -1316,7 +1315,6 @@ export function Playlist() {
     const items: MenuItem[] = [
       { t: 'title', label: (isPat ? 'Pattern · ' : 'Audio · ') + (src?.name ?? '') },
       { t: 'item', label: tl(isPat ? 'a.pl.renamePat' : 'a.pl.renameAudio'), title: scopeTip(isPat ? 'pat' : 'audio'), act: () => openRename(x, y, src?.name ?? '', v => A.setSrcProp(c, { name: v })) },
-      { t: 'sec', label: scopeLabel(isPat ? 'pat' : 'audio') },
       { t: 'swatches', current: (src as { color?: string } | undefined)?.color, pick: col => A.setSrcProp(c, { color: col }) },
       { t: 'sec', label: tl('a.pl.secEdit') },
       { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
