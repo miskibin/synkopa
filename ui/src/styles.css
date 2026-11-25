@@ -758,12 +758,14 @@ select option { background: var(--bg4); color: var(--fg); }
 .tbstatus .readout { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
 /* The status message wins the line: the tool hint is the first to give way (it may collapse to nothing),
    then the record-destination chip; the readout ellipsizes only when the whole line is too small for it. */
-.tbstatus .hinttxt { flex: 1 200 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
-.tbstatus .recdest { flex: 0 20 auto; min-width: 0; }
+.tbstatus .hinttxt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg5); }
+.tbstatus .recdest { flex: 0 50 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* what the last action did and what the tool does are two messages: a rule between them (a background, not a border or padding, so it vanishes with the hint) */
 .tbstatus .readout:not(:empty) + .hinttxt { text-indent: 12px; background: linear-gradient(var(--line2), var(--line2)) no-repeat left center / 1px 100%; }
 .tbstatus .offgrid { flex: none; }
-.tbstatus .inrow { flex: none; }
+/* the input meter narrows before a message is cut, but its tag and a readable bar always stay */
+.tbstatus .inrow { flex: 0 10 auto; min-width: 46px; }
+.tbstatus .inrow .inmeter { flex: 1 1 auto; min-width: 22px; }
 .mainvol { display: flex; align-items: center; height: 30px; padding: 0 3px; }
 .masterout { display: flex; align-items: center; justify-content: center; min-width: 38px; height: 28px; box-sizing: border-box; padding: 0 4px; border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: default; }
 .masterout .mobars { position: relative; display: flex; flex-direction: column; gap: 2px; width: 30px; }
@@ -812,7 +814,9 @@ select option { background: var(--bg4); color: var(--fg); }
 .tbc { display: flex; align-items: center; gap: 6px; min-width: 0; height: 100%; }
 .tbmenus { grid-area: 1 / 1; gap: 10px; }
 /* the status line under the menus is as wide as that column: on a wide bar the free room of the spacer column goes to it */
-@media (min-width: 1700px) { .tbmenus { min-width: 360px; } }
+/* the status line is as wide as this column: keep the room the Ask button used to give it (dropped, like the button was, once the bar runs short) */
+.toolbar:not(.f4) .tbmenus { min-width: 330px; }
+@media (min-width: 1700px) { .toolbar:not(.f4) .tbmenus { min-width: 450px; } }
 .tbstatus { grid-area: 2 / 1; contain: inline-size; overflow: hidden; gap: 8px; font: 500 11px var(--sans); white-space: nowrap; }
 .tbtransport { grid-area: 1 / 2; gap: 4px; }
 .tbpos { grid-area: 2 / 2; }
