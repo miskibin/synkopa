@@ -16,6 +16,7 @@ import { openNotebook } from '../state/notebook';
 import { NOTEBOOK_ICON } from './Notebook';
 import { FX_ORDER, FXMETA, FxTile, Icon, ICONS } from '../ui/icons';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 /** What each built-in effect is for, in one line. */
 const DESC: Record<BuiltinKind, TranslationKey> = {
@@ -272,12 +273,12 @@ function FxPicker(props: { insId: Id; x: number; y: number }) {
 
   return (
     <div class="fxpick-veil" style={{ 'pointer-events': drag() ? 'none' : 'auto' }} onPointerDown={close}>
-      <div class="fxpick" style={{ left: pos().left + 'px', top: pos().top + 'px', width: pos().w + 'px', height: pos().h + 'px', 'pointer-events': drag() ? 'none' : 'auto', opacity: drag() ? 0.35 : 1 }}
+      <div class="fxpick" aria-label={tr('d.ui.pn.fxPicker')} ref={el => modal(el, { close })} style={{ left: pos().left + 'px', top: pos().top + 'px', width: pos().w + 'px', height: pos().h + 'px', 'pointer-events': drag() ? 'none' : 'auto', opacity: drag() ? 0.35 : 1 }}
         onPointerDown={e => e.stopPropagation()}>
         <div class="fxp-hd">
           <span class="fxp-search">
             <Icon d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z M21 21l-5.2-5.2" size={14} />
-            <input ref={input} placeholder={tr('c.picker.search')} value={q()} onInput={e => setQ(e.currentTarget.value)} onKeyDown={onKey} spellcheck="false" />
+            <input ref={input} data-autofocus placeholder={tr('c.picker.search')} value={q()} onInput={e => setQ(e.currentTarget.value)} onKeyDown={onKey} spellcheck="false" />
             <Show when={q()}><button class="fxp-clear" title={tr('c.picker.clear')} onClick={() => { setQ(''); input.focus(); }}>×</button></Show>
           </span>
           <span class="fxp-dest">{tr('c.picker.to')} <b>{insName()}</b></span>

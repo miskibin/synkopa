@@ -411,7 +411,7 @@ function drawFilter(g: CanvasRenderingContext2D, w: number, h: number, c: Ctx) {
   const type = Math.round(c.v('flt_type')), fc = c.v('flt_cutoff'), res = c.v('flt_res') / 100;
   const Q = 0.707 * Math.pow(18, res * res);
   const top = 18, bot = -36, ydb = (db: number) => (top - Math.max(bot, Math.min(top, db))) / (top - bot) * h;
-  g.font = '9px monospace'; g.fillStyle = T.vizLabel;
+  g.font = '10px monospace'; g.fillStyle = T.vizLabel;
   for (const f of [100, 1000, 10000]) { const x = Math.log(f / 20) / Math.log(1000) * w; g.fillText(f >= 1000 ? f / 1000 + 'k' : String(f), x + 3, h - 4); }
   g.beginPath();
   for (let i = 0; i <= w; i++) {
@@ -449,7 +449,7 @@ function drawAdsr(g: CanvasRenderingContext2D, w: number, h: number, c: Ctx, k: 
   g.lineTo(xr, bot); g.lineTo(x0, bot); g.closePath(); g.fillStyle = rgba(C_ENV, 0.12); g.fill();
   g.fillStyle = C_ENV;
   for (const [px, py] of [[xa, y(1)], [xd, y(s)], [xs, y(s)], [xr, y(0)]]) { g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill(); }
-  g.font = '9px monospace'; g.fillStyle = T.vizLabel;
+  g.font = '10px monospace'; g.fillStyle = T.vizLabel;
   g.fillText('A', (x0 + xa) / 2 - 3, h - 2); g.fillText('D', (xa + xd) / 2 - 3, h - 2); g.fillText('S', (xd + xs) / 2 - 3, h - 2); g.fillText('R', (xs + xr) / 2 - 3, h - 2);
 }
 

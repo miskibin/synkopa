@@ -3,7 +3,7 @@ import { engine, expect, MOD, pollEngine, test } from './fixtures';
 test.describe('Transport', () => {
   test('in SONG mode play runs the song clock, stop returns it to the start', async ({ app }) => {
     const play = app.locator('[data-act="play"]');
-    const clock = app.getByText('1:01:01', { exact: true });
+    const clock = app.getByText('1:1:1', { exact: true });
     await expect(clock).toBeVisible();
     await app.getByRole('button', { name: 'SONG', exact: true }).click();
     await expect(play).toHaveAttribute('title', 'Play / Stop (Space)');

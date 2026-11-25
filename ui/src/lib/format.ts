@@ -15,12 +15,26 @@ export function panText(v: number): string {
 }
 export const hzText = (v: number) => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2) + ' kHz' : Math.round(v) + ' Hz';
 
-export function fmtPos(b: number): string {
-  return (Math.floor(b / 4) + 1) + '.' + (mod(Math.floor(b), 4) + 1) + (b % 1 ? '.' + (Math.floor(mod(b, 1) * 4) + 1) : '');
+/**
+ * The one time notation of the app (FL's bar:beat:tick, in 16ths): "bar:beat:16th", all counted
+ * from 1, so beat 5.5 (bar 2, beat 2, third 16th) is "2:2:3". The transport, the ruler (its beat
+ * labels are the first two fields), the status line and the Piano roll's fields all write it.
+ * A position between 16ths keeps the fraction, to `digits` decimals ("1:2:1.5").
+ */
+export function fmtBbs(beats: number, digits = 2): string {
+  const s16 = Math.max(0, beats * 4);
+  const k = 10 ** digits;
+  const at = Math.round(s16 * k) / k;
+  const bar = Math.floor(at / 16 + 1e-9), beat = Math.floor((at - bar * 16) / 4 + 1e-9);
+  const six = Math.round((at - bar * 16 - beat * 4 + 1) * k) / k;
+  return `${bar + 1}:${beat + 1}:${six}`;
 }
+/** A position in the status line and menus: bar:beat:16th (see `fmtBbs`). */
+export const fmtPos = (b: number): string => fmtBbs(b);
+/** The transport's position counter: bar:beat:16th of the 16th being played (no fraction). */
 export function fmtClock(b: number): string {
   if (b < 0) return 'COUNT ' + Math.ceil(-b);
-  return (Math.floor(b / 4) + 1) + ':' + String(Math.floor(b) % 4 + 1).padStart(2, '0') + ':' + String(Math.floor((b % 1) * 4) + 1).padStart(2, '0');
+  return fmtBbs(Math.floor(b * 4 + 1e-9) / 4);
 }
 export function fmtBytes(n: number): string {
   if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';

@@ -32,6 +32,8 @@ import { t } from '../lib/i18n';
 import { midiToHz, noteAt, scaleMask, simpleTarget, snapNote } from '../lib/pitch';
 import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
 import { newFx } from '../lib/presets';
+import { comparedPairs, fixFx } from '../lib/mixAssist';
+import type { Collision } from './telemetry';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
   PreviewWave,
@@ -194,6 +196,10 @@ export class MockBackend implements Backend {
   /** Output underruns since the engine started (telemetry `underruns`): the browser renders
    *  nothing, so none happen unless a test injects them with {@link mockUnderrun}. */
   private underrunTotal = 0;
+  /** Mix assistant: on/off, and seconds played since it last forgot (the mock "hears" a kick
+   *  and a bass that share the sub range once they have played together for a few seconds). */
+  private assist = true;
+  private assistHeard = 0;
   private focusritePresent = true;
   private wasapiOutputPresent = true;
 
@@ -543,8 +549,24 @@ export class MockBackend implements Backend {
     }
     const inLevel = this.tr.rec ? 0.2 + 0.5 * Math.abs(Math.sin(t * 3)) * Math.random() : 0;
     void spb;
+    if (playing && this.assist) this.assistHeard += 1 / 60;
     this.teleCb(encodeFrame({ seq, beat, playing, recording: !!this.rec && this.rawBeat() >= (this.rec?.clipStart ?? 0), previewing: !!this.preview,
-      inLevel, previewPos, cpu: playing ? 0.12 + 0.03 * Math.random() : 0.02, ins, fx, rec, patBeat, underruns: this.underrunTotal }));
+      inLevel, previewPos, cpu: playing ? 0.12 + 0.03 * Math.random() : 0.02, ins, fx, rec, patBeat, underruns: this.underrunTotal,
+      collisions: this.fakeCollisions() }));
+  }
+
+  /** A kick and a bass/808 insert that do not feed each other, after 3 s of playing: the bass
+   *  covers the kick in the sub range (the engine measures; the mock pretends). */
+  private fakeCollisions(): Collision[] {
+    if (!this.assist || this.assistHeard < 3) return [];
+    const name = (id: Id) => this.p.inserts.find(m => m.id === id)?.name ?? '';
+    const out: Collision[] = [];
+    for (const [a, b] of comparedPairs(this.p)) {
+      const kick = (id: Id) => /kick|stopa/i.test(name(id)), bass = (id: Id) => /808|bass|sub|bas\b/i.test(name(id));
+      const pair = kick(a) && bass(b) ? [b, a] : kick(b) && bass(a) ? [a, b] : null;
+      if (pair) out.push({ masker: pair[0], protect: pair[1], lo: 44.547726, hi: 56.126617, center: 50.00313, overlap: 0.9, keyDb: -12.7 });
+    }
+    return out;
   }
 
   private findFx(id: Id): { fx: Fx; ins: Id } | null {
@@ -1506,6 +1528,30 @@ export class MockBackend implements Backend {
     if (!c) throw new Error(`no FX chain preset called ${name.trim()}`);
     return c;
   }
+  async mixAssist(cmd: 'mix_assistant' | 'masking' | 'unmask' | 'mask_ignore', args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    await delay();
+    const num = (k: string) => { const v = args[k]; if (typeof v !== 'number' || !isFinite(v)) throw new Error(`\`${k}\` (number) is required`); return v; };
+    switch (cmd) {
+      case 'mix_assistant':
+        if (args.on != null) { if (typeof args.on !== 'boolean') throw new Error('`on` must be true or false'); this.assist = args.on; if (!this.assist) this.assistHeard = 0; }
+        return { on: this.assist };
+      case 'masking': return { on: this.assist, live: true, collisions: this.fakeCollisions() };
+      case 'unmask': {
+        const c: Collision = { masker: num('masker'), protect: num('protect'), lo: num('lo'), hi: num('hi'), center: 0, overlap: 0, keyDb: num('keyDb') };
+        if (!(c.lo > 0 && c.hi > c.lo && c.hi <= 24000)) throw new Error('`lo` and `hi` must be frequencies with lo < hi');
+        for (const id of [c.masker, c.protect]) if (id === 0 || !this.p.inserts.some(m => m.id === id)) throw new Error(`insert ${id} is not a mixer insert`);
+        const fx = fixFx(this.cat, this.p.nextId, c);
+        // the key is checked like any sidechain (applyOps: keyError, no loop through the sends)
+        const r = await this.applyOps([{ op: 'putFx', insertId: c.masker, fx }], { label: typeof args.label === 'string' ? args.label : undefined });
+        return { fxId: fx.id, insert: c.masker, revision: r.revision };
+      }
+      case 'mask_ignore': {
+        const pairs = [...(this.p.maskIgnore ?? []), [num('a'), num('b')] as [Id, Id]];
+        return await this.applyOps([{ op: 'setMaskIgnore', pairs }], { label: typeof args.label === 'string' ? args.label : undefined });
+      }
+    }
+  }
+
   async fxChains() {
     await delay(10);
     const label = (f: Fx) => f.type === 'plugin' ? (f.plugin?.name ?? 'Plugin') : (mockCatalog().types[f.type]?.name ?? f.type);

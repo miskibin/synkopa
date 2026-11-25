@@ -7,11 +7,35 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+
 - **Downloads work behind a company proxy.** Library kits and models used to fail with
   "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.
   Synkopa now trusts the Windows certificate store like your browser does, and when that is still
   not enough, **Settings → General → Network → Ignore certificate errors** skips the check. The
   error message points to it. Downloads are still verified against their checksums.
+
+- **Mix assistant.** While you play, Synkopa listens for mixer tracks that cover each other: both
+  loud in the same frequencies at the same time, bar after bar, like a kick and an 808 at 50 Hz.
+  Only then a small amber badge appears on the track that should give way; click it to **Make
+  room** or **Ignore this pair**. Nothing changes until you click. Make room adds an ordinary EQ
+  whose one dynamic band dips that range only while the other track hits (keyed through the same
+  sidechain the Compressor uses), so the 808 keeps its weight between kicks. Switch it off in
+  Settings ▸ Editing. From the command line: `synkopa mix`, `mix fix N`, `mix ignore N`.
+- **Sidechain for the EQ.** An EQ with dynamic bands can listen to another mixer track (*Sidechain*
+  under its graph): each dynamic band then moves only while that track is loud in the band — duck a
+  pad's mids under the vocal, or a bass's low end under the kick.
+
+### Changed
+- **One way to write a position everywhere: bar:beat:16th.** The transport, the time rulers (beats
+  read 2:3), the status line, menus and the Piano roll's note properties all write the same moment
+  the same way, so 2:3:1 on one is 2:3:1 on the other. The transport drops its leading zeros
+  (1:1:1 instead of 1:01:01).
+- **Note lengths are note values** in the Piano roll's note properties and in its "new note"
+  readout, as in the Snap menu: 1/8, 1/12, and 3/16 or 3/8 for the others. Typing a plain number
+  still means 16ths.
+- **A clearer Piano roll grid:** black-key rows are a shade darker than white-key rows (also with a
+  song key set, which used to hide the difference), every row has a fine seam with a stronger one
+  under each C, and bar lines stand out over quieter beat and 16th lines, in every theme.
 
 ## 0.9.34 — 2026-11-24
 

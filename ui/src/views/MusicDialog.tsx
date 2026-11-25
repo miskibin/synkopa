@@ -9,6 +9,7 @@ import { findFx, insName, S } from '../state/store';
 import { U } from '../state/ui';
 import { DialogBoundary } from '../ui/PanelBoundary';
 import { ChordsPanel } from './ChordsPanel';
+import { modal } from '../ui/modal';
 
 const keyLabel = (root: number, minor: boolean) => `${NOTE_NAMES[root % 12]} ${t(minor ? 'd.music.minor' : 'd.music.major')}`;
 
@@ -67,10 +68,11 @@ export function MusicDialog() {
     <Show when={U.musicWin}>
       <DialogBoundary name={t('d.ui.pn.music')} close={A.closeMusicAnalysis}>
       <div class="overlay" onPointerDown={A.closeMusicAnalysis}>
-        <div class="dialog" style={{ width: U.musicWin?.clipId != null ? 'min(720px, 94vw)' : 'min(520px, 92vw)' }} onPointerDown={e => e.stopPropagation()} data-music-dialog>
+        <div class="dialog" aria-label={t(U.musicWin?.clipId != null ? 'd.music.titleClip' : 'd.music.title', { name: srcName() })} ref={el => modal(el, { close: A.closeMusicAnalysis })}
+          style={{ width: U.musicWin?.clipId != null ? 'min(720px, 94vw)' : 'min(520px, 92vw)' }} onPointerDown={e => e.stopPropagation()} data-music-dialog>
           <div class="hd">
             <span>{t(U.musicWin?.clipId != null ? 'd.music.titleClip' : 'd.music.title', { name: srcName() })}</span>
-            <button onClick={A.closeMusicAnalysis}>×</button>
+            <button aria-label={t('d.upd.btn.close')} onClick={A.closeMusicAnalysis}>×</button>
           </div>
           <Show when={loading()}>
             <div class="row" style={{ gap: '10px', padding: '24px 0', 'justify-content': 'center', color: 'var(--fg3)' }}>
@@ -165,7 +167,7 @@ export function MusicDialog() {
                               return (
                                 <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '3px', height: '100%', 'justify-content': ' flex-end' }}>
                                   <div style={{ width: '100%', height: Math.round(v() * 28) + 'px', 'border-radius': '2px', background: isRoot() ? 'var(--blue)' : 'var(--line3)' }} />
-                                  <span class="mono" style={{ 'font-size': '9px', color: isRoot() ? 'var(--fg-hi)' : 'var(--fg4)', 'font-weight': isRoot() ? 700 : 500 }}>{nm}</span>
+                                  <span class="mono" style={{ 'font-size': '10px', color: isRoot() ? 'var(--fg-hi)' : 'var(--fg4)', 'font-weight': isRoot() ? 700 : 500 }}>{nm}</span>
                                 </div>
                               );
                             }}

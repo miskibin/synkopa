@@ -8,6 +8,7 @@ import { fmtBytes } from '../lib/format';
 import { S } from '../state/store';
 import { cancelStems, closeStems, fmtEta, fmtSpan, openStems, runStems, STEM_COLORS, STEM_IDS, STEMS, stemsEta, toggleStem } from '../state/stems';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const pct = (f: number) => Math.round(Math.max(0, Math.min(1, f)) * 100) + ' %';
 const STAGE_KEY = { download: 'd.stems.stage.download', prepare: 'd.stems.stage.prepare', load: 'd.stems.stage.load', separate: 'd.stems.stage.separate', place: 'd.stems.stage.place' } as const;
@@ -48,10 +49,9 @@ export function StemsDialog() {
         {c => (
           <DialogBoundary name={t('d.stems.title')} close={closeStems}>
           <div class="overlay" onPointerDown={closeStems}>
-            <div class="dialog stemsdlg" role="dialog" aria-labelledby="stems-title" onPointerDown={e => e.stopPropagation()} data-stems-dialog
+            <div class="dialog stemsdlg" aria-labelledby="stems-title" ref={el => modal(el, { close: closeStems })} onPointerDown={e => e.stopPropagation()} data-stems-dialog
               onKeyDown={e => {
-                if (e.key === 'Escape') { e.preventDefault(); closeStems(); }
-                else if (e.key === 'Enter' && !mine() && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); go(); }
+                if (e.key === 'Enter' && !mine() && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); go(); }
               }}>
               <div class="stems-hd">
                 <div class="stems-hd-txt">
@@ -102,11 +102,11 @@ export function StemsDialog() {
               <Show when={failed()}>
                 <div class="stems-box err" role="alert" data-stems-error>{STEMS.error}</div>
               </Show>
-              <div class="stems-foot">
+              <div class="stems-foot dlgfoot">
                 <Show when={mine()} fallback={
                   <>
                     <button class="smallbtn" onClick={closeStems}>{t('d.stems.close')}</button>
-                    <button class="smallbtn primary" disabled={!!blocked() || STEMS.model == null} title={blocked() ?? ''} onClick={go} data-stems-go>
+                    <button class="smallbtn primary" data-autofocus disabled={!!blocked() || STEMS.model == null} title={blocked() ?? ''} onClick={go} data-stems-go>
                       {failed() ? t('d.stems.retry') : label()}
                     </button>
                   </>
