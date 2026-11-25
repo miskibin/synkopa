@@ -192,12 +192,14 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   // stereo width: 0 = mono, 100 % = as is, 200 % = extra wide (arc grows from the 100 % centre)
   const wid = () => m().width ?? 1;
   const widArc = () => { const t = wid() / 2; return { dash: Math.abs(t - 0.5) * L30 + 'px ' + C30 + 'px', off: -Math.min(t, 0.5) * L30 + 'px', angle: -135 + t * 270 }; };
+  // the pan / width numbers: at their default the caption says what the dial is (PAN, WIDTH); the pointer on the dial or a drag shows the value
+  const [hotPan, setHotPan] = createSignal(false), [hotWid, setHotWid] = createSignal(false);
   const widText = (w: number) => (w <= 0.005 ? 'mono' : Math.round(w * 100) + '%');
   const widDown = (e: PointerEvent) => {
     if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); A.selectInsert(m().id);
     if (e.altKey || dblCheck('wid' + m().id)) return A.setInsert(m().id, { width: 1 }, tr('c.mix.width'));
-    const g = new Gesture(tr('c.mix.width')); let v = wid(), ly = e.clientY;
-    track(ev => { v = clamp(v + (ly - ev.clientY) / 70 * fineMul(ev) * 2, 0, 2); if (Math.abs(v - 1) < 0.03) v = 1; ly = ev.clientY; g.update([put({ width: Math.round(v * 100) / 100 })]); say(tr('c.mix.sayWidth', { v: widText(v) })); }, () => g.end(), 'ns-resize');
+    const g = new Gesture(tr('c.mix.width')); let v = wid(), ly = e.clientY; setHotWid(true);
+    track(ev => { v = clamp(v + (ly - ev.clientY) / 70 * fineMul(ev) * 2, 0, 2); if (Math.abs(v - 1) < 0.03) v = 1; ly = ev.clientY; g.update([put({ width: Math.round(v * 100) / 100 })]); say(tr('c.mix.sayWidth', { v: widText(v) })); }, () => { g.end(); setHotWid(false); }, 'ns-resize');
   };
   const widWheel = (e: WheelEvent) => {
     const d = e.deltaY || e.deltaX; if (!d) return; e.preventDefault(); e.stopPropagation();
@@ -214,8 +216,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
     if (e.button === 2) { e.preventDefault(); e.stopPropagation(); return paramMenu(e.clientX, e.clientY, panT(), () => A.setInsert(m().id, { pan: 0 }, tr('c.mix.pan')), m().color); }
     if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); A.selectInsert(m().id);
     if (e.altKey || dblCheck('pan' + m().id)) return A.setInsert(m().id, { pan: 0 }, tr('c.mix.pan'));
-    const g = autoTweak(panT(), tr('c.mix.pan'), n => [put({ pan: n * 2 - 1 })]); let v = shownPan(), ly = e.clientY;
-    track(ev => { v = clamp(v + (ly - ev.clientY) / 70 * fineMul(ev), -1, 1); ly = ev.clientY; g.move((v + 1) / 2); say('Pan ' + panText(v)); }, () => g.end(), 'ns-resize');
+    const g = autoTweak(panT(), tr('c.mix.pan'), n => [put({ pan: n * 2 - 1 })]); let v = shownPan(), ly = e.clientY; setHotPan(true);
+    track(ev => { v = clamp(v + (ly - ev.clientY) / 70 * fineMul(ev), -1, 1); ly = ev.clientY; g.move((v + 1) / 2); say('Pan ' + panText(v)); }, () => { g.end(); setHotPan(false); }, 'ns-resize');
   };
   const faderDown = (e: PointerEvent) => {
     if (e.button === 2) { e.preventDefault(); e.stopPropagation(); return paramMenu(e.clientX, e.clientY, volT(), () => A.setInsert(m().id, { vol: VOL_UNITY }, tr('c.mix.volume')), m().color); }
@@ -305,7 +307,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
       <StripFx m={m()} full={props.full} />
       <div class="knobrow">
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
-        <div class={['pandial', { auto: isAutomated(panT()) }]} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
+        <div class={['pandial', { auto: isAutomated(panT()) }]} onPointerEnter={() => setHotPan(true)} onPointerLeave={() => setHotPan(false)} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
           <svg width="30" height="30" viewBox="0 0 30 30" style={{ position: 'absolute', inset: 0 }}>
             <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--knob-track)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': '51.84px 69.12px' }} />
             <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--pan)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': pan().dash, 'stroke-dashoffset': pan().off }} />
@@ -313,10 +315,10 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <div class="pcap" />
           <div class="pptr" style={{ transform: `rotate(${pan().angle}deg)` }} />
         </div>
-        <span class={['pantxt', { def: Math.abs(shownPan()) < 1e-4 }]}>{panText(shownPan())}</span>
+        <span class={['pantxt', { def: Math.abs(shownPan()) < 1e-4 && !hotPan() }]}>{Math.abs(shownPan()) < 1e-4 && !hotPan() ? tr('c.mix.panCap') : panText(shownPan())}</span>
       </div>
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
-        <div class="pandial wdial" onPointerDown={widDown} onWheel={widWheel} onContextMenu={e => e.preventDefault()} title={tr('c.mix.widthTip')}>
+        <div class="pandial wdial" onPointerEnter={() => setHotWid(true)} onPointerLeave={() => setHotWid(false)} onPointerDown={widDown} onWheel={widWheel} onContextMenu={e => e.preventDefault()} title={tr('c.mix.widthTip')}>
           <svg width="30" height="30" viewBox="0 0 30 30" style={{ position: 'absolute', inset: 0 }}>
             <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--knob-track)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': '51.84px 69.12px' }} />
             <circle cx="15" cy="15" r="11" fill="none" transform="rotate(135 15 15)" style={{ stroke: 'var(--green)', 'stroke-width': '2.5px', 'stroke-linecap': 'round', 'stroke-dasharray': widArc().dash, 'stroke-dashoffset': widArc().off }} />
@@ -324,7 +326,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
           <div class="pcap" />
           <div class="pptr" style={{ transform: `rotate(${widArc().angle}deg)` }} />
         </div>
-        <span class={['pantxt', { def: widText(wid()) === widText(1) }]}>{widText(wid())}</span>
+        <span class={['pantxt', { def: widText(wid()) === widText(1) && !hotWid() }]}>{widText(wid()) === widText(1) && !hotWid() ? tr('c.mix.widCap') : widText(wid())}</span>
       </div>
       </div>
       <div class="row" style={{ gap: '2px', 'justify-content': 'center' }}>
