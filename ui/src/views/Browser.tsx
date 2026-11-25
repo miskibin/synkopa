@@ -184,12 +184,12 @@ function pressPattern(p: Pattern, e: PointerEvent) {
   const many = U.patSel.length > 1 && U.patSel.includes(p.id);
   if (!many) {
     setU('patSel', []);
-    return pick('pat', p.id, p.name, p.color, e, () => openPattern(p.id));
+    return pick('pat', p.id, p.name, p.color, e);
   }
   e.preventDefault();
   // in the Browser's order, so they land top to bottom as listed
   const refs = order.filter(id => U.patSel.includes(id));
-  dragGhost(e, t('d.br.patsDrag', { n: refs.length }), p.color, () => { setU('patSel', []); setU('cur', { kind: 'pat', ref: p.id, clipId: null }); openPattern(p.id); },
+  dragGhost(e, t('d.br.patsDrag', { n: refs.length }), p.color, () => { setU('patSel', []); setU('cur', { kind: 'pat', ref: p.id, clipId: null }); },
     (x, y, alt) => { dropPatternsAt(x, y, refs, alt); });
 }
 
@@ -206,7 +206,7 @@ function PatternsTab() {
           {p => (
             <div class={['pitem', { on: U.patSel.length ? U.patSel.includes(p.id) : U.cur?.kind === 'pat' && U.cur.ref === p.id }]} title={t('d.br.pat.tip')} style={{ '--c': p.color }}
               onContextMenu={e => { e.preventDefault(); patternItemMenu(p, e.clientX, e.clientY); }}
-              onPointerDown={e => pressPattern(p, e)}>
+              onPointerDown={e => pressPattern(p, e)} onDblClick={() => openPattern(p.id)}>
               <div class="prow">
                 <Show when={patternIcon(p, chanMap(), (id: number) => S.project.sources.find(s => s.id === id))} fallback={<span style={{ width: '8px', height: '8px', 'border-radius': '2px', flex: 'none', background: p.color }} />}>
                   {id => <span class="picon" style={{ color: p.color }}><InstIcon id={id()} size={12} /></span>}
