@@ -1636,7 +1636,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .pstatus > span.hintshort { flex: 1 1 0; text-align: right; }
 .pstatus > span:last-child { color: inherit; }
 /* mixer strips: the pan / width caption (PAN, WIDTH) sits under each dial at its default; the number replaces it once it says something */
-.strip .pantxt.def { font-size: 9px; letter-spacing: .06em; }
+.strip .pantxt.def { letter-spacing: .06em; }
 /* playlist lanes: the routing chip reads as a quiet tag, the volume thumb shows on hover */
 .lane .mini.route { color: var(--fg5); border-color: transparent; font-weight: 500; }
 .lane .mini.route:hover { color: var(--fg-hi); }
