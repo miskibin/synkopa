@@ -4,6 +4,20 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Changed
+- **One way to write a position everywhere: bar:beat:16th.** The transport, the time rulers (beats
+  read 2:3), the status line, menus and the Piano roll's note properties all write the same moment
+  the same way, so 2:3:1 on one is 2:3:1 on the other. The transport drops its leading zeros
+  (1:1:1 instead of 1:01:01).
+- **Note lengths are note values** in the Piano roll's note properties and in its "new note"
+  readout, as in the Snap menu: 1/8, 1/12, and 3/16 or 3/8 for the others. Typing a plain number
+  still means 16ths.
+- **A clearer Piano roll grid:** black-key rows are a shade darker than white-key rows (also with a
+  song key set, which used to hide the difference), every row has a fine seam with a stronger one
+  under each C, and bar lines stand out over quieter beat and 16th lines, in every theme.
+
 ## 0.9.34 — 2026-11-24
 
 ### Added
