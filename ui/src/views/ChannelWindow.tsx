@@ -111,7 +111,9 @@ function Body(props: { w: Win; c: Channel }) {
   const setPos = (x: number, y: number) => setWin(v => v && { ...v, x, y });
   const plugin = () => { const x = c(); return x.kind === 'plugin' ? x.plugin : undefined; };
   return (
-    <div class="win chanwin" data-channel-window={c().id} style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': outerZ(props.w.z) }}
+    <div class="win chanwin" data-channel-window={c().id} style={{ left: props.w.x + 'px', top: props.w.y + 'px', width: props.w.w + 'px', 'z-index': outerZ(props.w.z),
+      // never taller than the app window below its top edge (a short screen scrolls the body, the title bar stays)
+      'max-height': `max(240px, calc(100vh - ${props.w.y}px))` }}
       ref={captureOn('pointerdown', chanFront)}>
       <div class="winhd" onPointerDown={e => moveWindow(e, () => props.w, setPos)} title={t('b.cw.headTip')}
         onDblClick={e => { if (!(e.target as HTMLElement).closest('button, select, input')) showInsert(chanHeardInsert(c()) ?? 0); }}>
@@ -126,6 +128,7 @@ function Body(props: { w: Win; c: Channel }) {
       </div>
       {/* the body behind an error boundary: a failure shows in the window, whose title bar still moves and closes it */}
       <PanelBoundary name={t('d.ui.pn.chan')}>
+       <div class="winbody">
         <Show when={c().kind === 'synth'}><SynthPanel c={c()} /></Show>
         <Show when={c().kind === 'keys' && c()}>{k => <KeysPanel c={k() as Extract<Channel, { kind: 'keys' }>} />}</Show>
         <Show when={c().kind === 'musicbox' && c()}>{k => <MusicBoxPanel c={k() as Extract<Channel, { kind: 'musicbox' }>} />}</Show>
@@ -147,6 +150,7 @@ function Body(props: { w: Win; c: Channel }) {
               switches={keysKeyboard(c() as Extract<Channel, { kind: 'keys' }>).switches} />
           </Show>
         </Show>
+      </div>
       </PanelBoundary>
     </div>
   );
