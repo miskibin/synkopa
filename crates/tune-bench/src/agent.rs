@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use serde_json::{json, Value};
 use wave_engine::content::mfcc;
-use wave_engine::pitch::{analyze_with, F0Estimator, PitchAnalysis};
+use wave_engine::pitch::{F0Estimator, PitchAnalysis};
 use wave_engine::pitch_api::{self, Comparison, Decision, SuggestParams};
 use wave_engine::reference::tune_audio;
 use wave_engine::sources::{mono_of, Audio};
@@ -62,12 +62,12 @@ pub struct Corrected {
 pub fn agent(take: &Audio, reference: Option<&Audio>, p: &SuggestParams, est: Option<&dyn F0Estimator>) -> Corrected {
     let t0 = Instant::now();
     let tm = mono_of(take);
-    let a = analyze_with(&tm, take.sr as f32, est);
+    let a = crate::analyze(&tm, take.sr as f32, est);
     let (notes, _) = pitch_api::clip_notes(None, &a);
     let spans: Vec<(f64, f64)> = notes.iter().map(|n| (n.start, n.end)).collect();
     let cmp = reference.map(|r| {
         let rm = mono_of(r);
-        let ra = analyze_with(&rm, r.sr as f32, est);
+        let ra = crate::analyze(&rm, r.sr as f32, est);
         pitch_api::compare(&a, &mfcc(&tm, take.sr as f32), (0.0, take.seconds()), &spans, &ra, &mfcc(&rm, r.sr as f32))
     });
     let stats = pitch_api::note_stats(&a, &notes, &a.curve);
@@ -259,7 +259,7 @@ pub fn run(c: &Case, m: &Method, est: Option<&dyn F0Estimator>, dump_to: Option<
         o.failed = Some("nothing voiced was detected in the take".into());
         return o;
     }
-    let oa = analyze_with(&mono_of(&r.out), r.out.sr as f32, est);
+    let oa = crate::analyze(&mono_of(&r.out), r.out.sr as f32, est);
     let rate = ta.rate;
     let n = ta.curve.len().min(oa.curve.len());
     let slip: Vec<bool> = (0..n)

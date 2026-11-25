@@ -57,6 +57,11 @@ READ
                                            (default: the whole clip, on a new piano channel; one undo step)
   chords [--install]                       chord model install state (--install: downloads ~17 MB, MIT,
                                            SHA-256 checked)
+  audio-to-midi --clip ID [--preview] [--quantize STEPS] [--shortest S] [--velocity 0..1]
+                [--low KEY] [--high KEY] [--channel ID]
+                                           the melody of an audio clip as a new pattern under it (Convert to
+                                           MIDI; default: as sung, on a new piano channel; one undo step;
+                                           --preview: the notes only, nothing changes)
 
 EDIT  (all edits are one undo step each; --if-revision N refuses to act if the project moved on)
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
@@ -177,6 +182,7 @@ PITCH  (Tune to Reference: pull a vocal take onto another performance of the sam
   melody-channels --clip ID                channels playing notes over the clip, best fit to the singing first
   pitch-target --clip ID [--full]          the computed target: score, octave, notes (--full: curves)
   f0-model [--install]                     pitch detector in use; RMVPE model install state
+  note-model [--install]                   note finder in use (GAME or the note tracker); GAME install state
                                            (--install: downloads ~345 MB after printing its licence note,
                                            SHA-256 checked, then switches the detector to it)
 
@@ -1070,6 +1076,20 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             }
             None => send(cx, a, "chords_model", json!({})),
         },
+        "audio-to-midi" => {
+            let clip = a.num("clip").map_err(u)?.ok_or_else(|| u("missing --clip".into()))?;
+            send(
+                cx,
+                a,
+                "audio_to_midi",
+                json!({
+                    "clipId": clip as u64, "preview": a.has("preview"), "quantize": a.num("quantize").map_err(u)?,
+                    "shortest": a.num("shortest").map_err(u)?, "velocity": a.num("velocity").map_err(u)?,
+                    "low": a.num("low").map_err(u)?, "high": a.num("high").map_err(u)?,
+                    "channel": a.num("channel").map_err(u)?.map(|v| v as u64),
+                }),
+            )
+        }
         "stems" if a.has("install") => {
             eprintln!("downloading the HTDemucs stem model (~90 MB; MIT licence)");
             send(cx, a, "stems_model_install", json!({}))
@@ -1463,6 +1483,11 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
             send(cx, a, "f0_model_install", json!({}))
         }
         "f0-model" => send(cx, a, "f0_model", json!({})),
+        "note-model" if a.has("install") => {
+            eprintln!("downloading the GAME note model (~46 MB); licence: {}", wave_game::LICENSE_NOTE);
+            send(cx, a, "note_model_install", json!({}))
+        }
+        "note-model" => send(cx, a, "note_model", json!({})),
         "pitch" => pitch(cx, a),
         "midi" => midi(cx, a),
         "fxchain" => fxchain(cx, a),

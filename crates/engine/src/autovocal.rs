@@ -1110,6 +1110,7 @@ mod tests {
             confidence: vec![0.9; 400],
             notes: vec![],
             backend: "yin".into(),
+            note_backend: "tracker".into(),
             onsets: vec![],
         };
         let key =

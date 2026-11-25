@@ -373,6 +373,7 @@ synkopa pitch-target --clip 412            # score, octave, the reference's note
 synkopa pitch-target --clip 412 --full     # plus every curve (source, reference, target, confidence)
 synkopa tune-ref --clip 412 --off          # back to manual pitch edits
 synkopa f0-model                           # which pitch detector runs (RMVPE or YIN) and its install state
+synkopa note-model                         # what finds the notes (GAME or the note tracker) and its install state
 ```
 
 A melody you played in the piano roll can be the reference instead: the notes a
@@ -415,6 +416,31 @@ prints the licence note, downloads the model (a few minutes, no live progress),
 checks its SHA-256 and switches the detector to it; works without the app too
 (`synkopa -p song.synkopa f0-model --install`). `WAVE_RMVPE_MODEL=path` points at a
 copy you already have.
+
+**Note model.** The notes of a vocal (the pitch editor's note blobs, what *Copy notes*
+pastes, what `pitch inspect` lists) come from the built-in note tracker. GAME (46 MB, openvpi;
+the weights are non-commercial, CC BY-NC-SA 4.0) finds them better: it separates a note
+sung again on the same pitch and ends notes where the singing does. Pitch Editor → *Better
+notes* downloads it after showing the licence, or:
+
+```sh
+synkopa note-model --install
+```
+
+`WAVE_GAME_MODEL=dir` points at an unpacked copy. `tune-bench … --game [DIR]` scores any suite
+with it.
+
+**Convert to MIDI.** The melody of an audio clip as Piano roll notes, as the Playlist's *Convert to MIDI…*
+does: a new pattern under the clip, on a new piano channel or `--channel ID`, in one undo step. The notes are
+the pitch editor's (GAME's when installed), with the clip's pitch edits.
+
+```sh
+synkopa audio-to-midi --clip 412 --preview                 # the notes it would write; nothing changes
+synkopa audio-to-midi --clip 412 --quantize 1 --low 48 --high 84   # snapped to 1/16, keys C3–C6 only
+synkopa audio-to-midi --clip 412 --channel 1003 --velocity 0.8     # onto an existing channel, flat velocity
+```
+
+`--shortest` (seconds, default 0.06) leaves out shorter notes; `--quantize` is in steps (0 = as sung).
 
 **Stems.** `synkopa stems --clip ID` splits an audio clip with HTDemucs into drums, bass, other and vocals
 (`--only` picks some) exactly as the Playlist's *Extract stems…* does: the region the clip plays plus 3 s either

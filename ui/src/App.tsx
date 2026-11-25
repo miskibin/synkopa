@@ -40,6 +40,7 @@ import { chanWin, closeChannelWindow, toggleChannelWindow } from './views/Channe
 import { channels } from './state/pattern';
 import { MusicDialog } from './views/MusicDialog';
 import { StemsDialog } from './views/StemsDialog';
+import { AudioMidiDialog } from './views/AudioMidiDialog';
 import { closeStems, STEMS } from './state/stems';
 import { MissingAudio } from './views/MissingAudio';
 import { PluginCrash } from './views/PluginCrash';
@@ -381,6 +382,7 @@ export function App() {
       <FxChainsHost />
       <MusicDialog />
       <StemsDialog />
+      <AudioMidiDialog />
       <MidiImport />
       <AudioToast />
       <Notice />

@@ -465,6 +465,9 @@ pub struct PitchAnalysis {
     pub notes: Vec<NoteBlob>,
     /// Which detector produced the curve: "yin" or the estimator's name.
     pub backend: String,
+    /// Which segmenter produced `notes`: "tracker" (the built-in note tracker) or the note
+    /// model's name.
+    pub note_backend: String,
     /// Spectral onset strength per frame (new syllables on a held pitch); not sent to the UI.
     #[serde(skip)]
     pub onsets: Vec<f32>,
@@ -484,6 +487,38 @@ pub struct F0Track {
 pub trait F0Estimator: Send + Sync {
     fn name(&self) -> &'static str;
     fn estimate(&self, mono: &[f32], sr: f32) -> Result<F0Track, String>;
+}
+
+/// A sung note as a note-segmentation model hears it (seconds, MIDI).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ModelNote {
+    pub start: f64,
+    pub end: f64,
+    pub pitch: f32,
+}
+
+/// A replaceable note segmenter for offline analysis (e.g. a neural note-transcription model):
+/// where each sung note starts and which key it is. The pitch curve still comes from the F0
+/// detector; [`crate::note_track::from_model`] fits the model's notes to it.
+pub trait NoteEstimator: Send + Sync {
+    fn name(&self) -> &'static str;
+    fn notes(&self, mono: &[f32], sr: f32) -> Result<Vec<ModelNote>, String>;
+}
+
+/// Analysis with the pitch detector `est` and the note model `notes` when given; each falls
+/// back to the built-in one (YIN, the note tracker) when missing or failing.
+pub fn analyze_full(mono: &[f32], sr: f32, est: Option<&dyn F0Estimator>, notes: Option<&dyn NoteEstimator>) -> PitchAnalysis {
+    let mut a = analyze_with(mono, sr, est);
+    if let Some(m) = notes {
+        match m.notes(mono, sr) {
+            Ok(raw) => {
+                a.notes = crate::note_track::from_model(&raw, &a.curve, &a.levels, a.rate);
+                a.note_backend = m.name().to_string();
+            }
+            Err(e) => log::warn!("{} failed ({e}); using the note tracker", m.name()),
+        }
+    }
+    a
 }
 
 /// Analysis with `est` when given (falls back to YIN if it fails).
@@ -632,7 +667,16 @@ fn finish(mut curve: Vec<f32>, levels: Vec<f32>, confidence: Vec<f32>, onsets: V
         fold_octave_errors(&mut curve);
     }
     let notes = crate::note_track::track(&curve, &levels, &onsets, ANALYSIS_RATE, &Default::default());
-    PitchAnalysis { rate: ANALYSIS_RATE, curve, levels, confidence, notes, backend: backend.to_string(), onsets }
+    PitchAnalysis {
+        rate: ANALYSIS_RATE,
+        curve,
+        levels,
+        confidence,
+        notes,
+        backend: backend.to_string(),
+        note_backend: "tracker".into(),
+        onsets,
+    }
 }
 
 /// Detector slips onto a harmonic (or an octave below) show up as frames far from

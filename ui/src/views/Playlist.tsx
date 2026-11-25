@@ -20,6 +20,7 @@ import { recTarget, recUntil } from '../lib/recTarget';
 import { closeMenu, openMenu, openRename, revealReq, say, setU, U, type MenuItem } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { openStems } from '../state/stems';
+import { openAudioMidi } from '../state/audioMidi';
 import { dblCheck, dragCursor, edgeScroller, escCancels, fineMul, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
@@ -1288,17 +1289,16 @@ export function Playlist() {
     if (c.kind === 'comp') return openCompMenu(x, y, c, p);
     const src = srcOf(c), isPat = c.kind === 'pat';
     // Rename and the swatches change what the clip plays (the pattern, sample or automation): every
-    // clip of it follows. The menu says so, with how many clips that is (FL: "Rename / color pattern")
+    // clip of it follows. Rename's tooltip says so, with how many clips that is (FL: "Rename / color
+    // pattern"); the swatches need no heading
     const copies = S.project.clips.filter(v => v.kind === c.kind && v.ref === c.ref).length;
     const what = (k: 'pat' | 'audio' | 'auto') => tl(k === 'pat' ? 'a.pl.whatPat' : k === 'audio' ? 'a.pl.whatAudio' : 'a.pl.whatAuto');
-    const scopeLabel = (k: 'pat' | 'audio' | 'auto') => copies > 1 ? tl('a.pl.colourOfN', { what: what(k), n: copies }) : tl('a.pl.colourOf', { what: what(k) });
     const scopeTip = (k: 'pat' | 'audio' | 'auto') => copies > 1 ? tl('a.pl.scopeTipN', { what: what(k), n: copies }) : tl('a.pl.scopeTip', { what: what(k) });
     if (c.kind === 'auto') {
       const a = autoById(c.ref);
       openMenu(x, y, [
         { t: 'title', label: tl('a.pl.autoPrefix') + (a?.name ?? '') },
         { t: 'item', label: tl('a.pl.renameAuto'), title: scopeTip('auto'), act: () => openRename(x, y, a?.name ?? '', v => A.setSrcProp(c, { name: v })) },
-        { t: 'sec', label: scopeLabel('auto') },
         { t: 'swatches', current: a?.color, pick: col => A.setSrcProp(c, { color: col }) },
         { t: 'sep' },
         { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
@@ -1315,15 +1315,14 @@ export function Playlist() {
     const items: MenuItem[] = [
       { t: 'title', label: (isPat ? 'Pattern · ' : 'Audio · ') + (src?.name ?? '') },
       { t: 'item', label: tl(isPat ? 'a.pl.renamePat' : 'a.pl.renameAudio'), title: scopeTip(isPat ? 'pat' : 'audio'), act: () => openRename(x, y, src?.name ?? '', v => A.setSrcProp(c, { name: v })) },
-      { t: 'sec', label: scopeLabel(isPat ? 'pat' : 'audio') },
       { t: 'swatches', current: (src as { color?: string } | undefined)?.color, pick: col => A.setSrcProp(c, { color: col }) },
       { t: 'sec', label: tl('a.pl.secEdit') },
       { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
       { t: 'item', label: tl('a.pl.duplicate'), kbd: 'Ctrl+B', act: A.duplicate },
-      { t: 'sub', label: tl('a.pl.clipboard'), items: [
+      ...(isPat ? [{ t: 'sub', label: tl('a.pl.clipboard'), items: [
         { t: 'item', label: tl('a.pl.copy'), kbd: 'Ctrl+C', act: A.copy },
         { t: 'item', label: tl('a.pl.cut'), kbd: 'Ctrl+X', act: A.cut },
-      ] },
+      ] } as MenuItem] : []),
       { t: 'sub', label: tl('a.pl.split'), items: [
         { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapRound(p.beat, unit(false))) },
         { t: 'item', label: tl('a.pl.splitAtHead'), act: () => A.sliceAt(c.id, curBeat()) },
@@ -1333,21 +1332,20 @@ export function Playlist() {
         { t: 'item', label: tl('a.pl.editPattern'), kbd: tl('a.pl.dblClick'), act: () => openPattern(c.ref) } as MenuItem,
         { t: 'item', label: tl('a.pl.makeUnique'), act: () => A.makeUnique(c) } as MenuItem,
       ] : [
+        // the audio clip's own menu holds what is done to the clip from here; its volume, stretch method
+        // and editor (double-click) live in the Sample editor
         { t: 'sec', label: 'Audio' } as MenuItem,
-        { t: 'gain', clipId: c.id } as MenuItem,
         ...(c.kind === 'audio' ? [
           ...(c.ref in S.missing ? [{ t: 'item', label: tl('d.miss.menu'), title: S.missing[c.ref], act: () => setU('missingOpen', true) } as MenuItem] : []),
           { t: 'item', label: tl('a.pl.makeUnique'), title: tl('a.pl.makeUniqueAudioTip'), act: () => A.makeUnique(c) } as MenuItem,
-          { t: 'item', label: tl('a.pl.editSample'), kbd: tl('a.pl.dblClick'), act: () => A.openEditor(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.editPitch'), kbd: c.tune?.notes.length ? tl('a.pl.edited') : '', act: () => A.openPitchEditor(c.id) } as MenuItem,
           // a playlist drop plays the source directly; this adds the rack entry for it (FL's audio clip channel)
           { t: 'item', label: tl('a.pl.toSampler'), title: tl(hasSamplerOf(c.ref) ? 'a.pl.toSamplerHave' : 'a.pl.toSamplerTip'), disabled: hasSamplerOf(c.ref), act: () => addSampler(c.ref) } as MenuItem,
-          // how a stretch plays (the clip's stretch factor in the label: set it in Stretch mode)
-          { t: 'chips', label: tl('a.pl.stretchMethod', { k: (c.stretch ?? 1).toFixed(2) }), options: [tl('a.pl.keepPitch'), tl('a.pl.resample')], active: c.resample ? 1 : 0, pick: (i: number) => A.setStretchMethod(c, i === 1) } as MenuItem,
           ...(S.stretching[c.id] ? [{ t: 'item', label: tl('a.pl.stretchFailed'), title: S.stretching[c.id], disabled: true, act: () => {} } as MenuItem] : []),
           { t: 'item', label: tl('a.pl.detectTempoKey'), act: () => A.openMusicAnalysis({ clipId: c.id }) } as MenuItem,
           { t: 'item', label: tl('a.pl.trimRegion'), title: tl('d.smp.trim.tip'), act: () => void A.trimClip(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.extractStems'), title: tl('a.pl.extractStemsTip'), act: () => openStems(c.id) } as MenuItem,
+          { t: 'item', label: tl('a.pl.toMidi'), title: tl('a.pl.toMidiTip'), disabled: c.ref in S.missing, act: () => openAudioMidi(c.id) } as MenuItem,
           { t: 'sub', label: tl('a.pl.autoVocal'), items: [
             { t: 'item', label: tl('a.pl.autoVocalSing'), act: () => void A.autoVocal(c.id, 'natural'), title: tl('a.pl.autoVocalSingTip') },
             { t: 'item', label: tl('a.pl.autoVocalRap'), act: () => void A.autoVocal(c.id, 'hard'), title: tl('a.pl.autoVocalRapTip') },

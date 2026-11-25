@@ -1,0 +1,22 @@
+[package]
+name = "wave-game"
+description = "GAME (openvpi) sung-note segmentation through ONNX Runtime as a Synkopa note model."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+wave-engine.workspace = true
+parking_lot.workspace = true
+serde_json.workspace = true
+# `ort_env`/`models_dir`/`resample`: one ONNX Runtime environment, one models folder.
+wave-rmvpe.workspace = true
+zip = { version = "9.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+# Same ONNX Runtime build as crates/rmvpe (see the note there about Linux).
+[target.'cfg(target_os = "linux")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "tls-native", "api-20"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "tls-native", "api-20"] }

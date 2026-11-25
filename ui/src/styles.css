@@ -2116,3 +2116,17 @@ button.chip { color: var(--fg); }
 .msprog { position: relative; flex: 1; height: 22px; border-radius: 6px; background: var(--sep); overflow: hidden; display: flex; align-items: center; }
 .msprog .msbar { position: absolute; inset: 0 auto 0 0; background: rgba(242, 184, 75, .35); transition: width .2s linear; }
 .msprog span { position: relative; padding: 0 10px; font: 500 11px "Geist Variable", Geist, sans-serif; }
+
+/* Convert to MIDI dialog */
+.dialog.a2mdlg { width: min(760px, 94vw); padding: 0; display: flex; flex-direction: column; border-radius: 10px; }
+.a2m-pv { position: relative; height: 220px; margin: 0 18px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.a2m-pv canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.a2m-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 12px 18px 0; }
+.a2m-key { display: inline-flex; align-items: center; gap: 2px; }
+.a2m-clear { border: 0; background: transparent; color: var(--fg5); cursor: pointer; font-size: 14px; width: 18px; height: 18px; border-radius: 3px; }
+.a2m-clear:hover { background: var(--line); color: var(--fg); }
+.a2m-foot { align-items: center; }
+.a2m-stat { color: var(--fg3); min-width: 0; }
+.a2m-stat b { color: var(--fg-hi); }
+.a2mdlg .linkbtn { border: 0; background: transparent; color: var(--blue-hi); cursor: pointer; padding: 0; font: inherit; }
+.a2mdlg .linkbtn:hover { text-decoration: underline; }

@@ -167,7 +167,10 @@ function PitchBody(props: { clipId: number }) {
   const [tgtErr, setTgtErr] = createSignal<string | null>(null);
   const [model, setModel] = createSignal<F0ModelStatus | null>(null);
   const [dl, setDl] = createSignal<number | null>(null);
-  const [askModel, setAskModel] = createSignal(false);
+  const [askModel, setAskModel] = createSignal<'rmvpe' | 'game' | null>(null);
+  /** The optional note model (GAME): finds the notes when installed, else the built-in note tracker does. */
+  const [noteModel, setNoteModel] = createSignal<F0ModelStatus | null>(null);
+  const [noteDl, setNoteDl] = createSignal<number | null>(null);
   const withKey = (d: RefTune): RefTune => ({ ...d, key: key(), scale: scale() });
   const activeTarget = () => (mode() === 1 ? target() : null);
   const sameRef = (a: RefTune, b: RefTune | null) => !!b && a.source === b.source && a.correction === b.correction && a.vibrato === b.vibrato
@@ -671,15 +674,30 @@ function PitchBody(props: { clipId: number }) {
   const refreshAnalysis = () => { anCache.clear(); setTarget(null); load(); };
   onMount(() => {
     be().f0ModelStatus().then(setModel).catch(() => {});
-    const un = be().on('model-progress', p => setDl(p.error ? null : p.total ? p.done / p.total : null));
+    be().noteModelStatus().then(setNoteModel).catch(() => {});
+    const un = be().on('model-progress', p => {
+      const v = p.error ? null : p.total ? p.done / p.total : null;
+      if (p.id === 'game') setNoteDl(v); else if (p.id === 'rmvpe') setDl(v);
+    });
     onCleanup(() => { un.then(f => f()); });
   });
   const installModel = () => {
-    setAskModel(false); setDl(0);
+    const which = askModel();
+    setAskModel(null);
+    if (which === 'game') {
+      setNoteDl(0);
+      be().noteModelInstall()
+        .then(st => { setNoteModel(st); setNoteDl(null); refreshAnalysis(); say(t('d.pitch.say.game')); })
+        .catch(e => { setNoteDl(null); say(t('d.pitch.say.gamefail', { err: String(e?.message ?? e) })); });
+      return;
+    }
+    setDl(0);
     be().f0ModelInstall()
       .then(st => { setModel(st); setDl(null); refreshAnalysis(); say(t('d.pitch.say.rmvpe')); })
       .catch(e => { setDl(null); say(t('d.pitch.say.rmvpefail', { err: String(e?.message ?? e) })); });
   };
+  /** The model the download prompt is about. */
+  const asked = () => (askModel() === 'game' ? noteModel() : askModel() === 'rmvpe' ? model() : null);
   const resetNotes = () => {
     if (!tune()) return;
     if (!sel().size) {
@@ -796,12 +814,23 @@ function PitchBody(props: { clipId: number }) {
             </span>
           )}</Show>
           <Show when={model() && !model()!.installed}>
-            <button class="smallbtn" disabled={dl() != null} onClick={() => setAskModel(true)} title={t('d.pitch.dl.tip')}>
+            <button class="smallbtn" disabled={dl() != null} onClick={() => setAskModel('rmvpe')} title={t('d.pitch.dl.tip')}>
               {dl() != null ? t('d.pitch.dl.busy', { n: Math.round(dl()! * 100) }) : t('d.pitch.dl')}
             </button>
           </Show>
         </Show>
         <div style={{ flex: 1 }} />
+        <Show when={noteModel()}>{m => (
+          <span class="detchip" title={t('d.pitch.notes', { name: m().backend === 'game' ? t('d.pitch.notes.game') : t('d.pitch.notes.tracker') })
+            + (m().installed && m().backend !== 'game' ? ' · ' + t('d.pitch.notes.unused') : '') + (m().error ? ' · ' + m().error : '')}>
+            {m().backend === 'game' ? 'GAME' : t('d.pitch.notes.trackerShort')}
+          </span>
+        )}</Show>
+        <Show when={noteModel() && !noteModel()!.installed}>
+          <button class="smallbtn" disabled={noteDl() != null} onClick={() => setAskModel('game')} title={t('d.pitch.notes.dl.tip')}>
+            {noteDl() != null ? t('d.pitch.dl.busy', { n: Math.round(noteDl()! * 100) }) : t('d.pitch.notes.dl')}
+          </button>
+        </Show>
         <button class="smallbtn" disabled={!an()} title={an() ? t('d.pitch.copy.tip') : t('d.pitch.copy.wait')} onClick={copyNotes}>{sel().size ? t('d.pitch.copy.sel', { n: sel().size }) : t('d.pitch.copy.all')}</button>
         <button class="smallbtn" disabled={!tune()} title={sel().size ? t('d.pitch.reset.tip1') : t('d.pitch.reset.tip2')} onClick={resetNotes}>{sel().size ? t('d.pitch.reset.notes') : t('d.pitch.reset')}</button>
       </div>
@@ -815,17 +844,17 @@ function PitchBody(props: { clipId: number }) {
         <div ref={phead} class="pphead" />
         <Show when={!an() && !err()}><div class="pstate"><span class="spin" />{t('d.pitch.analyzing')}</div></Show>
         <Show when={err()}><div class="pstate err">{t('d.pitch.anfail', { err: err()! })} <button class="smallbtn" onClick={load}>{t('d.pitch.retry')}</button></div></Show>
-        <Show when={askModel() && model()}>{m => (
+        <Show when={asked()}>{m => (
           <div class="pstate">
             <div class="consent">
-              <b>{t('d.pitch.ask', { mb: Math.round(m().bytes / 1e6) })}</b>
+              <b>{t('d.pitch.ask', { name: m().name, mb: Math.round(m().bytes / 1e6) })}</b>
               <p>{m().licenseNote}</p>
               <p class="mono sel-text">{m().licenseUrl}</p>
               <p class="mono">{t('d.pitch.ask.sha', { path: m().path })}</p>
               <div class="row">
                 <button class="smallbtn" onClick={() => navigator.clipboard?.writeText(m().licenseUrl).then(() => say(t('d.pitch.say.licensecopied')))}>{t('d.pitch.copylink')}</button>
                 <div style={{ flex: 1 }} />
-                <button class="smallbtn" onClick={() => setAskModel(false)}>{t('d.pitch.cancel')}</button>
+                <button class="smallbtn" onClick={() => setAskModel(null)}>{t('d.pitch.cancel')}</button>
                 <button class="smallbtn primary" onClick={installModel}>{t('d.pitch.dlinstall')}</button>
               </div>
             </div>

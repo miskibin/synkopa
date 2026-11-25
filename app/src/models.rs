@@ -53,6 +53,80 @@ pub fn activate(engine: &Engine) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Why the installed note model could not be used, if it could not (shown with its status).
+static NOTE_ERROR: parking_lot::Mutex<Option<String>> = parking_lot::Mutex::new(None);
+
+/// Loads every installed model: the note model (its failure is remembered for its status and
+/// logged; analysis then uses the note tracker) and RMVPE (as [`activate`]).
+pub fn activate_all(engine: &Engine) -> Result<bool, String> {
+    if let Err(e) = activate_notes(engine) {
+        log::warn!("{e}");
+        *NOTE_ERROR.lock() = Some(e);
+    }
+    activate(engine)
+}
+
+/// The note model download as one action, the pitch editor's button and `synkopa
+/// note-model-install` share: download, unpack, load.
+pub fn note_install(engine: &Engine, progress: impl Fn(u64, u64)) -> Result<ModelStatus, String> {
+    let res = install_notes(progress).and_then(|_| activate_notes(engine)).and_then(|ok| {
+        if ok {
+            Ok(())
+        } else {
+            Err("the model files are missing after the install".to_string())
+        }
+    });
+    *NOTE_ERROR.lock() = res.as_ref().err().cloned();
+    res.map(|_| note_status(engine))
+}
+
+/// The optional note model (GAME): what finds the notes of sung audio when installed; without
+/// it the engine's note tracker does.
+pub fn note_status(engine: &Engine) -> ModelStatus {
+    let error = NOTE_ERROR.lock().clone();
+    let dir = wave_game::model_dir();
+    ModelStatus {
+        id: wave_game::MODEL_ID,
+        name: wave_game::MODEL_NAME,
+        bytes: wave_game::MODEL_BYTES,
+        installed: wave_game::installed(&dir),
+        backend: engine.note_backend().to_string(),
+        license_note: wave_game::LICENSE_NOTE,
+        license_url: wave_game::LICENSE_URL,
+        path: dir.display().to_string(),
+        error,
+    }
+}
+
+/// Loads the installed note model into the engine. `Ok(false)` when nothing is installed.
+pub fn activate_notes(engine: &Engine) -> Result<bool, String> {
+    let dir = wave_game::model_dir();
+    if !wave_game::installed(&dir) {
+        return Ok(false);
+    }
+    let m = wave_game::Game::load(&dir)?;
+    engine.set_note_model(Some(Arc::new(m)));
+    Ok(true)
+}
+
+/// Downloads the note model's archive (SHA-256 checked), unpacks its files and removes the
+/// archive.
+pub fn install_notes(progress: impl Fn(u64, u64)) -> Result<(), String> {
+    let dir = wave_game::model_dir();
+    if wave_game::installed(&dir) {
+        return Ok(());
+    }
+    let archive = wave_game::archive_path();
+    fetch(
+        &Download { url: wave_game::MODEL_URL, sha256: wave_game::MODEL_SHA256, bytes: wave_game::MODEL_BYTES, dst: archive.clone() },
+        None,
+        progress,
+    )?;
+    let res = wave_game::unpack(&archive, &dir);
+    let _ = std::fs::remove_file(&archive);
+    res
+}
+
 /// One downloadable model file: where it comes from, what it must be, where it goes.
 pub struct Download {
     pub url: &'static str,

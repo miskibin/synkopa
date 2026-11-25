@@ -327,7 +327,8 @@ export interface MelodyChannel { channel: Id; name: string; notes: number; fit: 
 /** `pitch_analyze`: pitch every 1/rate s (null = unvoiced), levels 0..1, segmented notes (seconds of the source).
  *  `confidence` 0..1 per frame; `backend` = the detector ("rmvpe" or "yin"). */
 export interface NoteBlob { start: number; end: number; pitch: number; level: number }
-export interface PitchAnalysis { rate: number; curve: (number | null)[]; levels: number[]; notes: NoteBlob[]; confidence?: number[]; backend?: string }
+/** `backend`: the pitch detector ("rmvpe" | "yin"); `noteBackend`: what found the notes ("game" = the GAME note model, "tracker" = built-in). */
+export interface PitchAnalysis { rate: number; curve: (number | null)[]; levels: number[]; notes: NoteBlob[]; confidence?: number[]; backend?: string; noteBackend?: string }
 
 /** `pitch_target`: per analysis frame from `start` (null = unvoiced/none). `targetF0` is the base pitch the
  *  engine renders; where `alignmentConfidence` is ~0 it equals the take's own pitch. `notes` are the
@@ -338,7 +339,8 @@ export interface PitchTarget {
   alignmentConfidence: number[]; refTime: (number | null)[];
   octave: number; notes: NoteBlob[]; score: number; reason: string | null;
 }
-/** The optional RMVPE pitch model (`f0_model_status`). */
+/** An optional analysis model: RMVPE pitch (`f0_model_status`) or the GAME note model (`note_model_status`;
+ *  `backend` is then "game" or "tracker"). */
 export interface F0ModelStatus {
   id: string; name: string; bytes: number; installed: boolean; backend: string;
   licenseNote: string; licenseUrl: string; path: string; error: string | null;
@@ -390,6 +392,21 @@ export interface ChordAnalysis {
 }
 /** `chords_model`: the chord recognition model (downloaded on first use). */
 export interface ChordModelStatus { id: string; name: string; bytes: number; installed: boolean; licenseNote: string; licenseUrl: string; path: string }
+/** `audio_to_midi` (Convert to MIDI, melody): `shortest` seconds, `quantize` steps (0 = as sung), `velocity` 0..1
+ *  (null = follow the singing), `low`/`high` MIDI keys (null = no limit), `channel` (null = a new piano),
+ *  `preview` = answer the notes without changing the project. */
+export interface AudioToMidiArgs {
+  clipId: Id; shortest?: number; quantize?: number; velocity?: number | null; low?: number | null; high?: number | null;
+  channel?: Id | null; preview?: boolean;
+}
+/** What `audio_to_midi` found (and, without `preview`, wrote): `notes` in steps from the bar at song beat `start`;
+ *  `takeRange` = the keys the take holds (5th–95th percentile); `noteBackend` = what found the notes. */
+export interface AudioToMidiResult {
+  clipId: Id; count: number; notes: { step: number; len: number; p: number; v: number }[]; start: number;
+  takeRange: [number, number] | null; low: number | null; high: number | null; backend: string; noteBackend: string; edited: boolean;
+  /** After a convert: the new pattern, its channel (new or the one picked), its Playlist clip. */
+  patternId?: Id; channelId?: Id; newChannel?: boolean; patternClipId?: Id | null; track?: number; revision?: number;
+}
 /** `chords_to_pattern`: the new pattern (and channel, when `newChannel`) and its Playlist clip. */
 export interface ChordsToPatternResult {
   patternId: Id; channelId: Id; newChannel: boolean; clipId: Id | null; track: number; start: number; chords: number; revision: number;
