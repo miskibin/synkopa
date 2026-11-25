@@ -81,6 +81,8 @@ const RATIO: f64 = 2.0;
 /// Most limiter input gain (= the parameter's range).
 const DRIVE_MAX: f64 = 24.0;
 const TOLERANCE_LU: f64 = 0.1;
+/// Peak reduction (dB) past which a master is audibly squashed: the report flags it.
+pub const HEAVY_CUT_DB: f64 = 8.0;
 const MAX_RENDERS: usize = 7;
 
 /// Integrated loudness, true peak, loudness range of a stereo signal. `None` = silent.
@@ -449,6 +451,7 @@ pub fn listen(
             balance: bal.iter().map(|v| round(*v)).collect(),
             balance_out: bal_out.iter().map(|v| round(*v)).collect(),
             short: out_lufs < goal - 0.5,
+            peak_cut: round(reduction.max(0.0)),
         },
         params: p,
     })

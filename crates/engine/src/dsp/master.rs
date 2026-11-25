@@ -18,7 +18,11 @@
 //! summed in mid/side: the low band's side is faded out with *Bass mono*, the upper bands'
 //! side is scaled by *Width*.
 //!
-//! **Clipper.** Before the limiter, at 2× (the saturator's polyphase IIR half-bands): linear
+//! **Clipper.** Before the limiter, on the low and mid bands only: the peaks a limiter struggles
+//! with are the kick and the bass, and a full-band clipper shaving them also distorts the hi-hats
+//! riding on them (intermodulation: measured −14.5 dB under the hats on a trap mix). The high
+//! band goes around it through the same 2× filters, so the bands still sum flat. At 2× (the
+//! saturator's polyphase IIR half-bands): linear
 //! up to −3 dB of its threshold, then a tanh knee to the threshold. Only the distortion part
 //! (curve − input) gets first-order antiderivative antialiasing, so below the knee the clipper
 //! is an exact wire. *Clip* sets how close to the limiter's threshold it starts: 0 % = off,
@@ -151,6 +155,9 @@ struct Clipper {
     up: Hb,
     down: Hb,
     x1: f64,
+    /// the high band's own 2× round trip (no curve): the same filters, so the bands still sum flat
+    hi_up: Hb,
+    hi_down: Hb,
 }
 
 impl Clipper {
@@ -450,8 +457,10 @@ impl Processor for Master {
             self.width += (width_t - self.width) * kp;
             self.mono += (mono_t - self.mono) * kp;
             let bands = self.front(l[i], r[i]);
-            // glue, then mid/side per band
+            // glue, then mid/side per band; the low and mid bands go to the clipper, the high
+            // band around it
             let (mut ol, mut or) = (0f32, 0f32);
+            let (mut hl, mut hr) = (0f32, 0f32);
             for b in 0..BANDS {
                 let (bl, br) = (bands[0][b] as f32, bands[1][b] as f32);
                 let lvl = self.detect(b, bl, br);
@@ -464,15 +473,23 @@ impl Processor for Master {
                 let g = db_to_gain(self.gain[b]);
                 let side_g = if b == 0 { 1.0 - self.mono } else { self.width };
                 let (m, s) = (0.5 * (bl + br) * g, 0.5 * (bl - br) * g * side_g);
-                ol += m + s;
-                or += m - s;
+                if b == BANDS - 1 {
+                    hl = m + s;
+                    hr = m - s;
+                } else {
+                    ol += m + s;
+                    or += m - s;
+                }
                 gr_min[b] = gr_min[b].min(self.gain[b]);
                 lvl_max[b] = lvl_max[b].max(lvl);
             }
             // clipper at 2× (always run: constant latency, and the half-bands stay warm)
             let mut y = [ol, or];
+            let hi = [hl, hr];
             for c in 0..2 {
                 let cl = &mut self.clip[c];
+                let (he, ho) = cl.hi_up.up(c1, hi[c]);
+                let h = cl.hi_down.down(c1, he, ho);
                 let (e, o) = cl.up.up(c1, y[c]);
                 let (e, o) = if clip_t.is_finite() {
                     (cl.shape(e, clip_t), cl.shape(o, clip_t))
@@ -482,8 +499,8 @@ impl Processor for Master {
                 };
                 let d = cl.down.down(c1, e, o);
                 pk_in = pk_in.max(y[c].abs());
-                y[c] = d;
                 pk_out = pk_out.max(d.abs());
+                y[c] = d + h;
             }
             l[i] = y[0];
             r[i] = y[1];

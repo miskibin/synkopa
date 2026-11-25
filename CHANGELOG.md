@@ -11,11 +11,13 @@ shown in the app after an update and is published as the release notes (see
 - **Master: a mastering chain that listens to your whole song.** Put **Master** on the master
   track and it renders the song up to itself, measures it and sets itself: a gentle tone EQ
   where the balance is clearly off, three-band glue that holds the mix together without tilting
-  it, bass to mono when the low end is wide, a clipper that shaves the tallest transients, and a
+  it, bass to mono when the low end is wide, a clipper that shaves the kick and bass peaks (the
+  hi-hats go around it and stay clean), and a
   true-peak limiter that lands exactly on the loudness you pick (Dynamic −16, Streaming −14,
   Balanced −12, Loud −10, Club −8 LUFS) under a −1 dBTP ceiling. Every control stays a knob you
   can turn; **Listen again** after you change the mix. The window shows your mix's balance
-  against the reference before and after, and what each stage is doing while you play. **Level
+  against the reference before and after, what each stage is doing while you play, and warns
+  when a target would cut the peaks so hard you will hear it. **Level
   match** turns the master down to the mix's loudness, so the power button compares sound, not
   volume. From the command line: `synkopa master-listen --fx ID [--target 0..4]`.
 - **Downloads work behind a company proxy.** Library kits and models used to fail with

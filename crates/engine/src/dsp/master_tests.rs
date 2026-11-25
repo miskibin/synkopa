@@ -80,8 +80,9 @@ fn the_clipper_takes_work_off_the_limiter() {
 
 #[test]
 fn clipper_aliasing_stays_low() {
-    // a 7 kHz sine driven 6 dB into the clipper: images of its harmonics fold back below 7 kHz
-    let x = sine(7000.0, -3.0, 1.0);
+    // a 1.7 kHz sine (mid band) driven 6 dB into the clipper: its harmonics above Nyquist must
+    // not fold back below it
+    let x = sine(1700.0, -3.0, 1.0);
     let (ol, _, _) = run(&[(idx::DRIVE, 6.0), (idx::CLIP, 100.0), (idx::CEIL, 0.0)], &x, &x);
     let y = &ol[8192..8192 + 16384];
     let mut planner = realfft::RealFftPlanner::<f32>::new();
@@ -95,9 +96,19 @@ fn clipper_aliasing_stays_low() {
     let peak = p.iter().copied().fold(0.0, f32::max);
     // everything under 6 kHz is aliasing or noise (the harmonics are 21, 35 kHz …)
     let worst =
-        p.iter().enumerate().filter(|(b, _)| (*b as f32 * hz) > 100.0 && (*b as f32 * hz) < 6000.0).map(|(_, v)| *v).fold(0.0, f32::max);
+        p.iter().enumerate().filter(|(b, _)| (*b as f32 * hz) > 100.0 && (*b as f32 * hz) < 1500.0).map(|(_, v)| *v).fold(0.0, f32::max);
     let rel = 10.0 * (worst / peak).log10();
-    assert!(rel < -70.0, "worst alias {rel:.1} dB under the tone");
+    let top: Vec<(usize, f32)> = {
+        let mut v: Vec<(usize, f32)> = p.iter().copied().enumerate().collect();
+        v.sort_by(|a, b| b.1.total_cmp(&a.1));
+        v.truncate(4);
+        v
+    };
+    assert!(
+        rel < -70.0,
+        "worst alias {rel:.1} dB under the tone; top bins {:?}",
+        top.iter().map(|(b, v)| (*b as f32 * hz, 10.0 * (v / peak).log10())).collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -152,4 +163,35 @@ fn silence_parks_to_silence() {
     let x = vec![0f32; 48_000];
     let (ol, or, _) = run(&[(idx::DRIVE, 12.0), (idx::CLIP, 60.0), (idx::MATCH, 1.0)], &x, &x);
     assert!(ol.iter().chain(&or).all(|v| *v == 0.0));
+}
+
+#[test]
+fn the_clipper_leaves_the_highs_alone() {
+    // a loud 60 Hz "808" clipped hard with a quiet 9 kHz "hat" on top: a full-band clipper puts
+    // sidebands on the hat (9 kHz ± 60, ± 120 Hz); the band-split clipper does not
+    // (drive 0, ceiling 0: the clipper rounds the 808's peaks under the ceiling and the limiter has nothing left
+    // to do, so any sideband would be the clipper's)
+    let lo = sine(60.0, 1.0, 1.0);
+    let hi = sine(9000.0, -50.0, 1.0);
+    let x: Vec<f32> = lo.iter().zip(&hi).map(|(a, b)| a + b).collect();
+    let (ol, _, m) = run(&[(idx::CLIP, 100.0), (idx::CEIL, 0.0)], &x, &x);
+    assert!(m.clip_db < -1.0, "the clipper must be working: {:.2} dB", m.clip_db);
+    let y = &ol[8192..8192 + 32768];
+    let mut planner = realfft::RealFftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(y.len());
+    let mut buf: Vec<f32> =
+        y.iter().enumerate().map(|(i, v)| v * (0.5 - 0.5 * (2.0 * std::f32::consts::PI * i as f32 / y.len() as f32).cos())).collect();
+    let mut spec = fft.make_output_vec();
+    fft.process(&mut buf, &mut spec).unwrap();
+    let hz = SR / y.len() as f32;
+    let at = |f: f32| -> f32 {
+        let k = (f / hz).round() as usize;
+        (k - 2..=k + 2).map(|j| spec[j].norm_sqr()).fold(0.0, f32::max)
+    };
+    let tone = at(9000.0);
+    for side in [8880.0, 8940.0, 9060.0, 9120.0] {
+        let rel = 10.0 * (at(side) / tone).log10();
+        // what is left is the hat's −40 dB copy the 24 dB/oct crossover leaves in the mid band
+        assert!(rel < -50.0, "sideband at {side} Hz: {rel:.1} dB under the hat");
+    }
 }

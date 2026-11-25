@@ -28,5 +28,8 @@ export function toneDb(params: Record<string, number>, f: number, sr = SR): numb
   return db;
 }
 
+/** mastering::HEAVY_CUT_DB: peak reduction past which the window warns. */
+export const HEAVY_CUT_DB = 8;
+
 /** "3:07" for seconds. */
 export const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;

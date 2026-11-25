@@ -276,6 +276,10 @@ pub struct MasterListen {
     /// The loudness asked for could not be reached within the limiter's range.
     #[serde(default)]
     pub short: bool,
+    /// How far the song's peaks had to come down for the target (clipper + limiter), dB. Above
+    /// `mastering::HEAVY_CUT_DB` it will audibly distort or pump: the window says so.
+    #[serde(default)]
+    pub peak_cut: f64,
 }
 
 /// Most slots of each Warp map bank.

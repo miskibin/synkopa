@@ -1356,6 +1356,7 @@ export class MockBackend implements Backend {
       seconds: Math.round(this.songEnd() * 60 / this.p.bpm * 10) / 10, target,
       inLufs: -18.4, inTp: -2.1, inLra: 7.2, outLufs: goal, outTp: Math.min(ceil, -0.1) - 0.1, outLra: 5.1,
       balance, balanceOut: balance.map((v, i) => Math.round((v + toneDb(params, THIRDS[i])) * 10) / 10), short: false,
+      peakCut: Math.max(0, Math.round((16.3 - (ceil - goal)) * 10) / 10),
     };
     if (this.revision !== base) throw new Error(`${ERR_REVISION_CONFLICT} the project changed while the Master was listening; listen again`);
     const fx: Fx = { ...structuredClone(f), params, listen, preset: null };

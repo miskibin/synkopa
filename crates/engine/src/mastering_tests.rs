@@ -150,4 +150,7 @@ fn the_master_keeps_the_mix_balance_apart_from_its_tone_eq() {
         assert!(d.abs() < 1.0, "tone band {b} drifted {d:.2} dB (drift {drift:?}, tone {tone:?})");
     }
     assert!((rep.out_lufs - f64::from(TARGETS[3])).abs() <= 0.3, "{}", rep.out_lufs);
+    // the report says how hard the peaks were cut: the input's peak-to-loudness minus the target's
+    let expect = (rep.in_tp - rep.in_lufs) - (-1.0 - f64::from(TARGETS[3]));
+    assert!((rep.peak_cut - expect.max(0.0)).abs() < 0.2, "{} vs {expect}", rep.peak_cut);
 }
