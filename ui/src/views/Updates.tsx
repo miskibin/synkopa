@@ -48,7 +48,7 @@ const fmtDate = (d: string | null) => {
 
 const pct = () => { const s = upd(); return s.total > 0 ? Math.min(100, Math.floor(s.done * 100 / s.total)) : null; };
 
-/** Button beside the menus while an update is found, downloading or waiting for the restart. */
+/** The toolbar's row 2 switch (right, beside Follow) while an update is found, downloading or waiting for the restart. */
 export function UpdateChip() {
   const s = () => upd();
   const label = () => {
@@ -68,8 +68,13 @@ export function UpdateChip() {
   const tip = () => s().phase === 'ready' ? t('d.upd.chip.ready.tip', { v: s().info?.version ?? '' }) : t('d.upd.chip.tip');
   return (
     <Show when={s().phase !== 'idle' && s().phase !== 'checking' && !(s().phase === 'downloading' && s().quiet)}>
-      <button class={['updchip', { ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }]} title={tip()}
-        disabled={s().phase === 'installing'} style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => void click()}>{label()}</button>
+      <button class={['tsw updsw', { ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }]} title={tip()} aria-label={label()}
+        disabled={s().phase === 'installing'} style={{ '--pf': String((pct() ?? 0) / 100) }} onClick={() => void click()}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d={s().phase === 'ready' ? 'M21 12a9 9 0 1 1-3-6.7L21 8 M21 3v5h-5' : 'M12 3v12 M7 10l5 5 5-5 M5 21h14'} />
+        </svg>
+        <span class="lbl">{label()}</span>
+      </button>
     </Show>
   );
 }

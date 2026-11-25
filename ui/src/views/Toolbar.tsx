@@ -211,7 +211,7 @@ export function Toolbar() {
             <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
             <Show when={shownPreview()} fallback={<>
               <span class="readout" data-readout title={U.readout}>{U.readout}</span>
-              <Show when={prefs().hints}><span class="hinttxt">{hint()}</span></Show>
+              <Show when={prefs().hints}><span class="hinttxt" title={hint()}>{hint()}</span></Show>
             </>}>
               <PreviewLine />
             </Show>
@@ -224,8 +224,6 @@ export function Toolbar() {
               <span class="tag9">IN</span>
               <div class="inmeter"><div ref={inEl} /></div>
             </div>
-            {/* a found, downloading or downloaded update: the status line, where it never crowds the menus */}
-            <UpdateChip />
           </ChipBoundary>
         </div>
         <div class="tbc tbtransport">
@@ -321,6 +319,8 @@ export function Toolbar() {
         {/* under the output and the panels: the loop range (when there is one) and Follow (F) */}
         <div class="tbc tbview" data-drag>
           <ChipBoundary name={t('d.ui.pn.panels')}>
+            {/* a found, downloading or downloaded update: a quiet row 2 switch here, so the status line keeps its room for the hint */}
+            <UpdateChip />
             <Show when={S.project.loop}>{l => (
               <span data-drag class="loopText" title={t('a.tb.loopTip')}
                 onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY, [{ t: 'item', label: t('a.pl.deleteLoop'), act: () => { A.setLoop(null, t('a.pl.deleteLoop')); say(t('a.pl.loopDeleted')); } }]); }}>
