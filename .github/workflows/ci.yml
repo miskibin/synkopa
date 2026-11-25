@@ -100,6 +100,39 @@ jobs:
         run: |
           if (-not (Test-Path "C:\Program Files\LLVM\bin\libclang.dll")) { choco install llvm -y --no-progress }
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+      # asio-sys downloads the SDK to %TEMP%\asio_sdk once and then trusts that the directory
+      # existing means it is complete, so one flaky download poisons the runner until its TEMP
+      # resets (red runs #275/#276-merge: "os error 3" walking asio_sdk\host). Fetch it here
+      # with retries, verify the layout asio-sys binds against, and hand it the path so its
+      # own fetch never runs.
+      - name: ASIO SDK with retries
+        run: |
+          $sdk = Join-Path $env:RUNNER_TEMP 'asio_sdk'
+          for ($try = 1; $try -le 3; $try++) {
+            try {
+              $zip = Join-Path $env:RUNNER_TEMP 'asiosdk.zip'
+              Invoke-WebRequest -Uri 'https://www.steinberg.net/asiosdk' -OutFile $zip -MaximumRetryCount 3 -RetryIntervalSec 10
+              $staging = Join-Path $env:RUNNER_TEMP 'asio_extract'
+              Expand-Archive -Path $zip -DestinationPath $staging -Force
+              $root = (Get-ChildItem $staging -Directory | Where-Object Name -like 'asio*' | Select-Object -First 1).FullName
+              if (-not $root) { throw "the archive holds no asio* directory" }
+              Move-Item $root $sdk
+              $need = 'asio.h', 'asiosys.h', 'asiodrivers.h'
+              $have = Get-ChildItem $sdk -Recurse -Filter *.h | Select-Object -ExpandProperty Name
+              $missing = @($need | Where-Object { $_ -notin $have })
+              if ($missing.Count -gt 0) { throw "the SDK is missing headers: $($missing -join ', ')" }
+              foreach ($d in 'common', 'host', 'host\pc') {
+                if (-not (Test-Path (Join-Path $sdk $d))) { throw "the SDK is missing the $d directory" }
+              }
+              "CPAL_ASIO_DIR=$sdk" >> $env:GITHUB_ENV
+              Write-Host "ASIO SDK ready at $sdk (attempt $try)"
+              break
+            } catch {
+              Write-Host "attempt $try failed: $_"
+              if (Test-Path $sdk) { Remove-Item -Recurse -Force $sdk }
+            }
+          }
+          if (-not (Test-Path "$sdk/common") -or -not (Test-Path "$sdk/host/pc")) { throw "no verified ASIO SDK after 3 attempts" }
       - uses: pnpm/action-setup@v4
         with: { version: 10 }
       - uses: actions/setup-node@v4
