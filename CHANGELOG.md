@@ -7,6 +7,13 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+
+- **Downloads work behind a company proxy.** Library kits and models used to fail with
+  "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.
+  Synkopa now trusts the Windows certificate store like your browser does, and when that is still
+  not enough, **Settings → General → Network → Ignore certificate errors** skips the check. The
+  error message points to it. Downloads are still verified against their checksums.
+
 - **Mix assistant.** While you play, Synkopa listens for mixer tracks that cover each other: both
   loud in the same frequencies at the same time, bar after bar, like a kick and an 808 at 50 Hz.
   Only then a small amber badge appears on the track that should give way; click it to **Make

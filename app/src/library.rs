@@ -151,7 +151,7 @@ pub fn install(id: &str, progress: impl Fn(usize, usize)) -> Result<(), String> 
         if dst.is_file() {
             continue;
         }
-        let mut resp = ureq::get(&s.url).call().map_err(|e| format!("{}: {e}", s.file))?;
+        let mut resp = crate::net::agent().get(&s.url).call().map_err(|e| format!("{}: {}", s.file, crate::net::explain(&e)))?;
         let mut bytes = Vec::with_capacity(s.bytes as usize);
         resp.body_mut().as_reader().read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", s.file))?;
         let got = hex(&Sha256::digest(&bytes));

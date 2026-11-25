@@ -90,7 +90,7 @@ pub fn fetch(d: &Download, cancel: Option<&AtomicBool>, progress: impl Fn(u64, u
     let dir = dst.parent().ok_or("no folder for the model")?;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let total = d.bytes;
-    let mut resp = ureq::get(d.url).call().map_err(|e| format!("download failed: {e}"))?;
+    let mut resp = crate::net::agent().get(d.url).call().map_err(|e| format!("download failed: {}", crate::net::explain(&e)))?;
     let mut body = resp.body_mut().with_config().limit(total + 1).reader();
     let tmp = dst.with_extension("part");
     let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;

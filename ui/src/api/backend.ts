@@ -279,6 +279,9 @@ export interface Backend {
   /** Installs the downloaded update and restarts Synkopa (the call does not return then). Rejects on a failure; the old version keeps running. */
   updateInstall(): Promise<void>;
   updateSetAuto(on: boolean): Promise<void>;
+  /** Whether downloads (sample kits, models) skip the HTTPS certificate check: for a company proxy whose root certificate is not installed. Downloads are checksum-verified either way. */
+  netIgnoreCertErrors(): Promise<boolean>;
+  netSetIgnoreCertErrors(on: boolean): Promise<void>;
   /** Remembers that the release notes of `version` were shown. */
   updateMarkSeen(version: string): Promise<void>;
   /** Opens the release page of `version` (null = the releases list) in the system browser. */
@@ -521,6 +524,8 @@ export function tauriBackend(): Backend {
     updateDownload: () => invoke('update_download'),
     updateInstall: () => invoke('update_install'),
     updateSetAuto: on => invoke('update_set_auto', { on }),
+    netIgnoreCertErrors: () => invoke('net_ignore_cert_errors'),
+    netSetIgnoreCertErrors: on => invoke('net_set_ignore_cert_errors', { on }),
     updateMarkSeen: version => invoke('update_mark_seen', { version }),
     openReleasePage: version => invoke('open_release_page', { version: version ?? null }),
     openAsk: (service, prompt) => invoke('open_ask', { service, prompt }),
