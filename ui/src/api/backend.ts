@@ -148,6 +148,10 @@ export interface Backend {
   midiImport(args: MidiImportArgs): Promise<MidiImportResult>;
   /** Writes the song (pattern clips as placed) or one pattern as a .mid file. */
   midiExport(args: { out: string; pattern?: Id }): Promise<MidiExportResult>;
+  /** Mix assistant (app/src/mix_assist.rs): `mix_assistant` {on?} → {on}; `masking` {from?, to?, scan?}
+   *  → {collisions}; `unmask` {masker, protect, lo, hi, keyDb} → {fxId, insert, revision} (one undo
+   *  step); `mask_ignore` {a, b} → {revision}. */
+  mixAssist(cmd: 'mix_assistant' | 'masking' | 'unmask' | 'mask_ignore', args: Record<string, unknown>): Promise<Record<string, unknown>>;
   /** FX chain presets in the user's library, by name, and the folder they are kept in. */
   fxChains(): Promise<{ dir: string; presets: FxChainPreset[] }>;
   /** Saves the effects of `insert` as preset `name`; an existing name fails with `EXISTS:` unless `overwrite`. */
@@ -279,6 +283,9 @@ export interface Backend {
   /** Installs the downloaded update and restarts Synkopa (the call does not return then). Rejects on a failure; the old version keeps running. */
   updateInstall(): Promise<void>;
   updateSetAuto(on: boolean): Promise<void>;
+  /** Whether downloads (sample kits, models) skip the HTTPS certificate check: for a company proxy whose root certificate is not installed. Downloads are checksum-verified either way. */
+  netIgnoreCertErrors(): Promise<boolean>;
+  netSetIgnoreCertErrors(on: boolean): Promise<void>;
   /** Remembers that the release notes of `version` were shown. */
   updateMarkSeen(version: string): Promise<void>;
   /** Opens the release page of `version` (null = the releases list) in the system browser. */
@@ -447,6 +454,7 @@ export function tauriBackend(): Backend {
       });
       return r == null ? null : Array.isArray(r) ? r[0] ?? null : r;
     },
+    mixAssist: (cmd, args) => invoke('mix_assist', { cmd, args }),
     fxChains: () => invoke('fx_chain', { cmd: 'fx_chains', args: {} }),
     fxChainSave: (insert, name, overwrite = false) => invoke('fx_chain', { cmd: 'fx_chain_save', args: { insert, name, overwrite } }),
     fxChainLoad: (insert, name, mode) => invoke('fx_chain', { cmd: 'fx_chain_load', args: { insert, name, mode } }),
@@ -522,6 +530,8 @@ export function tauriBackend(): Backend {
     updateDownload: () => invoke('update_download'),
     updateInstall: () => invoke('update_install'),
     updateSetAuto: on => invoke('update_set_auto', { on }),
+    netIgnoreCertErrors: () => invoke('net_ignore_cert_errors'),
+    netSetIgnoreCertErrors: on => invoke('net_set_ignore_cert_errors', { on }),
     updateMarkSeen: version => invoke('update_mark_seen', { version }),
     openReleasePage: version => invoke('open_release_page', { version: version ?? null }),
     openAsk: (service, prompt) => invoke('open_ask', { service, prompt }),

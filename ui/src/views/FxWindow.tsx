@@ -467,10 +467,11 @@ function LayoutItem(props: { fx: Fx; it: Item }) {
 function keyText(fx: Fx): { tip: TranslationKey; on: TranslationKey } {
   if (fx.type === 'gate') return { tip: 'c.sc.tipGate', on: (fx.params.mode ?? 0) >= 0.5 ? 'c.sc.duckOn' : 'c.sc.gateOn' };
   if (fx.type === 'filter') return { tip: 'c.sc.tipFilter', on: 'c.sc.filterOn' };
+  if (fx.type === 'eq') return { tip: 'c.sc.tipEq', on: (fx.bands ?? []).some(b => b.on && b.dynamic) ? 'c.sc.eqOn' : 'c.sc.eqIdle' };
   return { tip: 'c.sc.tip', on: 'c.sc.ducks' };
 }
 
-/** A sidechain picker (Compressor, Gate, Filter): what its detector hears (its own input, or another insert's sound). */
+/** A sidechain picker (Compressor, Gate, Filter, EQ): what its detector hears (its own input, or another insert's sound). */
 function KeyPicker(props: { fx: Fx }) {
   const src = () => (props.fx.key == null ? undefined : S.project.inserts.find(m => m.id === props.fx.key));
   return (
@@ -533,12 +534,16 @@ function Sections(props: { fx: Fx }) {
 }
 
 function Body(props: { fx: Fx }): JSX.Element {
-  const t = () => props.fx.type;
+  const kind = () => props.fx.type;
   return (
     <>
-      <Show when={t() === 'eq'}><EqPanel fx={props.fx} /></Show>
-      <Show when={t() === 'tune'}><TuneHeader fx={props.fx} /></Show>
-      <Show when={t() !== 'eq'}><Sections fx={props.fx} /></Show>
+      <Show when={kind() === 'eq'}><EqPanel fx={props.fx} /></Show>
+      {/* an EQ's sidechain drives its dynamic bands: offered once there is one (or a key to undo) */}
+      <Show when={kind() === 'eq' && (props.fx.key != null || (props.fx.bands ?? []).some(b => b.dynamic))}>
+        <div class="ctlrow"><div class="segp"><span class="lab">{t('c.sc.title').toUpperCase()}</span><KeyPicker fx={props.fx} /></div></div>
+      </Show>
+      <Show when={kind() === 'tune'}><TuneHeader fx={props.fx} /></Show>
+      <Show when={kind() !== 'eq'}><Sections fx={props.fx} /></Show>
     </>
   );
 }

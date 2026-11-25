@@ -12,6 +12,7 @@ import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { LIB_SCHEME } from '../lib/factory';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 type Status = { kind: 'busy' | 'ok' | 'warn' | 'err'; text: string } | null;
 
@@ -91,7 +92,7 @@ export function MissingAudio() {
     <Show when={U.missingOpen}>
       <DialogBoundary name={t('d.ui.pn.missing')} close={close}>
       <div class="overlay" onPointerDown={close}>
-        <div class="dialog missdlg" role="dialog" aria-modal="true" aria-label={t('d.miss.title', { n: rows().length })} onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }} data-missing-dialog>
+        <div class="dialog missdlg" aria-label={t('d.miss.title', { n: rows().length })} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()} data-missing-dialog>
           <div class="hd">
             <span>{rows().length ? t('d.miss.title', { n: rows().length }) : t('d.miss.titleDone')}</span>
             <button onClick={close} aria-label={t('d.miss.close')}>×</button>
@@ -145,7 +146,7 @@ export function MissingAudio() {
               </For>
             </ul>
           </Show>
-          <div class="row" style={{ 'justify-content': 'flex-end', 'margin-top': '12px' }}>
+          <div class="dlgfoot">
             <button class={['smallbtn', { primary: !rows().length }]} onClick={close}>{rows().length ? t('d.miss.later') : t('d.miss.done')}</button>
           </div>
         </div>

@@ -22,6 +22,8 @@ pub struct Settings {
     pub seen_version: Option<String>,
     /// True when the user turned the automatic update check off (the default is on).
     pub no_auto_update: bool,
+    /// Downloads skip the certificate check (a company proxy whose root is not installed).
+    pub ignore_cert_errors: bool,
 }
 
 /// How many projects File → Open recent keeps.
@@ -96,6 +98,7 @@ mod tests {
         let s: Settings = serde_json::from_str(r#"{"folders":["a"],"lastProject":"x.wave"}"#).unwrap();
         assert!(!s.no_auto_update);
         assert_eq!(s.seen_version, None);
+        assert!(!s.ignore_cert_errors, "certificates are checked unless the user opts out");
         assert_eq!(s.folders, ["a"]);
     }
 

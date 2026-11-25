@@ -68,7 +68,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)
   sidechain --from ID --to ID [--off]             insert FROM ducks insert TO: keys TO's compressor, or adds one
                                                   set up for ducking (--off: back to its own input)   [--label TEXT]
-  sidechain --fx ID --from ID | --off             what that compressor, gate or filter listens to
+  sidechain --fx ID --from ID | --off             what that compressor, gate, filter or EQ (its dynamic bands) listens to
   set-param --fx ID --param NAME --value V
   preset --fx ID --index N
   import <file>... [--track N --beat B]    load audio, optionally place it
@@ -150,6 +150,16 @@ MIDI FILES  (standard .mid, format 0 and 1)
   midi import FILE --parts I --pattern P --ch C [--replace]
                                            one part's notes into channel C of pattern P
   midi export --out FILE.mid [--pattern P] the song (pattern clips as placed) or one pattern, with tempo
+
+MIX ASSISTANT  (inserts that cover each other: loud in the same frequencies at the same time)
+  mix [--from B --to B] [--scan]           collisions, worst first: masker, protect, Hz range; in the
+                                           app what it heard while playing, on a file (or --scan) an
+                                           offline pass over the song or the range
+  mix fix N [--from B --to B] [--scan]     collision N of that list: an EQ on the masker whose dynamic
+                                           band ducks the range while the other insert plays there
+                                           (keyed through the sidechain; one undo step)
+  mix ignore N [...]                       stop reporting that pair (kept in the project)
+  mix on | mix off                         the live detector in the app
 
 FX CHAIN PRESETS  (a mixer insert's effects, in your library, for any project)
   fxchain list                             names and the effects in each
@@ -626,6 +636,8 @@ fn default_undo_label(command: &str) -> Option<&'static str> {
     match command {
         "auto_vocal" => Some("Auto Vocal"),
         "sidechain" => Some("Sidechain"),
+        "unmask" => Some("Make room"),
+        "mask_ignore" => Some("Ignore masking pair"),
         _ => None,
     }
 }
@@ -1444,10 +1456,48 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
         "pitch" => pitch(cx, a),
         "midi" => midi(cx, a),
         "fxchain" => fxchain(cx, a),
+        "mix" => mix(cx, a),
         "tune-file" => tune_file(a),
         "script" => script(cx, a),
         "new" => Err(u("`new` creates a file; run it on its own, without --project".into())),
         other => Err(u(format!("unknown command `{other}`"))),
+    }
+}
+
+/// `synkopa mix [fix N | ignore N | on | off]`: the mix assistant.
+fn mix(cx: &Cx, a: &Args) -> Result<Value, Fail> {
+    let u = Fail::Usage;
+    let list = || {
+        let mut q = json!({});
+        if let (Some(f), Some(t)) = (a.num("from").map_err(u)?, a.num("to").map_err(u)?) {
+            q = json!({ "from": f, "to": t, "scan": true });
+        } else if a.has("from") || a.has("to") {
+            return Err(u("give both --from and --to (beats)".into()));
+        }
+        if a.has("scan") {
+            q["scan"] = json!(true);
+        }
+        send(cx, a, "masking", q)
+    };
+    let pick = |verb: &str| -> Result<Value, Fail> {
+        let n: usize =
+            a.pos.get(2).and_then(|x| x.parse().ok()).ok_or_else(|| u(format!("mix {verb} N (N = a number from `synkopa mix`)")))?;
+        let found = list()?;
+        found["collisions"].get(n).cloned().ok_or_else(|| u(format!("no collision {n}: `synkopa mix` lists them from 0")))
+    };
+    match a.pos.get(1).map(String::as_str) {
+        None | Some("list") => list(),
+        Some("fix") => {
+            let c = pick("fix")?;
+            send(cx, a, "unmask", c)
+        }
+        Some("ignore") => {
+            let c = pick("ignore")?;
+            send(cx, a, "mask_ignore", json!({ "a": c["masker"], "b": c["protect"] }))
+        }
+        Some("on") => send(cx, a, "mix_assistant", json!({ "on": true })),
+        Some("off") => send(cx, a, "mix_assistant", json!({ "on": false })),
+        _ => Err(u("mix [list] | mix fix N | mix ignore N | mix on | mix off".into())),
     }
 }
 

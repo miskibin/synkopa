@@ -104,11 +104,61 @@ export function migrateProject(p: Project) {
   for (const ins of p.inserts) for (const fx of ins.fx) if (fx.type === 'sat' && migrateSatParams(fx.params)) fx.preset = null;
 }
 
-/** Clips showing exactly one whole pass of the pattern (offset 0, old length) follow a length change. */
+/**
+ * A pattern's length changed: its clips follow without overlapping another clip or looping the
+ * pattern (the engine's `follow_pattern_length`, ops.rs). Grown: whole-pass clips (offset 0, old
+ * length) take the new length but stop at the next clip on their track. Shrunk: clips whose window
+ * lay within the old pattern are cut back to its new end; clips already past the old end keep theirs.
+ */
 export function followPatternLength(p: Project, id: Id, oldLen: number, len: number) {
+  const EPS = 1e-6;
   for (const c of p.clips) {
-    if (c.kind === 'pat' && c.ref === id && Math.abs(c.offset) < 1e-9 && Math.abs(c.len - oldLen) < 1e-6) c.len = Math.max(1 / 16, Math.min(len, TOTAL_BEATS - c.start));
+    if (c.kind !== 'pat' || c.ref !== id) continue;
+    let to: number;
+    if (len > oldLen) {
+      if (Math.abs(c.offset) >= 1e-9 || Math.abs(c.len - oldLen) >= EPS) continue;
+      let next = Infinity;
+      for (const o of p.clips) if (o.id !== c.id && o.track === c.track && o.start > c.start + EPS && o.start < next) next = o.start;
+      to = Math.max(c.len, Math.min(len, next - c.start));
+    } else {
+      const end = c.offset + c.len;
+      if (end > oldLen + EPS || end <= len + EPS || c.offset >= len - EPS) continue;
+      to = len - c.offset;
+    }
+    c.len = Math.max(1 / 16, Math.min(to, TOTAL_BEATS - c.start));
   }
+}
+
+/** What a pattern-length change did to the clips that show it (`followChanges`). */
+export interface FollowReport {
+  /** The pattern, its new length in beats. */
+  pattern: Id; len: number;
+  /** Clips that took the new length. */
+  followed: Id[];
+  /** Clips that grew, but stopped at the next clip on their track (they show part of the pattern). */
+  stopped: Id[];
+}
+
+/**
+ * Compares the pattern clips' lengths before an edit (`before`: clip id → length, of the patterns in
+ * `lens`: pattern id → length before) with `p` after it. One report per pattern whose clips changed.
+ */
+export function followChanges(lens: ReadonlyMap<Id, number>, before: ReadonlyMap<Id, number>, p: Project): FollowReport[] {
+  const out: FollowReport[] = [];
+  for (const [pid, was] of lens) {
+    const pt = p.patterns.find(x => x.id === pid);
+    if (!pt || Math.abs(pt.len - was) < 1e-9) continue;
+    const r: FollowReport = { pattern: pid, len: pt.len, followed: [], stopped: [] };
+    for (const c of p.clips) {
+      if (c.kind !== 'pat' || c.ref !== pid) continue;
+      const b = before.get(c.id);
+      if (b == null || Math.abs(b - c.len) < 1e-9) continue;
+      const full = Math.min(pt.len - c.offset, TOTAL_BEATS - c.start);
+      (c.len > b && c.len < full - 1e-6 ? r.stopped : r.followed).push(c.id);
+    }
+    if (r.followed.length || r.stopped.length) out.push(r);
+  }
+  return out;
 }
 
 /**

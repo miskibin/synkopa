@@ -18,7 +18,7 @@ describe('ruler labels and ticks', () => {
     const zoomedOut = render(22);
     expect(zoomedOut.labels.map(l => l.text)).toEqual(['1', '2']);
     const beatZoom = render(48);
-    expect(beatZoom.labels.map(l => l.text)).toEqual(['1.2', '1.3', '1.4', '1', '2']);
+    expect(beatZoom.labels.map(l => l.text)).toEqual(['1:2', '1:3', '1:4', '1', '2']);
     expect(beatZoom.rects).not.toHaveBeenCalledWith(12, RULER_H - 4, 1, 4);
     const highZoom = render(192);
     expect(highZoom.labels).toEqual(beatZoom.labels);
@@ -29,8 +29,8 @@ describe('ruler labels and ticks', () => {
   it('keeps bar labels prominent and counts beats correctly after scrolling', () => {
     const { labels } = render(192, 16.5 * 192);
     expect(labels).toContainEqual({ text: '5', font: expect.stringContaining('600 12px'), color: T.fgHi });
-    expect(labels).toContainEqual({ text: '5.2', font: expect.stringContaining('500 10px'), color: T.fg4 });
-    expect(labels.map(l => l.text)).toEqual(['5.2', '5.3', '5.4', '5', '6']);
+    expect(labels).toContainEqual({ text: '5:2', font: expect.stringContaining('500 10px'), color: T.fg4 });
+    expect(labels.map(l => l.text)).toEqual(['5:2', '5:3', '5:4', '5', '6']);
   });
 });
 

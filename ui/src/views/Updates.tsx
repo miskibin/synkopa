@@ -7,6 +7,7 @@ import type { Release } from '../lib/changelog';
 import { projectNew } from '../state/actions';
 import { checkUpdates, closeUpdateDialog, closeWelcome, closeWhatsNew, installUpdate, openReleasePage, openUpdateDialog, setAutoUpdate, showWhatsNew, startUpdate, upd } from '../state/updates';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const mb = (n: number) => (n / 1e6).toFixed(n >= 1e8 ? 0 : 1);
 
@@ -47,7 +48,7 @@ const fmtDate = (d: string | null) => {
 
 const pct = () => { const s = upd(); return s.total > 0 ? Math.min(100, Math.floor(s.done * 100 / s.total)) : null; };
 
-/** Button beside the menus while an update is found, downloading or waiting for the restart. */
+/** The toolbar's row 2 switch (right, beside Follow) while an update is found, downloading or waiting for the restart. */
 export function UpdateChip() {
   const s = () => upd();
   const label = () => {
@@ -67,8 +68,13 @@ export function UpdateChip() {
   const tip = () => s().phase === 'ready' ? t('d.upd.chip.ready.tip', { v: s().info?.version ?? '' }) : t('d.upd.chip.tip');
   return (
     <Show when={s().phase !== 'idle' && s().phase !== 'checking' && !(s().phase === 'downloading' && s().quiet)}>
-      <button class={['updchip', { ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }]} title={tip()}
-        disabled={s().phase === 'installing'} style={{ '--p': (pct() ?? 0) + '%' }} onClick={() => void click()}>{label()}</button>
+      <button class={['tsw updsw', { ready: s().phase === 'ready', busy: s().phase === 'downloading' || s().phase === 'installing' }]} title={tip()} aria-label={label()}
+        disabled={s().phase === 'installing'} style={{ '--pf': String((pct() ?? 0) / 100) }} onClick={() => void click()}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d={s().phase === 'ready' ? 'M21 12a9 9 0 1 1-3-6.7L21 8 M21 3v5h-5' : 'M12 3v12 M7 10l5 5 5-5 M5 21h14'} />
+        </svg>
+        <span class="lbl">{label()}</span>
+      </button>
     </Show>
   );
 }
@@ -88,8 +94,7 @@ function UpdateDialog() {
     <Show when={open()}>
       <DialogBoundary name={t('d.ui.pn.update')} close={() => closeUpdateDialog()} z={250}>
       <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => closeUpdateDialog()}>
-        <div class="dialog upddlg" role="dialog" aria-modal="true" aria-label={t('d.upd.title.available')} onPointerDown={e => e.stopPropagation()}
-          onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') closeUpdateDialog(); }}>
+        <div class="dialog upddlg" aria-label={t('d.upd.title.available')} ref={el => modal(el, { close: () => closeUpdateDialog() })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd"><span>{s().phase === 'ready' || s().phase === 'installing' ? t('d.upd.title.ready') : t('d.upd.title.available')}</span><button aria-label={t('d.upd.btn.close')} onClick={() => closeUpdateDialog()}>×</button></div>
           <div class="updver">
             <b>{t('d.upd.versions', { v: s().info?.version ?? '', cur: s().current })}</b>
@@ -106,7 +111,7 @@ function UpdateDialog() {
             <Match when={s().phase === 'installing'}><div class="updmsg">{t('d.upd.installing')}</div></Match>
           </Switch>
           <Show when={s().error}><div class="updmsg err" role="alert">{t('d.upd.fail', { err: s().error! })}</div></Show>
-          <div class="updfoot">
+          <div class="updfoot dlgfoot">
             <ReleaseLink version={s().info?.version ?? null} />
             <div style={{ flex: 1 }} />
             <Show when={s().phase !== 'installing'}>
@@ -114,10 +119,10 @@ function UpdateDialog() {
             </Show>
             <Switch>
               <Match when={s().phase === 'available'}>
-                <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => void startUpdate()}>{s().error ? t('d.upd.btn.retry') : t('d.upd.btn.download')}</button>
+                <button class="smallbtn primary" data-autofocus onClick={() => void startUpdate()}>{s().error ? t('d.upd.btn.retry') : t('d.upd.btn.download')}</button>
               </Match>
               <Match when={s().phase === 'ready'}>
-                <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => void installUpdate()}>{s().error ? t('d.upd.btn.retry') : t('d.upd.btn.restart')}</button>
+                <button class="smallbtn primary" data-autofocus onClick={() => void installUpdate()}>{s().error ? t('d.upd.btn.retry') : t('d.upd.btn.restart')}</button>
               </Match>
             </Switch>
           </div>
@@ -159,8 +164,7 @@ function WhatsNew(p: { news: Release[]; from: string | null }) {
     : [t('d.news.ver', { v: p.news[0].version }), fmtDate(p.news[0].date)].filter(Boolean).join(' · ');
   return (
     <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => void closeWhatsNew()}>
-      <div class={['dialog newsdlg', { multi: multi() }]} role="dialog" aria-modal="true" aria-label={t('d.news.title')} onPointerDown={e => e.stopPropagation()}
-        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') void closeWhatsNew(); }}>
+      <div class={['dialog newsdlg', { multi: multi() }]} aria-label={t('d.news.title')} ref={el => modal(el, { close: () => void closeWhatsNew() })} onPointerDown={e => e.stopPropagation()}>
         <header class="newshd">
           <div>
             <h2>{t('d.news.title')}</h2>
@@ -194,11 +198,11 @@ function WhatsNew(p: { news: Release[]; from: string | null }) {
             )}</For>
           </div>
         </div>
-        <footer class="newsfoot">
+        <footer class="newsfoot dlgfoot">
           <ReleaseLink version={active() || (p.news[0]?.version ?? null)} />
           <Show when={lang() === 'pl'}><span class="newsen">{t('d.news.enonly')}</span></Show>
           <div style={{ flex: 1 }} />
-          <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={() => void closeWhatsNew()}>{t('d.news.ok')}</button>
+          <button class="smallbtn primary" data-autofocus onClick={() => void closeWhatsNew()}>{t('d.news.ok')}</button>
         </footer>
       </div>
     </div>
@@ -242,15 +246,13 @@ function WelcomeDialog() {
     <Show when={upd().welcome}>
       <DialogBoundary name={t('d.welcome.title')} close={() => closeWelcome()} z={250}>
       <div class="overlay" style={{ 'z-index': 250 }} onPointerDown={() => closeWelcome()}>
-        <div class="dialog upddlg" role="dialog" aria-modal="true" aria-label={t('d.welcome.title')} onPointerDown={e => e.stopPropagation()}
-          onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') closeWelcome(); }}>
+        <div class="dialog upddlg" aria-label={t('d.welcome.title')} ref={el => modal(el, { close: () => closeWelcome() })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd"><span>{t('d.welcome.title')}</span><button aria-label={t('d.upd.btn.close')} onClick={() => closeWelcome()}>×</button></div>
-          <div class="updmsg">{t('d.welcome.body')}</div>
-          <div class="updmsg muted">{t('d.welcome.later')}</div>
-          <div class="updfoot">
-            <div style={{ flex: 1 }} />
+          <p class="dlgtext">{t('d.welcome.body')}</p>
+          <p class="dlgtext muted">{t('d.welcome.later')}</p>
+          <div class="dlgfoot">
             <button class="smallbtn" onClick={() => closeWelcome()}>{t('d.welcome.empty')}</button>
-            <button class="smallbtn primary" ref={el => setTimeout(() => el.focus())} onClick={openDemo}>{t('d.welcome.demo')}</button>
+            <button class="smallbtn primary" data-autofocus onClick={openDemo}>{t('d.welcome.demo')}</button>
           </div>
         </div>
       </div>
