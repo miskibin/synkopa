@@ -9,7 +9,7 @@ import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { barsText, cellsBetween, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, loopStepsOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
+import { barsText, cellsBetween, channelStepsOf, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, loopStepsOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
 import { moveIndex, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
@@ -392,10 +392,10 @@ function Rack(props: { z: number; docked?: boolean }) {
     }
     const shiftSteps = (d: number) => {
       const c = selCh(); if (!c) return;
-      commit([putNotes(pt(), rotate(rawOf(pt()).notes, c.id, stepsOf(pt()), d))], t('b.pe.shiftSteps'));
+      commit([putNotes(pt(), rotate(rawOf(pt()).notes, c.id, channelStepsOf(rawOf(pt()), c.id), d))], t('b.pe.shiftSteps'));
       say(c.name + ' · ' + t(d < 0 ? 'b.pe.shiftL' : 'b.pe.shiftR'));
     };
-    // FL: Shift+Ctrl+← / → shifts the selected channel's steps by one, wrapping around the pattern
+    // FL: Shift+Ctrl+← / → shifts the selected channel's steps by one, wrapping around its cell or pattern
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault(); e.stopPropagation();
       shiftSteps(e.key === 'ArrowLeft' ? -1 : 1);

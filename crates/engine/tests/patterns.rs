@@ -921,3 +921,14 @@ fn an_open_refuses_a_file_whose_loops_expand_past_the_bound() {
     assert!(err.contains("may not repeat into more than"), "{err}");
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn played_notes_keeps_earlier_steps_in_an_unsorted_final_repeat() {
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    // At the last repeat (step 15), step 2 is outside the pattern but step 0 still fits.
+    let mut pt = one_pattern(vec![Note::trigger(h, 2.0, None), Note::trigger(h, 0.0, None)], 4.0, 0.0);
+    pt.patterns[0].channel_loops.insert(h, 3);
+    let got: Vec<u32> = wave_engine::model::played_notes(&pt.patterns[0]).iter().map(|n| n.step as u32).collect();
+    assert_eq!(got, vec![0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15]);
+}

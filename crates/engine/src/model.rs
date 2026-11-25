@@ -975,11 +975,11 @@ pub fn played_notes(pat: &Pattern) -> Vec<Note> {
         let cell: Vec<Note> = pat.notes.iter().filter(|n| n.ch == *ch && (n.step as f64) < f64::from(l)).cloned().collect();
         base.extend(cell.iter().cloned());
         let reps = (steps / f64::from(l)).ceil() as u32;
-        'reps: for k in 1..=reps {
+        for k in 1..=reps {
             for n in &cell {
                 let step = n.step + (k * l) as f32;
                 if f64::from(step) >= steps {
-                    break 'reps;
+                    continue;
                 }
                 extra.push(Note { step, ..*n });
             }
