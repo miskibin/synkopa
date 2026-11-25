@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, F0Estimator};
+use wave_engine::pitch::F0Estimator;
 use wave_engine::sources::{mono_of, Audio};
 
 use crate::transcribe::{note_matches, tracker_notes, N};
@@ -187,6 +187,7 @@ pub fn run(root: &Path, est: Option<&dyn F0Estimator>) -> Result<Value, String> 
     let audio = root.join("Audio");
     let mut scores = Scores::default();
     let mut backends = BTreeMap::new();
+    let mut note_backends = BTreeMap::new();
 
     for id in tracks.keys() {
         let stem = format!("vocadito_{id}");
@@ -196,11 +197,12 @@ pub fn run(root: &Path, est: Option<&dyn F0Estimator>) -> Result<Value, String> 
         let wav = audio.join(format!("{stem}.wav"));
         let audio = Audio::load(&wav).map_err(|e| format!("{}: {e}", wav.display()))?;
         let mono = mono_of(&audio);
-        let analysis = analyze_with(&mono, audio.sr as f32, est);
+        let analysis = crate::analyze(&mono, audio.sr as f32, est);
         let mut predicted = tracker_notes(&analysis);
         sort_notes(&mut predicted);
         scores.add(&a1, &a2, &predicted);
         *backends.entry(analysis.backend).or_insert(0usize) += 1;
+        *note_backends.entry(analysis.note_backend).or_insert(0usize) += 1;
         eprintln!("{stem}: {} predicted, {} A1, {} A2 notes", predicted.len(), a1.len(), a2.len());
     }
     Ok(json!({
@@ -208,8 +210,9 @@ pub fn run(root: &Path, est: Option<&dyn F0Estimator>) -> Result<Value, String> 
         "datasetDoi": DOI,
         "recordings": tracks.len(),
         "singers": singers.len(),
-        "predictionSource": "raw tracker notes",
+        "predictionSource": "raw analysis notes",
         "backendRecordings": backends,
+        "noteBackendRecordings": note_backends,
         "byAnnotator": { "A1": scores.a1.json(), "A2": scores.a2.json() },
         "agreedSameKeyRepeats": {
             "references": REFERENCES,

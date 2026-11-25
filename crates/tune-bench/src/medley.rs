@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, hz_to_midi, F0Estimator};
+use wave_engine::pitch::{hz_to_midi, F0Estimator};
 use wave_engine::sources::{mono_of, Audio};
 
 use crate::agent::Label;
@@ -97,7 +97,7 @@ fn cut(a: &Audio, from: f64, to: f64) -> Audio {
 }
 
 fn voiced_share(a: &Audio, est: Option<&dyn F0Estimator>) -> f32 {
-    let an = analyze_with(&mono_of(a), a.sr as f32, est);
+    let an = crate::analyze(&mono_of(a), a.sr as f32, est);
     an.curve.iter().filter(|x| x.is_finite()).count() as f32 / an.curve.len().max(1) as f32
 }
 
@@ -124,7 +124,7 @@ pub fn cases(
             let frames = (take0.seconds() * 200.0) as usize + 1;
             let truth = truth_at(&song.f0, t0, frames);
             // the notes: the detector's segmentation of the untouched phrase, scored against the annotation
-            let an = analyze_with(&mono_of(&take0), take0.sr as f32, est);
+            let an = crate::analyze(&mono_of(&take0), take0.sr as f32, est);
             let spans: Vec<(f64, f64)> = an.notes.iter().filter(|n| n.end - n.start >= 0.12).map(|n| (n.start, n.end)).collect();
             let nt: Vec<Option<f32>> = spans
                 .iter()
@@ -190,7 +190,7 @@ pub fn estimation(songs: &[Song], est: Option<&dyn F0Estimator>) -> Value {
             rows.push(json!({ "song": s.name, "error": "lead stem missing" }));
             continue;
         };
-        let an = analyze_with(&mono_of(&a), a.sr as f32, est);
+        let an = crate::analyze(&mono_of(&a), a.sr as f32, est);
         let truth = truth_at(&s.f0, 0.0, an.curve.len());
         let (mut voiced, mut hit, mut fa, mut unv, mut errs) = (0usize, 0usize, 0usize, 0usize, vec![]);
         for (t, d) in truth.iter().zip(&an.curve) {

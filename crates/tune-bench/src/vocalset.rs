@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use wave_engine::pitch::{analyze_with, F0Estimator};
+use wave_engine::pitch::F0Estimator;
 use wave_engine::reference::PitchTarget;
 use wave_engine::sources::{mono_of, Audio};
 use wave_engine::{ClipTune, RefTune};
@@ -180,7 +180,7 @@ pub(crate) fn offsets(frames: usize, notes: &[(f64, f64)], detune: &[f32], drift
 
 /// The recording with `off` (cents per frame) added to its pitch by the editor's own PSOLA.
 pub(crate) fn detuned(audio: &Audio, off: &[f32], est: Option<&dyn F0Estimator>) -> Audio {
-    let a = analyze_with(&mono_of(audio), audio.sr as f32, est);
+    let a = crate::analyze(&mono_of(audio), audio.sr as f32, est);
     let n = a.curve.len();
     let target_f0: Vec<f32> = (0..n).map(|f| a.curve[f] + off.get(f).copied().unwrap_or(0.0) / 100.0).collect();
     let pt = PitchTarget {

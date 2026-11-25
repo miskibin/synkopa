@@ -90,6 +90,8 @@ pub const ALL_COMMANDS: &[&str] = &[
     "tune_ref",
     "f0_model",
     "f0_model_install",
+    "note_model",
+    "note_model_install",
     "music_analyze",
     "chords_model",
     "chords_model_install",
@@ -2070,7 +2072,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         return Err(live_only_error(cmd));
     }
     match cmd {
-        "pitch_analyze" | "pitch_target" | "tune_ref" | "auto_vocal_plan" | "auto_vocal" | "f0_model" => app.ensure_pitch_model(),
+        "pitch_analyze" | "pitch_target" | "tune_ref" | "auto_vocal_plan" | "auto_vocal" | "f0_model" | "note_model" => {
+            app.ensure_pitch_model()
+        }
         c if crate::pitch_actions::COMMANDS.contains(&c) => app.ensure_pitch_model(),
         "vst3_params" | "vst3_set_param" | "plugin_params" | "plugin_set_param" => app.ensure_live_plugins(),
         _ => {}
@@ -2251,6 +2255,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
             // session requests run on their own thread (the app path streams progress events instead)
             f0_model_install(app, &|_, _| {}).map(|st| json!(st))
         }
+        "note_model" => Ok(json!(crate::models::note_status(e))),
+        // the download (~46 MB) is SHA-256 checked, then unpacked and loaded
+        "note_model_install" => crate::models::note_install(e, |_, _| {}).map(|st| json!(st)),
         "music_analyze" => {
             let cid = arg(a, "clipId").and_then(as_index);
             let ex = arg(a, "excludeFx").and_then(as_index);

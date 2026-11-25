@@ -73,6 +73,10 @@ export interface Backend {
   f0ModelStatus(): Promise<F0ModelStatus>;
   /** Downloads the RMVPE model (progress: `model-progress`), verifies it, starts using it. */
   f0ModelInstall(): Promise<F0ModelStatus>;
+  /** The optional GAME note model: installed or not, and what finds the notes now ("game" | "tracker"). */
+  noteModelStatus(): Promise<F0ModelStatus>;
+  /** Downloads the GAME note model (progress: `model-progress` with id `game`), SHA-256 checked, unpacks and uses it. */
+  noteModelInstall(): Promise<F0ModelStatus>;
   /** Tempo (BPM) and musical key of an audio clip, or key/tempo of the project's active audio clips (excluding `excludeFx`'s insert). */
   musicAnalyze(args?: { clipId?: Id; excludeFx?: Id }): Promise<MusicAnalysis>;
   /** The chord recognition model (ChordMini): size, licence, whether it is installed. */
@@ -406,6 +410,8 @@ export function tauriBackend(): Backend {
     pitchTarget: (clipId, reference) => invoke('pitch_target', { clipId, reference: reference ?? null }),
     f0ModelStatus: () => invoke('f0_model_status'),
     f0ModelInstall: () => invoke('f0_model_install'),
+    noteModelStatus: () => invoke('note_model_status'),
+    noteModelInstall: () => invoke('note_model_install'),
     musicAnalyze: a => invoke('music_analyze', { clipId: a?.clipId ?? null, excludeFx: a?.excludeFx ?? null }),
     chordsModelStatus: () => invoke('chords_model_status'),
     chordsModelInstall: () => invoke('chords_model_install'),

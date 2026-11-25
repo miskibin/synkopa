@@ -145,7 +145,6 @@ pub fn cases(items: &[Item], limit: usize, est: Option<&dyn F0Estimator>, failed
 /// The detector against the hand-checked F0 of `limit` recordings: raw pitch accuracy within
 /// 50 cents over annotated voiced frames, cents error, voicing recall and false alarms.
 pub fn estimation(items: &[Item], limit: usize, est: Option<&dyn F0Estimator>) -> serde_json::Value {
-    use wave_engine::pitch::analyze_with;
     use wave_engine::sources::mono_of;
     let (mut voiced, mut hit, mut unv, mut fa, mut errs, mut missing) = (0usize, 0usize, 0usize, 0usize, vec![], vec![]);
     for it in spread(items, limit) {
@@ -153,7 +152,7 @@ pub fn estimation(items: &[Item], limit: usize, est: Option<&dyn F0Estimator>) -
             missing.push(it.stem.clone());
             continue;
         };
-        let an = analyze_with(&mono_of(&a), a.sr as f32, est);
+        let an = crate::analyze(&mono_of(&a), a.sr as f32, est);
         let truth = it.curve(an.curve.len());
         for (t, d) in truth.iter().zip(&an.curve) {
             match (t.is_finite(), d.is_finite()) {

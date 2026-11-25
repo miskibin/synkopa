@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use wave_engine::pitch::{analyze_with, F0Estimator};
+use wave_engine::pitch::F0Estimator;
 use wave_engine::sources::{mono_of, Audio};
 
 use crate::agent::{Label, Note};
@@ -22,6 +22,9 @@ pub struct GNote {
     pub midi: f32,
     pub word: String,
     pub glissando: bool,
+    /// Where the word's first vowel starts, on a word's first note (the annotated note starts with
+    /// the word, at its first consonant; the sung pitch starts at the vowel).
+    pub vowel: Option<f64>,
 }
 
 #[derive(Clone, Debug)]
@@ -66,6 +69,13 @@ fn read(json: &Path) -> Option<Seg> {
     for w in v.as_array()? {
         let word = w.get("word")?.as_str()?.to_string();
         let (ns, st, en) = (w.get("note")?.as_array()?, w.get("note_start")?.as_array()?, w.get("note_end")?.as_array()?);
+        // ARPAbet vowels carry a stress digit (AH1, ER0)
+        let vowel = w.get("ph").and_then(Value::as_array).zip(w.get("ph_start").and_then(Value::as_array)).and_then(|(ph, ps)| {
+            ph.iter()
+                .zip(ps)
+                .find(|(p, _)| p.as_str().is_some_and(|p| p.ends_with(|c: char| c.is_ascii_digit())))
+                .and_then(|(_, s)| s.as_f64())
+        });
         for (k, note) in ns.iter().enumerate() {
             let midi = note.as_f64()? as f32;
             let (a, b) = (st.get(k)?.as_f64()?, en.get(k)?.as_f64()?);
@@ -78,6 +88,7 @@ fn read(json: &Path) -> Option<Seg> {
                 midi,
                 word: word.clone(),
                 glissando: flag(w.get("glissando").unwrap_or(&Value::Null), k),
+                vowel: vowel.filter(|&v| k == 0 && a <= v && v < b),
             });
         }
     }
@@ -150,7 +161,7 @@ fn load(s: &Seg) -> Result<Audio, String> {
 
 /// The analysis of the unmodified recording as frame truth, and each note's median over it.
 fn original_truth(a: &Audio, spans: &[(f64, f64)], est: Option<&dyn F0Estimator>) -> (Vec<f32>, Vec<Option<f32>>) {
-    let an = analyze_with(&mono_of(a), a.sr as f32, est);
+    let an = crate::analyze(&mono_of(a), a.sr as f32, est);
     let nt = spans
         .iter()
         .map(|&(s, e)| {

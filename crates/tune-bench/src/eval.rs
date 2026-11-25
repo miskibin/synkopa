@@ -4,7 +4,7 @@
 use std::time::Instant;
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, F0Estimator, PitchAnalysis};
+use wave_engine::pitch::{F0Estimator, PitchAnalysis};
 use wave_engine::reference::tune_audio;
 use wave_engine::sources::{mono_of, Audio};
 use wave_engine::RefTune;
@@ -95,7 +95,7 @@ pub fn run(c: &Case, p: &RefTune, est: Option<&dyn F0Estimator>) -> (Outcome, Au
     let t0 = Instant::now();
     let (out, t, ta) = tune_audio(c.take, c.reference, p, est);
     let seconds = t0.elapsed().as_secs_f32();
-    let oa: PitchAnalysis = analyze_with(&mono_of(&out), out.sr as f32, est);
+    let oa: PitchAnalysis = crate::analyze(&mono_of(&out), out.sr as f32, est);
     let rate = ta.rate;
     let n = ta.curve.len().min(oa.curve.len());
     let slip: Vec<bool> = (0..n)

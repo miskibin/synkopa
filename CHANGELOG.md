@@ -7,6 +7,13 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Better notes from singing.** Pitch Editor → **Better notes (46 MB)** downloads GAME, a neural
+  note finder made for singing (optional; its licence is non-commercial, shown before the
+  download). With it, a note sung again on the same pitch becomes two notes instead of one long
+  one, vibrato and scoops stay inside their note, and notes end where the singing does — so the
+  pitch editor's notes and **Copy notes** into the Piano roll follow the melody as it was sung.
+  Without it nothing changes. The chip beside **Copy notes** shows which finder is in use; also
+  `synkopa note-model [--install]`.
 
 - **Downloads work behind a company proxy.** Library kits and models used to fail with
   "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.

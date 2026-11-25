@@ -13,5 +13,6 @@ path = "src/main.rs"
 [dependencies]
 wave-engine.workspace = true
 wave-rmvpe.workspace = true
+wave-game.workspace = true
 serde_json.workspace = true
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "tls-native", "api-20"] }

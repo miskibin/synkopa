@@ -128,7 +128,7 @@ impl Host for Headless {
     }
     fn ensure_pitch_model(&self) {
         let mut m = self.model.lock();
-        tried_once(&mut m, || crate::models::activate(&self.engine).err());
+        tried_once(&mut m, || crate::models::activate_all(&self.engine).err());
     }
     fn ensure_live_plugins(&self) {
         let mut rt = self.rt.lock();

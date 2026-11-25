@@ -13,7 +13,7 @@
 use std::path::Path;
 
 use serde_json::{json, Value};
-use wave_engine::pitch::{analyze_with, F0Estimator, PitchAnalysis};
+use wave_engine::pitch::{F0Estimator, PitchAnalysis};
 use wave_engine::sources::{mono_of, Audio};
 
 use crate::vocalset::{self, Item};
@@ -49,7 +49,7 @@ const TECHNIQUES: [&str; 16] = [
     "pp",
 ];
 
-fn technique(stem: &str) -> &'static str {
+pub fn technique(stem: &str) -> &'static str {
     TECHNIQUES.iter().find(|t| stem.contains(*t)).copied().map(|t| if t == "vibrado" { "vibrato" } else { t }).unwrap_or("other")
 }
 
@@ -321,7 +321,7 @@ pub fn run(
     for (k, (it, gt)) in picked.into_iter().enumerate() {
         let a = Audio::load(&it.audio).map_err(|e| format!("{}: {e}", it.audio.display()))?;
         let mono = mono_of(&a);
-        let an = analyze_with(&mono, a.sr as f32, est);
+        let an = crate::analyze(&mono, a.sr as f32, est);
         let tech = technique(&it.stem);
         // how often the singer is more than 50 ct from the score (ceiling for pitch metrics)
         for n in gt {
@@ -378,7 +378,8 @@ pub struct Cached {
     pub held_out: bool,
     pub set: &'static str,
     pub gt: Vec<N>,
-    /// VocalSet with onsets at the middle of the transition into each legato note.
+    /// VocalSet with onsets at the middle of the transition into each legato note; GTSinger with
+    /// each word's first note starting at its vowel.
     pub gt_mid: Option<Vec<N>>,
     pub an: wave_engine::pitch::PitchAnalysis,
 }
@@ -392,7 +393,7 @@ pub fn cache_vocalset(root: &Path, limit: usize, est: Option<&dyn F0Estimator>) 
     let mut out = vec![];
     for (it, gt) in vocalset::spread(&usable, limit) {
         let a = Audio::load(&it.audio).map_err(|e| format!("{}: {e}", it.audio.display()))?;
-        let an = analyze_with(&mono_of(&a), a.sr as f32, est);
+        let an = crate::analyze(&mono_of(&a), a.sr as f32, est);
         let held_out = TEST_SINGERS.contains(&it.singer());
         if let Some(c) = incomplete(&an.curve, gt) {
             eprintln!(
@@ -460,13 +461,15 @@ pub fn cache_gtsinger(root: &Path, limit: usize, est: Option<&dyn F0Estimator>) 
     let mut out = vec![];
     for s in vocalset::spread(&segs, limit) {
         let a = Audio::load(&s.wav).map_err(|e| format!("{}: {e}", s.wav.display()))?;
-        let an = analyze_with(&mono_of(&a), a.sr as f32, est);
+        let an = crate::analyze(&mono_of(&a), a.sr as f32, est);
         let gt = s.notes.iter().map(|n| N { on: n.start, off: n.end, p: n.midi }).collect();
+        // the same notes starting where the sung pitch does (the word's first vowel)
+        let vowel = s.notes.iter().map(|n| N { on: n.vowel.unwrap_or(n.start), off: n.end, p: n.midi }).collect();
         // the score is what was sung only in plain singing; technique groups ornament it
         let set = if s.group == "Control_Group" { "gtsinger" } else { "gtsinger-technique" };
         // tuning may use two singers; the others stay held out
         let held_out = !matches!(s.singer.as_str(), "EN-Alto-1" | "EN-Tenor-1");
-        out.push(Cached { name: s.name(), held_out, set, gt, gt_mid: None, an });
+        out.push(Cached { name: s.name(), held_out, set, gt, gt_mid: Some(vowel), an });
         eprint!(".");
     }
     eprintln!(" {} GTSinger", out.len());

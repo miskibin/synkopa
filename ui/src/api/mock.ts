@@ -976,7 +976,7 @@ export class MockBackend implements Backend {
     const s = this.srcMeta.get(c.ref) ?? this.p.sources.find(x => x.id === c.ref) as MockSource | undefined;
     if (!s) throw new Error('audio not loaded');
     const v = synthVocal(s.seed ?? s.id, s.dur);
-    return structuredClone({ rate: v.rate, curve: v.curve, levels: v.levels, notes: v.notes, confidence: v.curve.map(x => (x == null ? 0 : 0.9)), backend: this.f0Backend });
+    return structuredClone({ rate: v.rate, curve: v.curve, levels: v.levels, notes: v.notes, confidence: v.curve.map(x => (x == null ? 0 : 0.9)), backend: this.f0Backend, noteBackend: this.noteBackend });
   }
   async pitchTarget(clipId: Id, reference?: RefTune): Promise<PitchTarget> {
     const c = this.p.clips.find(x => x.id === clipId);
@@ -1023,6 +1023,22 @@ export class MockBackend implements Backend {
     for (let k = 1; k <= 20; k++) { await delay(50); this.emit('model-progress', { id: 'rmvpe', done: Math.round(total * k / 20), total }); }
     this.f0Backend = 'rmvpe';
     return this.f0ModelStatus();
+  }
+  /** The mock has no note model to run: installing it only changes what the status reports. */
+  private noteBackend = 'tracker';
+  async noteModelStatus(): Promise<F0ModelStatus> {
+    return {
+      id: 'game', name: 'GAME singing note model', bytes: 45_676_364, installed: this.noteBackend === 'game', backend: this.noteBackend,
+      licenseNote: 'GAME by Team OpenVPI: the code is MIT, the model weights are licensed CC BY-NC-SA 4.0 (non-commercial). Downloading is your decision; without the model Synkopa finds notes with its built-in note tracker.',
+      licenseUrl: 'https://github.com/openvpi/GAME/releases/tag/v1.0.0',
+      path: 'C:\\Users\\michal\\AppData\\Local\\WAVE\\Models\\game-small', error: null,
+    };
+  }
+  async noteModelInstall(): Promise<F0ModelStatus> {
+    const total = 45_676_364;
+    for (let k = 1; k <= 10; k++) { await delay(50); this.emit('model-progress', { id: 'game', done: Math.round(total * k / 10), total }); }
+    this.noteBackend = 'game';
+    return this.noteModelStatus();
   }
   async musicAnalyze(a?: { clipId?: Id; excludeFx?: Id }): Promise<MusicAnalysis> {
     await delay(80);

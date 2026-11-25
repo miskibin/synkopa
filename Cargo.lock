@@ -6054,6 +6054,7 @@ dependencies = [
  "wave-chords",
  "wave-cli",
  "wave-engine",
+ "wave-game",
  "wave-lv2",
  "wave-midi-in",
  "wave-plugin-scan",
@@ -6108,6 +6109,7 @@ version = "0.4.0"
 dependencies = [
  "serde_json",
  "wave-engine",
+ "wave-game",
  "wave-rmvpe",
  "wave-session",
 ]
@@ -6137,6 +6139,18 @@ dependencies = [
  "thiserror 2.0.21",
  "wave-audio-file",
  "wave-stretch",
+ "zip",
+]
+
+[[package]]
+name = "wave-game"
+version = "0.4.0"
+dependencies = [
+ "ort",
+ "parking_lot",
+ "serde_json",
+ "wave-engine",
+ "wave-rmvpe",
  "zip",
 ]
 
@@ -6257,6 +6271,7 @@ dependencies = [
  "ort",
  "serde_json",
  "wave-engine",
+ "wave-game",
  "wave-rmvpe",
 ]
 
