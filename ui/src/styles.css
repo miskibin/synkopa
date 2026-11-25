@@ -811,6 +811,8 @@ select option { background: var(--bg4); color: var(--fg); }
 :root[data-theme="light"] .toolbar::after { background: linear-gradient(to bottom, transparent, color-mix(in srgb, #000 4%, transparent) 40%, color-mix(in srgb, #000 5%, transparent)); }
 .tbc { display: flex; align-items: center; gap: 6px; min-width: 0; height: 100%; }
 .tbmenus { grid-area: 1 / 1; gap: 10px; }
+/* the status line under the menus is as wide as that column: on a wide bar the free room of the spacer column goes to it */
+@media (min-width: 1700px) { .tbmenus { min-width: 360px; } }
 .tbstatus { grid-area: 2 / 1; contain: inline-size; overflow: hidden; gap: 8px; font: 500 11px var(--sans); white-space: nowrap; }
 .tbtransport { grid-area: 1 / 2; gap: 4px; }
 .tbpos { grid-area: 2 / 2; }

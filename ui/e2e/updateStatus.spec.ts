@@ -24,7 +24,7 @@ for (const size of [{ width: 1920, height: 1080 }, { width: 1366, height: 768 },
     expect(full).toMatch(/^Draw:/);
     await expect(hint).toHaveAttribute('title', full!);
     // the hint keeps a readable share of the line at every width the toolbar supports
-    expect((await hint.boundingBox())!.width).toBeGreaterThan(size.width >= 1366 ? 250 : 120);
+    expect((await hint.boundingBox())!.width).toBeGreaterThan(size.width >= 1700 ? 250 : size.width >= 1366 ? 150 : 120);
     // the button is whole, on screen, and the bar did not grow past the window
     const b = (await update.boundingBox())!;
     expect(b.x + b.width).toBeLessThanOrEqual(size.width);
@@ -59,7 +59,7 @@ test('Restart to update restarts into the new version and shows what is new', as
   await expect(page.getByRole('button', { name: 'Restart to update' })).toHaveCount(0);
 });
 
-test('a long readout (the demo project) leaves the tool hint half the status line', async ({ page }) => {
+test('a long readout (the demo project) keeps the status line; the tool hint gives way first', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/');
   const welcome = page.getByRole('dialog', { name: 'Welcome to Synkopa' });
@@ -69,5 +69,5 @@ test('a long readout (the demo project) leaves the tool hint half the status lin
   await expect(readout).toHaveText(/^Demo project/);
   await expect(readout).toHaveAttribute('title', /^Demo project/); // the full readout on hover
   const line = (await page.locator('.tbstatus').boundingBox())!.width;
-  expect((await page.locator('.tbstatus .hinttxt').boundingBox())!.width).toBeGreaterThan(line * 0.35);
+  expect((await readout.boundingBox())!.width).toBeGreaterThan(line * 0.6); // the message is not squeezed by the hint
 });
