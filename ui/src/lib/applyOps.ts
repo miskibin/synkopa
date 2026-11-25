@@ -2,7 +2,7 @@
 // Parity with the engine is enforced by fixtures, not by discipline: ops.json
 // (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
 // error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
-import { CLIP_PITCH, MAX_BANDS, STRETCH_MAX, STRETCH_MIN, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
+import { CLIP_PITCH, MAX_BANDS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { forgetInsert, keyError, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
@@ -172,7 +172,16 @@ export function applyOp(p: Project, op: Op): void {
       return;
     case 'setBpm':
       if (!(op.bpm >= 20 && op.bpm <= 999)) throw new OpError('bpm must be 20..999');
-      p.bpm = op.bpm; return;
+      p.bpm = op.bpm; delete p.tempoPoints; return;
+    case 'setTempoPoints': {
+      if (op.points.length > MAX_TEMPO_POINTS) throw new OpError(`at most ${MAX_TEMPO_POINTS} tempo points`);
+      p.tempoPoints = op.points
+        .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), bpm: Math.min(Math.max(x.bpm, MIN_TEMPO_BPM), MAX_TEMPO_BPM), ramp: x.ramp ?? false }))
+        .sort((x, y) => x.beat - y.beat);
+      // the engine's serde omits an empty map (`skip_serializing_if`)
+      if (!p.tempoPoints.length) delete p.tempoPoints;
+      return;
+    }
     case 'setMaskIgnore': {
       const out: [Id, Id][] = [];
       for (const q of op.pairs) {

@@ -15,6 +15,7 @@ fn base(names: &[&str], ins_names: &[&str]) -> Project {
     let mut p = Project {
         version: PROJECT_VERSION,
         bpm: 128.0,
+        tempo_points: vec![],
         tracks: vec![],
         inserts: vec![Insert {
             id: 0,

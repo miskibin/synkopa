@@ -479,6 +479,10 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       try { c.tune = applyTuneEdit(c.tune, op.edit); } catch { /* refused: the engine's reply resyncs */ }
       return;
     }
+    case 'setTempoPoints': {
+      p.tempoPoints = op.points.map(x => ({ ...x }));
+      return;
+    }
     default: {
       // a new Op kind must be applied optimistically too, or its edit stalls until the reconcile
       const exhaustive: never = op;
@@ -488,7 +492,7 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
 }
 
 /** Ops whose application copies everything it keeps (the others are copied for the store: `M` must not share objects with it). */
-const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setLoop', 'setKey', 'putAutomation', 'transformNotes', 'putMarker', 'removeMarker']);
+const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setTempoPoints', 'setLoop', 'setKey', 'putAutomation', 'transformNotes', 'putMarker', 'removeMarker']);
 const copyOp = (op: Op): Op => {
   if (SELF_COPYING.has(op.op)) return op;
   try { return structuredClone(op); } catch { return plain(op); } // an op holding store proxies

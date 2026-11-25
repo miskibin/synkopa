@@ -947,6 +947,8 @@ pub struct ChanRt {
 
 pub struct Timeline {
     pub bpm: f64,
+    /// The compiled tempo map (constant when the project has no points): beats ↔ seconds.
+    pub(crate) tempo: crate::engine::tempo::TempoMap,
     pub clips: Vec<ClipRt>,
     pub pats: Vec<PatRt>,
     pub chans: Vec<ChanRt>,
@@ -1190,6 +1192,7 @@ impl Rt {
             graph: Box::new(Graph::new(vec![], vec![], None, max_block)),
             timeline: Box::new(Timeline {
                 bpm: 120.0,
+                tempo: crate::engine::tempo::TempoMap::constant(120.0),
                 clips: vec![],
                 pats: vec![],
                 chans: vec![],
@@ -1964,10 +1967,12 @@ impl Rt {
         g.cleared_n = n;
         self.click[..n].fill(0.0);
 
-        let bpm = self.timeline.bpm;
+        let block_beat = self.beat;
+        // the block-start tempo: what ProcessCtx reports, and the fallback for the paths
+        // that treat one block as constant (heard, the pattern preview)
+        let bpm = self.timeline.tempo.bpm_at(block_beat);
         let spb = 60.0 / bpm; // seconds per beat
         let bps = 1.0 / (spb * sr as f64); // beats per sample
-        let block_beat = self.beat;
 
         if self.rec_drain > 0 && !ahead {
             if self.shared.finishing_take.load(Acquire) {
@@ -1996,8 +2001,18 @@ impl Rt {
                 } else {
                     self.timeline.loop_range.unwrap_or((0.0, self.timeline.song_end))
                 };
+                // one schedule call sees one tempo: re-derive from the map at the segment's
+                // start and split the block at the next tempo point (the map is constant
+                // here unless a point falls inside, so the common case reuses bpm/spb/bps)
+                let bpm_seg = self.timeline.tempo.bpm_at(self.beat);
+                let spb = 60.0 / bpm_seg;
+                let bps = 1.0 / (spb * sr as f64);
                 let left = ((le - self.beat) / bps).ceil().max(1.0) as usize;
-                let seg = left.min(n - p);
+                let mut seg = left.min(n - p);
+                if let Some(tb) = self.timeline.tempo.next_break_after(self.beat) {
+                    let to_point = ((tb - self.beat) / bps).ceil().max(1.0) as usize;
+                    seg = seg.min(to_point);
+                }
                 let b0 = self.beat;
                 let b1 = b0 + seg as f64 * bps;
                 // `seg` is rounded up to whole samples, so `b1` can pass the loop end by up to a
@@ -2047,7 +2062,9 @@ impl Rt {
         self.shared.heard.store(heard.to_bits(), Relaxed);
         // tempo-locked effects follow the pattern loop preview like the song
         let pat_ctx = if !self.playing && self.pat_play.is_some() { Some(self.pat_beat) } else { None };
-        self.schedule_pattern(n, bps, spb);
+        // the pattern preview follows the map at its own playhead (per block, like everything else)
+        let pat_spb = 60.0 / self.timeline.tempo.bpm_at(self.pat_beat);
+        self.schedule_pattern(n, 1.0 / (pat_spb * sr as f64), pat_spb);
         self.voices.render(
             n,
             &mut self.graph.track_bufs,

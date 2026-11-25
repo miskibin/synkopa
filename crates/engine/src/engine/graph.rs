@@ -722,7 +722,17 @@ pub(crate) fn build_timeline(
             None => drives.push(Drive { target, clips: vec![ci] }),
         }
     }
-    Timeline { bpm: p.bpm, clips, pats, chans, autos, drives, loop_range: p.loop_range.map(|l| (l.a, l.b)), song_end: p.song_end() }
+    Timeline {
+        bpm: p.bpm,
+        tempo: super::tempo::TempoMap::compile(&p.tempo_points, p.bpm),
+        clips,
+        pats,
+        chans,
+        autos,
+        drives,
+        loop_range: p.loop_range.map(|l| (l.a, l.b)),
+        song_end: p.song_end(),
+    }
 }
 
 /// Turns an automation target into graph indices; `None` if it no longer exists.

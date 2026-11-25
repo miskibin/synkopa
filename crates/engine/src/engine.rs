@@ -24,6 +24,7 @@ mod analysis;
 mod graph;
 mod import;
 mod preview;
+pub(crate) mod tempo;
 pub use preview::{PreviewWave, PREVIEW_WAVE_PAIRS};
 mod project_files;
 mod render;
