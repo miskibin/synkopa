@@ -1249,6 +1249,11 @@ The app updates itself from GitHub Releases (public repository: no token). See
   `app_info` (also `pluginEditors`: plugin windows can be shown in this session, and `pluginEditorsWhy` when not), `update_set_auto` and `update_mark_seen` read and write `settings.json`
   (`seenVersion`, `noAutoUpdate`). Views reach them only through `backend.ts`
   (`appInfo`, `updateCheck`, …); `api/mockUpdates.ts` is the browser mock with a fake newer release.
+* Downloads (library kits, RMVPE and stem models) go through `app/src/net.rs`: a `ureq` agent on the OS
+  certificate store (so a company proxy's root works), or with verification off when
+  `settings.json` has `ignoreCertErrors` (`net_set_ignore_cert_errors`, Settings → General → Network;
+  the CLI reads it too). Every file is still checked against the SHA-256 of the built-in manifest.
+  The auto-updater (`tauri-plugin-updater`) has its own client and is not covered.
 * `ui/src/state/updateCtl.ts` is the state machine
   (`idle → available → downloading → ready → installing`); `state/updates.ts` is its signal.
   An automatic check (8 s after start, then every 6 h, can be switched off in Settings) never

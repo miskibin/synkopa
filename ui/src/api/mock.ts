@@ -2070,6 +2070,9 @@ export class MockBackend implements Backend {
   updateDownload() { return this.upd.updateDownload(); }
   updateInstall() { return this.upd.updateInstall(); }
   updateSetAuto(on: boolean) { return this.upd.updateSetAuto(on); }
+  private ignoreCertErrors = false;
+  async netIgnoreCertErrors() { return this.ignoreCertErrors; }
+  async netSetIgnoreCertErrors(on: boolean) { this.ignoreCertErrors = on; }
   updateMarkSeen(version: string) { return this.upd.updateMarkSeen(version); }
   openReleasePage(version?: string | null) { return this.upd.openReleasePage(version); }
   async openAsk(service: AskService, prompt: string | null) {

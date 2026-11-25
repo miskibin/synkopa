@@ -7,6 +7,11 @@ shown in the app after an update and is published as the release notes (see
 ## Unreleased
 
 ### Added
+- **Downloads work behind a company proxy.** Library kits and models used to fail with
+  "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.
+  Synkopa now trusts the Windows certificate store like your browser does, and when that is still
+  not enough, **Settings → General → Network → Ignore certificate errors** skips the check. The
+  error message points to it. Downloads are still verified against their checksums.
 - **Three orchestra stabs made for trap** in the Standard library (Orchestra): **Orchestra Stab
   Dark** (a full orchestra on a C minor chord, hard attack, short tail), **Brass Stab Low** (low
   brass, gritty and heavy, high-passed to stay off the 808) and **Orchestra Stab Tutti** (strings,
