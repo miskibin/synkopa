@@ -1321,10 +1321,10 @@ export function Playlist() {
       { t: 'sec', label: tl('a.pl.secEdit') },
       { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
       { t: 'item', label: tl('a.pl.duplicate'), kbd: 'Ctrl+B', act: A.duplicate },
-      { t: 'sub', label: tl('a.pl.clipboard'), items: [
+      ...(isPat ? [{ t: 'sub', label: tl('a.pl.clipboard'), items: [
         { t: 'item', label: tl('a.pl.copy'), kbd: 'Ctrl+C', act: A.copy },
         { t: 'item', label: tl('a.pl.cut'), kbd: 'Ctrl+X', act: A.cut },
-      ] },
+      ] } as MenuItem] : []),
       { t: 'sub', label: tl('a.pl.split'), items: [
         { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapRound(p.beat, unit(false))) },
         { t: 'item', label: tl('a.pl.splitAtHead'), act: () => A.sliceAt(c.id, curBeat()) },
@@ -1334,17 +1334,15 @@ export function Playlist() {
         { t: 'item', label: tl('a.pl.editPattern'), kbd: tl('a.pl.dblClick'), act: () => openPattern(c.ref) } as MenuItem,
         { t: 'item', label: tl('a.pl.makeUnique'), act: () => A.makeUnique(c) } as MenuItem,
       ] : [
+        // the audio clip's own menu holds what is done to the clip from here; its volume, stretch method
+        // and editor (double-click) live in the Sample editor
         { t: 'sec', label: 'Audio' } as MenuItem,
-        { t: 'gain', clipId: c.id } as MenuItem,
         ...(c.kind === 'audio' ? [
           ...(c.ref in S.missing ? [{ t: 'item', label: tl('d.miss.menu'), title: S.missing[c.ref], act: () => setU('missingOpen', true) } as MenuItem] : []),
           { t: 'item', label: tl('a.pl.makeUnique'), title: tl('a.pl.makeUniqueAudioTip'), act: () => A.makeUnique(c) } as MenuItem,
-          { t: 'item', label: tl('a.pl.editSample'), kbd: tl('a.pl.dblClick'), act: () => A.openEditor(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.editPitch'), kbd: c.tune?.notes.length ? tl('a.pl.edited') : '', act: () => A.openPitchEditor(c.id) } as MenuItem,
           // a playlist drop plays the source directly; this adds the rack entry for it (FL's audio clip channel)
           { t: 'item', label: tl('a.pl.toSampler'), title: tl(hasSamplerOf(c.ref) ? 'a.pl.toSamplerHave' : 'a.pl.toSamplerTip'), disabled: hasSamplerOf(c.ref), act: () => addSampler(c.ref) } as MenuItem,
-          // how a stretch plays (the clip's stretch factor in the label: set it in Stretch mode)
-          { t: 'chips', label: tl('a.pl.stretchMethod', { k: (c.stretch ?? 1).toFixed(2) }), options: [tl('a.pl.keepPitch'), tl('a.pl.resample')], active: c.resample ? 1 : 0, pick: (i: number) => A.setStretchMethod(c, i === 1) } as MenuItem,
           ...(S.stretching[c.id] ? [{ t: 'item', label: tl('a.pl.stretchFailed'), title: S.stretching[c.id], disabled: true, act: () => {} } as MenuItem] : []),
           { t: 'item', label: tl('a.pl.detectTempoKey'), act: () => A.openMusicAnalysis({ clipId: c.id }) } as MenuItem,
           { t: 'item', label: tl('a.pl.trimRegion'), title: tl('d.smp.trim.tip'), act: () => void A.trimClip(c.id) } as MenuItem,
