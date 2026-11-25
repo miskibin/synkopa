@@ -167,7 +167,7 @@ export function MusicDialog() {
                               return (
                                 <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '3px', height: '100%', 'justify-content': ' flex-end' }}>
                                   <div style={{ width: '100%', height: Math.round(v() * 28) + 'px', 'border-radius': '2px', background: isRoot() ? 'var(--blue)' : 'var(--line3)' }} />
-                                  <span class="mono" style={{ 'font-size': '9px', color: isRoot() ? 'var(--fg-hi)' : 'var(--fg4)', 'font-weight': isRoot() ? 700 : 500 }}>{nm}</span>
+                                  <span class="mono" style={{ 'font-size': '10px', color: isRoot() ? 'var(--fg-hi)' : 'var(--fg4)', 'font-weight': isRoot() ? 700 : 500 }}>{nm}</span>
                                 </div>
                               );
                             }}
