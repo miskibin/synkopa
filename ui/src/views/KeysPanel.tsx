@@ -54,7 +54,8 @@ export function KeysPanel(props: { c: KeysChannel }) {
   const [err, setErr] = createSignal<string | null>(null);
   /** The instrument's face, or the library (it stays open while you click through instruments). */
   const [view, setView] = createSignal<'face' | 'lib'>('face');
-  const refresh = () => void be().keysStatus().then(setSt).catch(e => setErr(String(e)));
+  // a successful status fetch clears a stale error (a Retry that lands must dismiss the banner)
+  const refresh = () => void be().keysStatus().then(s => { setErr(null); setSt(s); }).catch(e => setErr(String(e)));
   const setKit = (kit: string, p: number | null) => setDl(d => {
     const n = { ...d };
     if (p == null) delete n[kit]; else n[kit] = p;
@@ -88,9 +89,11 @@ export function KeysPanel(props: { c: KeysChannel }) {
     catch (e) { setErr(String(e)); }
     finally { setKit(i.kit, null); refresh(); }
   };
-  // a failed load is tried again by the app; a failed download is downloaded again
+  // a failed load is tried again by the app; a failed download is downloaded again; with no
+  // instrument to retry (the status itself failed) the catalog is fetched again
   const retry = () => {
-    const i = cur(); if (!i) return;
+    const i = cur();
+    if (!i) return refresh();
     if (!i.installed) return download(i);
     setErr(null);
     void be().keysRetry(instId()).then(setSt).catch(e => setErr(String(e)));
@@ -244,6 +247,9 @@ export function KeysPanel(props: { c: KeysChannel }) {
           <Show when={failed()}>
             {m => <div class="keysmsg bad"><span>{m()}</span><button class="smallbtn" onClick={retry}>{t('b.kp.retry')}</button></div>}
           </Show>
+          <Show when={!err() && state() === 'idle' && all().length === 0}>
+            <div class="keysmsg"><span>{t('b.kp.libEmpty')}</span></div>
+          </Show>
 
           <Show when={arts().length > 0}>
             <div class="kart">
@@ -336,6 +342,9 @@ export function KeysPanel(props: { c: KeysChannel }) {
               </div>
             )}</Show>}</For>
           </div>
+          <Show when={!err() && all().length === 0}>
+            <div class="keysmsg">{t('b.kp.libEmpty')}</div>
+          </Show>
           <Show when={err()}>{m => <div class="keysmsg bad klib-err"><span>{m()}</span></div>}</Show>
         </section>
       </Show>

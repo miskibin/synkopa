@@ -117,6 +117,8 @@ export function newTrack(id: number, n: number): Track {
  * Insert a lane at index `i`. The op set has no track reorder, so the lane contents are
  * shifted down instead: every track from `i` on takes the data of the one above (ids
  * stay put), a new track is appended at the end, and clips on lanes ≥ i move down one.
+ * A track-volume automation follows its lane to the slot that now holds it, like in
+ * `moveTrackOps` — otherwise it would keep driving the id of the slot above.
  */
 export function insertTrackOps(p: Project, i: number, newId: number): Op[] {
   const ts = p.tracks, n = ts.length, ops: Op[] = [];
@@ -130,6 +132,15 @@ export function insertTrackOps(p: Project, i: number, newId: number): Op[] {
   const moved = p.clips.filter(c => c.track >= i).map(c => ({ ...c, track: c.track + 1 }));
   // putClips validates the track index against the *current* track count, so tracks go first.
   if (moved.length) ops.push({ op: 'putClips', clips: moved });
+  for (const au of p.automations ?? []) {
+    const t = au.target;
+    if (t.kind !== 'trackVol') continue;
+    const old = p.tracks.findIndex(tr => tr.id === t.id);
+    if (old < i) continue;
+    // lane `old` now lives one slot down: under ts[old+1].id, the last lane under the new id
+    const id = old + 1 < n ? ts[old + 1].id : newId;
+    if (id !== t.id) ops.push({ op: 'putAutomation', automation: { ...au, target: { kind: 'trackVol', id } } });
+  }
   return ops;
 }
 

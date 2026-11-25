@@ -884,7 +884,7 @@ function Roll(props: { z: number; docked?: boolean }) {
           implied={rollSnap() < 0 ? String(snapNow()) : undefined}
           onChange={(v, el) => { setRollSnap(+v); backToRoll(el); }} />
         {/* the song's key, always in view (shared with the toolbar): views/KeyBadge.tsx */}
-        <KeyBadge class="toolmenu" />
+        <KeyBadge class="toolmenu" onPicked={el => backToRoll(el)} />
         <div style={{ flex: 1 }} />
         <Show when={vocals().length > 0 && chanNotes().length > 0}>
           <button class="smallbtn" style={{ 'align-self': 'center' }} title={t('b.pr.vocalTip')} onClick={vocalRef}>♪ {t('b.pr.vocal')}{vocals().length > 1 ? ' …' : ''}</button>

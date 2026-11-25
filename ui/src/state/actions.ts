@@ -605,7 +605,17 @@ export function removeTrack(id: number) {
 }
 
 export function insertTrack(i: number) {
-  commit(insertTrackOps(plain(S.project), i, allocId()), t('d.act.op.addtrack'));
+  const ids = S.project.tracks.map(t => t.id), movedId = allocId(), n = ids.length;
+  // ids stay with their slots while the lanes shift down, so what is keyed by a slot's id
+  // follows the lanes: the open take lanes. The setter merges, so the fresh lane's key is
+  // freed with an undefined, which the store deletes.
+  const open = Object.fromEntries([
+    ...ids.map((id, j) => [id, j === i ? undefined : U.takesOpen[ids[j < i ? j : j - 1]]]),
+    // appending (i = n): every lane keeps its slot, the appended one starts with none
+    [movedId, i < n ? U.takesOpen[ids[n - 1]] : undefined],
+  ]);
+  commit(insertTrackOps(plain(S.project), i, movedId), t('d.act.op.addtrack'));
+  setU('takesOpen', { ...U.takesOpen, ...open });
 }
 export const addTrack = () => insertTrack(S.project.tracks.length);
 /** Move lane `i` one place up (`d` −1) or down (+1), with its clips. */

@@ -321,6 +321,22 @@ describe('op builders', () => {
     expect(q.clips.find(c => c.id === 3)!.track).toBe(2);
     expect(q.clips.find(c => c.id === 1)!.track).toBe(0);
   });
+  it('inserting a track keeps a volume automation on the lane it was made for', () => {
+    const p = sketchProject(cat);
+    const ids = p.tracks.map(t => t.id);
+    const vol = (id: number) => ({ id: 9000 + id, name: 'Vol', target: { kind: 'trackVol', id }, points: [] }) as unknown as NonNullable<typeof p.automations>[number];
+    p.automations = [vol(ids[0]), vol(ids[2])];
+    const q = applyAll(p, insertTrackOps(p, 1, p.nextId));
+    // lane 0 stays put; lane 2's envelope follows its lane down one slot; nothing points at the fresh lane
+    expect(q.automations!.map(a => a.target)).toEqual([{ kind: 'trackVol', id: ids[0] }, { kind: 'trackVol', id: ids[3] }]);
+    // the last lane's envelope lands on the appended track's id
+    const last = ids[ids.length - 1];
+    p.automations = [vol(last)];
+    expect(applyAll(p, insertTrackOps(p, 1, p.nextId)).automations![0].target).toEqual({ kind: 'trackVol', id: p.nextId });
+    // a lane above the insert keeps its own envelope untouched
+    p.automations = [vol(ids[0])];
+    expect(applyAll(p, insertTrackOps(p, 2, p.nextId)).automations![0].target).toEqual({ kind: 'trackVol', id: ids[0] });
+  });
 });
 
 describe('mock op application', () => {

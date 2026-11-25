@@ -146,3 +146,22 @@ describe('Synkopa Instruments window', () => {
     expect([k.tone, k.width, k.tune]).toEqual([-40, 80, 12]);
   });
 });
+
+describe('KeysPanel failure paths', () => {
+  it('a failed catalog fetch shows a Retry that fetches the catalog again', async () => {
+    const spy = vi.spyOn(mock, 'keysStatus').mockRejectedValueOnce(new Error('catalog gone'));
+    await open();
+    expect(document.querySelector('.keysmsg.bad')?.textContent).toContain('catalog gone');
+    spy.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg.bad')).toBeNull(); // the retry dismissed the banner
+    expect(document.querySelector('.knm')).not.toBeNull(); // the face recovered with its instrument
+  });
+  it('a loaded-but-empty catalog says so instead of an empty face', async () => {
+    const spy = vi.spyOn(mock, 'keysStatus').mockResolvedValue({ instruments: [] } as never);
+    await open();
+    expect(document.querySelector('.keysmsg')?.textContent).toContain('No instruments');
+    spy.mockRestore();
+  });
+});
