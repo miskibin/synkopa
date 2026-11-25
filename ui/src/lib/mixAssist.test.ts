@@ -98,6 +98,7 @@ describe('MockBackend mix assistant', () => {
     const fx = p.inserts.find(m => m.id === 2)!.fx.at(-1)!;
     expect(fx.id).toBe(r.fxId);
     expect(fx.key).toBe(1);
+    await expect(be.mixAssist('unmask', { masker: 2, protect: 1, lo: 44.5, hi: 56.1, keyDb: -12 })).rejects.toThrow(/already has/);
     await be.undo();
     p = (await be.getState()).project;
     expect(p.inserts.find(m => m.id === 2)!.fx).toHaveLength(0);

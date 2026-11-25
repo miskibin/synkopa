@@ -45,6 +45,7 @@ const FLOOR: f32 = -60.0;
 const IMPORTANT: f32 = 15.0;
 /// Two levels this close compete; further apart, the louder one simply wins.
 const CLOSE: f32 = 12.0;
+/// Required relative room during key activity (heuristic, not a perceptual guarantee).
 const ROOM_DB: f32 = 3.0;
 const KEY_ACTIVE_DB: f32 = 6.0;
 /// Net seconds of collision before a pair is reported, and below which it is cleared. Net:
@@ -355,7 +356,8 @@ impl Detector {
         for &(a, b) in &self.pairs {
             let (la, lb) = (&self.lanes[a], &self.lanes[b]);
             let (ma, mb) = (la.loudest(), lb.loudest());
-            if ma <= FLOOR || mb <= FLOOR {
+            let direction = self.keyed.get(&(a, b)).copied();
+            if (ma <= FLOOR || mb <= FLOOR) && (direction.is_none() || (ma <= FLOOR && mb <= FLOOR)) {
                 // one of them is silent: nothing collides, nothing is learned (a verse without
                 // the 808 does not wash out what the chorus showed)
                 continue;
@@ -363,19 +365,21 @@ impl Detector {
             let heard = self.heard.entry((a, b)).or_insert(0.0);
             *heard += dt;
             let warm = *heard >= WARMUP_S;
-            let direction = self.keyed.get(&(a, b)).copied();
             let s = self.scores.entry((a, b)).or_insert([0.0; NB]);
             for (k, sk) in s.iter_mut().enumerate() {
                 let (x, y) = (la.short[k], lb.short[k]);
-                let mut hit = x > FLOOR && y > FLOOR && x >= ma - IMPORTANT && y >= mb - IMPORTANT && (x - y).abs() <= CLOSE;
-                if let Some(f) = direction {
+                let audible = x > FLOOR && y > FLOOR && x >= ma - IMPORTANT && y >= mb - IMPORTANT;
+                let hit = if let Some(f) = direction {
                     let (masker, protect) = (&self.lanes[f.masker], &self.lanes[f.protect]);
-                    // Only judge the gap during strong key activity.
-                    if protect.short[k] < protect.peak[k] - KEY_ACTIVE_DB {
+                    // Let stale bands decay, but don't mistake intentional recovery for masking.
+                    if protect.short[k] <= FLOOR || protect.short[k] < protect.peak[k] - KEY_ACTIVE_DB {
+                        *sk = (*sk - 0.1 * dt).max(0.0);
                         continue;
                     }
-                    hit &= masker.short[k] >= protect.short[k] - ROOM_DB;
-                }
+                    audible && masker.short[k] >= protect.short[k] - ROOM_DB
+                } else {
+                    audible && (x - y).abs() <= CLOSE
+                };
                 *sk = (*sk + if hit { dt } else { -0.5 * dt }).clamp(0.0, MAX_S);
             }
             let worst = s.iter().copied().fold(0.0, f32::max);

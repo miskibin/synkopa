@@ -123,13 +123,14 @@ fn keyed_eq_is_judged_by_its_output_not_its_presence() {
     let mut eq = wave_engine::dsp::Eq::default();
     eq.prepare(SR, 512);
     let mut at = 0usize;
-    for (threshold, expect_warning) in [(-60.0, false), (-3.0, true), (-60.0, false)] {
+    let cases = [(-60.0, 1.0, false), (-60.0, 0.5, true), (-60.0, 1.0, false), (-3.0, 1.0, true), (-60.0, 1.0, false)];
+    for (threshold, key_gain, expect_warning) in cases {
         fx.bands.as_mut().unwrap()[0].dynamic.as_mut().unwrap().thr = threshold;
         eq.set_params(&wave_engine::catalog::param_block(&fx));
         for _ in 0..(16 * 48000 / 512) {
-            let key: Vec<f32> = (at..at + 512).map(bass).collect();
-            let mut l = key.clone();
-            let mut r = key.clone();
+            let mut l: Vec<f32> = (at..at + 512).map(bass).collect();
+            let mut r = l.clone();
+            let key: Vec<f32> = l.iter().map(|x| x * key_gain).collect();
             eq.process_keyed(&mut l, &mut r, &key, &ctx);
             d.push(1, &key);
             d.push(2, &l);
