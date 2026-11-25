@@ -7,7 +7,7 @@ import type { BeatRange } from '../lib/patLoop';
 import type {
   PreviewWave,
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
-  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
+  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, MasterListenResult, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
   AudioToMidiArgs, AudioToMidiResult, ExtractStemsResult, StemId, StemModelStatus, StemsProgress, ChordAnalysis, ChordDetail, ChordModelStatus, ChordsToPatternResult,
 } from './types';
 
@@ -109,6 +109,13 @@ export interface Backend {
     args: { clipId: Id; beatClipId?: Id; style?: AutoVocalStyle; noBake?: boolean; label?: string },
     onStage?: (stage: string) => void,
   ): Promise<AutoVocalResult>;
+  /** The Master listens to the whole song as it reaches the effect and sets every control
+   *  (`synkopa master-listen`, app/src/actions.rs `master_listen`): one undo step. `target` overrides
+   *  the effect's own Target. Progress 0..1 arrives as `master-listen {fxId, progress}` events —
+   *  `onProgress` receives them in the mock too. Rejects with "cancelled" after `masterListenCancel`. */
+  masterListen(args: { fxId: Id; target?: number; label?: string }, onProgress?: (p: number) => void): Promise<MasterListenResult>;
+  /** Stops a running Master listen; it changes nothing. */
+  masterListenCancel(): Promise<void>;
   /** FL's "Sidechain to ▸" and the Compressor window's source menu, as one command (`synkopa sidechain`):
    *  with `fxId`, that Compressor listens to `from` (`off`: back to its own input); with `from`/`to`, the
    *  target's first free Compressor is keyed or a ducking one is added (`added`); `off` without `fxId`: every
@@ -437,6 +444,21 @@ export function tauriBackend(): Backend {
         void off?.then(unlisten => unlisten?.(), () => {});
       }
     },
+    masterListen: async (a, onProgress) => {
+      // progress events are best-effort, like Auto Vocal's stages
+      const off = onProgress
+        ? listen('master-listen', e => {
+            const p = e.payload as { fxId?: Id; progress?: number };
+            if (p.fxId === a.fxId && typeof p.progress === 'number') onProgress(p.progress);
+          }).catch(() => null)
+        : null;
+      try {
+        return await invoke('master_listen', { fxId: a.fxId, target: a.target ?? null, label: a.label ?? null });
+      } finally {
+        void off?.then(unlisten => unlisten?.(), () => {});
+      }
+    },
+    masterListenCancel: () => invoke('master_listen_cancel'),
     sidechain: a => invoke('sidechain', { fxId: a.fxId ?? null, from: a.from ?? null, to: a.to ?? null, off: a.off ?? null, ifRevision: a.ifRevision ?? null, label: a.label ?? null }),
     trimClip: clipId => invoke('trim_clip', { clipId }),
     makeUnique: clipIds => invoke('make_unique', { clipIds }),

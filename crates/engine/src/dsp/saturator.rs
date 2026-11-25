@@ -229,7 +229,7 @@ fn voicing_at(style: usize, pos: f32) -> [f32; NV] {
 const LN2: f64 = std::f64::consts::LN_2;
 
 #[inline]
-fn lncosh(u: f64) -> f64 {
+pub(crate) fn lncosh(u: f64) -> f64 {
     let a = u.abs();
     a + (-2.0 * a).exp().ln_1p() - LN2
 }
@@ -375,7 +375,7 @@ const MAXC: usize = 12;
 /// Polyphase IIR half-band (two allpass chains), coefficients by the elliptic design of
 /// Valenzuela & Constantinides as used in Laurent de Soras' HIIR.
 #[derive(Clone, Copy, Default)]
-struct HbCoefs {
+pub(crate) struct HbCoefs {
     c: [f32; MAXC],
     n: usize,
 }
@@ -430,7 +430,7 @@ fn hb_design(n: usize, tbw: f64) -> HbCoefs {
 
 /// Two allpass chains (even / odd coefficients), each section (a + z⁻¹)/(1 + a z⁻¹) at the low rate.
 #[derive(Clone, Copy, Default)]
-struct Hb {
+pub(crate) struct Hb {
     xa: [f32; MAXC / 2],
     ya: [f32; MAXC / 2],
     xb: [f32; MAXC / 2],
@@ -455,12 +455,12 @@ impl Hb {
     }
     /// One low-rate sample in, two high-rate samples out.
     #[inline]
-    fn up(&mut self, c: &HbCoefs, x: f32) -> (f32, f32) {
+    pub(crate) fn up(&mut self, c: &HbCoefs, x: f32) -> (f32, f32) {
         (Self::chain(c, 0, &mut self.xa, &mut self.ya, x), Self::chain(c, 1, &mut self.xb, &mut self.yb, x))
     }
     /// Two high-rate samples in, one low-rate sample out.
     #[inline]
-    fn down(&mut self, c: &HbCoefs, e: f32, o: f32) -> f32 {
+    pub(crate) fn down(&mut self, c: &HbCoefs, e: f32, o: f32) -> f32 {
         let a = Self::chain(c, 0, &mut self.xa, &mut self.ya, e);
         let y = 0.5 * (a + self.prev);
         self.prev = Self::chain(c, 1, &mut self.xb, &mut self.yb, o);
@@ -497,7 +497,7 @@ fn hb_response(c: &HbCoefs, w: f64) -> (f64, f64) {
 }
 
 /// Group delay of a half-band near DC, in high-rate samples.
-fn hb_delay(c: &HbCoefs) -> f64 {
+pub(crate) fn hb_delay(c: &HbCoefs) -> f64 {
     let w = 2.0 * std::f64::consts::PI * 0.002;
     let (r1, i1) = hb_response(c, w);
     let (r2, i2) = hb_response(c, w * 1.01);
@@ -505,7 +505,7 @@ fn hb_delay(c: &HbCoefs) -> f64 {
     -(p2 - p1) / (w * 0.01)
 }
 
-fn coefs() -> &'static (HbCoefs, HbCoefs) {
+pub(crate) fn coefs() -> &'static (HbCoefs, HbCoefs) {
     static C: OnceLock<(HbCoefs, HbCoefs)> = OnceLock::new();
     // stage 1 (base ↔ 2×): passband to ~0.215 of the high rate, > 100 dB stopband;
     // stage 2 (2× ↔ 4×): the audio band is far below its transition, so 4 sections do

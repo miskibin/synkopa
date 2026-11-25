@@ -1,5 +1,5 @@
 // Commands shared by the toolbar, keyboard, menus and views.
-import { batch } from '../lib/reactive';
+import { batch, createSignal } from '../lib/reactive';
 import { shownFloating } from './winOrder';
 import { be } from '../api/backend';
 import { t, tName } from '../lib/i18n';
@@ -704,6 +704,8 @@ export function addFx(insId: Id, type: AnyBuiltinKind, preset?: number) {
   openPlug(f.id);
   const pr = presetList(S.catalog, type)[preset ?? 0];
   say(t('d.act.added', { name: tName(S.catalog.types[type]?.name ?? type) }) + (pr ? t('d.act.added.preset', { name: tName(pr.name) }) : ''));
+  // a Master starts by listening to the song it sits on (its controls are neutral until then)
+  if (type === 'master' && S.project.clips.length) void masterListen(f.id);
 }
 /** Put a scanned plugin on an insert. One that cannot run here (`unsupported`) is refused with its reason. */
 export function addPlugin(insId: Id, info: PluginInfo): boolean {
@@ -789,7 +791,7 @@ export function stepPreset(fxId: Id, d: number) {
 
 // ---------- windows ----------
 /** Default window width per effect type (the window opens at it, narrower on a small screen). `null` = the generic 580 px on purpose. Exhaustive over `Fx['type']`, so a new effect has to decide this. */
-export const PLUG_W: Record<Fx['type'], number | null> = { eq: 780, comp: null, sat: null, delay: 760, reverb: 700, limit: null, fet: 700, deess: 680, tune: 800, denoise: 640, voice: 700, rider: null, half: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760, stereo: 660, multiband: 720, analyzer: 900, plugin: 560 };
+export const PLUG_W: Record<Fx['type'], number | null> = { eq: 780, comp: null, sat: null, delay: 760, reverb: 700, limit: null, fet: 700, deess: 680, tune: 800, denoise: 640, voice: 700, rider: null, half: 760, warp: 820, chorus: 700, phaser: 700, gate: 720, filter: 760, stereo: 660, multiband: 720, master: 860, analyzer: 900, plugin: 560 };
 /** Open (or bring to front) an effect window. The newest/most recently focused window is always on top. */
 /** Playlist to the front: floating windows go behind it (they keep their place and state); docked panels stay. */
 /** F5 / a click on the Playlist: every floating window steps aside (effects, pattern windows, the sample, channel and pitch editors). */
@@ -953,6 +955,31 @@ export function setSnap(v: number) {
   setU('snap', v);
   say(v < 0 ? t('d.act.snapauto', { name: snapName(snapRes(-1, U.bw)) }) : t('d.act.snap', { name: snapName(v) }));
 }
+
+// ---------- master listen ----------
+const [listening, setListening] = createSignal<Record<number, number>>({});
+/** Progress 0..1 of a running listen on Master `fxId`, or undefined. */
+export const masterListening = (fxId: Id): number | undefined => listening()[fxId];
+/** The Master listens to the whole song as it reaches it and sets every control (the shared
+ *  action `synkopa master-listen`): one undo step. Runs in the edit queue like Auto Vocal, so it
+ *  follows the edits before it and the ones after it wait for its result. */
+export async function masterListen(fxId: Id, target?: number) {
+  if (listening()[fxId] != null) return;
+  setListening(m => ({ ...m, [fxId]: 0 }));
+  try {
+    const r = await enqueue(() => be().masterListen({ fxId, target, label: t('c.ms.op') }, p => setListening(m => (m[fxId] == null ? m : { ...m, [fxId]: p }))));
+    await resync();
+    const L = r.listen;
+    say(L.short ? t('c.ms.short', { outL: L.outLufs.toFixed(1) }) : t('c.ms.done', { outL: L.outLufs.toFixed(1), tp: L.outTp.toFixed(1) }));
+  } catch (e) {
+    const m = String((e as Error)?.message ?? e);
+    say(/cancel/i.test(m) ? t('c.ms.cancelled') : t('c.ms.failed', { e: m }));
+    void resync();
+  } finally {
+    setListening(m => { const n = { ...m }; delete n[fxId]; return n; });
+  }
+}
+export function masterListenCancel() { void be().masterListenCancel(); }
 
 // ---------- auto vocal ----------
 let autoVocalBusy = false;

@@ -28,6 +28,7 @@
     "stereo",
     "reverb",
     "limit",
+    "master",
     "analyzer"
   ],
   "presets": {
@@ -2008,6 +2009,7 @@
         }
       }
     ],
+    "master": [],
     "multiband": [
       {
         "name": "Domyślny — klej",
@@ -4113,6 +4115,197 @@
           "max": 0.0,
           "min": -12.0,
           "unit": "dB"
+        }
+      ]
+    },
+    "master": {
+      "name": "Master",
+      "params": [
+        {
+          "def": 2.0,
+          "id": "target",
+          "label": "Target",
+          "log": false,
+          "max": 4.0,
+          "min": 0.0,
+          "options": [
+            "Dynamic −16",
+            "Streaming −14",
+            "Balanced −12",
+            "Loud −10",
+            "Club −8"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "drive",
+          "label": "Loudness",
+          "log": false,
+          "max": 24.0,
+          "min": 0.0,
+          "unit": "dB"
+        },
+        {
+          "def": -1.0,
+          "id": "ceil",
+          "label": "Ceiling",
+          "log": false,
+          "max": 0.0,
+          "min": -6.0,
+          "unit": "dBTP"
+        },
+        {
+          "def": 100.0,
+          "id": "tone",
+          "label": "Tone",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "sub",
+          "label": "Sub",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "low",
+          "label": "Low",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "mid",
+          "label": "Mid",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "pres",
+          "label": "Presence",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "air",
+          "label": "Air",
+          "log": false,
+          "max": 6.0,
+          "min": -6.0,
+          "unit": "dB"
+        },
+        {
+          "def": 120.0,
+          "id": "xlo",
+          "label": "Low / mid",
+          "log": true,
+          "max": 500.0,
+          "min": 40.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 2800.0,
+          "id": "xhi",
+          "label": "Mid / high",
+          "log": true,
+          "max": 8000.0,
+          "min": 1000.0,
+          "unit": "Hz"
+        },
+        {
+          "def": 0.0,
+          "id": "tl",
+          "label": "Low thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -40.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "tm",
+          "label": "Mid thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -40.0,
+          "unit": "dB"
+        },
+        {
+          "def": 0.0,
+          "id": "th",
+          "label": "High thresh",
+          "log": false,
+          "max": 0.0,
+          "min": -40.0,
+          "unit": "dB"
+        },
+        {
+          "def": 2.0,
+          "id": "ratio",
+          "label": "Ratio",
+          "log": false,
+          "max": 4.0,
+          "min": 1.0,
+          "unit": ":1"
+        },
+        {
+          "def": 100.0,
+          "id": "width",
+          "label": "Width",
+          "log": false,
+          "max": 150.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "mono",
+          "label": "Bass mono",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
+        },
+        {
+          "def": 0.0,
+          "id": "clip",
+          "label": "Clip",
+          "log": false,
+          "max": 100.0,
+          "min": 0.0,
+          "unit": "%"
+        },
+        {
+          "def": 0.0,
+          "id": "match",
+          "label": "Level match",
+          "log": false,
+          "max": 1.0,
+          "min": 0.0,
+          "options": [
+            "Off",
+            "On"
+          ],
+          "unit": ""
         }
       ]
     },

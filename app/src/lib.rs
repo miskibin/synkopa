@@ -449,6 +449,33 @@ async fn auto_vocal(
     .map_err(es)?
 }
 
+/// The Master's whole-song listen ([`actions::master_listen`]): renders what reaches the
+/// effect, measures it and sets the effect (one undo step). Progress arrives as
+/// `master-listen` `{fxId, progress}` events (0..1); `master_listen_cancel` stops it.
+#[tauri::command]
+async fn master_listen(app: St<'_>, handle: AppHandle, fx_id: u64, target: Option<usize>, label: Option<String>) -> R<Value> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut last = -1.0f32;
+        let mut progress = |p: f32| {
+            // a few dozen events per listen, not one per block
+            if p - last >= 0.02 || p >= 1.0 {
+                last = p;
+                let _ = handle.emit("master-listen", json!({ "fxId": fx_id, "progress": p }));
+            }
+        };
+        actions::master_listen(&*a, fx_id, target, None, label.as_deref(), &mut progress)
+    })
+    .await
+    .map_err(es)?
+}
+
+/// Stops a running Master listen (it returns `cancelled` and changes nothing).
+#[tauri::command]
+fn master_listen_cancel() {
+    actions::MASTER_LISTEN_CANCEL.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
 #[tauri::command]
 async fn clip_peaks(app: St<'_>, clip_id: u64) -> R<Response> {
     let e = app.engine.clone();
@@ -1493,6 +1520,8 @@ pub fn run(project_arg: Option<&str>) {
             redo,
             fx_catalog,
             auto_vocal,
+            master_listen,
+            master_listen_cancel,
             sidechain,
             transport_play,
             transport_stop,

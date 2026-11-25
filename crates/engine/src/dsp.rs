@@ -9,6 +9,7 @@ pub mod gate;
 pub mod halftime;
 pub mod limiter_v2;
 pub mod loudness;
+pub mod master;
 pub mod modulation;
 pub mod multiband;
 pub mod reverb_v2;
@@ -75,6 +76,7 @@ pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
         FxKind::Stereo => Box::new(stereo::Stereo::default()),
         FxKind::Analyzer => Box::new(loudness::Loudness::default()),
         FxKind::Multiband => Box::new(multiband::Multiband::default()),
+        FxKind::Master => Box::new(master::Master::default()),
         FxKind::Reverb => Box::new(reverb_v2::ReverbV2::default()),
         FxKind::Limit => Box::new(limiter_v2::LimiterV2::default()),
         FxKind::Fet => Box::new(crate::vocal::Fet::default()),

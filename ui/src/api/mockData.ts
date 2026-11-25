@@ -108,13 +108,21 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
     p('gl', 'Low gain', -24, 24, 0, 'dB'), p('gm', 'Mid gain', -24, 24, 0, 'dB'), p('gh', 'High gain', -24, 24, 0, 'dB'),
     p('dl', 'Low down thresh', -72, 0, -33.8, 'dB'), p('dm', 'Mid down thresh', -72, 0, -30.3, 'dB'), p('dh', 'High down thresh', -72, 0, -35.5, 'dB'),
     p('ul', 'Low up thresh', -90, 0, -40.8, 'dB'), p('um', 'Mid up thresh', -90, 0, -41.8, 'dB'), p('uh', 'High up thresh', -90, 0, -40.8, 'dB')],
+  // catalog.rs MASTER (dsp::master::idx order)
+  master: [choice('target', 'Target', 2, ['Dynamic −16', 'Streaming −14', 'Balanced −12', 'Loud −10', 'Club −8']),
+    p('drive', 'Loudness', 0, 24, 0, 'dB'), p('ceil', 'Ceiling', -6, 0, -1, 'dBTP'), p('tone', 'Tone', 0, 100, 100, '%'),
+    p('sub', 'Sub', -6, 6, 0, 'dB'), p('low', 'Low', -6, 6, 0, 'dB'), p('mid', 'Mid', -6, 6, 0, 'dB'), p('pres', 'Presence', -6, 6, 0, 'dB'), p('air', 'Air', -6, 6, 0, 'dB'),
+    p('xlo', 'Low / mid', 40, 500, 120, 'Hz', true), p('xhi', 'Mid / high', 1000, 8000, 2800, 'Hz', true),
+    p('tl', 'Low thresh', -40, 0, 0, 'dB'), p('tm', 'Mid thresh', -40, 0, 0, 'dB'), p('th', 'High thresh', -40, 0, 0, 'dB'),
+    p('ratio', 'Ratio', 1, 4, 2, ':1'), p('width', 'Width', 0, 150, 100, '%'), choice('mono', 'Bass mono', 0, ['Off', 'On']),
+    p('clip', 'Clip', 0, 100, 0, '%'), choice('match', 'Level match', 0, ['Off', 'On'])],
   half: [choice('speed', 'Speed', 1, ['1.5×', '2×', '4×']), choice('loop', 'Loop', 4, ['1/16', '1/8', '1/4', '1/2', '1 takt', '2 takty', '4 takty', '8 taktów']),
     p('smooth', 'Smooth', -100, 100, 10, '%'), p('lo', 'Band low', 20, 20000, 20, 'Hz', true), p('hi', 'Band high', 20, 20000, 20000, 'Hz', true),
     choice('solo', 'Band solo', 0, ['Off', 'On']), p('mix', 'Mix', 0, 100, 100, '%')],
 };
 const NAMES: Record<AnyBuiltinKind, string> = { eq: 'Parametric EQ', comp: 'Compressor', sat: 'Saturator', delay: 'Delay', reverb: 'Reverb', limit: 'Limiter',
   fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser', gate: 'Gate', filter: 'Filter',
-  stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband' };
+  stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband', master: 'Master' };
 
 type BandEdit = [number, boolean | null, number | null, number | null, number | null];
 function eqp(name: string, out: number, edits: BandEdit[]): Preset {
@@ -200,6 +208,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
     ste('Węziej (70 %)', 70, 0, 0, 120),
     ste('Mono', 0, 0, 0, 120),
   ],
+  master: [],
   analyzer: [pr('Streaming (−14 LUFS)', { target: 1 }), pr('Głośno (−9 LUFS)', { target: 2 }), pr('Broadcast (−23 LUFS)', { target: 3 })],
   multiband: [
     mbp('Domyślny — klej', 40, 100, 100, 100, 0, 0, 88.3, 2500, [0, 0, 0]),
@@ -353,7 +362,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
 };
 
 /** catalog.rs `BUILTIN` (also the order of the "add effect" menu). */
-export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'analyzer'];
+export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'master', 'analyzer'];
 
 export function mockCatalog(): Catalog {
   return {
