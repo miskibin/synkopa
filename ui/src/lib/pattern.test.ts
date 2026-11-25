@@ -3,7 +3,7 @@ import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Project, typ
 import { applyAll } from './applyOps';
 import {
   followChanges, migrateSamplerEnvelope,
-  BEAT_GAP, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
+  splitPartName, BEAT_GAP, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
   rotate, samplerError, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
 } from './pattern';
 
@@ -325,5 +325,17 @@ describe('autoRollSnap', () => {
     expect(autoRollSnap(100)).toBe(0.25);
     expect(autoRollSnap(6)).toBe(4);
     expect(autoRollSnap(0.5)).toBe(16);
+  });
+});
+
+describe('split by channel names', () => {
+  it('names the parts of a default-named pattern after the channel alone', () => {
+    expect(splitPartName('Pattern 3', 'Kick')).toBe('Kick');
+    expect(splitPartName('Pattern 12', 'Clap')).toBe('Clap');
+  });
+  it('keeps a given name as the prefix', () => {
+    expect(splitPartName('Verse', 'Kick')).toBe('Verse – Kick');
+    expect(splitPartName('Pattern 3 copy', 'Kick')).toBe('Pattern 3 copy – Kick');
+    expect(splitPartName('My Pattern 3', 'Kick')).toBe('My Pattern 3 – Kick');
   });
 });

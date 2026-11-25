@@ -489,3 +489,12 @@ export const barsText = (n: number): string => t(n === 1 ? 'b.pat.bar1' : n < 5 
 /** "3 notes" in the current language. */
 export const notesText = (n: number): string => t(n === 1 ? 'b.pat.note1' : 'b.pat.noteN', { n });
 export const inScale = (key: number, root: number, mask: number) => (mask & (1 << ((((key - root) % 12) + 12) % 12))) !== 0;
+
+/**
+ * The name of the pattern "Split by channel" makes for channel `ch` of pattern `name`: a pattern still
+ * called by its default name ("Pattern 3") gives the parts the channel's name alone ("Kick"), a named
+ * one keeps it as the prefix ("Verse – Kick").
+ */
+export function splitPartName(name: string, ch: string): string {
+  return /^Pattern \d+$/.test(name) ? ch : name + ' – ' + ch;
+}

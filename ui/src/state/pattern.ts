@@ -13,7 +13,7 @@ import { be } from '../api/backend';
 import { keysInstrument } from '../lib/keysCatalog';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
-import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
+import { BAR, barsText, cloneNotes, notesText, splitPartName, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
 import { dockKeyAction } from '../lib/layout';
 import { commit, enqueue } from './edit';
@@ -376,7 +376,7 @@ export function splitByChannel(pt = curPat()) {
   if (used.length < 2) { say(t('b.st.splitOne')); return; }
   const ops: Op[] = [], made: Pattern[] = [];
   for (const c of used) {
-    const np: Pattern = { id: allocId(), name: freshName(pt.name + ' – ' + c.name), color: c.color, len: pt.len, minLen: pt.minLen ?? BAR, swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)) };
+    const np: Pattern = { id: allocId(), name: freshName(splitPartName(pt.name, c.name)), color: c.color, len: pt.len, minLen: pt.minLen ?? BAR, swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)) };
     made.push(np); ops.push({ op: 'putPattern', pattern: np });
   }
   const old = S.project.clips.filter(c => c.kind === 'pat' && c.ref === pt.id);
