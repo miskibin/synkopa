@@ -328,6 +328,30 @@ pub fn cases() -> Vec<Case> {
     ));
     c.push((
         "main",
+        "putPattern stores per-channel loops",
+        vec![Op::PutPattern {
+            pattern: Pattern {
+                channel_loops: std::collections::BTreeMap::from([(30, 8)]),
+                ..pat(20, "Verse", 8.0, 4.0, vec![Note::new(30, 0.0, 1.0, None), Note::new(30, 1.0, 1.0, None)])
+            },
+        }],
+    ));
+    c.push((
+        "main",
+        "putPattern refuses a channel loop longer than the pattern",
+        vec![Op::PutPattern {
+            pattern: Pattern { channel_loops: std::collections::BTreeMap::from([(30, 33)]), ..pat(20, "Verse", 8.0, 4.0, vec![]) },
+        }],
+    ));
+    c.push((
+        "main",
+        "putPattern refuses a channel loop of an unknown channel",
+        vec![Op::PutPattern {
+            pattern: Pattern { channel_loops: std::collections::BTreeMap::from([(99, 3)]), ..pat(20, "Verse", 8.0, 4.0, vec![]) },
+        }],
+    ));
+    c.push((
+        "main",
         "putChannel appends and moves",
         vec![
             Op::PutChannel {

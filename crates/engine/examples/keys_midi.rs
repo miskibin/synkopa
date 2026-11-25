@@ -28,7 +28,16 @@ fn main() {
     let articulation = a.get(5).and_then(|s| s.parse().ok());
     let keys = KeysState { instrument: info.id.into(), articulation, ..Default::default() };
     p.channels.push(Channel { name: "Keys".into(), root: 60, ..Channel::new(CH, "", "#4f8ef7", ChannelSrc::Keys { keys }) });
-    p.patterns = vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: end, min_len: end, notes, swing: 0.0 }];
+    p.patterns = vec![Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: end,
+        min_len: end,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     p.clips = vec![Clip {
         id: 1,
         track: 0,

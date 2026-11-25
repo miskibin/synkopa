@@ -171,7 +171,16 @@ fn bad_files_and_empty_choices_are_errors_and_change_nothing() {
 fn slide_notes_are_left_out_of_a_midi_file() {
     let held = Note::new(1, 0.0, 8.0, Some(36));
     let slide = Note { slide: true, ..Note::new(1, 4.0, 2.0, Some(48)) };
-    let pat = Pattern { id: 1, name: "P".into(), color: "#fff".into(), len: 4.0, min_len: 4.0, notes: vec![held, slide], swing: 0.0 };
+    let pat = Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#fff".into(),
+        len: 4.0,
+        min_len: 4.0,
+        notes: vec![held, slide],
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    };
     let mut out = vec![];
     super::clip_notes(&wave_engine::Clip { len: 4.0, ..super::placeholder_clip(1) }, &pat, &mut out);
     assert_eq!(out.len(), 1);

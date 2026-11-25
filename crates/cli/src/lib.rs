@@ -118,6 +118,8 @@ PATTERNS & CHANNELS  (steps: x = on, 1-9 = velocity 10-90 %, . = off; spaces and
   pattern --id N --ch C --steps "x... x... x... x..." [--vel 0.8]   replace channel C's notes with step triggers
   pattern --id N --ch C --notes '[{"step":0,"len":4,"p":36,"v":0.9}]'  piano-roll notes (p = MIDI key, optional trig = true for a trigger)
   pattern --id N --ch C --clear            remove channel C's notes from the pattern
+  pattern --id N --ch C --loop N           loop the channel's first N steps to fill the pattern
+                                           (its notes from step N go; 0 or "off" clears the loop)
   pattern --id N [--bars N (minimum)] [--swing 0..100] [--name TEXT]      (--new instead of --id: a new pattern)
   pattern --id N --play [--from B] [--loop A:B] | --stop
                                            loop the pattern on its own (stops the song), from
@@ -1000,6 +1002,16 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                 if let Some(v) = a.num(k).map_err(u)? {
                     args[k] = json!(v);
                 }
+            }
+            if let Some(v) = a.get("loop") {
+                // here (without --play) it is a channel loop: a step count, 0 or "off" to clear
+                let n = v
+                    .trim()
+                    .parse::<u64>()
+                    .ok()
+                    .or(if v.trim().eq_ignore_ascii_case("off") { Some(0) } else { None })
+                    .ok_or_else(|| u(format!("--loop is a step count, 0 or \"off\" (with --play it is A:B in beats), not `{v}`")))?;
+                args["loop"] = json!(n);
             }
             if let Some(c) = a.get("ch") {
                 args["ch"] = id_or_name(c);

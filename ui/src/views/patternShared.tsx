@@ -4,7 +4,7 @@ import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { t, tName } from '../lib/i18n';
 import type { Channel, LibFile, Note, Pattern } from '../api/types';
 import { FACTORY_KIT, LIB_SCHEME } from '../lib/factory';
-import { barsText, clearChannel, fillEvery, notesText, rotate, stepsOf } from '../lib/pattern';
+import { barsText, clearChannel, fillEvery, loopStepsOf, notesText, rotate, stepsOf } from '../lib/pattern';
 import { cleanGroup, rackGroups } from '../lib/rackGroups';
 import { libGroup, loadStdLib, stdLibGroups } from '../state/library';
 import { ensurePluginScan, pluginScan, runPluginScan } from '../state/pluginScan';
@@ -13,7 +13,7 @@ import { commit } from '../state/edit';
 import { pickInsert, type InsertChoice } from '../ui/InsertPicker';
 import {
   addBar, addKeys, addMusicBox, addPlugin, addSampler, addSamplerFiles, addSynth, audition, chanKindLabel, chanOp, channels, clonePattern, cloneChannel, curPat, deleteChannel,
-  deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putNotes, recolorPattern, removeBar, renamePattern, scrollPattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
+  deletePattern, type InstrumentPick, newPattern, nextEmptyPattern, openPattern, openRack, openRoll, putBurnLoop, putChannelLoop, putNotes, recolorPattern, removeBar, renamePattern, scrollPattern, replaceChannel, replaceWithFile, setChannel, setCurPattern, splitByChannel,
   rollMoved,
 } from '../state/pattern';
 import { arrVersion, insName, S } from '../state/store';
@@ -106,6 +106,8 @@ export function chanMenu(c: Channel, x: number, y: number, clipboardItems: MenuI
     { t: 'item', label: t('b.pe.fill8'), act: () => edit(fillEvery(pt.notes, c.id, steps, 8), t('b.pe.fill')) },
     { t: 'item', label: t('b.pe.shiftL'), kbd: 'Shift+Ctrl+←', act: () => edit(rotate(pt.notes, c.id, steps, -1), t('b.pe.shiftSteps')) },
     { t: 'item', label: t('b.pe.shiftR'), kbd: 'Shift+Ctrl+→', act: () => edit(rotate(pt.notes, c.id, steps, 1), t('b.pe.shiftSteps')) },
+    { t: 'sub', label: t('b.rk.loop'), items: loopItems(pt, c) },
+    { t: 'item', label: t('b.rk.loopBurn'), title: t('b.rk.loopBurnTip'), disabled: !loopStepsOf(pt, c.id), act: () => { commit([putBurnLoop(pt, c.id)], t('b.rk.loopBurn')); say(t('b.rk.loopBurnSaid', { name: c.name })); } },
     { t: 'item', label: t('b.pe.clear'), disabled: !pt.notes.some(n => n.ch === c.id), act: () => edit(clearChannel(pt.notes, c.id), t('b.pe.clearCh')) },
     { t: 'sep' },
     { t: 'item', label: t('b.pe.preview'), kbd: t('b.pe.ctrlClick'), act: () => audition(c.id, undefined, 0.8, true) },
@@ -116,6 +118,25 @@ export function chanMenu(c: Channel, x: number, y: number, clipboardItems: MenuI
     { t: 'sep' },
     { t: 'item', label: t('b.pe.delete'), danger: true, act: () => deleteChannel(c) },
   ], 520);
+}
+
+/** FL 20.1's channel looping, as menu items: off, or the cell repeats to fill the pattern.
+ * Counts stay below the pattern's length (looping the whole pattern is a no-op). */
+function loopItems(pt: Pattern, c: Channel): MenuItem[] {
+  const cur = loopStepsOf(pt, c.id), steps = stepsOf(pt);
+  const set = (l: number) => {
+    commit([putChannelLoop(pt, c.id, l)], t('b.rk.loopSet', { n: l }));
+    say(t('b.rk.loopSaid', { n: l, name: c.name }));
+  };
+  return [
+    { t: 'item', label: t('b.rk.loopOff'), checked: cur === 0, act: () => { if (cur) set(0); } },
+    ...[1, 2, 3, 4, 6, 8, 16].filter(l => l < steps).map((l): MenuItem => ({
+      t: 'item',
+      label: l === 16 ? t('b.rk.loopBar') : t('b.rk.loopN', { n: l }),
+      checked: cur === l,
+      act: () => set(l),
+    })),
+  ];
 }
 
 /** FL's filter groups: put the channel in an existing group, a new one, or none. */

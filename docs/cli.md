@@ -229,6 +229,9 @@ synkopa pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"     # replace the 
 synkopa pattern --id 2 --ch kick --steps "x... x... x... x..." --vel 0.9
 synkopa pattern --id 3 --ch bass --notes '[{"step":0,"len":3,"p":33},{"step":4,"len":2,"p":40,"v":0.8}]'
 synkopa pattern --id 2 --ch hat --clear
+synkopa pattern --id 2 --ch shaker --steps "x.x" --loop 3    # the first 3 steps loop to fill the
+                                             # pattern (FL 20.1's channel looping); the notes
+                                             # from step 3 on go; --loop 0 or "off" clears it
 synkopa pattern --id 2 --bars 2 --swing 55 --name "Hats B"
 synkopa pattern --new --name Fill --bars 1           # → its id in the reply
 synkopa pattern --id 2 --play                        # loop it on its own (stops the song); --stop
@@ -246,6 +249,13 @@ on purpose keep their length.
 `--notes` creates held notes by default. For a sampler, a held note stops at its set length
 or the end of the sample, whichever comes first. Include `"trig":true` on any trigger in a mixed row. When a row contains held notes or cannot be represented as a step string, the reply's
 `notes` array carries `trig` for each event.
+
+`--loop N` (with `--ch`) sets the channel's loop: its first `N` steps repeat to fill the
+pattern, phase-anchored to the start, so a 3-step shaker sits under a 16-step kick. Setting
+it removes that channel's notes from step `N` on (one undo step, nothing hidden); `0` or
+`"off"` clears the loop and keeps the cell. A looped channel shows `"loop": N` in the reply's
+rows, the pattern's length and its playlist clips never change because of a loop, and with
+`--play` `--loop A:B` keeps its other meaning (the beat range of the preview).
 
 `"slide":true` makes an FL slide note: it starts no sound; the channel's notes sounding when it
 starts glide by the distance from the highest of them to its key `p`, over its `len`, and keep

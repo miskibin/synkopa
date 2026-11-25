@@ -467,9 +467,8 @@ fn build_patterns(
                 .filter(|n| n.step < end - 1e-4)
                 .filter_map(|n| {
                     let ci = p.channels.iter().position(|c| c.id == n.ch)?;
-                    let step = n.step + swing_offset(n.step, pt.swing);
                     Some(NoteRt {
-                        beat: step as f64 / 4.0,
+                        beat: n.step as f64 / 4.0,
                         len: n.len as f64 / 4.0,
                         sampler_trigger: if chans[ci].kind == crate::synth::VoiceKind::Sample { n.trig } else { None },
                         chan: ci,
@@ -480,6 +479,36 @@ fn build_patterns(
                     })
                 })
                 .collect();
+            // Per-channel loops (FL Studio 20.1's channel looping): a looped channel's cell
+            // repeats to fill the pattern, phase-anchored to the pattern start. The loops
+            // were validated when the pattern was written (bounded note count), and swing is
+            // applied to the absolute step below, so repeats rotate through the swing like
+            // any other note on the grid.
+            for (ch, &loop_steps) in &pt.channel_loops {
+                // ops validation refuses 0, but a hand-edited file skips it: a zero loop
+                // would divide by zero below and repeat to nowhere
+                if loop_steps == 0 {
+                    continue;
+                }
+                let Some(ci) = p.channels.iter().position(|c| c.id == *ch) else { continue };
+                // the cell is the steps below the loop; anything the pattern still carries
+                // from the loop step on (a script can write it) is not played
+                let cell: Vec<NoteRt> = notes.iter().filter(|n| n.chan == ci && (n.beat * 4.0) < loop_steps as f64).cloned().collect();
+                let reps = (end / loop_steps as f32).ceil() as u32 - 1;
+                for k in 1..=reps {
+                    let shift = (k as f32 * loop_steps as f32) as f64 / 4.0;
+                    for nt in &cell {
+                        let mut n2 = nt.clone();
+                        n2.beat += shift;
+                        notes.push(n2);
+                    }
+                }
+            }
+            // Swing from each note's absolute step (base notes and loop repeats alike).
+            for n in &mut notes {
+                let step = (n.beat * 4.0) as f32;
+                n.beat = (step + swing_offset(step, pt.swing)) as f64 / 4.0;
+            }
             // in time order: the audio thread resolves the slides of one block in this order, and
             // a later slide must build on an earlier one (stable, so notes at one time keep theirs)
             notes.sort_by(|a, b| a.beat.total_cmp(&b.beat));

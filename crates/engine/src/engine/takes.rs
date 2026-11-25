@@ -348,8 +348,16 @@ impl Engine {
         let n = c.project.patterns.iter().filter(|p| p.name.starts_with("MIDI take")).count() + 1;
         let pid = c.project.alloc_id();
         let cid = c.project.alloc_id();
-        let pattern =
-            Pattern { id: pid, name: format!("MIDI take {n}"), color, len: laid.len, min_len: laid.len, notes: laid.notes, swing: 0.0 };
+        let pattern = Pattern {
+            id: pid,
+            name: format!("MIDI take {n}"),
+            color,
+            len: laid.len,
+            min_len: laid.len,
+            notes: laid.notes,
+            swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
+        };
         let clip = Clip {
             id: cid,
             track: track as u32,

@@ -36,6 +36,38 @@ export const velOf = (n: Note) => n.v ?? 1;
 export const panOf = (n: Note) => n.pan ?? 0;
 /** Number of 16ths in the pattern. */
 export const stepsOf = (p: Pattern) => Math.max(1, Math.round(p.len * 4));
+/** A channel loop may not expand into more scheduled notes than this (model.rs `MAX_LOOP_NOTES`). */
+export const MAX_LOOP_NOTES = 65_536;
+/** A channel's loop length in steps in this pattern (FL 20.1's channel looping), 0 = none. */
+export const loopStepsOf = (p: Pattern, ch: Id) => p.channelLoops?.[String(ch)] ?? 0;
+/** The steps of the pattern a channel's own grid occupies: its loop length when looped, else the whole pattern. */
+export const channelStepsOf = (p: Pattern, ch: Id) => { const l = loopStepsOf(p, ch); return l > 0 ? l : stepsOf(p); };
+/** The cell step a looped channel plays at absolute step `s` (its content repeats to fill the pattern). */
+export const cellStep = (p: Pattern, ch: Id, s: number) => { const l = loopStepsOf(p, ch); return l > 0 ? s % l : s; };
+/** Sets the channel's loop to `loop` steps (FL 20.1's channel looping), 0 clears it. A set keeps
+ * only the notes below the loop (what plays), so nothing is ever hidden; a clear keeps the cell. */
+export function setChannelLoop(p: Pattern, ch: Id, loop: number): Pattern {
+  const loops: Record<string, number> = { ...(p.channelLoops ?? {}) };
+  if (loop > 0) loops[String(ch)] = loop; else delete loops[String(ch)];
+  const notes = loop > 0 ? p.notes.filter(n => !(n.ch === ch && n.step >= loop)) : p.notes;
+  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined };
+}
+/** The channel's loop materialized: every repeat becomes a real step, the loop goes (FL's
+ * "Burn to pattern"). Notes already past the old loop are cleared first (they never played). */
+export function burnChannelLoop(p: Pattern, ch: Id): Pattern {
+  const l = loopStepsOf(p, ch);
+  if (!(l > 0)) return p;
+  const steps = stepsOf(p);
+  const cell = p.notes.filter(n => n.ch === ch && n.step < l);
+  const notes = p.notes.filter(n => n.ch !== ch || n.step < l);
+  for (let k = 1; k * l < steps; k++) for (const n of cell) {
+    const s = n.step + k * l;
+    if (s < steps) notes.push({ ...n, step: s });
+  }
+  const loops: Record<string, number> = { ...(p.channelLoops ?? {}) };
+  delete loops[String(ch)];
+  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined };
+}
 /** Channel Rack step grid: extra px between groups of four steps (beats), like FL's. */
 export const BEAT_GAP = 5;
 /** Left edge (px) of a step in the Channel Rack grid, `cw` px per step; fractional steps interpolate inside their cell. */
@@ -78,10 +110,12 @@ export class PatternOpError extends Error {}
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
 /** Drops the fields the engine's serde omits on write: swing only when non-zero, a note's
- * `v` only when it is not exactly 1 (`skip_serializing_if`). */
+ * `v` only when it is not exactly 1, channel loops only when the map is non-empty
+ * (`skip_serializing_if`). */
 export function stripPatternDefaults(pt: Pattern): void {
   if (!pt.swing) delete pt.swing;
   for (const n of pt.notes) if (n.v === 1) delete n.v;
+  if (pt.channelLoops && !Object.keys(pt.channelLoops).length) delete pt.channelLoops;
 }
 
 /** Project.migrate: derived pattern lengths, the starter kit when the Channel Rack is empty. */
@@ -185,6 +219,17 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
       stripPatternDefaults(pt);
       fitLen(pt);
+      // per-channel loops (the engine's `check_channel_loops`): each names a channel, sits
+      // inside the pattern, and expands into a bounded number of scheduled notes
+      const steps = Math.round(pt.len * 4);
+      for (const [k, l] of Object.entries(pt.channelLoops ?? {})) {
+        const ch = Number(k);
+        if (strict && !(p.channels ?? []).some(c => c.id === ch)) fail(`no channel with id ${ch}`);
+        if (!(l >= 1 && l <= steps && Number.isInteger(l))) fail(`pattern ${pt.id}: a channel loop must be 1..=${steps} steps`);
+        const cell = pt.notes.filter(n => n.ch === ch && n.step < l).length;
+        const reps = Math.max(0, Math.ceil(steps / l) - 1);
+        if (pt.notes.length + reps * cell > MAX_LOOP_NOTES) fail(`pattern ${pt.id}: a channel loop may not repeat into more than ${MAX_LOOP_NOTES} notes`);
+      }
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);
       if (i >= 0) {
@@ -235,7 +280,10 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       const chans = p.channels ?? [];
       if (!chans.some(c => c.id === op.id)) { fail(`no channel with id ${op.id}`); return true; }
       p.channels = chans.filter(c => c.id !== op.id);
-      for (const pt of p.patterns) pt.notes = pt.notes.filter(n => n.ch !== op.id);
+      for (const pt of p.patterns) {
+        pt.notes = pt.notes.filter(n => n.ch !== op.id);
+        if (pt.channelLoops) { delete pt.channelLoops[op.id]; if (!Object.keys(pt.channelLoops).length) delete pt.channelLoops; }
+      }
       return true;
     }
     case 'removeSource': {

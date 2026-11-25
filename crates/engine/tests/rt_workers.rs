@@ -109,7 +109,16 @@ fn project() -> Project {
         }
     }
     let pid = p.alloc_id();
-    p.patterns = vec![Pattern { id: pid, name: "P".into(), color: "#4f8ef7".into(), len: 8.0, min_len: 8.0, notes, swing: 0.0 }];
+    p.patterns = vec![Pattern {
+        id: pid,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 8.0,
+        min_len: 8.0,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     let cid = p.alloc_id();
     p.clips = vec![Clip {
         id: cid,

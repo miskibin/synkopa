@@ -48,7 +48,16 @@ pub fn warp_maps() -> WarpMaps {
 }
 
 pub fn pat(id: Id, name: &str, len: f64, min_len: f64, notes: Vec<Note>) -> Pattern {
-    Pattern { id, name: name.into(), color: "#4f8ef7".into(), len, min_len, notes, swing: 0.0 }
+    Pattern {
+        id,
+        name: name.into(),
+        color: "#4f8ef7".into(),
+        len,
+        min_len,
+        notes,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

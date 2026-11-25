@@ -177,7 +177,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             }
             let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
             let len = ((end / 4.0).ceil() * 4.0).max(4.0);
-            ops.push(Op::PutPattern { pattern: Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: 4.0, notes, swing: 0.0 } });
+            ops.push(Op::PutPattern { pattern: Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: 4.0, notes, swing: 0.0, channel_loops: std::collections::BTreeMap::new() } });
             // the first track with nothing where the pattern goes (else the chosen or first one)
             let free = |t: u32| !p.clips.iter().any(|c| c.track == t && c.start < beat + len && c.start + c.len > beat);
             let ntracks = p.tracks.len() as u32;

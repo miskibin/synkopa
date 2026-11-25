@@ -21,7 +21,16 @@ fn tmp(name: &str) -> PathBuf {
 fn one_pattern(notes: Vec<Note>, len: f64, swing: f32) -> Project {
     let mut p = Project::routed();
     p.inserts[0].fx.clear();
-    p.patterns = vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len, min_len: len, notes, swing }];
+    p.patterns = vec![Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len,
+        min_len: len,
+        notes,
+        swing,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     p.clips = vec![clip(1, 0, 0.0, len, 1)];
     p
 }
@@ -181,6 +190,7 @@ fn notes_of_unknown_channels_are_refused() {
         min_len: 4.0,
         notes: vec![Note::new(424242, 0.0, 1.0, None)],
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     };
     assert!(e.apply(&[Op::PutPattern { pattern: bad }], false, None).is_err());
 }
@@ -242,6 +252,7 @@ fn sampler_channel_plays_its_sample_at_the_note_pitch() {
             min_len: 4.0,
             notes: vec![Note::trigger(id, 0.0, key)],
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         };
         let c = clip(60 + k as Id, 0, 0.0, 4.0, pat.id);
         e.apply(
@@ -708,4 +719,130 @@ fn a_shrinking_pattern_cuts_back_partial_clips_within_it() {
     assert_eq!(p.patterns[0].len, 4.0);
     assert_eq!(p.clips[0].len, 4.0);
     assert_eq!((p.clips[1].offset, p.clips[1].len), (2.0, 2.0), "pattern length minus the offset");
+
+// ---- Per-channel loops (FL Studio 20.1's channel looping)
+
+/// Hit positions from peaks of a short-window RMS envelope: a ringing sample decays
+/// smoothly (a pitched kick oscillates within the envelope, not across it), so every
+/// real hit is a new envelope peak. Returns frame indices (window centres).
+fn peaks(x: &[f32], thr: f64, min_gap: usize) -> Vec<usize> {
+    let l = left(x);
+    const WIN: usize = 512;
+    let hop = WIN / 2;
+    let env: Vec<f64> = (0..l.len())
+        .step_by(hop)
+        .map(|i| (l[i..(i + WIN).min(l.len())].iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / WIN as f64).sqrt())
+        .collect();
+    let mut out = vec![];
+    let mut last = usize::MAX;
+    for i in 0..env.len().max(1) - 1 {
+        let rising = i == 0 || env[i] >= env[i - 1];
+        if env[i] > thr && rising && env[i] > env[i + 1] && (last == usize::MAX || i - last >= min_gap / hop) {
+            out.push(i * hop + hop / 2);
+            last = i;
+        }
+    }
+    out
+}
+
+#[test]
+fn channel_loops_repeat_the_cell_in_the_render() {
+    // a hat cell of steps 0 and 1 looped every 3 steps: the repeats land at absolute
+    // steps 0,1,3,4,6,7,9,10,12,13,15 — in the arrangement (the clip path; the pattern
+    // preview and offline render read the same expanded note list)
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let mut pt = one_pattern(vec![Note::trigger(h, 0.0, None), Note::trigger(h, 1.0, None)], 4.0, 0.0);
+    pt.patterns[0].channel_loops.insert(h, 3);
+    let out = render(pt, 4.0);
+    let spb = 60.0 / 128.0;
+    let step_frames = spb / 4.0 * SR as f64;
+    let hits = peaks(&out, 1e-4, (step_frames * 0.75) as usize);
+    let want: Vec<f64> = (0..16u32).filter(|s| s % 3 < 2).map(|s| s as f64 * step_frames).collect();
+    let got: Vec<f64> = hits.iter().map(|h| *h as f64).collect();
+    assert_eq!(hits.len(), want.len(), "steps at {:?}", got.iter().map(|g| g / step_frames).collect::<Vec<_>>());
+    for (g, exp) in got.iter().zip(&want) {
+        assert!((g - exp).abs() <= 0.25 * step_frames, "onset at step {}, expected {}", g / step_frames, exp / step_frames);
+    }
+}
+
+#[test]
+fn channel_loop_repeats_rotate_through_the_swing() {
+    // one hit per 3-step cell at 100 % swing: swing belongs to the absolute step, so the
+    // same cell step lands straight (0,6,12) and swung (3,9,15) on later repeats
+    let p0 = Project::routed();
+    let k = chan(&p0, "Kick");
+    let mut pt = one_pattern(vec![Note::trigger(k, 0.0, None)], 4.0, 1.0);
+    pt.patterns[0].channel_loops.insert(k, 3);
+    let out = render(pt, 4.0);
+    let spb = 60.0 / 128.0;
+    let step_frames = spb / 4.0 * SR as f64;
+    let hits = peaks(&out, 1e-5, (step_frames * 0.75) as usize);
+    let want: Vec<f64> = (0..6u32).map(|r| (r * 3) as f64 + if r * 3 % 2 == 1 { 0.5 } else { 0.0 }).map(|s| s * step_frames).collect();
+    assert_eq!(hits.len(), want.len(), "steps at {:?}", hits.iter().map(|h| *h as f64 / step_frames).collect::<Vec<_>>());
+    for (g, exp) in hits.iter().map(|h| *h as f64).zip(&want) {
+        assert!((g - exp).abs() <= 0.25 * step_frames, "onset at step {}, expected {}", g / step_frames, exp / step_frames);
+    }
+}
+
+#[test]
+fn channel_loop_rules_are_checked() {
+    let e = Engine::new(Project::routed(), Arc::new(NoPlugins));
+    let k = chan(&e.project(), "Kick");
+    let pt = |loops: std::collections::BTreeMap<Id, u32>, len: f64, notes: Vec<Note>| Pattern {
+        id: 30,
+        name: "L".into(),
+        color: "#fff".into(),
+        len,
+        min_len: len,
+        notes,
+        swing: 0.0,
+        channel_loops: loops,
+    };
+    // zero steps refused
+    let mut bad = std::collections::BTreeMap::new();
+    bad.insert(k, 0);
+    assert!(e.apply(&[Op::PutPattern { pattern: pt(bad.clone(), 4.0, vec![Note::trigger(k, 0.0, None)]) }], false, None).is_err());
+    // longer than the pattern refused
+    *bad.get_mut(&k).unwrap() = 17;
+    assert!(e.apply(&[Op::PutPattern { pattern: pt(bad.clone(), 4.0, vec![Note::trigger(k, 0.0, None)]) }], false, None).is_err());
+    // a channel the pattern does not know refused (and a note of it would be refused too)
+    bad.insert(424242, 3);
+    assert!(e.apply(&[Op::PutPattern { pattern: pt(bad, 4.0, vec![]) }], false, None).is_err());
+    // a loop that would expand into too many notes refused (1-step cell, 9 notes in it,
+    // a full-length pattern: 8191 repeats x 9 > MAX_LOOP_NOTES)
+    let notes: Vec<Note> = (0..9).map(|i| Note::trigger(k, i as f32 / 8.0, None)).collect();
+    let mut big = std::collections::BTreeMap::new();
+    big.insert(k, 1);
+    assert!(e.apply(&[Op::PutPattern { pattern: pt(big.clone(), TOTAL_BEATS, notes) }], false, None).is_err());
+    // a valid loop is stored; an entry for a channel with no notes in the pattern is fine
+    let mut ok = std::collections::BTreeMap::new();
+    ok.insert(k, 3);
+    e.apply(&[Op::PutPattern { pattern: pt(ok.clone(), 4.0, vec![Note::trigger(k, 0.0, None)]) }], false, None).unwrap();
+    assert_eq!(e.project().patterns.iter().find(|p| p.id == 30).unwrap().channel_loops, ok);
+}
+
+#[test]
+fn a_loop_never_stretches_the_pattern_or_its_clips() {
+    // only a looped 3-step cell: the pattern keeps its minimum length, and the clip that
+    // follows the pattern's length keeps it too (a loop never triggers follow_pattern_length)
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let mut pt = one_pattern(vec![Note::trigger(h, 0.0, None)], 4.0, 0.0);
+    pt.patterns[0].channel_loops.insert(h, 3);
+    let e = Engine::new(pt, Arc::new(NoPlugins));
+    assert_eq!(e.project().patterns[0].len, 4.0);
+    assert_eq!(e.project().clips.iter().find(|c| c.id == 1).unwrap().len, 4.0);
+}
+
+#[test]
+fn removing_a_channel_removes_its_loop_entries() {
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let mut pt = one_pattern(vec![Note::trigger(h, 0.0, None)], 4.0, 0.0);
+    pt.patterns[0].channel_loops.insert(h, 3);
+    let e = Engine::new(pt, Arc::new(NoPlugins));
+    e.apply(&[Op::RemoveChannel { id: h }], false, None).unwrap();
+    assert!(e.project().patterns.iter().all(|p| p.channel_loops.is_empty()));
+
 }

@@ -13,7 +13,7 @@ import { be } from '../api/backend';
 import { keysInstrument } from '../lib/keysCatalog';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
-import { BAR, barsText, cloneNotes, notesText, stepsOf } from '../lib/pattern';
+import { BAR, barsText, burnChannelLoop, cloneNotes, notesText, setChannelLoop, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
 import { dockKeyAction } from '../lib/layout';
 import { commit, enqueue } from './edit';
@@ -330,6 +330,10 @@ export const putNotes = (pt: Pattern, notes: Note[]): Op => {
   return { op: 'putPattern', pattern: { ...plain(rest), notes: plainNotes(notes) } };
 };
 export const patOp = (pt: Pattern, patch: Partial<Pattern>): Op => ({ op: 'putPattern', pattern: { ...plain(pt), ...plain(patch) } });
+/** The channel's loop set/clear (`loop` steps, 0 clears — FL 20.1's channel looping). */
+export const putChannelLoop = (pt: Pattern, ch: Id, loop: number): Op => ({ op: 'putPattern', pattern: plain(setChannelLoop(rawOf(pt), ch, loop)) });
+/** The channel's loop burned into steps: every repeat a real step, loop gone (FL's "Burn to pattern"). */
+export const putBurnLoop = (pt: Pattern, ch: Id): Op => ({ op: 'putPattern', pattern: plain(burnChannelLoop(rawOf(pt), ch)) });
 
 const freshName = (base: string) => {
   const names = new Set(S.project.patterns.map(p => p.name));

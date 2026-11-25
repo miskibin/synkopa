@@ -51,6 +51,7 @@ fn engine(name: &str, set: impl Fn(&mut SamplerState), notes: &[(f32, f32, Optio
         min_len: 8.0,
         notes: notes.iter().map(|&(s, l, k)| Note::new(ch, s, l, k)).collect(),
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     };
     let clip = Clip {
         id: 2,
@@ -619,6 +620,7 @@ fn a_new_project_does_not_inherit_audio_from_the_previous_one() {
         min_len: 4.0,
         notes: vec![Note::new(kick, 0.0, 1.0, None)],
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     };
     let clip = Clip {
         id: 2,

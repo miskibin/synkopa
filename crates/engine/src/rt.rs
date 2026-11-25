@@ -715,6 +715,7 @@ pub struct ClipRt {
 }
 
 /// A pattern note, ready to schedule: swing applied, channel resolved to an index.
+#[derive(Clone)]
 pub struct NoteRt {
     pub beat: f64,
     pub len: f64,

@@ -224,6 +224,31 @@ fn check_notes(p: &Project, pt: &Pattern) -> Result<(), OpError> {
     Ok(())
 }
 
+/// Checks a pattern's per-channel loops (FL Studio 20.1's channel looping): each entry
+/// names a channel, sits inside the pattern, and expands into a bounded number of
+/// scheduled notes.
+fn check_channel_loops(p: &Project, pt: &Pattern) -> Result<(), OpError> {
+    for (ch, &l) in &pt.channel_loops {
+        if p.channel(*ch).is_none() {
+            return Err(OpError::Missing { what: "channel", id: *ch });
+        }
+        let steps = (pt.len * 4.0).round() as u32;
+        if l == 0 || l > steps {
+            return Err(OpError::Invalid(format!("pattern {}: a channel loop must be 1..={steps} steps", pt.id)));
+        }
+        let cell = pt.notes.iter().filter(|n| n.ch == *ch).count() as u64;
+        let reps = ((f64::from(steps) / f64::from(l)).ceil() as u64).saturating_sub(1);
+        if pt.notes.len() as u64 + reps * cell > crate::model::MAX_LOOP_NOTES as u64 {
+            return Err(OpError::Invalid(format!(
+                "pattern {}: a channel loop may not repeat into more than {} notes",
+                pt.id,
+                crate::model::MAX_LOOP_NOTES
+            )));
+        }
+    }
+    Ok(())
+}
+
 fn bump(p: &mut Project, id: Id) {
     if id >= p.next_id {
         p.next_id = id + 1;
@@ -469,6 +494,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             let mut pt = pattern.clone();
             check_notes(p, &pt)?;
             pt.fit_len();
+            check_channel_loops(p, &pt)?;
             bump(p, pt.id);
             let (id, len) = (pt.id, pt.len);
             match p.patterns.iter_mut().find(|x| x.id == id) {
@@ -612,6 +638,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             p.channels.retain(|c| c.id != *id);
             for pt in p.patterns.iter_mut() {
                 pt.notes.retain(|n| n.ch != *id);
+                pt.channel_loops.remove(id);
             }
             d.timeline = true;
         }

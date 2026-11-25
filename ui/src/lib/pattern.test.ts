@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Project, type SamplerState } from '../api/types';
+import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Pattern, type Project, type SamplerState } from '../api/types';
 import { applyAll } from './applyOps';
 import {
   followChanges, migrateSamplerEnvelope,
-  BEAT_GAP, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
-  rotate, samplerError, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
+  BEAT_GAP, burnChannelLoop, cellStep, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
+  rotate, samplerError, setChannelLoop, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
 } from './pattern';
 
 const KICK = 1000, BASS = 1003;
@@ -325,5 +325,65 @@ describe('autoRollSnap', () => {
     expect(autoRollSnap(100)).toBe(0.25);
     expect(autoRollSnap(6)).toBe(4);
     expect(autoRollSnap(0.5)).toBe(16);
+  });
+});
+
+describe('channel loops (FL 20.1 channel looping)', () => {
+  const mkPt = (notes: Note[], loops?: Record<string, number>) =>
+    ({ id: 2, name: 'P', color: '#fff', len: 4, minLen: 4, notes, channelLoops: loops } as Pattern);
+  const hat = (step: number, v = 1): Note => ({ ch: BASS, step, len: 1, trig: true, ...(v === 1 ? {} : { v }) });
+
+  it('setChannelLoop keeps the cell and trims the rest; clear keeps the cell', () => {
+    const p1 = setChannelLoop(mkPt([hat(0), hat(1), hat(5)]), BASS, 3);
+    expect(steps(p1.notes, BASS)).toEqual([0, 1]);
+    expect(p1.channelLoops).toEqual({ [String(BASS)]: 3 });
+    const p2 = setChannelLoop(p1, BASS, 0);
+    expect(steps(p2.notes, BASS)).toEqual([0, 1]);
+    expect(p2.channelLoops).toBeUndefined();
+    // setting on a channel with no notes is fine (an empty cell loops as silence)
+    const p3 = setChannelLoop(mkPt([]), BASS, 4);
+    expect(p3.channelLoops).toEqual({ [String(BASS)]: 4 });
+  });
+
+  it('burnChannelLoop writes every repeat as a real step and removes the loop', () => {
+    const p1 = setChannelLoop(mkPt([hat(0), hat(1)]), BASS, 3);
+    const burned = burnChannelLoop(p1, BASS);
+    expect(steps(burned.notes, BASS)).toEqual([0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15]);
+    expect(burned.channelLoops).toBeUndefined();
+    // a pattern still carrying notes past the loop (a script could): they never played, they go
+    const p2 = { ...mkPt([hat(0), hat(7)]), channelLoops: { [String(BASS)]: 3 } };
+    const b2 = burnChannelLoop(p2, BASS);
+    expect(steps(b2.notes, BASS)).toEqual([0, 3, 6, 9, 12, 15]);
+  });
+
+  it('cellStep wraps the playhead into the cell', () => {
+    const p = mkPt([], { [String(BASS)]: 3 });
+    expect(cellStep(p, BASS, 0)).toBe(0);
+    expect(cellStep(p, BASS, 4)).toBe(1);
+    expect(cellStep(p, BASS, 3)).toBe(0);
+    expect(cellStep(p, BASS, 7)).toBe(1);
+    // an unlooped channel passes the step through
+    expect(cellStep(mkPt([]), BASS, 7)).toBe(7);
+  });
+
+  it('putPattern validates loops like the engine', () => {
+    const mk = () => ({ channels: [bass], patterns: [], clips: [], inserts: [], tracks: [], sources: [], nextId: 5 } as unknown as Project);
+    // a loop longer than the pattern refuses
+    expect(() => applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 4, notes: [], channelLoops: { [String(BASS)]: 20 } } }]))
+      .toThrow('a channel loop must be 1..=16 steps');
+    // an unknown channel refuses
+    expect(() => applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 4, notes: [], channelLoops: { '999': 3 } } }]))
+      .toThrow('no channel with id 999');
+    // a valid loop is stored; an empty map is dropped
+    let out = applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 4, notes: [], channelLoops: {} } }]);
+    expect(out.patterns.find(x => x.id === 1)!.channelLoops).toBeUndefined();
+    out = applyAll(mk(), [{ op: 'putPattern', pattern: { id: 1, name: 'P', color: '#fff', len: 4, notes: [hat(0)], channelLoops: { [String(BASS)]: 3 } } }]);
+    expect(out.patterns.find(x => x.id === 1)!.channelLoops).toEqual({ [String(BASS)]: 3 });
+  });
+
+  it('removeChannel removes its loop entries', () => {
+    const p = { channels: [bass], patterns: [{ id: 1, name: 'P', color: '#fff', len: 4, notes: [], channelLoops: { [String(BASS)]: 3 } }], clips: [], inserts: [], tracks: [], sources: [], nextId: 5 } as unknown as Project;
+    const out = applyAll(p, [{ op: 'removeChannel', id: BASS }]);
+    expect(out.patterns[0].channelLoops).toBeUndefined();
   });
 });

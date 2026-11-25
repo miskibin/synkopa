@@ -1198,7 +1198,7 @@ pub fn schema() -> Value {
             "putFx": {"insertId": 1, "fx": {"id": 0, "type": "comp", "bypass": false, "params": {"thr": -18}}, "index": null},
             "removeFx": {"fxId": 0},
             "moveFx": {"fxId": 0, "to": 0},
-            "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
+            "putPattern": {"pattern": {"id": 0, "name": "", "color": "#4f8ef7", "minLen": 4, "swing": 0, "channelLoops": "optional: {channel id: loop length in whole steps} — the channel's steps 0..n repeat to fill the pattern (notes from step n on are ignored)", "notes": [{"ch": "channel id", "step": 0, "len": 1, "p": 36, "v": 1}]}},
             "putChannel": {"channel": {"id": 0, "name": "Kick", "color": "#4f8ef7", "kind": "sample|synth|keys|musicbox", "source": "source id (kind sample)", "sampler": "kind sample, optional: {start, end (0..1 of the file), reverse, norm, semi, fine, env (volume envelope on), delay, attack, hold, decay, release, fadeInMs, fadeOutMs (ms), sustain (0..1), attackTension, decayTension, releaseTension (-1..1), cut (0 = none, 1..8)}", "slices": "kind sample, optional: slice mode, increasing fractions of the file in 0..1 where each slice starts (at most 128); key root plays slice 1, root+1 slice 2, ...; a slice plays to the next at the file's pitch and cuts the one sounding; omit or [] = off", "keys": "kind keys, optional: {instrument (catalog id, default grand-piano), release (ms; absent = the instrument's own), dynamics (0..100 %), articulation (keyswitch key of the instrument's articulations; absent = its default), attack (0..2000 ms), tone (-100..100), width (0..150 %), tune (-100..100 cents), noise (0..100 %)}", "vol": 0.7937, "pan": 0, "mute": false, "solo": false, "insert": "insert id or null (= the clip's track)", "root": 60, "group": "Channel Rack filter group, optional (absent = unsorted)"}, "index": null},
             "removeChannel": {"id": 0},
             "removePattern": {"id": 0},
@@ -1722,7 +1722,7 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
     let rows: Vec<Value> = p
         .channels
         .iter()
-        .filter(|c| pt.notes.iter().any(|n| n.ch == c.id))
+        .filter(|c| pt.notes.iter().any(|n| n.ch == c.id) || pt.channel_loops.contains_key(&c.id))
         .map(|c| {
             let mut line = vec!['.'; steps];
             let notes: Vec<_> = pt.notes.iter().filter(|n| n.ch == c.id).collect();
@@ -1738,6 +1738,9 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
                 n.trig == Some(true) && n.len == 1.0 && n.p.is_none() && n.step.fract() == 0.0 && occupied.insert(n.step as usize)
             });
             let mut row = json!({ "ch": c.id, "name": c.name, "steps": s });
+            if let Some(&l) = pt.channel_loops.get(&c.id) {
+                row["loop"] = json!(l);
+            }
             if !simple {
                 row["notes"] = json!(notes
                     .iter()
@@ -1772,6 +1775,7 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             min_len: 4.0,
             notes: vec![],
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         }
     } else {
         let id = match arg(a, "id").and_then(as_index) {
@@ -1838,6 +1842,25 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
                 }
                 pt.notes.push(Note { v, trig: Some(trigger), slide, ..Note::new(ch, step, len, key) });
             }
+        }
+    }
+    // A per-channel loop (FL Studio 20.1's channel looping): the channel's steps 0..n
+    // repeat to fill the pattern, so setting it trims that channel's notes from step n on
+    // (one undo step, nothing hidden); 0 or "off" clears the loop and keeps the cell.
+    if let Some(l) = arg(a, "loop") {
+        let ch = find_channel(&p, arg(a, "ch").ok_or("--ch (channel id or name) is required with --loop")?)?.id;
+        let steps = (pt.len * 4.0).round() as u32;
+        let off = l.as_str() == Some("off") || l.as_str() == Some("0") || l.as_u64() == Some(0);
+        if off {
+            pt.channel_loops.remove(&ch);
+        } else {
+            let loop_steps = l
+                .as_u64()
+                .filter(|n| *n > 0 && *n <= steps as u64)
+                .ok_or_else(|| format!("--loop is a step count 1..{steps} here (the pattern's length), 0 or \"off\" to clear"))?
+                as u32;
+            pt.notes.retain(|note| !(note.ch == ch && note.step >= loop_steps as f32));
+            pt.channel_loops.insert(ch, loop_steps);
         }
     }
     // `synkopa notes stamp` lands here: one chord written through the existing note op
@@ -2639,6 +2662,10 @@ mod sidechain_tests;
 #[cfg(test)]
 #[path = "undo_label_tests.rs"]
 mod undo_label_tests;
+
+#[cfg(test)]
+#[path = "pattern_loop_tests.rs"]
+mod pattern_loop_tests;
 
 #[cfg(test)]
 mod keys_channel_tests {

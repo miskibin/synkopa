@@ -868,6 +868,14 @@ pub struct Pattern {
     /// 0..1: how far every second 16th is delayed (see [`swing_offset`]).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub swing: f32,
+    /// Per-channel loop lengths in whole steps (FL Studio 20.1's channel looping): the
+    /// channel's steps 0..n repeat to fill the pattern, phase-anchored to the pattern
+    /// start, so a 3-step shaker can sit under a 16-step kick. Setting a loop removed
+    /// that channel's notes beyond it in the same undo step, so nothing is ever hidden;
+    /// clearing the loop keeps the cell. A loop never changes the pattern's length and
+    /// never stretches its playlist clips.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty", rename = "channelLoops")]
+    pub channel_loops: BTreeMap<Id, u32>,
 }
 
 fn is_zero(v: &f32) -> bool {
@@ -884,6 +892,11 @@ fn major_scale() -> u32 {
 
 /// Beats in one bar (the project is in 4/4).
 pub const BAR_BEATS: f64 = 4.0;
+
+/// A channel loop may not expand into more scheduled notes than this (the bound that
+/// keeps a pathological 1-step loop in a long pattern from growing the audio graph's
+/// per-pattern note list without limit).
+pub const MAX_LOOP_NOTES: usize = 65_536;
 
 impl Pattern {
     /// The length its notes need: the end of the last note rounded up to a whole bar, at

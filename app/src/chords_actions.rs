@@ -206,7 +206,16 @@ pub fn put_pattern_under_clip(e: &Engine, plan: &PatternPlan, if_revision: Optio
             let pattern_id = id();
             let name = fresh_name(p, plan.name);
             ops.push(Op::PutPattern {
-                pattern: Pattern { id: pattern_id, name, color: plan.color.into(), len, min_len: 4.0, notes: notes(ch), swing: 0.0 },
+                pattern: Pattern {
+                    id: pattern_id,
+                    name,
+                    color: plan.color.into(),
+                    len,
+                    min_len: 4.0,
+                    notes: notes(ch),
+                    swing: 0.0,
+                    channel_loops: std::collections::BTreeMap::new(),
+                },
             });
             let ntracks = p.tracks.len() as u32;
             let free = |t: u32| !p.clips.iter().any(|c| c.track == t && c.start < start + len && c.start + c.len > start);

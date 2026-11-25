@@ -160,8 +160,16 @@ fn project(instrument: &str, p: &Prog) -> Project {
     pr.inserts[0].fx.clear();
     let keys = KeysState { instrument: instrument.into(), ..Default::default() };
     pr.channels.push(Channel { name: "Keys".into(), root: 60, ..Channel::new(CH, "", "#4f8ef7", ChannelSrc::Keys { keys }) });
-    pr.patterns =
-        vec![Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: p.beats, min_len: 4.0, notes: p.notes.clone(), swing: 0.0 }];
+    pr.patterns = vec![Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: p.beats,
+        min_len: 4.0,
+        notes: p.notes.clone(),
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    }];
     pr.clips = vec![Clip {
         id: 1,
         track: 0,

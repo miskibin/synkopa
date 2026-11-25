@@ -43,7 +43,16 @@ fn engine(name: &str, notes: &[N], other: &[N]) -> Arc<Engine> {
     let note = |ch: Id, &(s, l, k, slide): &N| Note { slide, ..Note::new(ch, s, l, Some(k)) };
     let mut all: Vec<Note> = notes.iter().map(|n| note(a, n)).collect();
     all.extend(other.iter().map(|n| note(b, n)));
-    let pattern = Pattern { id: 1, name: "P".into(), color: "#4f8ef7".into(), len: 8.0, min_len: 8.0, notes: all, swing: 0.0 };
+    let pattern = Pattern {
+        id: 1,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 8.0,
+        min_len: 8.0,
+        notes: all,
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    };
     let clip = Clip {
         id: 2,
         track: 0,

@@ -335,7 +335,16 @@ pub fn build_song(dir: &Path) -> Project {
         }
         notes.sort_by(|a, b| a.step.total_cmp(&b.step));
         let len = if i < 52 { 16.0 } else { 32.0 };
-        p.patterns.push(Pattern { id, name: format!("Pattern {i}"), color: color(i), len, min_len: len, notes, swing: 0.0 });
+        p.patterns.push(Pattern {
+            id,
+            name: format!("Pattern {i}"),
+            color: color(i),
+            len,
+            min_len: len,
+            notes,
+            swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
+        });
     }
 
     // ---- playlist: ~420 pattern clips in sections, 24 audio loop clips
@@ -613,7 +622,16 @@ pub fn build(spec: &Spec, dir: &Path) -> Project {
             ));
         }
         notes.sort_by(|a, b| a.step.total_cmp(&b.step));
-        p.patterns.push(Pattern { id, name: format!("Pattern {i}"), color: color(i), len, min_len: len, notes, swing: 0.0 });
+        p.patterns.push(Pattern {
+            id,
+            name: format!("Pattern {i}"),
+            color: color(i),
+            len,
+            min_len: len,
+            notes,
+            swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
+        });
         pats.push(id);
     }
     // one stress pattern for the piano roll
@@ -632,6 +650,7 @@ pub fn build(spec: &Spec, dir: &Path) -> Project {
             min_len: 256.0,
             notes,
             swing: 0.0,
+            channel_loops: std::collections::BTreeMap::new(),
         });
     }
 
