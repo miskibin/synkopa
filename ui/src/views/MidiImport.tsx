@@ -14,6 +14,7 @@ import { openRoll, setCurPattern } from '../state/pattern';
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 export function MidiImport() {
   const [info, setInfo] = createSignal<MidiInfo | null>(null);
@@ -81,8 +82,8 @@ export function MidiImport() {
     <Show when={U.midiWin}>
       <DialogBoundary name={t('d.ui.pn.midi')} close={close}>
       <div class="overlay" onPointerDown={close}>
-        <div class="dialog mididlg" role="dialog" aria-modal="true" aria-label={t('d.midi.title', { name: fileName() })} onPointerDown={e => e.stopPropagation()}
-          onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); if (e.key === 'Enter' && !e.repeat && (e.target as HTMLElement).tagName !== 'BUTTON') { e.preventDefault(); void run(); } }} data-midi-dialog>
+        <div class="dialog mididlg" aria-label={t('d.midi.title', { name: fileName() })} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.repeat && (e.target as HTMLElement).tagName !== 'BUTTON') { e.preventDefault(); void run(); } }} data-midi-dialog>
           <div class="hd">
             <span title={U.midiWin?.path}>{into() ? t('d.midi.titleInto', { name: fileName() }) : t('d.midi.title', { name: fileName() })}</span>
             <button onClick={close} aria-label={t('d.midi.cancel')}>×</button>
@@ -121,7 +122,7 @@ export function MidiImport() {
             )}
           </Show>
           <Show when={err()}><div class="note err" style={{ 'margin-top': '8px' }}>{err()}</div></Show>
-          <div class="row" style={{ 'justify-content': 'flex-end', gap: '8px', 'margin-top': '14px' }}>
+          <div class="dlgfoot">
             <button class="smallbtn" onClick={close}>{t('d.midi.cancel')}</button>
             <button ref={importBtn} class="smallbtn primary" disabled={!info() || !picked().size || busy()} onClick={() => void run()}>
               {busy() ? t('d.midi.importing') : t('d.midi.import', { n: picked().size })}

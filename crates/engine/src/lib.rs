@@ -35,6 +35,7 @@ pub mod dsp;
 pub mod engine;
 pub mod errors;
 pub mod keys;
+pub mod masking;
 pub mod midi_file;
 pub mod pitch_api;
 mod project_zip;

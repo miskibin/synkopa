@@ -147,7 +147,7 @@ pub fn to_pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Valu
     };
     let mut made = Value::Null;
     let rev = e
-        .apply_with_library(&[], if_revision, |p: &Project, _| {
+        .apply_with_library_labeled(&[], if_revision, Some("Send chords to piano roll"), |p: &Project, _| {
             let clip = p.clips.iter().find(|c| c.id == clip_id).ok_or("the clip is gone")?.clone();
             let mut next = p.next_id;
             let mut id = || {

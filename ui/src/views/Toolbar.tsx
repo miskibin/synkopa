@@ -7,7 +7,7 @@ import { samePath } from '../lib/paths';
 import { t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
-import { prefs } from '../state/prefs';
+import { prefs, setPref, UI_SCALES } from '../state/prefs';
 import { For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { be } from '../api/backend';
@@ -44,6 +44,7 @@ import { KeyBadge } from './KeyBadge';
 import { PosReadout, PreviewLine, SongPos } from './ToolbarParts';
 import { shownPreview } from '../state/previewWave';
 import { ChipBoundary, DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 export const TOOLS: [Tool, string, TranslationKey][] = [
   ['draw', 'P', 'a.tb.toolDraw'], ['paint', 'B', 'a.tb.toolPaint'], ['erase', 'D', 'a.tb.toolErase'], ['mute', 'T', 'a.tb.toolMute'], ['slice', 'C', 'a.tb.toolSlice'], ['select', 'E', 'a.tb.toolSelect'],
@@ -455,6 +456,10 @@ function MenuBar() {
       { t: 'item', label: t('a.mn.zoomOut'), glyph: G.zoomOut, kbd: 'Ctrl+−', act: () => A.zoomAt(0.8) },
       { t: 'sep' },
       { t: 'item', label: t('a.mn.fullscreen'), kbd: 'F11', checked: isFullscreen(), act: () => void toggleFullscreen() },
+      // the whole interface's zoom, with its value in view: the same setting as Settings → Look
+      { t: 'sub', label: t('a.mn.uiScale', { pct: Math.round(prefs().uiScale * 100) }), items: UI_SCALES.map(z => ({
+        t: 'item' as const, label: Math.round(z * 100) + '%', checked: prefs().uiScale === z, act: () => setPref('uiScale', z),
+      })) },
     ]],
     ['a.mn.help', () => [
       { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
@@ -663,7 +668,7 @@ export function Help() {
     <Show when={U.help}>
       <DialogBoundary name={t('a.tb.helpTitle')} close={close}>
       <div class="overlay" onPointerDown={close}>
-        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+        <div class="dialog helpdlg" aria-label={t('a.tb.helpTitle')} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd"><span>{t('a.tb.helpTitle')}</span>
             <button class="chip helpcmd" onClick={() => { close(); setPaletteOpen(true); }}>{t('a.cmd.title')}<kbd>Ctrl K</kbd></button>
             <button aria-label={t('a.tb.close')} onClick={close}>×</button></div>

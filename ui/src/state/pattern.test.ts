@@ -234,3 +234,25 @@ describe('Channel Rack step spacing', () => {
     expect(P.stepW()).toBe(n.cw);
   });
 });
+
+describe('inserting a lane', () => {
+  it('moves the open takes with the lanes that shift down', () => {
+    const s1 = store.S.project.tracks[1].id;
+    const n = store.S.project.tracks.length;
+    ui.setU('takesOpen', { [s1]: true });
+    A.insertTrack(1);
+    const ids = store.S.project.tracks.map(t => t.id);
+    expect(store.S.project.tracks.length).toBe(n + 1);
+    expect(ui.U.takesOpen[ids[2]]).toBe(true); // lane 1's takes followed it to slot 2
+    expect(ui.U.takesOpen[ids[1]]).toBeUndefined(); // the fresh lane has none
+  });
+  it('appending one keeps every lane key where it is', () => {
+    const lanes = store.S.project.tracks, last = lanes[lanes.length - 1].id, n = lanes.length;
+    ui.setU('takesOpen', { [last]: true });
+    A.addTrack();
+    const ids = store.S.project.tracks.map(t => t.id);
+    expect(store.S.project.tracks.length).toBe(n + 1);
+    expect(ui.U.takesOpen[last]).toBe(true);
+    expect(ui.U.takesOpen[ids[ids.length - 1]]).toBeUndefined(); // the appended lane has none
+  });
+});

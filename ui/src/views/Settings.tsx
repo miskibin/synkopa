@@ -12,7 +12,7 @@ import { DEFAULT_FIXED_VELOCITY, keyName, midiFlash, midiFollow, midiStatus, sel
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { Segmented } from '../ui/Knob';
-import { prefs, resetPrefs, setPref } from '../state/prefs';
+import { prefs, resetPrefs, setPref, UI_SCALES } from '../state/prefs';
 import { RACK_SPACINGS, type RackSpacing } from '../state/pattern';
 import { setTheme, THEMES, themeMode, themeName, type ThemeDef } from '../ui/theme';
 import { mix } from '../lib/color';
@@ -21,6 +21,7 @@ import { UpdatesSettings } from './Updates';
 import { setPluginScan } from './FxPicker';
 import type { TranslationKey } from '../lib/i18n';
 import { DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 const RATES = [44100, 48000, 88200, 96000];
 const BUFFERS = [32, 64, 128, 256, 512, 1024, 2048];
@@ -70,7 +71,7 @@ function SettingsDialog() {
   let hostSel!: HTMLSelectElement, outSel!: HTMLSelectElement, inSel!: HTMLSelectElement, chanSel!: HTMLSelectElement, rateSel!: HTMLSelectElement, bufSel!: HTMLSelectElement;
   return (
     <div class="overlay" onPointerDown={() => setU('settings', false)}>
-      <div class="dialog setdlg" role="dialog" aria-modal="true" aria-label={t('d.set.title')} onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key !== 'Escape') e.stopPropagation(); }}>
+      <div class="dialog setdlg" aria-label={t('d.set.title')} ref={el => modal(el, { close: () => setU('settings', false) })} onPointerDown={e => e.stopPropagation()}>
         <nav class="settabs" role="tablist" aria-orientation="vertical" onKeyDown={e => {
           if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
           e.preventDefault();
@@ -80,7 +81,7 @@ function SettingsDialog() {
         }}>
           <div class="settitle"><TabIcon d={ICONS.gear} color="var(--fg3)" plain />{t('d.set.title')}</div>
           <For each={TABS}>{x => (
-            <button role="tab" data-tab={x.id} aria-label={t(x.label)} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
+            <button role="tab" data-tab={x.id} aria-label={t(x.label)} aria-selected={tab() === x.id ? 'true' : 'false'} tabindex={tab() === x.id ? 0 : -1} data-autofocus={tab() === x.id || undefined} class={{ on: tab() === x.id }} onClick={() => pickTab(x.id)}>
               <TabIcon d={x.icon} color={x.color} />
               <span>{t(x.label)}</span>
             </button>
@@ -241,7 +242,6 @@ const OnOff = (p: { on: () => boolean; set: (v: boolean) => void; title?: string
 /** JACK (and PipeWire's JACK) runs every client at the server's rate and period. */
 const serverFixed = (host: string) => host === 'jack';
 const AUTOSAVE = [0, 1, 2, 5, 10];
-const SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
 const RACK_SPACING_KEYS = Object.keys(RACK_SPACINGS) as RackSpacing[];
 
 function GeneralSection() {
@@ -263,12 +263,13 @@ function GeneralSection() {
       <div class="sechd">{t('d.set.sec.edit')}</div>
       <div class="form">
         <Row label={t('d.set.audition')} desc={t('d.set.audition.tip')}><OnOff on={() => prefs().noteAudition} set={v => setPref('noteAudition', v)} /></Row>
+        <Row label={t('d.set.mixAssist')} desc={t('d.set.mixAssist.tip')}><OnOff on={() => prefs().mixAssistant} set={v => setPref('mixAssistant', v)} /></Row>
         <Row label={t('d.set.hints')} desc={t('d.set.hints.tip')}><OnOff on={() => prefs().hints} set={v => setPref('hints', v)} /></Row>
       </div>
       <div class="sechd">{t('d.set.sec.rec')}</div>
       <div class="form">
         <Row label={t('d.set.metro')}><OnOff on={() => S.transport.metro} set={v => void A.setTransportFlag('metro', v)} /></Row>
-        <Row label="Count-in" desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
+        <Row label={t('d.set.countin')} desc={t('d.set.countin.tip')}><OnOff on={() => S.transport.countIn} set={v => void A.setTransportFlag('countIn', v)} /></Row>
       </div>
       <div class="setfoot">
         <span class="note">{t('d.set.reset.note')}</span>
@@ -325,8 +326,8 @@ function LookSection() {
       <div class="sechd">{t('d.set.sec.ui')}</div>
       <div class="form">
         <Row label={t('d.set.scale')} desc={t('d.set.scale.tip')}>
-          <Segmented options={SCALES.map(z => Math.round(z * 100) + '%')} value={() => SCALES.indexOf(prefs().uiScale)}
-            pick={i => setPref('uiScale', SCALES[i])} />
+          <Segmented options={UI_SCALES.map(z => Math.round(z * 100) + '%')} value={() => UI_SCALES.indexOf(prefs().uiScale as typeof UI_SCALES[number])}
+            pick={i => setPref('uiScale', UI_SCALES[i])} />
         </Row>
         <Row label={t('d.set.rackspacing')} desc={t('d.set.rackspacing.tip')}>
           <Segmented options={RACK_SPACING_KEYS.map(k => t(`d.set.rackspacing.${k}`))} value={() => RACK_SPACING_KEYS.indexOf(prefs().rackSpacing)}
@@ -429,11 +430,11 @@ function PluginPickerDialog(props: { insId: number }) {
   const pick = (p: PluginInfo) => { if (A.addPlugin(props.insId, p)) close(); };
   return (
     <div class="overlay" onPointerDown={close}>
-      <div class="dialog" style={{ width: 'min(480px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
-        <div class="hd" style={{ 'margin-bottom': 0 }}><span>{t('d.set.vst.title')}</span><button onClick={close}>×</button></div>
+      <div class="dialog" aria-label={t('d.set.vst.title')} ref={el => modal(el, { close })} style={{ width: 'min(480px,92vw)', display: 'flex', 'flex-direction': 'column', gap: '10px' }} onPointerDown={e => e.stopPropagation()}>
+        <div class="hd" style={{ 'margin-bottom': 0 }}><span>{t('d.set.vst.title')}</span><button aria-label={t('d.upd.btn.close')} onClick={close}>×</button></div>
         <div class="row" style={{ gap: '8px' }}>
-          <input ref={input} class="textin" style={{ flex: 1 }} placeholder={t('d.set.search')} value={q()} onInput={e => setQ(e.currentTarget.value)}
-            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Escape') close(); const first = shown().find(p => !p.unsupported); if (e.key === 'Enter' && first) pick(first); }} />
+          <input ref={input} data-autofocus class="textin" style={{ flex: 1 }} placeholder={t('d.set.search')} value={q()} onInput={e => setQ(e.currentTarget.value)}
+            onKeyDown={e => { const first = shown().find(p => !p.unsupported); if (e.key === 'Enter' && first) pick(first); }} />
           <button class="smallbtn" style={{ height: '26px' }} onClick={() => scan(true)} title={t('d.set.rescan.tip')}>{t('d.set.rescan')}</button>
         </div>
         <Show when={err()}><span class="note err">{err()}</span></Show>

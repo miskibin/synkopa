@@ -357,10 +357,26 @@ impl Engine {
     }
 
     /// Applies ops built against the project once the standard-library samples `files` (file
-    /// names, e.g. `kick-808.flac`) are project sources, as one undo step: `build` gets the
-    /// project with them and each file's source id. Nothing changes when `build` or the ops
-    /// fail. Library samples are decoded from the program, so this is quick.
+    /// names, e.g. `kick-808.flac`) are project sources, as one undo step named "Relink audio":
+    /// `build` gets the project with them and each file's source id. Nothing changes when
+    /// `build` or the ops fail. Library samples are decoded from the program, so this is quick.
     pub fn apply_with_library<F>(&self, files: &[&str], if_revision: Option<u64>, build: F) -> Result<u64, EngineError>
+    where
+        F: FnOnce(&Project, &HashMap<String, Id>) -> Result<Vec<Op>, String>,
+    {
+        self.apply_with_library_labeled(files, if_revision, Some("Relink audio"), build)
+    }
+
+    /// `apply_with_library` with the caller's name for the undo step (the same commit also
+    /// serves actions that only build on library samples, like the chords-to-pattern and the
+    /// MIDI import, and those steps should say what they are).
+    pub fn apply_with_library_labeled<F>(
+        &self,
+        files: &[&str],
+        if_revision: Option<u64>,
+        label: Option<&str>,
+        build: F,
+    ) -> Result<u64, EngineError>
     where
         F: FnOnce(&Project, &HashMap<String, Id>) -> Result<Vec<Op>, String>,
     {
@@ -458,7 +474,7 @@ impl Engine {
                 }
             };
             c.project = p;
-            push_undo(&mut c, before, Some("Relink audio".into()));
+            push_undo(&mut c, before, label.map(str::to_owned));
             c.revision += 1;
             self.sync(&mut c, Dirty { timeline: true, mixer: true, params: true });
             let rev = c.revision;

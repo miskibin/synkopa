@@ -57,18 +57,22 @@ export function pasteClips(cb: Clip[], beat: number, track: number | null, nTrac
 }
 
 /**
- * Resize from an edge. `srcLen` is the source length in beats (audio only; Infinity for patterns).
+ * Resize from an edge. `srcLen` is the length in beats of what the clip shows (the audio, the comp,
+ * the pattern; Infinity for automation): an edge stops at its end and at its start, so a pattern
+ * clip shows its pattern at most once (#245). A clip that already reaches further (a pattern loop
+ * from an older project, a pattern since shortened) keeps what it has, but does not grow.
  * `minL` is the shortest a trim leaves a clip, but a clip that is already shorter keeps its length
  * as its floor: an edge never moves against the drag, so trimming a short clip cannot make it longer.
  */
 export function resizeClip(o: Clip, edge: 'l' | 'r', target: number, minL: number, srcLen: number): Clip {
   const n = { ...o };
+  const bounded = o.kind === 'audio' || o.kind === 'comp' || o.kind === 'pat';
   if (edge === 'r') {
     let len = Math.max(Math.min(minL, o.len), target - o.start);
-    if (o.kind === 'audio' || o.kind === 'comp') len = Math.min(len, srcLen - o.offset);
+    if (bounded) len = Math.min(len, Math.max(srcLen - o.offset, o.len));
     n.len = Math.min(len, TOTAL - o.start);
   } else {
-    const lo = o.kind === 'audio' || o.kind === 'comp' ? o.start - o.offset : 0;
+    const lo = bounded ? o.start - Math.max(0, o.offset) : 0;
     const ns = clamp(target, Math.max(0, lo), o.start + o.len - Math.min(minL, o.len));
     n.start = ns; n.offset = o.offset + (ns - o.start); n.len = o.len - (ns - o.start);
   }
@@ -117,6 +121,8 @@ export function newTrack(id: number, n: number): Track {
  * Insert a lane at index `i`. The op set has no track reorder, so the lane contents are
  * shifted down instead: every track from `i` on takes the data of the one above (ids
  * stay put), a new track is appended at the end, and clips on lanes ≥ i move down one.
+ * A track-volume automation follows its lane to the slot that now holds it, like in
+ * `moveTrackOps` — otherwise it would keep driving the id of the slot above.
  */
 export function insertTrackOps(p: Project, i: number, newId: number): Op[] {
   const ts = p.tracks, n = ts.length, ops: Op[] = [];
@@ -130,6 +136,15 @@ export function insertTrackOps(p: Project, i: number, newId: number): Op[] {
   const moved = p.clips.filter(c => c.track >= i).map(c => ({ ...c, track: c.track + 1 }));
   // putClips validates the track index against the *current* track count, so tracks go first.
   if (moved.length) ops.push({ op: 'putClips', clips: moved });
+  for (const au of p.automations ?? []) {
+    const t = au.target;
+    if (t.kind !== 'trackVol') continue;
+    const old = p.tracks.findIndex(tr => tr.id === t.id);
+    if (old < i) continue;
+    // lane `old` now lives one slot down: under ts[old+1].id, the last lane under the new id
+    const id = old + 1 < n ? ts[old + 1].id : newId;
+    if (id !== t.id) ops.push({ op: 'putAutomation', automation: { ...au, target: { kind: 'trackVol', id } } });
+  }
   return ops;
 }
 

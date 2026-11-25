@@ -3,7 +3,7 @@
 import { fireEvent, render, screen } from '@solidjs/testing-library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockBackend } from '../api/mock';
-import type { Channel } from '../api/types';
+import type { Channel, KeysStatus } from '../api/types';
 import { syncEngine } from '../test/engine';
 import { nextTask, settle } from '../test/settle';
 
@@ -144,5 +144,48 @@ describe('Synkopa Instruments window', () => {
     expect(k.release).toBeUndefined();
     expect(k.articulation).toBeUndefined();
     expect([k.tone, k.width, k.tune]).toEqual([-40, 80, 12]);
+  });
+});
+
+describe('KeysPanel failure paths', () => {
+  it('a failed catalog fetch shows a Retry that fetches the catalog again', async () => {
+    const spy = vi.spyOn(mock, 'keysStatus').mockRejectedValueOnce(new Error('catalog gone'));
+    await open();
+    expect(document.querySelector('.keysmsg.bad')?.textContent).toContain('catalog gone');
+    spy.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg.bad')).toBeNull(); // the retry dismissed the banner
+    expect(document.querySelector('.knm')).not.toBeNull(); // the face recovered with its instrument
+  });
+  it('a loaded-but-empty catalog says so instead of an empty face', async () => {
+    const spy = vi.spyOn(mock, 'keysStatus').mockResolvedValue({ instruments: [] } as never);
+    await open();
+    expect(document.querySelector('.keysmsg')?.textContent).toContain('No instruments');
+    spy.mockRestore();
+  });
+  it('does not claim an empty catalog while the first status is in flight', async () => {
+    let ok!: (s: KeysStatus) => void;
+    const spy = vi.spyOn(mock, 'keysStatus').mockReturnValue(new Promise(r => { ok = r; }));
+    await open();
+    expect(document.querySelector('.keysmsg')).toBeNull(); // no false "No instruments" mid-load
+    ok({ instruments: [] } as never);
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg')?.textContent).toContain('No instruments');
+    spy.mockRestore();
+  });
+  it('a failed download keeps its banner across a successful status refresh', async () => {
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Next instrument' })); // to an uninstalled instrument
+    const spy = vi.spyOn(mock, 'libraryInstall').mockRejectedValueOnce(new Error('kaboom'));
+    fireEvent.click(screen.getByRole('button', { name: /Download/ }));
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg.bad')?.textContent).toContain('kaboom');
+    spy.mockRestore(); // the status fetch inside `finally` now succeeds
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg.bad')?.textContent).toContain('kaboom'); // still retriable
+    fireEvent.click(screen.getByRole('button', { name: /Download/ })); // and a later attempt lands
+    for (let i = 0; i < 4; i++) { await nextTask(); settle(); }
+    expect(document.querySelector('.keysmsg.bad')).toBeNull();
   });
 });

@@ -103,9 +103,9 @@ describe('telemetry decoder', () => {
   });
   it('carries the output underrun count last, like the engine, and reads 0 from older frames', () => {
     const base = { seq: 1, beat: 0, playing: false, recording: false, previewing: false, inLevel: 0, previewPos: -1, cpu: 0.5, ins: [], fx: [], rec: null };
-    // the same 56-byte layout crates/engine/tests/underruns.rs checks on the writer's side
+    // the same 60-byte layout crates/engine/tests/underruns.rs checks on the writer's side
     const buf = encodeFrame({ ...base, underruns: 2 });
-    expect(buf.byteLength).toBe(56);
+    expect(buf.byteLength).toBe(60);
     expect(new DataView(buf).getFloat64(44, true)).toBe(-1);
     expect(new DataView(buf).getUint32(52, true)).toBe(2);
     const d = new TelemetryDecoder();
@@ -210,6 +210,27 @@ describe('op builders', () => {
     expect(resizeClip(clip({ kind: 'pat', start: 4, len: 2 }), 'r', 4.1, 0.5, Infinity).len).toBe(0.5);
     // with the Alt minimum (a 64th) a trim goes below the grid unit
     expect(resizeClip(clip({ kind: 'pat', start: 4, len: 2 }), 'r', 4.125, 1 / 16, Infinity).len).toBe(0.125);
+  });
+  it('stops a pattern clip\'s edges at the pattern\'s end and start (#245)', () => {
+    // an 8-beat pattern
+    const c = clip({ kind: 'pat', start: 4, len: 4, offset: 0 });
+    expect(resizeClip(c, 'r', 40, 0.25, 8).len).toBe(8); // one pass, no loop
+    expect(resizeClip(c, 'r', 10, 0.25, 8).len).toBe(6); // within it: as dragged
+    // trimmed from the left: the window ends at the pattern's end
+    const t = clip({ kind: 'pat', start: 4, len: 2, offset: 3 });
+    expect(resizeClip(t, 'r', 40, 0.25, 8).len).toBe(5);
+    // the left edge stops at the pattern's start (offset 0)
+    expect(resizeClip(t, 'l', 0, 0.25, 8)).toMatchObject({ start: 1, offset: 0, len: 5 });
+    // a clip already longer than its pattern (an older loop, a pattern since shortened) keeps
+    // its length but cannot grow; it can still be shortened, and then not regrown past the pattern
+    const loop = clip({ kind: 'pat', start: 0, len: 16, offset: 0 });
+    expect(resizeClip(loop, 'r', 40, 0.25, 4).len).toBe(16);
+    expect(resizeClip(loop, 'r', 6, 0.25, 4).len).toBe(6);
+    expect(resizeClip(resizeClip(loop, 'r', 2, 0.25, 4), 'r', 40, 0.25, 4).len).toBe(4);
+    // an empty pattern is one bar long: the cap is that bar
+    expect(resizeClip(clip({ kind: 'pat', start: 0, len: 1 }), 'r', 40, 0.25, 4).len).toBe(4);
+    // automation clips are not bounded
+    expect(resizeClip(clip({ kind: 'auto', start: 0, len: 4 }), 'r', 40, 0.25, Infinity).len).toBe(40);
   });
   it('trims a selection together, each clip within its own limits', () => {
     const pat = clip({ id: 1, kind: 'pat', start: 0, len: 4 }), short = clip({ id: 2, kind: 'pat', start: 0, len: 1 });
@@ -320,6 +341,22 @@ describe('op builders', () => {
     expect(q.tracks.map(t => t.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, p.nextId]);
     expect(q.clips.find(c => c.id === 3)!.track).toBe(2);
     expect(q.clips.find(c => c.id === 1)!.track).toBe(0);
+  });
+  it('inserting a track keeps a volume automation on the lane it was made for', () => {
+    const p = sketchProject(cat);
+    const ids = p.tracks.map(t => t.id);
+    const vol = (id: number) => ({ id: 9000 + id, name: 'Vol', target: { kind: 'trackVol', id }, points: [] }) as unknown as NonNullable<typeof p.automations>[number];
+    p.automations = [vol(ids[0]), vol(ids[2])];
+    const q = applyAll(p, insertTrackOps(p, 1, p.nextId));
+    // lane 0 stays put; lane 2's envelope follows its lane down one slot; nothing points at the fresh lane
+    expect(q.automations!.map(a => a.target)).toEqual([{ kind: 'trackVol', id: ids[0] }, { kind: 'trackVol', id: ids[3] }]);
+    // the last lane's envelope lands on the appended track's id
+    const last = ids[ids.length - 1];
+    p.automations = [vol(last)];
+    expect(applyAll(p, insertTrackOps(p, 1, p.nextId)).automations![0].target).toEqual({ kind: 'trackVol', id: p.nextId });
+    // a lane above the insert keeps its own envelope untouched
+    p.automations = [vol(ids[0])];
+    expect(applyAll(p, insertTrackOps(p, 2, p.nextId)).automations![0].target).toEqual({ kind: 'trackVol', id: ids[0] });
   });
 });
 

@@ -249,7 +249,7 @@ function drawComp(g: CanvasRenderingContext2D, v: View, c: Clip, cp: Comp, color
   if (cw > 14) {
     g.fillStyle = sel ? T.clipTextSel : T.clipText; g.font = FONT;
     let tx = cx + 5;
-    if (c.muted) { g.font = '600 9px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; g.font = FONT; }
+    if (c.muted) { g.font = '600 10px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; g.font = FONT; }
     const label = audT ? cp.name + ' · ▶ ' + audT.name : cp.name;
     g.fillText(label, tx, cy + 11);
     const w = g.measureText(label).width;
@@ -390,6 +390,28 @@ export function drawOverlaps(g: CanvasRenderingContext2D, v: View, p: Project, o
   g.restore();
 }
 
+/**
+ * Clips a pattern-length change just resized (#245), on the overlay: an outline that fades out
+ * (`k` 1 → 0). Amber on a clip that stopped at the next clip (it shows part of the pattern).
+ */
+export function drawFollowFlash(g: CanvasRenderingContext2D, v: View, p: Project, ids: ReadonlySet<Id>, stopped: ReadonlySet<Id>, k: number) {
+  if (!ids.size || k <= 0) return;
+  const { offX, offY, W, H, bw, tops } = v;
+  const x0 = offX, x1 = offX + W, y0 = offY, y1 = offY + H;
+  g.save(); g.translate(-offX, -offY);
+  g.lineWidth = 2;
+  for (const c of p.clips) {
+    if (!ids.has(c.id)) continue;
+    const tr = p.tracks[c.track], top = tops[c.track]; if (!tr || top == null) continue;
+    const cx = c.start * bw, cw = Math.max(3, c.len * bw - 1), cy = top + 1, ch = tr.h - 2;
+    if (cx > x1 || cx + cw < x0 || cy > y1 || cy + ch < y0) continue;
+    const col = stopped.has(c.id) ? T.amber : T.blueHi;
+    g.fillStyle = rgba(col, 0.18 * k); g.beginPath(); g.roundRect(cx, cy, cw, ch, 3); g.fill();
+    g.strokeStyle = rgba(col, k); g.beginPath(); g.roundRect(cx + 1, cy + 1, cw - 2, ch - 2, 3); g.stroke();
+  }
+  g.restore();
+}
+
 function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | Source | Automation, sig: string, cx: number, cy: number, cw: number, ch: number, vx0: number, vx1: number, icon: string | null = null) {
   const sel = v.sel.has(c.id), color = src.color, bh = ch - 15, prevAlpha = g.globalAlpha;
   g.save();
@@ -407,7 +429,7 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
   if (cw > 14) {
     g.fillStyle = sel ? T.clipTextSel : T.clipText;
     let tx = cx + 5;
-    if (c.muted) { g.font = '600 9px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; }
+    if (c.muted) { g.font = '600 10px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; }
     if (icon && cw > 30) { drawGlyph(g, icon, tx, cy + 2.5, 10); tx += 13; }
     g.font = FONT; g.fillText(src.name, tx, cy + 11);
     let ax = tx + g.measureText(src.name).width + 5;
