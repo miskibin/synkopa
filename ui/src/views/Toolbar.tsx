@@ -29,7 +29,7 @@ import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { UpdateChip } from './Updates';
-import { AskButton, askChatGPT } from './Ask';
+import { askChatGPT } from './Ask';
 import { setCommandMenus, setPaletteOpen } from './Palette';
 import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
@@ -199,7 +199,6 @@ export function Toolbar() {
             <button class="cmdbtn" title={t('a.cmd.title') + ' (Ctrl+K)'} aria-label={t('a.cmd.title')} onClick={() => setPaletteOpen(true)}>
               <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
             </button>
-            <AskButton />
             <MissingChip />
             {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
             <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
