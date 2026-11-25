@@ -403,9 +403,9 @@ function FxSlot(props: { f: Fx; n: number; insId: Id }) {
       <div style={{ flex: 1, 'min-width': 0, display: 'flex', 'flex-direction': 'column', gap: '1px' }}>
         <span class="ell" style={{ font: '500 12px var(--sans)', color: f().bypass ? 'var(--fg4)' : 'var(--fg-hi)' }}>{A.fxName(f())}</span>
         <Show when={S.fxErrors[f().id]} fallback={
-          <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
+          <span class="ell mono" style={{ 'font-size': '10px', color: 'var(--fg4)' }}>{f().type === 'plugin' ? (f().plugin?.vendor || PLUGIN_FORMAT_LABEL[f().plugin?.format ?? 'vst3'] || 'Plugin') : tName(info().name) + (info().mod ? ' *' : '')}</span>
         }>
-          {e => <span class="ell mono" style={{ 'font-size': '9px', color: 'var(--red)' }} title={unsafeReason(e()) ?? e()}>{tr(unsafeReason(e()) ? 'c.mix.pluginUnsafe' : 'c.mix.pluginNotLoaded')}</span>}
+          {e => <span class="ell mono" style={{ 'font-size': '10px', color: 'var(--red)' }} title={unsafeReason(e()) ?? e()}>{tr(unsafeReason(e()) ? 'c.mix.pluginUnsafe' : 'c.mix.pluginNotLoaded')}</span>}
         </Show>
       </div>
       <Show when={f().type !== 'plugin'}>

@@ -249,7 +249,7 @@ function drawComp(g: CanvasRenderingContext2D, v: View, c: Clip, cp: Comp, color
   if (cw > 14) {
     g.fillStyle = sel ? T.clipTextSel : T.clipText; g.font = FONT;
     let tx = cx + 5;
-    if (c.muted) { g.font = '600 9px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; g.font = FONT; }
+    if (c.muted) { g.font = '600 10px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; g.font = FONT; }
     const label = audT ? cp.name + ' · ▶ ' + audT.name : cp.name;
     g.fillText(label, tx, cy + 11);
     const w = g.measureText(label).width;
@@ -407,7 +407,7 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
   if (cw > 14) {
     g.fillStyle = sel ? T.clipTextSel : T.clipText;
     let tx = cx + 5;
-    if (c.muted) { g.font = '600 9px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; }
+    if (c.muted) { g.font = '600 10px "Geist Mono Variable", monospace'; g.fillText('M', tx, cy + 11); tx += 10; }
     if (icon && cw > 30) { drawGlyph(g, icon, tx, cy + 2.5, 10); tx += 13; }
     g.font = FONT; g.fillText(src.name, tx, cy + 11);
     let ax = tx + g.measureText(src.name).width + 5;

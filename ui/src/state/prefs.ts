@@ -33,11 +33,14 @@ export interface Prefs {
   rackAutoH: boolean;
 }
 
+/** the interface scales offered (Settings → Look, View → Interface scale) */
+export const UI_SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
+
 const KEY = 'wave.prefs';
 const DEFAULTS: Prefs = { lang: 'en', uiScale: 1, clipIcons: true, noteAudition: true, autosaveMin: 2, hints: true, cpuMeter: true, startFullscreen: false, rackSpacing: 'normal', rackAutoH: true };
 
 function load(): Prefs {
-  try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en', rackSpacing: ['roomy', 'wide'].includes(v.rackSpacing) ? v.rackSpacing : 'normal' }; } catch { return { ...DEFAULTS }; }
+  try { const v = JSON.parse(localStorage.getItem(KEY) ?? '{}'); return { ...DEFAULTS, ...v, lang: v.lang === 'pl' ? 'pl' : 'en', uiScale: (UI_SCALES as readonly number[]).includes(v.uiScale) ? v.uiScale : DEFAULTS.uiScale, rackSpacing: ['roomy', 'wide'].includes(v.rackSpacing) ? v.rackSpacing : 'normal' }; } catch { return { ...DEFAULTS }; }
 }
 
 const [prefs, setPrefsSig] = createSignal<Prefs>(DEFAULTS);

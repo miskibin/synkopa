@@ -12,7 +12,7 @@ import { DEFAULT_FIXED_VELOCITY, keyName, midiFlash, midiFollow, midiStatus, sel
 import { S } from '../state/store';
 import { say, setU, U } from '../state/ui';
 import { Segmented } from '../ui/Knob';
-import { prefs, resetPrefs, setPref } from '../state/prefs';
+import { prefs, resetPrefs, setPref, UI_SCALES } from '../state/prefs';
 import { RACK_SPACINGS, type RackSpacing } from '../state/pattern';
 import { setTheme, THEMES, themeMode, themeName, type ThemeDef } from '../ui/theme';
 import { mix } from '../lib/color';
@@ -241,7 +241,6 @@ const OnOff = (p: { on: () => boolean; set: (v: boolean) => void; title?: string
 /** JACK (and PipeWire's JACK) runs every client at the server's rate and period. */
 const serverFixed = (host: string) => host === 'jack';
 const AUTOSAVE = [0, 1, 2, 5, 10];
-const SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
 const RACK_SPACING_KEYS = Object.keys(RACK_SPACINGS) as RackSpacing[];
 
 function GeneralSection() {
@@ -325,8 +324,8 @@ function LookSection() {
       <div class="sechd">{t('d.set.sec.ui')}</div>
       <div class="form">
         <Row label={t('d.set.scale')} desc={t('d.set.scale.tip')}>
-          <Segmented options={SCALES.map(z => Math.round(z * 100) + '%')} value={() => SCALES.indexOf(prefs().uiScale)}
-            pick={i => setPref('uiScale', SCALES[i])} />
+          <Segmented options={UI_SCALES.map(z => Math.round(z * 100) + '%')} value={() => UI_SCALES.indexOf(prefs().uiScale as typeof UI_SCALES[number])}
+            pick={i => setPref('uiScale', UI_SCALES[i])} />
         </Row>
         <Row label={t('d.set.rackspacing')} desc={t('d.set.rackspacing.tip')}>
           <Segmented options={RACK_SPACING_KEYS.map(k => t(`d.set.rackspacing.${k}`))} value={() => RACK_SPACING_KEYS.indexOf(prefs().rackSpacing)}
