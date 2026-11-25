@@ -1003,8 +1003,10 @@ fn run(cx: &Cx, cmd: &str, a: &Args) -> Result<Value, Fail> {
                     args[k] = json!(v);
                 }
             }
-            if let Some(v) = a.get("loop") {
-                // here (without --play) it is a channel loop: a step count, 0 or "off" to clear
+            if a.has("loop") {
+                // here (without --play) it is a channel loop: a step count, 0 or "off" to clear.
+                // A bare --loop is a usage error, not a silent skip
+                let v = a.get("loop").ok_or_else(|| u("--loop needs a step count (0 or \"off\" clears the loop)".into()))?;
                 let n = v
                     .trim()
                     .parse::<u64>()
