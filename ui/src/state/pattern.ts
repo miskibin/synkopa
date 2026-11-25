@@ -140,6 +140,8 @@ type WinKey = 'rackWin' | 'rollWin';
 const dockOf = (k: WinKey) => docked(k === 'rackWin' ? 'rack' : 'roll');
 /** The Channel Rack / Piano roll is open as a floating window (not docked): it counts among the window layer's windows. */
 export const rackFloating = () => !!U.rackWin && !docked('rack');
+/** The Channel Rack is on screen: docked, or floating and not tucked behind the workspace (never in the maximized Mixer). */
+export const rackOnScreen = () => !!U.rackWin && !U.mixView && (docked('rack') || !tucked(U.rackWin.z));
 export const rollFloating = () => !!U.rollWin && !docked('roll');
 /** Bring a pattern window to the front of the window layer (showing the layer if it was tucked away). A docked panel has no front. */
 function front(k: WinKey) {

@@ -5,7 +5,7 @@ import { clamp, panText, volText } from '../lib/format';
 import { stripLabel } from '../lib/mixer';
 import { t as tr, tName } from '../lib/i18n';
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
-import { channels, routeSelectedChannels, selectedChannels } from '../state/pattern';
+import { channels, rackOnScreen, routeSelectedChannels, selectedChannels } from '../state/pattern';
 import { hideMixer, mixFront, revealed, toggleMixView } from '../state/mixView';
 import { openDockMenu, paneDock, paneHeadDown } from '../state/docking';
 import { findPane } from '../lib/dock';
@@ -695,8 +695,8 @@ function MixHead() {
     <>
       <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)' }}><Icon d={MIX_ICON} size={12} /></span>
       <span class="wintitle">{tr('c.mv.mixer')}</span>
-      {/* channels picked in the Channel rack can be sent to the selected insert from here (Ctrl+L); nothing picked, nothing shown */}
-      <Show when={n()}>
+      {/* channels picked in the Channel rack can be sent to the selected insert from here (Ctrl+L); shown only while the rack is on screen with a pick */}
+      <Show when={n() && rackOnScreen()}>
         <button class="chip mvroute" title={tr('c.mv.selHint', { n: n() })} onPointerDown={e => e.stopPropagation()} onClick={e => routeSelectedChannels(U.mixSel, e.shiftKey)}>
           {tr('c.mv.routeBtn', { n: n() })}<kbd>Ctrl L</kbd>
         </button>
