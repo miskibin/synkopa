@@ -385,6 +385,22 @@ vibrato 0.53 → 0.70, forte 0.44 → 0.62, fast forte 0.64 → 0.77, fast piano
 slow piano 0.57 → 0.65, straight 0.63 → 0.68, trill 0.14 → 0.18; **worse**: breathy
 0.62 → 0.54, messa di voce 0.34 → 0.31.
 
+## Effect on Tune to Reference and the agent workflow
+
+Both work on the analysis' notes, so the agent suites were run with and without `--game` (same
+build, `--limit 30 / 16 / 12`). Failed criteria, tracker → GAME:
+
+| suite | failed | what moved |
+| --- | --- | --- |
+| VocalSet (exercises) | 25 → **31** | the agent fixes fewer injected slips (e.g. ±25/±50 ct: 100 % → 60 %; ±40 with intended ±200: 67 % → 17 %) and moves fewer correct notes (cross-singer 16 % → 6 %, other key 35 % → 12 %) |
+| GTSinger (songs) | 16 → **14** | correct notes moved with a reference in another key 9 % → 4 %; vibrato kept with a glissando reference |
+| MedleyDB (a song's lead vocal) | 2 → **1** | slips fixed 46 % → 70 %, correct notes moved 23 % → 15 % |
+
+Tune to Reference passes and fails the same criteria either way (it follows the reference's
+curve; the notes only bound it). The agent's planner was tuned on the tracker's notes; on
+exercise takes GAME's notes leave out some breathy notes and join a few the planner then treats
+as unsure, so it corrects less there; on real songs it corrects more and better.
+
 ## Limitations of the note model
 
 * Breathy singing and long crescendo–decrescendo notes (messa di voce) are transcribed worse than
