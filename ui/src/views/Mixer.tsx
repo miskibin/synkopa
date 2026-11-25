@@ -166,7 +166,10 @@ function StripFx(props: { m: Insert; full: boolean }) {
           </div>
         )}</For>
         <Show when={props.m.fx.length > fit()} fallback={
-          <div class="sfxr add" title={tr('c.mix.addFxTip')} onClick={e => openFxMenu(e.clientX, e.clientY, props.m.id)}>+ {tr('c.mix.addFxShort')}</div>
+          // maximized: only the selected strip offers it (the chain panel beside the strips adds to the selected insert), not a ghost row on every strip
+          <Show when={!props.full || U.mixSel === props.m.id}>
+            <div class="sfxr add" title={tr('c.mix.addFxTip')} onClick={e => openFxMenu(e.clientX, e.clientY, props.m.id)}>+ {tr('c.mix.addFxShort')}</div>
+          </Show>
         }>
           <div class="sfxr more" title={tr('c.mix.fxMoreTip')} onClick={() => A.selectInsert(props.m.id)}>{tr('c.mix.fxMore', { n: props.m.fx.length - fit() })}</div>
         </Show>
