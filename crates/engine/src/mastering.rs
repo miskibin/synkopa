@@ -38,7 +38,8 @@
 //!    beyond 0.5 dB is taken back with the tone bands (at most 2 dB each), and the loudness is
 //!    solved again.
 //!
-//! The ceiling, the crossovers, the width and level match stay what the user set.
+//! The ceiling, the crossovers, the band levels and level match stay what the user set (level
+//! match is off while the listen renders: it would undo the drive the search is measuring).
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
@@ -400,11 +401,15 @@ pub fn listen(
     let mut p = crate::catalog::default_params(FxKind::Master);
     // the user's own choices the listen builds on: the ceiling, where the bands split, the band
     // levels they set and how they compare
-    for k in ["ceil", "xlo", "xhi", "match", "gl", "gm", "gh"] {
+    for k in ["ceil", "xlo", "xhi", "gl", "gm", "gh"] {
         if let Some(v) = current.get(k) {
             p.insert(k.into(), *v);
         }
     }
+    // level match turns the output back down to the input's loudness, so every trial render would
+    // measure the same: the search renders without it and the user's choice is put back at the end
+    let matched = current.get("match").copied();
+    p.insert("match".into(), 0.0);
     p.insert("target".into(), target as f64);
     p.insert("tone".into(), 100.0);
     for (k, g) in ["sub", "low", "mid", "pres", "air"].iter().zip(tone) {
@@ -497,6 +502,10 @@ pub fn listen(
     let (out_lufs, out_tp, out_lra) = measure(&ol, &or, sr).ok_or("the master is silent")?;
     progress(1.0);
     let round = |v: f64| (v * 10.0).round() / 10.0;
+    match matched {
+        Some(v) => p.insert("match".into(), v),
+        None => p.remove("match"),
+    };
     Ok(Listened {
         report: MasterListen {
             seconds: round(l.len() as f64 / f64::from(sr)),

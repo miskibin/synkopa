@@ -153,7 +153,16 @@ pub fn install(id: &str, progress: impl Fn(usize, usize)) -> Result<(), String> 
         }
         let mut resp = crate::net::agent().get(&s.url).call().map_err(|e| format!("{}: {}", s.file, crate::net::explain(&e)))?;
         let mut bytes = Vec::with_capacity(s.bytes as usize);
-        resp.body_mut().as_reader().read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", s.file))?;
+        // never more than the manifest says (a hostile or broken server cannot fill the memory)
+        resp.body_mut().with_config().limit(s.bytes + 1).reader().read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", s.file))?;
+        if bytes.len() as u64 != s.bytes {
+            return Err(format!(
+                "{}: {} bytes instead of {} — the download was cut short or altered; nothing was saved",
+                s.file,
+                bytes.len(),
+                s.bytes
+            ));
+        }
         let got = hex(&Sha256::digest(&bytes));
         if !got.eq_ignore_ascii_case(&s.sha256) {
             return Err(format!("{}: checksum mismatch — the download was altered or damaged; nothing was saved", s.file));

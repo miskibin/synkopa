@@ -103,6 +103,20 @@ fn listen_reaches_the_target_under_the_ceiling() {
 }
 
 #[test]
+fn level_match_does_not_stop_the_listen_reaching_the_target() {
+    let (l, r) = song();
+    let mut cur = crate::catalog::default_params(FxKind::Master);
+    cur.insert("match".into(), 1.0);
+    let got = listen(&l, &r, SR, &cur, 3, &AtomicBool::new(false), &mut |_| {}).unwrap();
+    let rep = &got.report;
+    let goal = f64::from(TARGETS[3]);
+    assert!((rep.out_lufs - goal).abs() <= 0.3, "got {} LUFS for {goal}", rep.out_lufs);
+    assert!(!rep.short);
+    // the user's choice is kept
+    assert_eq!(got.params["match"], 1.0);
+}
+
+#[test]
 fn listen_keeps_the_user_s_ceiling_and_sets_glue() {
     let (l, r) = song();
     let mut cur = crate::catalog::default_params(FxKind::Master);

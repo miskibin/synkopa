@@ -58,4 +58,12 @@ describe('audioToMidi (mock)', () => {
     expect(none.count).toBe(0);
     await expect(be.audioToMidi({ clipId, low: 127 })).rejects.toThrow('no notes');
   });
+  it('converts a transposed clip to the keys the Playlist plays', async () => {
+    const { be, clipId } = await setup();
+    const before = await be.audioToMidi({ clipId, preview: true });
+    const c = (await be.getState()).project.clips.find(x => x.id === clipId)!;
+    await be.applyOps([{ op: 'putClips', clips: [{ ...c, pitch: 3 }] }]);
+    const up = await be.audioToMidi({ clipId, preview: true });
+    expect(up.notes.map(n => n.p)).toEqual(before.notes.map(n => n.p + 3));
+  });
 });

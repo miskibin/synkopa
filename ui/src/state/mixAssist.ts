@@ -2,7 +2,7 @@
 // and the two things the user can do about it. The UI's only permanent trace is a dot on the
 // masker's mixer strip, and only while a collision is reported.
 import { createSignal } from 'solid-js';
-import { be } from '../api/backend';
+import { be, getBackend } from '../api/backend';
 import type { Collision } from '../api/telemetry';
 import type { Id } from '../api/types';
 import { t } from '../lib/i18n';
@@ -71,6 +71,9 @@ export async function ignoreCollision(c: Collision) {
 
 /** The app setting (Settings ▸ Editing); the engine forgets what it heard when switched off. */
 export async function setAssistant(on: boolean) {
-  try { await be().mixAssist('mix_assistant', { on }); } catch { /* an old engine: nothing to switch */ }
+  // the saved setting is applied at startup, before the backend is up: wait for it, or the
+  // engine (which starts with the assistant on) never hears the user switched it off
+  const b = await getBackend();
+  try { await b.mixAssist('mix_assistant', { on }); } catch (e) { console.warn('[wave] mix assistant', e); }
   if (!on) setCollisions([]);
 }

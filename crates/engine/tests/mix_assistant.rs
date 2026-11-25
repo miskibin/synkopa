@@ -256,6 +256,12 @@ fn the_demo_songs_808_masks_its_kick_and_the_fix_ducks_it() {
     // Residual competition may remain, but never reverse the existing sidechain.
     let again = scan(&e, from, to);
     assert!(!again.iter().any(|x| (x.masker, x.protect) == (kick, b808)));
+    // and the clash it fixed does not come back one level up, against the bus the kick feeds
+    // (a second "make room" there would duck the 808 twice, and on every other drum too)
+    assert!(
+        !again.iter().any(|x| x.masker == b808 && x.protect != kick && x.lo < c.hi && c.lo < x.hi),
+        "the fixed clash is reported again: {again:?}"
+    );
 }
 
 /// Mean energy (dB) of `x` (mono, 48 kHz) in a band, over the frames where `mask` is set.

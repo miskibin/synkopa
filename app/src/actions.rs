@@ -478,8 +478,11 @@ pub fn master_listen(
         }
     }
     let base = e.revision();
+    // the flag is cleared when a listen ends, not when it starts: a Stop pressed while the listen
+    // still waits in the edit queue must cancel it
+    let got = e.master_listen(fx_id, target, &MASTER_LISTEN_CANCEL, progress).map_err(|x| x.to_string());
     MASTER_LISTEN_CANCEL.store(false, Relaxed);
-    let got = e.master_listen(fx_id, target, &MASTER_LISTEN_CANCEL, progress).map_err(|x| x.to_string())?;
+    let got = got?;
     let p = e.project();
     let (insert, old) = p.find_fx(fx_id).ok_or("the effect was removed while listening")?;
     let mut fx = old.clone();
