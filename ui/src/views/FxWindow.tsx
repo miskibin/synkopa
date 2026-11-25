@@ -47,7 +47,7 @@ import { onVoicePad, padParams, padToVoice, VoiceViz } from './fx/voice';
 import { StereoViz } from './fx/stereo';
 import { AnalyzerViz } from './fx/analyzer';
 import { dbOf, fOf, mbGeom, mbHit, MultibandViz } from './fx/multiband';
-import { MasterViz } from './fx/master';
+import { MasterViz, msBalDb, msFreq, msGeom, msHit, msLvlDb } from './fx/master';
 import { MasterHeader } from './fx/MasterHeader';
 
 
@@ -77,7 +77,7 @@ function makeViz(f: Fx): Viz | null {
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270, master: 250 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270, master: 340 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -419,8 +419,7 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
   // first view: the target and how loud, the tone the listen chose, glue and the clipper, stereo,
   // the comparison; the band thresholds and crossovers the listen sets are under "Advanced"
   master: [
-    { title: 'c.fx.sec.target', items: [{ stack: [{ id: 'target', small: true }] }] },
-    { title: 'c.fx.sec.loudness', items: [{ id: 'drive', size: 'lg' }, { id: 'ceil' }, { id: 'clip' }] },
+    { title: 'c.fx.sec.loudness', items: [{ stack: [{ id: 'target', small: true }] }, { id: 'drive', size: 'lg' }, { id: 'ceil' }, { id: 'clip' }] },
     { title: 'c.fx.sec.tone', items: [{ id: 'tone' }, { id: 'sub', size: 'sm' }, { id: 'low', size: 'sm' }, { id: 'mid', size: 'sm' }, { id: 'pres', size: 'sm' }, { id: 'air', size: 'sm' }] },
     { title: 'c.fx.sec.glue', items: [{ id: 'ratio', size: 'sm' }] },
     { title: 'c.fx.sec.stereo', items: [{ id: 'width', size: 'sm', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { stack: [{ id: 'mono', labels: ['c.fx.lab.bassStereo', 'Mono'], small: true }] }] },
@@ -634,6 +633,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     else if (got.f.type === 'voice') voiceDown(e);
     else if (got.f.type === 'half') halfDown(e, got.f);
     else if (got.f.type === 'multiband') mbDown(e, got.f);
+    else if (got.f.type === 'master') msDown(e, got.f);
     else if (got.f.type === 'warp') warpDown(e, cv, props.fxId, viz as WarpViz, () => version++);
     else if (got.f.type === 'fet' && e.button === 0) {
       const m = fetModes.get(props.fxId) === 'out' ? 'gr' : 'out';
@@ -666,6 +666,10 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
       const v = viz as MultibandViz, { x, y, W, H } = rel(e), on = mbHit(got.f, x, y, W, H);
       if (on !== v.hover) { v.hover = on; version++; }
       cv.style.cursor = on ? (on[0] === 'x' ? 'ew-resize' : 'ns-resize') : 'default';
+    } else if (got.f.type === 'master') {
+      const v = viz as MasterViz, { x, y, W, H } = rel(e), on = msHit(got.f, x, y, W, H);
+      v.hover = on; v.mouse = { x, y }; version++;
+      cv.style.cursor = on ? (on === 'xlo' || on === 'xhi' ? 'ew-resize' : 'ns-resize') : 'default';
     } else if (got.f.type === 'voice') {
       const v = viz as VoiceViz, { x, y, W, H } = rel(e), on = onVoicePad(x, y, W, H);
       if (on !== v.hover) { v.hover = on; version++; }
@@ -681,6 +685,7 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
     if (got.f.type === 'reverb') { (viz as ReverbViz).hover = null; version++; }
     if (got.f.type === 'analyzer') { (viz as AnalyzerViz).hover = null; version++; }
     if (got.f.type === 'multiband') { (viz as MultibandViz).hover = null; version++; }
+    if (got.f.type === 'master') { const v = viz as MasterViz; v.hover = null; v.mouse = null; version++; }
     if (got.f.type === 'warp') { const w = viz as WarpViz; w.hover = null; w.hoverX = null; version++; }
   };
   /** Pad: click / drag sets Pitch and Formant together (one undo step), double click resets both. */
@@ -750,6 +755,42 @@ function VizCanvas(props: { fxId: Id; pw: PlugWin; height: number }) {
       const op = setParam(props.fxId, id, val); if (op) g.update([op]);
       say(name + ': ' + fmtLong(pd, findFx(props.fxId)?.f.params[id] ?? val));
     }, () => { g.end(); v.drag = null; version++; }, id[0] === 'x' ? 'ew-resize' : 'ns-resize');
+  };
+  /** Master display: drag a tone handle up / down, a crossover sideways or a band threshold up /
+   *  down (one undo step each); double-click = back to its default (a tone band to 0 dB, a
+   *  threshold to off). Dragging a threshold to the top switches that band's glue off. */
+  const msDown = (e: PointerEvent, f: Fx) => {
+    if (e.button !== 0) return;
+    const { x, y, W, H } = rel(e), id = msHit(f, x, y, W, H); if (!id) return;
+    const pd = defOf(f, id); if (!pd) return;
+    e.preventDefault();
+    const name = tName(pd.label);
+    if (e.altKey || dblCheck('ms' + id + props.fxId)) { const op = setParam(props.fxId, id, pd.def); if (op) commit([op], name); return; }
+    const g = new Gesture(name), v = viz as MasterViz, r = cv.getBoundingClientRect(), G = msGeom(r.width, r.height);
+    const isTone = ['sub', 'low', 'mid', 'pres', 'air'].includes(id), isThr = ['tl', 'tm', 'th'].includes(id);
+    const start = f.params[id] ?? pd.def, y0 = msBalDb(y, G);
+    v.drag = id; version++;
+    track(ev => {
+      const cur = findFx(props.fxId)?.f; if (!cur) return;
+      const params = { ...plain(cur.params) };
+      if (id === 'xlo' || id === 'xhi') {
+        let val = msFreq(ev.clientX - r.left, G);
+        // as the effect keeps them: the upper crossover two octaves over the lower, ≥ 1 kHz
+        if (id === 'xlo') val = Math.min(val, (cur.params.xhi ?? 2800) / 4); else val = Math.max(val, (cur.params.xlo ?? 120) * 4, 1000);
+        params[id] = Math.round(clamp(val, pd.min, pd.max));
+      } else if (isThr) {
+        const val = msLvlDb(ev.clientY - r.top, G);
+        params[id] = val > -0.6 ? 0 : Math.round(clamp(val, pd.min, pd.max) * 10) / 10;
+      } else if (isTone) {
+        // the handle follows the pointer; with Tone at 0 % the drag brings Tone back to 100 %
+        if ((cur.params.tone ?? 100) < 5) params.tone = 100;
+        const scale = clamp((params.tone ?? 100) / 100, 0.05, 1);
+        params[id] = Math.round(clamp(start + (msBalDb(ev.clientY - r.top, G) - y0) / scale, pd.min, pd.max) * 10) / 10;
+      }
+      g.update([A.fxOp({ ...plain(cur), params })]);
+      const nv = findFx(props.fxId)?.f.params[id] ?? params[id];
+      say(name + ': ' + (isThr && nv >= -0.05 ? t('c.ms.off') : fmtLong(pd, nv)));
+    }, () => { g.end(); v.drag = null; version++; }, id === 'xlo' || id === 'xhi' ? 'ew-resize' : 'ns-resize');
   };
   const deessDown = (e: PointerEvent, f: Fx) => {
     if (e.button !== 0) return;

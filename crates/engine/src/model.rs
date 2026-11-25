@@ -277,9 +277,16 @@ pub struct MasterListen {
     #[serde(default)]
     pub short: bool,
     /// How far the song's peaks had to come down for the target (clipper + limiter), dB. Above
-    /// `mastering::HEAVY_CUT_DB` it will audibly distort or pump: the window says so.
+    /// `mastering::MAX_CLEAN_CUT_DB` it would audibly distort or pump (see `guarded`).
     #[serde(default)]
     pub peak_cut: f64,
+    /// The target needed more than `mastering::MAX_CLEAN_CUT_DB`: the listen aimed at `aim`
+    /// (the loudest clean level) instead.
+    #[serde(default)]
+    pub guarded: bool,
+    /// The loudness the settings were made for, LUFS (the target, or lower when `guarded`).
+    #[serde(default)]
+    pub aim: f64,
 }
 
 /// Most slots of each Warp map bank.

@@ -5,7 +5,7 @@
 import { Show } from 'solid-js';
 import type { Fx } from '../../api/types';
 import { t } from '../../lib/i18n';
-import { HEAVY_CUT_DB, MASTER_TARGETS, mmss } from '../../lib/master';
+import { MASTER_TARGETS, MAX_CLEAN_CUT_DB, mmss } from '../../lib/master';
 import * as A from '../../state/actions';
 
 export function MasterHeader(props: { fx: Fx }) {
@@ -38,7 +38,7 @@ export function MasterHeader(props: { fx: Fx }) {
                   outTp: l().outTp.toFixed(1), inLra: l().inLra.toFixed(1), outLra: l().outLra.toFixed(1),
                 })}
                 <Show when={l().short}><b class="mswarn"> · {t('c.ms.shortTag')}</b></Show>
-                <Show when={!l().short && (l().peakCut ?? 0) > HEAVY_CUT_DB}><b class="mswarn" title={t('c.ms.heavyTip')}> · {t('c.ms.heavy', { db: (l().peakCut ?? 0).toFixed(1) })}</b></Show>
+                <Show when={l().guarded}><b class="mswarn" title={t('c.ms.guardTip', { max: MAX_CLEAN_CUT_DB })}> · {t('c.ms.guard', { target: MASTER_TARGETS[l().target] ?? -12, db: (l().peakCut ?? 0).toFixed(1) })}</b></Show>
                 <Show when={stale()}><b class="mswarn"> · {t('c.ms.stale', { target: MASTER_TARGETS[Math.round(props.fx.params.target ?? 2)] ?? -12 })}</b></Show>
               </>
             )}

@@ -132,6 +132,7 @@ fn an_impossible_target_is_reported_short() {
     let cur = crate::catalog::default_params(FxKind::Master);
     let got = listen(&x, &x, SR, &cur, 4, &AtomicBool::new(false), &mut |_| {}).unwrap();
     assert!(got.report.short, "{:?}", got.report.out_lufs);
+    assert!(!got.report.guarded, "a quiet sine has no peaks to cut: it is short, not guarded");
     assert_eq!(got.params["drive"], 24.0);
 }
 
@@ -149,8 +150,24 @@ fn the_master_keeps_the_mix_balance_apart_from_its_tone_eq() {
     for (b, d) in drift.iter().enumerate().skip(1) {
         assert!(d.abs() < 1.0, "tone band {b} drifted {d:.2} dB (drift {drift:?}, tone {tone:?})");
     }
-    assert!((rep.out_lufs - f64::from(TARGETS[3])).abs() <= 0.3, "{}", rep.out_lufs);
-    // the report says how hard the peaks were cut: the input's peak-to-loudness minus the target's
-    let expect = (rep.in_tp - rep.in_lufs) - (-1.0 - f64::from(TARGETS[3]));
-    assert!((rep.peak_cut - expect.max(0.0)).abs() < 0.2, "{} vs {expect}", rep.peak_cut);
+    assert!((rep.out_lufs - rep.aim).abs() <= 0.3, "{} vs aim {}", rep.out_lufs, rep.aim);
+}
+
+#[test]
+fn a_target_that_would_squash_the_song_stops_at_the_loudest_clean_level() {
+    // a peaky mix asked for Club −8: the peaks would have to come down far more than stays clean
+    let (l, r) = song();
+    let cur = crate::catalog::default_params(FxKind::Master);
+    let got = listen(&l, &r, SR, &cur, 4, &AtomicBool::new(false), &mut |_| {}).unwrap();
+    let rep = &got.report;
+    assert!(rep.guarded, "{rep:?}");
+    assert!(rep.peak_cut > MAX_CLEAN_CUT_DB, "{}", rep.peak_cut);
+    assert!(rep.aim < f64::from(TARGETS[4]) - 0.5, "aim {}", rep.aim);
+    assert!((rep.out_lufs - rep.aim).abs() <= 0.3, "{} vs aim {}", rep.out_lufs, rep.aim);
+    assert!(!rep.short, "a guarded listen is not a failed one");
+    assert!(got.params["clip"] <= 35.0, "clip {}", got.params["clip"]);
+    // what it aimed at is what stays clean: the peak cut it does is the clean maximum
+    let peak = robust_peak_db(&l, &r, SR);
+    let did = (peak - rep.in_lufs) - (-1.0 - rep.aim);
+    assert!((did - MAX_CLEAN_CUT_DB).abs() < 0.2, "{did}");
 }

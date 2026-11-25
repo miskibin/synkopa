@@ -81,8 +81,14 @@ const RATIO: f64 = 2.0;
 /// Most limiter input gain (= the parameter's range).
 const DRIVE_MAX: f64 = 24.0;
 const TOLERANCE_LU: f64 = 0.1;
-/// Peak reduction (dB) past which a master is audibly squashed: the report flags it.
-pub const HEAVY_CUT_DB: f64 = 8.0;
+/// Most peak reduction (clipper + limiter, dB) the assistant asks for. Past it a master is
+/// audibly squashed (listening tests on a trap mix: 6.7 dB clean, 8.7 dB crunchy and pumping),
+/// so a louder target stops here and says so; the Loudness knob still goes further by hand.
+pub const MAX_CLEAN_CUT_DB: f64 = 7.5;
+/// The clipper takes this share of the peak reduction beyond its first 2 dB, at most
+/// [`MAX_CLIP`] % (67 % crunched the 808; 30 % relieved the limiter without grit).
+const CLIP_PER_DB: f64 = 6.0;
+const MAX_CLIP: f64 = 35.0;
 const MAX_RENDERS: usize = 7;
 
 /// Integrated loudness, true peak, loudness range of a stereo signal. `None` = silent.
@@ -210,6 +216,24 @@ pub fn spectrum(l: &[f32], r: &[f32], sr: f32) -> Vec<f64> {
             10.0 * p.max(1e-30).log10()
         })
         .collect()
+}
+
+/// The song's recurring peak level, dBFS: the largest sample peak of 50 ms blocks once the top
+/// 0.5 % of blocks are set aside.
+pub fn robust_peak_db(l: &[f32], r: &[f32], sr: f32) -> f64 {
+    let hop = ((sr * 0.05) as usize).max(1);
+    let n = l.len().min(r.len());
+    let mut pk: Vec<f32> = (0..n)
+        .step_by(hop)
+        .map(|i| l[i..(i + hop).min(n)].iter().chain(&r[i..(i + hop).min(n)]).fold(0f32, |m, v| m.max(v.abs())))
+        .filter(|p| *p > 1e-6)
+        .collect();
+    if pk.is_empty() {
+        return f64::from(crate::dsp::loudness::FLOOR);
+    }
+    pk.sort_by(f32::total_cmp);
+    let p = pk[((pk.len() - 1) as f64 * 0.995) as usize];
+    20.0 * f64::from(p).log10()
 }
 
 /// `spectrum` minus the reference balance, levelled over 100 Hz–5 kHz.
@@ -376,8 +400,14 @@ pub fn listen(
     };
     // the clipper's share from the peak-to-loudness ratio the song arrives with (the limiter is
     // in every render, so the reduction it will do is read from the input, before it)
-    let reduction = (in_tp - in_lufs) - (ceil - goal);
-    let clip = if reduction > 2.0 { ((reduction - 2.0) * 10.0).clamp(0.0, 70.0).round() } else { 0.0 };
+    // the peaks that recur (a stray spike must not decide how loud the song can go)
+    let peak = robust_peak_db(l, r, sr).min(in_tp);
+    let need = (peak - in_lufs) - (ceil - goal);
+    // a target that needs more than stays clean is lowered to the loudest clean level
+    let guarded = need > MAX_CLEAN_CUT_DB;
+    let goal = if guarded { ceil - (peak - in_lufs - MAX_CLEAN_CUT_DB) } else { goal };
+    let reduction = need.min(MAX_CLEAN_CUT_DB);
+    let clip = if reduction > 2.0 { ((reduction - 2.0) * CLIP_PER_DB).clamp(0.0, MAX_CLIP).round() } else { 0.0 };
     p.insert("clip".into(), clip);
     p.insert("drive".into(), 0.0);
     let (_, _, m0) = render(&p);
@@ -451,7 +481,9 @@ pub fn listen(
             balance: bal.iter().map(|v| round(*v)).collect(),
             balance_out: bal_out.iter().map(|v| round(*v)).collect(),
             short: out_lufs < goal - 0.5,
-            peak_cut: round(reduction.max(0.0)),
+            peak_cut: round(need.max(0.0)),
+            guarded,
+            aim: round(goal),
         },
         params: p,
     })
