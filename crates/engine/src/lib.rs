@@ -1,5 +1,6 @@
 //! `wave-engine` — everything Synkopa does with sound, independent of any window or device.
 
+pub mod audio_midi;
 pub mod autovocal;
 pub mod catalog;
 pub mod chords;

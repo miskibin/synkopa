@@ -3,6 +3,9 @@
 //! sample library, VST3 plugins and the live session the `wave` CLI talks to.
 
 mod actions;
+mod audio_midi_actions;
+#[cfg(test)]
+mod audio_midi_actions_tests;
 mod boot;
 mod chords_actions;
 #[cfg(test)]
@@ -593,6 +596,13 @@ async fn chords_analyze(app: St<'_>, clip_id: u64, detail: Option<String>) -> R<
 async fn chords_to_pattern(app: St<'_>, args: Value) -> R<Value> {
     let a = app.inner().clone();
     tauri::async_runtime::spawn_blocking(move || chords_actions::to_pattern(&*a, &args, None)).await.map_err(es)?
+}
+
+/// Convert to MIDI (preview or convert): see `audio_midi_actions::audio_to_midi`.
+#[tauri::command]
+async fn audio_to_midi(app: St<'_>, args: Value) -> R<Value> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || audio_midi_actions::audio_to_midi(&*a, &args, None)).await.map_err(es)?
 }
 
 #[tauri::command]
@@ -1478,6 +1488,7 @@ pub fn run(project_arg: Option<&str>) {
             chords_model_install,
             chords_analyze,
             chords_to_pattern,
+            audio_to_midi,
             stems_model_status,
             stems_model_install,
             extract_stems,

@@ -20,6 +20,7 @@ import { recTarget, recUntil } from '../lib/recTarget';
 import { closeMenu, openMenu, openRename, revealReq, say, setU, U, type MenuItem } from '../state/ui';
 import { showInsert } from '../state/mixView';
 import { openStems } from '../state/stems';
+import { openAudioMidi } from '../state/audioMidi';
 import { dblCheck, dragCursor, edgeScroller, escCancels, fineMul, panDrag, track } from '../ui/drag';
 import { fitSpan, zoomScroll, zoomToRange } from '../lib/viewNav';
 import { barsText } from '../lib/pattern';
@@ -1334,6 +1335,7 @@ export function Playlist() {
           { t: 'item', label: tl('a.pl.detectTempoKey'), act: () => A.openMusicAnalysis({ clipId: c.id }) } as MenuItem,
           { t: 'item', label: tl('a.pl.trimRegion'), title: tl('d.smp.trim.tip'), act: () => void A.trimClip(c.id) } as MenuItem,
           { t: 'item', label: tl('a.pl.extractStems'), title: tl('a.pl.extractStemsTip'), act: () => openStems(c.id) } as MenuItem,
+          { t: 'item', label: tl('a.pl.toMidi'), title: tl('a.pl.toMidiTip'), disabled: c.ref in S.missing, act: () => openAudioMidi(c.id) } as MenuItem,
           { t: 'sub', label: tl('a.pl.autoVocal'), items: [
             { t: 'item', label: tl('a.pl.autoVocalSing'), act: () => void A.autoVocal(c.id, 'natural'), title: tl('a.pl.autoVocalSingTip') },
             { t: 'item', label: tl('a.pl.autoVocalRap'), act: () => void A.autoVocal(c.id, 'hard'), title: tl('a.pl.autoVocalRapTip') },

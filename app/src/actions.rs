@@ -97,6 +97,7 @@ pub const ALL_COMMANDS: &[&str] = &[
     "chords_model_install",
     "chords_analyze",
     "chords_to_pattern",
+    "audio_to_midi",
     "auto_vocal_plan",
     "auto_vocal",
     "bake_rider",
@@ -2086,6 +2087,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         return r;
     }
     if let Some(r) = crate::chords_actions::control(app, cmd, a, if_revision) {
+        return r;
+    }
+    if let Some(r) = crate::audio_midi_actions::control(app, cmd, a, if_revision) {
         return r;
     }
     match cmd {

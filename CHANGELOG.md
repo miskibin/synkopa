@@ -14,6 +14,11 @@ shown in the app after an update and is published as the release notes (see
   pitch editor's notes and **Copy notes** into the Piano roll follow the melody as it was sung.
   Without it nothing changes. The chip beside **Copy notes** shows which finder is in use; also
   `synkopa note-model [--install]`.
+- **Convert to MIDI.** Right-click an audio clip → **Convert to MIDI…** turns its melody into Piano roll
+  notes in a new pattern right under it, on a new piano or a channel you pick, as one undo step. The
+  preview shows the sung pitch and the notes it will write, and follows the settings as you change them:
+  the shortest note kept, timing as sung or on a grid, velocity following the singing or fixed, and a
+  key range that drops octave slips. Pitch edits on the clip are included. Also `synkopa audio-to-midi`.
 
 ## 0.9.34 — 2026-11-24
 

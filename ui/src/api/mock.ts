@@ -31,9 +31,11 @@ import { clamp, dbg } from '../lib/format';
 import { t } from '../lib/i18n';
 import { midiToHz, noteAt, scaleMask, simpleTarget, snapNote } from '../lib/pitch';
 import { collectMelody, melodyFit, melodyTarget } from '../lib/melody';
+import { MELODY_DEFAULTS, melodyNotes, type HeardNote, type MelodyOptions } from '../lib/audioMidi';
 import { newFx } from '../lib/presets';
 import { synthVocal, vocalAt, vocalPeaks, type VocalSample } from './mockVocal';
 import type {
+  AudioToMidiArgs, AudioToMidiResult,
   PreviewWave,
   AudioConfig, AudioStatus, LatencyReport, AnyBuiltinKind, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Catalog, Clip, ExportAudioOptions, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, Fx, Id, KeysStatus, LibraryFiles, LibraryList, Melody, MelodyChannel, MidiDevice, MidiStatus, MusicAnalysis, ChordAnalysis, ChordDetail, ChordModelStatus, ChordQuality, ChordSegment, ChordsToPatternResult, Op, OpenResult, PitchAnalysis, PitchTarget, Project, RefTune, MidiBecomes, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Channel, Note, Pattern, SaveResult, RecentProject, Source, StateDto, Track, TransportDto, PluginInfo, PluginParam, PluginRef, PluginScan, PluginCrashSuspect, RelinkCandidate,
   ExtractStemsResult, StemId, StemModelStatus, StemsProgress,
@@ -1115,31 +1117,46 @@ export class MockBackend implements Backend {
     const from = Math.min(Math.max(a.from ?? an.start, an.start), an.end), to = Math.min(Math.max(a.to ?? an.end, from), an.end);
     const segs = chordsIn(an.segments, from, to);
     if (!segs.length) throw new Error('no chords were detected in that part of the clip');
-    if (a.channel != null && !(this.p.channels ?? []).some(ch => ch.id === a.channel)) throw new Error(`no channel ${a.channel}`);
-    const clip = this.p.clips.find(x => x.id === a.clipId)!;
+    const start = Math.floor(segs[0].start / 4) * 4;
+    const src = this.p.sources.find(x => x.id === this.p.clips.find(c => c.id === a.clipId)?.ref)?.name ?? '';
+    const made = this.putPatternUnderClip({
+      clipId: a.clipId, channel: a.channel ?? null, name: src ? `Chords – ${src}` : 'Chords', color: '#e0a44a', start,
+      end: segs[segs.length - 1].end, label: 'Send chords to piano roll',
+    }, ch => {
+      const notes: Note[] = [];
+      let up: number[] | null = null;
+      for (const s of segs) {
+        const keys = voiceChord(s.root, s.quality, up);
+        for (const k of keys) notes.push({ ch, step: (s.start - start) * 4, len: (s.end - s.start) * 4, p: k, v: 0.8, trig: false });
+        up = keys.slice(1);
+      }
+      return notes;
+    });
+    return { ...made, chords: segs.length };
+  }
+  /** The engine's `put_pattern_under_clip` (app/src/chords_actions.rs): a pattern from bar beat `start` to at least `end`
+   *  on `channel` (else a new Synkopa Keys piano), its clip on the first free track below the audio, one undo step. */
+  private putPatternUnderClip(
+    pl: { clipId: Id; channel: Id | null; name: string; color: string; start: number; end: number; label: string },
+    notesFor: (ch: Id) => Note[],
+  ): { patternId: Id; channelId: Id; newChannel: boolean; clipId: Id | null; track: number; start: number; revision: number } {
+    const clip = this.p.clips.find(x => x.id === pl.clipId);
+    if (!clip) throw new Error('the clip is gone');
+    if (pl.channel != null && !(this.p.channels ?? []).some(ch => ch.id === pl.channel)) throw new Error(`no channel ${pl.channel}`);
     const prev = this.p, ops: Op[] = [];
     let next = this.p.nextId;
-    let ch = a.channel ?? null;
+    let ch = pl.channel;
     if (ch == null) {
       ch = next++;
-      ops.push({ op: 'putChannel', channel: { id: ch, name: KEYS_CATALOG.find(i => i.id === KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano', color: '#e0a44a', kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 } });
+      ops.push({ op: 'putChannel', channel: { id: ch, name: KEYS_CATALOG.find(i => i.id === KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano', color: pl.color, kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 } });
     }
-    const start = Math.floor(segs[0].start / 4) * 4;
-    const notes: Note[] = [];
-    let up: number[] | null = null;
-    for (const s of segs) {
-      const keys = voiceChord(s.root, s.quality, up);
-      for (const k of keys) notes.push({ ch, step: (s.start - start) * 4, len: (s.end - s.start) * 4, p: k, v: 0.8, trig: false });
-      up = keys.slice(1);
-    }
-    const len = Math.max(4, Math.ceil((segs[segs.length - 1].end - start) / 4) * 4);
-    const src = this.p.sources.find(x => x.id === clip.ref)?.name ?? '';
-    const base = src ? `Chords – ${src}` : 'Chords';
+    const start = pl.start;
+    const len = Math.max(4, Math.ceil((pl.end - start) / 4) * 4);
     const taken = (n: string) => this.p.patterns.some(p => p.name === n);
-    let name = base;
-    for (let k = 2; taken(name); k++) name = `${base} ${k}`;
+    let name = pl.name;
+    for (let k = 2; taken(name); k++) name = `${pl.name} ${k}`;
     const patternId = next++;
-    ops.push({ op: 'putPattern', pattern: { id: patternId, name, color: '#e0a44a', len, minLen: 4, notes } });
+    ops.push({ op: 'putPattern', pattern: { id: patternId, name, color: pl.color, len, minLen: 4, notes: notesFor(ch) } });
     const nt = this.p.tracks.length;
     const free = (t: number) => !this.p.clips.some(x => x.track === t && x.start < start + len && x.start + x.len > start);
     const order = [...Array.from({ length: Math.max(0, nt - clip.track - 1) }, (_, i) => clip.track + 1 + i), ...Array.from({ length: Math.min(clip.track + 1, nt) }, (_, i) => i)];
@@ -1148,9 +1165,59 @@ export class MockBackend implements Backend {
     if (nt > 0) ops.push({ op: 'putClips', clips: [newClip(clipId, track, start, len, 'pat', patternId)] });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
-    // the engine commits this through `apply_with_library_labeled` with the same name
-    this.pushUndo(prev, 'Send chords to piano roll'); this.changed();
-    return { patternId, channelId: ch, newChannel: a.channel == null, clipId: nt > 0 ? clipId : null, track, start, chords: segs.length, revision: this.revision };
+    // the engine commits this through `apply_with_library_labeled` with the same label
+    this.pushUndo(prev, pl.label); this.changed();
+    return { patternId, channelId: ch, newChannel: pl.channel == null, clipId: nt > 0 ? clipId : null, track, start, revision: this.revision };
+  }
+  /** The engine's `audio_to_midi` (app/src/audio_midi_actions.rs) on the mock's synthetic vocal: the clip's notes
+   *  (its own edited notes when it has some) through the same conversion (`lib/audioMidi.ts`). */
+  async audioToMidi(a: AudioToMidiArgs): Promise<AudioToMidiResult> {
+    for (const k of ['low', 'high'] as const) {
+      const x = a[k];
+      if (x != null && (x < 0 || x > 127)) throw new Error(`BAD_ARGS: \`${k}\` must be a MIDI key 0–127`);
+    }
+    if (a.low != null && a.high != null && a.low > a.high) throw new Error('BAD_ARGS: `low` is above `high`');
+    if (a.channel != null && !(this.p.channels ?? []).some(ch => ch.id === a.channel)) throw new Error(`no channel ${a.channel}`);
+    const an = await this.pitchAnalyze(a.clipId);
+    const c = this.p.clips.find(x => x.id === a.clipId)!;
+    const spb = 60 / this.p.bpm, st = c.stretch ?? 1;
+    const region: [number, number] = [c.offset * spb / st, (c.offset + c.len) * spb / st];
+    const beatOf = (t: number) => c.start + t * st / spb - c.offset;
+    const median = (f0: number, f1: number) => {
+      const v = an.curve.slice(f0, f1).filter((x): x is number => x != null).sort((x, y) => x - y);
+      return v.length ? v[v.length >> 1] : null;
+    };
+    const own = c.tune?.notes?.length ? c.tune.notes : null;
+    const spans = own ?? an.notes.map(n => ({ start: n.start, end: n.end, shift: 0, gain: 0 }));
+    const heard: HeardNote[] = spans.flatMap(n => {
+      const f0 = Math.floor(n.start * an.rate), f1 = Math.min(an.levels.length, Math.ceil(n.end * an.rate));
+      const m = median(f0, f1); if (m == null) return [];
+      const lv = an.levels.slice(f0, f1).reduce((s, x) => s + x, 0) / Math.max(1, f1 - f0);
+      return [{ start: n.start, end: n.end, pitch: m + (n.shift ?? 0) / 100, level: lv * dbg(n.gain ?? 0) }];
+    });
+    const o: MelodyOptions = {
+      shortest: clamp(a.shortest ?? MELODY_DEFAULTS.shortest, 0, 2), quantize: clamp(a.quantize ?? 0, 0, 16),
+      velocity: a.velocity == null ? null : clamp(a.velocity, 0, 1), low: a.low ?? null, high: a.high ?? null,
+    };
+    const notes = melodyNotes(heard, region, beatOf, o);
+    const keys = heard.filter(n => n.end > region[0] && n.start < region[1]).map(n => clamp(Math.round(n.pitch), 0, 127)).sort((x, y) => x - y);
+    const q = (p: number) => keys[Math.round((keys.length - 1) * p)];
+    const bar = notes.length ? Math.floor(notes[0].step / 16) * 16 : 0;
+    const end = notes.reduce((m, n) => Math.max(m, n.step + n.len), bar);
+    const res: AudioToMidiResult = {
+      clipId: a.clipId, count: notes.length, notes: notes.map(n => ({ ...n, step: Math.round((n.step - bar) * 1000) / 1000 })), start: bar / 4,
+      takeRange: keys.length ? [q(0.05), q(0.95)] : null,
+      low: notes.length ? Math.min(...notes.map(n => n.p)) : null, high: notes.length ? Math.max(...notes.map(n => n.p)) : null,
+      backend: this.f0Backend, noteBackend: this.noteBackend, edited: !!own,
+    };
+    if (a.preview) return res;
+    if (!notes.length) throw new Error('no notes were found in the part of the clip the Playlist plays');
+    const src = this.p.sources.find(x => x.id === c.ref)?.name ?? '';
+    const made = this.putPatternUnderClip(
+      { clipId: a.clipId, channel: a.channel ?? null, name: src ? `Melody – ${src}` : 'Melody', color: '#4f8ef7', start: bar / 4, end: end / 4, label: 'Convert melody to MIDI' },
+      ch => res.notes.map(n => ({ ch, step: n.step, len: n.len, p: n.p, v: n.v, trig: false })),
+    );
+    return { ...res, patternId: made.patternId, channelId: made.channelId, newChannel: made.newChannel, patternClipId: made.clipId, track: made.track, revision: made.revision };
   }
   /** Same contract as the engine's `auto_vocal_plan`, with fixed measurements of a typical take
    *  (the real calibration renders the audio; the mock has no audio to render). */
