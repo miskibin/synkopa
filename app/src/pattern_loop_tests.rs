@@ -142,6 +142,26 @@ fn setting_a_loop_keeps_the_pattern_length_and_its_clips() {
 }
 
 #[test]
+fn a_loop_set_raises_min_len_only_when_the_trim_would_shorten() {
+    // another channel's late note holds the length: the loop on Hat trims nothing that
+    // matters, so min_len stays the sketch's — and deleting that late note shrinks the
+    // pattern again
+    let h = host();
+    let pid = pattern_id(&h);
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "steps": "x." }), None).unwrap();
+    pattern(&h, &json!({ "id": pid, "ch": "Clap", "notes": [{ "step": 24, "len": 1 }] }), None).unwrap();
+    pattern(&h, &json!({ "id": pid, "ch": "Hat", "loop": 3 }), None).unwrap();
+    let proj = h.engine().project();
+    let pt = proj.patterns.iter().find(|x| x.id == pid).unwrap();
+    assert_eq!((pt.len, pt.min_len), (8.0, 4.0), "min_len stays the user's");
+    // the later deletion shrinks again
+    pattern(&h, &json!({ "id": pid, "ch": "Clap", "clear": true }), None).unwrap();
+    let proj = h.engine().project();
+    let pt = proj.patterns.iter().find(|x| x.id == pid).unwrap();
+    assert_eq!((pt.len, pt.min_len), (4.0, 4.0));
+}
+
+#[test]
 fn a_stamp_past_the_loop_refuses() {
     // a chord past the loop would be trimmed right after: the stamp refuses instead of
     // returning a successful reply full of notes nothing plays

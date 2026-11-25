@@ -3,7 +3,7 @@ import { samplerDefault, TOTAL_BEATS, type Channel, type Note, type Pattern, typ
 import { applyAll } from './applyOps';
 import {
   followChanges, migrateSamplerEnvelope,
-  BEAT_GAP, burnChannelLoop, cellStep, cellsBetween, fitCw, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
+  BEAT_GAP, burnChannelLoop, cellStep, cellsBetween, fitCw, fitLen, gridW, stepAt, stepX, contentLen, duplicateRight, fillEvery, isRollRow, isStepOn, migrateProject, moveNotes, noteAt, resizeNotes,
   rotate, samplerError, setChannelLoop, setKeyAt, setPanAt, setShiftAt, shiftOf, MAX_SHIFT, setStep, setVelAt, snapStep, stepSpans, swingOffset, transpose,
 } from './pattern';
 
@@ -345,18 +345,21 @@ describe('channel loops (FL 20.1 channel looping)', () => {
     expect(p3.channelLoops).toEqual({ [String(BASS)]: 4 });
   });
 
-  it('setChannelLoop holds the pattern length as the minimum when it trims', () => {
-    // the trimmed note at step 24 was the pattern's last content: the length the pattern
-    // had becomes minLen, so fitting never shrinks it and whole-pass clips never re-target
-    const p1 = setChannelLoop({ ...mkPt([hat(0), hat(24)]), len: 8 }, BASS, 3);
-    expect(p1.minLen).toBe(8);
+  it('setChannelLoop raises minLen only when the trim would shorten the pattern', () => {
+    // another channel's late note holds the length: setting a loop on BASS trims nothing
+    // that matters, so minLen stays the user's — and a later deletion of that late note
+    // shrinks the pattern again
+    const other: Note = { ch: 999, step: 24, len: 1, trig: false };
+    const p1 = setChannelLoop({ ...mkPt([hat(0), other]), len: 8 }, BASS, 3);
     expect(steps(p1.notes, BASS)).toEqual([0]);
-    // clearing keeps the cell and leaves minLen alone
-    const p2 = setChannelLoop(p1, BASS, 0);
-    expect(p2.minLen).toBe(8);
-    // a pattern whose remaining content still sets a longer length is unaffected
-    const p3 = setChannelLoop({ ...mkPt([hat(0), hat(24)], undefined, 8), minLen: 8 }, BASS, 3);
+    expect(p1.minLen).toBe(4);
+    expect(fitLen(structuredClone(p1)).len).toBe(8);
+    const later = { ...p1, notes: p1.notes.filter(n => n.ch !== 999) };
+    expect(fitLen(structuredClone(later)).len).toBe(4);
+    // a trim that WOULD shorten holds the length the pattern had as the minimum
+    const p3 = setChannelLoop({ ...mkPt([hat(0), hat(24)]), len: 8 }, BASS, 3);
     expect(p3.minLen).toBe(8);
+    expect(fitLen(structuredClone(p3)).len).toBe(8);
   });
 
   it('burnChannelLoop writes every repeat as a real step and removes the loop', () => {

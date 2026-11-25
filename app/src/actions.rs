@@ -1922,10 +1922,11 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
             }
         }
     }
-    // the loop contract: setting or trimming for a loop never shrinks the pattern (the
-    // trimmed late note can be the pattern's last content), so the length the pattern had
-    // when the loop ran becomes the minimum — whole-pass clips never re-target
-    if loop_touched {
+    // the loop contract: setting or trimming for a loop never shrinks the pattern. The
+    // length the pattern had becomes the minimum only when the remaining notes would
+    // otherwise fall short of it — if they still reach it, min_len stays the user's and a
+    // later deletion of the note that holds the length shrinks the pattern again
+    if loop_touched && Pattern::content_len(&pt.notes) < pre_loop_len {
         pt.min_len = pt.min_len.max(pre_loop_len);
         pt.fit_len();
     }

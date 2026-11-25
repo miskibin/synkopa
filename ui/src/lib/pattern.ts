@@ -50,9 +50,11 @@ export function setChannelLoop(p: Pattern, ch: Id, loop: number): Pattern {
   const loops: Record<string, number> = { ...(p.channelLoops ?? {}) };
   if (loop > 0) loops[String(ch)] = loop; else delete loops[String(ch)];
   const notes = loop > 0 ? p.notes.filter(n => !(n.ch === ch && n.step >= loop)) : p.notes;
-  // the trim can remove the pattern's last content: the length the pattern had stays the
-  // minimum, so fitting never shrinks it and whole-pass clips never re-target
-  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined, ...(loop > 0 ? { minLen: Math.max(p.minLen ?? BAR, p.len) } : {}) };
+  // the length the pattern had becomes the minimum only when the trim would otherwise
+  // shorten it: if the remaining notes still reach that length, minLen stays the user's
+  // (deleting the late note that holds it shrinks the pattern again)
+  const holds = loop > 0 && contentLen(notes) < p.len;
+  return { ...p, notes, channelLoops: Object.keys(loops).length ? loops : undefined, ...(holds ? { minLen: Math.max(p.minLen ?? BAR, p.len) } : {}) };
 }
 /** The channel's loop materialized: every repeat becomes a real step, the loop goes (FL's
  * "Burn to pattern"). Notes already past the old loop are cleared first (they never played). */
