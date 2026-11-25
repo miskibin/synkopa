@@ -316,7 +316,30 @@ pub fn params(kind: FxKind) -> &'static [ParamDef] {
         p("um", "Mid up thresh", -90.0, 0.0, -41.8, "dB", false),
         p("uh", "High up thresh", -90.0, 0.0, -40.8, "dB", false),
     ];
+    // order = dsp::master::idx
+    const MASTER: &[ParamDef] = &[
+        choice("target", "Target", 2.0, &crate::dsp::master::TARGET_NAMES),
+        p("drive", "Loudness", 0.0, 24.0, 0.0, "dB", false),
+        p("ceil", "Ceiling", -6.0, 0.0, -1.0, "dBTP", false),
+        p("tone", "Tone", 0.0, 100.0, 100.0, "%", false),
+        p("sub", "Sub", -6.0, 6.0, 0.0, "dB", false),
+        p("low", "Low", -6.0, 6.0, 0.0, "dB", false),
+        p("mid", "Mid", -6.0, 6.0, 0.0, "dB", false),
+        p("pres", "Presence", -6.0, 6.0, 0.0, "dB", false),
+        p("air", "Air", -6.0, 6.0, 0.0, "dB", false),
+        p("xlo", "Low / mid", 40.0, 500.0, 120.0, "Hz", true),
+        p("xhi", "Mid / high", 1000.0, 8000.0, 2800.0, "Hz", true),
+        p("tl", "Low thresh", -40.0, 0.0, 0.0, "dB", false),
+        p("tm", "Mid thresh", -40.0, 0.0, 0.0, "dB", false),
+        p("th", "High thresh", -40.0, 0.0, 0.0, "dB", false),
+        p("ratio", "Ratio", 1.0, 4.0, 2.0, ":1", false),
+        p("width", "Width", 0.0, 150.0, 100.0, "%", false),
+        choice("mono", "Bass mono", 0.0, &["Off", "On"]),
+        p("clip", "Clip", 0.0, 100.0, 0.0, "%", false),
+        choice("match", "Level match", 0.0, &["Off", "On"]),
+    ];
     match kind {
+        FxKind::Master => MASTER,
         FxKind::Stereo => STEREO,
         FxKind::Analyzer => ANALYZER,
         FxKind::Multiband => MULTIBAND,
@@ -365,11 +388,12 @@ pub fn type_name(kind: FxKind) -> &'static str {
         FxKind::Stereo => "Stereo",
         FxKind::Analyzer => "Analyzer",
         FxKind::Multiband => "Multiband",
+        FxKind::Master => "Master",
         FxKind::Plugin => "Plugin",
     }
 }
 
-pub const BUILTIN: [FxKind; 21] = [
+pub const BUILTIN: [FxKind; 22] = [
     FxKind::Denoise,
     FxKind::Tune,
     FxKind::Voice,
@@ -390,6 +414,7 @@ pub const BUILTIN: [FxKind; 21] = [
     FxKind::Stereo,
     FxKind::Reverb,
     FxKind::Limit,
+    FxKind::Master,
     FxKind::Analyzer,
 ];
 
@@ -423,6 +448,7 @@ pub fn new_fx(id: Id, kind: FxKind, bpm: f64) -> Fx {
         bands: None,
         plugin: None,
         maps: None,
+        listen: None,
         key: None,
     };
     if kind == FxKind::Eq {
@@ -1012,6 +1038,7 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
                 mb("Master — lekko", 12.0, 150.0, 55.0, 75.0, 0.0, 0.0, 95.0, 2800.0, [0.0, 0.0, 0.0]),
             ]
         }
+        FxKind::Master => vec![],
         FxKind::Plugin => vec![],
     }
 }
@@ -1045,6 +1072,7 @@ pub fn latency(fx: &Fx, sample_rate: f32) -> usize {
         // look-ahead delays the audio so the gain is already down when the "s" arrives
         FxKind::Limit => crate::dsp::limiter_v2::latency_samples(fx.params.get("look").copied().unwrap_or(3.0) as f32, sample_rate),
         FxKind::Warp => crate::dsp::warp::LATENCY,
+        FxKind::Master => crate::dsp::master::latency_samples(sample_rate),
         // look-ahead delays the sound so the gate is open when a hit arrives
         FxKind::Gate => crate::dsp::gate::latency_samples(fx.params.get("look").copied().unwrap_or(0.0), sample_rate),
         FxKind::Deess => ((fx.params.get("look").copied().unwrap_or(5.0).clamp(0.0, 15.0) / 1000.0) * sample_rate as f64) as usize,

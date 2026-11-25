@@ -197,6 +197,9 @@ pub enum FxKind {
     Analyzer,
     /// Three-band upward + downward compression, the "OTT" sound (`dsp::multiband`).
     Multiband,
+    /// Mastering chain: tone EQ, three-band glue, width, clipper, true-peak limiter; set from a
+    /// whole-song listen (`dsp::master`, `mastering`).
+    Master,
     /// A hosted plugin (VST3 or LV2, see [`PluginRef::format`]). Written as `"plugin"`;
     /// projects from before LV2 support say `"vst3"`, which still loads.
     #[serde(alias = "vst3")]
@@ -242,6 +245,37 @@ pub struct Fx {
     /// not its own insert; checked by `putFx` so the routing stays a DAG.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key: Option<Id>,
+    /// Master only: what its last whole-song listen measured and decided (`mastering::listen`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub listen: Option<MasterListen>,
+}
+
+/// A Master's whole-song listen: the song as it reaches the effect, the decisions taken, and
+/// the result measured through the effect. Shown by the effect's window; kept in the project
+/// so reopening it still explains the settings.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MasterListen {
+    /// Length of audio heard, seconds.
+    pub seconds: f64,
+    /// Target index (`dsp::master::TARGETS`) the settings were made for.
+    pub target: u32,
+    /// The input: integrated loudness (LUFS), true peak (dBTP), loudness range (LU).
+    pub in_lufs: f64,
+    pub in_tp: f64,
+    pub in_lra: f64,
+    /// The output with the settings applied.
+    pub out_lufs: f64,
+    pub out_tp: f64,
+    pub out_lra: f64,
+    /// Input spectrum minus the reference balance, dB, one value per third-octave band of
+    /// `mastering::THIRDS` (positive = more than the reference).
+    pub balance: Vec<f64>,
+    /// The same after the tone EQ.
+    pub balance_out: Vec<f64>,
+    /// The loudness asked for could not be reached within the limiter's range.
+    #[serde(default)]
+    pub short: bool,
 }
 
 /// Most slots of each Warp map bank.

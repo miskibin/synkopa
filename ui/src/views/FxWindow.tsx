@@ -47,6 +47,8 @@ import { onVoicePad, padParams, padToVoice, VoiceViz } from './fx/voice';
 import { StereoViz } from './fx/stereo';
 import { AnalyzerViz } from './fx/analyzer';
 import { dbOf, fOf, mbGeom, mbHit, MultibandViz } from './fx/multiband';
+import { MasterViz } from './fx/master';
+import { MasterHeader } from './fx/MasterHeader';
 
 
 function makeViz(f: Fx): Viz | null {
@@ -71,10 +73,11 @@ function makeViz(f: Fx): Viz | null {
     case 'stereo': return new StereoViz();
     case 'analyzer': return new AnalyzerViz();
     case 'multiband': return new MultibandViz();
+    case 'master': return new MasterViz();
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270, master: 250 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -94,6 +97,7 @@ const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   stereo: 'c.fx.hint.stereo',
   analyzer: 'c.fx.hint.analyzer',
   multiband: 'c.fx.hint.multiband',
+  master: 'c.fx.hint.master',
 };
 
 export { moveWindow };
@@ -160,7 +164,7 @@ export function FxWindow(props: { pw: PlugWin; z: number }) {
 }
 
 /** Dry/wet of the effect (fx.mix), automatable. */
-const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'analyzer', 'multiband']);
+const OWN_MIX = new Set<string>(['reverb', 'delay', 'sat', 'fet', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'analyzer', 'multiband', 'master']);
 function MixControl(props: { fx: Fx }) {
   const target = () => ({ kind: 'mix' as const, fxId: props.fx.id });
   const val = () => autoDisplay(target()) ?? props.fx.mix ?? 1;
@@ -412,6 +416,18 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.bands', adv: true, items: [{ id: 'gl', size: 'sm' }, { id: 'gm', size: 'sm' }, { id: 'gh', size: 'sm' }] },
     { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
   ],
+  // first view: the target and how loud, the tone the listen chose, glue and the clipper, stereo,
+  // the comparison; the band thresholds and crossovers the listen sets are under "Advanced"
+  master: [
+    { title: 'c.fx.sec.target', items: [{ stack: [{ id: 'target', small: true }] }] },
+    { title: 'c.fx.sec.loudness', items: [{ id: 'drive', size: 'lg' }, { id: 'ceil' }, { id: 'clip' }] },
+    { title: 'c.fx.sec.tone', items: [{ id: 'tone' }, { id: 'sub', size: 'sm' }, { id: 'low', size: 'sm' }, { id: 'mid', size: 'sm' }, { id: 'pres', size: 'sm' }, { id: 'air', size: 'sm' }] },
+    { title: 'c.fx.sec.glue', items: [{ id: 'ratio', size: 'sm' }] },
+    { title: 'c.fx.sec.stereo', items: [{ id: 'width', size: 'sm', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { stack: [{ id: 'mono', labels: ['c.fx.lab.bassStereo', 'Mono'], small: true }] }] },
+    { title: 'c.fx.sec.compare', items: [{ stack: [{ id: 'match', small: true }] }] },
+    { title: 'c.fx.sec.thresholds', adv: true, items: [{ id: 'tl', size: 'sm' }, { id: 'tm', size: 'sm' }, { id: 'th', size: 'sm' }] },
+    { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
+  ],
   // first view: when it opens and how deep it closes, its times, Gate/Duck and look-ahead, and
   // what it listens to; the side-chain band and the detector are under "Advanced"
   gate: [
@@ -543,6 +559,7 @@ function Body(props: { fx: Fx }): JSX.Element {
         <div class="ctlrow"><div class="segp"><span class="lab">{t('c.sc.title').toUpperCase()}</span><KeyPicker fx={props.fx} /></div></div>
       </Show>
       <Show when={kind() === 'tune'}><TuneHeader fx={props.fx} /></Show>
+      <Show when={kind() === 'master'}><MasterHeader fx={props.fx} /></Show>
       <Show when={kind() !== 'eq'}><Sections fx={props.fx} /></Show>
     </>
   );

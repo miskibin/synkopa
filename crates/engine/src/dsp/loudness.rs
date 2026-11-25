@@ -38,15 +38,15 @@ const TP_TAPS: usize = 12;
 pub const FLOOR: f32 = -200.0;
 
 #[derive(Clone, Copy, Default)]
-struct Bq {
+pub(crate) struct Bq {
     b: [f64; 3],
     a: [f64; 3],
-    z: [f64; 2],
+    pub(crate) z: [f64; 2],
 }
 
 impl Bq {
     #[inline(always)]
-    fn run(&mut self, x: f64) -> f64 {
+    pub(crate) fn run(&mut self, x: f64) -> f64 {
         let y = self.b[0] * x + self.z[0];
         self.z[0] = self.b[1] * x - self.a[1] * y + self.z[1];
         self.z[1] = self.b[2] * x - self.a[2] * y;
@@ -55,7 +55,7 @@ impl Bq {
 }
 
 /// The two K-weighting stages for `sr`.
-fn k_weighting(sr: f64) -> (Bq, Bq) {
+pub(crate) fn k_weighting(sr: f64) -> (Bq, Bq) {
     use std::f64::consts::PI;
     // stage 1: high shelf
     let (f0, g, q) = (1681.974450955533, 3.999843853973347, 0.7071752369554196);

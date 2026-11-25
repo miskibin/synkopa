@@ -18,6 +18,11 @@ export const FX_ART: Record<FxKind, string> = {
   <rect x="43" y="30" width="14" height="44" rx="3" fill="#F97316"/>
   <rect x="66" y="40" width="14" height="34" rx="3" fill="#C2410C"/>
   <path d="M17 38h20 M40 26h20 M63 34h20" stroke="#7C2D12" stroke-width="3.5" stroke-linecap="round"/>`),
+  master: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FEF3C7"/>
+  <path d="M16 66c8-2 10-14 18-14s8 8 16 8 10-22 18-22 8 6 16 6" stroke="#B45309" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M16 30h68" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="22" y="70" width="10" height="6" rx="2" fill="#FBBF24"/><rect x="45" y="70" width="10" height="6" rx="2" fill="#F59E0B"/><rect x="68" y="70" width="10" height="6" rx="2" fill="#D97706"/>`),
   analyzer: svg(`
   <rect x="10" y="18" width="80" height="64" rx="12" fill="#E2E8F0"/>
   <path d="M16 70c6-4 8-30 14-30s7 18 12 18 8-28 14-28 8 22 14 26 6 6 14 6" stroke="#334155" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>

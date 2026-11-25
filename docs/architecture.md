@@ -432,7 +432,9 @@ Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/mo
 hysteresis, hold and look-ahead, `docs/gate-filter.md`), `filter` (SVF, ladder and DJ filter moved by an LFO or an
 envelope follower, `docs/gate-filter.md`), `stereo` (width,
 mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
-compression, the OTT sound, `dsp/multiband.rs`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
+compression, the OTT sound, `dsp/multiband.rs`), `master` (tone EQ, three-band glue with width and bass mono, 2×
+soft clipper, true-peak limiter, level match; `dsp/master.rs`, set by a whole-song listen in `mastering.rs` through
+the `master_listen` action, which stores its report in `Fx.listen`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
 field; the sound passes unchanged, `dsp/loudness.rs`), `reverb`, `limit`,
 `plugin` (a hosted VST3 or LV2 effect: `plugin: {format,path,cid,name,vendor,state}`, see
 [Hosted plugins](#hosted-plugins); files from before LV2 support say `vst3`, which still loads
@@ -871,6 +873,7 @@ u32 nCol  × { u32 masker, u32 protect, f32 lo, f32 hi,         // mix assistant
 | `gate` | `[0]` detector level dBFS, peak or RMS as `det` picks (own input or sidechain, after the side-chain band), `[1]` gain dB, `[2]` state (0 closed, 1 open, 2 hold, 3 closing), `[3]` 1 while it listens to a sidechain. Latency = look-ahead (0/1/2/5/10 ms), compensated by PDC |
 | `filter` | `[0]`/`[1]` cutoff left/right now Hz, `[2]` envelope 0..1, `[3]` LFO phase 0..1, `[4]` DJ: how much of the filter is heard, `[5]` 1 while the soft clip works, `[6]` 1 with a sidechain. Zero latency |
 | `stereo` | `[0]` correlation out, `[1]` balance −1 (left) … +1 (right), `[2]` side/mid dB out, `[3]` correlation below 120 Hz, `[4]` correlation in, `[5]` side/mid dB in, `[6]` bass mono crossover Hz, `[7]` 1 while there is bass to judge. Zero latency; the window also gets X/Y points (`xy`) |
+| `master` | `[0..3]` band glue gain dB (≤ 0) low/mid/high, `[3]` clipper dB, `[4]` limiter dB, `[5]` input short-term loudness (K-weighted, ~3 s), `[6]` output loudness before level match, `[7]` level-match gain dB, `[8..11]` band detector level dB. Latency: limiter look-ahead (3 ms) + the clipper's 2× half-bands |
 | `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |
 | `analyzer` | `[0]` momentary LUFS, `[1]` short-term LUFS, `[2]` integrated LUFS (−200 = not yet), `[3]` loudness range LU (−1 = not yet), `[4]` true-peak hold dBTP, `[5]` true peak of the last 100 ms, `[6]` correlation, `[7]` balance, `[8]` seconds measured, `[9]` side/mid dB. Integrated, range and the hold restart when playback starts. Zero latency; X/Y points and a long FFT (8192) for the bass bands of `specOut` |
 | `delay` | see `docs/delay.md`: `[0]`/`[1]` read heads L/R ms, `[2]` loop dBFS, `[3]` drive reduction dB, `[4]` LFO, `[5]` model, `[6]` wet dBFS, `[7]` set time ms. Zero latency |

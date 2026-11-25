@@ -147,6 +147,71 @@ impl Engine {
         Ok(d.collisions())
     }
 
+    /// What reaches effect `fx_id` over the whole song (`0..song_end`, 2 s of tail): the project
+    /// with that effect and everything after it on its insert taken out, the insert's fader,
+    /// pan and width at unity (they come after the effects in the chain). On the master that is
+    /// the mix; on another insert its stem as the effect hears it. Interleaved stereo at 48 kHz.
+    pub fn render_fx_input(
+        &self,
+        fx_id: Id,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(RenderProgress),
+    ) -> Result<Vec<f32>, EngineError> {
+        let (insert, end) = {
+            let c = self.core.lock();
+            let insert = c.project.find_fx(fx_id).map(|(m, _)| m.id).ok_or_else(|| EngineError::Msg(format!("no effect {fx_id}")))?;
+            (insert, c.project.song_end())
+        };
+        if end <= 0.0 {
+            return Err(EngineError::Msg("the song is empty: there is nothing to listen to".into()));
+        }
+        let scope = move |p: Project| {
+            let mut p = if insert == 0 { p } else { stem_project(p, insert) };
+            if let Some(m) = p.inserts.iter_mut().find(|m| m.id == insert) {
+                if let Some(at) = m.fx.iter().position(|f| f.id == fx_id) {
+                    m.fx.truncate(at);
+                }
+                m.vol = crate::model::VOL_UNITY;
+                m.pan = 0.0;
+                m.width = 1.0;
+                m.muted = false;
+            }
+            p
+        };
+        self.render_scoped(&scope, 0.0, end, RenderTail::Seconds(2.0), 48000, cancel, progress, None)
+    }
+
+    /// The Master's assistant on effect `fx_id` (`mastering::listen`): renders what reaches it
+    /// over the whole song, then measures and sets it. `target`: index into
+    /// `dsp::master::TARGETS` (`None` = the effect's own Target). Read-only: the caller applies
+    /// the returned params and report with `PutFx`.
+    pub fn master_listen(
+        &self,
+        fx_id: Id,
+        target: Option<usize>,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(f32),
+    ) -> Result<crate::mastering::Listened, EngineError> {
+        let (params, own_target) = {
+            let c = self.core.lock();
+            let (_, fx) = c.project.find_fx(fx_id).ok_or_else(|| EngineError::Msg(format!("no effect {fx_id}")))?;
+            if fx.kind != FxKind::Master {
+                return Err(EngineError::Msg(format!("effect {fx_id} is not a Master")));
+            }
+            (fx.params.clone(), fx.params.get("target").copied().unwrap_or(2.0).round().max(0.0) as usize)
+        };
+        // the render is the first ~40 % of the work, the assistant's own renders the rest
+        let mut on_render = |r: RenderProgress| {
+            if let RenderProgress::Rendering { done, total, .. } = r {
+                progress(0.4 * done as f32 / total.max(1) as f32);
+            }
+        };
+        let x = self.render_fx_input(fx_id, cancel, &mut on_render)?;
+        let (l, r): (Vec<f32>, Vec<f32>) = x.as_chunks::<2>().0.iter().map(|f| (f[0], f[1])).unzip();
+        crate::mastering::listen(&l, &r, 48000.0, &params, target.unwrap_or(own_target), cancel, &mut |p| progress(0.4 + 0.6 * p))
+            .map_err(|e| if e == "cancelled" { EngineError::Cancelled } else { EngineError::Msg(e) })
+    }
+
     /// Beat range of a pattern export: the whole pattern from its first beat (`None`: no such pattern).
     pub fn pattern_range(project: &Project, pattern: Id) -> Option<(f64, f64)> {
         project.patterns.iter().find(|p| p.id == pattern).map(|p| (0.0, p.len.max(BAR_BEATS)))
