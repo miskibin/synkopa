@@ -16,6 +16,7 @@ mod links;
 #[cfg(test)]
 mod markers_tests;
 mod midi_actions;
+mod mix_assist;
 mod models;
 mod pitch_actions;
 #[cfg(target_os = "linux")]
@@ -459,6 +460,17 @@ async fn sidechain(
     })
     .await
     .map_err(es)?
+}
+
+/// Mix assistant (`mix_assist.rs`): the switch, collisions, the fix (on request), ignoring a pair.
+/// The undo label rides in `args.label`.
+#[tauri::command]
+async fn mix_assist(app: St<'_>, cmd: String, args: Value) -> R<Value> {
+    if !mix_assist::COMMANDS.contains(&cmd.as_str()) {
+        return Err(format!("not a mix assistant command: {cmd}"));
+    }
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || actions::control(&*a, &cmd, &args, None, None)).await.map_err(es)?
 }
 
 /// FX chain presets (`fx_chains.rs`): list, save, load onto an insert, rename, delete.
@@ -1468,6 +1480,7 @@ pub fn run(project_arg: Option<&str>) {
             relink_search,
             midi,
             fx_chain,
+            mix_assist,
             flatten_comp,
             export_in_place,
             comp_audition,

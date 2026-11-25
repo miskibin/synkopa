@@ -197,6 +197,7 @@ pub fn base() -> Project {
         markers: vec![marker(80, 0.0, "Intro"), marker(81, 16.0, "Hook")],
         key: Some(9),
         scale: 2,
+        mask_ignore: vec![],
         next_id: 100,
     }
 }

@@ -4,6 +4,20 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Added
+- **Mix assistant.** While you play, Synkopa listens for mixer tracks that cover each other: both
+  loud in the same frequencies at the same time, bar after bar, like a kick and an 808 at 50 Hz.
+  Only then a small amber badge appears on the track that should give way; click it to **Make
+  room** or **Ignore this pair**. Nothing changes until you click. Make room adds an ordinary EQ
+  whose one dynamic band dips that range only while the other track hits (keyed through the same
+  sidechain the Compressor uses), so the 808 keeps its weight between kicks. Switch it off in
+  Settings ▸ Editing. From the command line: `synkopa mix`, `mix fix N`, `mix ignore N`.
+- **Sidechain for the EQ.** An EQ with dynamic bands can listen to another mixer track (*Sidechain*
+  under its graph): each dynamic band then moves only while that track is loud in the band — duck a
+  pad's mids under the vocal, or a bass's low end under the kick.
+
 ## 0.9.34 — 2026-11-24
 
 ### Added

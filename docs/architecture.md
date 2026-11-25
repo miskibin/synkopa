@@ -256,7 +256,7 @@ drag or wheel a cable's level, right-click it for 100 % / only here / remove; th
 chip is the output into the master. Docked, a strip's right-click menu has *Send to* and
 *Output to Master*, and the chain header says where the insert goes.
 
-**Sidechain** (`Fx.key`, a Compressor, Gate or Filter: `FxKind::takes_key`): the effect's detector (the Filter: its envelope follower) hears
+**Sidechain** (`Fx.key`, a Compressor, Gate, Filter or EQ: `FxKind::takes_key`): the effect's detector (the Filter: its envelope follower; the EQ: every dynamic band's band-pass detector, so a band moves only while the key is loud *in that band*, releasing in 25 ms instead of 80) hears
 another insert's post-fader output (mono, of this very block) instead of its own input, and the
 gain lands on its own insert, so a kick ducks the bass. A key is a dependency edge in
 `routing::order`: the listening insert runs at a deeper level than its key, so the key costs no
@@ -272,7 +272,26 @@ one project). The Compressor's `meters[0]` is the level its detector heard, so i
 the key (labelled SC) against the gain reduction. Two ways in: the Compressor window's
 Sidechain source menu, and the source strip's *Sidechain to ▸* (FL's "Sidechain to this
 track": keys the target's first free Compressor or adds one set up for ducking, a second click
-removes it; a Gate or Filter is keyed from its own window); the maximized mixer draws each sidechain as a dashed cable tagged SC.
+removes it; a Gate, Filter or EQ is keyed from its own window — the EQ's picker shows under its graph once it has a dynamic band); the maximized mixer draws each sidechain as a dashed cable tagged SC.
+
+**Mix assistant** (`crates/engine/src/masking.rs`, `app/src/mix_assist.rs`): while playing,
+every non-master insert's post-fader output goes, mono, to its own tap ring (`Rt::mask_taps`,
+only when `Shared::assist` is on; the audio thread only copies a block, dropping it when the ring
+is full); the housekeeping thread, outside the project lock (`Engine::mask`), folds them into
+third-octave band levels (8192-point FFT every 2048 samples) and scores every pair of inserts that
+do not feed each other: a band is a hit when both are above −60 dBFS, both within 15 dB of their
+own loudest band and within 12 dB of each other. Hits add their time, misses take half of it back;
+a pair is reported at 3 s net, cleared under 1 s, and only while both sound. The steadier insert in
+the colliding bands (less level deviation) is the masker. A collision a more specific one already
+covers (the 808 against the drum bus *and* against the kick in it) is left out. Reports reach the
+UI in the telemetry frame; `Engine::masking_scan` runs the same detector over an offline render
+(CLI, agents). Nothing is changed automatically: the fix (`masking::fix_fx`, applied only by the
+`unmask` action — the badge's *Make room for X*, `synkopa mix fix N`) is an ordinary EQ appended
+to the masker, one bell over the range (Q ≤ 1.4), dynamic range −6 dB, threshold 15 dB under the
+protected insert's recent peak there, keyed from it through the standard sidechain above (same
+validation, ordering, stems and cables). Pairs in `Project.maskIgnore` (`setMaskIgnore`) and pairs
+the masker already gives way in (an active Compressor, or an EQ with a dynamic band, keyed from
+the other insert) are not reported.
 
 PAT mode (L) loops the current pattern and follows
 it when it changes. The loop plays the pattern itself, not its place in the song: a channel
@@ -688,6 +707,10 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `midi` | `{cmd: "midi_inspect", args: {path}}` | `{bpm, tempoChanges, warnings, end, parts: [{index, track, channel (1–16), name, program, gmName, drums, notes, becomes}]}` — a standard MIDI file (format 0/1, `crates/engine/src/midi_file.rs`); `becomes` = `{kind:"drums", drums}` / `{kind:"keys"}` / `{kind:"synth", preset}` |
 | `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or Synkopa Instruments) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
 | `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + 4/4, one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
+| `mix_assist` | `{cmd: "mix_assistant", args: {on?}}` | `{on}` — the live detector (Settings ▸ Mix assistant; on by default) |
+| `mix_assist` | `{cmd: "masking", args: {scan?, from?, to?}}` | `{live, collisions: [{masker, maskerName, protect, protectName, lo, hi, center, overlap, keyDb}]}` — live: what the stream heard; `scan` (or no stream): `Engine::masking_scan` over the beats (default the song or loop) |
+| `mix_assist` | `{cmd: "unmask", args: {masker, protect, lo, hi, keyDb, label?}}` | `{fxId, insert, revision}` — appends `masking::fix_fx` (an EQ keyed from `protect`) to the masker, one undo step |
+| `mix_assist` | `{cmd: "mask_ignore", args: {a, b, label?}}` | `{revision}` — adds the pair to `maskIgnore` (`setMaskIgnore`) |
 | `fx_chain` | `{cmd: "fx_chains", args: {}}` | `{dir, presets: [{name, effects: [{type, name}], plugins, error?}]}` — FX chain presets in the user's library (`app/src/fx_chains.rs`): one `<name>.wavechain` JSON file each in `%LOCALAPPDATA%\WAVE\FX Chains` |
 | `fx_chain` | `{cmd: "fx_chain_save", args: {insert, name, overwrite?}}` | `{name, effects}` — the insert's effects in order (parameters, EQ bands, dry/wet, bypass, Warp maps, VST3 state); never its volume, pan, name, colour or routing; an existing name fails with `EXISTS:` |
 | `fx_chain` | `{cmd: "fx_chain_load", args: {insert, name, mode?: "replace"\|"append"}}` | `{revision, fxIds, replaced, failed: [{fxId, name, error}]}` — one undo step, fresh ids; an insert with effects needs `mode`; a VST3 that will not load keeps its slot and state |
@@ -812,6 +835,8 @@ u32 rec             // 0, or 1 followed by:
     u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]   // new [min,max] pairs at 100/s
 f64 patBeat         // beats into the pattern the loop preview plays; −1 = stopped (decoders treat a missing field as −1)
 u32 underruns       // output underruns since the engine started: callbacks slower than their period + driver xruns (missing = 0)
+u32 nCol  × { u32 masker, u32 protect, f32 lo, f32 hi,         // mix assistant collisions (missing = none), worst first:
+              f32 center, f32 overlap, f32 keyDb }              // Hz, Hz, Hz, 0..1, the protected insert's recent peak dBFS in lo..hi
 ```
 
 ## Performance budget

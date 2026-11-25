@@ -148,9 +148,9 @@ fn a_sidechain_must_come_from_another_existing_non_master_insert_without_a_loop(
     assert!(refused(bass, duck(7001, Some(0), bpm)), "not the master");
     assert!(refused(bass, duck(7001, Some(bass), bpm)), "not its own insert");
     assert!(refused(bass, duck(7001, Some(424242), bpm)), "not a missing insert");
-    let mut eq = new_fx(7001, FxKind::Eq, bpm);
-    eq.key = Some(drums);
-    assert!(refused(bass, eq), "only effects that take a key");
+    let mut delay = new_fx(7001, FxKind::Delay, bpm);
+    delay.key = Some(drums);
+    assert!(refused(bass, delay), "only effects that take a key");
 
     put(&e, bass, duck(7001, Some(drums), bpm));
     // the drums listening back to the bass would close a loop

@@ -8,6 +8,7 @@
 //   u32 rec (0 | 1 + {u32 track, f64 clipStart, f32 seconds, u32 peakOffset, u32 nPeaks, f32 peaks[2*nPeaks]})
 //   f64 patBeat (beats into the pattern the loop preview plays; −1 = stopped; absent in old frames)
 //   u32 underruns (output underruns since the engine started: late callbacks + driver xruns; absent in old frames)
+//   u32 nCol × {u32 masker, u32 protect, f32 lo, f32 hi, f32 center, f32 overlap, f32 keyDb} (mix assistant; absent = none)
 //
 // The decoder writes into long-lived objects so a 60 Hz stream does not allocate per frame.
 
@@ -37,6 +38,9 @@ export interface RecFrame {
   peaks: Float32Array; // view of length 2*nPeaks (reused buffer)
 }
 
+/** A mix assistant collision: `masker` covers `protect` in `lo`..`hi` Hz (crates/engine/src/masking.rs). */
+export interface Collision { masker: number; protect: number; lo: number; hi: number; center: number; overlap: number; keyDb: number }
+
 export interface Frame {
   seq: number; beat: number;
   playing: boolean; recording: boolean; previewing: boolean;
@@ -45,6 +49,8 @@ export interface Frame {
   patBeat: number;
   /** Output underruns since the engine started (never decreases; the UI keeps its own reset). */
   underruns: number;
+  /** Mix assistant collisions, worst first. A new array only when they changed (compare by identity). */
+  collisions: Collision[];
   ins: Map<number, { l: number; r: number }>;
   /** fx present in *this* frame (analysis frames only). */
   fxIds: number[];
@@ -54,7 +60,7 @@ export interface Frame {
 export class TelemetryDecoder {
   frame: Frame = {
     seq: 0, beat: 0, playing: false, recording: false, previewing: false,
-    inLevel: 0, previewPos: -1, cpu: 0, patBeat: -1, underruns: 0, ins: new Map(), fxIds: [], rec: null,
+    inLevel: 0, previewPos: -1, cpu: 0, patBeat: -1, underruns: 0, collisions: [], ins: new Map(), fxIds: [], rec: null,
   };
   /** Latest analysis per fx id (persists across frames that carry no fx). */
   fx = new Map<number, FxFrame>();
@@ -135,7 +141,30 @@ export class TelemetryDecoder {
         o += n * 4;
       } else f.rec = null;
       f.patBeat = o + 8 <= buf.byteLength ? v.getFloat64(o, true) : -1; o += 8;
-      f.underruns = o + 4 <= buf.byteLength ? v.getUint32(o, true) : 0;
+      f.underruns = o + 4 <= buf.byteLength ? v.getUint32(o, true) : 0; o += 4;
+      const nCol = o + 4 <= buf.byteLength ? v.getUint32(o, true) : 0; o += 4;
+      if (nCol && o + nCol * 28 > buf.byteLength) return false;
+      // usually the same few entries every frame: build a new array only when something moved
+      // by more than display precision, so readers can compare by identity
+      const cur = f.collisions;
+      let same = cur.length === nCol;
+      for (let i = 0; same && i < nCol; i++) {
+        const b = o + i * 28, c = cur[i];
+        same = c.masker === v.getUint32(b, true) && c.protect === v.getUint32(b + 4, true)
+          && Math.abs(c.lo - v.getFloat32(b + 8, true)) < 0.5 && Math.abs(c.hi - v.getFloat32(b + 12, true)) < 0.5;
+      }
+      if (!same) {
+        const next: Collision[] = [];
+        for (let i = 0; i < nCol; i++) {
+          const b = o + i * 28;
+          next.push({ masker: v.getUint32(b, true), protect: v.getUint32(b + 4, true), lo: v.getFloat32(b + 8, true), hi: v.getFloat32(b + 12, true),
+            center: v.getFloat32(b + 16, true), overlap: v.getFloat32(b + 20, true), keyDb: v.getFloat32(b + 24, true) });
+        }
+        f.collisions = next;
+      } else {
+        // overlap and key level drift slowly: refresh them in place (no new array)
+        for (let i = 0; i < nCol; i++) { const b = o + i * 28; cur[i].center = v.getFloat32(b + 16, true); cur[i].overlap = v.getFloat32(b + 20, true); cur[i].keyDb = v.getFloat32(b + 24, true); }
+      }
     } catch {
       return false;
     }
@@ -161,6 +190,7 @@ export interface EncFrame {
   inLevel: number; previewPos: number; cpu: number;
   patBeat?: number;
   underruns?: number;
+  collisions?: Collision[];
   ins: { id: number; l: number; r: number }[];
   fx: EncFx[];
   rec: null | { track: number; clipStart: number; seconds: number; peakOffset: number; peaks: ArrayLike<number> };
@@ -169,7 +199,8 @@ export interface EncFrame {
 export function encodeFrame(f: EncFrame): ArrayBuffer {
   const recBytes = f.rec ? 24 + f.rec.peaks.length * 4 : 0;
   const xyBytes = f.fx.reduce((a, e) => a + (e.xy?.length ?? 0) * 4, 0);
-  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + xyBytes + 4 + recBytes + 8 + 4;
+  const nCol = f.collisions?.length ?? 0;
+  const size = 36 + f.ins.length * 12 + 4 + f.fx.length * FX_BYTES + xyBytes + 4 + recBytes + 8 + 4 + 4 + nCol * 28;
   const buf = new ArrayBuffer(size);
   const v = new DataView(buf);
   v.setUint32(0, MAGIC, true);
@@ -206,6 +237,12 @@ export function encodeFrame(f: EncFrame): ArrayBuffer {
     v.setUint32(o, 0, true); o += 4;
   }
   v.setFloat64(o, f.patBeat ?? -1, true); o += 8;
-  v.setUint32(o, (f.underruns ?? 0) >>> 0, true);
+  v.setUint32(o, (f.underruns ?? 0) >>> 0, true); o += 4;
+  v.setUint32(o, nCol, true); o += 4;
+  for (const c of f.collisions ?? []) {
+    v.setUint32(o, c.masker, true); v.setUint32(o + 4, c.protect, true); v.setFloat32(o + 8, c.lo, true); v.setFloat32(o + 12, c.hi, true);
+    v.setFloat32(o + 16, c.center, true); v.setFloat32(o + 20, c.overlap, true); v.setFloat32(o + 24, c.keyDb, true);
+    o += 28;
+  }
   return buf;
 }

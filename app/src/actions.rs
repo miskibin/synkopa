@@ -101,6 +101,10 @@ pub const ALL_COMMANDS: &[&str] = &[
     "midi_inspect",
     "midi_import",
     "midi_export",
+    "mix_assistant",
+    "masking",
+    "unmask",
+    "mask_ignore",
     "fx_chains",
     "fx_chain_save",
     "fx_chain_load",
@@ -1199,6 +1203,7 @@ pub fn schema() -> Value {
             "removeSource": {"id": 0},
             "setBpm": {"bpm": 128},
             "setLoop": {"loop": {"a": 0, "b": 16}},
+            "setMaskIgnore": {"pairs": [[6, 7]]},
             "putAutomation": {"automation": {"id": 0, "name": "Reverb mix", "color": "#e0a44a", "target": {"kind": "fx|mix|insertVol|insertPan|trackVol|chanVol|chanPan|synth|keys|musicBox|clipGain|clipPan", "fxId": 0, "chanId": 0, "param": "fx: mix or band:<i>:f|g|q; synth: catalog id; keys: release|dynamics|attack|tone|width|tune|noise; musicBox: ring|brightness|body|mechanical|spread|release", "id": "insert/track/channel/clip id for vol/pan/gain"}, "points": [{"t": 0, "v": 0.2}, {"t": 8, "v": 0.8, "tension": -0.4}, {"t": 12, "v": 0.5, "shape": "hold"}]}},
             "removeAutomation": {"id": 0},
             "transformNotes": {"pattern": 1, "verb": {"kind": "humanize|quantize|euclidFill|strum|chop|glue|arpeggiate|euclidDrums|melody|chord|progression", "len": 1, "mode": "up|down|upDown|random", "rate": 1, "gate": 0.9, "octaves": 1, "timing": 0.3, "velocity": 0.2, "grid": 1, "amount": 1, "scaleAware": false, "ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7, "width": 0.5, "ramp": 0.05, "voices": [{"ch": 0, "k": 4, "n": 16, "rotate": 0, "vel": 0.7}], "bars": 2, "density": 0.5, "repeat": 1, "harmony": "diatonic|maj|min|7|maj7|min7", "template": "pop|pop2|minloop|trap|iivI|doowop|andalusian|blues|canon|chance", "voiceLead": true, "degrees": [0, 5, 2, 6]}, "seed": 7, "select": {"kind": "indices|range", "indices": [1, 2], "from": 0, "to": 16, "ch": 0}},
@@ -1213,6 +1218,7 @@ pub fn schema() -> Value {
         "markers": "Playlist time markers (labels only, never played): `at` in beats on the song timeline (0..2048), name up to 80 characters, at most 256; kept sorted by `at`. putMarker adds, moves or renames (by id), removeMarker deletes. A marker's section runs to the next marker (the last one: to the song end). Easier: `synkopa markers --add Hook --bar 9`, `synkopa markers --loop Hook`",
         "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, bar = 4 beats), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `synkopa context --full`",
         "comps": "take lanes: a clip of kind `comp` plays comp `ref`; takes/regions are in comp beats (comp beat = clip.offset + timeline beat − clip.start); regions sorted, non-overlapping, gaps are silent; xfade in seconds (equal-power crossfade centred on each region start, default 0.01). Easier: `synkopa takes --track N`, `synkopa comp --track N --set '[{\"take\":ID,\"from\":B,\"to\":B}]'` (timeline beats)",
+        "maskIgnore": "pairs of inserts the mix assistant does not report as masking each other (`synkopa mix ignore N`); setMaskIgnore replaces them (sorted within a pair, no repeats, not the master). The fix (`synkopa mix fix N`) is an EQ whose dynamic band is keyed (`fx.key`) from the protected insert: with a sidechain, every dynamic band of an EQ follows the key in its band instead of its own signal",
         "pitchEdits": "editTune changes only a clip's pitch edits (the pitch editor's notes): indices name the notes as `synkopa pitch inspect` lists them (before this op), whatever order the parts are in; they apply as clear, reset, notes, split, merge, erasePencil, pencil. shift/formant in cents (within 2400), drift 0..1, gain -24..12 dB, speed 0..1000 ms (null = the reference's, else immediate). Easier: `synkopa pitch edit`",
         "example": [{"op": "setBpm", "bpm": 140}, {"op": "removeClips", "ids": [3]}],
     })
@@ -2076,6 +2082,9 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>, l
         return r;
     }
     if let Some(r) = crate::fx_chains::control(app, cmd, a, if_revision) {
+        return r;
+    }
+    if let Some(r) = crate::mix_assist::control(app, cmd, a, if_revision, label) {
         return r;
     }
     if let Some(r) = crate::stems_actions::control(app, cmd, a, if_revision) {

@@ -250,6 +250,10 @@ pub struct Eq {
     last: Option<ParamBlock>,
     att: f32,
     rel: f32,
+    /// Release of keyed dynamic bands ([`crate::model::Fx::key`]): they follow the key's hits (a
+    /// kick), so they let go in ~25 ms instead of 80 (that tail would hold a bass down long after
+    /// the kick).
+    rel_key: f32,
     tick: usize,
 }
 
@@ -265,81 +269,15 @@ impl Default for Eq {
             last: None,
             att: 0.0,
             rel: 0.0,
+            rel_key: 0.0,
             tick: 0,
         }
     }
 }
 
 impl Eq {
-    fn design(&mut self, i: usize, extra_db: f32) {
-        let b = self.p[i];
-        let sr = self.sr;
-        let st = &mut self.bands[i];
-        let g = b.g + extra_db;
-        let set_all = |f: &mut [Biquad; EQ_STAGES], t: FilterType, q: f32, gain: f32, n: usize| {
-            for (k, x) in f.iter_mut().enumerate() {
-                if k < n {
-                    x.set(t, sr, b.f, q, gain);
-                } else {
-                    x.bypass();
-                }
-            }
-        };
-        // Butterworth-ish cascades for steeper cuts: user Q on the first stage, 0.707 on the rest
-        let (t, q, gain, n) = match b.kind {
-            0 => (FilterType::Highpass, b.q, 0.0, b.stages as usize),
-            1 => (FilterType::LowShelf, b.q, g, 1),
-            3 => (FilterType::HighShelf, b.q, g, 1),
-            4 => (FilterType::Lowpass, b.q, 0.0, b.stages as usize),
-            5 => (FilterType::Notch, b.q, 0.0, 1),
-            6 => (FilterType::Bandpass, b.q, 0.0, 1),
-            7 => (FilterType::HighShelf, 0.5, g, 1),
-            _ => (FilterType::Peak, b.q, g, 1),
-        };
-        set_all(&mut st.l, t, q, gain, n);
-        set_all(&mut st.r, t, q, gain, n);
-        for k in 1..n {
-            st.l[k].set(t, sr, b.f, 0.707, 0.0);
-            st.r[k].set(t, sr, b.f, 0.707, 0.0);
-        }
-        st.tilt_out = if b.kind == 7 { db_to_gain(-g / 2.0) } else { 1.0 };
-    }
-}
-
-impl Processor for Eq {
-    fn prepare(&mut self, sr: f32, _max: usize) {
-        self.sr = sr;
-        self.gain.setup(sr, 20.0);
-        self.att = (-1.0 / (sr * 0.005)).exp();
-        self.rel = (-1.0 / (sr * 0.08)).exp();
-        if let Some(p) = self.last {
-            self.last = None;
-            self.set_params(&p);
-        }
-    }
-    fn set_params(&mut self, p: &ParamBlock) {
-        let first = self.last.is_none();
-        self.last = Some(*p);
-        self.out = db_to_gain(p.values[0]);
-        if first || self.gain.v < 1e-6 {
-            self.gain.v = self.out;
-        }
-        if self.sr <= 0.0 {
-            return;
-        }
-        self.p = p.bands;
-        self.n_on = 0;
-        for i in 0..EQ_BANDS {
-            if self.p[i].on {
-                self.n_on = i + 1;
-            }
-            let dyn_g = if self.p[i].dynamic { self.bands[i].dyn_g } else { 0.0 };
-            self.design(i, dyn_g);
-            let b = self.p[i];
-            self.bands[i].det.set(FilterType::Bandpass, self.sr, b.f, b.q.max(0.3), 0.0);
-        }
-    }
-    fn process(&mut self, l: &mut [f32], r: &mut [f32], _c: &ProcessCtx) {
+    /// The EQ; with a sidechain `key` its dynamic bands follow the key instead of their own signal.
+    fn run(&mut self, l: &mut [f32], r: &mut [f32], key: Option<&[f32]>) {
         for i in 0..l.len() {
             let (mut a, mut b) = (l[i], r[i]);
             for k in 0..self.n_on {
@@ -349,15 +287,21 @@ impl Processor for Eq {
                 }
                 let st = &mut self.bands[k];
                 if bp.dynamic {
-                    let src = match bp.place {
-                        1 => a,
-                        2 => b,
-                        4 => (a - b) * 0.5,
-                        _ => (a + b) * 0.5,
+                    let (src, rel) = match key {
+                        Some(key) => (key[i], self.rel_key),
+                        None => (
+                            match bp.place {
+                                1 => a,
+                                2 => b,
+                                4 => (a - b) * 0.5,
+                                _ => (a + b) * 0.5,
+                            },
+                            self.rel,
+                        ),
                     };
                     let d = st.det.tick(src);
                     let e = d * d;
-                    st.env = if e > st.env { e + (st.env - e) * self.att } else { e + (st.env - e) * self.rel };
+                    st.env = if e > st.env { e + (st.env - e) * self.att } else { e + (st.env - e) * rel };
                 }
                 let n = if bp.kind == 0 || bp.kind == 4 { bp.stages as usize } else { 1 };
                 let run = |f: &mut [Biquad; EQ_STAGES], mut x: f32| {
@@ -408,6 +352,86 @@ impl Processor for Eq {
                 }
             }
         }
+    }
+
+    fn design(&mut self, i: usize, extra_db: f32) {
+        let b = self.p[i];
+        let sr = self.sr;
+        let st = &mut self.bands[i];
+        let g = b.g + extra_db;
+        let set_all = |f: &mut [Biquad; EQ_STAGES], t: FilterType, q: f32, gain: f32, n: usize| {
+            for (k, x) in f.iter_mut().enumerate() {
+                if k < n {
+                    x.set(t, sr, b.f, q, gain);
+                } else {
+                    x.bypass();
+                }
+            }
+        };
+        // Butterworth-ish cascades for steeper cuts: user Q on the first stage, 0.707 on the rest
+        let (t, q, gain, n) = match b.kind {
+            0 => (FilterType::Highpass, b.q, 0.0, b.stages as usize),
+            1 => (FilterType::LowShelf, b.q, g, 1),
+            3 => (FilterType::HighShelf, b.q, g, 1),
+            4 => (FilterType::Lowpass, b.q, 0.0, b.stages as usize),
+            5 => (FilterType::Notch, b.q, 0.0, 1),
+            6 => (FilterType::Bandpass, b.q, 0.0, 1),
+            7 => (FilterType::HighShelf, 0.5, g, 1),
+            _ => (FilterType::Peak, b.q, g, 1),
+        };
+        set_all(&mut st.l, t, q, gain, n);
+        set_all(&mut st.r, t, q, gain, n);
+        for k in 1..n {
+            st.l[k].set(t, sr, b.f, 0.707, 0.0);
+            st.r[k].set(t, sr, b.f, 0.707, 0.0);
+        }
+        st.tilt_out = if b.kind == 7 { db_to_gain(-g / 2.0) } else { 1.0 };
+    }
+}
+
+impl Processor for Eq {
+    fn prepare(&mut self, sr: f32, _max: usize) {
+        self.sr = sr;
+        self.gain.setup(sr, 20.0);
+        self.att = (-1.0 / (sr * 0.005)).exp();
+        self.rel = (-1.0 / (sr * 0.08)).exp();
+        self.rel_key = (-1.0 / (sr * 0.025)).exp();
+        if let Some(p) = self.last {
+            self.last = None;
+            self.set_params(&p);
+        }
+    }
+    fn set_params(&mut self, p: &ParamBlock) {
+        let first = self.last.is_none();
+        self.last = Some(*p);
+        self.out = db_to_gain(p.values[0]);
+        if first || self.gain.v < 1e-6 {
+            self.gain.v = self.out;
+        }
+        if self.sr <= 0.0 {
+            return;
+        }
+        self.p = p.bands;
+        self.n_on = 0;
+        for i in 0..EQ_BANDS {
+            if self.p[i].on {
+                self.n_on = i + 1;
+            }
+            let dyn_g = if self.p[i].dynamic { self.bands[i].dyn_g } else { 0.0 };
+            self.design(i, dyn_g);
+            let b = self.p[i];
+            self.bands[i].det.set(FilterType::Bandpass, self.sr, b.f, b.q.max(0.3), 0.0);
+        }
+    }
+    fn process(&mut self, l: &mut [f32], r: &mut [f32], _c: &ProcessCtx) {
+        self.run(l, r, None);
+    }
+    /// Sidechain: every dynamic band's detector hears `key` (another insert's post-fader output,
+    /// mono) through its own band-pass instead of this insert's signal, so the band moves only
+    /// while the *other* insert is loud there (the mix assistant's fix: an 808 giving way to the
+    /// kick). Static bands are unaffected.
+    fn process_keyed(&mut self, l: &mut [f32], r: &mut [f32], key: &[f32], _c: &ProcessCtx) {
+        self.run(l, r, Some(key));
     }
     fn reset(&mut self) {
         for st in self.bands.iter_mut() {

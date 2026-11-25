@@ -159,7 +159,7 @@ synkopa route --from 6 --to 8 --gain 0.35                   # Vocal also sends t
 synkopa unroute --from 6 --to 8
 synkopa sidechain --from 1 --to 3                           # the kick (1) ducks the bass (3): keys its compressor or adds one
 synkopa sidechain --from 1 --to 3 --off                     # the bass's compressor hears itself again
-synkopa sidechain --fx 1204 --from 1                        # this compressor (or gate, or filter) listens to insert 1
+synkopa sidechain --fx 1204 --from 1                        # this compressor (or gate, filter, EQ's dynamic bands) listens to insert 1
 synkopa sidechain --from 1 --to 3 --label "Duck the bass"   # names the undo step (defaults to "Sidechain")
 synkopa set-param --fx 1203 --param mix --value 30
 synkopa preset --fx 1203 --index 4
@@ -651,6 +651,30 @@ every stage's parameters and a one-line reason (`note`), `riderBake` when the ri
 baked, the measured `analysis`, the `trackGainDb` level suggestion and `stages` (what each
 stage achieved). Slow: a few seconds per minute of audio. Works without the app
 (`synkopa -p song.synkopa auto-vocal --clip 412`), like every offline command.
+
+## Mix assistant
+
+```sh
+synkopa mix                           # collisions, worst first (0, 1, …)
+synkopa mix --from 64 --to 128        # only those 16 bars (offline pass)
+synkopa mix fix 0                     # fix collision 0
+synkopa mix ignore 1                  # stop reporting pair 1
+synkopa mix off                       # the app's live detector (on by default)
+```
+
+finds pairs of mixer inserts that cover each other: both loud in the same third-octave bands at
+the same time, sustained over bars (a kick and an 808 at 50 Hz). Inserts that feed each other
+(a kick and its drum bus) are never compared. Each collision names the **masker** (the steadier
+sound, which should give way), the **protect**ed insert and the range in Hz. In the app the
+detector listens while you play; on a project file, or with `--scan`, it renders the song (or
+`--from`/`--to`) once offline. Listing changes nothing.
+
+`fix` adds an ordinary EQ to the end of the masker's chain: one bell over the range, flat until
+the protected insert gets loud there, then down by up to 6 dB. It is keyed through the standard
+sidechain (`fx.key` = the protected insert, as `synkopa sidechain --fx ID --from ID` sets it), so it
+shows in the chain and the mixer's SC cables and is edited, bypassed or removed like any EQ; a
+pair handled this way (or by a Compressor keyed from the other insert) is not reported again.
+`ignore` keeps the pair out of the report (`project.maskIgnore`, undoable).
 
 ## FX chain presets
 

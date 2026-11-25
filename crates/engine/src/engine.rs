@@ -343,6 +343,15 @@ struct Wires {
     max_block: usize,
 }
 
+/// The mix assistant's side of a stream (`crate::masking`): the inserts' post-fader taps (by
+/// insert index) and the detector. Its own lock, so the analysis never holds up an edit.
+struct MaskWires {
+    taps: Vec<rtrb::Consumer<f32>>,
+    detector: crate::masking::Detector,
+    /// Project revision the detector was last configured for (`u64::MAX`: never).
+    rev: u64,
+}
+
 /// One undo step: the project before the edit, and what the edit was called (the UI's drag
 /// name, a script's `--label`) — the Edit menu shows it.
 #[derive(Clone, PartialEq)]
@@ -513,6 +522,12 @@ pub struct Engine {
     transport_control: Mutex<()>,
     /// Threads an offline render may use for the insert chains.
     render_workers: std::sync::atomic::AtomicUsize,
+    /// The mix assistant listens while playing (`crate::masking`; on by default).
+    assist: AtomicBool,
+    /// The stream's mix assistant taps and detector (`None` without a stream).
+    mask: Mutex<Option<MaskWires>>,
+    /// What the mix assistant reports now.
+    collisions: Mutex<Vec<crate::masking::Collision>>,
 }
 
 const UNDO_LIMIT: usize = 200;
@@ -581,6 +596,9 @@ impl Engine {
             listeners: Mutex::new(vec![]),
             sink: Mutex::new(None),
             skip_silent: std::sync::atomic::AtomicBool::new(true),
+            assist: AtomicBool::new(true),
+            mask: Mutex::new(None),
+            collisions: Mutex::new(vec![]),
             midi_fast: MidiFast {
                 live: AtomicBool::new(false),
                 chan: std::sync::atomic::AtomicU64::new(u64::MAX),
@@ -655,6 +673,13 @@ impl Engine {
             aout.push(b);
         }
         let shared = Arc::new(Shared::new());
+        shared.assist.store(self.assist.load(Relaxed), Relaxed);
+        let (mut mask_tx, mut mask_rx) = (vec![], vec![]);
+        for _ in 0..MAX_INSERTS {
+            let (a, b) = rtrb::RingBuffer::<f32>::new(crate::masking::MASK_TAP_CAPACITY);
+            mask_tx.push(a);
+            mask_rx.push(b);
+        }
         {
             // a punched-in take learns its start beat from the stream that is going away
             let mut c = self.core.lock();
@@ -671,7 +696,10 @@ impl Engine {
         // synth instances and insert chains spread over several cores while playing too
         rt.set_workers(self.render_workers.load(Relaxed));
         rt.set_midi_ring(midi_rx);
+        rt.set_mask_taps(mask_tx);
         *self.midi_fast.tx.lock() = Some(midi_tx);
+        *self.mask.lock() = Some(MaskWires { taps: mask_rx, detector: crate::masking::Detector::new(sample_rate), rev: u64::MAX });
+        self.collisions.lock().clear();
         let mut c = self.core.lock();
         // everything is rebuilt for the new rate: hosted plugins keep their state through the project
         self.snapshot_plugin_states(&mut c.project);
@@ -1338,6 +1366,40 @@ impl Engine {
         })
     }
 
+    /// Turns the mix assistant on or off (on by default). Off, nothing is tapped or analysed
+    /// and nothing is reported; on again, it starts from scratch.
+    pub fn set_mix_assistant(&self, on: bool) {
+        self.assist.store(on, Relaxed);
+        self.shared().assist.store(on, Relaxed);
+        if !on {
+            self.collisions.lock().clear();
+            if let Some(m) = self.mask.lock().as_mut() {
+                m.detector = crate::masking::Detector::new(m.detector.sample_rate());
+                m.rev = u64::MAX;
+                // what queued up while it was on is stale
+                for t in m.taps.iter_mut() {
+                    let n = t.slots();
+                    if let Ok(c) = t.read_chunk(n) {
+                        c.commit_all();
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn mix_assistant(&self) -> bool {
+        self.assist.load(Relaxed)
+    }
+
+    /// What the mix assistant reports now (live: from what played since the stream started).
+    pub fn collisions(&self) -> Vec<crate::masking::Collision> {
+        if self.assist.load(Relaxed) {
+            self.collisions.lock().clone()
+        } else {
+            vec![]
+        }
+    }
+
     pub fn watch_fx(&self, ids: &[Id]) {
         let mut c = self.core.lock();
         c.watch = ids.iter().copied().take(WATCH_SLOTS).collect();
@@ -1606,6 +1668,26 @@ impl Engine {
                 (t.track as u32, t.pass_start_beat(), (t.frames() - t.pass_start_frame()) as f32 / t.sr as f32, off as u32, new)
             });
             frame_parts = Some((ids, analysis, rec));
+            // the mix assistant learns which pairs to compare when the project changed
+            if self.assist.load(Relaxed) {
+                if let Some(m) = self.mask.lock().as_mut().filter(|m| m.rev != c.revision) {
+                    m.detector.configure(&c.project);
+                    m.rev = c.revision;
+                }
+            }
+        }
+        // ...and analyses what played, outside the project lock
+        if self.assist.load(Relaxed) {
+            let found = self.mask.lock().as_mut().map(|m| {
+                m.detector.drain(&mut m.taps);
+                m.detector.collisions()
+            });
+            if let Some(found) = found {
+                let mut now = self.collisions.lock();
+                if *now != found {
+                    *now = found;
+                }
+            }
         }
         if shared.stopped_at_end.swap(false, Relaxed) {
             {
@@ -1646,7 +1728,8 @@ impl Engine {
         if let Some((ids, analysis, rec)) = frame_parts {
             let sink = self.sink.lock();
             if let Some(sink) = sink.as_ref() {
-                let frame = crate::telemetry::frame(tick, &shared, &ids, analysis.as_deref(), rec.as_ref());
+                let found = self.collisions();
+                let frame = crate::telemetry::frame(tick, &shared, &ids, analysis.as_deref(), rec.as_ref(), &found);
                 sink(frame);
             } else {
                 // still consume meters so the first frame after subscribing is fresh
