@@ -44,6 +44,7 @@ import { KeyBadge } from './KeyBadge';
 import { PosReadout, PreviewLine, SongPos } from './ToolbarParts';
 import { shownPreview } from '../state/previewWave';
 import { ChipBoundary, DialogBoundary } from '../ui/PanelBoundary';
+import { modal } from '../ui/modal';
 
 export const TOOLS: [Tool, string, TranslationKey][] = [
   ['draw', 'P', 'a.tb.toolDraw'], ['paint', 'B', 'a.tb.toolPaint'], ['erase', 'D', 'a.tb.toolErase'], ['mute', 'T', 'a.tb.toolMute'], ['slice', 'C', 'a.tb.toolSlice'], ['select', 'E', 'a.tb.toolSelect'],
@@ -663,7 +664,7 @@ export function Help() {
     <Show when={U.help}>
       <DialogBoundary name={t('a.tb.helpTitle')} close={close}>
       <div class="overlay" onPointerDown={close}>
-        <div class="dialog helpdlg" onPointerDown={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+        <div class="dialog helpdlg" aria-label={t('a.tb.helpTitle')} ref={el => modal(el, { close })} onPointerDown={e => e.stopPropagation()}>
           <div class="hd"><span>{t('a.tb.helpTitle')}</span>
             <button class="chip helpcmd" onClick={() => { close(); setPaletteOpen(true); }}>{t('a.cmd.title')}<kbd>Ctrl K</kbd></button>
             <button aria-label={t('a.tb.close')} onClick={close}>×</button></div>

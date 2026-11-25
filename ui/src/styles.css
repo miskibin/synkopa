@@ -380,7 +380,7 @@ html.dragcur, html.dragcur * { cursor: var(--drag-cursor) !important; }
 .notice-toast { position: fixed; z-index: 70; bottom: 16px; left: 50%; transform: translateX(-50%); max-width: min(520px, calc(100% - 32px)); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 10px 8px 12px; color: var(--fg-hi); background: var(--dialog-bg); border: 1px solid var(--line3); border-left: 3px solid var(--blue); border-radius: 6px; box-shadow: 0 4px 20px var(--shadow); }
 .audio-toast-message { flex: 1 1 140px; overflow-wrap: anywhere; }
 .audio-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--fg-hi); }
-.dialog { padding: 18px 22px; background: var(--dialog-bg); border: 1px solid var(--line3); border-radius: 8px; box-shadow: 0 20px 48px var(--shadow); max-height: 80vh; overflow: auto; }
+.dialog { padding: 20px 24px; background: var(--dialog-bg); border: 1px solid var(--line3); border-radius: 10px; font-family: var(--sans); box-shadow: 0 20px 48px var(--shadow); max-height: 80vh; overflow: auto; }
 .dialog .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font: 600 13px var(--sans); color: var(--fg-hi); }
 .dialog .hd button { border: 0; background: transparent; color: var(--fg3); cursor: pointer; font-size: 16px; }
 .sc { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 6px 8px; margin: 0 -8px; border-radius: 5px; }
@@ -2046,3 +2046,46 @@ button.chip { color: var(--fg); }
 .chords-foot .smallbtn { height: 28px; padding: 0 12px; }
 .chords-range { font-size: 10.5px; color: var(--fg4); }
 .chords-ch { max-width: 180px; font-size: 12px; }
+
+/* ---- dialogs: one system (title, body, button row, status) ----
+   Every modal dialog shares these: a 15px title, 13px body text, a right-aligned row of 32px
+   buttons (secondary, then destructive, then the primary action last: the order used across the
+   app), and one spinner row for work in progress. Theme tokens only. */
+.overlay { font-family: var(--sans); }
+.dialog:focus { outline: none; }
+.dialog.dlgsm { width: min(440px, 92vw); }
+.dialog .hd { gap: 12px; margin-bottom: 8px; font: 600 15px/1.3 var(--sans); letter-spacing: -.005em; color: var(--fg-hi); }
+.dialog .hd > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dialog .hd > button:last-child, .stems-x {
+  flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin: -6px -10px -6px 0; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; color: var(--fg4); font: 400 18px/1 var(--sans); cursor: pointer;
+}
+.dialog .hd > button:last-child:hover, .stems-x:hover { background: var(--tone2); color: var(--fg-hi); }
+.dialog .hd > button:last-child:focus-visible, .stems-x:focus-visible { outline: 2px solid var(--blue); outline-offset: 0; }
+.stems-title { font: 600 15px/1.3 var(--sans); }
+.dlgtext { margin: 0 0 8px; font: 400 13px/1.55 var(--sans); color: var(--fg2); user-select: text; }
+.dlgtext.muted { font-size: 12px; color: var(--fg4); }
+.dlgtext:last-of-type { margin-bottom: 0; }
+.upddlg .updmsg { font: 400 13px/1.55 var(--sans); }
+.upddlg .updmsg.muted { font-size: 12px; }
+/* the button row */
+.dlgfoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.newsfoot.dlgfoot { margin-top: 0; }
+.stems-foot.dlgfoot { margin-top: 16px; }
+.dlgfoot .smallbtn {
+  height: 32px; min-width: 88px; padding: 0 16px; border-radius: 7px;
+  background: var(--tone2); color: var(--fg-hi); font: 500 13px var(--sans);
+  transition: background-color .12s, color .12s;
+}
+.dlgfoot .smallbtn:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 15%, transparent); }
+.dlgfoot .smallbtn.primary { background: var(--blue); color: var(--on-accent); font-weight: 600; }
+.dlgfoot .smallbtn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--blue) 86%, var(--fg-hi)); }
+.dlgfoot .smallbtn.danger { background: color-mix(in srgb, var(--danger) 13%, transparent); color: var(--danger); }
+.dlgfoot .smallbtn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 22%, transparent); }
+.dlgfoot .smallbtn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.dlgfoot .smallbtn:disabled { opacity: .45; }
+/* a release link or a note at the start of the row stays on the left */
+.dlgfoot > :not(.smallbtn):first-child { margin-right: auto; }
+/* work in progress: a spinner and what is happening */
+.dialog.dlgstatus { display: flex; align-items: center; gap: 12px; min-width: 240px; padding: 18px 24px; font: 500 13px var(--sans); color: var(--fg-hi); }
+.dialog.dlgstatus .spin { width: 16px; height: 16px; flex: none; }
