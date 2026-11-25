@@ -419,13 +419,18 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
   // first view: the target and how loud, the tone the listen chose, glue and the clipper, stereo,
   // the comparison; the band thresholds and crossovers the listen sets are under "Advanced"
   master: [
-    { title: 'c.fx.sec.loudness', items: [{ stack: [{ id: 'target', small: true }] }, { id: 'drive', size: 'lg' }, { id: 'ceil' }, { id: 'clip' }] },
-    { title: 'c.fx.sec.tone', items: [{ id: 'tone' }, { id: 'sub', size: 'sm' }, { id: 'low', size: 'sm' }, { id: 'mid', size: 'sm' }, { id: 'pres', size: 'sm' }, { id: 'air', size: 'sm' }] },
-    { title: 'c.fx.sec.glue', items: [{ id: 'ratio', size: 'sm' }] },
-    { title: 'c.fx.sec.stereo', items: [{ id: 'width', size: 'sm', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { stack: [{ id: 'mono', labels: ['c.fx.lab.bassStereo', 'Mono'], small: true }] }] },
+    // less is more: the first view is how loud, how much tone and glue, how wide per band and the
+    // comparison; everything the listen sets in detail (and the display drags) is under Advanced
+    { title: 'c.fx.sec.loudness', items: [{ stack: [{ id: 'target', small: true }] }, { id: 'drive', size: 'lg' }, { id: 'ceil' }] },
+    { title: 'c.fx.sec.tone', items: [{ id: 'tone' }] },
+    { title: 'c.fx.sec.glue', items: [{ id: 'ratio' }] },
+    { title: 'c.fx.sec.width', items: [{ id: 'wl', size: 'sm' }, { id: 'wm', size: 'sm' }, { id: 'wh', size: 'sm' }] },
     { title: 'c.fx.sec.compare', items: [{ stack: [{ id: 'match', small: true }] }] },
+    { title: 'c.fx.sec.toneBands', adv: true, items: [{ id: 'sub', size: 'sm' }, { id: 'low', size: 'sm' }, { id: 'mid', size: 'sm' }, { id: 'pres', size: 'sm' }, { id: 'air', size: 'sm' }] },
+    { title: 'c.fx.sec.bandLevels', adv: true, items: [{ id: 'gl', size: 'sm' }, { id: 'gm', size: 'sm' }, { id: 'gh', size: 'sm' }] },
     { title: 'c.fx.sec.thresholds', adv: true, items: [{ id: 'tl', size: 'sm' }, { id: 'tm', size: 'sm' }, { id: 'th', size: 'sm' }] },
     { title: 'c.fx.sec.crossovers', adv: true, items: [{ id: 'xlo', size: 'sm' }, { id: 'xhi', size: 'sm' }] },
+    { title: 'c.fx.sec.clipper', adv: true, items: [{ id: 'clip', size: 'sm' }] },
   ],
   // first view: when it opens and how deep it closes, its times, Gate/Duck and look-ahead, and
   // what it listens to; the side-chain band and the detector are under "Advanced"

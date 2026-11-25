@@ -171,3 +171,11 @@ fn a_target_that_would_squash_the_song_stops_at_the_loudest_clean_level() {
     let did = (peak - rep.in_lufs) - (-1.0 - rep.aim);
     assert!((did - MAX_CLEAN_CUT_DB).abs() < 0.2, "{did}");
 }
+
+#[test]
+fn widths_follow_how_wide_each_band_arrives() {
+    // a wide low end goes mono, normal mids stay, narrow highs open up a little
+    assert_eq!(band_widths([-8.0, -12.0, -20.0]), [0.0, 100.0, 130.0]);
+    // a mono-safe low end and already wide highs are left alone; phasey mids narrow
+    assert_eq!(band_widths([-40.0, -2.0, -6.0]), [100.0, 85.0, 100.0]);
+}

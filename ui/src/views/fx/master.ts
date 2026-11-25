@@ -161,7 +161,14 @@ export class MasterViz implements Viz {
     g.font = SANS10; g.fillStyle = T.vizLabel; g.fillText(t('c.ms.balance'), bx, 12);
     // glue bands as faint zones between the crossovers
     const xs = [20, fx.params.xlo ?? 120, fx.params.xhi ?? 2800, 20000];
-    for (let b = 0; b < 3; b++) { const a = bxOf(xs[b], G), z = bxOf(xs[b + 1], G); g.fillStyle = rgba(ZONE[b], 0.035); g.fillRect(a, by, z - a, bh); }
+    for (let b = 0; b < 3; b++) {
+      const a = bxOf(xs[b], G), z = bxOf(xs[b + 1], G);
+      g.fillStyle = rgba(ZONE[b], 0.035); g.fillRect(a, by, z - a, bh);
+      // the band's width and level, if they are not neutral
+      const w = fx.params[['wl', 'wm', 'wh'][b]] ?? 100, lv = fx.params[['gl', 'gm', 'gh'][b]] ?? 0;
+      const bits = [w === 0 ? 'mono' : Math.round(w) !== 100 ? '↔ ' + Math.round(w) + '%' : '', Math.abs(lv) >= 0.05 ? sgn(lv) + ' dB' : ''].filter(Boolean);
+      if (bits.length && z - a > 44) { g.font = MONO9; g.fillStyle = rgba(ZONE[b], 0.9); g.textAlign = 'center'; g.fillText(bits.join(' · '), (a + z) / 2, by + 10); g.textAlign = 'left'; }
+    }
     if (fx.bypass) g.globalAlpha = 0.5;
     if (this.live && this.spec.cur.some(v => v > -100)) {
       let mean = 0, n = 0;

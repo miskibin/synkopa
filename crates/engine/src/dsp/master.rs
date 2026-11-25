@@ -14,9 +14,10 @@
 //! **Glue.** The signal is split by two Linkwitz-Riley crossovers (`dsp::xover`, flat sum).
 //! Each band has a stereo-linked 10 ms RMS detector, a 6 dB soft knee and the shared ratio;
 //! attack / release are slower in the lows than in the highs (25/300, 12/200, 6/120 ms) so
-//! the bass does not modulate. A threshold of 0 dB leaves the band alone. The bands are
-//! summed in mid/side: the low band's side is faded out with *Bass mono*, the upper bands'
-//! side is scaled by *Width*.
+//! the bass does not modulate. A threshold of 0 dB leaves the band alone. Each band has its own
+//! stereo width (side gain, 0–150 %), Maximus-style: the lows are usually kept narrow or mono
+//! (0 % = bass mono: tight on club systems and phones), the highs may open up. Each band also
+//! has its own level after the glue (±12 dB), Maximus's band gain.
 //!
 //! **Clipper.** Before the limiter, on the low and mid bands only: the peaks a limiter struggles
 //! with are the kick and the bass, and a full-band clipper shaving them also distorts the hi-hats
@@ -63,10 +64,12 @@ pub mod idx {
     /// Three band thresholds: low, mid, high.
     pub const THR: usize = 11;
     pub const RATIO: usize = 14;
+    /// Three band widths (side gain, %): low, mid, high. Low 0 % = bass mono.
     pub const WIDTH: usize = 15;
-    pub const MONO: usize = 16;
-    pub const CLIP: usize = 17;
-    pub const MATCH: usize = 18;
+    pub const CLIP: usize = 18;
+    pub const MATCH: usize = 19;
+    /// Three band levels (dB, after the glue): low, mid, high.
+    pub const BAND_GAIN: usize = 20;
 }
 
 /// Loudness targets the assistant aims at (integrated LUFS), in `TARGET` order.
@@ -225,8 +228,10 @@ pub struct Master {
     att: [f32; BANDS],
     rel: [f32; BANDS],
     k_param: f32,
-    width: f32,
-    mono: f32,
+    /// band side gains the audio is at (smoothed towards the params)
+    width: [f32; BANDS],
+    /// band levels (linear), smoothed the same way
+    band_g: [f32; BANDS],
     clip: [Clipper; 2],
     limiter: LimiterV2,
     lim_block: ParamBlock,
@@ -250,6 +255,8 @@ impl Default for Master {
         v[idx::X_HI] = 2800.0;
         v[idx::RATIO] = 2.0;
         v[idx::WIDTH] = 100.0;
+        v[idx::WIDTH + 1] = 100.0;
+        v[idx::WIDTH + 2] = 100.0;
         Self {
             sr: 48_000.0,
             v,
@@ -267,8 +274,8 @@ impl Default for Master {
             att: [0.0; BANDS],
             rel: [0.0; BANDS],
             k_param: 0.002,
-            width: 1.0,
-            mono: 0.0,
+            width: [1.0; BANDS],
+            band_g: [1.0; BANDS],
             clip: [Clipper::default(); 2],
             limiter: LimiterV2::default(),
             lim_block: ParamBlock::default(),
@@ -374,8 +381,8 @@ impl Master {
 pub struct BandTrace {
     /// Each band's detector level, dB, every 10 ms.
     pub levels: [Vec<f32>; BANDS],
-    /// Side energy against mid energy in the low band, dB.
-    pub low_side_db: f32,
+    /// Side energy against mid energy in each band, dB.
+    pub side_db: [f32; BANDS],
 }
 
 /// Runs the tone EQ, the split and the detectors of a Master set to `values` over `l`/`r`.
@@ -386,7 +393,7 @@ pub fn band_trace(l: &[f32], r: &[f32], sr: f32, values: &[f32; MAX_PARAMS]) -> 
     let hop = ((sr * 0.01) as usize).max(1);
     let n = l.len().min(r.len());
     let mut levels: [Vec<f32>; BANDS] = std::array::from_fn(|_| Vec::with_capacity(n / hop + 1));
-    let (mut side, mut mid) = (0f64, 0f64);
+    let (mut side, mut mid) = ([0f64; BANDS], [0f64; BANDS]);
     for i in 0..n {
         let bands = m.front(l[i], r[i]);
         for b in 0..BANDS {
@@ -395,12 +402,14 @@ pub fn band_trace(l: &[f32], r: &[f32], sr: f32, values: &[f32; MAX_PARAMS]) -> 
                 levels[b].push(lvl);
             }
         }
-        let (a, c) = (bands[0][0], bands[1][0]);
-        mid += 0.25 * (a + c) * (a + c);
-        side += 0.25 * (a - c) * (a - c);
+        for b in 0..BANDS {
+            let (a, c) = (bands[0][b], bands[1][b]);
+            mid[b] += 0.25 * (a + c) * (a + c);
+            side[b] += 0.25 * (a - c) * (a - c);
+        }
     }
-    let low_side_db = if mid > 1e-12 { (10.0 * (side.max(1e-30) / mid).log10()) as f32 } else { -120.0 };
-    BandTrace { levels, low_side_db }
+    let side_db = std::array::from_fn(|b| if mid[b] > 1e-12 { (10.0 * (side[b].max(1e-30) / mid[b]).log10()) as f32 } else { -120.0 });
+    BandTrace { levels, side_db }
 }
 
 impl Processor for Master {
@@ -424,8 +433,8 @@ impl Processor for Master {
         self.set_xover();
         self.limiter.prepare(sr, max_block);
         self.set_limiter();
-        self.width = (self.v[idx::WIDTH] / 100.0).clamp(0.0, 1.5);
-        self.mono = if self.v[idx::MONO] >= 0.5 { 1.0 } else { 0.0 };
+        self.width = std::array::from_fn(|b| (self.v[idx::WIDTH + b] / 100.0).clamp(0.0, 1.5));
+        self.band_g = std::array::from_fn(|b| db_to_gain(self.v[idx::BAND_GAIN + b].clamp(-12.0, 12.0)));
         self.reset();
     }
 
@@ -441,8 +450,8 @@ impl Processor for Master {
         let (c1, _) = coefs();
         let ratio = self.v[idx::RATIO].clamp(1.0, 4.0);
         let thr = [self.v[idx::THR].clamp(-40.0, 0.0), self.v[idx::THR + 1].clamp(-40.0, 0.0), self.v[idx::THR + 2].clamp(-40.0, 0.0)];
-        let width_t = (self.v[idx::WIDTH] / 100.0).clamp(0.0, 1.5);
-        let mono_t = if self.v[idx::MONO] >= 0.5 { 1.0 } else { 0.0 };
+        let width_t: [f32; BANDS] = std::array::from_fn(|b| (self.v[idx::WIDTH + b] / 100.0).clamp(0.0, 1.5));
+        let gain_t: [f32; BANDS] = std::array::from_fn(|b| db_to_gain(self.v[idx::BAND_GAIN + b].clamp(-12.0, 12.0)));
         let clip = self.v[idx::CLIP].clamp(0.0, 100.0);
         // the limiter's threshold in this (pre-drive) domain; the clipper sits up to 6 dB above it
         let lim_thr = db_to_gain(self.v[idx::CEIL].clamp(-6.0, 0.0) - self.v[idx::DRIVE].clamp(0.0, 24.0));
@@ -454,8 +463,10 @@ impl Processor for Master {
         let (mut pk_in, mut pk_out) = (0f32, 0f32);
         for i in 0..n {
             self.m_in.feed(l[i], r[i], self.k_match);
-            self.width += (width_t - self.width) * kp;
-            self.mono += (mono_t - self.mono) * kp;
+            for b in 0..BANDS {
+                self.width[b] += (width_t[b] - self.width[b]) * kp;
+                self.band_g[b] += (gain_t[b] - self.band_g[b]) * kp;
+            }
             let bands = self.front(l[i], r[i]);
             // glue, then mid/side per band; the low and mid bands go to the clipper, the high
             // band around it
@@ -470,8 +481,8 @@ impl Processor for Master {
                 if self.gain[b].abs() < 1e-6 {
                     self.gain[b] = 0.0;
                 }
-                let g = db_to_gain(self.gain[b]);
-                let side_g = if b == 0 { 1.0 - self.mono } else { self.width };
+                let g = db_to_gain(self.gain[b]) * self.band_g[b];
+                let side_g = self.width[b];
                 let (m, s) = (0.5 * (bl + br) * g, 0.5 * (bl - br) * g * side_g);
                 if b == BANDS - 1 {
                     hl = m + s;

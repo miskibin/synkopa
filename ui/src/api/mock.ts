@@ -1436,7 +1436,7 @@ export class MockBackend implements Backend {
     const cut = 16.3 - ((f.params.ceil ?? -1) - asked), guarded = cut > 7.5;
     const goal = Math.round((guarded ? asked - (cut - 7.5) : asked) * 10) / 10;
     const balance = THIRDS.map(fq => Math.round(((fq >= 125 && fq <= 315 ? 3.6 : 0) + (fq >= 8000 ? -4.2 : 0) + (fq < 40 ? -6 : 0)) * 10) / 10);
-    const params: Record<string, number> = { ...f.params, target, tone: 100, sub: 0, low: -0.6, mid: 0, pres: 0, air: 0.6, tl: -24.5, tm: -27.1, th: -33.8, ratio: 2, mono: 0, clip: 30 };
+    const params: Record<string, number> = { ...f.params, target, tone: 100, sub: 0, low: -0.6, mid: 0, pres: 0, air: 0.6, tl: -24.5, tm: -27.1, th: -33.8, ratio: 2, wl: 50, wm: 100, wh: 120, clip: 26 };
     params.drive = Math.round(Math.max(0, Math.min(24, goal + 18.4 + 1.2)) * 100) / 100;
     const ceil = params.ceil ?? -1;
     const listen = {

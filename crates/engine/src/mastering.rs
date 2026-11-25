@@ -22,8 +22,10 @@
 //!    threshold is the one at which that band's louder half (of its active part: within 20 dB of
 //!    its loud level) gets 1.5 dB of 2:1 on average — the same amount in every band, so the glue
 //!    holds the song together without tilting it — but never more than 10 dB under the band's
-//!    loud level, so a band of short hits is not squashed on its peaks. A low band with a lot of side energy
-//!    (> −15 dB against the mid) gets bass mono.
+//!    loud level, so a band of short hits is not squashed on its peaks.
+//!
+//!    **Width per band** comes from each band's side-to-mid energy ([`band_widths`]): wide lows
+//!    go mono, phasey mids narrow a little, narrow highs open up (≤ 130 %).
 //! 4. **Clipper and loudness.** From the song's peak-to-loudness ratio and the target's, the
 //!    peak reduction the master must do is known; when it is more than 2 dB the clipper takes the
 //!    tallest transients of it (FL- and Ableton-style "clip, then limit"), so the limiter does not
@@ -75,8 +77,31 @@ const TONE_FIT: [(f64, f64, f64, f64, f64, f64); 5] = [
     (8000.0, 12500.0, 3.0, 3.0, 3.0, 3.0),
 ];
 const TONE_SHARE: f64 = 0.5;
-/// Low-band side energy (against mid) above which bass mono is switched on.
-const MONO_SIDE_DB: f32 = -15.0;
+/// The band widths (%) for the stereo the song arrives with (side against mid energy per band,
+/// dB). Mastering practice: the lows go narrow or mono when they carry real side energy
+/// (phase trouble on mono systems, a wandering kick), the mids stay, unless they are so wide
+/// they are phasey, and narrow highs open up a little — never past 130 %, so the mono fold-down
+/// loses at most a fraction of a dB of the highs' level.
+pub fn band_widths(side_db: [f32; 3]) -> [f64; 3] {
+    let lo = if side_db[0] > -15.0 {
+        0.0
+    } else if side_db[0] > -25.0 {
+        50.0
+    } else {
+        100.0
+    };
+    let mid = if side_db[1] > -3.0 { 85.0 } else { 100.0 };
+    let hi = if side_db[2] < -18.0 {
+        130.0
+    } else if side_db[2] < -12.0 {
+        120.0
+    } else if side_db[2] < -8.0 {
+        110.0
+    } else {
+        100.0
+    };
+    [lo, mid, hi]
+}
 const RATIO: f64 = 2.0;
 /// Most limiter input gain (= the parameter's range).
 const DRIVE_MAX: f64 = 24.0;
@@ -373,7 +398,9 @@ pub fn listen(
     let bal = balance(&spectrum(l, r, sr));
     let tone = tone_gains(&bal);
     let mut p = crate::catalog::default_params(FxKind::Master);
-    for k in ["ceil", "xlo", "xhi", "width", "match"] {
+    // the user's own choices the listen builds on: the ceiling, where the bands split, the band
+    // levels they set and how they compare
+    for k in ["ceil", "xlo", "xhi", "match", "gl", "gm", "gh"] {
         if let Some(v) = current.get(k) {
             p.insert(k.into(), *v);
         }
@@ -384,13 +411,15 @@ pub fn listen(
         p.insert((*k).into(), g);
     }
     check(0.12, progress)?;
-    // glue thresholds and bass mono from the toned song
+    // glue thresholds and band widths from the toned song
     let trace = master::band_trace(l, r, sr, &block_of(&p));
     for (k, lv) in ["tl", "tm", "th"].iter().zip(&trace.levels) {
         p.insert((*k).into(), threshold(lv, RATIO));
     }
     p.insert("ratio".into(), RATIO);
-    p.insert("mono".into(), if trace.low_side_db > MONO_SIDE_DB { 1.0 } else { 0.0 });
+    for (k, w) in ["wl", "wm", "wh"].iter().zip(band_widths(trace.side_db)) {
+        p.insert((*k).into(), w);
+    }
     check(0.25, progress)?;
     let ceil = p.get("ceil").copied().unwrap_or(-1.0);
     let render = |p: &BTreeMap<String, f64>| {
