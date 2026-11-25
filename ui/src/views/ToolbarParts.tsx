@@ -113,7 +113,7 @@ export function PosReadout() {
     const s = fmtClock(span().at);
     if (s !== last) { last = s; el.textContent = s; }
   })));
-  return <span ref={el} class="clock" title={t('a.tb.clockTip')}>1:01:01</span>;
+  return <span ref={el} class="clock" title={t('a.tb.clockTip')}>1:1:1</span>;
 }
 
 const fmtSecs = (s: number) => (s < 10 ? s.toFixed(2) : s < 60 ? s.toFixed(1) : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`);

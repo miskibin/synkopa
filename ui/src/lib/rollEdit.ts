@@ -3,6 +3,7 @@
 // playhead page-wise). Units as in `pattern.ts`: note `step`/`len` in 16ths, `p` MIDI key,
 // `v` velocity 0..1.
 import { TOTAL_BEATS, type Channel, type Id, type Note } from '../api/types';
+import { fmtBbs } from './format';
 import { keyOf, rollSnapName, velOf } from './pattern';
 import { NOTE_NAMES } from './pitch';
 import { clampLen, clampPos, type ZLimits, type ZRange } from './zoomBar';
@@ -106,14 +107,10 @@ export function followPage(x: number, r: ZRange, lead: number): number | null {
 
 // ---------------------------------------------------------------- note properties
 
-/** "2:3:1" = bar 2, beat 3, first 16th (all from 1). */
-export function fmtStart(step: number): string {
-  const at = r6(step);
-  const bar = Math.floor(at / 16), beat = Math.floor((at - bar * 16) / 4);
-  return `${bar + 1}:${beat + 1}:${r6(at - bar * 16 - beat * 4 + 1)}`;
-}
+/** "2:3:1" = bar 2, beat 3, first 16th (all from 1): the transport's notation, exact to the roll's grid. */
+export const fmtStart = (step: number): string => fmtBbs(step / 4, 6);
 
-/** Parses transport-style "2:03:01" or ruler-style "2.3", with missing fields defaulting to 1. */
+/** Parses "2:3:1" (also zero-padded "2:03:01", partial "2:3" or dotted "2.3"), missing fields defaulting to 1. */
 export function parseStart(text: string): number | null {
   // A fractional 16th uses colons so "2:1:1.5" has an unambiguous decimal separator.
   const p = text.trim().split(text.includes(':') ? ':' : '.').map(x => x.trim());
@@ -123,8 +120,21 @@ export function parseStart(text: string): number | null {
   return r6((bar - 1) * 16 + (beat - 1) * 4 + (s - 1));
 }
 
-/** Use the same note values as the snap menu, with custom lengths shown in 16ths. */
-export const fmtLen = (len: number) => rollSnapName(len) ?? String(r6(len));
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+
+/**
+ * A length as a note value, the snap menu's notation: its names where one fits ("1/8", "1/12"),
+ * else a fraction of a whole note in 16ths, reduced ("3/16", "3/8", "5/4"). A length off the
+ * 16th grid stays in 16ths ("2.5/16"). `parseLen` reads every one of them back.
+ */
+export function fmtLen(len: number): string {
+  const named = rollSnapName(len);
+  if (named) return named;
+  const v = r6(len);
+  if (Math.abs(v - Math.round(v)) > 1e-6) return `${v}/16`;
+  const n = Math.round(v), d = gcd(n, 16);
+  return `${n / d}/${16 / d}`;
+}
 
 /** Parses a length: 16ths ("2", "0.5") or a note value ("1/8" = 2 steps, "3/16"); null when invalid. */
 export function parseLen(text: string): number | null {
