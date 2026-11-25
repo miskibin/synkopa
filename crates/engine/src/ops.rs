@@ -1053,7 +1053,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             p.markers.retain(|m| m.id != *id);
         }
         Op::SetBpm { bpm } => {
-            if !(20.0..=999.0).contains(bpm) {
+            if !(crate::model::MIN_TEMPO_BPM..=crate::model::MAX_BASE_BPM).contains(bpm) {
                 return Err(OpError::Invalid("bpm must be 20..999".into()));
             }
             p.bpm = *bpm;

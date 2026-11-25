@@ -7,7 +7,7 @@
 //! the value the editor draws is the value that plays — which keeps every conversion
 //! closed-form (a logarithm at worst, Zrythm's integration formula).
 
-use crate::model::{TempoPoint, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS};
+use crate::model::{TempoPoint, MAX_BASE_BPM, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS};
 
 /// The tempo map of one timeline snapshot.
 #[derive(Clone, Debug)]
@@ -44,8 +44,9 @@ fn bpm_at_in(x: f64, a: f64, b: f64, bpm_a: f64, bpm_b: f64, ramp: bool) -> f64 
 
 impl TempoMap {
     /// The constant map: one tempo everywhere (what an empty point list compiles to).
+    /// The base tempo keeps the `SetBpm` range: it is the constant case, not a point.
     pub(crate) fn constant(bpm: f64) -> Self {
-        Self { points: vec![(0.0, bpm.clamp(MIN_TEMPO_BPM, MAX_TEMPO_BPM), false)], secs: vec![0.0] }
+        Self { points: vec![(0.0, bpm.clamp(MIN_TEMPO_BPM, MAX_BASE_BPM), false)], secs: vec![0.0] }
     }
 
     /// Compiles `points` over the song; before the first point the tempo is `base_bpm`.
@@ -57,8 +58,9 @@ impl TempoMap {
         pts.sort_by(|a, b| a.0.total_cmp(&b.0));
         pts.truncate(MAX_TEMPO_POINTS);
         // the opener is the base tempo: it governs until the first point (a point at beat 0
-        // overwrites it below, the last one at 0 winning)
-        let mut map = Self { points: vec![(0.0, base_bpm.clamp(MIN_TEMPO_BPM, MAX_TEMPO_BPM), false)], secs: vec![0.0] };
+        // overwrites it below, the last one at 0 winning). It keeps the `SetBpm` range —
+        // clamping a 480 BPM project to the point maximum would slow the whole opener.
+        let mut map = Self { points: vec![(0.0, base_bpm.clamp(MIN_TEMPO_BPM, MAX_BASE_BPM), false)], secs: vec![0.0] };
         for &(beat, bpm, ramp) in &pts {
             if beat <= 0.0 {
                 let last = map.points.last_mut().unwrap();
@@ -242,5 +244,20 @@ mod render_checks {
         let m = TempoMap::compile(&pts, 120.0);
         assert_eq!(m.seconds_between(0.0, 8.0), 3.0);
         assert_eq!(m.bpm_at(4.0), 240.0);
+    }
+
+    #[test]
+    fn the_base_tempo_keeps_the_setbpm_range() {
+        // the base tempo is the constant case, not a point: 480 BPM is a legal project
+        // (SetBpm allows 20..999) and must not be clamped to the point maximum of 300
+        assert_eq!(TempoMap::constant(480.0).bpm_at(4.0), 480.0);
+        assert_eq!(TempoMap::constant(999.0).bpm_at(1.0), 999.0);
+        // the opener governs until the first point, at its own tempo
+        let pts = vec![TempoPoint { beat: 2.0, bpm: 120.0, ramp: false }];
+        let m = TempoMap::compile(&pts, 480.0);
+        assert_eq!(m.bpm_at(1.0), 480.0);
+        assert_eq!(m.bpm_at(2.0), 120.0);
+        assert_eq!(m.seconds_between(0.0, 2.0), 2.0 * 60.0 / 480.0);
+        assert_eq!(m.seconds_between(0.0, 3.0), 0.25 + 60.0 / 120.0);
     }
 }

@@ -85,6 +85,10 @@ pub struct Project {
 /// BPM limits of a tempo point, enforced on the way in and trusted by the audio compile.
 pub const MIN_TEMPO_BPM: f64 = 20.0;
 pub const MAX_TEMPO_BPM: f64 = 300.0;
+/// The project's base BPM (`SetBpm`) may go past the point limit: it is the constant case,
+/// not an explicit point, and the compile must keep it (clamping a 480 BPM project to the
+/// point maximum would slow every constant-tempo path).
+pub const MAX_BASE_BPM: f64 = 999.0;
 /// At most this many tempo points per project (the compile trusts the write path's bound).
 pub const MAX_TEMPO_POINTS: usize = 4096;
 

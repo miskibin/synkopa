@@ -257,6 +257,18 @@ describe('applyLocal (optimistic edits)', () => {
     expect(store.arrVersion()).toBe(a0 + 1);
   });
 
+  it('normalizes the optimistic tempo map like the engine accepts it, and the bpm knob clears it', () => {
+    store.applyLocal([{ op: 'setTempoPoints', points: [{ beat: 8, bpm: 400 }, { beat: -1, bpm: 10 }] }]);
+    expect(store.S.project.tempoPoints).toEqual([{ beat: 0, bpm: 20, ramp: false }, { beat: 8, bpm: 300, ramp: false }]);
+    store.applyLocal([{ op: 'setTempoPoints', points: [] }]);
+    expect(store.S.project.tempoPoints).toBeUndefined();
+    store.applyLocal([{ op: 'setTempoPoints', points: [{ beat: 4, bpm: 150 }] }]);
+    expect(store.S.project.tempoPoints).toEqual([{ beat: 4, bpm: 150, ramp: false }]);
+    store.applyLocal([{ op: 'setBpm', bpm: 132 }]);
+    expect(store.S.project.bpm).toBe(132);
+    expect(store.S.project.tempoPoints).toBeUndefined();
+  });
+
   it('an empty batch changes nothing', () => {
     const p0 = store.projVersion();
     store.applyLocal([]);

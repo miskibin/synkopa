@@ -11,6 +11,7 @@
 // taken before reads stale data afterwards). `M` never shares an object with the store.
 import { $PROXY, createMemo, createRoot, snapshot, untrack } from 'solid-js';
 import type { Catalog, Clip, Fx, Id, Insert, Note, Op, Pattern, Project, StateDto, TransportDto } from '../api/types';
+import { MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS } from '../api/types';
 import { applyCompOp, compExtent } from '../lib/comp';
 import { batch, createSignal, createStore } from '../lib/reactive';
 import { audibleInserts, forgetInsert } from '../lib/routing';
@@ -429,7 +430,8 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
     // refused (a bad position or name): left to the engine's reply, like the other ports
     case 'putMarker': try { putMarker(p, op.marker); } catch { /* the reply resyncs */ } return;
     case 'removeMarker': try { removeMarker(p, op.id); } catch { /* already gone */ } return;
-    case 'setBpm': p.bpm = op.bpm; return;
+    // the knob edits the constant case: the map goes now, like the engine's SetBpm
+    case 'setBpm': p.bpm = op.bpm; delete p.tempoPoints; return;
     case 'setLoop': p.loop = op.loop ? { ...op.loop } : null; return;
     case 'setMaskIgnore': {
       const out: [Id, Id][] = [];
@@ -480,7 +482,14 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       return;
     }
     case 'setTempoPoints': {
-      p.tempoPoints = op.points.map(x => ({ ...x }));
+      // the same normalization as `applyOps`, so the optimistic mirror matches the accepted
+      // project until the reconcile; too many points is refused there — left to the reply
+      if (op.points.length > MAX_TEMPO_POINTS) return;
+      const pts = op.points
+        .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), bpm: Math.min(Math.max(x.bpm, MIN_TEMPO_BPM), MAX_TEMPO_BPM), ramp: x.ramp ?? false }))
+        .sort((x, y) => x.beat - y.beat);
+      if (!pts.length) delete p.tempoPoints;
+      else p.tempoPoints = pts;
       return;
     }
     default: {

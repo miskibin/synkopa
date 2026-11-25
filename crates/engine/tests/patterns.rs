@@ -953,3 +953,150 @@ fn a_tempo_change_is_audible_in_the_render() {
         assert!((g - exp).abs() <= 0.25 * s120, "onset at {} beats, expected {}", g / s120, exp / s120);
     }
 }
+
+#[test]
+fn an_audio_clip_reads_on_across_a_tempo_point() {
+    // two clicks in the source and a jump to double time inside the clip: the second click
+    // comes from where the reading had actually got to (the map's integral) — with the
+    // position mapped as beats × the current spb it would step back and replay the
+    // pre-jump stretch, and the second click would never play
+    let dir = tmp("clipcont");
+    let wav = dir.join("clicks.wav");
+    let sr = 48000u32;
+    let click = |t: f64, buf: &mut Vec<f32>| {
+        let at = (t * sr as f64) as usize;
+        for i in 0..(0.05 * sr as f64) as usize {
+            let v = (i as f32 * 440.0 * std::f32::consts::TAU / sr as f32).sin() * 0.5;
+            buf[at * 2 + i * 2] = v;
+            buf[at * 2 + i * 2 + 1] = v;
+        }
+    };
+    let mut tone = vec![0f32; 2 * sr as usize * 2];
+    click(0.25, &mut tone);
+    click(1.25, &mut tone);
+    wave_engine::sources::write_wav(&wav, &tone, sr).unwrap();
+    let mut p = Project::routed();
+    p.inserts[0].fx.clear();
+    p.bpm = 120.0; // the timings assume it
+    p.tempo_points = vec![TempoPoint { beat: 2.0, bpm: 240.0, ramp: false }];
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let (_, clips, _) = e.import_audio(std::slice::from_ref(&wav), Some((0, 0.0))).unwrap();
+    assert_eq!(clips.len(), 1);
+    let out = e.render(0.0, 4.0, 0.0, sr).unwrap();
+    assert_eq!(out.len(), (1.5 * SR as f64) as usize * 2, "1 s at 120 + 0.5 s at 240");
+    let hits = peaks(&out, 1e-3, (0.1 * SR as f64) as usize);
+    assert_eq!(hits.len(), 2, "clicks at {:?}", hits.iter().map(|h| *h as f64 / SR as f64).collect::<Vec<_>>());
+    // the first at 0.25 s (before the point, 1:1), the second where the reading reached
+    // src 1.25 s: 1 s of pre-point playback, then 0.25 s of source at the faster tempo
+    for (got, want) in [(hits[0], 0.25), (hits[1], 1.25)] {
+        assert!((got as f64 / SR as f64 - want).abs() < 0.02, "click at {} s, expected {want} s", got as f64 / SR as f64);
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_held_note_ends_where_its_beats_really_are() {
+    // a 2-beat held note from beat 3 with double time at beat 4: the instrument is
+    // released after the 0.75 s the two beats really take (0.5 + 0.25), not after the
+    // onset tempo's 1.0 s
+    let dir = tmp("held");
+    let wav = dir.join("hold.wav");
+    let spec = hound::WavSpec { channels: 1, sample_rate: SR, bits_per_sample: 32, sample_format: hound::SampleFormat::Float };
+    let mut w = hound::WavWriter::create(&wav, spec).unwrap();
+    for i in 0..3 * SR {
+        w.write_sample((i as f64 / SR as f64 * 440.0 * std::f64::consts::TAU).sin() as f32 * 0.5).unwrap();
+    }
+    w.finalize().unwrap();
+    let e = Engine::new(Project::routed(), Arc::new(NoPlugins));
+    let (srcs, ..) = e.import_audio(&[wav], None).unwrap();
+    let p0 = e.project();
+    let cid = p0.next_id;
+    let ch = Channel {
+        id: cid,
+        name: "Hold".into(),
+        color: "#47b8a8".into(),
+        src: ChannelSrc::Sample { source: srcs[0], sampler: SamplerState::default(), slices: vec![] },
+        vol: VOL_UNITY,
+        pan: 0.0,
+        mute: false,
+        solo: false,
+        insert: None,
+        root: SAMPLE_ROOT,
+        group: None,
+    };
+    let pat = Pattern {
+        id: 100,
+        name: "P".into(),
+        color: "#4f8ef7".into(),
+        len: 8.0,
+        min_len: 8.0,
+        notes: vec![Note::new(cid, 12.0, 8.0, None)],
+        swing: 0.0,
+    };
+    let mut ops: Vec<Op> = p0.inserts[0].fx.iter().map(|f| Op::RemoveFx { fx_id: f.id }).collect();
+    ops.extend([
+        Op::RemoveClips { ids: p0.clips.iter().map(|c| c.id).collect() },
+        Op::SetBpm { bpm: 120.0 }, // the timings assume it
+        Op::SetTempoPoints { points: vec![TempoPoint { beat: 4.0, bpm: 240.0, ramp: false }] },
+        Op::PutChannel { channel: ch, index: None },
+        Op::PutPattern { pattern: pat },
+        Op::PutClips { clips: vec![clip(200, 0, 0.0, 8.0, 100)] },
+    ]);
+    e.apply(&ops, false, None).unwrap();
+    let out = e.render(0.0, 8.0, 0.0, SR).unwrap();
+    let sec = |t: f64| (t * SR as f64) as usize * 2;
+    assert!(rms(&out[sec(1.6)..sec(1.8)]) > 0.1, "the note sounds (onset at 1.5 s)");
+    // [2.3, 2.45]: after the true 0.75 s ending (1.5 + 0.75 = 2.25 s, release settled),
+    // before the onset-tempo's 1.0 s ending (2.5 s, the render's own end)
+    assert!(rms(&out[sec(2.3)..sec(2.45)]) < 1e-3, "the note ended by 2.3 s");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn a_note_deep_in_a_long_ramp_sounds() {
+    // 60→300 over 64 beats: freezing the segment-start tempo per block drifts the
+    // transport off the map's integral, and the late notes never reach the bounce
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let notes: Vec<Note> = (0..8u32).map(|i| Note::trigger(h, i as f32 * 32.0, None)).collect();
+    let mut pt = one_pattern(notes, 64.0, 0.0);
+    pt.bpm = 60.0;
+    // a point's `ramp` is how it reaches the NEXT point: the beat-0 point glides to 300
+    pt.tempo_points = vec![TempoPoint { beat: 0.0, bpm: 60.0, ramp: true }, TempoPoint { beat: 64.0, bpm: 300.0, ramp: false }];
+    let out = render(pt, 64.0);
+    assert_eq!(
+        out.len(),
+        (64.0 * 60.0 * (5.0f64).ln() / 240.0 * SR as f64).round() as usize * 2,
+        "the render is the map's integral (stereo)"
+    );
+    // hat k (beat 8k, bpm 60+30k there) sounds at ∫60/bpm = 16·ln(1 + k/2) seconds
+    let hits = peaks(&out, 1e-4, SR as usize);
+    assert_eq!(hits.len(), 8, "hits at {:?}", hits.iter().map(|h| *h as f64 / SR as f64).collect::<Vec<_>>());
+    for (k, got) in hits.iter().enumerate() {
+        let want = 16.0 * (1.0 + 0.5 * k as f64).ln();
+        assert!((*got as f64 / SR as f64 - want).abs() < 0.05, "hat {k} at {} s, expected {want:.3} s", *got as f64 / SR as f64);
+    }
+}
+
+#[test]
+fn dense_tempo_points_do_not_stall_the_block_walk() {
+    // points closer than one block used to hit a passes-per-block cap that left frames
+    // unscheduled: the events drift late and the last ones fall past the bounce
+    let p0 = Project::routed();
+    let h = chan(&p0, "Hat");
+    let mut pt = one_pattern(
+        vec![Note::trigger(h, 0.0, None), Note::trigger(h, 4.0, None), Note::trigger(h, 8.0, None), Note::trigger(h, 12.0, None)],
+        4.0,
+        0.0,
+    );
+    pt.bpm = 121.0;
+    pt.tempo_points = (0..4096u32).map(|i| TempoPoint { beat: i as f64 / 1024.0, bpm: 121.0, ramp: false }).collect();
+    let out = render(pt, 4.0);
+    assert_eq!(out.len(), (4.0 * 60.0 / 121.0 * SR as f64) as usize * 2, "4 beats at 121");
+    let hits = peaks(&out, 1e-4, (0.1 * SR as f64) as usize);
+    assert_eq!(hits.len(), 4, "hits at {:?}", hits.iter().map(|h| *h as f64 / SR as f64).collect::<Vec<_>>());
+    for (k, got) in hits.iter().enumerate() {
+        let want = k as f64 * 60.0 / 121.0;
+        assert!((*got as f64 / SR as f64 - want).abs() < 0.02, "hat {k} at {} s, expected {want} s", *got as f64 / SR as f64);
+    }
+}

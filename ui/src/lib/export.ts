@@ -68,23 +68,27 @@ export function exportSeconds(from: number, to: number, bpm: number, tail: numbe
   // the segment containing `a` starts at the point before it — its ramp still governs
   if (i > 0) i--;
   while (pos < b - 1e-9) {
-    if (i >= pts.length) {
-      seconds += ((b - pos) * 60) / cur;
-      break;
+    const pointBeat = i < pts.length ? pts[i].beat : Number.POSITIVE_INFINITY;
+    // the stretch before this point plays at the current tempo; `pos` never moves backward,
+    // so a range that starts past a point skips straight to that point's segment
+    const atPoint = Math.min(pointBeat, b);
+    if (atPoint > pos + 1e-9) {
+      seconds += ((atPoint - pos) * 60) / cur;
+      pos = atPoint;
     }
-    const pointBeat = pts[i].beat;
-    const nextBeat = pts[i + 1]?.beat ?? b;
+    if (pos >= b - 1e-9 || i >= pts.length) break;
+    const nextBeat = pts[i + 1]?.beat ?? Number.POSITIVE_INFINITY;
     const startBpm = Math.max(1, pts[i].bpm);
     const nextBpm = Math.max(1, pts[i + 1]?.bpm ?? startBpm);
-    // the stretch up to this point plays at the current tempo
-    const edge = Math.min(pointBeat, b);
-    seconds += seg(pos, edge, pos, cur, cur, false);
-    pos = edge;
-    if (pos >= b - 1e-9) break;
-    // then the point's own segment, ramping to the next point's tempo
+    // this point's segment [pointBeat, nextBeat) ramps (or holds) into the next point:
+    // integrate only its overlap with the range, from the segment's own origin — the ramp's
+    // partial integral backs out the time before the range (a mid-ramp start would
+    // otherwise count the whole ramp)
     const segEnd = Math.min(nextBeat, b);
-    seconds += seg(pos, segEnd, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false);
-    pos = segEnd;
+    if (segEnd > pos + 1e-9) {
+      seconds += seg(pointBeat, segEnd, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false) - seg(pointBeat, pos, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false);
+      pos = segEnd;
+    }
     cur = startBpm;
     i++;
   }

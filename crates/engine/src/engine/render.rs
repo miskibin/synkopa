@@ -378,7 +378,9 @@ impl Engine {
             let rendered = done.saturating_sub(pdc);
             let at = if wrap { rendered % frames } else { rendered };
             if tempo.is_constant() {
-                from + at as f64 * (60.0 / project.bpm) / f64::from(sample_rate)
+                // the effective tempo of the compiled map (a beat-0 point can differ from
+                // the project's base BPM), and seconds → beats is ×bpm/60
+                from + at as f64 / f64::from(sample_rate) * (tempo.bpm_at(from) / 60.0)
             } else {
                 // the seconds position inside the (possibly wrapped) pass → the beat
                 tempo.beat_at(tempo.seconds_between(0.0, from) + at as f64 / f64::from(sample_rate))
