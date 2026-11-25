@@ -14,6 +14,11 @@ shown in the app after an update and is published as the release notes (see
   pitch editor's notes and **Copy notes** into the Piano roll follow the melody as it was sung.
   Without it nothing changes. The chip beside **Copy notes** shows which finder is in use; also
   `synkopa note-model [--install]`.
+- **Convert to MIDI.** Right-click an audio clip → **Convert to MIDI…** turns its melody into Piano roll
+  notes in a new pattern right under it, on a new piano or a channel you pick, as one undo step. The
+  preview shows the sung pitch and the notes it will write, and follows the settings as you change them:
+  the shortest note kept, timing as sung or on a grid, velocity following the singing or fixed, and a
+  key range that drops octave slips. Pitch edits on the clip are included. Also `synkopa audio-to-midi`.
 
 - **Downloads work behind a company proxy.** Library kits and models used to fail with
   "invalid peer certificate: UnknownIssuer" on a work computer whose proxy re-signs HTTPS.
@@ -33,6 +38,10 @@ shown in the app after an update and is published as the release notes (see
   pad's mids under the vocal, or a bass's low end under the kick.
 
 ### Changed
+- **A shorter audio clip menu.** Right-clicking an audio clip on the Playlist no longer lists what
+  has a better place: its volume and stretch method are in the Sample editor (double-click the
+  clip), copy and cut are Ctrl+C / Ctrl+X, and the colours sit right under the name without a
+  heading. What is left is what you do to a clip from there.
 - **One way to write a position everywhere: bar:beat:16th.** The transport, the time rulers (beats
   read 2:3), the status line, menus and the Piano roll's note properties all write the same moment
   the same way, so 2:3:1 on one is 2:3:1 on the other. The transport drops its leading zeros

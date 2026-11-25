@@ -8,7 +8,7 @@ import type {
   PreviewWave,
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
   KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
-  ExtractStemsResult, StemId, StemModelStatus, StemsProgress, ChordAnalysis, ChordDetail, ChordModelStatus, ChordsToPatternResult,
+  AudioToMidiArgs, AudioToMidiResult, ExtractStemsResult, StemId, StemModelStatus, StemsProgress, ChordAnalysis, ChordDetail, ChordModelStatus, ChordsToPatternResult,
 } from './types';
 
 export interface OsDropEvent { type: 'over' | 'drop' | 'leave'; paths: string[]; x: number; y: number }
@@ -90,6 +90,8 @@ export interface Backend {
    *  (root in the bass, smooth voice leading) in a new pattern on `channel` (default a new Synkopa Keys piano), placed on
    *  the Playlist from the bar of the first chord on a free track below the audio. One undo step. */
   chordsToPattern(args: { clipId: Id; from?: number; to?: number; detail?: ChordDetail; channel?: Id | null }): Promise<ChordsToPatternResult>;
+  /** Convert to MIDI (melody): the clip's notes as a new pattern under it in one undo step; `preview` changes nothing. */
+  audioToMidi(args: AudioToMidiArgs): Promise<AudioToMidiResult>;
   /** "Auto wokal": measures a vocal clip (key from `beatClipId`, else from the other tracks) and returns the calibrated
    *  insert chain. Read-only; takes a few seconds per minute of audio. `bakeRider`: the rider is left out of
    *  `chain` and returned as `riderBake` — pass its params to `bakeRider` (no live look-ahead delay on the insert). */
@@ -417,6 +419,7 @@ export function tauriBackend(): Backend {
     chordsModelInstall: () => invoke('chords_model_install'),
     chordsAnalyze: (clipId, detail) => invoke('chords_analyze', { clipId, detail: detail ?? null }),
     chordsToPattern: args => invoke('chords_to_pattern', { args }),
+    audioToMidi: args => invoke('audio_to_midi', { args }),
     autoVocalPlan: a => invoke('auto_vocal_plan', { clipId: a.clipId, beatClipId: a.beatClipId ?? null, style: a.style ?? null, bakeRider: a.bakeRider ?? null }),
     bakeRider: a => invoke('bake_rider', { clipId: a.clipId, params: a.params }),
     autoVocal: async (a, onStage) => {

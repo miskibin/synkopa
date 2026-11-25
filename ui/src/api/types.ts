@@ -370,6 +370,21 @@ export interface ChordAnalysis {
 }
 /** `chords_model`: the chord recognition model (downloaded on first use). */
 export interface ChordModelStatus { id: string; name: string; bytes: number; installed: boolean; licenseNote: string; licenseUrl: string; path: string }
+/** `audio_to_midi` (Convert to MIDI, melody): `shortest` seconds, `quantize` steps (0 = as sung), `velocity` 0..1
+ *  (null = follow the singing), `low`/`high` MIDI keys (null = no limit), `channel` (null = a new piano),
+ *  `preview` = answer the notes without changing the project. */
+export interface AudioToMidiArgs {
+  clipId: Id; shortest?: number; quantize?: number; velocity?: number | null; low?: number | null; high?: number | null;
+  channel?: Id | null; preview?: boolean;
+}
+/** What `audio_to_midi` found (and, without `preview`, wrote): `notes` in steps from the bar at song beat `start`;
+ *  `takeRange` = the keys the take holds (5th–95th percentile); `noteBackend` = what found the notes. */
+export interface AudioToMidiResult {
+  clipId: Id; count: number; notes: { step: number; len: number; p: number; v: number }[]; start: number;
+  takeRange: [number, number] | null; low: number | null; high: number | null; backend: string; noteBackend: string; edited: boolean;
+  /** After a convert: the new pattern, its channel (new or the one picked), its Playlist clip. */
+  patternId?: Id; channelId?: Id; newChannel?: boolean; patternClipId?: Id | null; track?: number; revision?: number;
+}
 /** `chords_to_pattern`: the new pattern (and channel, when `newChannel`) and its Playlist clip. */
 export interface ChordsToPatternResult {
   patternId: Id; channelId: Id; newChannel: boolean; clipId: Id | null; track: number; start: number; chords: number; revision: number;
