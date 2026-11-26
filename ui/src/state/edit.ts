@@ -149,6 +149,7 @@ function opKey(op: Op): string {
     case 'putChannel': return 'ch' + op.channel.id;
     case 'putSource': return 's' + op.source.id;
     case 'setBpm': return 'bpm';
+    case 'setTempoPoints': return 'tempo';
     case 'setLoop': return 'loop';
     case 'putAutomation': return 'a' + op.automation.id;
     case 'putComp': return 'c' + op.comp.id;
