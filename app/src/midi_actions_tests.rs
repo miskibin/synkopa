@@ -45,8 +45,17 @@ fn song_file(d: &Path) -> (PathBuf, Vec<OutTrack>) {
         },
     ];
     let path = d.join("groove.mid");
-    std::fs::write(&path, midi_file::write(97.0, "Groove", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Groove", &tracks).unwrap()).unwrap();
     (path, tracks)
+}
+
+/// A file whose tempo changes: 120 at tick 0, 90 at beat 4, 150 at beat 8 (written with our
+/// own writer — the raw-event edge cases are `midi_file`'s unit tests; this is the import).
+fn mapped_file(d: &Path) -> PathBuf {
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("mapped.mid");
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 90.0), (8.0, 150.0)], "M", &tracks).unwrap()).unwrap();
+    path
 }
 
 fn call(doc: &dyn wave_cli::Doc, cmd: &str, a: Value) -> Value {
@@ -149,6 +158,63 @@ fn a_part_goes_into_a_channel_of_a_pattern_adding_or_replacing() {
         .call("midi_import", &json!({ "path": path, "parts": [0, 1], "into": { "pattern": 1, "ch": ch } }), None)
         .unwrap_err()
         .contains("exactly one part"));
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_mapped_file_imports_its_tempo_map_with_set_tempo() {
+    let d = tmp("mapped");
+    let path = mapped_file(&d);
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true }));
+    assert_eq!(r["tempoSet"], true);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert_eq!(proj["bpm"], 120.0, "the file's tick-0 tempo is the base");
+    let pts = proj["tempoPoints"].as_array().expect("the map came with the import");
+    let got: Vec<(f64, f64)> = pts.iter().map(|p| (p["beat"].as_f64().unwrap(), p["bpm"].as_f64().unwrap())).collect();
+    assert_eq!(got, vec![(4.0, 90.0), (8.0, 150.0)]);
+    // without the opt-in the project keeps its own tempo entirely
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path }));
+    assert_eq!(r["tempoSet"], false);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert!(proj.get("tempoPoints").is_none() || proj["tempoPoints"].is_null(), "no map without the opt-in");
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_mapped_project_exports_its_map_and_a_ramp_as_per_beat_events() {
+    let d = tmp("exportmap");
+    let doc = Files.create("sketch").unwrap();
+    let ch = call(&*doc, "channels", json!({})).as_array().unwrap()[0]["id"].as_u64().unwrap();
+    call(
+        &*doc,
+        "apply",
+        json!({ "ops": [
+            { "op": "setBpm", "bpm": 90.0 },
+            { "op": "setTempoPoints", "points": [
+                { "beat": 0.0, "bpm": 90.0, "ramp": true },
+                { "beat": 8.0, "bpm": 140.0, "ramp": false },
+            ] },
+            { "op": "putPattern", "pattern": { "id": 1, "name": "P", "color": "#fff", "len": 4.0, "minLen": 4.0, "notes": [
+                { "ch": ch, "step": 0.0, "len": 4.0, "p": 36 }
+            ], "swing": 0.0, "channelLoops": {} } }],
+        }),
+    );
+    let out = d.join("ramp.mid");
+    call(&*doc, "midi_export", json!({ "out": out, "pattern": 1 }));
+    let f = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
+    // the ramp 90→140 over 8 beats steps once per beat: events at beats 0..8, values 90..140
+    assert_eq!(f.bpm.unwrap(), 90.0);
+    let got: Vec<(f64, f64)> = f.tempo_points.iter().map(|t| (t.beat, t.bpm)).collect();
+    let want: Vec<(f64, f64)> = (1..=8).map(|k| (k as f64, 90.0 + 50.0 * k as f64 / 8.0)).collect();
+    assert_eq!(got.len(), want.len(), "{got:?}");
+    for ((gb, gbpm), (wb, wbpm)) in got.iter().zip(&want) {
+        assert_eq!(gb, wb);
+        assert!((gbpm - wbpm).abs() < 0.01, "{gbpm} vs {wbpm}");
+    }
     std::fs::remove_dir_all(&d).ok();
 }
 

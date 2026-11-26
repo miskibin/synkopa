@@ -16,6 +16,31 @@ impl crate::model::Project {
     pub(crate) fn tempo_map(&self) -> TempoMap {
         TempoMap::compile(&self.tempo_points, self.bpm)
     }
+
+    /// The map as `(beat, bpm)` events a discrete serializer can write — a MIDI file's tempo
+    /// meta, which has no ramps: a hold segment is one event at its start, a ramp is one event
+    /// per whole beat along it (the BPM at that beat, so the file's per-beat timing is the
+    /// map's). The opener (the base tempo at beat 0) is always the first event, so a constant
+    /// project writes exactly one tempo event, as it always did.
+    pub fn midi_tempo_events(&self) -> Vec<(f64, f64)> {
+        let map = self.tempo_map();
+        let mut out: Vec<(f64, f64)> = Vec::with_capacity(map.points.len());
+        for (i, &(a, bpm_a, ramp)) in map.points.iter().enumerate() {
+            out.push((a, bpm_a));
+            if !ramp {
+                continue;
+            }
+            if let Some(&(b, _, _)) = map.points.get(i + 1) {
+                // whole beats inside the glide (the glide's end beat is the next point's own event)
+                let mut x = a.floor() + 1.0;
+                while x < b - 1e-9 {
+                    out.push((x, map.bpm_at(x)));
+                    x += 1.0;
+                }
+            }
+        }
+        out
+    }
 }
 
 /// The tempo map of one timeline snapshot.

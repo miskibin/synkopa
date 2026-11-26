@@ -1584,7 +1584,9 @@ export class MockBackend implements Backend {
       part(1, 'Piano', 1, 0, 'Acoustic Grand Piano', piano, { kind: 'keys' }),
       part(2, 'Drums', 10, null, 'Drums', drums, { kind: 'drums', drums: [{ key: 36, name: 'Bass Drum', notes: 2 }, { key: 38, name: 'Snare', notes: 1 }, { key: 42, name: 'Closed Hi-hat', notes: 2 }] }),
     ];
-    return { path, format: 1, ppq: 960, bpm: 97, tempoChanges: 0, end: 8, warnings: [] as string[], parts, projectBpm: this.p.bpm };
+    // a change at beat 4 so the dialog and the import exercise the tempo map (the engine
+    // mirrors: base 97, then 105 from beat 4)
+    return { path, format: 1, ppq: 960, bpm: 97, tempoChanges: 1, tempoPoints: [{ beat: 4, bpm: 105 }], end: 8, warnings: [] as string[], parts, projectBpm: this.p.bpm };
   }
   async midiInspect(path: string): Promise<MidiInfo> {
     await delay(20);
@@ -1613,7 +1615,10 @@ export class MockBackend implements Backend {
     const keys = [...new Set(parts.filter(p => p.drums).flatMap(p => p.raw.map(n => n[0])))].sort((x, y) => x - y);
     const ops: Op[] = [];
     let next = this.p.nextId;
-    if (a.setTempo && f.bpm) ops.push({ op: 'setBpm', bpm: f.bpm });
+    if (a.setTempo && (f.bpm != null || f.tempoPoints.length)) {
+      ops.push({ op: 'setBpm', bpm: f.bpm ?? 120 });
+      if (f.tempoPoints.length) ops.push({ op: 'setTempoPoints', points: f.tempoPoints.map(t => ({ beat: t.beat, bpm: t.bpm, ramp: false })) });
+    }
     const patternId = next++, notes: Note[] = [], channelIds: Id[] = [], drumCh = new Map<number, Id>();
     for (const k of keys) {
       const [file, name] = DRUM[k], path = libPath(file), fac = factoryFile(path)!;
@@ -1649,7 +1654,7 @@ export class MockBackend implements Backend {
     this.p.nextId = Math.max(this.p.nextId, next);
     // the engine commits this through `apply_with_library_labeled` with the same name
     this.pushUndo(prev, 'Import MIDI'); this.changed();
-    return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && f.bpm) };
+    return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length)) };
   }
   async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {
     await delay(20);

@@ -132,9 +132,14 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 next - 1
             };
             let mut ops = vec![];
-            if set_tempo {
-                if let Some(bpm) = f.bpm {
-                    ops.push(Op::SetBpm { bpm: bpm.clamp(20.0, 999.0) });
+            if set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()) {
+                // the file's tempo wins: the base (tick 0's value, else MIDI's implied 120)
+                // and every later change as a point of the tempo map (#320)
+                ops.push(Op::SetBpm { bpm: f.bpm.unwrap_or(120.0).clamp(20.0, 999.0) });
+                if !f.tempo_points.is_empty() {
+                    ops.push(Op::SetTempoPoints {
+                        points: f.tempo_points.iter().map(|t| wave_engine::model::TempoPoint { beat: t.beat, bpm: t.bpm, ramp: false }).collect(),
+                    });
                 }
             }
             let pattern_id = id();
@@ -215,7 +220,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
         .map_err(|x| x.to_string())?;
     made["revision"] = json!(rev);
     made["warnings"] = json!(f.warnings);
-    made["tempoSet"] = json!(set_tempo && f.bpm.is_some());
+    made["tempoSet"] = json!(set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()));
     Ok(made)
 }
 
@@ -362,7 +367,10 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
         .as_deref()
         .and_then(|s| Path::new(s).file_stem().map(|x| x.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "Synkopa".into());
-    let bytes = midi_file::write(p.bpm, &title, &tracks)?;
+    // the map goes with the notes: holds as one event, ramps stepped per beat (exact per-beat
+    // timing), the opener first — a constant project writes the single event it always did
+    let tempo_events = p.midi_tempo_events();
+    let bytes = midi_file::write(&tempo_events, &title, &tracks)?;
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
