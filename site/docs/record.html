@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Set up an input, record a take, and combine the best parts of multiple passes.">
+  <title>Record audio · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
+      <nav class="top-links" aria-label="Synkopa links">
+        <a href="https://miskibin.github.io/synkopa/">Website</a>
+        <a href="https://github.com/miskibin/synkopa">GitHub</a>
+        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
+      </nav>
+    </div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <nav aria-label="Documentation">
+        <p>Start here</p>
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="first-song.html">Make your first song</a></li>
+        </ul>
+        <p>Workflow</p>
+        <ul>
+          <li><a href="patterns.html">Write and arrange</a></li>
+          <li><a href="record.html" aria-current="page">Record audio</a></li>
+          <li><a href="mix.html">Mix and route</a></li>
+          <li><a href="export.html">Export and share</a></li>
+        </ul>
+        <p>Reference</p>
+        <ul>
+          <li><a href="reference.html">Shortcuts and help</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main id="main">
+      <header class="intro">
+        <h1>Record audio</h1>
+        <p class="lede">Set up an input, record a take, and combine the best parts of multiple passes.</p>
+      </header>
+      <nav class="contents" aria-label="On this page"><a href="#input">Set up your input</a><a href="#take">Record a take</a><a href="#comp">Combine takes from a loop</a></nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="input">Set up your input</h2>
+          <ol>
+            <li>Connect your microphone or interface. Go to <strong>File → Settings… → Audio</strong> and choose your <strong>Input</strong> and <strong>Output</strong>.</li>
+            <li>Right-click the round <strong>Record</strong> button and enable <strong>Audio</strong>. Click the button to arm recording. The <strong>IN</strong> meter should move when you sing or play.</li>
+            <li>For a multi-input interface, select the physical socket under <strong>Input channel</strong> in Audio settings. Input channels appear once recording or monitoring opens the device.</li>
+          </ol>
+          <p>To hear the input through Synkopa, use <strong>View → Monitor input</strong> and listen on headphones to avoid feedback. If your interface already monitors directly, leave software monitoring off to avoid hearing both paths.</p>
+        </section>
+        <section>
+          <h2 id="take">Record a take</h2>
+          <ol>
+            <li>In the Playlist, open the destination track’s menu and choose <strong>Record into this track</strong>. If you leave the destination unassigned, Synkopa chooses the first free track.</li>
+            <li>Click the Playlist ruler where the take should start. Leave the transport in <strong>SONG</strong> mode. Enable <strong>1 BAR</strong> if you want a count-in.</li>
+            <li>With Record armed, press <kbd>Space</kbd>, perform, and press <kbd>Space</kbd> again to stop. Your take appears in the Playlist. Disarm Record when you are ready to listen back.</li>
+          </ol>
+          <p>If no clip appears, check the <strong>Audio</strong> record filter, the <strong>IN</strong> meter, and the destination label under the main menus. See <a href="reference.html#recording">recording troubleshooting</a> if the meter does not move.</p>
+        </section>
+        <section>
+          <h2 id="comp">Combine takes from a loop</h2>
+          <ol>
+            <li>Drag across the Playlist ruler to select the section to repeat. Arm Record and play through several passes.</li>
+            <li>Stop. Double-click the resulting comp clip, or use its track header’s take control, to show the takes.</li>
+            <li>Click a take name to use the whole take, or drag across a section of a take lane to use that part in the comp. Play back the joins in context.</li>
+          </ol>
+          <p>If you only want to record one pass, clear the loop by double-clicking the ruler before starting.</p>
+        </section>
+      </article>
+    <nav class="next" aria-label="Related guides">
+      <a href="patterns.html">← Write and arrange</a>
+      <a href="mix.html">Mix and route →</a>
+    </nav>
+      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
+    </main>
+  </div>
+</body>
+</html>

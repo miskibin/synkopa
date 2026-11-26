@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Install Synkopa, program a beat, add a melody, and export a mix.">
+  <title>Make your first song · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
+      <nav class="top-links" aria-label="Synkopa links">
+        <a href="https://miskibin.github.io/synkopa/">Website</a>
+        <a href="https://github.com/miskibin/synkopa">GitHub</a>
+        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
+      </nav>
+    </div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <nav aria-label="Documentation">
+        <p>Start here</p>
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="first-song.html" aria-current="page">Make your first song</a></li>
+        </ul>
+        <p>Workflow</p>
+        <ul>
+          <li><a href="patterns.html">Write and arrange</a></li>
+          <li><a href="record.html">Record audio</a></li>
+          <li><a href="mix.html">Mix and route</a></li>
+          <li><a href="export.html">Export and share</a></li>
+        </ul>
+        <p>Reference</p>
+        <ul>
+          <li><a href="reference.html">Shortcuts and help</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <main id="main">
+      <header class="intro">
+        <h1>Make your first song</h1>
+        <p class="lede">Install Synkopa, program a beat, add a melody, and export a mix.</p>
+      </header>
+      <nav class="contents" aria-label="On this page"><a href="#install">Install and check sound</a><a href="#drums">Program one bar of drums</a><a href="#melody">Add a melody</a><a href="#arrange">Turn the loop into a song</a><a href="#finish">Save the project and export audio</a></nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="install">Install and check sound</h2>
+          <p>Get the <a href="https://github.com/miskibin/synkopa/releases/latest">latest release</a> for your system. Use the <code>.exe</code> or <code>.msi</code> on Windows, the <code>.dmg</code> on Apple Silicon Macs, or the <code>.deb</code>, <code>.rpm</code>, or <code>.AppImage</code> on Linux. See the <a href="https://github.com/miskibin/synkopa#install">platform notes</a> for startup and driver details.</p>
+          <p>In Synkopa, choose <strong>File → Open demo project</strong> and press <kbd>Space</kbd>. You should hear <em>OBSIDIAN 2093</em> and see the playhead move in the Playlist. If it moves in silence, check <strong>File → Settings… → Audio → Output</strong>, then see <a href="reference.html#playback">playback troubleshooting</a>.</p>
+        </section>
+        <section>
+          <h2 id="drums">Program one bar of drums</h2>
+          <ol>
+            <li>Choose <strong>File → New project</strong>. The <strong>Channel Rack</strong> opens with Kick, Clap, Hat, and Snare. Press <kbd>F6</kbd> if it is hidden.</li>
+            <li>Count from the first square in each row. Click steps 1, 5, 9, and 13 on <strong>Kick</strong>, steps 5 and 13 on <strong>Clap</strong>, and every other step on <strong>Hat</strong>. Right-click an active step to erase it.</li>
+            <li>Click <strong>PAT</strong> in the transport and press <kbd>Space</kbd> to hear the current pattern loop. Press <kbd>Space</kbd> again to stop.</li>
+          </ol>
+<figure>
+  <a href="images/rack.webp"><img src="images/rack.webp" width="1600" height="435" alt="Channel Rack with rows for Kick, Clap, Hat, Snare, and a synth, and lit squares marking active steps." loading="lazy"></a>
+  <figcaption>Each row is a sound. Lit steps play when the pattern reaches them. Select the image to view it at full size.</figcaption>
+</figure>
+        </section>
+        <section>
+          <h2 id="melody">Add a melody</h2>
+          <ol>
+            <li>In the Channel Rack, choose <strong>+ Channel → Synkopa Instruments — pianos, strings, guitars</strong> to add the Grand Piano.</li>
+            <li>Right-click the piano channel name and choose <strong>Piano roll</strong>. Click within the grid to place notes, drag them up or down to change pitch, and drag the right edge of a note to change its length.</li>
+            <li>Play the pattern in <strong>PAT</strong> again to hear the piano against the drums. Keep the notes within the first bar if you want a one-bar loop.</li>
+          </ol>
+        </section>
+        <section>
+          <h2 id="arrange">Turn the loop into a song</h2>
+          <ol>
+            <li>Stop playback and click the <strong>Playlist</strong> to bring it forward, or press <kbd>F5</kbd>.</li>
+            <li>Open the Browser with <kbd>Alt</kbd> + <kbd>F8</kbd> if it is hidden. In <strong>Patterns</strong>, drag <strong>Pattern 1</strong> onto the first Playlist track at bar 1. Drag it in again at bars 2, 3, and 4 to repeat it.</li>
+            <li>Click the Playlist ruler at bar 1 to set the start and switch to <strong>SONG</strong>. Press <kbd>Space</kbd> to hear the Playlist.</li>
+          </ol>
+          <div class="note"><p>A pattern stores the notes. Each pattern clip in the Playlist plays an instance of those same notes. To change just one instance, open that clip’s menu and choose <strong>Make unique</strong> before editing.</p></div>
+        </section>
+        <section>
+          <h2 id="finish">Save the project and export audio</h2>
+          <ol>
+            <li>Choose <strong>File → Save</strong> and give the project a name. Open the <code>.synkopa</code> file when you want to keep working on the song.</li>
+            <li>Choose <strong>File → Export audio…</strong>. Set <strong>Output</strong> to <strong>Mix</strong>, <strong>Range</strong> to <strong>Song</strong>, and <strong>Format</strong> to <strong>WAV</strong>.</li>
+            <li>Choose <strong>Export…</strong>, save the file, and listen to it in your audio player.</li>
+          </ol>
+          <p>Once the first mix plays, try <a href="patterns.html">arranging variations</a> or <a href="mix.html">balancing the individual sounds</a>.</p>
+        </section>
+      </article>
+    <nav class="next" aria-label="Related guides">
+      <a href="index.html">← Overview</a>
+      <a href="patterns.html">Write and arrange →</a>
+    </nav>
+      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
+    </main>
+  </div>
+</body>
+</html>

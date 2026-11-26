@@ -1,0 +1,20 @@
+# Synkopa user guide
+
+The guide is plain HTML and CSS, published as part of the existing GitHub Pages site.
+Run `python3 -m http.server 8000 --directory site` from the repository root and open
+`http://localhost:8000/docs/` to preview the landing-page link and guide together.
+
+To serve the guide separately, use `site/docs` as the static root. It needs no build step,
+dependencies, or absolute asset paths. On Vercel, use the Other framework preset and
+select `site/docs` as the project root.
+
+## Screenshots
+
+- `overview.webp`, `rack.webp` and `mixer.webp` are desktop screenshots from the
+  [Synkopa UX audit](https://github.com/miskibin/synkopa/pull/302) before the proposed changes.
+- `roll.webp` and `export.webp` show the actual Synkopa frontend with the built-in
+  OBSIDIAN 2093 demo, captured using the repository's browser development mode at
+  `aa7215f`. Development mode uses the browser mock backend.
+
+Keep screenshots in `images/` and update the image dimensions, alt text and caption when
+replacing them.
