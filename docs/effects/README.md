@@ -1,6 +1,6 @@
 # Effects
 
-Synkopa has 21 built-in mixer effects. This page tells you which one to reach for, and how to add
+Synkopa has 22 built-in mixer effects. This page tells you which one to reach for, and how to add
 and work with any of them.
 
 ## Which effect for what
@@ -21,6 +21,7 @@ and work with any of them.
 | Multiband | you want the dense, bright, loud "OTT" sound: upward and downward compression in three bands |
 | [Gate](gate.md) | noise or bleed sits between notes and hits, or one sound should open or duck with another |
 | [Limiter](limiter.md) | the master must get louder without going over a true-peak ceiling |
+| Master | you want the song mastered for release: put it on the master track and it listens to the whole song, then sets tone EQ, three-band glue, width, a clipper and a true-peak limiter to land on the loudness you pick (Streaming −14 LUFS by default). **Listen again** after you change the mix |
 
 ### Space
 
