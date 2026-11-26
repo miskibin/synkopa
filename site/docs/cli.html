@@ -123,6 +123,13 @@ synkopa -p faster.synkopa render --out faster.wav</code></pre>
             <li>Listen in the app. Keep the change with <kbd>Ctrl</kbd> + <kbd>S</kbd>, or take it back with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.</li>
           </ol>
           <p>Tips for the agent: <code>synkopa catalog</code> lists every effect with its parameters and ranges, and <code>synkopa schema</code> lists the edits <code>apply --file</code> accepts as one all-or-nothing step. Every edit raises the project's <dfn>revision</dfn> number; with <code>--if-revision</code> an edit is refused with <code>REVISION_CONFLICT</code> if you changed the song in the meantime, and the agent should read it again.</p>
+          <h3>Connect it as tools</h3>
+          <p>Most agent apps can also call Synkopa directly, through <dfn>MCP</dfn> (Model Context Protocol, the common way to give an agent tools). The agent then sees four tools: read the project, run a command, apply several edits as one undo step, and run a list of commands. There is nothing more to install.</p>
+          <ol>
+            <li>In a terminal, add Synkopa to your agent. For Claude Code: <code>claude mcp add --scope user synkopa -- synkopa mcp</code>. For Codex: <code>codex mcp add synkopa -- synkopa mcp</code>. In Cursor or VS Code, add a server with the command <code>synkopa</code> and the argument <code>mcp</code>.</li>
+            <li>Start the agent again and ask it to read your Synkopa project.<span class="result">It calls <code>synkopa_context</code> and describes the song open in the app.</span></li>
+          </ol>
+          <pre tabindex="0" data-copy-command><code>claude mcp add --scope user synkopa -- synkopa mcp</code></pre>
           <p>The <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">complete CLI reference</a> covers notes, chords, stems, vocals, mixing, MIDI and exit codes.</p>
         </section>
 

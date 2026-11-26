@@ -103,6 +103,21 @@ synkopa undo                                            # or press Ctrl+Z in the
 
 The CLI works as soon as the app has run once (open a new terminal). Start any coding agent in any folder and tell it to run `synkopa context`. Full reference: [`docs/cli.md`](docs/cli.md).
 
+**As MCP tools.** `synkopa mcp` serves the same commands over the Model Context Protocol, so Claude Code, Cursor, VS Code or Codex call Synkopa directly. Nothing else to install:
+
+```sh
+claude mcp add --scope user synkopa -- synkopa mcp      # Claude Code
+codex mcp add synkopa -- synkopa mcp                    # Codex CLI
+```
+
+In Claude Code, the plugin adds the tools and a skill that teaches the workflow (`/plugin marketplace add miskibin/synkopa` once, then):
+
+```text
+/plugin install synkopa@synkopa
+```
+
+Other hosts: [`docs/cli.md`](docs/cli.md#agent-hosts-synkopa-mcp).
+
 ## How Synkopa fits next to other DAWs
 
 Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Studio has more than twenty-five years behind it and wins on ecosystem and breadth.
