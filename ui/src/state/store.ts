@@ -81,7 +81,7 @@ const bumpProject = (arrangement = true) => batch(() => { setProjVersion(v => v 
 const MIXER_ONLY = new Set<Op['op']>(['putFx', 'removeFx', 'moveFx', 'putInsert', 'removeInsert', 'putNotebook']);
 /** Not mixer edits, but nothing an arrangement canvas draws from the clip list either: the loop
  *  range is read directly by the views that show it (a loop drag must not redraw every clip). */
-const NOT_ARRANGEMENT = new Set<Op['op']>([...MIXER_ONLY, 'setLoop', 'putMarker', 'removeMarker']);
+const NOT_ARRANGEMENT = new Set<Op['op']>([...MIXER_ONLY, 'setLoop', 'putMarker', 'removeMarker', 'setTempoPoints']);
 
 /**
  * Told about every arrangement change before it is applied: the local ops (with the project as it
@@ -284,7 +284,7 @@ function setMeta(dto: StateDto) {
 }
 
 /** Project fields no arrangement canvas draws from (what `NOT_ARRANGEMENT` ops change, and the id counter). */
-const NOT_ARRANGEMENT_KEYS = new Set<string>(['inserts', 'notebook', 'loop', 'nextId'] satisfies (keyof Project)[]);
+const NOT_ARRANGEMENT_KEYS = new Set<string>(['inserts', 'notebook', 'loop', 'nextId', 'tempoPoints'] satisfies (keyof Project)[]);
 
 export function replaceState(dto: StateDto) {
   const old = M as unknown as Obj, next = dto.project as unknown as Obj;

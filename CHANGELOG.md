@@ -20,6 +20,14 @@ shown in the app after an update and is published as the release notes (see
   12-bit drums, VHS, an old 78 and total destruction. Find it in the effect picker under Tone (or
   search "lo-fi", "vinyl", "rc-20").
 
+- **Connect Synkopa to your AI agent as tools.** `synkopa mcp` serves the command line over the
+  Model Context Protocol, so Claude Code, Cursor, VS Code or Codex can read your project, write
+  patterns and notes, mix and render without a terminal. Nothing more to install: add a server
+  with the command `synkopa` and the argument `mcp` (Claude Code:
+  `claude mcp add --scope user synkopa -- synkopa mcp`). Every edit is still one undo step in
+  the app. For Claude Code there is also a plugin with a skill that teaches the workflow:
+  `/plugin marketplace add miskibin/synkopa`.
+
 ### Changed
 
 - **Master aims for Streaming −14 LUFS by default.** Blind listening tests on six mixes (each

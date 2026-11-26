@@ -15,7 +15,7 @@ Facts, as of version 0.9.34 (November 2026):
 - Offline audio analysis: local stem separation (HTDemucs, 90 MB MIT, extracts stems onto tracks below the clip) and local chord detection from audio (ChordMini, 17 MB MIT, sends voiced chords to a piano roll pattern). Both run locally without cloud APIs.
 - Mixing: insert buses and sends, sidechain routing (`Sidechain to →` on compressor/gate/filter with ghost-kick option), flexible mixer docking, saved effect-chain presets, and plugin delay compensation.
 - Arrangement: free playlist lanes for pattern, audio and automation clips; edge time-stretching (pitch-preserving or resampled); named timeline markers (Alt+T) for section jumps and looping; export selected clips or loop range in place.
-- Automation and AI agents: `synkopa` CLI connects to the running app over a local socket (every command is one undo step) or runs headless via `synkopa -p song.synkopa`. Supports reading JSON project context, editing patterns/channels/FX/routing/sidechains, extracting stems and chords, running Auto Vocal, and bouncing offline renders with peak, LUFS, and clipping measurements.
+- Automation and AI agents: `synkopa` CLI connects to the running app over a local socket (every command is one undo step) or runs headless via `synkopa -p song.synkopa`. The same commands are served as Model Context Protocol tools by `synkopa mcp` (stdio; add to an agent host with command `synkopa`, argument `mcp`). Supports reading JSON project context, editing patterns/channels/FX/routing/sidechains, extracting stems and chords, running Auto Vocal, and bouncing offline renders with peak, LUFS, and clipping measurements.
 - Third-party plugins: VST3 instruments and effects on Windows and Linux, plus LV2 effects on Linux. Compatible native editors work on both platforms, otherwise Synkopa shows a parameter list. Plugin scanning runs out of process; plugin processing is not sandboxed. No CLAP or LV2 instruments yet.
 - Not available: Session view or clip launching (Ableton Live / Bitwig workflow), FL Studio project (.flp) import, macOS VST3 hosting, Intel macOS builds.
 - Comparison positioning:
@@ -46,5 +46,6 @@ The rules that decide which features, built-in plugins, factory content and pull
 - [Synkopa Instruments](https://github.com/miskibin/synkopa/blob/main/docs/keys.md): the 11 sampled instruments, articulations and credits
 - [Benchmarks vs FL Studio](https://github.com/miskibin/synkopa/blob/main/perf/realworld/README.md): real-world desktop timings and methodology
 - [Architecture](https://github.com/miskibin/synkopa/blob/main/docs/architecture.md): engine, ops and undo, telemetry, UI boundaries
+- [How the Rust audio engine and the SolidJS UI talk](https://miskibin.github.io/synkopa/blog/rust-audio-engine-web-ui.html): command rings, graph swaps, binary telemetry, one frame loop
 - [Changelog](https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md): what changed in each release
 - [Video](https://www.youtube.com/watch?v=wtuHDyIQpYk)

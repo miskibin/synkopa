@@ -175,6 +175,9 @@ a { color: var(--blue); }
 .ruler { position: absolute; left: 0; top: 0; display: block; height: 26px; cursor: pointer; }
 /* the marker strip above the ruler (only while the song has markers) and its caption in the header column */
 .mkhead { position: absolute; left: 0; right: 0; top: 0; padding: 0 10px; display: flex; align-items: center; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg4); border-bottom: 1px solid var(--sep); }
+/* the tempo lane between the marker strip and the ruler, and its caption with the live BPM at the playhead */
+.tphead { position: absolute; left: 0; right: 0; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg4); border-bottom: 1px solid var(--sep); }
+.tpnow { font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .lanesCol { position: sticky; left: 0; z-index: 4; flex: none; background: var(--bg4); border-right: 1px solid var(--sep); }
 .lane { position: relative; display: flex; border-bottom: 1px solid var(--sep); background: var(--bg4); }
 .lane.armrec { background: var(--arm-bg); }
