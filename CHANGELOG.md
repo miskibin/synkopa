@@ -4,7 +4,7 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.36 — 2026-11-26
 
 ### Added
 
@@ -18,6 +18,11 @@ shown in the app after an update and is published as the release notes (see
 
 ### Changed
 
+- **Main volume is how loud Synkopa plays, not the Master fader.** The knob in the toolbar used
+  to move the mixer's Master fader. It now works like FL Studio's main volume: it turns the
+  song, pattern and sample previews and the metronome up or down on your speakers, and leaves
+  the mix alone. Exports, the Master fader and the meters do not change with it. It is
+  remembered between sessions and is not part of the project or its undo history.
 - **Master aims for Streaming −14 LUFS by default.** Blind listening tests on six mixes (each
   version loudness-matched and rated twice under anonymous names) put the assistant at −14 above
   the same chain at −12, a plain limiter and the unmastered mix; pushing to −12 cost more punch
