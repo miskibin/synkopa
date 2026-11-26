@@ -44,6 +44,16 @@ describe('tempoSegments', () => {
     expect(tempoSegments([pt(4, 90, true)], 120, 16)).toEqual([{ a: 0, b: 4, va: 120, vb: 120 }, { a: 4, b: 16, va: 90, vb: 90 }]);
   });
 
+  it('a ramp glides toward the next STORED point, even when duplicates follow it', () => {
+    // the engine glides 60 -> 90 (the next stored entry), then jumps to 120 at beat 8 (last wins)
+    const pts = [pt(0, 60, true), pt(8, 90), pt(8, 120)];
+    expect(tempoSegments(pts, 120, 16)).toEqual([{ a: 0, b: 8, va: 60, vb: 90 }, { a: 8, b: 16, va: 120, vb: 120 }]);
+    // what the strip draws at the midpoint is what the readout plays
+    expect(bpmAt(pts, 120, 4)).toBe(75);
+    const segs = tempoSegments(pts, 120, 16);
+    expect(segs[0].va + (segs[0].vb - segs[0].va) * 0.5).toBe(bpmAt(pts, 120, 4));
+  });
+
   it('stops at the end of the view, at the value the glide REACHES there', () => {
     // 90 gliding to 60 over beats 4..8: at beat 6 (the view's end) it has reached 75, it does
     // not bend to hit 60 early
@@ -130,6 +140,19 @@ describe('moveTempoPoint', () => {
   it('a lone point clamps to the song ends', () => {
     expect(moveTempoPoint([pt(4, 100)], 0, -20, 130)[0].beat).toBe(0);
     expect(moveTempoPoint([pt(4, 100)], 0, TOTAL_BEATS + 99, 130)[0].beat).toBe(TOTAL_BEATS);
+  });
+
+  it('tied neighbours pin the beat: only the BPM moves (the store must not reshuffle)', () => {
+    const tied = [pt(4, 90), pt(4, 100), pt(4, 110)];
+    const moved = moveTempoPoint(tied, 1, 20, 200);
+    expect(moved[1].beat).toBe(4);
+    expect(moved[1].bpm).toBe(200);
+    expect(moved.map(p => p.beat)).toEqual([4, 4, 4]);
+    // tied at the song's end, the same rule
+    const endTied = [pt(TOTAL_BEATS, 90), pt(TOTAL_BEATS, 100), pt(TOTAL_BEATS, 110)];
+    const back = moveTempoPoint(endTied, 1, -20, 200);
+    expect(back[1].beat).toBe(TOTAL_BEATS);
+    expect(back[1].bpm).toBe(200);
   });
 });
 

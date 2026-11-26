@@ -1541,7 +1541,9 @@ export function Playlist() {
   function tempoPointDrag(e: PointerEvent, pts0: TempoPoint[], i: number, g: Gesture) {
     const p0 = pts0[i], sx = e.clientX, sy = e.clientY;
     let moved = false;
-    tpDragScale = tempoScale(pts0, S.project.bpm);
+    // add-and-drag arrives with the axis frozen at the press: re-freezing here would include
+    // the new point and shift the value under a horizontal-only continuation of the same drag
+    if (!tpDragScale) tpDragScale = tempoScale(pts0, S.project.bpm);
     trackEdge(ev => {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return;
       moved = true;
@@ -1551,7 +1553,7 @@ export function Playlist() {
       const points = moveTempoPoint(pts0, i, b, bpm);
       g.update([putTempo(points)]);
       say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat)}`);
-    }, () => { tpDragScale = null; g.end(); }, 'grabbing');
+    }, () => { tpDragScale = null; dirtyRuler = true; g.end(); }, 'grabbing', { x: true });
   }
   /** Adds a point at the press and keeps it under the pointer until release, in the same undo step. */
   function tempoAddAndDrag(e: PointerEvent, x: number, y: number) {

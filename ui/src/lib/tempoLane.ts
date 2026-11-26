@@ -58,9 +58,11 @@ export function compiledTempo(points: readonly TempoPoint[] | undefined): TempoP
 
 export interface TempoSeg { a: number; b: number; va: number; vb: number }
 
-/** The curve as straight pieces over `[0, end]`: flats and ramps, what the strip draws. */
+/** The curve as straight pieces over `[0, end]`: flats and ramps, what the strip draws. Walks
+ *  the STORED order (not the deduped one): a ramp glides toward the next stored point — what
+ *  `bpmAt` and the engine play — and a duplicate's own piece is zero-length and draws nothing. */
 export function tempoSegments(points: readonly TempoPoint[] | undefined, base: number, end: number): TempoSeg[] {
-  const list = dedupeTempo(points), out: TempoSeg[] = [];
+  const list = points ?? [], out: TempoSeg[] = [];
   let pos = 0, v = base;
   for (let i = 0; i < list.length; i++) {
     const p = list[i], n = list[i + 1];
@@ -70,7 +72,7 @@ export function tempoSegments(points: readonly TempoPoint[] | undefined, base: n
     // a ramp cut short by the view's end still shows the value it REACHES there (the glide
     // continues past the edge, it does not bend to hit its target early)
     const vb = n && p.ramp ? p.bpm + (n.bpm - p.bpm) * ((to - p.beat) / (n.beat - p.beat)) : p.bpm;
-    out.push({ a: pos, b: to, va: p.bpm, vb });
+    if (to > pos + 1e-9) out.push({ a: pos, b: to, va: p.bpm, vb });
     pos = to;
     v = vb;
     if (!n || pos >= end - 1e-9) break;
@@ -148,14 +150,16 @@ export function addTempoPoint(points: readonly TempoPoint[], beat: number, bpm: 
 }
 
 /** Point `i` moved to `beat`/`bpm`: between its neighbours (points never pass each other) and
- *  clamped to the song and the tempo range. The ramp flag rides along. */
+ *  clamped to the song and the tempo range. Tied neighbours leave an empty interval — the beat
+ *  then stays put (a nudge past the twin would reshuffle the store's sort), only the BPM moves. */
 export function moveTempoPoint(points: readonly TempoPoint[], i: number, beat: number, bpm: number): TempoPoint[] {
   const p = points[i];
   if (!p) return points.map(q => ({ ...q }));
   const lo = i > 0 ? points[i - 1].beat + 1e-6 : 0;
   const hi = i + 1 < points.length ? points[i + 1].beat - 1e-6 : TOTAL_BEATS;
+  const nb = lo > hi ? p.beat : clampN(beat, lo, hi);
   return points.map((q, k) => (k === i
-    ? { ...q, beat: clampN(beat, lo, Math.max(lo, hi)), bpm: clampN(bpm, MIN_TEMPO_BPM, MAX_TEMPO_BPM) }
+    ? { ...q, beat: nb, bpm: clampN(bpm, MIN_TEMPO_BPM, MAX_TEMPO_BPM) }
     : { ...q }));
 }
 
