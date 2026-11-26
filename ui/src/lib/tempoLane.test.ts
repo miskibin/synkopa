@@ -177,8 +177,22 @@ describe('compiledTempo', () => {
     expect(out).toHaveLength(4096);
     expect(out[0].beat).toBeLessThanOrEqual(out[1].beat);
     expect(out.every(p => p.bpm >= 20 && p.bpm <= 300 && p.beat >= 0)).toBe(true);
-    expect(compiledTempo([pt(4, 90), pt(4, 60)])).toEqual([pt(4, 60)]);
+    // duplicates are KEPT in stored order (the engine compiles them too — a ramp glides toward
+    // the next stored point, and two at one beat play the last)
+    expect(compiledTempo([pt(4, 90), pt(4, 60)])).toEqual([pt(4, 90), pt(4, 60)]);
     expect(compiledTempo(undefined)).toEqual([]);
+  });
+
+  it('the lane\u2019s playback chain (compiledTempo -> bpmAt/tempoSegments) matches the engine on duplicates', () => {
+    // greptile/CodeRabbit regression: folding duplicates made the strip AND the readout show 90
+    // at beat 4 while the engine glides toward the next stored point and plays 75
+    const shown = compiledTempo([pt(0, 60, true), pt(8, 90), pt(8, 120)]);
+    expect(bpmAt(shown, 120, 4)).toBe(75);
+    const segs = tempoSegments(shown, 120, 16);
+    const drawn = segs[0].va + (segs[0].vb - segs[0].va) * 0.5;
+    expect(drawn).toBe(bpmAt(shown, 120, 4));
+    // at the beat itself the last twin plays
+    expect(bpmAt(shown, 120, 8)).toBe(120);
   });
 });
 

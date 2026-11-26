@@ -43,17 +43,19 @@ export function dedupeTempo(points: readonly TempoPoint[] | undefined): TempoPoi
 }
 
 /**
- * The map as the engine PLAYS it: clamped, sorted, two at one beat folded, capped at
- * MAX_TEMPO_POINTS — the mirror of `TempoMap::compile`. The op path normalizes too, but a
- * project FILE loads raw (nothing truncates `tempo_points` on load), so the lane draws, hits
- * and reads from this bounded list: everything per-frame here costs at most what plays.
+ * The map as the engine PLAYS it: clamped, sorted (stable — the stored order of ties is kept),
+ * capped at MAX_TEMPO_POINTS — the mirror of `TempoMap::compile`, duplicates INCLUDED (a ramp
+ * glides toward the next stored point, and two at one beat play the last). The op path
+ * normalizes too, but a project FILE loads raw (nothing truncates `tempo_points` on load), so
+ * the lane draws, hits and reads from this bounded list: everything per-frame here costs at
+ * most what plays.
  */
 export function compiledTempo(points: readonly TempoPoint[] | undefined): TempoPoint[] {
-  return dedupeTempo((points ?? []).map(p => ({
+  return (points ?? []).map(p => ({
     beat: Math.min(Math.max(p.beat, 0), TOTAL_BEATS),
     bpm: Math.min(Math.max(p.bpm, MIN_TEMPO_BPM), MAX_TEMPO_BPM),
     ramp: p.ramp ?? false,
-  }))).slice(0, MAX_TEMPO_POINTS);
+  })).sort((a, b) => a.beat - b.beat).slice(0, MAX_TEMPO_POINTS);
 }
 
 export interface TempoSeg { a: number; b: number; va: number; vb: number }
