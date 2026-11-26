@@ -124,18 +124,18 @@ Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Stud
 
 | | Synkopa 0.9 | FL Studio |
 | --- | --- | --- |
-| Price | Free (one build, no account) | About $99 to $450 depending on edition |
+| Price | Free (one build, no account) | $99 to $449 depending on edition (regular prices) |
 | Source code | Open (AGPL-3.0) | Closed |
 | Platforms | Windows, macOS (Apple Silicon), Linux | Windows, macOS |
-| Audio recording & comping | Included | Producer edition or higher |
-| Vocal pitch editing | Included (pitch editor, live tune, Tune to Reference, Auto Vocal) | NewTone and Pitcher in higher editions |
-| Stems & chord detection | Included offline (HTDemucs stems, ChordMini chords → piano roll) | Stem separation in Producer+; chord tools in Piano Roll |
+| Audio recording & comping | Included | Producer edition ($179) or higher |
+| Vocal pitch editing | Included (pitch editor, live tune, Tune to Reference, Auto Vocal) | NewTone and Pitcher in Signature ($269) or higher |
+| Stems & chord detection | Included offline (HTDemucs stems, ChordMini chords → piano roll) | Stem separation in Producer or higher; chord detection panel since FL Studio 2026 |
 | Built-in instruments & effects | Wavetable synth, 11 sampled instruments, sampler, 21 effects | More than a hundred across editions |
 | Third-party plugins | VST3 instruments & effects (Win/Linux); LV2 effects (Linux) | VST/VST3/AU/CLAP and native formats |
-| Automation & AI agents | Local CLI (`synkopa`) edits open project + measures renders | No CLI into the open project |
+| Automation & AI agents | Local CLI (`synkopa`) edits the open project and measures renders; the same commands as MCP tools (`synkopa mcp`) | Python scripting (MIDI controllers, piano roll); Gopher, an in-app assistant (experimental); the command line only renders |
 | Maturity | Version 0.9, active development; expect rough edges | Since 1998, huge community, tutorials, sample packs |
 
-*FL Studio details as of November 2026; see Image-Line's edition comparison for current prices. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.*
+*FL Studio 2026, checked 26 November 2026; see Image-Line's edition comparison for current prices. A sourced table that also covers LMMS and Zrythm: [Synkopa vs FL Studio vs LMMS vs Zrythm](https://miskibin.github.io/synkopa/compare.html). FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.*
 
 **Comparing with other free & open-source DAWs:**
 

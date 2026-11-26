@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synkopa vs FL Studio vs LMMS vs Zrythm: a factual comparison</title>
+<meta name="description" content="Synkopa, FL Studio, LMMS and Zrythm compared in one table: operating systems, licence and price, pattern workflow, audio recording, VST3 and other plugin formats, vocal tuning, stem separation, and control from a command line or an AI agent. Checked 26 November 2026, with sources.">
+<link rel="canonical" href="https://miskibin.github.io/synkopa/compare.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miskibin.github.io/synkopa/compare.html">
+<meta property="og:title" content="Synkopa vs FL Studio vs LMMS vs Zrythm">
+<meta property="og:description" content="Operating systems, licence, pattern workflow, recording, VST3, vocal tuning, stems and CLI / AI control, in one table with sources.">
+<meta property="og:image" content="https://miskibin.github.io/synkopa/img/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "dateModified": "2026-11-26",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is there a free, open-source alternative to FL Studio that runs on Linux?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Synkopa and LMMS are free, open-source DAWs with FL Studio's pattern workflow (a Channel Rack or Beat+Bassline editor, a piano roll and a playlist), and both run on Linux. Synkopa also records audio with takes and comping and hosts VST3 plugins; LMMS 1.2.2, the stable release, does not record audio and hosts VST2 but not VST3. FL Studio itself has no Linux build." }
+    },
+    {
+      "@type": "Question",
+      "name": "Which of Synkopa, FL Studio, LMMS and Zrythm support VST3 plugins?",
+      "acceptedAnswer": { "@type": "Answer", "text": "FL Studio hosts VST3 on Windows and macOS. Zrythm hosts VST3. Synkopa hosts VST3 instruments and effects on Windows and Linux, but not yet on macOS. LMMS hosts VST2 only; no official LMMS release lists VST3." }
+    },
+    {
+      "@type": "Question",
+      "name": "Which DAW can an AI agent or a script control from the command line?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Synkopa installs a synkopa command line that edits the project open in the app or a project file, with each command as one undo step, and serves the same commands to AI agents as Model Context Protocol tools (synkopa mcp). FL Studio and LMMS have command lines that render or convert projects but do not edit them; FL Studio also has Python scripting for MIDI controllers and the piano roll, and a built-in assistant called Gopher. Zrythm documents no render or editing command line, and its scripting is disabled." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can LMMS record audio?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Not in the stable release, LMMS 1.2.2. The pre-release LMMS 1.3.0-alpha.2 adds sample track recording with the JACK backend. Synkopa, Zrythm and FL Studio (Producer edition or higher) record audio." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can Synkopa, LMMS or Zrythm open FL Studio .flp projects?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Synkopa has no .flp import, LMMS removed its FLP import in version 1.2.0, and Zrythm imports MIDI and audio files only. MIDI files and audio stems exported from FL Studio can be imported into all three." }
+    }
+  ]
+}
+</script>
+<link rel="icon" type="image/png" href="img/icon.png">
+<style>
+  :root { color-scheme: light; --bg: #fbfaf7; --text: #16181d; --muted: #5a6270; --rule: #dedbd3; --accent: #1f56c2; --code-bg: #f0eee8; --us: #fff4d6; }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --bg: #13161c; --text: #f1f3f6; --muted: #a4adba; --rule: #2f3642; --accent: #8fb6ff; --code-bg: #1b2029; --us: #2c2814; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 16px 4rem; }
+  .col { max-width: 46rem; }
+  header.top { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; padding: 1rem 0; border-bottom: 1px solid var(--rule); font-size: .92rem; }
+  header.top a { color: var(--muted); text-decoration: none; }
+  header.top a:hover { color: var(--text); }
+  header.top .brand { display: flex; align-items: center; gap: .5rem; color: var(--text); font-weight: 650; margin-right: auto; }
+  h1 { font-size: clamp(1.75rem, 5vw, 2.4rem); line-height: 1.15; margin: 2.5rem 0 .75rem; text-wrap: balance; letter-spacing: -.01em; }
+  h2 { font-size: 1.35rem; line-height: 1.25; margin: 2.75rem 0 .5rem; text-wrap: balance; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .25rem; }
+  p { margin: .8rem 0; }
+  .lede { font-size: 1.1rem; color: var(--muted); }
+  .meta { color: var(--muted); font-size: .9rem; }
+  a { color: var(--accent); text-underline-offset: .2em; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  code { font: .88em/1.5 ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; background: var(--code-bg); padding: .08em .3em; border-radius: .25rem; }
+  .table { overflow-x: auto; margin: 1.5rem 0 .5rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 52rem; font-size: .92rem; line-height: 1.45; }
+  caption { text-align: left; color: var(--muted); font-size: .88rem; padding-bottom: .5rem; }
+  th, td { text-align: left; padding: .6rem .75rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-size: .95rem; border-bottom: 2px solid var(--rule); white-space: nowrap; }
+  thead th small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+  tbody th { font-weight: 600; width: 11rem; padding-left: 0; }
+  td.us, th.us { background: var(--us); }
+  sup a { text-decoration: none; padding: 0 .1em; }
+  ol.src { font-size: .88rem; color: var(--muted); padding-left: 1.4rem; }
+  ol.src li { margin: .3rem 0; overflow-wrap: anywhere; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .3rem 0; }
+  footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .92rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="img/icon.png" width="24" height="24" alt="">Synkopa</a>
+    <a href="docs/">Docs</a>
+    <a href="https://github.com/miskibin/synkopa">GitHub</a>
+    <a href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <div class="col">
+      <h1>Synkopa vs FL Studio vs LMMS vs Zrythm</h1>
+      <p class="meta">Checked 26 November 2026 against each project's own site, manual and release notes. Sources are numbered below the table.</p>
+      <p class="lede">Four DAWs people compare when they look for FL Studio's workflow, a free DAW, or a DAW for Linux. This page is written by the Synkopa project, so the Synkopa column is the one we know best; the rows where Synkopa is behind are in the table too.</p>
+    </div>
+
+    <div class="table">
+      <table>
+        <caption>Stable releases unless a cell says otherwise.</caption>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col" class="us">Synkopa <small>0.9.36, Nov 2026</small></th>
+            <th scope="col">FL Studio <small>2026.1.7, Oct 2026</small></th>
+            <th scope="col">LMMS <small>1.2.2, Jul 2020</small></th>
+            <th scope="col">Zrythm <small>1.0.0, Nov 2024</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Operating systems</th>
+            <td class="us">Windows, Linux, macOS 13.4+ (Apple Silicon only)</td>
+            <td>Windows 10/11, macOS 10.15.7+ (Intel and Apple Silicon). No Linux build<sup><a href="#s1">1</a></sup></td>
+            <td>Windows, Linux, macOS (Intel)<sup><a href="#s5">5</a></sup></td>
+            <td>Linux, Windows, macOS<sup><a href="#s8">8</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Licence</th>
+            <td class="us">Open source, AGPL-3.0</td>
+            <td>Proprietary</td>
+            <td>Open source, GPL-2.0-or-later<sup><a href="#s6">6</a></sup></td>
+            <td>Open source, AGPL-3.0-or-later, with a trademark clause<sup><a href="#s9">9</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Price</th>
+            <td class="us">Free. One build, no account</td>
+            <td>$99 to $449 by edition (regular prices), with free lifetime updates<sup><a href="#s2">2</a></sup></td>
+            <td>Free</td>
+            <td>Source is free. Official v1 installers: a free tier limited to 25 tracks, paid tiers above it<sup><a href="#s8">8</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Pattern workflow <small>(step sequencer, patterns on a playlist)</small></th>
+            <td class="us">Yes: Channel Rack with a step sequencer, a piano roll per channel, patterns on a free playlist</td>
+            <td>Yes: this is the workflow it defined<sup><a href="#s3">3</a></sup></td>
+            <td>Yes: Beat+Bassline Editor, Piano Roll, Song Editor<sup><a href="#s6">6</a></sup></td>
+            <td>No. Timeline-based: regions with looping, lanes per track, piano roll, chord pads<sup><a href="#s10">10</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Clip launching</th>
+            <td class="us">No</td>
+            <td>Performance Mode</td>
+            <td>No</td>
+            <td>Not a documented feature</td>
+          </tr>
+          <tr>
+            <th scope="row">Audio recording</th>
+            <td class="us">Yes, with loop takes, comping and measured latency compensation</td>
+            <td>Producer edition ($179) or higher<sup><a href="#s3">3</a></sup></td>
+            <td>No. The 1.3.0-alpha.2 pre-release adds sample track recording with JACK<sup><a href="#s7">7</a></sup></td>
+            <td>Yes, audio and MIDI<sup><a href="#s10">10</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">VST3</th>
+            <td class="us">Instruments and effects on Windows and Linux. Not on macOS yet</td>
+            <td>Yes, on Windows and macOS<sup><a href="#s4">4</a></sup></td>
+            <td>No</td>
+            <td>Yes<sup><a href="#s10">10</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Other plugin formats</th>
+            <td class="us">LV2 effects (Linux). No CLAP, VST2 or AU</td>
+            <td>VST2, CLAP (since 2024.1), AU on macOS<sup><a href="#s4">4</a></sup></td>
+            <td>VST2 (Windows plugins, on Linux through Wine), LADSPA. LV2 in the 1.3 pre-release<sup><a href="#s5">5</a></sup></td>
+            <td>LV2, CLAP, VST2, AU, LADSPA and more<sup><a href="#s11">11</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Vocal pitch editing</th>
+            <td class="us">Built in: note-level pitch editor, live correction, Tune to Reference, one-step Auto Vocal</td>
+            <td>NewTone and Pitcher, in Signature ($269) or higher<sup><a href="#s3">3</a></sup></td>
+            <td>None built in</td>
+            <td>None built in</td>
+          </tr>
+          <tr>
+            <th scope="row">Stem separation, chords from audio</th>
+            <td class="us">Both built in, running locally (models downloaded on first use)</td>
+            <td>Stem separation in Producer or higher; a chord detection panel since FL Studio 2026<sup><a href="#s3">3</a></sup></td>
+            <td>No</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th scope="row">Built-in instruments and effects</th>
+            <td class="us">A wavetable synth, 11 sampled instruments, a music box, a sampler, 21 effects</td>
+            <td>The largest set here: more than a hundred across editions</td>
+            <td>A broad set of synths and effects, plus SoundFont playback</td>
+            <td>A basic bundled set</td>
+          </tr>
+          <tr>
+            <th scope="row">Command line</th>
+            <td class="us"><code>synkopa</code> reads and edits the project open in the app, or a project file with no app, and renders. Each command is one undo step</td>
+            <td>Renders and exports projects. Does not edit them<sup><a href="#s4">4</a></sup></td>
+            <td>Renders, converts and upgrades projects. Does not edit them<sup><a href="#s7">7</a></sup></td>
+            <td>Settings and backend flags only<sup><a href="#s11">11</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Scripting and AI agents</th>
+            <td class="us">The command line is also served as Model Context Protocol tools (<code>synkopa mcp</code>) for Claude Code, Cursor, VS Code and Codex. No in-app assistant</td>
+            <td>Python scripting for MIDI controllers and the piano roll. Gopher, a built-in assistant that can control parts of the app (labelled experimental). No official MCP server<sup><a href="#s4">4</a></sup></td>
+            <td>None</td>
+            <td>Scripting is disabled and deprecated<sup><a href="#s11">11</a></sup></td>
+          </tr>
+          <tr>
+            <th scope="row">Opens FL Studio <code>.flp</code> projects</th>
+            <td class="us">No</td>
+            <td>Yes (its own format)</td>
+            <td>No. The import was removed in 1.2.0<sup><a href="#s7">7</a></sup></td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th scope="row">Maturity</th>
+            <td class="us">Started in August 2026. Version 0.9, frequent releases, rough edges</td>
+            <td>Since 1998. Large community, tutorials and sample packs</td>
+            <td>Since 2004. Last stable release in 2020; 1.3 is in alpha</td>
+            <td>1.0 in 2024. Version 2, a rewrite, is in alpha</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <h2>Which one fits</h2>
+      <h3>You want FL Studio's workflow on Linux</h3>
+      <p>Synkopa or LMMS. Both are free and open source, and both work in patterns. Pick Synkopa if you also record audio, tune vocals or use VST3 plugins. Pick LMMS if you rely on its synths, its SoundFont support, or Windows VST2 plugins through Wine. FL Studio has no Linux build.</p>
+      <h3>You want the largest set of instruments, effects and tutorials</h3>
+      <p>FL Studio. It has more than twenty-five years of development, the most built-in content of the four, and it opens the <code>.flp</code> projects other producers send you. None of the other three reads that format.</p>
+      <h3>You record bands or work on a timeline rather than in patterns</h3>
+      <p>Zrythm is the timeline-based one here, with the widest plugin format support of the open-source three. Synkopa records and comps audio, but it is built around patterns.</p>
+      <h3>You want a script or an AI agent to edit the song</h3>
+      <p>Synkopa. Its command line edits the open project or a project file and is also available as MCP tools; every edit lands in the app's undo history. FL Studio's Gopher is an assistant inside the app, and its command line only renders. LMMS's command line only renders and converts.</p>
+      <h3>You pay nothing and need recording and vocal tuning in one program</h3>
+      <p>Synkopa has both in its single free build. In FL Studio, recording starts at the Producer edition and note-level pitch editing at Signature.</p>
+
+      <h2>Common questions</h2>
+      <h3>Is there a free, open-source alternative to FL Studio that runs on Linux?</h3>
+      <p>Yes: Synkopa and LMMS both have FL Studio's pattern workflow and run on Linux. Synkopa also records audio and hosts VST3 plugins; LMMS 1.2.2 does neither.</p>
+      <h3>Which of these support VST3?</h3>
+      <p>FL Studio (Windows and macOS), Zrythm, and Synkopa (Windows and Linux, not yet macOS). LMMS hosts VST2 only.</p>
+      <h3>Can LMMS record audio?</h3>
+      <p>Not in the stable release, 1.2.2. The 1.3.0-alpha.2 pre-release adds sample track recording with the JACK backend.</p>
+      <h3>Can any of them open <code>.flp</code> projects?</h3>
+      <p>Only FL Studio. MIDI files and audio stems exported from FL Studio import into the other three.</p>
+
+      <h2>Sources</h2>
+      <ol class="src">
+        <li id="s1">FL Studio download page and system requirements: <a href="https://www.image-line.com/fl-studio/download" rel="noopener">image-line.com/fl-studio/download</a></li>
+        <li id="s2">FL Studio pricing (regular USD prices: Fruity $99, Producer $179, Signature $269, All Plugins $449; sale prices differ): <a href="https://www.image-line.com/fl-studio/pricing" rel="noopener">image-line.com/fl-studio/pricing</a></li>
+        <li id="s3">FL Studio edition comparison: <a href="https://www.image-line.com/fl-studio/compare-editions" rel="noopener">image-line.com/fl-studio/compare-editions</a>; what is new in FL Studio 2026: <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/WhatsNew.htm" rel="noopener">online manual, What's New</a></li>
+        <li id="s4">FL Studio manual: <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/basics_externalplugins.htm" rel="noopener">plugin formats</a>, <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/fformats_save_export.htm#commandline_export" rel="noopener">command line export</a>, <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/midi_scripting.htm" rel="noopener">MIDI scripting</a>, <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/pianoroll_scripting_api.htm" rel="noopener">piano roll scripting</a>, <a href="https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/gopher/gopher_control.htm" rel="noopener">Gopher</a></li>
+        <li id="s5">LMMS downloads and features: <a href="https://lmms.io/download" rel="noopener">lmms.io/download</a>, <a href="https://lmms.io/" rel="noopener">lmms.io</a>, <a href="https://docs.lmms.io/user-manual/production/vst.md" rel="noopener">manual, VST</a></li>
+        <li id="s6">LMMS licence and README: <a href="https://github.com/LMMS/lmms/blob/master/LICENSE.txt" rel="noopener">LICENSE.txt</a>, <a href="https://github.com/LMMS/lmms/blob/stable-1.2/README.md" rel="noopener">README (stable-1.2)</a></li>
+        <li id="s7">LMMS releases (1.2.0 removes FLP import; 1.3.0-alpha.2 adds JACK sample track recording): <a href="https://github.com/LMMS/lmms/releases" rel="noopener">github.com/LMMS/lmms/releases</a>; command line: <a href="https://github.com/LMMS/lmms/blob/master/doc/lmms.1" rel="noopener">lmms.1</a></li>
+        <li id="s8">Zrythm downloads and installer tiers: <a href="https://www.zrythm.org/en/download.html" rel="noopener">zrythm.org/en/download.html</a>; v2 alpha: <a href="https://www.zrythm.org/en/download-v2-alpha.html" rel="noopener">download-v2-alpha.html</a></li>
+        <li id="s9">Zrythm licence: <a href="https://github.com/zrythm/zrythm/blob/master/LICENSES/LicenseRef-ZrythmLicense.txt" rel="noopener">LicenseRef-ZrythmLicense.txt</a></li>
+        <li id="s10">Zrythm features: <a href="https://www.zrythm.org/en/features.html" rel="noopener">zrythm.org/en/features.html</a>, <a href="https://github.com/zrythm/zrythm/blob/master/README.md" rel="noopener">README</a></li>
+        <li id="s11">Zrythm manual: <a href="https://manual.zrythm.org/en/plugins-files/plugins/scanning.html" rel="noopener">plugin formats</a>, <a href="https://manual.zrythm.org/en/scripting/overview.html" rel="noopener">scripting</a>, <a href="https://manual.zrythm.org/en/invoking-from-command-line/intro.html" rel="noopener">command line</a></li>
+        <li>Synkopa: <a href="https://github.com/miskibin/synkopa">source and README</a>, <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">command line reference</a>, <a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">changelog</a></li>
+      </ol>
+      <p class="meta">Found something wrong or out of date? <a href="https://github.com/miskibin/synkopa/issues/new">Open an issue</a> and it will be corrected. FL Studio is a trademark of Image-Line; LMMS and Zrythm are the names of their projects. Synkopa is not affiliated with any of them.</p>
+
+      <footer>
+        <p>Synkopa is free software under AGPL-3.0. <a href="./">Home</a> · <a href="https://github.com/miskibin/synkopa">Source on GitHub</a> · <a href="https://github.com/miskibin/synkopa/releases/latest">Download</a></p>
+      </footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>
