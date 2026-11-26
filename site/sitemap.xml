@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://miskibin.github.io/synkopa/</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/first-song.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/patterns.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/record.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/mix.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/export.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/reference.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/plugins.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/instruments.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/dynamics.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/creative-effects.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/mastering.html</loc></url>
 </urlset>

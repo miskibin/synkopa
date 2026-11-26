@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Use reverb, delay, pitch, modulation, stereo, and repair effects.">
+  <title>Creative &amp; repair effects · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+  <script defer src="plugin-audio.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html" aria-current="page">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Creative &amp; repair effects</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <details open>
+          <summary>On this page</summary>
+          <a href="#delay">Delay</a>
+          <a href="#reverb">Reverb</a>
+          <a href="#half-speed">Half-Speed</a>
+          <a href="#warp">Warp</a>
+          <a href="#chorus">Chorus</a>
+          <a href="#phaser">Phaser</a>
+          <a href="#saturator">Saturator</a>
+          <a href="#filter">Filter</a>
+          <a href="#stereo">Stereo</a>
+          <a href="#pitch-correct">Pitch Correct</a>
+          <a href="#voice">Voice</a>
+          <a href="#denoiser">Denoiser</a>
+        </details>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="delay">Delay</h2>
+          <p>Delay repeats the sound. <strong>Time</strong> sets the spacing in beats or milliseconds. <strong>Feedback</strong> feeds each echo back into the next, so higher values keep the repeats going longer. <strong>Wet</strong> and <strong>Dry</strong> set the echo and original levels independently.</p>
+          <p>Try it on a rimshot pattern with gaps. Set <strong>Sync</strong> to <strong>Tempo</strong>, <strong>Time</strong> to ¾ beat (a dotted eighth), <strong>Feedback</strong> to 35%, and <strong>Wet</strong> to 25%. Switch <strong>Model</strong> to <strong>Ping-pong</strong> and listen to the repeats alternate left and right. Lower <strong>Cutoff</strong> with the low-pass filter active to hear each repeat get darker.</p>
+          <div class="plugin-audition" data-delay-audition hidden>
+            <p>Listen for quieter repeats between and after the hits in this mono echo example.</p>
+            <div class="controls">
+              <button type="button" data-dry>Play dry</button>
+              <button type="button" data-wet>Play with delay</button>
+              <button type="button" data-stop disabled>Stop</button>
+              <span role="status"></span>
+            </div>
+          </div>
+          <p><strong>Ducking</strong> tucks echoes under the source and lets them come up in the gaps. Open <strong>Advanced</strong> for loop filtering, distortion, lo-fi, diffusion, and modulation. Use <strong>Keep pitch</strong> to crossfade when you change the time, or <strong>Repitch</strong> for a tape-like pitch bend.</p>
+          <figure class="plugin-shot">
+            <a class="shot" href="images/plugin-delay.webp"><img src="images/plugin-delay.webp" width="582" height="359" alt="Delay with sync, time, feedback, and dry and wet output controls." loading="lazy"></a>
+          </figure>
+        </section>
+        <section>
+          <h2 id="reverb">Reverb</h2>
+          <p>Reverb surrounds a sound with reflections that blend into a tail. <strong>Space</strong> changes the character from the smooth <strong>Plate</strong> to the reflections of <strong>Room</strong>, the diffuse <strong>Hall</strong>, or the short <strong>Ambience</strong>.</p>
+          <p>Try <strong>Plate</strong> on a dry lead vocal with <strong>Decay</strong> around 1 second, <strong>Pre-delay</strong> at 25 ms, and <strong>Mix</strong> at 15%. Listen at the end of a line. Increase <strong>Decay</strong> to extend the tail, then compare zero and 25 ms of <strong>Pre-delay</strong> to hear how a gap before the tail keeps the start of the word distinct.</p>
+          <p><strong>Tone</strong> changes how long the highs ring. In <strong>Advanced</strong>, <strong>Low cut</strong> and <strong>High cut</strong> trim what enters the reverb, <strong>Bass decay</strong> changes how long the lows ring, and <strong>Ducking</strong> lowers the reverb while the vocal is present.</p>
+          <figure class="plugin-shot">
+            <a class="shot" href="images/plugin-reverb.webp"><img src="images/plugin-reverb.webp" width="642" height="466" alt="Reverb with controls for Decay, Pre-delay, ambience type, and Mix." loading="lazy"></a>
+          </figure>
+        </section>
+        <section>
+          <h2 id="half-speed">Half-Speed</h2>
+          <p>Half-Speed replays the start of each tempo-synced <strong>Loop</strong> window more slowly and resets on the next boundary. Choose <strong>1.5× fifth</strong>, <strong>2× octave</strong>, or <strong>4× two oct.</strong> to set how far the pitch drops. The effect follows playback in both Pattern and Song mode.</p>
+          <p>Try <strong>2× octave</strong> on a pluck arpeggio with <strong>Loop</strong> set to one bar. Listen for the lower notes and the restart on the next downbeat. Shorten the loop to reset more often. Move <strong>Smooth</strong> left to keep the grid-aligned attacks or right to blend and swell into each new window.</p>
+          <p><strong>Band low</strong> and <strong>Band high</strong> limit which frequencies slow down. Switch to <strong>Band solo</strong> to hear that range in isolation, then return to <strong>Full</strong> and adjust <strong>Mix</strong>.</p>
+        </section>
+        <section>
+          <h2 id="warp">Warp</h2>
+          <p>Warp uses two editable maps over a bar. The <strong>Time</strong> map changes where the effect reads from the recent audio. The top of the graph is the present, the bottom reaches eight beats back, and the slope controls playback speed. The <strong>Volume</strong> map changes gain to create gates and rhythmic swells.</p>
+          <p>Play a drum loop from a downbeat. In <strong>Time</strong>, choose slot 5, <strong>Stutter — beat 1 ×4</strong>. Listen for the opening beat repeated four times while the song continues. Lower <strong>Time mix</strong> to blend the original back in. Switch to <strong>Volume</strong> to edit or select a gain pattern, with its own <strong>Volume mix</strong>.</p>
+          <p>Right-click a slot to open its <strong>Library</strong> of maps. <strong>Trigger sync</strong> quantizes slot changes to a grid division. Set <strong>Position</strong> to <strong>Song</strong> to follow the bar or <strong>Trigger</strong> to start the map at the slot change. <strong>One-shot</strong> returns to slot 1 after one bar.</p>
+          <figure class="plugin-shot">
+            <a class="shot" href="images/plugin-warp.webp"><img src="images/plugin-warp.webp" width="1025" height="706" alt="Warp in Time mode, with a default straight map, a slot strip and mix controls." loading="lazy"></a>
+          </figure>
+        </section>
+        <section>
+          <h2 id="chorus">Chorus</h2>
+          <p>Chorus thickens a sound with short, moving copies. <strong>Chorus</strong> blends in two voices per side, <strong>Ensemble</strong> uses three for a denser shimmer, and <strong>Vibrato</strong> uses one modulated voice for pitch wobble.</p>
+          <p>Hold a clean electric guitar chord. In <strong>Chorus</strong> mode, start at <strong>Rate</strong> 0.6 Hz, <strong>Depth</strong> 40%, and <strong>Mix</strong> 50%. Compare with bypass and listen for extra width as the chord rings. Switch to <strong>Vibrato</strong> and turn <strong>Mix</strong> up to hear the pitch motion clearly.</p>
+          <p><strong>Rate</strong> sets how fast the voices move in Hz or tempo divisions, and <strong>Depth</strong> sets the size of the movement. Use <strong>Safe bass</strong> to keep more low end out of the moving copies, and <strong>Tone</strong> to soften their highs.</p>
+        </section>
+        <section>
+          <h2 id="phaser">Phaser</h2>
+          <p>A phaser moves dips through the frequency spectrum. Those dips form when the phase-shifted signal meets the dry sound, giving notes a hollow, sweeping quality.</p>
+          <p>Hold a chord on an electric piano. Set <strong>Stages</strong> to 4, <strong>Mix</strong> to 50%, and <strong>Rate</strong> around 0.4 Hz. Increase <strong>Depth</strong> and listen for a wider sweep through the chord. Try 8 stages to hear a more complex sweep, then increase <strong>Feedback</strong> to accent the resonant peaks.</p>
+          <p><strong>Center</strong> places the sweep in the spectrum. <strong>Stereo</strong> offsets the sweep between the left and right sides, and the <strong>Tempo</strong> rate mode locks its cycle to the song.</p>
+        </section>
+        <section>
+          <h2 id="saturator">Saturator</h2>
+          <p>Saturation adds harmonics and rounds peaks as the input is driven harder. <strong>Style</strong> changes the character of the distortion, with <strong>Tape</strong>, <strong>Console</strong>, <strong>Transformer</strong>, <strong>Triode</strong>, and <strong>Pentode</strong> available.</p>
+          <p>Try <strong>Tape</strong> on a clean bass line. Raise <strong>Drive</strong> from 20% to 60% and listen for the notes to become more audible above the sub. Select <strong>Auto</strong> and trim <strong>Output</strong> to match the bypassed level, then compare another style. Blend back the original with <strong>Mix</strong> to keep the attack.</p>
+          <p><strong>Low cut</strong> trims bass before it hits the distortion and <strong>High cut</strong> softens the resulting highs. <strong>Punish +20</strong> adds 20 dB of drive for heavier distortion. <strong>4× HQ</strong> in <strong>Advanced</strong> uses more oversampling to reduce aliasing.</p>
+        </section>
+        <section>
+          <h2 id="filter">Filter</h2>
+          <p>A filter cuts parts of the spectrum around its <strong>Cutoff</strong>. <strong>LP</strong> trims highs, <strong>HP</strong> trims lows, <strong>BP</strong> keeps a band, and <strong>Notch</strong> cuts a band. <strong>Ladder</strong> is a resonant low-pass with a driveable character. In <strong>DJ</strong> mode, <strong>Position</strong> moves from low-pass through neutral to high-pass.</p>
+          <p>Loop a bright synth or a drum break. Set <strong>Type</strong> to <strong>LP</strong>, sweep <strong>Cutoff</strong> down from open, then add a little <strong>Resonance</strong>. Listen for the highs to recede and a peak to appear near the cutoff. Raise <strong>LFO depth</strong> for a repeating sweep, or use positive <strong>Env depth</strong> so louder hits open the filter.</p>
+          <p><strong>Rate</strong> and <strong>Shape</strong> set the LFO cycle. <strong>Env attack</strong> and <strong>Env release</strong> set how quickly the level-driven sweep responds. Select a <strong>Sidechain</strong> source to make another Mixer insert drive the envelope.</p>
+        </section>
+        <section>
+          <h2 id="stereo">Stereo</h2>
+          <p><strong>Width</strong> changes the difference between the left and right signals. With Spread at zero, 0% sums to mono, 100% keeps the original width, and higher settings emphasize the sides. <strong>Spread</strong> can add width to a mono signal by creating side information that cancels when summed to mono.</p>
+          <p>Try a mono guitar take. Raise <strong>Width</strong> with <strong>Spread</strong> at zero, then raise <strong>Spread</strong> and listen for the guitar to spread out. Bring <strong>Spread</strong> back to 0% before setting <strong>Width</strong> to 0% for a mono check.</p>
+          <p>In <strong>Bass</strong>, choose <strong>Mono</strong> and set <strong>Mono below</strong> to center just the low end on stereo material. Use <strong>Gain</strong> and <strong>Pan</strong> for level and balance. <strong>Advanced</strong> includes polarity and left/right swap controls.</p>
+        </section>
+        <section>
+          <h2 id="pitch-correct">Pitch Correct</h2>
+          <p>Pitch Correct detects a single sung melody and moves it toward notes allowed by <strong>Key</strong> and <strong>Scale</strong>. Set these from the song or use <strong>Detect key…</strong> to analyze the backing. Set <strong>Voice</strong> if you want to narrow the pitch detection range.</p>
+          <p>Loop a dry solo vocal over its chords. Compare <strong>Retune</strong> at 40 ms and 0 ms. Listen for the softer approaches to notes at the slower setting and the stepped jumps at the fastest setting. If a note pulls to the wrong place, check the detected scale and the intended melody.</p>
+          <p><strong>Humanize</strong> eases the correction on held notes. <strong>Flex</strong> narrows the range around a target before correction engages, and <strong>Vibrato</strong> preserves more of the natural wobble. <strong>Transpose</strong> shifts the melody, and <strong>Formant</strong> changes its resonant character.</p>
+          <p>To correct individual notes in a recorded clip, open its menu and choose <strong>Edit pitch…</strong>.</p>
+        </section>
+        <section>
+          <h2 id="voice">Voice</h2>
+          <p>Voice reshapes a solo vocal. <strong>Transpose</strong> shifts the melody by <strong>Pitch</strong>, <strong>Quantize</strong> snaps to the nearest semitone before shifting, and <strong>Robot</strong> holds the pitched sound on a fixed note (C4 at zero).</p>
+          <p>Loop a sung phrase in <strong>Transpose</strong> mode. Leave <strong>Pitch</strong> at zero and move <strong>Formant</strong> from −3 to +3 semitones. Listen for the vowel color to get deeper or brighter while the melody stays in place. Raise <strong>Pitch</strong> and try <strong>Link</strong> to hear the formants follow the shift.</p>
+          <p><strong>Drive</strong> adds saturation after the shift. Set <strong>Output</strong> to match the original when comparing.</p>
+        </section>
+        <section>
+          <h2 id="denoiser">Denoiser</h2>
+          <p>Denoiser learns a noise profile across frequencies and reduces sounds close to that profile, such as steady fan noise, hiss, or hum. <strong>Adaptive</strong> keeps updating the profile and <strong>Hold</strong> freezes it.</p>
+          <p>Play a vocal take starting with a second of room tone. Start with <strong>Reduction</strong> at 6 dB and <strong>Profile</strong> on <strong>Adaptive</strong>. Switch <strong>Listen</strong> to <strong>Noise</strong> to hear what is removed. If you hear clear words or consonants in that signal, lower <strong>Sensitivity</strong> or <strong>Reduction</strong>. Return <strong>Listen</strong> to <strong>Off</strong> to hear the cleaned take.</p>
+          <p>Raise <strong>Smoothing</strong> if the residual noise sounds watery or sparkly. Compare in bypass during the words and in the gaps to find the lightest useful setting.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

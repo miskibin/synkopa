@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Set up an input, record a take, and combine the best parts of multiple passes.">
+  <title>Record audio · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html" aria-current="page">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Record audio</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#input">Set up your input</a>
+        <a href="#take">Record a take</a>
+        <a href="#comp">Combine takes from a loop</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="input">Set up your input</h2>
+          <ol>
+            <li>Connect your microphone or interface. Go to <strong>File → Settings… → Audio</strong> and choose your <strong>Input</strong> and <strong>Output</strong>.</li>
+            <li>Right-click the round <strong>Record</strong> button and enable <strong>Audio</strong>. Click the button to arm recording. The <strong>IN</strong> meter should move when you sing or play.</li>
+            <li>For a multi-input interface, select the physical socket under <strong>Input channel</strong> in Audio settings. Input channels appear once recording or monitoring opens the device.</li>
+          </ol>
+          <p>To hear the input in headphones, use <strong>View → Monitor input</strong>. Leave it off if you use direct monitoring on your interface.</p>
+        </section>
+        <section>
+          <h2 id="take">Record a take</h2>
+          <ol>
+            <li>In the Playlist track menu, choose <strong>Record into this track</strong>. Otherwise, the take goes to the first free track.</li>
+            <li>Click the Playlist ruler where the take should start. Leave the transport in <strong>SONG</strong> mode. Enable <strong>1 BAR</strong> if you want a count-in.</li>
+            <li>Press <kbd>Space</kbd> to start, perform, then press it again to stop. Disarm <strong>Record</strong> before playing back your take.</li>
+          </ol>
+          <p>No take? Check the <strong>Audio</strong> filter, <strong>IN</strong> meter, and destination under the menus. <a href="reference.html#recording">Fix a silent input</a>.</p>
+        </section>
+        <section>
+          <h2 id="comp">Combine takes from a loop</h2>
+          <ol>
+            <li>Drag across the Playlist ruler to select the section to repeat. Arm Record and play through several passes.</li>
+            <li>Stop. Double-click the resulting comp clip, or use its track header’s take control, to show the takes.</li>
+            <li>Click a take name to use it in full. Drag across a take lane to use only that part.</li>
+          </ol>
+          <p>If you only want to record one pass, clear the loop by double-clicking the ruler before starting.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

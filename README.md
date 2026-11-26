@@ -8,6 +8,7 @@
   <a href="https://github.com/miskibin/synkopa/releases/latest"><b>Download</b> (Windows, macOS, Linux)</a> ·
   <a href="https://www.youtube.com/watch?v=wtuHDyIQpYk">Watch the video</a> ·
   <a href="https://miskibin.github.io/synkopa/">Hear a beat made in it</a> ·
+  <a href="https://miskibin.github.io/synkopa/docs/">User guide</a> ·
   <a href="docs/cli.md">Command line</a> ·
   <a href="https://discord.gg/zHMjE3fCY">Discord</a>
 </p>

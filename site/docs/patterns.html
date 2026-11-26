@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Work with patterns, audio clips, samples, and the Piano roll.">
+  <title>Write &amp; arrange · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html" aria-current="page">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Write and arrange</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#patterns">Write patterns</a>
+        <a href="#clips">Arrange patterns on the Playlist</a>
+        <a href="#audio">Add samples and audio</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="patterns">Write patterns</h2>
+          <p>A pattern holds steps and notes for one or more channels. Open the <strong>Channel Rack</strong> with <kbd>F6</kbd>. Choose a pattern in the toolbar or click the <strong>+</strong> beside it to start a new one.</p>
+          <ul>
+            <li>For drums, click the step squares on a channel’s row.</li>
+            <li>For a melody or chords, select a channel and press <kbd>F7</kbd>. In the Piano roll, vertical position is pitch and horizontal position is time. Drag a note’s right edge to change its length. Right-click a note to remove it.</li>
+            <li>Use <strong>PAT</strong> and <kbd>Space</kbd> to audition just the current pattern.</li>
+          </ul>
+          <figure>
+            <a class="shot" href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Piano roll with pitches on the vertical keyboard, note lengths on the grid, and velocity markers along the bottom." loading="lazy"></a>
+            <figcaption>Piano roll with the velocity lane below.</figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="clips">Arrange patterns on the Playlist</h2>
+          <ol>
+            <li>Open <strong>Patterns</strong> in the Browser. Drag a pattern onto a Playlist track at the bar where it should start.</li>
+            <li>Drag clips to move them. Use <kbd>Shift</kbd> while dragging a clip to copy it. Clip edges in <strong>Trim</strong> mode change how much of the clip plays.</li>
+            <li>Double-click a pattern clip to edit its source. To edit only that copy, open the clip menu and choose <strong>Make unique</strong> first.</li>
+            <li>Click the ruler to set the playback start. Drag on the ruler to set a loop or double-click it to clear the loop. Use <strong>SONG</strong> to hear the arrangement.</li>
+          </ol>
+        </section>
+        <section>
+          <h2 id="audio">Add samples and audio</h2>
+          <p>In the Browser’s <strong>Library</strong>, click a sample to preview it. Drag it onto the Playlist to make an audio clip, between Rack rows to make a sampler, or onto a Rack row to replace the sound.</p>
+          <p>You can also drag WAV or MP3 files from your file manager. Find imported audio and takes under <strong>Audio</strong>.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

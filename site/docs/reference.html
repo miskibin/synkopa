@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find the shortcuts you need and troubleshoot playback, input, and export.">
+  <title>Shortcuts &amp; help · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html" aria-current="page">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Shortcuts and help</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#shortcuts">Everyday shortcuts</a>
+        <a href="#playback">The project plays in silence</a>
+        <a href="#recording">The input meter does not move</a>
+        <a href="#third-party-plugins">Third-party plugins</a>
+        <a href="#more">Links and support</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="shortcuts">Everyday shortcuts</h2>
+          <p>For the full list, open <strong>Help → Keyboard shortcuts</strong>.</p>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
+            <tbody>
+              <tr><td>Play or stop</td><td><kbd>Space</kbd></td></tr>
+              <tr><td>Switch between current pattern and song</td><td><kbd>L</kbd></td></tr>
+              <tr><td>Bring the Playlist forward</td><td><kbd>F5</kbd></td></tr>
+              <tr><td>Toggle the Channel Rack</td><td><kbd>F6</kbd></td></tr>
+              <tr><td>Toggle the Piano roll</td><td><kbd>F7</kbd></td></tr>
+              <tr><td>Toggle the Browser</td><td><kbd>Alt</kbd> + <kbd>F8</kbd></td></tr>
+              <tr><td>Toggle the Mixer</td><td><kbd>F9</kbd></td></tr>
+              <tr><td>Arm or disarm recording</td><td><kbd>R</kbd></td></tr>
+              <tr><td>Undo an edit</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td></tr>
+              <tr><td>Save the project</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
+            </tbody>
+          </table></div>
+          <p>If letter keys play notes, turn off <strong>View → Computer keyboard as piano</strong>. If your system uses the function keys, use the <strong>View</strong> menu.</p>
+        </section>
+        <section>
+          <h2 id="playback">The project plays in silence</h2>
+          <ul>
+            <li>Check <strong>PAT</strong>/<strong>SONG</strong>. <strong>PAT</strong> plays notes in the current pattern. <strong>SONG</strong> plays clips in the Playlist from the start marker.</li>
+            <li>Check for a muted channel, Playlist track, or mixer insert, and clear any solo you left active.</li>
+            <li>Open <strong>File → Settings… → Audio</strong>. Check that the driver is running and <strong>Output</strong> is set to the device you are listening through. On Windows, select WASAPI if your ASIO interface is disconnected.</li>
+            <li>If playback crackles, try a larger <strong>Buffer</strong>. If you use JACK or PipeWire JACK, change the buffer in that audio server.</li>
+          </ul>
+        </section>
+        <section>
+          <h2 id="recording">The input meter does not move</h2>
+          <p>Check the device and channel in <strong>Audio</strong> settings. To open the input, arm <strong>Record</strong> with <strong>Audio</strong> enabled or turn on <strong>Monitor input</strong>. If the meter moves, <a href="record.html#take">check the recording steps</a>.</p>
+        </section>
+        <section>
+          <h2 id="third-party-plugins">Third-party plugins</h2>
+          <ul>
+            <li><strong>Windows and Linux:</strong> add VST3 instruments from <strong>+ Channel → Plugin instruments (VST3)</strong>. Add effects from <strong>Mixer → Add effect… → Plugins</strong>.</li>
+            <li><strong>Linux:</strong> the effects picker also supports LV2 when <code>liblilv</code> is installed.</li>
+            <li><strong>macOS:</strong> use the built-in instruments and effects.</li>
+          </ul>
+          <p>Install plugins in the standard folders for your system and choose <strong>Rescan plugins</strong> in the Channel Rack or <strong>Rescan</strong> in the effects picker if a new plugin is missing. See <a href="https://github.com/miskibin/synkopa#install">platform notes</a> for package details.</p>
+        </section>
+        <section>
+          <h2 id="more">Links and support</h2>
+          <ul>
+            <li><a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">Command-line reference</a> for scripting a running app or rendering project files.</li>
+            <li><a href="https://github.com/miskibin/synkopa/blob/main/docs/keys.md">Synkopa Instruments</a> for the built-in player and its downloadable library.</li>
+            <li><a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">Changelog</a> for recent features and fixes.</li>
+            <li><a href="https://github.com/miskibin/synkopa/issues">Report an issue</a> or ask on <a href="https://discord.gg/zHMjE3fCY">Discord</a>.</li>
+          </ul>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

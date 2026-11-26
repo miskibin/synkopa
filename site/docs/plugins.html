@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find a built-in effect or instrument by the sound you want.">
+  <title>Plugin guide · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html" aria-current="page">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Plugin guide</h1>
+      </header>
+      <div class="directory">
+        <p>Add effects from <strong>Mixer → Add effect…</strong> and instruments from <strong>Channel Rack → + Channel</strong>.</p>
+        <label class="plugin-filter" hidden>Filter plugins
+          <input type="search" placeholder="Try “harsh”, “delay”, or “LUFS”" autocomplete="off">
+        </label>
+        <p class="filter-status visually-hidden" role="status"></p>
+        <p class="filter-empty" hidden>No matching plugins.</p>
+        <section>
+          <h2>Instruments</h2>
+          <ul>
+            <li><a href="instruments.html#sampler"><strong>Sampler</strong><span>Play or slice an audio sample.</span></a></li>
+            <li><a href="instruments.html#synthesizer"><strong>Synthesizer</strong><span>Build bass, leads, and pads from oscillators.</span></a></li>
+            <li><a href="instruments.html#synkopa-instruments"><strong>Synkopa Instruments</strong><span>Play pianos, strings, guitars, harp, or vibraphone.</span></a></li>
+            <li><a href="instruments.html#music-box"><strong>Music Box</strong><span>Play bright plucked tines.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Tone &amp; dynamics</h2>
+          <ul>
+            <li><a href="dynamics.html#parametric-eq"><strong>Parametric EQ</strong><span>Remove muddiness or tame harsh frequencies.</span></a></li>
+            <li><a href="dynamics.html#compressor"><strong>Compressor</strong><span>Control peaks or duck bass under the kick.</span></a></li>
+            <li><a href="dynamics.html#fet-compressor"><strong>FET Compressor</strong><span>Use FET mode in Compressor for fast, colored compression.</span></a></li>
+            <li><a href="dynamics.html#gate"><strong>Gate</strong><span>Quiet the room or bleed between notes.</span></a></li>
+            <li><a href="dynamics.html#de-esser"><strong>De-esser</strong><span>Tame harsh or sharp S and SH sounds on vocals.</span></a></li>
+            <li><a href="dynamics.html#vocal-rider"><strong>Vocal Rider</strong><span>Keep quiet and loud words at a steadier level.</span></a></li>
+            <li><a href="dynamics.html#multiband"><strong>Multiband</strong><span>Control loud and quiet sounds separately in lows, mids, and highs.</span></a></li>
+            <li><a href="dynamics.html#limiter"><strong>Limiter</strong><span>Catch fast peaks before the output clips.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Space &amp; movement</h2>
+          <ul>
+            <li><a href="creative-effects.html#delay"><strong>Delay</strong><span>Add repeats that can follow the beat.</span></a></li>
+            <li><a href="creative-effects.html#reverb"><strong>Reverb</strong><span>Put a voice or instrument in a room, hall, or plate.</span></a></li>
+            <li><a href="creative-effects.html#chorus"><strong>Chorus</strong><span>Thicken a sound with detuned copies.</span></a></li>
+            <li><a href="creative-effects.html#phaser"><strong>Phaser</strong><span>Sweep moving notches through a sound.</span></a></li>
+            <li><a href="creative-effects.html#stereo"><strong>Stereo</strong><span>Adjust width and center the low end.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Color, time &amp; pitch</h2>
+          <ul>
+            <li><a href="creative-effects.html#filter"><strong>Filter</strong><span>Sweep the cutoff for a transition.</span></a></li>
+            <li><a href="creative-effects.html#saturator"><strong>Saturator</strong><span>Add harmonics, warmth, or grit.</span></a></li>
+            <li><a href="creative-effects.html#half-speed"><strong>Half-Speed</strong><span>Drop a loop to half speed and an octave down.</span></a></li>
+            <li><a href="creative-effects.html#warp"><strong>Warp</strong><span>Draw repeats, tape stops, and rhythmic cuts.</span></a></li>
+            <li><a href="creative-effects.html#pitch-correct"><strong>Pitch Correct</strong><span>Tune a vocal to a key and scale in real time.</span></a></li>
+            <li><a href="creative-effects.html#voice"><strong>Voice</strong><span>Shift pitch or formants, or make a robot voice.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Repair</h2>
+          <ul>
+            <li><a href="creative-effects.html#denoiser"><strong>Denoiser</strong><span>Reduce background noise, hum, or room sound under a recording.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Mastering &amp; meters</h2>
+          <ul>
+            <li><a href="mastering.html#master"><strong>Master</strong><span>Set tone, dynamics, and loudness across the full mix.</span></a></li>
+            <li><a href="mastering.html#analyzer"><strong>Analyzer</strong><span>Measure LUFS, true peak, spectrum, and stereo.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Sampled sounds</h2>
+          <ul>
+            <li><a href="instruments.html#grand-piano"><strong>Grand Piano</strong><span>Yamaha C5 concert grand.</span></a></li>
+            <li><a href="instruments.html#upright-piano"><strong>Upright Piano</strong><span>Close and woody acoustic piano.</span></a></li>
+            <li><a href="instruments.html#wurlitzer"><strong>Wurlitzer EP200</strong><span>Reed piano with a raspy attack.</span></a></li>
+            <li><a href="instruments.html#cp80"><strong>Electric Grand CP80</strong><span>Glassy electric grand.</span></a></li>
+            <li><a href="instruments.html#pianet"><strong>Pianet T</strong><span>Soft plucked-reed piano.</span></a></li>
+            <li><a href="instruments.html#string-section"><strong>String Section</strong><span>Layered violins, violas, and cellos.</span></a></li>
+            <li><a href="instruments.html#solo-violin"><strong>Solo Violin</strong><span>Single bowed or plucked violin.</span></a></li>
+            <li><a href="instruments.html#harp"><strong>Concert Harp</strong><span>Plucked strings with a ringing tail.</span></a></li>
+            <li><a href="instruments.html#hollow-body-guitar"><strong>Hollow Body Guitar</strong><span>Clean Gretsch for picking and chords.</span></a></li>
+            <li><a href="instruments.html#jazz-guitar"><strong>Jazz Club Guitar</strong><span>Warm Höfner archtop.</span></a></li>
+            <li><a href="instruments.html#vibraphone"><strong>Vibraphone</strong><span>Soft mallet sound with a metallic tail.</span></a></li>
+          </ul>
+        </section>
+        <p><a href="reference.html#third-party-plugins">Load third-party VST3 or LV2 plugins</a>.</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
