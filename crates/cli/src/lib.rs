@@ -10,6 +10,7 @@ use std::process::ExitCode;
 use serde_json::{json, Value};
 use wave_session as ws;
 
+mod mcp;
 mod watch;
 
 const HELP: &str = r#"synkopa — edit, render and inspect Synkopa projects
@@ -42,6 +43,10 @@ SCRIPTS
                                            step while the loop plays (a failing line changes nothing).
                                            One JSON line per save on stdout. --render: bounce it each time;
                                            --once: apply and exit. With -p FILE: on the file, never saved
+
+AGENT HOSTS  (Claude Code, Cursor, VS Code, Codex …)
+  mcp                                      serve these commands as Model Context Protocol tools on
+                                           stdin/stdout (the host starts it: command `synkopa`, argument `mcp`)
 
 READ
   sessions                                 list running Synkopa apps
@@ -406,6 +411,9 @@ pub fn run_cli_with(raw: Vec<String>, files: Option<&dyn Files>) -> ExitCode {
     if cmd == "help" || a.has("help") {
         print!("{HELP}");
         return ExitCode::SUCCESS;
+    }
+    if cmd == "mcp" {
+        return mcp::serve();
     }
     match dispatch(&cmd, &a, files) {
         Ok(mut v) => {

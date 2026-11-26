@@ -830,6 +830,17 @@ swaps the whole project as one undo step without stopping the transport, and syn
 watch passes the revision of its last apply as `if_revision`, so an edit made in the app
 meanwhile is refused (`REVISION_CONFLICT`) rather than overwritten.
 
+**`synkopa mcp` (agent hosts).** `crates/cli/src/mcp.rs` is a Model Context Protocol server on
+stdin/stdout with no dependency beyond `serde_json`. It adds no second implementation of any
+action: a tool call is turned into a `synkopa` command line (`plan`, a pure function) and run
+as a child of the same executable (behind `--cli` when the app binary is the command), so a
+tool does what the command does, and a command that crashes or prints to stdout cannot corrupt
+the protocol stream. One worker thread runs the calls in the order received (two edits of one
+file never race); the reader thread answers lists at once and kills the running child on
+`notifications/cancelled` or when stdin closes. Both protocol eras are served: `initialize`
+(up to 2025-11-25) and the stateless 2026-07-28 form, chosen per request by the version in
+its `_meta`.
+
 Events: `state` (a `StateDto`, after every change from any origin: UI, CLI,
 undo, import, recording, file open), `library-progress`, `model-progress`, `stems-progress`, `audio-status`,
 `export-progress` (`{done, total, name, stage, frac, beat, peak, wave}` while a bounce runs: the
