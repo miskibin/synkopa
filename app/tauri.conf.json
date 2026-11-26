@@ -61,12 +61,14 @@
     "linux": {
       "deb": {
         "depends": [
-          "liblilv-0-0"
+          "liblilv-0-0",
+          "libasound2"
         ]
       },
       "rpm": {
         "depends": [
-          "liblilv-0.so.0()(64bit)"
+          "liblilv-0.so.0()(64bit)",
+          "libasound.so.2()(64bit)"
         ]
       }
     }
