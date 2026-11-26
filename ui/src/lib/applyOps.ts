@@ -2,12 +2,12 @@
 // Parity with the engine is enforced by fixtures, not by discipline: ops.json
 // (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
 // error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
-import { CLIP_PITCH, MAX_BANDS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
+import { CLIP_PITCH, MAX_BANDS, MAX_SIG_NUM, MAX_SIG_POINTS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, SIG_DENS, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { forgetInsert, keyError, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
 import { putMarker, removeMarker } from './markers';
-import { applyPatternOp, checkChannelLoops, fitLen as fitPatternLen, followPatternLength, PatternOpError } from './pattern';
+import { applyPatternOp, checkChannelLoops, fitLenIn as fitPatternLenIn, followPatternLength, patternBar, PatternOpError } from './pattern';
 import { applyTransform } from './transforms';
 import { applyTuneEdit } from './pitch';
 
@@ -182,6 +182,14 @@ export function applyOp(p: Project, op: Op): void {
       if (!p.tempoPoints.length) delete p.tempoPoints;
       return;
     }
+    case 'setSigPoints': {
+      if (op.points.length > MAX_SIG_POINTS) throw new OpError(`at most ${MAX_SIG_POINTS} signature points`);
+      p.sigPoints = op.points
+        .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), num: Math.min(Math.max(Math.round(x.num), 1), MAX_SIG_NUM), den: SIG_DENS.includes(x.den) ? x.den : 4 }))
+        .sort((x, y) => x.beat - y.beat);
+      if (!p.sigPoints.length) delete p.sigPoints;
+      return;
+    }
     case 'setMaskIgnore': {
       const out: [Id, Id][] = [];
       for (const q of op.pairs) {
@@ -214,7 +222,10 @@ export function applyOp(p: Project, op: Op): void {
       }
       const roots = (p.channels ?? []).map(c => ({ id: c.id, root: c.root ?? 60 }));
       const notes = structuredClone(pt.notes);
-      applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(16, Math.round(pt.len * 4)));
+      // generator bars are bars of the signature where the pattern plays (steps per bar is
+      // always a whole number: the den ladder keeps bars on the step grid)
+      const spb = Math.max(1, Math.round(patternBar(p, op.pattern) * 4));
+      applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(spb, Math.round(pt.len * 4)), spb);
       for (const n of notes) {
         if (!(isFinite(n.step) && n.step >= 0 && isFinite(n.len) && n.len > 0)) throw new OpError(`pattern ${op.pattern}: a note has an invalid step/len`);
         const vel = n.v ?? 1;
@@ -226,7 +237,7 @@ export function applyOp(p: Project, op: Op): void {
       if (notes.some(n => !known.has(n.ch))) throw new OpError(`pattern ${op.pattern}: a note refers to a missing channel`);
       const oldLen = pt.len;
       pt.notes = notes;
-      fitPatternLen(pt);
+      fitPatternLenIn(pt, patternBar(p, op.pattern));
       // a longer pattern (or rewritten channels) re-validates the loops' bounds, like the engine
       checkChannelLoops(p, pt, true);
       // a generator can push notes past the pattern's end: whole-pass clips follow, like putPattern

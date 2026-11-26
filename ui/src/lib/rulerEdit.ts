@@ -18,13 +18,15 @@ export function loopEdgeAt(loop: BeatRange | null, beat: number, bw: number, shi
 
 /**
  * The loop with one edge dragged to `raw` (beats, unsnapped), or its body moved by
- * `raw − raw0`; snapped to `unit` (0 = free), at least one unit long, inside `[0, max]`.
+ * `raw − raw0`; snapped to `unit` (0 = free) — or through `snap`, the host's own position
+ * snap (the signature map's bar lines) — at least one unit long, inside `[0, max]`.
  */
-export function dragLoop(loop: BeatRange, edge: 'a' | 'b' | 'body', raw: number, raw0: number, unit: number, max: number): BeatRange {
+export function dragLoop(loop: BeatRange, edge: 'a' | 'b' | 'body', raw: number, raw0: number, unit: number, max: number, snap?: (b: number) => number): BeatRange {
   const u = unit || 1 / 64;
-  if (edge === 'a') return { a: clamp(snapRound(raw, unit), 0, loop.b - u), b: loop.b };
-  if (edge === 'b') return { a: loop.a, b: clamp(snapRound(raw, unit), loop.a + u, max) };
-  const len = loop.b - loop.a, a = clamp(snapRound(loop.a + raw - raw0, unit), 0, Math.max(0, max - len));
+  const at = (b: number) => (snap ? snap(b) : snapRound(b, unit));
+  if (edge === 'a') return { a: clamp(at(raw), 0, loop.b - u), b: loop.b };
+  if (edge === 'b') return { a: loop.a, b: clamp(at(raw), loop.a + u, max) };
+  const len = loop.b - loop.a, a = clamp(at(loop.a + raw - raw0), 0, Math.max(0, max - len));
   return { a, b: a + len };
 }
 

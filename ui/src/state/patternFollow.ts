@@ -4,7 +4,7 @@
 import { createRoot } from 'solid-js';
 import type { Id } from '../api/types';
 import { t } from '../lib/i18n';
-import { barsText, BAR, type FollowReport } from '../lib/pattern';
+import { barsText, type FollowReport, patternBar } from '../lib/pattern';
 import { createSignal, watch } from '../lib/reactive';
 import { undo } from './actions';
 import { dismissNotice, notice, notify, type Notice } from './notice';
@@ -22,7 +22,7 @@ export { followFlash };
 export function followMessage(reports: readonly FollowReport[], name: (id: Id) => string): string {
   return reports.map(r => {
     const n = r.followed.length + r.stopped.length;
-    const head = t('d.follow.resized', { name: name(r.pattern), bars: barsText(r.len / BAR), n });
+    const head = t('d.follow.resized', { name: name(r.pattern), bars: barsText(r.len / patternBar(S.project, r.pattern)), n });
     return r.stopped.length ? head + ' · ' + t('d.follow.stopped', { n: r.stopped.length }) : head;
   }).join(' · ');
 }

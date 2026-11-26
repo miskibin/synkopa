@@ -155,7 +155,8 @@ impl Engine {
         // pattern whose loops would expand past the bound refuses the file with the same
         // error the write path uses (the summed bound, not per entry)
         for i in 0..p.patterns.len() {
-            p.patterns[i].fit_len();
+            let bar = p.pattern_bar_beats(p.patterns[i].id);
+            p.patterns[i].fit_len_in(bar);
             crate::ops::check_channel_loops(&p, &p.patterns[i]).map_err(|e| format!("not a Synkopa project: {e}"))?;
         }
         // media paths are joined against the project's directory: that join must produce

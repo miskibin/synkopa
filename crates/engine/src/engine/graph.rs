@@ -518,7 +518,7 @@ fn build_patterns(
             // in time order: the audio thread resolves the slides of one block in this order, and
             // a later slide must build on an earlier one (stable, so notes at one time keep theirs)
             notes.sort_by(|a, b| a.beat.total_cmp(&b.beat));
-            PatRt { id: pt.id, len: pt.len, notes, home: pat_home(pt.id) }
+            PatRt { id: pt.id, len: pt.len, bar: p.pattern_bar_beats(pt.id), notes, home: pat_home(pt.id) }
         })
         .collect();
     (chans, pats)
@@ -725,6 +725,7 @@ pub(crate) fn build_timeline(
     Timeline {
         bpm: p.bpm,
         tempo: super::tempo::TempoMap::compile(&p.tempo_points, p.bpm),
+        sig: p.sig_map(),
         clips,
         pats,
         chans,

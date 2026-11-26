@@ -16,7 +16,8 @@ import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
 import { clamp, panText } from '../lib/format';
-import { autoRollSnap, duplicateRight, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
+import { autoRollSnap, duplicateRight, barLenMap, keyOf, noteAt, noteWidth, notesText, patternBar, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
+import { compiledSig } from '../lib/signatures';
 import { noteName } from '../lib/pitch';
 
 /** The project key/scale as a setKey op (the roll header's key selectors commit it). */
@@ -154,7 +155,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     onCleanup(() => document.removeEventListener('pointerdown', away, true));
   });
   const applyTool = () => {
-    const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, ch().id, sel());
+    const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, patternBar(S.project, pt().id), ch().id, sel());
     commit([op], t(TOOL_META[toolId()].label));
     setSel(new Set<number>());
     say(t('b.pr.toolApplied', { verb: t(TOOL_META[toolId()].label) }));
@@ -247,7 +248,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = cv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const lit = typingHeld();
-    drawRoll(g, w, h, geo(), layer, { pt: rawOf(pt()), ch: rawOf(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), grid: snapNow(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost() });
+    drawRoll(g, w, h, geo(), layer, { pt: rawOf(pt()), ch: rawOf(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), grid: snapNow(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost(), spb: Math.round(patternBar(S.project, pt().id) * 4) });
   };
   const drawVel = () => {
     const { w, h } = laneSize(); if (!w || !h) return;
@@ -325,7 +326,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (s != null) { seekSong(s); return; }
     setPatStart(p.id, b);
     if (!patMode()) switchMode(true); // not in the song (or not that beat of it): the pattern loop plays it
-    say(t('b.pr.startAt', { pos: fmtPos(b) }));
+    say(t('b.pr.startAt', { pos: fmtPos(b, barLenMap(patternBar(S.project, pt().id))) }));
   };
   const ruler: RulerHost = {
     beatAt: x => (x - rulerCv.getBoundingClientRect().left + geo().sx) / geo().pps / 4,
@@ -339,7 +340,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     drawn: r => {
       setPatStart(pt().id, r.a);
       if (!patMode()) switchMode(true);
-      say(t('b.pr.loopSet', { a: fmtPos(r.a), b: fmtPos(r.b) }));
+      say(t('b.pr.loopSet', { a: fmtPos(r.a, barLenMap(patternBar(S.project, pt().id))), b: fmtPos(r.b, barLenMap(patternBar(S.project, pt().id))) }));
     },
     track: (m, u, c) => { dragging = true; track(m, ev => { dragging = false; u(ev); }, c); },
     key: 'rollRuler' + props.z,
@@ -354,7 +355,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     fitCanvas(rulerCv, W, RULER_H);
     const g = rulerCv.getContext('2d')!, dpr = window.devicePixelRatio || 1, G = geo();
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawRuler(g, G.sx, W, G.pps * 4, patLoopOf(pt().id), rulerStart());
+    drawRuler(g, G.sx, W, G.pps * 4, patLoopOf(pt().id), rulerStart(), RULER_H, barLenMap(patternBar(S.project, pt().id)));
     // past the pattern's end: room to draw in, not part of the pattern yet
     const xe = pt().len * 4 * G.pps - G.sx;
     if (xe < W) { g.fillStyle = rgba(T.viz, 0.55); g.fillRect(Math.max(0, xe), 0, W - Math.max(0, xe), RULER_H - 1); }
@@ -567,7 +568,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   // ---- "Vocal reference": the melody (the selection, else the channel's notes) becomes the target of a vocal sung over it
   const vocals = createMemo(() => { void arrVersion(); return vocalsUnder(S.project, pt().id); });
-  const vocalName = (id: number) => { const c = S.project.clips.find(x => x.id === id)!; return (S.project.sources.find(x => x.id === c.ref)?.name ?? '?') + ' · ' + (S.project.tracks[c.track]?.name ?? '') + ' · ' + fmtPos(c.start); };
+  const vocalName = (id: number) => { const c = S.project.clips.find(x => x.id === id)!; return (S.project.sources.find(x => x.id === c.ref)?.name ?? '?') + ' · ' + (S.project.tracks[c.track]?.name ?? '') + ' · ' + fmtPos(c.start, compiledSig(S.project.sigPoints)); };
   const toVocal = (clipId: number) => {
     const c = S.project.clips.find(x => x.id === clipId); if (!c) return;
     const idx = [...sel()].filter(i => notesRaw()[i]?.ch === ch().id);

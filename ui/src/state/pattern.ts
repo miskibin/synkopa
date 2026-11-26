@@ -13,7 +13,7 @@ import { be } from '../api/backend';
 import { keysInstrument } from '../lib/keysCatalog';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
-import { BAR, barsText, burnChannelLoop, cloneNotes, loopStepsOf, notesText, setChannelLoop, stepsOf } from '../lib/pattern';
+import { barsText, burnChannelLoop, cloneNotes, loopStepsOf, notesText, patternBar, setChannelLoop, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
 import { dockKeyAction } from '../lib/layout';
 import { commit, enqueue } from './edit';
@@ -342,7 +342,9 @@ const freshName = (base: string) => {
 };
 export function newPattern() {
   const n = S.project.patterns.length;
-  const pt: Pattern = { id: allocId(), name: freshName('Pattern ' + (n + 1)), color: PCOLORS[n % PCOLORS.length], len: BAR, minLen: BAR, notes: [] };
+  // one bar of the grid the pattern's bars use (the song's opening signature: no clip yet)
+  const id = allocId(), bar = patternBar(rawOf(S.project), id);
+  const pt: Pattern = { id, name: freshName('Pattern ' + (n + 1)), color: PCOLORS[n % PCOLORS.length], len: bar, minLen: bar, notes: [] };
   commit([{ op: 'putPattern', pattern: pt }], t('b.pat.new'));
   setCurPattern(pt.id, true);
   say(t('b.st.newSay', { name: pt.name }));
@@ -380,7 +382,7 @@ export function splitByChannel(pt = curPat()) {
   if (used.length < 2) { say(t('b.st.splitOne')); return; }
   const ops: Op[] = [], made: Pattern[] = [];
   for (const c of used) {
-    const np: Pattern = { id: allocId(), name: freshName(pt.name + ' – ' + c.name), color: c.color, len: pt.len, minLen: pt.minLen ?? BAR, swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)), ...(loopStepsOf(pt, c.id) > 0 ? { channelLoops: { [String(c.id)]: loopStepsOf(pt, c.id) } } : {}) };
+    const np: Pattern = { id: allocId(), name: freshName(pt.name + ' – ' + c.name), color: c.color, len: pt.len, minLen: pt.minLen ?? patternBar(rawOf(S.project), pt.id), swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)), ...(loopStepsOf(pt, c.id) > 0 ? { channelLoops: { [String(c.id)]: loopStepsOf(pt, c.id) } } : {}) };
     made.push(np); ops.push({ op: 'putPattern', pattern: np });
   }
   const old = S.project.clips.filter(c => c.kind === 'pat' && c.ref === pt.id);
@@ -413,27 +415,33 @@ export function moveNotesToNewPattern(pt: Pattern, idx: readonly number[]) {
   say(t(plan.placed ? 'b.st.movedNotesClips' : 'b.st.movedNotes', { x: notesText(plan.pattern.notes.length), name: plan.pattern.name, n: plan.placed }));
 }
 /** "+ bar": keep one more (empty) bar at the end of the pattern. */
+/** One bar of the grid the pattern's bars use: the signature at its earliest clip (4/4 standalone). */
+const patBar = (pt: Pattern) => patternBar(rawOf(S.project), pt.id);
+/** "+ bar": keep one more (empty) bar at the end of the pattern. */
 export function addBar(pt = curPat()) {
   if (!pt) return;
-  if (pt.len + BAR > TOTAL_BEATS) return;
-  commit([patOp(pt, { minLen: pt.len + BAR })], t('b.st.patLen'));
-  say(t('b.st.barsSay', { name: pt.name, bars: barsText((pt.len + BAR) / BAR) }));
+  const bar = patBar(pt);
+  if (pt.len + bar > TOTAL_BEATS) return;
+  commit([patOp(pt, { minLen: pt.len + bar })], t('b.st.patLen'));
+  say(t('b.st.barsSay', { name: pt.name, bars: barsText((pt.len + bar) / bar) }));
 }
 /** "− bar": drop the last bar, with the notes that start in it (notes running into it end at the new end).
  * Refused while a channel loop would stick out of the shorter pattern (raise or burn it first). */
 export function removeBar(pt = curPat()) {
-  if (!pt || pt.len <= BAR) return;
-  const newSteps = Math.round((pt.len - BAR) * 4);
+  if (!pt) return;
+  const bar = patBar(pt);
+  if (pt.len <= bar) return;
+  const newSteps = Math.round((pt.len - bar) * 4);
   const sticking = Object.entries(pt.channelLoops ?? {}).find(([, l]) => l > newSteps);
   if (sticking) {
     say(t('b.rk.loopBarTip', { n: sticking[1] }));
     return;
   }
-  const end = (pt.len - BAR) * 4;
+  const end = (pt.len - bar) * 4;
   const gone = pt.notes.filter(n => n.step >= end - 1e-4).length;
   const notes = pt.notes.filter(n => n.step < end - 1e-4).map(n => (n.step + n.len > end ? { ...n, len: end - n.step } : n));
-  commit([patOp(pt, { minLen: pt.len - BAR, notes })], t('b.st.patLen'));
-  say(t('b.st.barsSay', { name: pt.name, bars: barsText((pt.len - BAR) / BAR) }) + (gone ? t('b.st.barGone', { x: notesText(gone) }) : ''));
+  commit([patOp(pt, { minLen: pt.len - bar, notes })], t('b.st.patLen'));
+  say(t('b.st.barsSay', { name: pt.name, bars: barsText((pt.len - bar) / bar) }) + (gone ? t('b.st.barGone', { x: notesText(gone) }) : ''));
 }
 
 // ---------------------------------------------------------------- channels

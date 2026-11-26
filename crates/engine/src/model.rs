@@ -31,10 +31,11 @@ pub fn fader_gain(t: f32) -> f32 {
 
 /// The project format `migrate` brings a file up to. 3: the Reverb's Decay reaches 20 s
 /// (was 6 s), so automation of it (stored normalised over the range) is rescaled once.
-/// 4: tempo points (the tempo map). A build drops fields it does not know (serde ignores
-/// them), so a round-trip through an older app loses them silently and the version it
-/// leaves behind is the only trace — `open` warns about files saved by a newer app.
-pub const PROJECT_VERSION: u32 = 4;
+/// 4: tempo points (the tempo map). 5: signature points (mid-song meter changes). A build
+/// drops fields it does not know (serde ignores them), so a round-trip through an older
+/// app loses them silently and the version it leaves behind is the only trace — `open`
+/// warns about files saved by a newer app.
+pub const PROJECT_VERSION: u32 = 5;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,6 +46,10 @@ pub struct Project {
     /// everywhere. Sorted by beat on the way in; before the first point the tempo is `bpm`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tempo_points: Vec<TempoPoint>,
+    /// Signature points over the song (mid-song meter changes). Empty = 4/4 everywhere.
+    /// Sorted by beat on the way in; before the first point a bar is [`BAR_BEATS`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sig_points: Vec<SigPoint>,
     pub tracks: Vec<Track>,
     /// `inserts[0]` is always the master (id 0).
     pub inserts: Vec<Insert>,
@@ -94,6 +99,15 @@ pub const MAX_TEMPO_BPM: f64 = 300.0;
 pub const MAX_BASE_BPM: f64 = 999.0;
 /// At most this many tempo points per project (the compile trusts the write path's bound).
 pub const MAX_TEMPO_POINTS: usize = 4096;
+/// At most this many signature points per project (the compile trusts the write path's bound).
+pub const MAX_SIG_POINTS: usize = 1024;
+/// The largest [`SigPoint::num`] (a bar of at most 32 units).
+pub const MAX_SIG_NUM: u8 = 32;
+/// Legal [`SigPoint::den`] values. Every choice keeps a bar on the step grid exactly
+/// (a bar is `16·num/den` steps, a whole number), and every bar length a dyadic beat
+/// count — bar boundaries are exact in floating point, so the metronome's comparisons
+/// need no fuzz.
+pub const SIG_DENS: [u8; 5] = [1, 2, 4, 8, 16];
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LoopRange {
@@ -964,17 +978,30 @@ pub const MAX_LOOP_NOTES: usize = 65_536;
 
 impl Pattern {
     /// The length its notes need: the end of the last note rounded up to a whole bar, at
-    /// least one bar, at most [`TOTAL_BEATS`].
-    pub fn content_len(notes: &[Note]) -> f64 {
+    /// least one bar, at most [`TOTAL_BEATS`]. `bar_beats` is the bar length the pattern's
+    /// bars use ([`Project::pattern_bar_beats`]); a bar may be off the beat grid (7/8 is
+    /// 3.5 beats) but always lands on whole steps (see [`SIG_DENS`]).
+    pub fn content_len_in(notes: &[Note], bar_beats: f64) -> f64 {
         let end = notes.iter().map(|n| (n.step + n.len) as f64 / 4.0).fold(0.0, f64::max);
-        ((end / BAR_BEATS - 1e-6).ceil().max(1.0) * BAR_BEATS).min(TOTAL_BEATS)
+        ((end / bar_beats - 1e-6).ceil().max(1.0) * bar_beats).min(TOTAL_BEATS)
+    }
+
+    /// [`Self::content_len_in`] on the 4/4 grid (callers without a project context).
+    pub fn content_len(notes: &[Note]) -> f64 {
+        Self::content_len_in(notes, BAR_BEATS)
     }
 
     /// Sets `len` from the notes and `min_len` (whole bars), and normalises `min_len`.
-    pub fn fit_len(&mut self) {
-        let min = if self.min_len.is_finite() { (self.min_len / BAR_BEATS - 1e-6).ceil().max(1.0) * BAR_BEATS } else { BAR_BEATS };
+    /// `bar_beats` is the bar length the pattern's bars use ([`Project::pattern_bar_beats`]).
+    pub fn fit_len_in(&mut self, bar_beats: f64) {
+        let min = if self.min_len.is_finite() { (self.min_len / bar_beats - 1e-6).ceil().max(1.0) * bar_beats } else { bar_beats };
         self.min_len = min.min(TOTAL_BEATS);
-        self.len = Self::content_len(&self.notes).max(self.min_len);
+        self.len = Self::content_len_in(&self.notes, bar_beats).max(self.min_len);
+    }
+
+    /// [`Self::fit_len_in`] on the 4/4 grid (callers without a project context).
+    pub fn fit_len(&mut self) {
+        self.fit_len_in(BAR_BEATS);
     }
 }
 
@@ -1025,6 +1052,130 @@ pub struct TempoPoint {
     /// Glide to the next point's BPM over the beats between them, instead of a step here.
     #[serde(default)]
     pub ramp: bool,
+}
+
+/// A time-signature change on the song's timeline: from this beat on, a bar counts `num`
+/// units of `den` — `4·num/den` beats ([`BAR_BEATS`] is 4/4's four beats; 7/8 is 3.5, and
+/// its boundaries land off the beat). Points are beat-sorted on the way in; two points at
+/// one beat and the last governs, mirroring the tempo map. Before the first point a bar
+/// is [`BAR_BEATS`]. Beats stay the timeline's axis: a change reflows only where the
+/// bars fall ([`SigMap`]).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SigPoint {
+    /// Beat position on the playlist (0 = the song's start; a point at 0 replaces 4/4).
+    pub beat: f64,
+    /// How many units of `den` a bar counts from this beat on (clamped 1..=32 when set).
+    pub num: u8,
+    /// The unit: 1, 2, 4, 8 or 16 (a half note … a 16th). Anything else reads as 4.
+    pub den: u8,
+}
+
+/// The compiled signature map: where the bars fall. A change may sit mid-bar; the partial
+/// bar before it stays a fragment — it counts as a bar and the new grid starts at the
+/// change (Live's crosshatched fragmentary bar).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SigMap {
+    /// `(beat, bar_beats)` sorted by beat; the first entry is beat 0 (4/4, unless a point
+    /// sits there — the last one at 0 wins).
+    points: Vec<(f64, f64)>,
+}
+
+impl SigMap {
+    /// The constant 4/4 map (what an empty point list compiles to).
+    pub fn constant() -> Self {
+        Self { points: vec![(0.0, BAR_BEATS)] }
+    }
+
+    /// Compiles `points`: `num` clamps 1..=32, `den` snaps to [`SIG_DENS`] (anything else
+    /// reads as 4), beat-sorted and capped; before the first point the bar is [`BAR_BEATS`].
+    /// A hand-edited file cannot produce a map the write path would refuse.
+    pub fn compile(points: &[SigPoint]) -> Self {
+        let mut pts: Vec<(f64, f64)> = points
+            .iter()
+            .map(|p| {
+                let den = if SIG_DENS.contains(&p.den) { p.den } else { 4 };
+                (p.beat.clamp(0.0, TOTAL_BEATS), BAR_BEATS * f64::from(p.num.clamp(1, MAX_SIG_NUM)) / f64::from(den))
+            })
+            .collect();
+        pts.sort_by(|a, b| a.0.total_cmp(&b.0));
+        pts.truncate(MAX_SIG_POINTS);
+        let mut map = Self { points: vec![(0.0, BAR_BEATS)] };
+        for &(beat, bar) in &pts {
+            if beat <= 0.0 {
+                *map.points.last_mut().unwrap() = (0.0, bar);
+            } else if map.points.last().map_or(false, |&(b, _)| (b - beat).abs() < 1e-9) {
+                // two points at one beat are one change: the last governs (a duplicated
+                // segment would double-count a fragment in the bar numbering)
+                *map.points.last_mut().unwrap() = (beat, bar);
+            } else {
+                map.points.push((beat, bar));
+            }
+        }
+        map
+    }
+
+    /// The bar length in beats at `beat` (the governing point's `4·num/den`).
+    pub fn bar_beats_at(&self, beat: f64) -> f64 {
+        self.points[self.segment_of(beat)].1
+    }
+
+    /// The 0-based bar `beat` falls in (bar 0 starts at beat 0). A change mid-bar
+    /// truncates the bar it lands in — the fragment counts — and the new grid starts
+    /// there. Beats before 0 (a count-in) continue backwards on the opening grid, so
+    /// negative beats map to negative bars.
+    pub fn bar_at(&self, beat: f64) -> f64 {
+        if beat < 0.0 {
+            return (beat / self.points[0].1).floor();
+        }
+        let mut bars = 0.0;
+        for i in 0..self.points.len() {
+            let (s, l) = self.points[i];
+            let e = self.points.get(i + 1).map_or(f64::INFINITY, |&(e, _)| e);
+            if beat < e - 1e-9 {
+                return bars + ((beat - s) / l).floor();
+            }
+            // the segment ends at `e`: its bars, including the fragment the next change
+            // truncates (an exact multiple leaves no phantom bar)
+            bars += ((e - s) / l).ceil();
+        }
+        bars + ((beat - self.points.last().unwrap().0) / self.points.last().unwrap().1).floor()
+    }
+
+    /// The beat where 0-based bar `bar` starts (the inverse of [`Self::bar_at`]; `bar` is
+    /// expected to be a whole bar number). A fragment maps to its own start like any bar;
+    /// beyond the song the grid continues at the last segment's bar length — callers
+    /// clamp to [`TOTAL_BEATS`] where it matters.
+    pub fn beat_at_bar(&self, bar: f64) -> f64 {
+        if bar < 0.0 {
+            return bar * self.points[0].1;
+        }
+        let mut bars = 0.0;
+        for i in 0..self.points.len() {
+            let (s, l) = self.points[i];
+            let e = self.points.get(i + 1).map_or(f64::INFINITY, |&(e, _)| e);
+            let count = (e - s) / l;
+            let count = if count.is_finite() { count.ceil() } else { count };
+            if bar < bars + count - 1e-9 {
+                return s + (bar - bars) * l;
+            }
+            bars += count;
+        }
+        unreachable!("the last segment is unbounded and always returns")
+    }
+
+    /// Whether `beat` sits on a bar boundary (a metronome accent lands there). Off-grid
+    /// changes make boundaries land between beats — 7/8's second bar starts at beat 3.5 —
+    /// and [`Self::bar_at`] never reports an integer beat there, so callers walking whole
+    /// beats check fractional starts separately.
+    pub fn is_bar_start(&self, beat: f64) -> bool {
+        (self.beat_at_bar(self.bar_at(beat)) - beat).abs() < 1e-6
+    }
+
+    /// The index of the segment `beat` plays in (the last point at or before it).
+    fn segment_of(&self, beat: f64) -> usize {
+        self.points.partition_point(|&(b, _)| b <= beat + 1e-9).saturating_sub(1).min(self.points.len() - 1)
+    }
 }
 
 /// Swing, in steps, added to a note that starts on an odd 16th (0-based 1, 3, 5 …).
@@ -1699,8 +1850,12 @@ impl Project {
     /// project without channels gets the starter kit so the Channel Rack is never empty.
     /// Idempotent; a project that is already current is unchanged.
     pub fn migrate(&mut self) {
+        // whole bars of the signature where each pattern plays (4/4 with no map: the grid
+        // the 4/4 fit used, so projects without signature points are unchanged)
+        let map = self.sig_map();
         for pt in self.patterns.iter_mut() {
-            pt.fit_len();
+            let at = self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pt.id).map(|c| c.start).fold(f64::INFINITY, f64::min);
+            pt.fit_len_in(map.bar_beats_at(if at.is_finite() { at } else { 0.0 }));
         }
         if self.channels.is_empty() {
             self.add_starter_kit();
@@ -1780,6 +1935,9 @@ impl Project {
         // beat-0 anchor last would lose it, and the next save would write the loss)
         self.tempo_points.sort_by(|a, b| a.beat.clamp(0.0, TOTAL_BEATS).total_cmp(&b.beat.clamp(0.0, TOTAL_BEATS)));
         self.tempo_points.truncate(MAX_TEMPO_POINTS);
+        // signature points, same order (sort by the clamped beat, then cap)
+        self.sig_points.sort_by(|a, b| a.beat.clamp(0.0, TOTAL_BEATS).total_cmp(&b.beat.clamp(0.0, TOTAL_BEATS)));
+        self.sig_points.truncate(MAX_SIG_POINTS);
         self.version = self.version.max(PROJECT_VERSION);
         // ids the file used must stay taken
         let max = self.channels.iter().map(|c| c.id).chain(self.sources.iter().map(|s| s.id)).max().unwrap_or(0);
@@ -1907,12 +2065,42 @@ impl Project {
         self.markers.iter().find(|m| m.id == id)
     }
 
+    /// The compiled signature map (no points = 4/4 everywhere). Every bars-math site —
+    /// the ruler, snap, the metronome's accents, the CLI's bar conversions — reads this
+    /// instead of a hard [`BAR_BEATS`].
+    pub fn sig_map(&self) -> SigMap {
+        SigMap::compile(&self.sig_points)
+    }
+
+    /// The file's signatures: the 4/4 opener when no point sits at beat 0, then every
+    /// point — what [`crate::midi_file::write`] stamps, one signature meta per event.
+    pub fn midi_sig_events(&self) -> Vec<(f64, u8, u8)> {
+        let mut pts: Vec<&SigPoint> = self.sig_points.iter().collect();
+        pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
+        let mut out: Vec<(f64, u8, u8)> = vec![];
+        if pts.first().is_none_or(|p| p.beat > 1e-9) {
+            out.push((0.0, 4, 4));
+        }
+        for p in pts {
+            out.push((p.beat, p.num, p.den));
+        }
+        out
+    }
+
+    /// The bar length in beats a pattern's bars use: the signature at the earliest clip
+    /// that plays it, else the song's opening signature ([`BAR_BEATS`]). Pattern lengths
+    /// are whole bars of this grid ([`Pattern::fit_len`]).
+    pub fn pattern_bar_beats(&self, pat: Id) -> f64 {
+        let at = self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pat).map(|c| c.start).fold(f64::INFINITY, f64::min);
+        self.sig_map().bar_beats_at(if at.is_finite() { at } else { 0.0 })
+    }
+
     /// The section a marker starts: from it to the next marker further on, or to the song end
     /// when it is the last one (at least a bar). `None` for an unknown marker.
     pub fn marker_section(&self, id: Id) -> Option<LoopRange> {
         let m = self.marker(id)?;
         let next = self.markers.iter().filter(|x| x.at > m.at + 1e-9).map(|x| x.at).fold(f64::INFINITY, f64::min);
-        let b = if next.is_finite() { next } else { self.song_end().max(m.at + BAR_BEATS) };
+        let b = if next.is_finite() { next } else { self.song_end().max(m.at + self.sig_map().bar_beats_at(m.at)) };
         Some(LoopRange { a: m.at, b: b.min(TOTAL_BEATS).max(m.at + 1.0 / 64.0) })
     }
 
@@ -1924,7 +2112,8 @@ impl Project {
     /// that *starts* in a bar always keeps that bar.
     pub fn song_end(&self) -> f64 {
         let end = self.clips.iter().fold(4.0f64, |m, c| m.max(c.start + c.len - SONG_END_SLACK).max(c.start + 1e-6));
-        (end / 4.0).ceil() * 4.0
+        let map = self.sig_map();
+        map.beat_at_bar(map.bar_at(end - 1e-9) + 1.0)
     }
 
     /// The demo song (see [`crate::demo::demo_project`]).

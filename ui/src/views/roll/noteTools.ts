@@ -81,7 +81,7 @@ export interface TransformOp {
 /** The strip's values as one `transformNotes` op. An empty (or unusable) seed is left to the
  * engine; a numeric field that lost its value takes the tool's default back. */
 export function buildTransformOp(
-  id: ToolId, vals: readonly unknown[], seedStr: string, patId: Id, patLen: number, chan: Id, sel: ReadonlySet<number>,
+  id: ToolId, vals: readonly unknown[], seedStr: string, patId: Id, patLen: number, bar: number, chan: Id, sel: ReadonlySet<number>,
 ): TransformOp {
   const num = (i: number, d: number) => (typeof vals[i] === 'number' ? (vals[i] as number) : d);
   const str = (i: number) => String(vals[i] ?? '');
@@ -89,8 +89,8 @@ export function buildTransformOp(
     : id === 'quantize' ? { kind: 'quantize', grid: num(0, 1) || 1, amount: Math.min(1, Math.max(0, num(1, 1))), scaleAware: false }
     : id === 'euclid' ? { kind: 'euclidFill', ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))), rotate: 0 }
     : id === 'strum' ? { kind: 'strum', width: num(0, 0.5), ramp: num(1, 0.05) }
-    : id === 'drums' ? { kind: 'euclidDrums', voices: [{ ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))) }], bars: Math.max(1, Math.round(patLen / 4)) }
-    : id === 'melody' ? { kind: 'melody', ch: chan, bars: Math.max(1, Math.round(patLen / 4)), density: Math.min(1, Math.max(0.05, num(0, 0.5))), repeat: Math.max(1, Math.round(num(1, 2))) }
+    : id === 'drums' ? { kind: 'euclidDrums', voices: [{ ch: chan, k: Math.max(1, Math.round(num(0, 4))), n: Math.max(1, Math.round(num(1, 16))) }], bars: Math.max(1, Math.round(patLen / bar)) }
+    : id === 'melody' ? { kind: 'melody', ch: chan, bars: Math.max(1, Math.round(patLen / bar)), density: Math.min(1, Math.max(0.05, num(0, 0.5))), repeat: Math.max(1, Math.round(num(1, 2))) }
     : id === 'chord' ? { kind: 'chord', harmony: str(0) }
     : id === 'chop' ? { kind: 'chop', len: Math.max(0.25, num(0, 1)) }
     : id === 'glue' ? { kind: 'glue' }

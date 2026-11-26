@@ -73,6 +73,7 @@ pub fn inspect(app: &dyn Host, a: &Value) -> R<Value> {
     Ok(json!({
         "path": need_str(a, "path")?, "format": f.format, "ppq": f.ppq, "bpm": f.bpm.map(r4), "tempoChanges": f.tempo_changes,
         "tempoPoints": f.tempo_points.iter().map(|t| json!({ "beat": r4(t.beat), "bpm": r4(t.bpm) })).collect::<Vec<_>>(),
+        "sigPoints": f.sig_points.iter().map(|s| json!({ "beat": r4(s.beat), "num": s.num, "den": s.den })).collect::<Vec<_>>(),
         "end": r4(f.end), "warnings": f.warnings, "parts": parts, "projectBpm": app.engine().project().bpm,
     }))
 }
@@ -133,10 +134,12 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 next - 1
             };
             let mut ops = vec![];
-            if set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()) {
-                // the file's tempo wins: the base (tick 0's value, else MIDI's implied 120)
-                // and every later change as a point of the tempo map (#320)
-                ops.push(Op::SetBpm { bpm: f.bpm.unwrap_or(120.0).clamp(20.0, 999.0) });
+            // the opt-in covers the file's musical time: its tempo (#320) and its meters
+            if set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty() || !f.sig_points.is_empty()) {
+                if f.bpm.is_some() {
+                    // the file's tempo wins: the base (tick 0's value, else MIDI's implied 120)
+                    ops.push(Op::SetBpm { bpm: f.bpm.unwrap_or(120.0).clamp(20.0, 999.0) });
+                }
                 if !f.tempo_points.is_empty() {
                     // the map travels with the notes: the file's beat 0 is where the clip
                     // starts on the Playlist, so every point lands the same distance in (an
@@ -147,6 +150,14 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                             .iter()
                             .map(|t| wave_engine::model::TempoPoint { beat: t.beat + beat, bpm: t.bpm, ramp: false })
                             .collect(),
+                    });
+                }
+                // the file's meter travels with its notes: the points shift to where the
+                // pattern lands (the map is replaced — the opt-in is one musical decision,
+                // one undo step takes it back)
+                if !f.sig_points.is_empty() {
+                    ops.push(Op::SetSigPoints {
+                        points: f.sig_points.iter().map(|s| wave_engine::SigPoint { beat: s.beat + beat, num: s.num, den: s.den as u8 }).collect(),
                     });
                 }
             }
@@ -189,8 +200,19 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 }
             }
             let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
-            let len = ((end / 4.0).ceil() * 4.0).max(4.0);
-            ops.push(Op::PutPattern { pattern: Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: 4.0, notes, swing: 0.0, channel_loops: std::collections::BTreeMap::new() } });
+            // whole bars of the signature where the pattern lands — under the map as the
+            // batch leaves it (the file's meter, when it imports one)
+            let map = if set_tempo && !f.sig_points.is_empty() {
+                wave_engine::SigMap::compile(
+                    &f.sig_points.iter().map(|s| wave_engine::SigPoint { beat: s.beat + beat, num: s.num, den: s.den as u8 }).collect::<Vec<_>>(),
+                )
+            } else {
+                p.sig_map()
+            };
+            let bar = map.bar_beats_at(beat);
+            let len = ((end / bar - 1e-6).ceil().max(1.0) * bar).max(bar);
+            let pattern = Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: bar, notes, swing: 0.0, channel_loops: std::collections::BTreeMap::new() };
+            ops.push(Op::PutPattern { pattern: pattern.clone() });
             // the first track with nothing where the pattern goes (else the chosen or first one)
             let free = |t: u32| !p.clips.iter().any(|c| c.track == t && c.start < beat + len && c.start + c.len > beat);
             let ntracks = p.tracks.len() as u32;
@@ -221,6 +243,9 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                         root: wave_engine::CLIP_ROOT,
                     }],
                 });
+                // the pattern's fit reads the map through its clip: with the clip in place
+                // it refits to the signature at its own position (the batch is atomic)
+                ops.push(Op::PutPattern { pattern });
             }
             made = json!({ "patternId": pattern_id, "channelIds": channels, "clipId": if ntracks > 0 { json!(clip_id) } else { Value::Null }, "track": track, "beat": beat, "len": len });
             Ok(ops)
@@ -247,7 +272,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
         warnings.extend(clipped);
     }
     made["warnings"] = json!(warnings);
-    made["tempoSet"] = json!(set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()));
+    made["tempoSet"] = json!(set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty() || !f.sig_points.is_empty()));
     Ok(made)
 }
 
@@ -394,11 +419,11 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
         .as_deref()
         .and_then(|s| Path::new(s).file_stem().map(|x| x.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "Synkopa".into());
-    // the map goes with the notes: holds as one event, ramps stepped per beat at each
-    // interval's effective BPM (the file's elapsed time is the engine's integral), the opener
-    // first — a constant project writes the single event it always did
+    // the maps go with the notes: the tempo holds as one event per point (ramps stepped per
+    // beat at each interval's effective BPM, the opener first — a constant project writes
+    // the single event it always did), the meters one signature meta per point
     let tempo_events = p.midi_tempo_events();
-    let bytes = midi_file::write(&tempo_events, &title, &tracks)?;
+    let bytes = midi_file::write(&tempo_events, &title, &tracks, &p.midi_sig_events())?;
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }

@@ -1226,7 +1226,7 @@ pub fn context(app: &dyn Host, full: bool) -> Value {
         "channels": p.channels.iter().map(|c| channel_json(p, c)).collect::<Vec<_>>(),
         "sources": p.sources.iter().map(|s| json!({"id": s.id, "name": s.name, "seconds": s.dur, "path": s.path})).collect::<Vec<_>>(),
         "clips": p.clips.len(),
-        "markers": p.markers.iter().map(marker_json).collect::<Vec<_>>(),
+        "markers": p.markers.iter().map(|m| marker_json(p, m)).collect::<Vec<_>>(),
         "notebook": p.notebook.pages.iter().map(|pg| json!({"id": pg.id, "name": pg.name, "startBar": pg.start_bar, "lines": pg.text.lines().count()})).collect::<Vec<_>>(),
         "nextId": p.next_id,
     })
@@ -1235,7 +1235,7 @@ pub fn context(app: &dyn Host, full: bool) -> Value {
 pub fn schema() -> Value {
     json!({
         "automation": "an automation plays through a clip of kind `auto` whose `ref` is the automation id; points t = beats from the automation start, v = 0..1 normalised (log params normalised logarithmically); optional per point, for the segment ending there: tension -1..1 (0 = straight) and shape curve|double|hold|stairs (stairs: tension sets 2..16 steps). While the app records with its Automation filter on, control tweaks during playback send these same putAutomation ops (touch: until release; Latch holds until stop); a manual tweak on an automated control while playing overrides its envelope until the transport stops",
-        "units": "time in beats (quarter notes); pattern len in beats (4 = 1 bar, derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
+        "units": "time in beats (quarter notes); pattern len in beats (a bar = the signature at where it plays, 4 beats in 4/4; derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
         "patterns": "channels are global (Channel Rack rows, `synkopa channels`); a pattern note plays channel `ch`; trig = true for a step trigger without sampler note-off; p = MIDI key (absent = the channel's root, the key at which a sampler plays its file unpitched); swing delays notes on odd 16ths by swing × ½ step; the pattern length is derived: the end of the last note rounded up to a bar, at least `minLen` beats (a `len` you send is ignored); when it grows, clips that show exactly one whole pass (offset 0) follow, but stop at the next clip on their track; when it shrinks, clips that showed only the pattern are cut back to its new end. The Playlist keeps a pattern clip within one pass of its pattern (len <= pattern len - offset) when its edge is dragged. Easier: `synkopa pattern --id N --ch C --steps \"x...x...x...x...\"`",
         "ids": "take new ids from context.nextId and count up",
         "routing": "an insert's output goes to the master (`master`: true, the default) and/or, post-fader, to other inserts through `sends` [{to, gain 0..2 linear}] (a bus, a shared reverb). `master` false = only where it sends. Loops and sends to itself or to the master (id 0) are refused. Easier: `synkopa route --from 3 --to 1 [--gain 0.5] [--only true]`, `synkopa unroute --from 3 --to 1`",
@@ -1270,7 +1270,7 @@ pub fn schema() -> Value {
             "removeMarker": {"id": 0},
         },
         "markers": "Playlist time markers (labels only, never played): `at` in beats on the song timeline (0..2048), name up to 80 characters, at most 256; kept sorted by `at`. putMarker adds, moves or renames (by id), removeMarker deletes. A marker's section runs to the next marker (the last one: to the song end). Easier: `synkopa markers --add Hook --bar 9`, `synkopa markers --loop Hook`",
-        "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, bar = 4 beats), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `synkopa context --full`",
+        "notebook": "lyrics notebook (text only, never played): pages in tab order; each line of `text` is one bar counted from `startBar` (1-based, a bar is the signature's length at that bar), an empty line is a bar of rest, a line wrapped in [brackets] is a header and takes no bar. putNotebook replaces all pages; the full text is in `synkopa context --full`",
         "comps": "take lanes: a clip of kind `comp` plays comp `ref`; takes/regions are in comp beats (comp beat = clip.offset + timeline beat − clip.start); regions sorted, non-overlapping, gaps are silent; xfade in seconds (equal-power crossfade centred on each region start, default 0.01). Easier: `synkopa takes --track N`, `synkopa comp --track N --set '[{\"take\":ID,\"from\":B,\"to\":B}]'` (timeline beats)",
         "maskIgnore": "pairs of inserts the mix assistant does not report as masking each other (`synkopa mix ignore N`); setMaskIgnore replaces them (sorted within a pair, no repeats, not the master). The fix (`synkopa mix fix N`) is an EQ whose dynamic band is keyed (`fx.key`) from the protected insert: with a sidechain, every dynamic band of an EQ follows the key in its band instead of its own signal",
         "pitchEdits": "editTune changes only a clip's pitch edits (the pitch editor's notes): indices name the notes as `synkopa pitch inspect` lists them (before this op), whatever order the parts are in; they apply as clear, reset, notes, split, merge, erasePencil, pencil. shift/formant in cents (within 2400), drift 0..1, gain -24..12 dB, speed 0..1000 ms (null = the reference's, else immediate). Easier: `synkopa pitch edit`",
@@ -1409,8 +1409,18 @@ fn channel_json(p: &wave_engine::Project, c: &wave_engine::Channel) -> Value {
     v
 }
 
-fn marker_json(m: &wave_engine::Marker) -> Value {
-    json!({ "id": m.id, "name": m.name, "at": m.at, "bar": m.at / wave_engine::BAR_BEATS + 1.0 })
+fn marker_json(p: &wave_engine::Project, m: &wave_engine::Marker) -> Value {
+    json!({ "id": m.id, "name": m.name, "at": m.at, "bar": p.sig_map().bar_at(m.at) + 1.0 })
+}
+
+/// The beat of `bar` (1-based, may be fractional: 9.5 = half a bar into bar 9 — under a
+/// map, half of whatever that bar measures).
+fn bar_beat(p: &wave_engine::Project, bar: f64) -> f64 {
+    let map = p.sig_map();
+    let b = (bar - 1.0).floor().max(0.0);
+    let f = bar - 1.0 - b;
+    let start = map.beat_at_bar(b);
+    start + f * map.bar_beats_at(start)
 }
 
 /// A marker by id, or by name (case-insensitive; the first one when names repeat).
@@ -1422,12 +1432,12 @@ fn find_marker<'a>(p: &'a wave_engine::Project, v: &Value) -> R<&'a wave_engine:
     p.markers.iter().find(|m| m.name.to_lowercase() == s).ok_or(format!("no marker named `{s}` (see `synkopa markers`)"))
 }
 
-/// `at` in beats, or `bar` (1-based, may be fractional: 9.5 = the middle of bar 9).
-fn marker_pos(a: &Value) -> R<Option<f64>> {
+/// `at` in beats, or `bar` (1-based, may be fractional: 9.5 = half a bar into bar 9).
+fn marker_pos(p: &wave_engine::Project, a: &Value) -> R<Option<f64>> {
     match (opt_f64(a, "at"), opt_f64(a, "bar")) {
         (Some(_), Some(_)) => Err("give `at` (beats) or `bar`, not both".into()),
         (Some(b), None) => Ok(Some(b)),
-        (None, Some(bar)) if bar >= 1.0 => Ok(Some((bar - 1.0) * wave_engine::BAR_BEATS)),
+        (None, Some(bar)) if bar >= 1.0 => Ok(Some(bar_beat(p, bar))),
         (None, Some(bar)) => Err(format!("bars count from 1, not {bar}")),
         (None, None) => Ok(None),
     }
@@ -1447,10 +1457,10 @@ fn marker_name(v: &Value) -> R<String> {
 pub fn markers(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     let e = app.engine();
     let mut p = e.project();
-    let list = |p: &wave_engine::Project| p.markers.iter().map(marker_json).collect::<Vec<_>>();
+    let list = |p: &wave_engine::Project| p.markers.iter().map(|m| marker_json(p, m)).collect::<Vec<_>>();
     let mut added = None;
     let (op, label) = if let Some(n) = arg(a, "add") {
-        let at = marker_pos(a)?.unwrap_or_else(|| e.state().transport.start_beat.max(0.0));
+        let at = marker_pos(&p, a)?.unwrap_or_else(|| e.state().transport.start_beat.max(0.0));
         let id = p.alloc_id();
         added = Some(id);
         (Op::PutMarker { marker: wave_engine::Marker { id, at, name: marker_name(n)? } }, "Add marker")
@@ -1461,7 +1471,7 @@ pub fn markers(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         (Op::SetLoop { range: p.marker_section(id) }, "Loop section")
     } else if let Some(v) = arg(a, "marker") {
         let mut m = find_marker(&p, v)?.clone();
-        let (name, at) = (arg(a, "name"), marker_pos(a)?);
+        let (name, at) = (arg(a, "name"), marker_pos(&p, a)?);
         if name.is_none() && at.is_none() {
             return Err("say what changes: `name` and/or `at` / `bar`".into());
         }
@@ -1820,7 +1830,8 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
             row
         })
         .collect();
-    json!({ "id": pt.id, "name": pt.name, "color": pt.color, "bars": pt.len / 4.0, "lenBeats": pt.len, "minBars": pt.min_len / 4.0, "swing": (pt.swing * 100.0).round(), "rows": rows })
+    let bar = p.pattern_bar_beats(pt.id);
+    json!({ "id": pt.id, "name": pt.name, "color": pt.color, "bars": pt.len / bar, "lenBeats": pt.len, "minBars": pt.min_len / bar, "swing": (pt.swing * 100.0).round(), "rows": rows })
 }
 
 /// `synkopa pattern`: show a pattern as step strings, or edit it (one undo step).
@@ -1830,12 +1841,14 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     let p = e.project();
     let new = arg(a, "new").and_then(Value::as_bool).unwrap_or(false);
     let mut pt = if new {
+        // one bar of the signature where a new pattern would land (the song's opener)
+        let bar = p.pattern_bar_beats(p.next_id);
         Pattern {
             id: p.next_id,
             name: format!("Pattern {}", p.patterns.len() + 1),
             color: "#4f8ef7".into(),
-            len: 4.0,
-            min_len: 4.0,
+            len: bar,
+            min_len: bar,
             notes: vec![],
             swing: 0.0,
             channel_loops: std::collections::BTreeMap::new(),
@@ -1861,14 +1874,14 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         pt.color = c.into();
     }
     if let Some(b) = opt_f64(a, "bars") {
-        // the shortest the pattern may be: it still grows with notes past it
-        if !(1.0..=wave_engine::TOTAL_BEATS / 4.0).contains(&b) || b.fract() != 0.0 {
-            return Err(format!(
-                "--bars is a whole number 1..{} (the pattern still grows to fit its notes)",
-                wave_engine::TOTAL_BEATS / 4.0
-            ));
+        // the shortest the pattern may be, in bars of the signature where it plays: it
+        // still grows with notes past it
+        let bar = p.pattern_bar_beats(pt.id);
+        let cap = (wave_engine::TOTAL_BEATS / bar).floor();
+        if !(1.0..=cap).contains(&b) || b.fract() != 0.0 {
+            return Err(format!("--bars is a whole number 1..{cap} (the pattern still grows to fit its notes)"));
         }
-        pt.min_len = b * 4.0;
+        pt.min_len = b * bar;
     }
     if let Some(s) = opt_f64(a, "swing") {
         if !(0.0..=100.0).contains(&s) {

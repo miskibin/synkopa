@@ -1,11 +1,14 @@
 import { VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
 import { newClip } from './clipOps';
+import { barAt, beatAtBar, compiledSig } from './signatures';
+import { patternBar } from './pattern';
 
 /** Beat range for a song, loop or pattern bounce — mirrors `Engine::export_range` / `Engine::pattern_range`. */
 export function exportRange(project: Project, useLoop: boolean, pattern?: Id | null): { from: number; to: number } {
   if (pattern != null) {
     const pt = project.patterns.find(x => x.id === pattern);
-    return { from: 0, to: Math.max(4, pt?.len ?? 4) };
+    const bar = patternBar(project, pattern);
+    return { from: 0, to: Math.max(bar, pt?.len ?? bar) };
   }
   if (useLoop) {
     const l = project.loop;
@@ -19,11 +22,13 @@ export const SONG_END_SLACK = 0.25;
 /**
  * The bar the last clip ends in; at least one bar (model.rs `song_end`). A clip running into the
  * next bar by less than a 16th does not add it; a clip that starts in a bar always keeps it.
+ * Under the signature map the song ends on the map's next bar line (a fragment counts as a bar).
  */
-export function songEnd(project: Pick<Project, 'clips'>): number {
+export function songEnd(project: Pick<Project, 'clips' | 'sigPoints'>): number {
   let end = 4;
   for (const c of project.clips) end = Math.max(end, c.start + c.len - SONG_END_SLACK, c.start + 1e-6);
-  return Math.ceil(end / 4) * 4;
+  const map = compiledSig(project.sigPoints);
+  return beatAtBar(map, barAt(map, end - 1e-9) + 1);
 }
 
 /**
@@ -33,7 +38,8 @@ export function songEnd(project: Pick<Project, 'clips'>): number {
  */
 export function patternProject(p: Project, id: Id): Project {
   const q = structuredClone(p);
-  const len = Math.max(4, q.patterns.find(x => x.id === id)?.len ?? 4);
+  const bar = patternBar(q, id);
+  const len = Math.max(bar, q.patterns.find(x => x.id === id)?.len ?? bar);
   q.clips = []; if (q.comps) q.comps = []; q.loop = null;
   // PAT mode plays at one constant tempo, the base BPM: the song's map would apply to pattern-local beats
   delete q.tempoPoints;

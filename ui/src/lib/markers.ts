@@ -3,11 +3,11 @@
 // (`Marker`, `Project::marker_section`) and ops.rs (`putMarker`, `removeMarker`,
 // `validate_marker`); the error strings are the engine's (ops.json pins them).
 import { TOTAL_BEATS, type Id, type Marker, type Project } from '../api/types';
+import { barBeatsAt, compiledSig } from './signatures';
 import { songEnd } from './export';
 
 export const MARKERS_MAX = 256;
 export const MARKER_NAME_MAX = 80;
-const BAR = 4;
 
 const byPos = (a: Marker, b: Marker) => a.at - b.at || a.id - b.id;
 
@@ -37,12 +37,12 @@ export function removeMarker(p: Project, id: Id): void {
  * The section a marker starts (`Project::marker_section`): up to the next marker further on, or to
  * the song end when it is the last one (at least a bar). Null for an unknown marker.
  */
-export function markerSection(p: Pick<Project, 'markers' | 'clips'>, id: Id): { a: number; b: number } | null {
+export function markerSection(p: Pick<Project, 'markers' | 'clips' | 'sigPoints'>, id: Id): { a: number; b: number } | null {
   const list = p.markers ?? [];
   const m = list.find(x => x.id === id); if (!m) return null;
   let next = Infinity;
   for (const x of list) if (x.at > m.at + 1e-9) next = Math.min(next, x.at);
-  const b = Number.isFinite(next) ? next : Math.max(songEnd(p), m.at + BAR);
+  const b = Number.isFinite(next) ? next : Math.max(songEnd(p), m.at + barBeatsAt(compiledSig(p.sigPoints), m.at));
   return { a: m.at, b: Math.max(Math.min(b, TOTAL_BEATS), m.at + 1 / 64) };
 }
 

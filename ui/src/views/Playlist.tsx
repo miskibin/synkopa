@@ -27,7 +27,7 @@ import { barsText } from '../lib/pattern';
 import { addFrameTask, fitCanvas, fonts, shiftCanvas } from '../ui/frameLoop';
 import { drawFades, drawFollowFlash, drawGrid, drawOverlaps, type View } from './playlistDraw';
 import { FOLLOW_FLASH_MS, followFlash } from '../state/patternFollow';
-import { drawRuler, rulerCursor, rulerDown as rulerPress, RULER_H, type RulerHost } from '../ui/timeRuler';
+import { drawRuler, drawSigChips, rulerCursor, rulerDown as rulerPress, sigHit, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
 import { PlaylistTools } from './PlaylistTools';
 import type { ZRange } from '../lib/zoomBar';
@@ -43,6 +43,7 @@ import { markerAtX } from '../lib/markers';
 import * as MK from '../state/markers';
 import { drawMarkers, drawMarkerTicks, MARKER_H, markerBoxes } from './markerDraw';
 import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, TEMPO_H } from '../lib/tempoLane';
+import { addSigPoint, barBeatsAt, compiledSig, deleteSigPoint, moveSigPoint, parseSig, setSigMeter, sigAt, sigText, snapToBar, type SigPoint } from '../lib/signatures';
 import { drawTempoLane } from './tempoDraw';
 import { MAX_TEMPO_POINTS, type TempoPoint } from '../api/types';
 
@@ -71,6 +72,12 @@ export function gridPoint(clientX: number, clientY: number) {
   return { beat: x / U.bw, track: trackAtY(y), x, y, inside };
 }
 const unit = (alt: boolean) => A.snapUnit(alt);
+/** The timeline's snap: "Snap: bar" follows the signature map's bar lines (a bar may be off
+ *  the beat: 7/8's lines fall on halves), every other unit is its plain beat multiple. */
+const snapAt = (b: number, alt: boolean): number => {
+  const u = unit(alt);
+  return u === 4 ? snapToBar(compiledSig(S.project.sigPoints), b) : snapRound(b, u);
+};
 
 /** Playlist zoom presets (Shift+1 / 2 / 3), px per beat: detail, the default, overview. */
 const ZOOM_PRESETS = [64, 22, 8];
@@ -516,9 +523,10 @@ export function Playlist() {
     fitCanvas(rulerCv, t.w, RULER_H);
     const g = rulerCv.getContext('2d')!;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawRuler(g, t.x, t.w, U.bw, S.project.loop, U.start);
+    drawRuler(g, t.x, t.w, U.bw, S.project.loop, U.start, RULER_H, sigShown());
     const ms = shownMarkers();
     drawMarkerTicks(g, t.x, t.w, ms, U.bw, RULER_H);
+    drawSigChips(g, t.x, t.w, U.bw, sigShown(), sigHover());
     rulerCv.style.width = t.w + 'px';
     rulerCv.style.transform = `translateX(${t.x}px)`;
     if (tpCv) {
@@ -639,15 +647,15 @@ export function Playlist() {
     const anchor = p && p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom ? p.x - r.left : viewW() / 2;
     setView(nb, zoomScroll(v.x, anchor, v.bw, nb), v.y);
   };
-  const barsInView = () => barsText(Math.max(1, Math.round(viewW() / viewNow().bw / 4)));
+  const barsInView = () => barsText(Math.max(1, Math.round(viewW() / viewNow().bw / barBeatsAt(sigShown(), (scroll().x + viewW() / 2) / U.bw))));
   zoomImpl = {
     step: f => zoomTo(viewNow().bw * f),
     preset: i => { const bw = ZOOM_PRESETS[i]; if (bw == null) return; if (bw !== viewNow().bw) { pushView(); zoomTo(bw); } say(tl('a.pl.zoomPreset', { n: i + 1, bars: barsInView() })); },
     fit: () => {
-      const span = fitSpan(songEnd(), 4, FIT_MIN_BEATS);
+      const span = fitSpan(songEnd(), barBeatsAt(sigShown(), 0), FIT_MIN_BEATS);
       pushView();
       setView(zoomToRange(0, span, viewW(), A.BW_MIN, A.BW_MAX).k, 0);
-      say(tl('a.pl.zoomFit', { bars: barsText(Math.round(span / 4)) }));
+      say(tl('a.pl.zoomFit', { bars: barsText(Math.round(span / barBeatsAt(sigShown(), 0))) }));
     },
   };
   onCleanup(() => { zoomImpl = null; });
@@ -676,7 +684,7 @@ export function Playlist() {
       pushView();
       const z = zoomToRange(a, b, viewW(), A.BW_MIN, A.BW_MAX);
       setView(z.k, z.scroll);
-      say(tl('a.pl.zoomRange', { a: fmtPos(a), b: fmtPos(b) }));
+      say(tl('a.pl.zoomRange', { a: fmtPos(a, sigShown()), b: fmtPos(b, sigShown()) }));
     }, 'zoom-in');
   }
 
@@ -878,7 +886,7 @@ export function Playlist() {
       const o = orig.find(c => c.id === lead)!;
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw;
       // snap the distance moved, not the start: a clip placed off the grid keeps its offset (as FL Studio does)
-      const d0 = snapRound(raw, unit(ev.altKey));
+      const d0 = snapAt(raw, ev.altKey);
       const dt0 = trackAtYClamped(ev.clientY - gridEl.getBoundingClientRect().top) - t0;
       const [d, dt] = clampMove(orig, d0, dt0, n);
       // most pointer moves land on the same snapped place: nothing to apply, send or repaint
@@ -886,7 +894,7 @@ export function Playlist() {
       lastD = d; lastDt = dt;
       g.update([{ op: 'putClips', clips: moveClips(orig, d, dt) }]);
       const src = srcOf(o);
-      say((clone ? tl('a.pl.copyPrefix') : '') + (src ? src.name : '') + ' → ' + fmtPos(o.start + d) + ' · ' + (S.project.tracks[o.track + dt]?.name ?? ''));
+      say((clone ? tl('a.pl.copyPrefix') : '') + (src ? src.name : '') + ' → ' + fmtPos(o.start + d, sigShown()) + ' · ' + (S.project.tracks[o.track + dt]?.name ?? ''));
     }, () => g.end(), 'grabbing');
   }
 
@@ -911,7 +919,7 @@ export function Playlist() {
       moved = true;
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw, edge0 = edge === 'r' ? o.start + o.len : o.start;
       const minL = minOf(ev.altKey);
-      const target = snapRound(edge0 + raw, unit(ev.altKey));
+      const target = snapAt(edge0 + raw, ev.altKey);
       const nc = resizeClip(o, edge, target, minL, srcLenOf(o));
       const delta = (edge === 'r' ? nc.start + nc.len : nc.start) - edge0;
       const all = [nc, ...resizeClips(others, edge, delta, minL, srcLenOf)];
@@ -919,7 +927,7 @@ export function Playlist() {
       const held = o.kind === 'pat' && (edge === 'r'
         ? target > nc.start + nc.len + 1e-9 && nc.start + nc.len < TOTAL - 1e-9
         : target < nc.start - 1e-9 && nc.start > 1e-9);
-      const text = tl(held ? 'a.pl.patEnd' : 'a.pl.startLen', { pos: fmtPos(nc.start), len: nc.len.toFixed(2), name: srcOf(o)?.name ?? '' });
+      const text = tl(held ? 'a.pl.patEnd' : 'a.pl.startLen', { pos: fmtPos(nc.start, sigShown()), len: nc.len.toFixed(2), name: srcOf(o)?.name ?? '' });
       const key = all.map(c => c.start + ':' + c.len).join('|');
       if (key === last) { if (held) say(text); return; }
       last = key;
@@ -941,7 +949,7 @@ export function Playlist() {
       if (!moved && Math.abs(ev.clientX - sx) < 3) return; // a click on an edge is not a stretch
       moved = true;
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw, edge0 = edge === 'r' ? o.start + o.len : o.start;
-      const target = snapRound(edge0 + raw, unit(ev.altKey));
+      const target = snapAt(edge0 + raw, ev.altKey);
       const minL = minOf(ev.altKey);
       const nc = stretchClip(o, edge, target, minL);
       const all = [nc, ...stretchClips(others, edge, nc.len / o.len, minL)];
@@ -999,7 +1007,7 @@ export function Playlist() {
    * clip it crosses on the lanes in between, as one undo step.
    */
   function sliceDrag(e: PointerEvent, p: { beat: number; track: number; x: number; y: number }, id: Id | null) {
-    const b = snapRound(p.beat, unit(e.altKey)), x = b * U.bw, t0 = p.track;
+    const b = snapAt(p.beat, e.altKey), x = b * U.bw, t0 = p.track;
     let t1 = t0, dragged = false;
     trackEdge(ev => {
       const q = pt(ev);
@@ -1008,7 +1016,7 @@ export function Playlist() {
       if (q.track >= 0) t1 = q.track;
       setU('marquee', { x0: x, y0: p.y, x1: x, y1: q.y });
       const n = sliceAcross(rawOf(S.project).clips, b, t0, t1, () => 0).length / 2;
-      say(tl('a.pl.sliceLine', { pos: fmtPos(b), n }));
+      say(tl('a.pl.sliceLine', { pos: fmtPos(b, sigShown()), n }));
     }, ev => {
       setU('marquee', null);
       if (ev.type !== 'pointerup') return;
@@ -1017,7 +1025,7 @@ export function Playlist() {
       const cut = sliceAcross(S.project.clips.map(plain), b, t0, t1, allocId);
       if (!cut.length) return;
       commit([{ op: 'putClips', clips: cut }], tl('a.pl.sliceClips'));
-      say(tl('a.pl.sliceLine', { pos: fmtPos(b), n: cut.length / 2 }));
+      say(tl('a.pl.sliceLine', { pos: fmtPos(b, sigShown()), n: cut.length / 2 }));
     }, 'col-resize', { y: true });
   }
 
@@ -1187,7 +1195,7 @@ export function Playlist() {
     return false;
   };
   /** Envelope time at grid x, on the playlist's snap (Alt: free). */
-  const envT = (c: Clip, G: ReturnType<typeof envGeom>, x: number, free: boolean) => snapRound(G.T(x) + c.start - c.offset, unit(free)) - c.start + c.offset;
+  const envT = (c: Clip, G: ReturnType<typeof envGeom>, x: number, free: boolean) => snapAt(G.T(x) + c.start - c.offset, free) - c.start + c.offset;
   function pointDrag(e: PointerEvent, c: Clip, a: Automation, G: ReturnType<typeof envGeom>, pts0: AutoPoint[], sel: number[], lead: number, g: Gesture) {
     const set = new Set(sel), l = pts0[lead], sx = e.clientX, sy = e.clientY;
     let moved = false;
@@ -1201,7 +1209,7 @@ export function Playlist() {
       const m = movePoints(pts0, set, dt, dv);
       g.update([putEnv(a, m.points)]);
       const p = m.points[lead];
-      say(a.name + ' · ' + valText(a, p.v) + ' · ' + fmtPos(c.start + p.t - c.offset) + (sel.length > 1 ? ' · ' + tl('a.pl.ptsSelected', { n: sel.length }).split(' · ')[0] : ''));
+      say(a.name + ' · ' + valText(a, p.v) + ' · ' + fmtPos(c.start + p.t - c.offset, sigShown()) + (sel.length > 1 ? ' · ' + tl('a.pl.ptsSelected', { n: sel.length }).split(' · ')[0] : ''));
     }, () => g.end(), 'grabbing');
   }
   function tensionDrag(e: PointerEvent, a: Automation, pts0: AutoPoint[], i: number) {
@@ -1219,7 +1227,7 @@ export function Playlist() {
     const g = new Gesture(tl('a.pl.addPoint'));
     g.update([putEnv(a, points)]);
     setU('autoSel', { clip: c.id, idx: [i] });
-    say(a.name + ' · ' + valText(a, points[i].v) + ' · ' + fmtPos(c.start + points[i].t - c.offset));
+    say(a.name + ' · ' + valText(a, points[i].v) + ' · ' + fmtPos(c.start + points[i].t - c.offset, sigShown()));
     pointDrag(e, c, a, G, points, [i], i, g);
   }
   /** Ctrl+drag on an envelope: a box that selects its points (Shift adds to the selection). */
@@ -1246,7 +1254,7 @@ export function Playlist() {
       ['pulse', 'a.pl.shape.pulse'], ['wave', 'a.pl.shape.wave'], ['halfSine', 'a.pl.shape.halfSine']];
     const shapeOf = (j: number) => a.points[j].shape ?? 'curve';
     const items: MenuItem[] = [
-      { t: 'title', label: valText(a, q.v) + ' · ' + fmtPos(c.start + q.t - c.offset) + (sel.length > 1 ? ' · ×' + sel.length : '') },
+      { t: 'title', label: valText(a, q.v) + ' · ' + fmtPos(c.start + q.t - c.offset, sigShown()) + (sel.length > 1 ? ' · ×' + sel.length : '') },
       { t: 'item', label: tl('a.pl.typeValue'), act: () => openRename(x, y, valText(a, q.v), txt => {
         const v = parseAutoValue(rawOf(S.project), S.catalog, a.target, txt);
         if (v == null) { say(tl('a.pl.badValue', { v: txt })); return; }
@@ -1274,7 +1282,7 @@ export function Playlist() {
     const clip = plain(L.clip), comp = plain(L.comp), take = plain(L.take);
     const lo = Math.max(take.start, clip.offset), hi = Math.min(takeEnd(take), clip.offset + clip.len);
     if (hi <= lo) { say(tl('a.pl.takeOutside', { name: take.name })); return; }
-    const at = (ev: PointerEvent) => clamp(toComp(clip, snapRound(pt(ev).beat, unit(ev.altKey))), lo, hi);
+    const at = (ev: PointerEvent) => clamp(toComp(clip, snapAt(pt(ev).beat, ev.altKey)), lo, hi);
     const a = at(e), sx = e.clientX;
     let g: Gesture | null = null;
     track(ev => {
@@ -1284,7 +1292,7 @@ export function Playlist() {
       if (!g) g = new Gesture('Comping');
       g.update([{ op: 'putComp', comp: { ...comp, regions: writeRange(comp, take.id, from, to) } }]);
       setU('compSel', { clipId: clip.id, from, to });
-      say(take.name + ' · ' + fmtPos(toTimeline(clip, from)) + ' – ' + fmtPos(toTimeline(clip, to)) + tl('a.pl.takeHint'));
+      say(take.name + ' · ' + fmtPos(toTimeline(clip, from), sigShown()) + ' – ' + fmtPos(toTimeline(clip, to), sigShown()) + tl('a.pl.takeHint'));
     }, () => {
       if (g) { g.end(); return; }
       setU('compSel', null);
@@ -1297,11 +1305,11 @@ export function Playlist() {
     const g = new Gesture(tl('a.pl.compBoundary')), sx = e.clientX;
     track(ev => {
       if (Math.abs(ev.clientX - sx) < 2) return;
-      const cb = toComp(c, snapRound(pt(ev).beat, unit(ev.altKey)));
+      const cb = toComp(c, snapAt(pt(ev).beat, ev.altKey));
       const regions = moveBoundary(comp, b, cb, 1 / 32);
       g.update([{ op: 'putComp', comp: { ...comp, regions } }]);
       const r = b.left >= 0 ? regions[b.left].to : regions[b.right].from;
-      say(tl('a.pl.compBoundaryAt', { pos: fmtPos(toTimeline(c, r)) }));
+      say(tl('a.pl.compBoundaryAt', { pos: fmtPos(toTimeline(c, r), sigShown()) }));
     }, () => g.end(), 'col-resize');
   }
   function openBoundaryMenu(x: number, y: number, clip: Clip, i: number) {
@@ -1310,7 +1318,7 @@ export function Playlist() {
     const cur = boundaryXfade(comp, b), own = (b.right >= 0 ? comp.regions[b.right] : comp.regions[b.left])?.xfade;
     const set = (v: number | null, label: string) => { CA.putComp({ ...plain(comp), regions: setBoundaryXfade(comp, b, v) }, tl('a.pl.boundaryXfade')); say(label); };
     openMenu(x, y, [
-      { t: 'title', label: tl('a.pl.boundaryTitle', { pos: fmtPos(toTimeline(clip, b.at)), ms: Math.round(cur * 1000) }) },
+      { t: 'title', label: tl('a.pl.boundaryTitle', { pos: fmtPos(toTimeline(clip, b.at), sigShown()), ms: Math.round(cur * 1000) }) },
       { t: 'chips', label: 'Crossfade', options: XF.map(v => v * 1000 + ' ms'), active: XF.findIndex(v => Math.abs(v - cur) < 1e-6), pick: k => set(XF[k], tl('a.pl.boundaryXfadeMs', { ms: XF[k] * 1000 })) },
       { t: 'item', label: tl('a.pl.compDefault', { ms: Math.round(comp.xfade * 1000) }), disabled: own == null, act: () => set(null, tl('a.pl.boundaryXfadeDef')) },
     ], 130);
@@ -1335,7 +1343,7 @@ export function Playlist() {
         { t: 'sep' },
         { t: 'item', label: c.muted ? tl('a.pl.unmute') : tl('a.pl.mute'), kbd: 'Alt+M', act: A.toggleMuteSel },
         { t: 'item', label: tl('a.pl.duplicate'), kbd: 'Ctrl+B', act: A.duplicate },
-        { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapRound(p.beat, unit(false))) },
+        { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapAt(p.beat, false)) },
         { t: 'item', label: tl('a.pl.selAllAuto'), act: () => setU('sel', S.project.clips.filter(v => v.kind === 'auto' && v.ref === c.ref).map(v => v.id)) },
         { t: 'sep' },
         { t: 'item', label: tl('a.pl.deleteClip'), kbd: 'Del', danger: true, act: () => A.delIds(U.sel.includes(c.id) ? [...U.sel] : [c.id]) },
@@ -1356,7 +1364,7 @@ export function Playlist() {
         { t: 'item', label: tl('a.pl.cut'), kbd: 'Ctrl+X', act: A.cut },
       ] } as MenuItem] : []),
       { t: 'sub', label: tl('a.pl.split'), items: [
-        { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapRound(p.beat, unit(false))) },
+        { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapAt(p.beat, false)) },
         { t: 'item', label: tl('a.pl.splitAtHead'), act: () => A.sliceAt(c.id, curBeat()) },
       ] },
       ...(isPat ? [
@@ -1409,7 +1417,7 @@ export function Playlist() {
       { t: 'item', label: tl('a.pl.duplicate'), kbd: 'Ctrl+B', act: A.duplicate, title: tl('a.pl.dupCompTip') },
       { t: 'item', label: tl('a.pl.copy'), kbd: 'Ctrl+C', act: A.copy },
       { t: 'item', label: tl('a.pl.cut'), kbd: 'Ctrl+X', act: A.cut },
-      { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapRound(p.beat, unit(false))) },
+      { t: 'item', label: tl('a.pl.splitHere'), act: () => A.sliceAt(c.id, snapAt(p.beat, false)) },
       { t: 'gain', clipId: c.id },
       { t: 'item', label: tl('a.pl.mixerChannel'), act: () => openRouteMenu(c.track, x, y) },
       { t: 'sep' },
@@ -1437,26 +1445,105 @@ export function Playlist() {
     seek: b => A.seekSong(b),
     drawn: r => A.seekSong(r.a),
     track: (m, u, c) => trackEdge(m, u, c, { x: true }),
+    snapAt,
     key: 'ruler',
     menu: e => timelineMenu(e),
   };
-  const rulerHover = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.cursor = rulerCursor(ruler, e); };
-  const rulerDown = (e: PointerEvent) => { if (e.button === 0) closeMenu(); rulerPress(ruler, e); };
+  const rulerHover = (e: PointerEvent) => {
+    const i = e.buttons ? sigHover() : sigHit(sigShown(), ruler.beatAt(e.clientX), U.bw);
+    if (i !== sigHover()) setSigHover(i);
+    (e.currentTarget as HTMLElement).style.cursor = i != null ? 'grab' : rulerCursor(ruler, e);
+  };
+  const rulerDown = (e: PointerEvent) => {
+    if (e.button === 0) {
+      closeMenu();
+      // a press on a signature chip drags that change (double-click deletes it); the
+      // ruler's seek/loop gestures own the rest of the strip
+      const i = sigHit(sigShown(), ruler.beatAt(e.clientX), U.bw);
+      if (i != null) {
+        e.preventDefault();
+        if (dblCheck('sig' + i)) { commit([putSig(deleteSigPoint(sigList(), i))], tl('a.sig.delete')); say(tl('a.sig.deleted')); return; }
+        sigDrag(e, sigList(), i, new Gesture(tl('a.sig.move')));
+        return;
+      }
+    }
+    rulerPress(ruler, e);
+  };
   // the marker strip's empty-space press forwards to the ruler (it owns the seek and the loop
   // drag) but owns the double-click itself — add a marker — so the forwarded host skips the
   // ruler's own stamp: two writers to one tap tracker were why the strip's double-click-add
   // never fired (the ruler stamped between the two presses)
   const mkRuler: RulerHost = { ...ruler, noDbl: true };
-  /** Right-click (no drag) on the ruler or an empty part of the marker strip: add a marker there (FL). The ruler opens it on release (`ruler.menu`); the keyboard's menu key still reaches it here. */
+  /** Right-click (no drag) on the ruler or an empty part of the marker strip: over a
+   *  signature chip its menu, else add a marker or a signature change there (FL). The ruler
+   *  opens it on release (`ruler.menu`); the keyboard's menu key still reaches it here. */
   const timelineMenu = (e: MouseEvent) => {
     e.preventDefault();
-    const at = clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL);
+    const at = clamp(snapAt(ruler.beatAt(e.clientX), e.altKey), 0, TOTAL);
+    const i = sigHit(sigShown(), ruler.beatAt(e.clientX), U.bw);
+    if (i != null) {
+      const p = sigList()[i];
+      openMenu(e.clientX, e.clientY, [
+        { t: 'title', label: `${sigText(p)} · ${fmtPos(p.beat, sigShown())}` },
+        { t: 'item', label: tl('a.sig.setMeter'), act: () => askSig(e.clientX, e.clientY, p.beat, i) },
+        { t: 'sep' },
+        { t: 'item', label: tl('a.sig.delete'), danger: true, act: () => { commit([putSig(deleteSigPoint(sigList(), i))], tl('a.sig.delete')); say(tl('a.sig.deleted')); } },
+      ], 110);
+      return;
+    }
     openMenu(e.clientX, e.clientY, [
-      { t: 'title', label: fmtPos(at) },
+      { t: 'title', label: fmtPos(at, sigShown()) },
       { t: 'item', label: tl('a.mk.addHere'), act: () => void MK.addMarker(at) },
       { t: 'item', label: tl('a.mk.add'), kbd: 'Alt+T', title: tl('a.mk.addTip'), act: () => void MK.addMarker() },
+      { t: 'item', label: tl('a.sig.add'), act: () => askSig(e.clientX, e.clientY, at, null) },
     ], 110);
   };
+
+  // ---------- signature changes (the ruler's meter chips: the bar grid reflows from each) ----------
+  /** The changes as the engine compiles them (clamped, sorted, two at one beat folded to the
+   *  last): every read and edit below works on this list, and one `setSigPoints` op writes
+   *  it back — the same shape the tempo lane uses, without a strip of its own. */
+  const sigShown = createMemo(() => compiledSig(S.project.sigPoints));
+  const sigList = (): SigPoint[] => plain(sigShown());
+  const putSig = (points: SigPoint[]): Op => ({ op: 'setSigPoints', points });
+  const [sigHover, setSigHover] = createSignal<number | null>(null);
+  /** Types a meter ("7/8") for change `i`, or a new one at `beat` when `i` is null: the
+   *  default is the meter that governs there, so adding a change can also revert to 4/4. */
+  const askSig = (x: number, y: number, beat: number, i: number | null) => {
+    const cur = i != null ? sigList()[i] : sigAt(sigShown(), beat);
+    openRename(x, y, sigText(cur), txt => {
+      const m = parseSig(txt);
+      if (!m) { say(tl('a.sig.badMeter', { v: txt })); return; }
+      if (i != null) {
+        commit([putSig(setSigMeter(sigList(), i, m.num, m.den))], tl('a.sig.setMeter'));
+        say(`${sigText(sigList()[i])} · ${fmtPos(sigList()[i].beat, sigShown())}`);
+      } else {
+        const { points, i: ni } = addSigPoint(sigList(), beat, m.num, m.den);
+        commit([putSig(points)], tl('a.sig.add'));
+        say(`${sigText(points[ni])} · ${fmtPos(beat, sigShown())}`);
+      }
+    }, tl('a.sig.meterTitle'));
+  };
+  /** A chip dragged along the ruler: the change moves (Ctrl: free of the snap), between its
+   *  neighbours, one undo step. */
+  function sigDrag(e: PointerEvent, pts0: SigPoint[], i: number, g: Gesture) {
+    const p0 = pts0[i], sx = e.clientX;
+    let moved = false;
+    trackEdge(ev => {
+      if (!moved && Math.abs(ev.clientX - sx) < 3) return;
+      moved = true;
+      const b = ev.ctrlKey || ev.metaKey ? p0.beat : clamp(snapAt(p0.beat + (ev.clientX - sx) / U.bw, ev.altKey), 0, TOTAL);
+      const points = moveSigPoint(pts0, i, b);
+      g.update([putSig(points)]);
+      say(`${sigText(points[i])} · ${fmtPos(points[i].beat, sigShown())}`);
+    }, () => { dirtyRuler = true; g.end(); }, 'grabbing', { x: true });
+  }
+  // the ruler repaints when the map changes (the chips and every bar line move with it)
+  effect(() => {
+    for (const s of S.project.sigPoints ?? []) { void s.beat; void s.num; void s.den; }
+    sigHover();
+    dirtyRuler = true;
+  });
 
   // ---------- markers (FL's time markers): a strip above the ruler while the song has any ----------
   /** The marker under client x, from the layout as it is drawn now. */
@@ -1479,7 +1566,7 @@ export function Playlist() {
     const id = markerAt(e.clientX), m = id != null ? S.project.markers?.find(x => x.id === id) : undefined;
     if (!m) {
       // an empty part of the strip: double-click adds a marker, otherwise it is the ruler
-      if (dblCheck('mkstrip')) { e.preventDefault(); MK.addMarker(clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL)); return; }
+      if (dblCheck('mkstrip')) { e.preventDefault(); MK.addMarker(clamp(snapAt(ruler.beatAt(e.clientX), e.altKey), 0, TOTAL)); return; }
       rulerPress(mkRuler, e);
       return;
     }
@@ -1492,10 +1579,10 @@ export function Playlist() {
     trackEdge(ev => {
       if (cancelled) return;
       if (!lifted) { if (Math.abs(ev.clientX - x0) < 4) return; lifted = true; }
-      const b = clamp(snapRound(from + (ev.clientX - x0) / U.bw, unit(ev.altKey)), 0, TOTAL);
+      const b = clamp(snapAt(from + (ev.clientX - x0) / U.bw, ev.altKey), 0, TOTAL);
       if (b === at && mkDrag()) return;
       at = b; setMkDrag({ id: m.id, at });
-      say(`${m.name || tl('a.mk.unnamed')} · ${fmtPos(at)}`);
+      say(`${m.name || tl('a.mk.unnamed')} · ${fmtPos(at, sigShown())}`);
     }, () => {
       esc.off();
       setMkDrag(null);
@@ -1510,7 +1597,7 @@ export function Playlist() {
     if (!m) return timelineMenu(e);
     e.preventDefault();
     openMenu(e.clientX, e.clientY, [
-      { t: 'title', label: (m.name || tl('a.mk.unnamed')) + ' · ' + fmtPos(m.at) },
+      { t: 'title', label: (m.name || tl('a.mk.unnamed')) + ' · ' + fmtPos(m.at, sigShown()) },
       { t: 'item', label: tl('a.mk.jumpHere'), act: () => MK.jumpTo(m.id) },
       { t: 'item', label: tl('a.mk.loop'), kbd: tl('a.mk.dblClick'), title: tl('a.mk.loopTip'), act: () => MK.loopSection(m.id) },
       { t: 'item', label: tl('a.mk.rename'), act: () => MK.renameMarker(m.id) },
@@ -1553,22 +1640,22 @@ export function Playlist() {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return;
       moved = true;
       const q = pt(ev);
-      const b = ev.ctrlKey || ev.metaKey ? p0.beat : clamp(snapRound(q.beat, unit(ev.altKey)), 0, TOTAL);
+      const b = ev.ctrlKey || ev.metaKey ? p0.beat : clamp(snapAt(q.beat, ev.altKey), 0, TOTAL);
       const bpm = ev.shiftKey ? p0.bpm : tpGeom().V(tpAt(ev).y);
       const points = moveTempoPoint(pts0, i, b, bpm);
       g.update([putTempo(points)]);
-      say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat)}`);
+      say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat, sigShown())}`);
     }, () => { tpDragScale = null; dirtyRuler = true; g.end(); }, 'grabbing', { x: true });
   }
   /** Adds a point at the press and keeps it under the pointer until release, in the same undo step. */
   function tempoAddAndDrag(e: PointerEvent, x: number, y: number) {
     if (tpList().length >= MAX_TEMPO_POINTS) { say(tl('a.tp.tooMany', { n: MAX_TEMPO_POINTS })); return; }
-    const G0 = tpGeom(), beat = clamp(snapRound(x / U.bw, unit(e.altKey)), 0, TOTAL);
+    const G0 = tpGeom(), beat = clamp(snapAt(x / U.bw, e.altKey), 0, TOTAL);
     tpDragScale = tempoScale(tpList(), S.project.bpm);
     const { points, i } = addTempoPoint(tpList(), beat, G0.V(y));
     const g = new Gesture(tl('a.tp.addPoint'));
     g.update([putTempo(points)]);
-    say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat)}`);
+    say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat, sigShown())}`);
     tempoPointDrag(e, points, i, g);
   }
   /**
@@ -1601,20 +1688,20 @@ export function Playlist() {
     const pts = tpList(), G0 = tpGeom(), { x, y } = tpAt(e);
     const hit = hitTempo(pts, G0, x, y);
     if (hit == null) {
-      const beat = clamp(snapRound(x / U.bw, unit(e.altKey)), 0, TOTAL);
+      const beat = clamp(snapAt(x / U.bw, e.altKey), 0, TOTAL);
       openMenu(e.clientX, e.clientY, [
-        { t: 'title', label: fmtPos(beat) },
+        { t: 'title', label: fmtPos(beat, sigShown()) },
         { t: 'item', label: tl('a.tp.addHere'), act: () => {
           if (tpList().length >= MAX_TEMPO_POINTS) { say(tl('a.tp.tooMany', { n: MAX_TEMPO_POINTS })); return; }
           commit([putTempo(addTempoPoint(tpList(), beat, S.project.bpm).points)], tl('a.tp.addPoint'));
-          say(`${bpmLabel(S.project.bpm)} BPM · ${fmtPos(beat)}`);
+          say(`${bpmLabel(S.project.bpm)} BPM · ${fmtPos(beat, sigShown())}`);
         } },
       ], 100);
       return;
     }
     const p = pts[hit];
     openMenu(e.clientX, e.clientY, [
-      { t: 'title', label: `${bpmLabel(p.bpm)} BPM · ${fmtPos(p.beat)}` },
+      { t: 'title', label: `${bpmLabel(p.bpm)} BPM · ${fmtPos(p.beat, sigShown())}` },
       { t: 'item', label: tl('a.tp.setValue'), act: () => openRename(e.clientX, e.clientY, bpmLabel(p.bpm), txt => {
         const v = Number(txt.trim().replace(',', '.'));
         if (!Number.isFinite(v) || v <= 0) { say(tl('a.tp.badValue', { v: txt })); return; }

@@ -220,7 +220,8 @@ impl Engine {
 
     /// Beat range of a pattern export: the whole pattern from its first beat (`None`: no such pattern).
     pub fn pattern_range(project: &Project, pattern: Id) -> Option<(f64, f64)> {
-        project.patterns.iter().find(|p| p.id == pattern).map(|p| (0.0, p.len.max(BAR_BEATS)))
+        let bar = project.pattern_bar_beats(pattern);
+        project.patterns.iter().find(|p| p.id == pattern).map(|p| (0.0, p.len.max(bar)))
     }
 
     /// Renders what `scope` makes of the current project (a stem, the selected clips alone …).
@@ -947,7 +948,8 @@ impl Engine {
 /// and nothing else of the arrangement (no other clip, no automation clip, no take). Its channels play
 /// into their own inserts, or the master when they have none, never through a playlist track's insert.
 pub fn pattern_project(mut p: Project, id: Id) -> Project {
-    let len = p.patterns.iter().find(|x| x.id == id).map_or(BAR_BEATS, |x| x.len.max(BAR_BEATS));
+    let bar = p.pattern_bar_beats(id);
+    let len = p.patterns.iter().find(|x| x.id == id).map_or(bar, |x| x.len.max(bar));
     p.clips.clear();
     p.comps.clear();
     p.loop_range = None;

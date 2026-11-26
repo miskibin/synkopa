@@ -1,11 +1,15 @@
 // The time ruler of the Playlist, the Piano roll and the Pitch editor: one look and one set of
 // gestures. Click = the start position (playback jumps there), drag = a loop range, drag a
 // loop edge = move it, Shift+drag inside = move the whole loop, double-click = no loop. Snaps
-// to the grid; Alt = free. Each view says what its beats are and where loops go.
+// to the grid; Alt = free. Each view says what its beats are and where loops go. The bar lines
+// and numbers follow the signature map (`sigs`, lib/signatures.ts): a bar is 4·num/den beats,
+// so under mid-song meters the lines fall unevenly and the beat labels count within their own
+// bar. No `sigs` (or an empty one) is the constant 4/4 ruler.
 import { clamp } from '../lib/format';
 import type { BeatRange } from '../lib/patLoop';
 import { dragLoop, drawnLoop, loopEdgeAt, sameRange } from '../lib/rulerEdit';
 import { snapRound } from '../lib/snap';
+import { sigText, barAt, barBeatsAt, barLines, beatAtBar, isBarStart, type SigPoint } from '../lib/signatures';
 import { t } from '../lib/i18n';
 import { dblCheck, track } from './drag';
 import { rgba, T } from './theme';
@@ -17,12 +21,14 @@ const BEAT_LABEL_MIN_PX = 48;
 const SIXTEENTH_TICK_MIN_PX = 16;
 const BAR_FONT = '600 12px "Geist Mono Variable", "Geist Mono", monospace';
 const BEAT_FONT = '500 10px "Geist Mono Variable", "Geist Mono", monospace';
+const SIG_FONT = '600 10px "Geist Mono Variable", "Geist Mono", monospace';
 
 /**
  * Draws the ruler `W` px wide: beat `b` at x = b × bw − offX. Bar numbers count from beat 0
- * (bar 1); `loop` is the green band, `start` the start marker (none: not drawn).
+ * (bar 1); `loop` is the green band, `start` the start marker (none: not drawn). `sigs` is
+ * the stored signature list — the boundaries follow the map it compiles to.
  */
-export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, bw: number, loop: BeatRange | null | undefined, start: number | null, H = RULER_H) {
+export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, bw: number, loop: BeatRange | null | undefined, start: number | null, H = RULER_H, sigs?: readonly SigPoint[]) {
   g.fillStyle = T.rulerBg; g.fillRect(0, 0, W, H);
   if (!(bw > 0)) return;
   g.save(); g.translate(-offX, 0);
@@ -43,17 +49,21 @@ export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, 
     for (let b = Math.max(0, Math.floor(x0 / bw)); b * bw <= x1; b++) {
       const x = Math.round(b * bw);
       g.fillStyle = T.fg5; g.fillRect(x, H - 8, 1, 8);
-      if (bw >= BEAT_LABEL_MIN_PX && b % 4) {
+      if (bw >= BEAT_LABEL_MIN_PX && !isBarStart(sigs ?? [], b)) {
         g.fillStyle = T.fg4;
-        // bar:beat, the first two fields of the transport's bar:beat:16th
-        g.fillText(`${Math.floor(b / 4) + 1}:${b % 4 + 1}`, x + 4, H - 11);
+        // bar:beat within its own bar, the first two fields of the transport's readout
+        const bar = barAt(sigs ?? [], b);
+        g.fillText(`${bar + 1}:${Math.round(b - beatAtBar(sigs ?? [], bar)) + 1}`, x + 4, H - 11);
       }
     }
   }
-  const barW = bw * 4, barStep = barW < 4 ? 32 : barW < 9 ? 16 : barW < 16 ? 8 : barW < 36 ? 4 : barW < 64 ? 2 : 1;
+  // one line per bar line of the map, decimated at zooms too dense to number every bar
+  const barW = bw * barBeatsAt(sigs ?? [], (x0 + x1) / (2 * bw));
+  const barStep = barW < 4 ? 32 : barW < 9 ? 16 : barW < 16 ? 8 : barW < 36 ? 4 : barW < 64 ? 2 : 1;
   g.font = BAR_FONT;
-  for (let bar = Math.max(0, Math.floor(x0 / barW / barStep) * barStep); bar * barW <= x1; bar += barStep) {
-    const x = Math.round(bar * barW);
+  for (const { beat, bar } of barLines(sigs ?? [], x0 / bw, x1 / bw + 1 / bw)) {
+    if (bar % barStep) continue;
+    const x = Math.round(beat * bw);
     g.fillStyle = T.fg4; g.fillRect(x, 0, 1, H);
     g.fillStyle = T.fgHi; g.fillText(String(bar + 1), x + 4, H - 11);
   }
@@ -68,6 +78,43 @@ export function drawRuler(g: CanvasRenderingContext2D, offX: number, W: number, 
   g.fillStyle = T.bg0; g.fillRect(0, H - 1, W, 1);
 }
 
+/** Chip size of a signature label, and the hit radius around it. */
+export const SIG_CHIP_R = 22;
+
+/** Draws the signature changes as small "3/4" chips along the top of the ruler (the change
+ *  lives on the ruler itself — no third strip). `hover` highlights the dragged/pointed one. */
+export function drawSigChips(g: CanvasRenderingContext2D, offX: number, W: number, bw: number, sigs: readonly SigPoint[] | undefined, hover: number | null) {
+  if (!(bw > 0)) return;
+  g.save(); g.translate(-offX, 0);
+  g.font = SIG_FONT;
+  (sigs ?? []).forEach((p, i) => {
+    const x = p.beat * bw;
+    if (x < offX - SIG_CHIP_R || x > offX + W + SIG_CHIP_R) return;
+    const label = sigText(p);
+    const w = g.measureText(label).width + 8;
+    const y = 2;
+    g.fillStyle = i === hover ? rgba(T.blueHi, 0.95) : rgba(T.blue, 0.85);
+    g.beginPath();
+    const h = 14, r = 4;
+    g.roundRect(x + 2, y, w, h, r);
+    g.fill();
+    g.fillStyle = '#0e1116';
+    g.fillText(label, x + 6, y + 10.5);
+  });
+  g.restore();
+}
+
+/** The index of the signature change under client beat `beat` (within `SIG_CHIP_R` px),
+ *  or null. Two overlapping chips pick the nearer. */
+export function sigHit(sigs: readonly SigPoint[] | undefined, beat: number, bw: number): number | null {
+  let best = -1, bd = SIG_CHIP_R / bw;
+  (sigs ?? []).forEach((p, i) => {
+    const d = Math.abs(p.beat - beat);
+    if (d <= bd) { bd = d; best = i; }
+  });
+  return best >= 0 ? best : null;
+}
+
 /** What a ruler measures and where its gestures go. */
 export interface RulerHost {
   /** Beat under client x (unsnapped; read live: the view may scroll during a drag). */
@@ -76,6 +123,9 @@ export interface RulerHost {
   bw(): number;
   /** Grid unit in beats (Alt: free = 0). */
   unit(alt: boolean): number;
+  /** Position snap for "Snap: bar": a host on the signature map snaps to its bar lines
+   *  (which may fall between beats); the default snaps to plain `unit` multiples. */
+  snapAt?(beat: number, alt: boolean): number;
   /** The last beat a position or a loop can reach. */
   max(): number;
   /** The loop range shown on this ruler. */
@@ -116,7 +166,7 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
   e.preventDefault();
   if (!h.noDbl && dblCheck(h.key)) { if (h.loop()) h.clear(); return; }
   const tr = h.track ?? ((m, u, c) => track(m, u, c));
-  const snapAt = (ev: PointerEvent) => clamp(snapRound(h.beatAt(ev.clientX), h.unit(ev.altKey)), 0, h.max());
+  const snapAt = (ev: PointerEvent) => clamp((h.snapAt ?? ((b, a) => snapRound(b, h.unit(a))))(h.beatAt(ev.clientX), ev.altKey), 0, h.max());
   const b0 = snapAt(e);
   let g: { set(r: BeatRange): void; end(): void } | null = null;
   // an existing loop: grab its start or end edge (or with Shift its body) instead of drawing a new one
@@ -127,7 +177,7 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
     tr(ev => {
       if (!g && Math.abs(ev.clientX - e.clientX) > 2) g = h.edit(edge === 'body' ? t('a.pl.moveLoop') : t('a.pl.loopRange'));
       if (!g) return;
-      const r = dragLoop(lp, edge, h.beatAt(ev.clientX), raw0, h.unit(ev.altKey), h.max());
+      const r = dragLoop(lp, edge, h.beatAt(ev.clientX), raw0, h.unit(ev.altKey), h.max(), h.snapAt ? (b: number) => h.snapAt!(b, ev.altKey) : undefined);
       if (sameRange(r, last)) return;
       last = r; g.set(r);
     }, () => { if (g) g.end(); else h.seek(b0); }, edge === 'body' ? 'grabbing' : 'ew-resize');
@@ -164,7 +214,7 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
 function rightDown(h: RulerHost, e: PointerEvent) {
   e.preventDefault();
   const tr = h.track ?? ((m, u, c) => track(m, u, c));
-  const snapAt = (ev: PointerEvent) => clamp(snapRound(h.beatAt(ev.clientX), h.unit(ev.altKey)), 0, h.max());
+  const snapAt = (ev: PointerEvent) => clamp((h.snapAt ?? ((b, a) => snapRound(b, h.unit(a))))(h.beatAt(ev.clientX), ev.altKey), 0, h.max());
   const b0 = snapAt(e), lp = h.loop();
   let g: { set(r: BeatRange): void; end(): void } | null = null, last: BeatRange | null = lp;
   const put = (r: BeatRange | null) => { if (r && !sameRange(r, last)) { last = r; g!.set(r); } };

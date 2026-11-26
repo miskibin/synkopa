@@ -9,7 +9,7 @@ import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { t } from '../lib/i18n';
 import { TOTAL_BEATS, VOL_UNITY, type Channel } from '../api/types';
 import { clamp, panText, volText } from '../lib/format';
-import { barsText, cellsBetween, channelStepsOf, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, loopStepsOf, notesText, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
+import { barsText, cellsBetween, channelStepsOf, clearChannel, copyChannelNotes, gridW, pasteChannelNotes, stepAt, isRollRow, keyOf, loopStepsOf, notesText, patternBar, rotate, setKeyAt, setPanAt, setShiftAt, setStep, setVelAt, shiftOf, MAX_SHIFT, stepsOf, type ChannelClip } from '../lib/pattern';
 import { moveIndex, rackMoveIndex } from '../lib/rack';
 import { noteName } from '../lib/pitch';
 import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
@@ -80,7 +80,7 @@ function Rack(props: { z: number; docked?: boolean }) {
   // the pointer (the rest of the run landed in the wrong columns). It refits on release.
   const [hold, setHold] = createSignal<{ cw: number; pad: number; steps: number } | null>(null);
   const geo = (): RackGeo => {
-    const end = stepsOf(pt()), h = hold(), steps = h ? h.steps : Math.min(TOTAL_BEATS * 4, end + 16);
+    const end = stepsOf(pt()), h = hold(), steps = h ? h.steps : Math.min(TOTAL_BEATS * 4, end + Math.round(patternBar(S.project, pt().id) * 4));
     const cw = h ? h.cw : stepW(), pad = h ? h.pad : stepPad();
     return { cw, pad, sx: scroll().x, sy: scroll().y, rh: RACK_ROW, steps, end, rows: chans().length };
   };
@@ -479,7 +479,7 @@ function Rack(props: { z: number; docked?: boolean }) {
         </button>
         <div class="bars" title={t('b.rk.barsTitle')}>
           <button disabled={pt().len <= 4} onClick={() => removeBar(pt())} title={t('b.pm.removeBarTitle')}>−</button>
-          <span class="mono">{barsText(pt().len / 4)}</span>
+          <span class="mono">{barsText(pt().len / patternBar(S.project, pt().id))}</span>
           <button onClick={() => addBar(pt())} title={t('b.pm.addBarTitle')}>+</button>
         </div>
         <div>
@@ -529,7 +529,7 @@ function Rack(props: { z: number; docked?: boolean }) {
             </div>
           </div>
         <div class="pstatus mono">
-          <span>{t('b.rk.status', { ch: chans().length, notes: notesText(notesCount()), bars: barsText(pt().len / 4) })}</span>
+          <span>{t('b.rk.status', { ch: chans().length, notes: notesText(notesCount()), bars: barsText(pt().len / patternBar(S.project, pt().id)) })}</span>
           <span class="hintshort">{t('b.rk.hintShort')}</span>
           <button class="hintlink" onClick={() => setU('help', true)}>{t('a.mn.shortcuts')}</button>
         </div>

@@ -27,6 +27,18 @@ pub struct SmfNote {
     pub len: f64,
 }
 
+/// A time-signature change in the file: from this beat on, a bar counts `num` units of
+/// `1/den` (4 = quarter notes). Only the changes are listed — the signature the file
+/// starts in is the first one, or none: 4/4 is implied, as MIDI does.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SmfSig {
+    pub beat: f64,
+    pub num: u8,
+    /// The unit's denominator (a power of two: 1, 2, 4, 8 … 64).
+    pub den: u16,
+}
+
 /// The notes one MIDI channel plays in one track.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,8 +71,10 @@ pub struct MidiFile {
     /// tempo (`bpm`); events that repeat the running tempo are not here either. At most
     /// [`crate::model::MAX_TEMPO_POINTS`] (a file is data: the op path's cap applies on load).
     pub tempo_points: Vec<SmfTempo>,
+    /// The file's meter changes (empty = 4/4 throughout, or only the opener).
+    pub sig_points: Vec<SmfSig>,
     pub parts: Vec<Part>,
-    /// What the import cannot keep (time signatures other than 4/4).
+    /// What the import cannot keep (tempo changes, meters finer than 1/16 …).
     pub warnings: Vec<String>,
     /// Beats, the end of the last note.
     pub end: f64,
@@ -91,7 +105,8 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
     }
     let beats = |tick: u64| tick as f64 / f64::from(ppq);
     let mut tempos: Vec<(u64, u32)> = vec![];
-    let mut odd_meter = None;
+    let mut sigs: Vec<(u64, u8, u16)> = vec![];
+    let mut too_deep = false;
     let mut parts: Vec<Part> = vec![];
     let mut total = 0usize;
     for (ti, track) in smf.tracks.iter().enumerate() {
@@ -138,8 +153,12 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
                     MetaMessage::Tempo(us) => tempos.push((tick, us.as_int())),
                     MetaMessage::TrackName(b) if name.is_none() => name = text(b),
                     MetaMessage::InstrumentName(b) if instrument.is_none() => instrument = text(b),
-                    MetaMessage::TimeSignature(n, d, ..) if (n, d) != (4, 2) && odd_meter.is_none() => {
-                        odd_meter = Some(format!("{n}/{}", 1u32 << d.min(6)));
+                    MetaMessage::TimeSignature(n, d, ..) => {
+                        let raw = 1u16 << d.min(6);
+                        if raw > 16 {
+                            too_deep = true;
+                        }
+                        sigs.push((tick, n.max(1), raw.min(16)));
                     }
                     _ => {}
                 },
@@ -170,6 +189,26 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
         }
     }
     tempos.sort_by_key(|t| t.0);
+    // signatures fold to their changes: per tick the last event wins, then an event is a
+    // point only against the running signature — which starts at MIDI's implied 4/4. An
+    // opener other than 4/4 keeps its beat-0 point (a project cannot imply a meter the
+    // way a file can); a 3/4 file restamped every bar becomes that one point, not 200.
+    sigs.sort_by_key(|s| s.0);
+    let mut folded: Vec<(u64, u8, u16)> = vec![];
+    for (tick, num, den) in sigs {
+        match folded.last_mut() {
+            Some(l) if l.0 == tick => *l = (tick, num, den),
+            _ => folded.push((tick, num, den)),
+        }
+    }
+    let mut running = (4u8, 4u16);
+    let mut sig_points: Vec<SmfSig> = vec![];
+    for (tick, num, den) in folded {
+        if (num, den) != running {
+            sig_points.push(SmfSig { beat: beats(tick), num, den });
+            running = (num, den);
+        }
+    }
     let mut warnings = vec![];
     // microseconds per beat are whole numbers: 97 BPM is stored as 96.99995, read back as 97
     let us_to_bpm = |us: u32| (60_000_000_000.0 / f64::from(us.max(1))).round() / 1000.0;
@@ -187,12 +226,12 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
         }
     }
     let mut tempo_points: Vec<SmfTempo> = vec![];
-    let mut running = bpm.unwrap_or(120.0);
+    let mut running_tempo = bpm.unwrap_or(120.0);
     for (tick, us) in last_at_tick {
         let b = us_to_bpm(us);
-        if b != running {
+        if b != running_tempo {
             tempo_points.push(SmfTempo { beat: beats(tick), bpm: b });
-            running = b;
+            running_tempo = b;
         }
     }
     if tempo_points.len() > crate::model::MAX_TEMPO_POINTS {
@@ -204,11 +243,11 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
         tempo_points.truncate(crate::model::MAX_TEMPO_POINTS);
     }
     let tempo_changes = tempos.windows(2).filter(|w| w[0].1 != w[1].1).count();
-    if let Some(m) = odd_meter {
-        warnings.push(format!("the file is in {m}: Synkopa's grid is 4/4, the notes keep their beats"));
+    if too_deep {
+        warnings.push("the file's meters use units finer than a 16th: those bars read as their 16th-unit length".into());
     }
     let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
-    Ok(MidiFile { format, ppq, bpm, tempo_changes, tempo_points, parts, warnings, end })
+    Ok(MidiFile { format, ppq, bpm, tempo_changes, tempo_points, sig_points, parts, warnings, end })
 }
 
 fn text(b: &[u8]) -> Option<String> {
@@ -225,17 +264,19 @@ pub struct OutTrack {
     pub notes: Vec<SmfNote>,
 }
 
-/// A format 1 file: a tempo track (the tempo events, then 4/4), then one track per part.
-/// `tempo_events` are `(beat, bpm)` in play order — the caller serializes the project's map
-/// (holds once, ramps stepped per beat at each interval's effective BPM,
-/// [`crate::engine`]'s `Project::midi_tempo_events`), so this
-/// stays pure data: the events are placed at their ticks, the first must be beat 0.
-pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack]) -> Result<Vec<u8>, String> {
+/// A format 1 file: a tempo track (the tempo events, then the signatures), then one track
+/// per part. `tempo_events` are `(beat, bpm)` in play order — the caller serializes the
+/// project's map (holds once, ramps stepped per beat at each interval's effective BPM,
+/// [`crate::engine`]'s `Project::midi_tempo_events`), so this stays pure data: the events
+/// are placed at their ticks, the first must be beat 0. `sigs` are `(beat, num, den)`
+/// changes (den the unit's denominator: 4/4 is `(0, 4, 4)`); an empty list, or one not
+/// starting at beat 0, writes the 4/4 opener at tick 0 first.
+pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack], sigs: &[(f64, u8, u8)]) -> Result<Vec<u8>, String> {
     let mut smf = Smf::new(Header::new(Format::Parallel, Timing::Metrical(u15::new(PPQ))));
     let mut head: Vec<TrackEvent> = vec![];
     let names: Vec<Vec<u8>> = std::iter::once(title).chain(tracks.iter().map(|t| t.name.as_str())).map(|s| s.as_bytes().to_vec()).collect();
     head.push(meta(0, MetaMessage::TrackName(&names[0])));
-    head.push(meta(0, MetaMessage::TimeSignature(4, 2, 24, 8)));
+    // the tempo map: one meta per event, the opener at tick 0 first
     let mut evs: Vec<(u64, TrackEventKind)> = tempo_events
         .iter()
         .map(|(beat, bpm)| {
@@ -243,6 +284,25 @@ pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack]) -> R
             (to_tick(*beat), TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us))))
         })
         .collect();
+    // one signature meta per change (MIDI's dd is log2 of the unit; cc/bb are MIDI's
+    // metronome defaults): the opener at tick 0, then every change at its tick
+    let mut sigs: Vec<(u64, TrackEventKind)> = sigs
+        .iter()
+        .map(|&(b, n, d)| {
+            let dd = match d {
+                1 => 0,
+                2 => 1,
+                8 => 3,
+                16 => 4,
+                _ => 2,
+            };
+            (to_tick(b), TrackEventKind::Meta(MetaMessage::TimeSignature(n.clamp(1, 32), dd, 24, 8)))
+        })
+        .collect();
+    if sigs.first().is_none_or(|s| s.0 > 0) {
+        sigs.insert(0, (0, TrackEventKind::Meta(MetaMessage::TimeSignature(4, 2, 24, 8))));
+    }
+    evs.extend(sigs);
     evs.sort_by_key(|e| e.0);
     let mut at = 0u64;
     for (tick, kind) in evs {
@@ -606,13 +666,14 @@ mod tests {
                 notes: vec![n(36, 0.0, 0.25, 110), n(42, 0.5, 0.25, 70)],
             },
         ];
-        let bytes = write(&[(0.0, 93.5)], "Song", &tracks).unwrap();
+        let bytes = write(&[(0.0, 93.5)], "Song", &tracks, &[]).unwrap();
         let f = parse(&bytes).unwrap();
         assert_eq!(f.format, 1);
         assert!((f.bpm.unwrap() - 93.5).abs() < 0.01);
         assert_eq!(f.tempo_changes, 0);
         assert!(f.tempo_points.is_empty());
         assert!(f.warnings.is_empty());
+        assert!(f.sig_points.is_empty(), "4/4 throughout: the opener folds away");
         assert_eq!(f.parts.len(), 2);
         assert_eq!(f.parts[0].name, "Bass");
         assert_eq!(f.parts[0].program, Some(38));
@@ -660,6 +721,7 @@ mod tests {
             ev(96, note(1, 40, 0)),
             ev(0, note(9, 36, 0)),
             ev(0, TrackEventKind::Meta(MetaMessage::Tempo(u24::new(400_000)))),
+            ev(96, TrackEventKind::Meta(MetaMessage::TimeSignature(4, 2, 24, 8))),
         ]);
         let mut b = vec![];
         smf.write_std(&mut b).unwrap();
@@ -669,11 +731,14 @@ mod tests {
         assert_eq!(f.tempo_changes, 1);
         // the tempo change after tick 0 arrives as a point of the tempo map, not a warning
         assert_eq!(f.tempo_points, vec![SmfTempo { beat: 1.0, bpm: 150.0 }]);
+        // 3/4 at tick 0 is a point (a project cannot imply a meter); the mid-song 4/4 is
+        // the change — and no "odd meter" warning: the file's meter is the map now
         assert_eq!(f.warnings.len(), 1, "{:?}", f.warnings);
-        assert!(f.warnings[0].contains("3/4"), "the odd meter is the remaining warning: {:?}", f.warnings);
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 0.0, num: 3, den: 4 }, SmfSig { beat: 2.0, num: 4, den: 4 }]);
         assert_eq!(f.parts.iter().map(|p| (p.channel, p.name.as_str())).collect::<Vec<_>>(), vec![(1, "Fingered Bass"), (9, "Drums")]);
     }
 
+    #[test]
     #[test]
     fn tempo_changes_import_as_the_maps_points() {
         // 480 ppq, absolute ticks: repeats and same-tick events fold into one map
@@ -730,12 +795,85 @@ mod tests {
     fn written_tempo_events_read_back_at_their_beats() {
         let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
         let events = [(0.0, 120.0), (4.0, 90.0), (10.5, 140.0)];
-        let bytes = write(&events, "T", &tracks).unwrap();
+        let bytes = write(&events, "T", &tracks, &[]).unwrap();
         let f = parse(&bytes).unwrap();
         assert_eq!(f.bpm, Some(120.0));
         assert_eq!(f.tempo_changes, 2);
         let got: Vec<(f64, f64)> = f.tempo_points.iter().map(|t| (t.beat, t.bpm)).collect();
         assert_eq!(got, events[1..], "the changes land on their beats (the µs round-off stays inside one hundredth)");
+    }
+
+    #[test]
+    fn a_meter_restamped_every_bar_is_one_point_at_its_start() {
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(96))));
+        let mut track = vec![ev(0, TrackEventKind::Meta(MetaMessage::TimeSignature(7, 3, 24, 8)))];
+        for _ in 0..8 {
+            track.push(ev(7 * 48, TrackEventKind::Meta(MetaMessage::TimeSignature(7, 3, 24, 8))));
+        }
+        track.push(ev(0, TrackEventKind::Meta(MetaMessage::EndOfTrack)));
+        smf.tracks.push(track);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert!(f.warnings.is_empty(), "{:?}", f.warnings);
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 0.0, num: 7, den: 8 }], "one point at beat 0: a project cannot imply 7/8");
+    }
+
+    #[test]
+    fn written_signatures_read_back_at_their_beats() {
+        let bytes = write(&[(0.0, 120.0)], "Song", &[], &[(0.0, 7, 8), (7.0, 3, 4)]).unwrap();
+        let f = parse(&bytes).unwrap();
+        assert!(f.warnings.is_empty(), "{:?}", f.warnings);
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 0.0, num: 7, den: 8 }, SmfSig { beat: 7.0, num: 3, den: 4 }]);
+        // every legal denominator round-trips, x/16 too (its exponent is 4)
+        let bytes = write(&[(0.0, 120.0)], "Song", &[], &[(0.0, 1, 1), (4.0, 3, 2), (8.0, 5, 4), (12.0, 7, 16)]).unwrap();
+        let f = parse(&bytes).unwrap();
+        assert_eq!(
+            f.sig_points,
+            vec![
+                SmfSig { beat: 0.0, num: 1, den: 1 },
+                SmfSig { beat: 4.0, num: 3, den: 2 },
+                SmfSig { beat: 8.0, num: 5, den: 4 },
+                SmfSig { beat: 12.0, num: 7, den: 16 }
+            ]
+        );
+        // and a map without a beat-0 point writes the 4/4 opener first, which folds away
+        let bytes = write(&[(0.0, 120.0)], "Song", &[], &[(8.0, 5, 4)]).unwrap();
+        let f = parse(&bytes).unwrap();
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 8.0, num: 5, den: 4 }]);
+    }
+
+    #[test]
+    fn a_unit_finer_than_a_16th_warns_and_reads_as_its_16th_meter() {
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(96))));
+        smf.tracks.push(vec![
+            ev(0, TrackEventKind::Meta(MetaMessage::TimeSignature(4, 2, 24, 8))),
+            ev(96, TrackEventKind::Meta(MetaMessage::TimeSignature(7, 5, 24, 8))),
+            ev(0, TrackEventKind::Meta(MetaMessage::EndOfTrack)),
+        ]);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 1.0, num: 7, den: 16 }]);
+        assert_eq!(f.warnings.len(), 1, "{:?}", f.warnings);
+    }
+
+    #[test]
+    fn two_signatures_at_one_tick_the_last_governs() {
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(96))));
+        smf.tracks.push(vec![
+            ev(0, TrackEventKind::Meta(MetaMessage::TimeSignature(4, 2, 24, 8))),
+            ev(192, TrackEventKind::Meta(MetaMessage::TimeSignature(3, 2, 24, 8))),
+            ev(0, TrackEventKind::Meta(MetaMessage::TimeSignature(5, 2, 24, 8))),
+            ev(0, TrackEventKind::Meta(MetaMessage::EndOfTrack)),
+        ]);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.sig_points, vec![SmfSig { beat: 2.0, num: 5, den: 4 }]);
     }
 
     #[test]

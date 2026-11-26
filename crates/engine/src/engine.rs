@@ -1138,7 +1138,8 @@ impl Engine {
         };
         c.pat_loop = None; // the song and the pattern loop are exclusive
         let rec_track = rec.then(|| self.rec_target(&mut c, from, lap.map_or(f64::INFINITY, |l| l.1)));
-        let count_in = if rec_track.is_some() && c.transport.count_in { 4.0 } else { 0.0 };
+        // one bar of count-in — the signature at the record start (3/4 counts three, 7/8 counts its 3.5)
+        let count_in = if rec_track.is_some() && c.transport.count_in { c.project.sig_map().bar_beats_at(from) } else { 0.0 };
         if let Some(track) = rec_track {
             if c.transport.rec_audio {
                 c.take = self.new_take(&c, track, from, lap);

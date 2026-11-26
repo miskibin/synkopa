@@ -1,3 +1,5 @@
+import { barAt, beatAtBar, type SigPoint } from './signatures';
+
 export const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 export const mod = (a: number, n: number) => ((a % n) + n) % n;
 export const gainLin = (t: number) => 2 * t * t * t;
@@ -19,22 +21,31 @@ export const hzText = (v: number) => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ?
  * The one time notation of the app (FL's bar:beat:tick, in 16ths): "bar:beat:16th", all counted
  * from 1, so beat 5.5 (bar 2, beat 2, third 16th) is "2:2:3". The transport, the ruler (its beat
  * labels are the first two fields), the status line and the Piano roll's fields all write it.
- * A position between 16ths keeps the fraction, to `digits` decimals ("1:2:1.5").
+ * A position between 16ths keeps the fraction, to `digits` decimals ("1:2:1.5"). `sigs` (the
+ * signature map, lib/signatures.ts) counts the bars where the meters say so; without one the
+ * 4/4 grid of 16 sixteenths decides.
  */
-export function fmtBbs(beats: number, digits = 2): string {
+export function fmtBbs(beats: number, digits = 2, sigs?: readonly SigPoint[]): string {
   const s16 = Math.max(0, beats * 4);
   const k = 10 ** digits;
   const at = Math.round(s16 * k) / k;
-  const bar = Math.floor(at / 16 + 1e-9), beat = Math.floor((at - bar * 16) / 4 + 1e-9);
-  const six = Math.round((at - bar * 16 - beat * 4 + 1) * k) / k;
+  if (!sigs?.length) {
+    const bar = Math.floor(at / 16 + 1e-9), beat = Math.floor((at - bar * 16) / 4 + 1e-9);
+    const six = Math.round((at - bar * 16 - beat * 4 + 1) * k) / k;
+    return `${bar + 1}:${beat + 1}:${six}`;
+  }
+  const bar = barAt(sigs, at / 4);
+  const start = beatAtBar(sigs, bar) * 4;
+  const beat = Math.floor((at - start) / 4 + 1e-9);
+  const six = Math.round((at - start - beat * 4 + 1) * k) / k;
   return `${bar + 1}:${beat + 1}:${six}`;
 }
 /** A position in the status line and menus: bar:beat:16th (see `fmtBbs`). */
-export const fmtPos = (b: number): string => fmtBbs(b);
+export const fmtPos = (b: number, sigs?: readonly SigPoint[]): string => fmtBbs(b, 2, sigs);
 /** The transport's position counter: bar:beat:16th of the 16th being played (no fraction). */
-export function fmtClock(b: number): string {
+export function fmtClock(b: number, sigs?: readonly SigPoint[]): string {
   if (b < 0) return 'COUNT ' + Math.ceil(-b);
-  return fmtBbs(Math.floor(b * 4 + 1e-9) / 4);
+  return fmtBbs(Math.floor(b * 4 + 1e-9) / 4, 2, sigs);
 }
 export function fmtBytes(n: number): string {
   if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';

@@ -7,7 +7,8 @@ import { t, type TranslationKey } from './i18n';
 import { migrateSatParams } from './saturator';
 import { keysRange } from './keysKnobs';
 import { keysInstrument } from './keysCatalog';
-import { KEYS_DEFAULT_INSTRUMENT, KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState } from '../api/types';
+import { KEYS_DEFAULT_INSTRUMENT, KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState, type SigPoint } from '../api/types';
+import { barBeatsAt, compiledSig } from './signatures';
 import { addStarterKit } from './factory';
 import { SYNTH_CATALOG } from '../api/synthCatalog';
 import { synthError } from './synth';
@@ -91,14 +92,38 @@ export function contentLen(notes: readonly Note[]): number {
   for (const n of notes) end = Math.max(end, (n.step + n.len) / 4);
   return Math.min(TOTAL_BEATS, Math.max(1, Math.ceil(end / BAR - 1e-6)) * BAR);
 }
+/** [`contentLen`] on another bar length (a pattern played on the 7/8 grid rounds to its bars). */
+export function contentLenIn(notes: readonly Note[], bar: number): number {
+  let end = 0;
+  for (const n of notes) end = Math.max(end, (n.step + n.len) / 4);
+  return Math.min(TOTAL_BEATS, Math.max(1, Math.ceil(end / bar - 1e-6)) * bar);
+}
 /** The pattern's `minLen` in whole bars (beats), ≥ 1 bar. */
 export const minLenOf = (p: Pick<Pattern, 'minLen'>) => Math.min(TOTAL_BEATS, Math.max(1, Math.ceil((p.minLen ?? BAR) / BAR - 1e-6)) * BAR);
+/** [`minLenOf`] on another bar length. */
+export const minLenOfIn = (p: Pick<Pattern, 'minLen'>, bar: number) => Math.min(TOTAL_BEATS, Math.max(bar, Math.ceil((p.minLen ?? bar) / bar - 1e-6) * bar));
 /** Sets `len` (and normalises `minLen`) like the engine's `Pattern::fit_len`. */
 export function fitLen(p: Pattern): Pattern {
   p.minLen = minLenOf(p);
   p.len = Math.max(contentLen(p.notes), p.minLen);
   return p;
 }
+/** [`fitLen`] on another bar length (the engine's `fit_len_in`). */
+export function fitLenIn(p: Pattern, bar: number): Pattern {
+  p.minLen = minLenOfIn(p, bar);
+  p.len = Math.max(contentLenIn(p.notes, bar), p.minLen);
+  return p;
+}
+/** The bar length in beats a pattern's bars use: the signature at the earliest clip that
+ *  plays it, else the song's opening signature (model.rs `Project::pattern_bar_beats`). */
+export function patternBar(p: Pick<Project, 'clips' | 'sigPoints'>, patId: Id): number {
+  let at = Infinity;
+  for (const c of p.clips ?? []) if (c.kind === 'pat' && c.ref === patId) at = Math.min(at, c.start);
+  return barBeatsAt(compiledSig(p.sigPoints), at === Infinity ? 0 : at);
+}
+/** One bar of a constant `barBeats` grid, as a signature list: what a pattern-local view
+ *  (the piano roll, a PAT readout) passes where the song's map would go. */
+export const barLenMap = (barBeats: number): SigPoint[] => [{ beat: 0, num: Math.max(1, Math.round(barBeats * 4)), den: 16 }];
 
 /** Swing in steps added to a note on an odd 16th (crates/engine/src/model.rs `swing_offset`). */
 export function swingOffset(step: number, swing: number): number {
@@ -135,7 +160,9 @@ export function migrateSamplerEnvelope(s: SamplerState & { gate?: boolean }) {
 }
 
 export function migrateProject(p: Project) {
-  for (const pt of p.patterns) fitLen(pt);
+  // whole bars of the signature where each pattern plays (4/4 with no map, so old projects
+  // are unchanged) — the mirror of the engine's migrate
+  for (const pt of p.patterns) fitLenIn(pt, patternBar(p, pt.id));
   if (!p.channels?.length) addStarterKit(p);
   for (const c of p.channels ?? []) if (c.kind === 'sample' && c.sampler) migrateSamplerEnvelope(c.sampler);
   // saturator parameters from before the character saturator
@@ -239,7 +266,7 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       }
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
       stripPatternDefaults(pt);
-      fitLen(pt);
+      fitLenIn(pt, patternBar(p, pt.id));
       checkChannelLoops(p, pt, strict);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);

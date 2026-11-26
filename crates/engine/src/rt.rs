@@ -759,6 +759,9 @@ impl NoteRt {
 pub struct PatRt {
     pub id: Id,
     pub len: f64,
+    /// The bar length in beats the pattern's bars use (the signature at its first clip;
+    /// [`crate::model::BAR_BEATS`] standalone): where its metronome accents fall.
+    pub bar: f64,
     /// Only the notes that start before `len` (later ones are kept in the project, hidden).
     pub notes: Vec<NoteRt>,
     /// Insert index of the track of the first clip that plays this pattern (where auditions
@@ -963,6 +966,8 @@ pub struct Timeline {
     pub bpm: f64,
     /// The compiled tempo map (constant when the project has no points): beats ↔ seconds.
     pub(crate) tempo: crate::engine::tempo::TempoMap,
+    /// The compiled signature map (4/4 when the project has no points): where bars fall.
+    pub(crate) sig: crate::model::SigMap,
     pub clips: Vec<ClipRt>,
     pub pats: Vec<PatRt>,
     pub chans: Vec<ChanRt>,
@@ -1207,6 +1212,7 @@ impl Rt {
             timeline: Box::new(Timeline {
                 bpm: 120.0,
                 tempo: crate::engine::tempo::TempoMap::constant(120.0),
+                sig: crate::model::SigMap::constant(),
                 clips: vec![],
                 pats: vec![],
                 chans: vec![],
@@ -1789,16 +1795,32 @@ impl Rt {
                 }
             }
         }
-        // the metronome counts the pattern's beats (accent on each of its bars), as in the song
+        // the metronome counts the pattern's beats (accent on each of its bars — `pat.bar`,
+        // which may land off the beat: 7/8's second bar starts at local beat 3.5), as in the song
         if self.metro {
+            let bar = if pat.bar > 0.0 { pat.bar } else { 4.0 };
             for r in r0..=r1 {
                 let mut p = la.ceil();
                 while p < lb {
                     let nb = r as f64 * span + p - la;
                     if nb >= b0 && nb < b1 {
-                        self.voices.click((p as i64).rem_euclid(4) == 0, ((nb - b0) / bps) as u32);
+                        let k = (p / bar).round();
+                        let accent = (k * bar - p).abs() < 1e-6;
+                        self.voices.click(accent, ((nb - b0) / bps) as u32);
                     }
                     p += 1.0;
+                }
+                // the fractional bar starts the beat walk misses (7/8's 3.5)
+                let mut k = (la / bar).floor();
+                while k * bar < lb {
+                    let s = k * bar;
+                    if s >= la && (s - s.round()).abs() > 1e-6 {
+                        let nb = r as f64 * span + s - la;
+                        if nb >= b0 && nb < b1 {
+                            self.voices.click(true, ((nb - b0) / bps) as u32);
+                        }
+                    }
+                    k += 1.0;
                 }
             }
         }
@@ -2381,14 +2403,30 @@ impl Rt {
         let tempo = &self.timeline.tempo;
         let sr = self.sr;
         let delay_of = |beat: f64| (tempo.seconds_between(b0, beat) * f64::from(sr)) as u32 + at as u32;
-        // metronome & count-in clicks
+        // metronome & count-in clicks: one per beat (the quarter grid), the accent on each
+        // bar start of the signature map. A change can put bar starts between beats — 7/8's
+        // second bar opens at beat 3.5 — so the fractional starts get their own pass below.
+        let sig = &self.timeline.sig;
         let mut b = b0.ceil();
         while b < b1 {
             if self.metro || b < self.count_end {
-                let accent = (b as i64).rem_euclid(4) == 0;
+                let accent = sig.is_bar_start(b);
                 self.voices.click(accent, delay_of(b));
             }
             b += 1.0;
+        }
+        if self.metro || b0 < self.count_end {
+            let mut bar = sig.bar_at(b0) + 1.0;
+            loop {
+                let start = sig.beat_at_bar(bar);
+                if start >= b1 {
+                    break;
+                }
+                if start >= b0 && (start - start.round()).abs() > 1e-6 && (self.metro || start < self.count_end) {
+                    self.voices.click(true, delay_of(start));
+                }
+                bar += 1.0;
+            }
         }
         let tl = &*self.timeline;
         for c in tl.clips.iter() {
