@@ -127,7 +127,13 @@ impl Engine {
         }
         let scope = move |p: Project| {
             let p = match pattern {
-                Some(id) => pattern_project(p, id),
+                // a pattern bounce plays at one constant tempo, the base BPM (like PAT mode):
+                // the song's map would apply to pattern-local beats
+                Some(id) => {
+                    let mut p = pattern_project(p, id);
+                    p.tempo_points.clear();
+                    p
+                }
                 None => p,
             };
             match stem {
@@ -342,8 +348,10 @@ impl Engine {
         }
         let _ = cmd_tx.push(Cmd::Timeline(Box::new(tl)));
         let _ = cmd_tx.push(Cmd::Play { from, count_in: 0.0, rec: false, rec_loop: false });
-        let spb = 60.0 / project.bpm;
-        let duration = (to - from) * spb;
+        // the render walks the tempo map: the duration is the map's integral over the range
+        // (a constant project compiles to one point, so nothing changes for it)
+        let tempo = super::tempo::TempoMap::compile(&project.tempo_points, project.bpm);
+        let duration = tempo.seconds_between(from, to);
         let play_frames = (duration * f64::from(sample_rate)) as usize;
         let (frames, warmup) = match tail {
             RenderTail::Seconds(tail) | RenderTail::Decay { max: tail } => {
@@ -372,11 +380,17 @@ impl Engine {
         let mut stopped = false;
         let hold = (DECAY_HOLD_S * f64::from(sample_rate)) as usize;
         let mut quiet = 0usize;
-        let frames_per_beat = spb * f64::from(sample_rate);
         let beat_at = |done: usize| {
             let rendered = done.saturating_sub(pdc);
             let at = if wrap { rendered % frames } else { rendered };
-            from + at as f64 / frames_per_beat
+            if tempo.is_constant() {
+                // the effective tempo of the compiled map (a beat-0 point can differ from
+                // the project's base BPM), and seconds → beats is ×bpm/60
+                from + at as f64 / f64::from(sample_rate) * (tempo.bpm_at(from) / 60.0)
+            } else {
+                // the seconds position inside the (possibly wrapped) pass → the beat
+                tempo.beat_at(tempo.seconds_between(0.0, from) + at as f64 / f64::from(sample_rate))
+            }
         };
         let peak_of = |l: &[f32], r: &[f32]| l.iter().chain(r).fold(0f32, |m, x| if x.abs() > m { x.abs() } else { m });
         let keep = |out: &mut Vec<f32>, at: usize, l: &[f32], r: &[f32]| {
@@ -470,7 +484,7 @@ impl Engine {
                 return Err(err("the time selection is empty"));
             }
         }
-        let (picked, from, to, bpm, at_rev) = {
+        let (picked, from, to, tempo, at_rev) = {
             let c = self.core.lock();
             let p = &c.project;
             let any_solo = p.tracks.iter().any(|t| t.solo);
@@ -496,7 +510,7 @@ impl Engine {
                 from = from.max(a);
                 to = to.min(b);
             }
-            (picked, from, to, p.bpm, c.revision)
+            (picked, from, to, p.tempo_map(), c.revision)
         };
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
@@ -539,8 +553,9 @@ impl Engine {
         };
         let tail = RenderTail::Decay { max: IN_PLACE_MAX_TAIL_S };
         let data = self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress, None)?;
-        // the render's own tempo turns its length into beats: the span plus the tail
-        let len = ((data.len() / 2) as f64 / f64::from(sample_rate) * bpm / 60.0).max(to - from);
+        // the render's own tempo turns its length into beats: the span plus the tail, laid
+        // on the map from where the selection plays (not the base tempo)
+        let len = (tempo.beat_at(tempo.seconds_at(from) + (data.len() / 2) as f64 / f64::from(sample_rate)) - from).max(to - from);
         let audio = Audio::from_stereo(data.clone(), sample_rate, 2);
         if audio.peak() < 1e-6 {
             return Err(err("the selection renders silent: nothing to export"));

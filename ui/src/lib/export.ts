@@ -35,6 +35,8 @@ export function patternProject(p: Project, id: Id): Project {
   const q = structuredClone(p);
   const len = Math.max(4, q.patterns.find(x => x.id === id)?.len ?? 4);
   q.clips = []; if (q.comps) q.comps = []; q.loop = null;
+  // PAT mode plays at one constant tempo, the base BPM: the song's map would apply to pattern-local beats
+  delete q.tempoPoints;
   if (!q.tracks.length) q.tracks.push({ id: 1, name: 'Pattern', color: '#4f8ef7', muted: false, solo: false, arm: false, vol: VOL_UNITY, h: 56, insert: 0 });
   q.tracks.forEach((t, i) => { t.solo = false; if (i === 0) { t.muted = false; t.vol = VOL_UNITY; t.insert = 0; } });
   q.clips.push(newClip(q.nextId++, 0, 0, len, 'pat', id));
@@ -48,10 +50,51 @@ export function patternSilent(p: Project, id: Id): boolean {
   return !pt || !pt.notes.some(n => chans.some(c => c.id === n.ch && !c.mute));
 }
 
-/** Wall-clock length of a bounce including the effect tail. */
-export function exportSeconds(from: number, to: number, bpm: number, tail: number): number {
-  const beats = Math.max(0, to - from);
-  return (beats * 60) / Math.max(1, bpm) + Math.max(0, tail);
+/** Wall-clock length of a bounce including the effect tail. With tempo points the length
+ * integrates the map segment by segment (engine `tempo.rs`), matching the render. */
+export function exportSeconds(from: number, to: number, bpm: number, tail: number, points?: { beat: number; bpm: number; ramp?: boolean }[]): number {
+  const a = Math.max(0, from), b = Math.max(a, to);
+  const seg = (p0: number, x: number, segEnd: number, bpm0: number, bpm1: number, ramp: boolean): number => {
+    const d = segEnd - p0;
+    if (x <= p0) return 0;
+    if (!ramp || d <= 0 || Math.abs(bpm0 - bpm1) < 1e-9) return ((x - p0) * 60) / bpm0;
+    const bx = bpm0 + (bpm1 - bpm0) * ((x - p0) / d);
+    return (60 * d * Math.log(bx / bpm0)) / (bpm1 - bpm0);
+  };
+  const pts = [...(points ?? [])].sort((x, y) => x.beat - y.beat);
+  let seconds = 0;
+  let pos = a;
+  let i = 0;
+  let cur = Math.max(1, bpm); // the tempo governing at `a` (before the first point past it)
+  while (i < pts.length && pts[i].beat <= a + 1e-9) { cur = Math.max(1, pts[i].bpm); i++; }
+  // the segment containing `a` starts at the point before it — its ramp still governs
+  if (i > 0) i--;
+  while (pos < b - 1e-9) {
+    const pointBeat = i < pts.length ? pts[i].beat : Number.POSITIVE_INFINITY;
+    // the stretch before this point plays at the current tempo; `pos` never moves backward,
+    // so a range that starts past a point skips straight to that point's segment
+    const atPoint = Math.min(pointBeat, b);
+    if (atPoint > pos + 1e-9) {
+      seconds += ((atPoint - pos) * 60) / cur;
+      pos = atPoint;
+    }
+    if (pos >= b - 1e-9 || i >= pts.length) break;
+    const nextBeat = pts[i + 1]?.beat ?? Number.POSITIVE_INFINITY;
+    const startBpm = Math.max(1, pts[i].bpm);
+    const nextBpm = Math.max(1, pts[i + 1]?.bpm ?? startBpm);
+    // this point's segment [pointBeat, nextBeat) ramps (or holds) into the next point:
+    // integrate only its overlap with the range, from the segment's own origin — the ramp's
+    // partial integral backs out the time before the range (a mid-ramp start would
+    // otherwise count the whole ramp)
+    const segEnd = Math.min(nextBeat, b);
+    if (segEnd > pos + 1e-9) {
+      seconds += seg(pointBeat, segEnd, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false) - seg(pointBeat, pos, nextBeat, startBpm, nextBpm, pts[i].ramp ?? false);
+      pos = segEnd;
+    }
+    cur = startBpm;
+    i++;
+  }
+  return seconds + Math.max(0, tail);
 }
 
 export function fmtExportLen(seconds: number): string {

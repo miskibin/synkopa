@@ -24,6 +24,7 @@ mod analysis;
 mod graph;
 mod import;
 mod preview;
+pub(crate) mod tempo;
 pub use preview::{PreviewWave, PREVIEW_WAVE_PAIRS};
 mod project_files;
 mod render;
@@ -1768,7 +1769,7 @@ impl Engine {
     /// back and the flatten refuses ("try again") if any of them changed in the meantime.
     /// The id and the final name are only taken then, from the project as it stands then.
     pub fn flatten_comp(&self, clip_id: Id) -> Result<Id, EngineError> {
-        let (clip, comp, map, spb, sr, ch, frames, name, tmp) = {
+        let (clip, comp, map, tempo, spb, sr, ch, frames, name, tmp) = {
             let c = self.core.lock();
             let clip = c.project.clips.iter().find(|x| x.id == clip_id).cloned().ok_or(EngineError::Msg("no such clip".into()))?;
             if clip.kind != ClipKind::Comp {
@@ -1779,8 +1780,9 @@ impl Engine {
             let first =
                 comp.takes.iter().find_map(|t| map.get(&t.source)).ok_or(EngineError::Msg("the takes' audio is not loaded".into()))?;
             let (sr, ch) = (first.sr, comp.takes.iter().filter_map(|t| map.get(&t.source)).map(|a| a.channels).max().unwrap_or(1));
-            let spb = 60.0 / c.project.bpm;
-            let frames = (clip.len * spb * sr as f64).round() as usize;
+            let tempo = c.project.tempo_map();
+            let spb = 60.0 / tempo.bpm_at(clip.start);
+            let frames = (tempo.seconds_between(clip.start, clip.start + clip.len) * sr as f64).round() as usize;
             if frames < 16 {
                 return Err(EngineError::Msg("the clip is empty".into()));
             }
@@ -1788,9 +1790,9 @@ impl Engine {
             let frames = frames + 2;
             let name = format!("{} (flat)", comp.name);
             let tmp = audio_dir(&c).join(format!(".tmp-{}-{}.wav", std::process::id(), SIDE_FILE.fetch_add(1, Relaxed)));
-            (clip, comp, map, spb, sr, ch, frames, name, tmp)
+            (clip, comp, map, tempo, spb, sr, ch, frames, name, tmp)
         };
-        let rt = crate::comp::build(&comp, spb, None, &map);
+        let rt = crate::comp::build(&comp, &tempo, None, &map);
         let (mut l, mut r) = (vec![0f32; frames], vec![0f32; frames]);
         rt.render_add(clip.offset, 1.0 / (spb * sr as f64), &mut l, &mut r, spb);
         let data: Vec<f32> = l.iter().zip(&r).flat_map(|(a, b)| [*a, *b]).collect();

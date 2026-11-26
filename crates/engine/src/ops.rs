@@ -157,6 +157,14 @@ pub enum Op {
     SetBpm {
         bpm: f64,
     },
+    /// Set the song's tempo points (the tempo map). An empty list = the constant `bpm`
+    /// everywhere. Points are beat-sorted and their BPM clamped on the way in; two points
+    /// at one beat are a jump; at most [`crate::model::MAX_TEMPO_POINTS`]. `SetBpm`
+    /// clears the map (the tempo knob edits the constant case).
+    SetTempoPoints {
+        #[serde(default)]
+        points: Vec<crate::model::TempoPoint>,
+    },
     SetLoop {
         #[serde(rename = "loop")]
         range: Option<LoopRange>,
@@ -1045,10 +1053,28 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             p.markers.retain(|m| m.id != *id);
         }
         Op::SetBpm { bpm } => {
-            if !(20.0..=999.0).contains(bpm) {
+            if !(crate::model::MIN_TEMPO_BPM..=crate::model::MAX_BASE_BPM).contains(bpm) {
                 return Err(OpError::Invalid("bpm must be 20..999".into()));
             }
             p.bpm = *bpm;
+            // the knob edits the constant case: a tempo map would be overwritten by it
+            p.tempo_points.clear();
+            d.timeline = true;
+        }
+        Op::SetTempoPoints { points } => {
+            if points.len() > crate::model::MAX_TEMPO_POINTS {
+                return Err(OpError::Invalid(format!("at most {} tempo points", crate::model::MAX_TEMPO_POINTS)));
+            }
+            let mut pts: Vec<crate::model::TempoPoint> = points
+                .iter()
+                .map(|p| crate::model::TempoPoint {
+                    beat: p.beat.clamp(0.0, TOTAL_BEATS),
+                    bpm: p.bpm.clamp(crate::model::MIN_TEMPO_BPM, crate::model::MAX_TEMPO_BPM),
+                    ramp: p.ramp,
+                })
+                .collect();
+            pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
+            p.tempo_points = pts;
             d.timeline = true;
         }
         Op::SetMaskIgnore { pairs } => {

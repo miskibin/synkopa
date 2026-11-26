@@ -251,6 +251,16 @@ export interface Note { ch: Id; step: number; len: number; p?: number; v?: numbe
  * the channel's steps 0..n repeat to fill the pattern, phase-anchored to the start; notes of that
  * channel from step n on are not played.
  */
+/** A tempo point on the song's timeline (engine `model::TempoPoint`): from this beat, the
+ * tempo is `bpm` — or, when `ramp`, it glides linearly in beats to the next point's BPM.
+ * Before the first point the tempo is the project's `bpm`. */
+/** Mirrors the engine's tempo-point bounds (model.rs). */
+export const MIN_TEMPO_BPM = 20;
+export const MAX_TEMPO_BPM = 300;
+export const MAX_TEMPO_POINTS = 4096;
+
+export interface TempoPoint { beat: number; bpm: number; ramp?: boolean }
+
 export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number> }
 
 export interface Source {
@@ -523,6 +533,8 @@ export interface Automation { id: Id; name: string; color: string; target: AutoT
 
 export interface Project {
   version: number; bpm: number;
+  /** Tempo points over the song (the tempo map). Empty = the constant `bpm` everywhere. */
+  tempoPoints?: TempoPoint[]
   tracks: Track[]; inserts: Insert[]; patterns: Pattern[]; sources: Source[]; clips: Clip[];
   loop: LoopRange | null; nextId: Id;
   /** Automation envelopes; played by clips of kind `auto` (`ref` = automation id). */
@@ -587,6 +599,7 @@ export type Op =
   | { op: 'putSource'; source: Source }
   | { op: 'removeSource'; id: Id }
   | { op: 'setBpm'; bpm: number }
+  | { op: 'setTempoPoints'; points: TempoPoint[] }
   | { op: 'setLoop'; loop: LoopRange | null }
   | { op: 'setMaskIgnore'; pairs: [Id, Id][] }
   | { op: 'putAutomation'; automation: Automation }

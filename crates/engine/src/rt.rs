@@ -732,8 +732,10 @@ pub struct NoteRt {
 }
 
 impl NoteRt {
-    fn end(&self, seconds_per_beat: f64, remaining_beats: f64) -> NoteEnd {
-        let duration = (self.len.min(remaining_beats) * seconds_per_beat) as f32;
+    /// `duration` is the note's real sounding time in seconds — the caller integrates it
+    /// over the note's (clipped) beat interval, so a tempo point inside a held note does
+    /// not give the instrument the onset's tempo for the whole note.
+    fn end(&self, duration: f32) -> NoteEnd {
         match self.sampler_trigger {
             Some(true) => NoteEnd::Natural,
             Some(false) => NoteEnd::Timed(duration),
@@ -947,6 +949,8 @@ pub struct ChanRt {
 
 pub struct Timeline {
     pub bpm: f64,
+    /// The compiled tempo map (constant when the project has no points): beats ↔ seconds.
+    pub(crate) tempo: crate::engine::tempo::TempoMap,
     pub clips: Vec<ClipRt>,
     pub pats: Vec<PatRt>,
     pub chans: Vec<ChanRt>,
@@ -1190,6 +1194,7 @@ impl Rt {
             graph: Box::new(Graph::new(vec![], vec![], None, max_block)),
             timeline: Box::new(Timeline {
                 bpm: 120.0,
+                tempo: crate::engine::tempo::TempoMap::constant(120.0),
                 clips: vec![],
                 pats: vec![],
                 chans: vec![],
@@ -1762,7 +1767,7 @@ impl Rt {
                         nt.chan,
                         Dest::Insert(ins),
                         delay,
-                        nt.end(spb, f64::INFINITY),
+                        nt.end((nt.len * spb) as f32),
                         nt.key,
                         nt.vel,
                         1.0,
@@ -1964,10 +1969,10 @@ impl Rt {
         g.cleared_n = n;
         self.click[..n].fill(0.0);
 
-        let bpm = self.timeline.bpm;
-        let spb = 60.0 / bpm; // seconds per beat
-        let bps = 1.0 / (spb * sr as f64); // beats per sample
         let block_beat = self.beat;
+        // the block-start tempo: what ProcessCtx reports (the preview overrides it with its
+        // own playhead's tempo below; time itself flows through the map, not this value)
+        let bpm = self.timeline.tempo.bpm_at(block_beat);
 
         if self.rec_drain > 0 && !ahead {
             if self.shared.finishing_take.load(Acquire) {
@@ -1985,9 +1990,7 @@ impl Rt {
         // ---- schedule & render the timeline
         if self.playing {
             let mut p = 0usize;
-            let mut guard = 0;
-            while p < n && self.playing && guard < 8 {
-                guard += 1;
+            while p < n && self.playing {
                 let (ls, le) = if self.rec {
                     match self.timeline.loop_range {
                         Some(lr) if self.rec_loop && lr.1 > lr.0 => lr,
@@ -1996,10 +1999,24 @@ impl Rt {
                 } else {
                     self.timeline.loop_range.unwrap_or((0.0, self.timeline.song_end))
                 };
-                let left = ((le - self.beat) / bps).ceil().max(1.0) as usize;
-                let seg = left.min(n - p);
+                // one schedule call sees one tempo: split the block at the next tempo point.
+                // Frames to every boundary are integrated through the map — with a ramp, the
+                // segment-start spb is only the block-average at its very start, and freezing
+                // it for the transport drifts off the real time (a beat 0.99 note would not
+                // play); a constant map makes the integral exactly the old beat × spb math.
+                // Each pass advances at least one sample, so dense points just make passes.
+                let tempo = &self.timeline.tempo;
+                let spb = 60.0 / tempo.bpm_at(self.beat);
+                let bps = 1.0 / (spb * sr as f64);
+                let left = (tempo.seconds_between(self.beat, le) * sr as f64).ceil();
+                let mut seg = (left.max(1.0) as usize).min(n - p);
+                if let Some(tb) = tempo.next_break_after(self.beat) {
+                    let to_point = (tempo.seconds_between(self.beat, tb) * sr as f64).ceil().max(1.0) as usize;
+                    seg = seg.min(to_point);
+                }
                 let b0 = self.beat;
-                let b1 = b0 + seg as f64 * bps;
+                let b1 = tempo.beat_at(tempo.seconds_at(b0) + seg as f64 / sr as f64);
+
                 // `seg` is rounded up to whole samples, so `b1` can pass the loop end by up to a
                 // sample; events in `[le, b1)` belong to the beat after the wrap (or after the
                 // song end), not to this pass: a kick on the next bar's downbeat would sound
@@ -2043,11 +2060,18 @@ impl Rt {
         }
         let shared_beat = if self.playing { self.beat } else { block_beat };
         self.shared.beat.store(shared_beat.to_bits(), Relaxed);
-        let heard = if self.playing { self.heard(shared_beat, bps) } else { shared_beat };
+        let heard = if self.playing { self.heard(shared_beat) } else { shared_beat };
         self.shared.heard.store(heard.to_bits(), Relaxed);
         // tempo-locked effects follow the pattern loop preview like the song
         let pat_ctx = if !self.playing && self.pat_play.is_some() { Some(self.pat_beat) } else { None };
-        self.schedule_pattern(n, bps, spb);
+        // PAT mode plays at one constant tempo — the project's base BPM (FL's behavior): the
+        // preview's playhead wraps inside the pattern, so the song's map would re-read its
+        // points on every loop pass — and the context the processors see follows the same
+        // playhead as `beat` does
+        let pat_bpm = self.timeline.bpm;
+        let pat_spb = 60.0 / pat_bpm;
+        let ctx_bpm = if pat_ctx.is_some() { pat_bpm } else { bpm };
+        self.schedule_pattern(n, 1.0 / (pat_spb * sr as f64), pat_spb);
         self.voices.render(
             n,
             &mut self.graph.track_bufs,
@@ -2061,14 +2085,14 @@ impl Rt {
             &mut self.graph.track_bufs,
             &mut self.graph.inserts,
             &self.timeline.chans,
-            bpm,
+            ctx_bpm,
             self.pool.as_ref(),
             &mut self.graph.track_dirty,
         );
         if !self.plugs.is_empty() {
             let ctx = match pat_ctx {
-                Some(b) => ProcessCtx { sample_rate: sr, bpm, beat: b, playing: true },
-                None => ProcessCtx { sample_rate: sr, bpm, beat: block_beat, playing: self.playing },
+                Some(b) => ProcessCtx { sample_rate: sr, bpm: ctx_bpm, beat: b, playing: true },
+                None => ProcessCtx { sample_rate: sr, bpm: ctx_bpm, beat: block_beat, playing: self.playing },
             };
             let _no_denormals = crate::processor::NoDenormals::new();
             self.plugs.render(
@@ -2173,8 +2197,8 @@ impl Rt {
 
         // ---- inserts (non-master first), then master
         let ctx = match pat_ctx {
-            Some(b) => ProcessCtx { sample_rate: sr, bpm, beat: b, playing: true },
-            None => ProcessCtx { sample_rate: sr, bpm, beat: block_beat, playing: self.playing },
+            Some(b) => ProcessCtx { sample_rate: sr, bpm: ctx_bpm, beat: b, playing: true },
+            None => ProcessCtx { sample_rate: sr, bpm: ctx_bpm, beat: block_beat, playing: self.playing },
         };
         let count = g.inserts.len();
         if count > 0 {
@@ -2321,10 +2345,17 @@ impl Rt {
         }
     }
 
-    /// The beat leaving the mixer while `beat` is rendered: the playback latency earlier,
+    /// The beat leaving the mixer while `beat` is rendered: the playback latency earlier
+    /// (a time, so it is subtracted in seconds and converted back through the map),
     /// wrapped back into the loop after a wrap, never before the run's start.
-    fn heard(&self, beat: f64, bps: f64) -> f64 {
-        let h = beat - self.graph.click.buf.len() as f64 * bps;
+    fn heard(&self, beat: f64) -> f64 {
+        let tempo = &self.timeline.tempo;
+        // the latency is a time: subtract it in seconds and come back through the map. Before
+        // beat 0 the map back-extrapolates linearly at the opening tempo, and the wrap arms
+        // below fold that (negative) position back into the loop.
+        let sec = tempo.seconds_at(beat) - self.graph.click.buf.len() as f64 / f64::from(self.sr);
+        let h = if sec < 0.0 { sec / (60.0 / tempo.bpm_at(0.0)) } else { tempo.beat_at(sec) };
+
         match self.wrapped {
             Some((ls, le)) if h < ls => (h + (le - ls)).max(ls),
             Some(_) => h,
@@ -2333,13 +2364,17 @@ impl Rt {
     }
 
     fn schedule(&mut self, b0: f64, b1: f64, at: usize, n: usize, bps: f64, spb: f64) {
+        // beat → frames goes through the map: with ramps the segment-start spb is only the
+        // block's average at its start, and an event's real delay is the integrated time
+        let tempo = &self.timeline.tempo;
+        let sr = self.sr;
+        let delay_of = |beat: f64| (tempo.seconds_between(b0, beat) * f64::from(sr)) as u32 + at as u32;
         // metronome & count-in clicks
         let mut b = b0.ceil();
         while b < b1 {
             if self.metro || b < self.count_end {
-                let delay = ((b - b0) / bps) as u32 + at as u32;
                 let accent = (b as i64).rem_euclid(4) == 0;
-                self.voices.click(accent, delay);
+                self.voices.click(accent, delay_of(b));
             }
             b += 1.0;
         }
@@ -2369,13 +2404,15 @@ impl Rt {
                                     if !ch.on {
                                         continue;
                                     }
-                                    let delay = ((nb - b0) / bps) as u32 + at as u32;
+                                    let delay = delay_of(nb);
                                     if slides {
-                                        let len = (nt.len.min(c.end - nb) * spb) as f32 * self.sr;
+                                        // the glide's length is the real time across its clipped
+                                        // beat interval, not its beats at the onset's tempo
+                                        let len = (tempo.seconds_between(nb, nb + nt.len.min(c.end - nb)) * f64::from(sr)) as f32;
                                         slide(&mut self.voices, &mut self.synths, ch, delay, nt.key, len);
                                         continue;
                                     }
-                                    let end = nt.end(spb, c.end - nb);
+                                    let end = nt.end(tempo.seconds_between(nb, nb + nt.len.min(c.end - nb)) as f32);
                                     let (dest, gain) = match ch.insert {
                                         None => (Dest::Track(c.track), 1.0),
                                         // routed past the track: the track still mutes and scales it
@@ -2448,7 +2485,13 @@ impl Rt {
                     None => {
                         let Some((tl_l, tl_r)) = self.graph.track_bufs.get_mut(c.track) else { continue };
                         self.graph.track_dirty[c.track] = true;
-                        crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, &mut tl_l[at..at + n], &mut tl_r[at..at + n]);
+                        // seconds already spent of the clip's source at the block start: the
+                        // map's integral from the source origin (the beat `c.start - c.offset`,
+                        // which both halves of a split share, so the position survives splits
+                        // and left-trims at any tempo); negative before that origin
+                        let origin = c.start - c.offset;
+                        let sec0 = if b0 < origin { -tempo.seconds_between(b0, origin) } else { tempo.seconds_between(origin, b0) };
+                        crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, &mut tl_l[at..at + n], &mut tl_r[at..at + n]);
                     }
                     // its own insert: past the track's insert, still muted and scaled by the track (as a routed channel)
                     Some(k) => {
@@ -2461,7 +2504,9 @@ impl Rt {
                         let (bl, br) = (&mut self.comp_l[..n], &mut self.comp_r[..n]);
                         bl.fill(0.0);
                         br.fill(0.0);
-                        crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, bl, br);
+                        let origin = c.start - c.offset;
+                        let sec0 = if b0 < origin { -tempo.seconds_between(b0, origin) } else { tempo.seconds_between(origin, b0) };
+                        crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, bl, br);
                         for i in 0..n {
                             ins.l[at + i] += bl[i] * gain;
                             ins.r[at + i] += br[i] * gain;

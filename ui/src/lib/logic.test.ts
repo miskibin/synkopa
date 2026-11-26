@@ -435,6 +435,16 @@ describe('export range', () => {
     expect(exportRange(p, false)).toEqual({ from: 0, to: 32 });
     expect(exportRange(p, true)).toEqual({ from: 4, to: 12 });
     expect(exportSeconds(0, 32, 128, 2)).toBeCloseTo(17, 5);
+    // with tempo points the estimate integrates the map, like the render
+    expect(exportSeconds(0, 8, 120, 0, [{ beat: 4, bpm: 240 }])).toBeCloseTo(3, 5);
+    expect(exportSeconds(0, 8, 60, 0, [{ beat: 0, bpm: 60, ramp: true }, { beat: 8, bpm: 120 }])).toBeCloseTo(8 * Math.log(2), 3);
+    // a range that starts past a point never reaches back before it (loop estimates)
+    expect(exportSeconds(6, 8, 120, 0, [{ beat: 4, bpm: 240 }])).toBeCloseTo(0.5, 5);
+    // a range that starts mid-ramp counts only its own stretch of the ramp
+    const halfRamp = [{ beat: 0, bpm: 60, ramp: true }, { beat: 4, bpm: 120 }] as const;
+    expect(exportSeconds(2, 4, 120, 0, [...halfRamp])).toBeCloseTo(4 * Math.log(4 / 3), 3);
+    // and a range ending mid-ramp backs the later part out the same way
+    expect(exportSeconds(0, 2, 120, 0, [...halfRamp])).toBeCloseTo(4 * Math.log(1.5), 3);
     expect(fmtExportLen(17)).toBe('17 s');
     expect(fmtExportLen(75)).toBe('1:15');
   });

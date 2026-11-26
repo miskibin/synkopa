@@ -113,7 +113,6 @@ impl Engine {
             let before = c.project.clone();
             let mut src_ids = vec![];
             let mut clip_ids = vec![];
-            let bpm = c.project.bpm;
             for (k, (path, stored, audio)) in loaded.iter_mut().enumerate() {
                 let reuse = c
                     .project
@@ -152,7 +151,8 @@ impl Engine {
                         (id, seconds)
                     }
                 };
-                let len_beats = seconds / (60.0 / bpm);
+                // the audio's length in beats, laid on the map from the song's start
+                let len_beats = c.project.tempo_map().beat_at(seconds);
                 src_ids.push(id);
                 if let Some((track, beat)) = place {
                     let ntracks = c.project.tracks.len() as u32;

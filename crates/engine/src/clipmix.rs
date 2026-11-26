@@ -10,8 +10,11 @@ use crate::sources::Audio;
 
 /// Mixes `c` (an audio clip) into `out_l`/`out_r`, which start at the first sample of the
 /// block; the block's first sample sits at beat `b0`, `bps` beats per sample, `spb` seconds
-/// per beat.
-pub(crate) fn mix_audio_clip(c: &ClipRt, a: &Audio, b0: f64, bps: f64, spb: f64, out_l: &mut [f32], out_r: &mut [f32]) {
+/// per beat, and `sec0` is the time already spent of the clip when the block starts (the
+/// clip's offset and the tempo map's integral combined, negative before it) — so a tempo
+/// point inside the clip changes the reading speed without ever stepping the position.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn mix_audio_clip(c: &ClipRt, a: &Audio, b0: f64, bps: f64, spb: f64, sec0: f64, out_l: &mut [f32], out_r: &mut [f32]) {
     let n = out_l.len().min(out_r.len());
     // samples of this block inside the clip: start <= beat < end (the same per-sample test
     // as always, so the edges land on the same samples)
@@ -74,7 +77,12 @@ pub(crate) fn mix_audio_clip(c: &ClipRt, a: &Audio, b0: f64, bps: f64, spb: f64,
     // `rate` is exactly 1 unless the clip is resampled, so unstretched clips read the same
     // positions (and keep the on-grid fast path) as before it existed
     let step = bps * spb * fsr * c.rate;
-    let src_at = |i: usize| (c.offset + (b0 + i as f64 * bps - c.start)) * spb * fsr * c.rate;
+    // the source position at the block start is the time already spent of the clip (`sec0`,
+    // offset and integral): a tempo point inside the clip slows or speeds the reading but
+    // must not step the position back. Within the block the advance stays at the block's
+    // rate, like every per-block conversion.
+    let src_at = |i: usize| (sec0 + i as f64 * bps * spb) * fsr * c.rate;
+
     if glide {
         // automated: every sample its own gain and pan (the fades on top)
         let pan_at = |i: usize| {
@@ -261,15 +269,15 @@ mod tests {
             pan0: 0.0,
         };
         let (mut l, mut r) = (vec![0f32; 512], vec![0f32; 512]);
-        mix_audio_clip(&c, &a, 0.5, bps, spb, &mut l, &mut r);
+        mix_audio_clip(&c, &a, 0.5, bps, spb, (c.offset + 0.5 - c.start) * spb, &mut l, &mut r);
         // the reference at the old and the new gain bound the glide; it starts at the old one
         let (mut lo, mut lo_r, mut hi, mut hi_r) = (vec![0f32; 512], vec![0f32; 512], vec![0f32; 512], vec![0f32; 512]);
         c.gain0 = -24.0;
         c.gain = -24.0;
-        mix_audio_clip(&c, &a, 0.5, bps, spb, &mut lo, &mut lo_r);
+        mix_audio_clip(&c, &a, 0.5, bps, spb, (c.offset + 0.5 - c.start) * spb, &mut lo, &mut lo_r);
         c.gain0 = 0.0;
         c.gain = 0.0;
-        mix_audio_clip(&c, &a, 0.5, bps, spb, &mut hi, &mut hi_r);
+        mix_audio_clip(&c, &a, 0.5, bps, spb, (c.offset + 0.5 - c.start) * spb, &mut hi, &mut hi_r);
         assert!((l[0] - lo[0]).abs() < 1e-6, "starts at the old gain");
         for i in 0..512 {
             let (x0, x1) = (lo[i].min(hi[i]), lo[i].max(hi[i]));
@@ -327,7 +335,7 @@ mod tests {
                     let (mut l1, mut r1) = (vec![0.25f32; block], vec![-0.25f32; block]);
                     let (mut l2, mut r2) = (l1.clone(), r1.clone());
                     reference(&c, &a, b0, bps, spb, block, &mut l1, &mut r1);
-                    mix_audio_clip(&c, &a, b0, bps, spb, &mut l2, &mut r2);
+                    mix_audio_clip(&c, &a, b0, bps, spb, (c.offset + b0 - c.start) * spb, &mut l2, &mut r2);
                     for i in 0..block {
                         worst = worst.max((l1[i] - l2[i]).abs()).max((r1[i] - r2[i]).abs());
                     }
@@ -373,7 +381,16 @@ mod tests {
             let old = t.elapsed().as_secs_f64() / reps as f64 * 1e6;
             let t = std::time::Instant::now();
             for k in 0..reps {
-                mix_audio_clip(&c, &a, 1.0 + (k % 100) as f64 * 512.0 * bps, bps, spb, &mut l, &mut r);
+                mix_audio_clip(
+                    &c,
+                    &a,
+                    1.0 + (k % 100) as f64 * 512.0 * bps,
+                    bps,
+                    spb,
+                    (1.0 + (k % 100) as f64 * 512.0 * bps - c.start) * spb,
+                    &mut l,
+                    &mut r,
+                );
             }
             let new = t.elapsed().as_secs_f64() / reps as f64 * 1e6;
             println!("file {file_sr} Hz: reference {old:.2} us/clip/block, now {new:.2} us/clip/block ({:.1}x)", old / new);

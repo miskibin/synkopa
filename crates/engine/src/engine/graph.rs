@@ -642,10 +642,10 @@ pub(crate) fn build_timeline(
     keys: &HashMap<String, Arc<crate::keys::KeysBank>>,
     overrides: &HashSet<Id>,
 ) -> Timeline {
-    // comps are resolved once each, shared by every clip that plays them
-    let spb = 60.0 / p.bpm;
+    // comps are resolved once each, shared by every clip that plays them; their xfade
+    // seconds convert to comp beats through the map (anchored at the comp's own beat 0)
     let comps: HashMap<Id, Arc<crate::comp::CompRt>> =
-        p.comps.iter().map(|cp| (cp.id, Arc::new(crate::comp::build(cp, spb, audition.get(&cp.id).copied(), takes)))).collect();
+        p.comps.iter().map(|cp| (cp.id, Arc::new(crate::comp::build(cp, &p.tempo_map(), audition.get(&cp.id).copied(), takes)))).collect();
     let (chans, pats) = build_patterns(p, takes, keys);
     // automation envelopes whose target still exists and that no manual tweak overrode
     // (clips referencing a skipped one drop out below: their `auto_idx` entry is missing)
@@ -722,7 +722,17 @@ pub(crate) fn build_timeline(
             None => drives.push(Drive { target, clips: vec![ci] }),
         }
     }
-    Timeline { bpm: p.bpm, clips, pats, chans, autos, drives, loop_range: p.loop_range.map(|l| (l.a, l.b)), song_end: p.song_end() }
+    Timeline {
+        bpm: p.bpm,
+        tempo: super::tempo::TempoMap::compile(&p.tempo_points, p.bpm),
+        clips,
+        pats,
+        chans,
+        autos,
+        drives,
+        loop_range: p.loop_range.map(|l| (l.a, l.b)),
+        song_end: p.song_end(),
+    }
 }
 
 /// Turns an automation target into graph indices; `None` if it no longer exists.

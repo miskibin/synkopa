@@ -123,6 +123,7 @@ pub fn base() -> Project {
     Project {
         version: 2,
         bpm: 120.0,
+        tempo_points: vec![],
         tracks: vec![track(1, "Drums", 1), track(2, "Vocal", 2)],
         inserts: vec![
             Insert {

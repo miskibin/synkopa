@@ -38,6 +38,10 @@ pub const PROJECT_VERSION: u32 = 3;
 pub struct Project {
     pub version: u32,
     pub bpm: f64,
+    /// Tempo points over the song (a tempo map). Empty = the constant [`Project::bpm`]
+    /// everywhere. Sorted by beat on the way in; before the first point the tempo is `bpm`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tempo_points: Vec<TempoPoint>,
     pub tracks: Vec<Track>,
     /// `inserts[0]` is always the master (id 0).
     pub inserts: Vec<Insert>,
@@ -77,6 +81,16 @@ pub struct Project {
     /// Next id handed out by [`Project::alloc_id`]. Ids are never reused.
     pub next_id: Id,
 }
+
+/// BPM limits of a tempo point, enforced on the way in and trusted by the audio compile.
+pub const MIN_TEMPO_BPM: f64 = 20.0;
+pub const MAX_TEMPO_BPM: f64 = 300.0;
+/// The project's base BPM (`SetBpm`) may go past the point limit: it is the constant case,
+/// not an explicit point, and the compile must keep it (clamping a 480 BPM project to the
+/// point maximum would slow every constant-tempo path).
+pub const MAX_BASE_BPM: f64 = 999.0;
+/// At most this many tempo points per project (the compile trusts the write path's bound).
+pub const MAX_TEMPO_POINTS: usize = 4096;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LoopRange {
@@ -990,6 +1004,22 @@ pub fn played_notes(pat: &Pattern) -> Vec<Note> {
     out.append(&mut extra);
     out.sort_by(|a, b| a.step.total_cmp(&b.step));
     out
+}
+
+/// A tempo point on the song's timeline: from this beat on, the tempo is `bpm` — or, when
+/// [`TempoPoint::ramp`], it glides linearly (in beats) to the next point's BPM instead of
+/// stepping at this beat. Points are beat-sorted on the way in; two points at one beat are
+/// a jump. Before the first point the tempo is [`Project::bpm`].
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TempoPoint {
+    /// Beat position on the playlist (0 = the song's start).
+    pub beat: f64,
+    /// Tempo from this beat on, in beats per minute (clamped 20..=300 when set).
+    pub bpm: f64,
+    /// Glide to the next point's BPM over the beats between them, instead of a step here.
+    #[serde(default)]
+    pub ramp: bool,
 }
 
 /// Swing, in steps, added to a note that starts on an odd 16th (0-based 1, 3, 5 …).
