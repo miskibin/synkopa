@@ -114,4 +114,29 @@ test.describe('Playlist tempo lane', () => {
     await app.mouse.click(await xOf(app, 12.1), await rulerY(app));
     await expect(app.locator('.tpnow')).toHaveText(((await base(app)) - 15).toFixed(2));
   });
+
+  test('the toolbar readout follows the map at the playhead, and an undo restores it in place', async ({ app }) => {
+    const b = await tpBox(app), yMid = b.y + 10;
+    const bpmEl = app.locator('.clockbox .bpm');
+    await expect(bpmEl).toHaveText(await baseText(app)); // no map yet: the base
+
+    // a point at beat 8 dragged to base - 30, the playhead on it: the toolbar reads the MAP
+    await app.mouse.dblclick(await xOf(app, 8.05), yMid);
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: await base(app), ramp: false }]);
+    await drag(app, { x: await xOf(app, 8.05) + 1, y: yMid }, { x: await xOf(app, 8.05) + 1, y: b.y + 17 });
+    const low = (await base(app)) - 30;
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: low, ramp: false }]);
+    await app.mouse.click(await xOf(app, 8.1), await rulerY(app));
+    await expect(bpmEl).toHaveText(low.toFixed(2));
+
+    // CodeRabbit on #317: the undo's state merge edits the id-less points list IN PLACE (the
+    // array keeps its identity), so a readout whose compiled map is cached per array would
+    // keep the dragged tempo after Ctrl+Z. The press-poll undo (a premature press only toasts
+    // "nothing to undo"), then the SAME element restored: the toolbar must follow.
+    await expect.poll(async () => {
+      await app.keyboard.press(`${MOD}+z`);
+      return tempoPts(await engine(app));
+    }).toEqual([{ beat: 8, bpm: await base(app), ramp: false }]);
+    await expect(bpmEl).toHaveText(await baseText(app));
+  });
 });
