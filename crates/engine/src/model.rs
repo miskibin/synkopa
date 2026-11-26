@@ -211,6 +211,8 @@ pub enum FxKind {
     Analyzer,
     /// Three-band upward + downward compression, the "OTT" sound (`dsp::multiband`).
     Multiband,
+    /// Lo-fi character: noise, wobble, drive, digital and tape wear under one Magnitude (`dsp::patina`).
+    Patina,
     /// Mastering chain: tone EQ, three-band glue, width, clipper, true-peak limiter; set from a
     /// whole-song listen (`dsp::master`, `mastering`).
     Master,

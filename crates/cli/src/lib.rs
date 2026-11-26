@@ -67,7 +67,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
   undo | redo                              (running app only)
   bpm <value>
-  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|master|... [--preset N]
+  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|patina|analyzer|reverb|limit|master|... [--preset N]
   route --from ID --to ID [--gain 0..2] [--only]   mixer routing: insert FROM sends to TO (post-fader;
                                                   --only: no longer to the master; --to 0: to the master again)
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)

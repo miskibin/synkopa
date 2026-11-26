@@ -35,11 +35,12 @@ export const FXMETA: Record<FxKind, { icon: string; color: string; /** translati
   filter: { icon: 'M2 8h9c3 0 4 0 5.5 3S19 18 22 18 M14.5 6.5c1 .8 1.6 2 2 3', color: '#ff7a59', tag: 'c.fxtag.filter' },
   stereo: { icon: 'M12 4v16 M8.5 7.5L4 12l4.5 4.5 M15.5 7.5L20 12l-4.5 4.5', color: '#f58bd5', tag: 'c.fxtag.stereo' },
   multiband: { icon: 'M5 20v-8 M12 20V7 M19 20v-6 M3 12h4 M10 7h4 M17 14h4 M5 4v3 M3.5 5.5L5 4l1.5 1.5', color: '#ff9e3d', tag: 'c.fxtag.multiband' },
+  patina: { icon: 'M3 15c1.5-3 3-3 4.5 0s3 3 4.5 0 3-3 4.5 0 3 3 4.5 0 M5 8.5h.01 M10 6.5h.01 M15.5 9h.01 M19.5 6h.01', color: '#e8875a', tag: 'c.fxtag.patina' },
   master: { icon: 'M4 20V9 M9 20V5 M14 20v-8 M19 20V7 M2.5 4.5h19 M2.5 20.5h19', color: '#f2b84b', tag: 'c.fxtag.master' },
   analyzer: { icon: 'M3 17c2-1 2.5-9 4.5-9s2 6 4 6 2.5-9 4.5-9 2.5 8 5 9 M3 20.5h18', color: '#9fb4d0', tag: 'c.fxtag.analyzer' },
   plugin: { icon: ICONS.vst, color: '#9a8cf0', tag: 'c.fxtag.plugin' },
 };
-export const FX_ORDER = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'multiband', 'reverb', 'limit', 'master', 'analyzer'] as const;
+export const FX_ORDER = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'patina', 'stereo', 'multiband', 'reverb', 'limit', 'master', 'analyzer'] as const;
 export const TC = ['#4f8ef7', '#5aa9e6', '#69c3d6', '#47b8a8', '#5fbf8a', '#7c8cf8', '#e0a44a', '#9a8cf0', '#d9678f', '#8b93a1'];
 
 export function Icon(props: { d: string; size?: number; sw?: number }) {

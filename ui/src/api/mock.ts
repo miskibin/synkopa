@@ -27,6 +27,7 @@ import { onsetsFromPeaks } from '../lib/slicer';
 import { songEnd } from '../lib/export';
 import { MASTER_TARGETS, THIRDS, toneDb } from '../lib/master';
 import { eqCurve } from '../lib/eq';
+import { CLICK_RATE, patinaScaled, toCents, wearCutoff, wowDepth } from '../lib/patina';
 import { ATTACK as MB_ATTACK, BAND_IN_DB as MB_BAND_IN_DB, bandGain as mbBandGain, MAKEUP_DB as MB_MAKEUP_DB, RELEASE as MB_RELEASE } from '../lib/multiband';
 import { clamp, dbg } from '../lib/format';
 import { t } from '../lib/i18n';
@@ -852,6 +853,24 @@ export class MockBackend implements Backend {
       const gain = drive + meters[3] + meters[4] + meters[7];
       for (let k = 0; k < SPEC_BANDS; k++) specOut[k] = specIn[k] + gain + toneDb(pr, BAND_F[k]);
       out = level * dbg(gain);
+    } else if (fx.type === 'patina') {
+      // dsp::patina meters: [0] noise peak, [1]/[2] cents, [3] drive in, [4] rate, [5] bits, [6]/[7] dropouts,
+      // [8] wear low-pass, [9] wear GR, [10..15] module amounts, [15] magnitude, [16] clicks started
+      const k = patinaScaled(pr), ty = Math.round(pr.ntype ?? 0);
+      const follow = (pr.nfollow ?? 0) / 100, e = Math.min(2, level * 10);
+      const dyn = follow >= 0 ? 1 - follow + follow * e : 1 / (1 - 6 * follow * e);
+      meters[0] = k[0] ** 1.5 * 0.08 * dyn * (0.7 + 0.3 * Math.random());
+      const cents = toCents(wowDepth(k[1]));
+      meters[1] = cents * Math.cos(2 * Math.PI * (pr.wrate ?? 0.6) * t); meters[2] = cents * Math.cos(2 * Math.PI * (pr.wrate ?? 0.6) * t + Math.PI / 2 * (pr.wstereo ?? 0) / 100);
+      meters[3] = level * 0.8; meters[4] = Math.min(48000, pr.srate ?? 12000); meters[5] = pr.bits ?? 12;
+      sim.m[0] = Math.max(0, (sim.m[0] ?? 0) - dt * 6);
+      if (Math.random() < (0.15 + 3.4 * k[5] * k[5]) * dt && k[5] > 0) sim.m[0] = Math.sqrt(k[5]);
+      meters[6] = sim.m[0]; meters[7] = (pr.dstereo ?? 0) >= 0.5 ? 0 : sim.m[0];
+      meters[8] = wearCutoff(k[4], pr.tape ?? 0); meters[9] = level > 0.25 ? -k[4] * 2 : 0;
+      for (let i = 0; i < 5; i++) meters[10 + i] = k[i];
+      meters[15] = (pr.amount ?? 100) / 100;
+      sim.m[1] = ((sim.m[1] ?? 0) + CLICK_RATE[ty] * dt * (k[0] > 0 ? 1 : 0)) % 16777216; meters[16] = sim.m[1];
+      for (let i = 0; i < SPEC_BANDS; i++) specOut[i] = specIn[i] - (BAND_F[i] > meters[8] ? 12 * Math.log2(BAND_F[i] / meters[8]) : 0);
     } else if (fx.type === 'delay') {
       // dsp::delay meters: [0]/[1] read heads ms (LFO on time), [2] loop dB, [3] drive dB, [4] LFO, [5] model, [6] wet dB, [7] time ms, [8] ducking dB
       const model = Math.round(pr.model ?? 1), base = delayMs(pr, this.p.bpm), lfo = Math.sin(t * 2 * Math.PI * (pr.rate ?? 0.5));

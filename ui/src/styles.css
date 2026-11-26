@@ -976,6 +976,15 @@ select option { background: var(--bg4); color: var(--fg); }
   background: color-mix(in srgb, var(--fxc, var(--blue)) 3%, var(--bg2)); }
 .fxsec.adv { border-style: dashed; }
 .fxsecs > .advbtn { align-self: flex-end; }
+/* a strip of module columns (Patina): five modules side by side, lined up with the five panels
+   of the picture above (same 8 px gutters), the global sections in the row below */
+.fxsecs.fxsecs-cols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.fxsecs-cols > .fxsec { min-width: 0; }
+.fxsecs-cols > .fxsec .fxsec-b { flex-wrap: wrap; justify-content: center; align-items: flex-start; row-gap: 8px; }
+.fxsecs-cols > .fxsec:nth-child(6) { grid-column: span 2; }
+.fxsecs-cols > .fxsec:nth-child(7) { grid-column: span 3; }
+.fxsecs-cols .seg2 { flex-wrap: wrap; }
+.fxsecs-cols > .advbtn, .fxsecs-cols > div:empty { display: none; }
 /* the window's usage hint: a "?" in the header, the text on hover or focus */
 .fxhint { position: relative; flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line2); color: var(--fg4);
   font: 600 10px/14px var(--sans); text-align: center; cursor: help; user-select: none; }

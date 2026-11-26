@@ -452,7 +452,9 @@ Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/mo
 hysteresis, hold and look-ahead, `docs/gate-filter.md`), `filter` (SVF, ladder and DJ filter moved by an LFO or an
 envelope follower, `docs/gate-filter.md`), `stereo` (width,
 mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
-compression, the OTT sound, `dsp/multiband.rs`), `master` (tone EQ, three-band glue with width and bass mono, 2×
+compression, the OTT sound, `dsp/multiband.rs`), `patina` (lo-fi character: procedural vinyl/tape noise, wow and
+flutter, band-limited drive through the saturator core, sample-rate and bit reduction, tape wear and dropouts under
+one Magnitude, `docs/patina.md`), `master` (tone EQ, three-band glue with width and bass mono, 2×
 soft clipper, true-peak limiter, level match; `dsp/master.rs`, set by a whole-song listen in `mastering.rs` through
 the `master_listen` action, which stores its report in `Fx.listen`; a target that needs more than 7.5 dB of peak cut is lowered to the loudest clean level: `guarded`, `aim`), `analyzer` (BS.1770 loudness, true peak, spectrum and stereo
 field; the sound passes unchanged, `dsp/loudness.rs`), `reverb`, `limit`,
@@ -898,6 +900,7 @@ u32 nCol  × { u32 masker, u32 protect, f32 lo, f32 hi,         // mix assistant
 | `stereo` | `[0]` correlation out, `[1]` balance −1 (left) … +1 (right), `[2]` side/mid dB out, `[3]` correlation below 120 Hz, `[4]` correlation in, `[5]` side/mid dB in, `[6]` bass mono crossover Hz, `[7]` 1 while there is bass to judge. Zero latency; the window also gets X/Y points (`xy`) |
 | `master` | `[0..3]` band glue gain dB (≤ 0) low/mid/high, `[3]` clipper dB, `[4]` limiter dB, `[5]` input short-term loudness (K-weighted, ~3 s), `[6]` output loudness before level match, `[7]` level-match gain dB, `[8..11]` band detector level dB. Latency: limiter look-ahead (3 ms) + the clipper's 2× half-bands |
 | `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |
+| `patina` | `[0]` noise peak heard (linear), `[1]`/`[2]` wobble pitch L/R cents, `[3]` peak into the driven band, `[4]` Digital sample rate Hz, `[5]` bits, `[6]`/`[7]` dropout depth L/R 0..1, `[8]` wear low-pass Hz, `[9]` wear peak compression dB, `[10..15]` noise/wobble/drive/digital/wear amounts after Magnitude and Wander 0..1, `[15]` Magnitude, `[16]` clicks started (counter, wraps at 2²⁴). Latency: the drive's 2× half-bands + 2 samples of the wobble line, compensated by PDC; never parked while its noise is up (`tail_samples` = None) |
 | `analyzer` | `[0]` momentary LUFS, `[1]` short-term LUFS, `[2]` integrated LUFS (−200 = not yet), `[3]` loudness range LU (−1 = not yet), `[4]` true-peak hold dBTP, `[5]` true peak of the last 100 ms, `[6]` correlation, `[7]` balance, `[8]` seconds measured, `[9]` side/mid dB. Integrated, range and the hold restart when playback starts. Zero latency; X/Y points and a long FFT (8192) for the bass bands of `specOut` |
 | `delay` | see `docs/delay.md`: `[0]`/`[1]` read heads L/R ms, `[2]` loop dBFS, `[3]` drive reduction dB, `[4]` LFO, `[5]` model, `[6]` wet dBFS, `[7]` set time ms. Zero latency |
 | `warp` | see `docs/warp.md`: `[0]` bar position (−1 stopped), `[1]`/`[2]` playing slots, `[3]`/`[4]` queued slots, `[5]` offset beats, `[6]` speed, `[7]` gain, `[9]` hold state, `[10]` buffered s. 2 samples latency, compensated by PDC; maps arrive through `Processor::swap_data` (`Cmd::FxData`) |
