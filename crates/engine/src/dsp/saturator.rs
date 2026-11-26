@@ -1,6 +1,6 @@
 //! Character saturator: five analog-style voicings around one dynamic nonlinearity.
 //!
-//! Signal path per channel (design notes and measurements: docs/saturator.md):
+//! Signal path per channel (design notes and measurements: docs/effects/saturator.md):
 //!
 //! ```text
 //! in ─ up 2×/4× ─┬─ drive gain ─ low cut (+thump) ─ tone tilt ─ pre-emphasis ─ shaper ─ de-emphasis

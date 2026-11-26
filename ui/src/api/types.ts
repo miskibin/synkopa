@@ -1,4 +1,4 @@
-// TypeScript mirror of crates/engine/src/model.rs, ops.rs, catalog.rs and the DTOs in docs/architecture.md.
+// TypeScript mirror of crates/engine/src/model.rs, ops.rs, catalog.rs and the DTOs in docs/dev/architecture.md.
 // JSON is camelCase; enum tags are lowercase.
 
 export type Id = number;

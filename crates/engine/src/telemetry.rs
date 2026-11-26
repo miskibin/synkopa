@@ -1,4 +1,4 @@
-//! The binary frame the UI draws from. Layout is documented in docs/architecture.md.
+//! The binary frame the UI draws from. Layout is documented in docs/dev/architecture.md.
 
 use crate::analysis::FxAnalysis;
 use crate::model::Id;

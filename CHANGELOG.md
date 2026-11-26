@@ -2,7 +2,7 @@
 
 What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest version comes first; its section is
 shown in the app after an update and is published as the release notes (see
-`docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
+`docs/dev/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
 ## Unreleased
 

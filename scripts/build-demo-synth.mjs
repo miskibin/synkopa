@@ -1,5 +1,5 @@
 // Builds Synkopa Demo Synth (crates/demo-synth) and lays it out as a VST3 bundle, by default in
-// app/resources/plugins, which the installer ships and Synkopa scans (see docs/architecture.md,
+// app/resources/plugins, which the installer ships and Synkopa scans (see docs/dev/architecture.md,
 // "Plugin instruments"). The release and CI workflows run it before building the app; the
 // host's end-to-end instrument test points WAVE_VST3_TEST_INSTRUMENT at the result.
 //   node scripts/build-demo-synth.mjs [--debug] [--out DIR]

@@ -1,4 +1,4 @@
-//! Measurements of the character saturator (docs/saturator.md):
+//! Measurements of the character saturator (docs/effects/saturator.md):
 //! `cargo run -p wave-engine --release --example sat_measure`
 //!
 //! THD and harmonics per voicing, aliasing of a 5 kHz tone at full drive, auto-gain

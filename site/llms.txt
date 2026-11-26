@@ -42,9 +42,10 @@ The rules that decide which features, built-in plugins, factory content and pull
 
 - [Download](https://github.com/miskibin/synkopa/releases/latest): installers for Windows, macOS and Linux
 - [Source code and README](https://github.com/miskibin/synkopa)
+- [User guide](https://github.com/miskibin/synkopa/blob/main/docs/README.md): getting started, the basics, beats, arranging, vocals, mixing, exporting, shortcuts, troubleshooting
 - [Command line reference](https://github.com/miskibin/synkopa/blob/main/docs/cli.md): every `synkopa` command an agent can run
-- [Synkopa Instruments](https://github.com/miskibin/synkopa/blob/main/docs/keys.md): the 11 sampled instruments, articulations and credits
+- [Synkopa Instruments](https://github.com/miskibin/synkopa/blob/main/docs/instruments/synkopa-instruments.md): the 11 sampled instruments, articulations and credits
 - [Benchmarks vs FL Studio](https://github.com/miskibin/synkopa/blob/main/perf/realworld/README.md): real-world desktop timings and methodology
-- [Architecture](https://github.com/miskibin/synkopa/blob/main/docs/architecture.md): engine, ops and undo, telemetry, UI boundaries
+- [Architecture](https://github.com/miskibin/synkopa/blob/main/docs/dev/architecture.md): engine, ops and undo, telemetry, UI boundaries
 - [Changelog](https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md): what changed in each release
 - [Video](https://www.youtube.com/watch?v=wtuHDyIQpYk)

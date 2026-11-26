@@ -161,7 +161,7 @@ The Synkopa Instruments piano plays recordings from the
 [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano) by
 Alexander Holm, licensed [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/). Installers
 ship 208 of its recordings, modified: each is cut to 9 seconds with a fade-out (the longest a
-note rings in Synkopa) and stored as 16-bit FLAC (see `docs/keys.md`). The in-app download installs
+note rings in Synkopa) and stored as 16-bit FLAC (see `docs/instruments/synkopa-instruments.md`). The in-app download installs
 the original files unmodified.
 Music made with Synkopa Instruments contains these recordings: credit them as the licence asks.
 

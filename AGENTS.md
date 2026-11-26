@@ -101,7 +101,7 @@ outweighs its visual and interaction cost.
 
 ## Architecture and Performance
 
-Respect the boundaries described in `docs/architecture.md`. The Rust engine
+Respect the boundaries described in `docs/dev/architecture.md`. The Rust engine
 owns the project and undo; the UI changes it only through ops (`apply_ops`) and
 reads it from `state` events. Views do not call Tauri directly: they go through
 `ui/src/api/backend.ts`, which has a matching in-browser mock (`ui/src/api/mock.ts`)
