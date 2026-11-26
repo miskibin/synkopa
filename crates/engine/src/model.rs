@@ -1004,20 +1004,8 @@ pub fn played_notes(pat: &Pattern) -> Vec<Note> {
     out.append(&mut extra);
     out.sort_by(|a, b| a.step.total_cmp(&b.step));
     out
-/// A tempo point on the song'"'"'s timeline: from this beat on, the tempo is `bpm` — or, when
-/// [`TempoPoint::ramp`], it glides linearly (in beats) to the next point'"'"'s BPM instead of
-/// stepping at this beat. Points are beat-sorted on the way in; two points at one beat are
-/// a jump. Before the first point the tempo is [`Project::bpm`].
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TempoPoint {
-    /// Beat position on the playlist (0 = the song'"'"'s start).
-    pub beat: f64,
-    /// Tempo from this beat on, in beats per minute (clamped 20..=300 when set).
-    pub bpm: f64,
-    /// Glide to the next point'"'"'s BPM over the beats between them, instead of a step here.
-    #[serde(default)]
-    pub ramp: bool,
+}
+
 /// A tempo point on the song's timeline: from this beat on, the tempo is `bpm` — or, when
 /// [`TempoPoint::ramp`], it glides linearly (in beats) to the next point's BPM instead of
 /// stepping at this beat. Points are beat-sorted on the way in; two points at one beat are
