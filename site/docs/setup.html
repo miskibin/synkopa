@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Install Synkopa, choose audio devices and buffer size, arrange the workspace, and check for updates.">
+  <title>Install and set up Synkopa · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html" aria-current="page">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Install and set up Synkopa</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#install">Install and verify playback</a>
+        <a href="#audio">Choose your audio driver and devices</a>
+        <a href="#buffer">Fix clicks and recording delay</a>
+        <a href="#workspace">Arrange the workspace</a>
+        <a href="#updates">Check for an update</a>
+      </nav>
+      <article class="prose">
+        <section>
+          <h2 id="install">Install and verify playback</h2>
+          <ol>
+            <li>Download the package for your computer from the <a href="https://github.com/miskibin/synkopa/releases/latest">latest release</a>.</li>
+            <li><strong>Windows:</strong> run the <code>-setup.exe</code> installer. <strong>macOS:</strong> use the DMG on Apple Silicon with macOS 13.4 or later. <strong>Linux:</strong> install the DEB or RPM for your distribution, or make the AppImage executable and run it.</li>
+            <li>Open Synkopa. Choose <strong>File → Open demo project</strong> and press <kbd>Space</kbd>. You should hear the demo and see the Playlist playhead move. If it moves in silence, set your output below.</li>
+          </ol>
+          <p>See the <a href="https://github.com/miskibin/synkopa#install">platform notes</a> for macOS first launch and Linux packages.</p>
+        </section>
+        <section>
+          <h2 id="audio">Choose your audio driver and devices</h2>
+          <ol>
+            <li>Open <strong>File → Settings… → Audio</strong>. Choose a driver. On Windows, start with <strong>WASAPI</strong> for system audio or <strong>ASIO</strong> for an interface with its own ASIO driver. On Linux, use <strong>ALSA</strong> or an already running JACK or PipeWire JACK server. macOS uses <strong>Core Audio</strong>.</li>
+            <li>Set <strong>Output</strong> to the device your speakers or headphones use. Set <strong>Input</strong> to your recording device. For ASIO, the same driver supplies input and output. Choose <strong>Input channel</strong> after arming Record or turning on monitoring to open the input.</li>
+            <li>Set <strong>Sample rate</strong> to <strong>Auto</strong> unless the device or session needs a specific rate. Check that <strong>Status</strong> says running. Play the demo again and check that sound comes through the output you selected.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/settings-audio.webp"><img src="images/settings-audio.webp" width="1150" height="850" alt="Audio settings with driver, input, output, buffer, status, and recording offset." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 70%; --y: 21%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 70%; --y: 27%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 68%; --y: 75%" aria-hidden="true">3</span>
+            </div>
+            <figcaption><ol>
+              <li>Choose the driver for your device.</li>
+              <li>Choose your output and check the input controls just below it.</li>
+              <li>Check Status after changing drivers or devices.</li>
+            </ol></figcaption>
+          </figure>
+          <p>If you unplug an ASIO interface on Windows, use <strong>Switch to WASAPI</strong> in the audio notice or select WASAPI in Settings. Switch back to ASIO after reconnecting.</p>
+          <p>Once playback works, <a href="record.html#input">set up a microphone</a> or <a href="midi.html">connect a MIDI keyboard</a>.</p>
+        </section>
+        <section>
+          <h2 id="buffer">Fix clicks and recording delay</h2>
+          <ol>
+            <li>Loop a busy part of the song and reset the <strong>Underruns</strong> counter when a count is present. If it climbs, increase <strong>Buffer</strong> one step. Play the same part and compare. A larger buffer gives the engine more time but adds monitoring delay.</li>
+            <li>For recording, start with a stable buffer. To measure where takes land, hold the microphone near a speaker or one headphone cup and choose <strong>Measure latency</strong>. Synkopa plays a few clicks and sets <strong>Recording offset</strong> from the measurement.</li>
+            <li>Record a short test against the click and check where the waveform lands. A positive offset moves recorded audio earlier. If the measurement is uncertain, move the microphone closer and try again.</li>
+          </ol>
+          <p>JACK controls sample rate and buffer size on its server. Change those settings in JACK or PipeWire.</p>
+        </section>
+        <section>
+          <h2 id="workspace">Arrange the workspace</h2>
+          <ol>
+            <li>Open Channel Rack (<kbd>F6</kbd>), Piano roll (<kbd>F7</kbd>), or Mixer (<kbd>F9</kbd>). Drag its title bar onto a docking guide, or choose a position in <strong>View → Window layout</strong>.</li>
+            <li>For more editing room, double-click the Mixer title bar to maximize it. Use <kbd>F5</kbd> to bring the Playlist forward or restore tucked windows. Use <kbd>F11</kbd> to toggle full screen.</li>
+            <li>To get back to a known layout, choose <strong>View → Window layout → Reset window layout</strong>. The Mixer docks below, the Rack and Piano roll float, and the Browser is shown.</li>
+          </ol>
+          <p>Change <strong>Theme</strong>, interface <strong>Scale</strong>, or <strong>Channel Rack step spacing</strong> in <strong>Settings… → Look</strong>. Set language, note preview, and hints in <strong>General</strong>.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/settings-look.webp"><img src="images/settings-look.webp" width="1150" height="850" alt="Look settings showing Synkopa’s dark and light theme choices." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 8%; --y: 16%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 34%; --y: 27%" aria-hidden="true">2</span>
+            </div>
+            <figcaption><ol>
+              <li>Open Look to change the interface.</li>
+              <li>Choose a theme. Scroll below the themes to change scale and step spacing.</li>
+            </ol></figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="updates">Check for an update</h2>
+          <ol>
+            <li>Open <strong>Help → Check for updates</strong>, or go to <strong>Settings… → Updates</strong> to check the installed version and turn <strong>Update automatically</strong> on or off.</li>
+            <li>If an update is available, review <strong>What's new</strong>, then choose <strong>Download update</strong> when offered. Wait until the app reports the update is ready.</li>
+            <li>Choose the restart action when you can stop working. Save the project when prompted. After restart, check the version in Updates.</li>
+          </ol>
+          <p>If in-app updating is unavailable for your package, install the appropriate package from the <a href="https://github.com/miskibin/synkopa/releases/latest">release page</a>.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

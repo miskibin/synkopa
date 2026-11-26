@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Save project versions, recover work, relink missing audio, and transfer an editable project.">
+  <title>Save and manage projects · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html" aria-current="page">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Save and manage projects</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#save">Start, save, and reopen a project</a>
+        <a href="#backup">Recover work after a crash or mistaken save</a>
+        <a href="#relink">Relink missing audio</a>
+        <a href="#portable">Move a project to another computer</a>
+      </nav>
+      <article class="prose">
+        <section>
+          <h2 id="save">Start, save, and reopen a project</h2>
+          <ol>
+            <li>Choose <strong>File → New project</strong> to start with the drum channels, or <strong>File → Open demo project</strong> to explore the included song.</li>
+            <li>Choose <strong>File → Save</strong> or press <kbd>Ctrl</kbd> + <kbd>S</kbd>. Name the <code>.synkopa</code> file and give the song a folder. On the first save, recorded files can move into the project's <code>Audio</code> folder.</li>
+            <li>Reopen the file with <strong>File → Open…</strong> or <strong>Open recent</strong>. If a recent project is marked missing, use <strong>Open…</strong> to find its new location. Older <code>.wave</code> projects can still open.</li>
+          </ol>
+          <p>If Synkopa asks about unsaved changes before opening another project, save to keep them or cancel to stay in the current project.</p>
+          <p><strong>Save as…</strong> lets you choose a different name or path. <strong>Save new version</strong> creates a numbered file beside the current one and continues working in that version.</p>
+        </section>
+        <section>
+          <h2 id="backup">Recover work after a crash or mistaken save</h2>
+          <ol>
+            <li>In <strong>File → Settings… → General</strong>, choose an <strong>Autosave</strong> interval. Autosave keeps a recovery copy of unsaved edits. The project file updates when you save.</li>
+            <li>If Synkopa opens <strong>Recover unsaved project?</strong> after an unexpected exit, choose <strong>Recover</strong>. Play back the recovered project and use <strong>Save</strong> to keep it, or <strong>Save as…</strong> to keep a separate file. <strong>Not now</strong> keeps the copy and asks again next launch.</li>
+            <li>To go back after a mistaken save, use <strong>File → Open…</strong> and open <code>Song (backup).synkopa</code> next to the original. It holds the previous save. Use <strong>Save as…</strong> to name the recovered version before continuing.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/settings-general.webp"><img src="images/settings-general.webp" width="1150" height="850" alt="General settings showing the project Autosave interval." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 66%; --y: 36.5%" aria-hidden="true">1</span>
+            </div>
+            <figcaption><ol><li>Set the Autosave interval under Project.</li></ol></figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/project-recover.webp"><img src="images/project-recover.webp" width="550" height="225" alt="Recovery prompt for a project that closed before its first save." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 85%; --y: 80%" aria-hidden="true">1</span>
+            </div>
+            <figcaption><ol><li>Recover opens the snapshot so you can listen and save it.</li></ol></figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="relink">Relink missing audio</h2>
+          <ol>
+            <li>Click the <strong>missing</strong> count near the menus. You can also open a missing clip’s menu and choose <strong>Relink missing file…</strong>.</li>
+            <li>If you moved a whole library, choose <strong>Search folder…</strong>. It checks subfolders and relinks an unambiguous match with the remembered length. When several files match, choose one and click <strong>Use</strong>.</li>
+            <li>For a renamed or single file, choose <strong>Locate…</strong>. For a missing factory sample, install its kit in the Browser’s Library. Play the affected clips, check for shifted ends if the new file has a different length, then save.</li>
+          </ol>
+          <p>Use <kbd>Ctrl</kbd> + <kbd>Z</kbd> to undo a wrong relink. For a project moved from another machine, look for its adjacent <code>Audio</code> folder before replacing sources.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/project-relink.webp"><img src="images/project-relink.webp" width="800" height="373" alt="Missing audio dialog with two missing takes, a folder search, and a Locate button for each take." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 11%; --y: 35%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 92%; --y: 47%" aria-hidden="true">2</span>
+            </div>
+            <figcaption><ol>
+              <li>Search a moved folder and its subfolders for all missing takes.</li>
+              <li>Locate one renamed or moved file manually.</li>
+            </ol></figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="portable">Move a project to another computer</h2>
+          <ol>
+            <li>Resolve <a href="#relink">missing audio</a>. Choose <strong>File → Export project as ZIP…</strong> to collect source audio and takes with the project.</li>
+            <li>Unzip the whole package on the other computer. Keep the <code>Audio</code> folder beside the project and open the <code>.synkopa</code> file.</li>
+            <li>Install any third-party plugins separately and copy samples loaded inside them. Play a busy section to check that clips, takes, and instrument tracks sound as expected.</li>
+          </ol>
+          <p>Send a <a href="export.html#mix">reference mix</a> with an editable project when the recipient may have different plugins.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

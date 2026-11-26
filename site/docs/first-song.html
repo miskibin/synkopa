@@ -27,25 +27,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html" aria-current="page">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -78,16 +87,16 @@
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
-              <a class="shot" href="images/rack.webp"><img src="images/rack.webp" width="1818" height="458" alt="The lesson’s one-bar drum pattern in Synkopa’s Channel Rack." loading="lazy"></a>
-              <span class="shot-pin" data-pin-side="below" style="--x: 17.9%; --y: 6.6%" aria-hidden="true">1</span>
-              <span class="shot-pin" style="--x: 35%; --y: 51%" aria-hidden="true">2</span>
-              <span class="shot-pin" style="--x: 7%; --y: 80%" aria-hidden="true">3</span>
+              <a class="shot" href="images/compose-rack-after.webp"><img src="images/compose-rack-after.webp" width="909" height="229" alt="The same Channel Rack with four kicks, two claps and eight hi-hat hits." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 25.5%; --y: 23.8%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 34.5%; --y: 37.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 29.9%; --y: 51.5%" aria-hidden="true">3</span>
             </div>
             <figcaption>
               <ol>
-                <li>Select Pattern 1 in the Channel Rack.</li>
-                <li>Step cells show Kick, Clap, and Hat at different positions. A lit cell plays that sound.</li>
-                <li>Use + Channel to add an instrument.</li>
+                <li>Kick starts the bar and marks each beat.</li>
+                <li>Clap lands on beats 2 and 4.</li>
+                <li>Hat fills the spaces between beats.</li>
               </ol>
             </figcaption>
           </figure>
@@ -104,22 +113,23 @@
         <section>
           <h2 id="melody">Add a melody</h2>
           <ol>
-            <li>In the Channel Rack, choose <strong>+ Channel → Synkopa Instruments — pianos, strings, guitars</strong> to add the Grand Piano.</li>
-            <li>Right-click the piano channel name and choose <strong>Piano roll</strong>. Click the grid to place notes. Drag a note to move it or drag its right edge to resize it.</li>
-            <li>Keep the notes within bar 1 and play in <strong>PAT</strong> to hear the piano with the drums.</li>
+            <li>In the Channel Rack, choose <strong>+ Channel → Empty synth</strong> to add a synth.</li>
+            <li>Right-click the synth channel name and choose <strong>Piano roll</strong>. Click the grid to place notes. Drag a note to move it or drag its right edge to resize it.</li>
+            <li>Keep the notes within bar 1 and play in <strong>PAT</strong> to hear the synth with the drums.</li>
           </ol>
+          <p>See <a href="patterns.html#piano-roll">Piano roll editing</a> for selection and velocity, or <a href="midi.html#record-notes">record the part from a MIDI keyboard</a>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
-              <a class="shot" href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Synkopa Piano roll with notes and the velocity lane." loading="lazy"></a>
-              <span class="shot-pin" style="--x: 3%; --y: 59%" aria-hidden="true">1</span>
-              <span class="shot-pin" style="--x: 45%; --y: 62%" aria-hidden="true">2</span>
-              <span class="shot-pin" style="--x: 57%; --y: 90%" aria-hidden="true">3</span>
+              <a class="shot" href="images/compose-piano-after.webp"><img src="images/compose-piano-after.webp" width="820" height="430" alt="The same Piano roll after drawing a three-note synth phrase." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 11.6%; --y: 53.5%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 28.9%; --y: 61.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 29.1%; --y: 70.2%" aria-hidden="true">3</span>
             </div>
             <figcaption>
               <ol>
-                <li>Rows match keys on the left. Drag a note up or down to change pitch.</li>
-                <li>Drag the note’s right edge to change its length.</li>
-                <li>The velocity lane sets how hard each note is played.</li>
+                <li>This note begins the phrase. Horizontal position sets onset.</li>
+                <li>Use a note’s right edge to change its length.</li>
+                <li>Drag a note vertically to change its pitch.</li>
               </ol>
             </figcaption>
           </figure>
@@ -128,22 +138,25 @@
           <h2 id="arrange">Turn the loop into a song</h2>
           <ol>
             <li>Stop playback and bring the <strong>Playlist</strong> forward with <kbd>F5</kbd>.</li>
-            <li>In the Browser’s <strong>Patterns</strong> tab, drag <strong>Pattern 1</strong> to bars 1, 2, 3, and 4. Press <kbd>Alt</kbd> + <kbd>F8</kbd> if the Browser is hidden.</li>
+            <li>In the Browser’s <strong>Patterns</strong> tab, drag <strong>Pattern 1</strong> to bars 1 and 2. Press <kbd>Alt</kbd> + <kbd>F8</kbd> if the Browser is hidden.</li>
             <li>Click the Playlist ruler at bar 1 to set the start and switch to <strong>SONG</strong>. Press <kbd>Space</kbd> to hear the Playlist.</li>
           </ol>
+          <p>Continue with <a href="arrangement.html#timeline">loops and section markers</a> when you want separate sections.</p>
           <div class="note"><p>Edits affect every clip that uses the pattern. To edit just one clip, open its menu and choose <strong>Make unique</strong>.</p></div>
           <figure class="annotated-shot">
             <div class="shot-frame">
-              <a class="shot" href="images/overview.webp"><img src="images/overview.webp" width="1600" height="900" alt="Synkopa Playlist with the Browser on the left and the Mixer docked below." loading="lazy"></a>
-              <span class="shot-pin" style="--x: 7%; --y: 22%" aria-hidden="true">1</span>
-              <span class="shot-pin" style="--x: 49%; --y: 32%" aria-hidden="true">2</span>
-              <span class="shot-pin" data-pin-side="below" style="--x: 22%; --y: 2.8%" aria-hidden="true">3</span>
+              <a class="shot" href="images/compose-arrange-after.webp"><img src="images/compose-arrange-after.webp" width="1080" height="420" alt="Playlist with two drum clips, a section marker and a loop range." loading="lazy"></a>
+              <span class="shot-pin" data-pin-side="below" style="--x: 39.9%; --y: 24.3%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 46.3%; --y: 29.5%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 49.4%; --y: 37.4%" aria-hidden="true">3</span>
+              <span class="shot-pin" data-pin-side="below" style="--x: 42.1%; --y: 4.0%" aria-hidden="true">4</span>
             </div>
             <figcaption>
               <ol>
-                <li>Select a pattern in the Browser.</li>
-                <li>Drop it onto a Playlist lane where it should play.</li>
-                <li>Select SONG to hear clips on the Playlist.</li>
+                <li>Click the <strong>Intro</strong> marker to jump to its bar.</li>
+                <li>The highlighted ruler area is the loop. Double-click the ruler to clear it.</li>
+                <li>This second clip is another instance of the same pattern.</li>
+                <li>Use <strong>SONG</strong> to play the Playlist.</li>
               </ol>
             </figcaption>
           </figure>

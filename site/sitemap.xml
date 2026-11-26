@@ -2,15 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://miskibin.github.io/synkopa/</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/setup.html</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/first-song.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/projects.html</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/patterns.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/record.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/mix.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/export.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/reference.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/plugins.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/midi.html</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/instruments.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/arrangement.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/audio-editing.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/audio-analysis.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/record.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/vocal-production.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/mix.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/automation.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/mastering.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/export.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/plugins.html</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/dynamics.html</loc></url>
   <url><loc>https://miskibin.github.io/synkopa/docs/creative-effects.html</loc></url>
-  <url><loc>https://miskibin.github.io/synkopa/docs/mastering.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/cli.html</loc></url>
+  <url><loc>https://miskibin.github.io/synkopa/docs/reference.html</loc></url>
 </urlset>

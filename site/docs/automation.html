@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Draw and record control changes over time in Synkopa.">
+  <title>Automate a mix · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html" aria-current="page">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Automate a mix</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#create">Make a filter sweep</a>
+        <a href="#shape">Edit the shape</a>
+        <a href="#record">Record a control move</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="create">Make a filter sweep</h2>
+          <p>Open a low-pass filter over four bars so a synth moves from dark to bright as the next section approaches.</p>
+          <ol>
+            <li>Route a sustained synth to its own Mixer insert. Add <a href="creative-effects.html#filter">Filter</a> and select <strong>LP</strong>. Sweep <strong>Cutoff</strong> while the part plays so you know which values sound dark and open.</li>
+            <li>In the Playlist, drag on the ruler to select the bars you want to sweep over. Right-click the Filter’s <strong>Cutoff</strong> knob and choose <strong>Automate on the playlist</strong>. The new clip covers the selected loop. With no loop, it starts from the start marker and lasts four bars.</li>
+            <li>Drag the clip’s left endpoint down and its right endpoint up. Drag the bottom edge of the track header down if you need more room to see the line. Play in <strong>SONG</strong> mode from the start of the clip. The Cutoff knob follows the rising line and the highs come back as the section plays.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/automation-menu.webp"><img src="images/automation-menu.webp" width="430" height="225" alt="Context menu on the Cutoff knob with Automate on the playlist available." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 44%; --y: 42%" aria-hidden="true">1</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Choose <strong>Automate on the playlist</strong>. The menu shows <strong>loop</strong> because the Playlist already has a loop range.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/automation-ramp.webp"><img src="images/automation-ramp.webp" width="411" height="224" alt="An orange filter cutoff automation clip from bar 9 to bar 13, rising from a low left endpoint to a high right endpoint." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 7.4%; --y: 93.3%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 89%; --y: 46%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>The low starting point keeps the filter mostly closed.</li>
+                <li>The high ending point lets more highs through.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure>
+            <video controls preload="none" playsinline width="464" height="364" poster="images/automation-playback-poster.webp" aria-label="Playback of Filter Cutoff automation" style="display: block; max-width: 100%; height: auto">
+              <source src="images/automation-playback.webm" type="video/webm">
+              <a href="images/automation-playback.webm">Download the playback video</a>.
+            </video>
+            <figcaption>The playhead crosses the rising automation clip as the Cutoff readout climbs. This video is silent.</figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="shape">Edit the shape</h2>
+          <p>To keep the synth dark longer, drag the small dot between the endpoints to bend the ramp, or right-click empty space below the clip header to add a point. Put that point late in the clip and close in height to the first point. The horizontal position is when the value changes. The vertical position controls how far the filter opens. Play again and listen for the change to happen nearer the transition.</p>
+          <p>Choose <strong>Hold</strong> on the point where a value should jump. For example, add a high point on a section boundary, right-click it and choose Hold. Cutoff stays at the preceding point’s value until it reaches the high point.</p>
+          <p>If the envelope stops driving the knob after you move it by hand during playback, right-click it and choose <strong>Re-enable automation</strong>. If the clip is hard to find, choose <strong>Select automation clips</strong> from the same menu.</p>
+        </section>
+        <section>
+          <h2 id="record">Record a control move</h2>
+          <ol>
+            <li>Right-click the transport’s Record button. Enable <strong>Automation</strong> in the record filter and disable audio and notes if you only want to capture the control move. Leave <strong>Latch</strong> off for touch recording, which writes until you release the control. Enable <strong>Latch</strong> to keep writing its last value until you stop.</li>
+            <li>Set the playhead just before the move. Arm record, start playback in <strong>SONG</strong>, and sweep <strong>Cutoff</strong> through the transition. Stop playback and turn recording off.</li>
+            <li>Look for the recorded points in the automation clip. Replay the same bars with hands off the knob. If a movement is too abrupt, drag its points or bend the section between them.</li>
+          </ol>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

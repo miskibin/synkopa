@@ -60,16 +60,13 @@ function setupSearch() {
       const response = await fetch(topic.url);
       if (!response.ok) throw new Error("Could not load guide");
       const doc = new DOMParser().parseFromString(await response.text(), "text/html");
-      return Array.from(doc.querySelectorAll(".prose section")).map(section => {
-        const heading = section.querySelector("h2[id]");
-        return {
-          title: heading.textContent,
-          url: new URL("#" + heading.id, topic.url).href,
-          topic: topic.title,
-          body: normalize(section.textContent),
-          icon: heading.querySelector(".plugin-icon"),
-        };
-      });
+      return Array.from(doc.querySelectorAll(".prose section > h2[id], .prose section > h3[id]"), heading => ({
+        title: heading.textContent,
+        url: new URL("#" + heading.id, topic.url).href,
+        topic: topic.title,
+        body: normalize(heading.parentElement.textContent),
+        icon: heading.querySelector(".plugin-icon"),
+      }));
     }));
     entries = [...topics, ...pages.flatMap(page => page.status === "fulfilled" ? page.value : [])];
     limited = pages.some(page => page.status === "rejected");
@@ -377,3 +374,30 @@ function setupCompressionExample() {
 }
 
 setupCompressionExample();
+
+function setupCopyCommands() {
+  if (!navigator.clipboard?.writeText) return;
+  for (const block of document.querySelectorAll("[data-copy-command]")) {
+    const tools = document.createElement("div");
+    const feedback = document.createElement("span");
+    const copy = document.createElement("button");
+    tools.className = "code-tools";
+    feedback.setAttribute("role", "status");
+    copy.type = "button";
+    copy.className = "close";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy commands");
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(block.textContent);
+        feedback.textContent = "Copied";
+      } catch {
+        feedback.textContent = "Select and copy the commands manually.";
+      }
+    });
+    tools.append(feedback, copy);
+    block.before(tools);
+  }
+}
+
+setupCopyCommands();

@@ -26,25 +26,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html" aria-current="page">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html" aria-current="page">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -63,7 +72,7 @@
       <article class="prose">
         <section>
           <h2 id="loudness-and-peaks">Loudness and peaks</h2>
-          <p>Mastering prepares the whole mix for release. Fix a buried vocal or an overpowering kick in the mix first. Changes on the Master affect everything.</p>
+          <p>Mastering prepares the whole mix for release. Play a chorus and a quieter section before adding Master. If only one instrument is off balance, correct it on its insert so the rest of the mix can stay where it is.</p>
           <dl class="terms">
             <div><dt>LUFS</dt><dd>Estimated perceived loudness. Integrated LUFS summarizes the measured playback.</dd></div>
             <div><dt>dBTP</dt><dd>True peak. Estimates how high the reconstructed signal reaches between digital samples.</dd></div>
@@ -99,8 +108,8 @@
         <section>
           <h2 id="analyzer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Analyzer</h2>
           <p>Measures the signal without changing it. The spectrum shows frequency balance, the stereo display shows left/right behavior, and the loudness view shows LUFS and true peak. Its <strong>Target</strong> is a reference line for the measurement.</p>
-          <p><strong>Try it.</strong> Add a fresh Analyzer after the last effect on the Master insert and play the full song once without looping. Compare integrated LUFS and true peak. A louder chorus may raise the whole-song measurement while the highest true peak comes from a single earlier hit.</p>
-          <p><a href="export.html#mix">Export the finished mix</a>.</p>
+          <p><strong>Try it.</strong> Place Analyzer in the final slot on the Master insert. Turn off the Playlist loop, start playback at the beginning and let it run through the final tail. Read <strong>Integrated</strong> and <strong>True peak</strong> before starting another pass. Restarting playback starts a fresh measurement.</p>
+          <p>If the Master is clipping, check levels upstream before trying to make the average louder. After an adjustment, replay from the beginning for a new reading, then <a href="export.html#mix">export and listen to the finished file</a>.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-analyzer.webp"><img src="images/plugin-analyzer.webp" width="1125" height="608" alt="Analyzer shows a spectrum, loudness history, stereo scope, true peak and LUFS readings." loading="lazy"></a>

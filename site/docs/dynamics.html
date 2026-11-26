@@ -26,25 +26,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html" aria-current="page">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html" aria-current="page">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -129,7 +138,7 @@
         <section>
           <h2 id="fet-compressor" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#fet"></use></svg>FET Compressor</h2>
           <p>Choose <strong>FET</strong> in the Compressor window or select a FET preset in the picker. Switching types loads defaults. This 1176-style circuit reacts quickly and adds color when driven. <strong>Input</strong> drives the compressor harder and <strong>Output</strong> sets the listening level.</p>
-          <p><strong>Try it.</strong> On room drums, raise <strong>Input</strong> until the meter shows reduction, then lower <strong>Output</strong> to compare fairly. Hear how the room comes forward. Blend some dry sound back with <strong>Mix</strong> if the hits lose impact.</p>
+          <p><strong>Try it.</strong> On room drums, raise <strong>Input</strong> until the meter shows reduction, then lower <strong>Output</strong> to compare fairly. Hear how the room comes forward. Blend some dry sound back with <strong>Mix</strong> if the hits lose impact. Compare <strong>4</strong> against <strong>All</strong> in the Ratio row at a matched level to hear the stronger effect on the room tone.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-fet.webp"><img src="images/plugin-fet.webp" width="875" height="539" alt="Compressor with FET selected in the header and Input and Output controls." loading="lazy"></a>
@@ -182,7 +191,7 @@
         <section>
           <h2 id="vocal-rider" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#rider"></use></svg>Vocal Rider</h2>
           <p>Moves level like a fader. It raises quieter words and lowers louder ones around a target. This helps phrase-to-phrase balance. A compressor can still catch faster peaks.</p>
-          <p><strong>Try it.</strong> Loop a vocal that changes level. Keep <strong>Auto target</strong> on and raise <strong>Amount</strong> until words sit more evenly. The green trace shows gain going up or down. Lower <strong>Max boost</strong> or raise <strong>Gate</strong> if breaths become too loud. Use <strong>Live</strong> under <strong>Look-ahead</strong> when monitoring.</p>
+          <p><strong>Try it.</strong> Loop a vocal that changes level. Keep <strong>Auto target</strong> on and raise <strong>Amount</strong> until words sit more evenly. The green trace shows gain going up or down. Lower <strong>Max boost</strong> or raise <strong>Gate</strong> if breaths become too loud. Use <strong>Live</strong> under <strong>Look-ahead</strong> when monitoring. Compare an uneven phrase with bypass and listen for quiet words becoming clearer without breaths stepping forward.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-rider.webp"><img src="images/plugin-rider.webp" width="725" height="604" alt="Vocal Rider with a gain history and bounds for upward and downward moves." loading="lazy"></a>
@@ -198,7 +207,7 @@
         <section>
           <h2 id="multiband" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#multiband"></use></svg>Multiband</h2>
           <p>Splits the sound into low, mid, and high ranges. The dividers set where the bands meet. <strong>Downward</strong> reduces loud parts in each band. <strong>Upward</strong> lifts quieter parts, including room tone and noise.</p>
-          <p><strong>Try it.</strong> On a drum loop, start with low <strong>Depth</strong> and <strong>Upward</strong> at zero. Raise Upward and listen for quieter cymbal tails and room sound coming forward. If those details take over, lower <strong>Depth</strong> or <strong>Upward</strong>. Use <strong>Out gain</strong> to match the bypass level.</p>
+          <p><strong>Try it.</strong> On a drum loop, start with low <strong>Depth</strong> and <strong>Upward</strong> at zero. Raise Upward and listen for quieter cymbal tails and room sound coming forward. If those details take over, lower <strong>Depth</strong> or <strong>Upward</strong>. Use <strong>Out gain</strong> to match the bypass level. If you lose impact in the kick while lifting the high-band detail, lower <strong>Downward</strong> and compare again.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-multiband.webp"><img src="images/plugin-multiband.webp" width="900" height="558" alt="Multiband with three frequency bands and upward and downward compression controls." loading="lazy"></a>

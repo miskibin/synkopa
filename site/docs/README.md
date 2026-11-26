@@ -39,3 +39,24 @@ After installing the UI dependencies, run `node scripts/build-doc-icons.mjs` to
 refresh the sprite from the app’s effect art and Channel Rack icons. The sampled
 instrument thumbnails come from `ui/src/art/keys`. Two Channel Rack glyphs come from
 [Font Awesome Free](https://fontawesome.com/license/free) under CC BY 4.0.
+
+## Workflow media
+
+Setup, project preferences, and the production walkthrough captures use the
+Synkopa frontend in browser development mode. This mode simulates device and
+analysis results. Its controls match the app, but audio input, plugin
+processing, model output, and device measurements in captures are illustrative.
+Motion examples require a play action and have a static poster or nearby
+annotated frames. Keep a text walkthrough available beside the recording.
+
+The vocal pitch video shows a manual D4 to D♯4 note edit in the browser frontend.
+Its separate listening example uses the Synkopa 0.9.35 Linux CLI with
+`tune-file --yin` on a synthetic three-note take and reference (A3, C4, D4).
+The input take was roughly 47 cents sharp and the rendered pitches landed
+within 1 cent of the intended notes.
+
+## Navigation
+
+When adding or renaming a guide, update `scripts/update-doc-navigation.py` and run
+`python3 scripts/update-doc-navigation.py` to refresh the static sidebars and sitemap.
+Deployment serves the resulting files directly.

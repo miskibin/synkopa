@@ -26,25 +26,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html" aria-current="page">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -56,6 +65,7 @@
       </header>
       <nav class="contents" aria-label="On this page">
         <a href="#mix">Render a WAV or MP3</a>
+        <a href="#loop">Render a clean loop</a>
         <a href="#stems">Export mixer stems</a>
         <a href="#project">Share an editable project</a>
       </nav>
@@ -64,11 +74,11 @@
         <section>
           <h2 id="mix">Render a WAV or MP3</h2>
           <ol>
-            <li>Open <strong>File → Export audio…</strong> and set <strong>Output</strong> to <strong>Mix</strong>.</li>
-            <li>Under <strong>Range</strong>, choose <strong>Song</strong> for the full Playlist, <strong>Pattern</strong> for the current pattern, or <strong>Loop</strong> for a range drawn on the Playlist ruler.</li>
-            <li>Under <strong>Format</strong>, choose <strong>WAV</strong> for uncompressed audio or <strong>MP3</strong> for a smaller listening copy. Choose <strong>Export…</strong> and save the file.</li>
+            <li>For a release or listening copy, play the ending in <strong>SONG</strong> and listen to how long the last effect rings. Open <strong>File → Export audio…</strong>, select <strong>Mix</strong> and choose <strong>Song</strong> under <strong>Range</strong>. For one pattern, choose <strong>Pattern</strong> and check the displayed pattern name.</li>
+            <li>Choose <strong>WAV</strong> for a file you plan to edit or send for mastering. Choose <strong>MP3</strong> for a smaller listening copy. Set the bit depth and sample rate to match any delivery requirements.</li>
+            <li>Choose <strong>Tail</strong> <strong>2 s</strong> or <strong>8 s</strong> for the last delay or reverb to fade. <strong>Cut</strong> ends the file at the range boundary. Check the duration in the dialog, choose <strong>Export…</strong>, and save the file.</li>
+            <li>Open the saved file and listen to the start, loudest section, and end. If the tail cuts off, choose a longer Tail. If the render reports clipping, reduce the level before export and check again.</li>
           </ol>
-          <p>Use <strong>Tail</strong> to let reverb and delay fade. For a WAV loop, <strong>Wrap</strong> folds the tail into the start.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/export.webp"><img src="images/export.webp" width="825" height="370" alt="Synkopa Export dialog set to a WAV mix of the whole song." loading="lazy"></a>
@@ -87,16 +97,54 @@
           <div class="note"><p>Empty Playlist? Choose <strong>Pattern</strong> or add clips before exporting <strong>Song</strong>.</p></div>
         </section>
         <section>
+          <h2 id="loop">Render a loop that repeats cleanly</h2>
+          <ol>
+            <li>Drag across the Playlist ruler from the first bar of the loop to the next section boundary. Play the selection in <strong>SONG</strong> and listen across the join.</li>
+            <li>Open Export, select <strong>Mix</strong>, then choose <strong>Loop</strong> for Range and <strong>WAV</strong> for Format. Choose <strong>Wrap</strong> so effect spill from the end carries into the beginning without adding extra seconds.</li>
+            <li>Re-import the WAV and place two copies end to end at the original tempo. If there is still a gap or a doubled beat, verify the ruler selection starts and ends on the intended bars and that the two clips meet exactly.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/export-loop-settings.webp"><img src="images/export-loop-settings.webp" width="660" height="292" alt="Export set to Mix, Loop, WAV, and Wrap, with a duration of 7.1 seconds." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 35.6%; --y: 42%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 35.6%; --y: 55%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Choose <strong>Loop</strong> to use the ruler selection.</li>
+                <li>Choose <strong>Wrap</strong> to carry spill across the loop join.</li>
+              </ol>
+            </figcaption>
+          </figure>
+        </section>
+        <section>
           <h2 id="stems">Export mixer stems</h2>
           <ol>
-            <li>Set <strong>Output</strong> to <strong>Stems</strong> and select a range.</li>
-            <li>Set <strong>Master</strong> to <strong>Include</strong> if you also want a full mix. Choose <strong>Pick folder…</strong>.</li>
+            <li>Name the Mixer inserts so the filenames identify the sounds. Unmute anything you want included. Solo is ignored by stem export.</li>
+            <li>Set <strong>Output</strong> to <strong>Stems</strong> and choose a range. Set <strong>Master</strong> to <strong>Include</strong> for a reference mix alongside the stems. Choose <strong>WAV</strong> for editing and select <strong>Pick folder…</strong>. Save to an empty folder so the delivery is easy to review.</li>
+            <li>Check the files in the folder. Stems have the same start and length, including the tail. Each is tapped after its Mixer insert’s effects and fader. The separate Master mix includes Master processing.</li>
+            <li>For a round-trip check, create an empty project at the same tempo and drag the exported WAVs from your file manager onto separate Playlist tracks at the same start. Play the section and confirm the drum hits and vocals line up. Keep the reference mix on a separate muted track so you can compare it by soloing it.</li>
           </ol>
-          <p>Stems are equal-length files from active, audible inserts. Only the Master mix includes Master effects.</p>
+          <p>If a drum bus and its source inserts are all exported, audition the bus or the source tracks when reassembling that part. Layering both doubles the routed material. A compressor or limiter on Master can also make the reference mix sound different from the reassembled stems.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/export-stems-settings.webp"><img src="images/export-stems-settings.webp" width="660" height="330" alt="Export set to Stems with Master included, Song range and WAV encoding." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 26.4%; --y: 25.5%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 21.5%; --y: 37%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 88%; --y: 89%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Choose <strong>Stems</strong> to export Mixer inserts.</li>
+                <li>Choose <strong>Include</strong> to add a finished Master mix as a reference.</li>
+                <li>Choose <strong>Pick folder…</strong> and select a destination folder.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="project">Share an editable project</h2>
-          <p>Choose <strong>File → Export project as ZIP…</strong> to collect the project, samples, and recorded takes. The recipient should extract the whole ZIP and keep the <code>Audio</code> folder beside the <code>.synkopa</code> file.</p>
+          <p>Save your edits, then choose <strong>File → Export project as ZIP…</strong> to collect the project, samples, and recorded takes. Extract a copy into a new folder and open the included <code>.synkopa</code> file to check that the audio plays. Ask the recipient to extract the whole ZIP and keep the <code>Audio</code> folder beside the project.</p>
           <p>Send any third-party plugin requirements and files loaded inside those plugins separately. Include a mix or stems for playback without the plugins.</p>
         </section>
       </article>
