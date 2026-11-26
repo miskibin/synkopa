@@ -55,12 +55,12 @@
       <header class="intro">
         <h1>Make your first song</h1>
       </header>
-      <nav class="contents" aria-label="On this page">
-        <a href="#install">Install and check sound</a>
-        <a href="#drums">Program one bar of drums</a>
-        <a href="#melody">Add a melody</a>
-        <a href="#arrange">Turn the loop into a song</a>
-        <a href="#finish">Save the project and export audio</a>
+      <nav class="contents" data-workflow aria-label="First song steps">
+        <a href="#install">Set up</a>
+        <a href="#drums">Drums</a>
+        <a href="#melody">Melody</a>
+        <a href="#arrange">Arrange</a>
+        <a href="#finish">Export</a>
       </nav>
 
       <article class="prose">
@@ -76,8 +76,20 @@
             <li>Click steps 1, 5, 9, and 13 on <strong>Kick</strong>, 5 and 13 on <strong>Clap</strong>, and odd steps on <strong>Hat</strong>. Right-click to erase a step.</li>
             <li>Select <strong>PAT</strong> and press <kbd>Space</kbd> to start or stop the loop.</li>
           </ol>
-          <figure>
-            <a class="shot" href="images/rack.webp"><img src="images/rack.webp" width="1818" height="458" alt="Channel Rack showing the lesson’s one-bar drum pattern. Kick is lit on steps 1, 5, 9 and 13, Clap on 5 and 13, and Hat on every odd step. Snare is empty." loading="lazy"></a>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/rack.webp"><img src="images/rack.webp" width="1818" height="458" alt="The lesson’s one-bar drum pattern in Synkopa’s Channel Rack." loading="lazy"></a>
+              <span class="shot-pin" data-pin-side="below" style="--x: 17.9%; --y: 6.6%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 35%; --y: 51%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 7%; --y: 80%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Select Pattern 1 in the Channel Rack.</li>
+                <li>Step cells show Kick, Clap, and Hat at different positions. A lit cell plays that sound.</li>
+                <li>Use + Channel to add an instrument.</li>
+              </ol>
+            </figcaption>
           </figure>
           <div class="drum-example" data-drums hidden>
             <div class="controls">
@@ -96,6 +108,21 @@
             <li>Right-click the piano channel name and choose <strong>Piano roll</strong>. Click the grid to place notes. Drag a note to move it or drag its right edge to resize it.</li>
             <li>Keep the notes within bar 1 and play in <strong>PAT</strong> to hear the piano with the drums.</li>
           </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Synkopa Piano roll with notes and the velocity lane." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 3%; --y: 59%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 45%; --y: 62%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 57%; --y: 90%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Rows match keys on the left. Drag a note up or down to change pitch.</li>
+                <li>Drag the note’s right edge to change its length.</li>
+                <li>The velocity lane sets how hard each note is played.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="arrange">Turn the loop into a song</h2>
@@ -105,6 +132,21 @@
             <li>Click the Playlist ruler at bar 1 to set the start and switch to <strong>SONG</strong>. Press <kbd>Space</kbd> to hear the Playlist.</li>
           </ol>
           <div class="note"><p>Edits affect every clip that uses the pattern. To edit just one clip, open its menu and choose <strong>Make unique</strong>.</p></div>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/overview.webp"><img src="images/overview.webp" width="1600" height="900" alt="Synkopa Playlist with the Browser on the left and the Mixer docked below." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 7%; --y: 22%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 49%; --y: 32%" aria-hidden="true">2</span>
+              <span class="shot-pin" data-pin-side="below" style="--x: 22%; --y: 2.8%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Select a pattern in the Browser.</li>
+                <li>Drop it onto a Playlist lane where it should play.</li>
+                <li>Select SONG to hear clips on the Playlist.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="finish">Save the project and export audio</h2>
@@ -113,8 +155,27 @@
             <li>Choose <strong>File → Export audio…</strong>. Set <strong>Output</strong> to <strong>Mix</strong>, <strong>Range</strong> to <strong>Song</strong>, and <strong>Format</strong> to <strong>WAV</strong>.</li>
             <li>Choose <strong>Export…</strong>, save the file, and listen to it in your audio player.</li>
           </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/export.webp"><img src="images/export.webp" width="825" height="370" alt="Synkopa Export dialog set to a WAV mix of the whole song." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 20%; --y: 29%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 29%; --y: 42%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 91%; --y: 88%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Output: Mix creates one file.</li>
+                <li>Range: Song uses the entire Playlist.</li>
+                <li>Choose Export to render the file.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
       </article>
+      <nav class="workflow-progress" aria-label="Move between steps" hidden>
+        <a data-back></a>
+        <a data-next></a>
+      </nav>
     </main>
   </div>
 </body>
