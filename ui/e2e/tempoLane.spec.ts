@@ -23,6 +23,9 @@ test.describe('Playlist tempo lane', () => {
     const b = await tpBox(app);
     await app.mouse.dblclick(await xOf(app, 8.05), b.y + 10);
     await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: await base(app), ramp: false }]);
+    // the left edge: a point at beat 0 (the map plays it from the very start)
+    await app.mouse.dblclick(await xOf(app, 0.05), b.y + 10);
+    await pollEngine(app, tempoPts).toEqual([{ beat: 0, bpm: await base(app), ramp: false }, { beat: 8, bpm: await base(app), ramp: false }]);
   });
 
   test('dragging a point to the strip bottom reads base - 30, one undo step', async ({ app }) => {
@@ -48,6 +51,19 @@ test.describe('Playlist tempo lane', () => {
     await box.fill('75');
     await box.press('Enter');
     await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: 75, ramp: true }]);
+    // a value that is not a tempo is refused with a toast, the point unchanged
+    await app.mouse.click(await xOf(app, 8.05) + 1, yMid, { button: 'right' });
+    await app.getByText('Type a BPM…').click();
+    await box.fill('abc');
+    await box.press('Enter');
+    await expect(app.locator('[data-readout]')).toContainText('Not a tempo');
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: 75, ramp: true }]);
+    // a comma passes as the decimal separator
+    await app.mouse.click(await xOf(app, 8.05) + 1, yMid, { button: 'right' });
+    await app.getByText('Type a BPM…').click();
+    await box.fill('70,5');
+    await box.press('Enter');
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: 70.5, ramp: true }]);
   });
 
   test('right-click empty space adds at the base tempo; double-click deletes; undo', async ({ app }) => {
@@ -72,7 +88,7 @@ test.describe('Playlist tempo lane', () => {
     ]);
   });
 
-  test('the head readout follows the map at the playhead', async ({ app }) => {
+  test('the head readout follows the map at the playhead, through a glide', async ({ app }) => {
     const b = await tpBox(app), yMid = b.y + 10;
     await app.mouse.dblclick(await xOf(app, 8.05), yMid);
     await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: await base(app), ramp: false }]);
@@ -81,5 +97,14 @@ test.describe('Playlist tempo lane', () => {
     await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: (await base(app)) - 30, ramp: false }]);
     await app.mouse.click(await xOf(app, 8.1), await rulerY(app));
     await expect(app.locator('.tpnow')).toHaveText(((await base(app)) - 30).toFixed(2));
+    // a second point at the base tempo and a glide: halfway between, the readout glides too
+    await app.mouse.click(await xOf(app, 16.05), yMid, { button: 'right' });
+    await app.getByText('Add tempo point here').click();
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: (await base(app)) - 30, ramp: false }, { beat: 16, bpm: await base(app), ramp: false }]);
+    await app.mouse.click(await xOf(app, 8.05) + 1, b.y + 17, { button: 'right' });
+    await app.getByText('Glide to the next point').click();
+    await pollEngine(app, tempoPts).toEqual([{ beat: 8, bpm: (await base(app)) - 30, ramp: true }, { beat: 16, bpm: await base(app), ramp: false }]);
+    await app.mouse.click(await xOf(app, 12.1), await rulerY(app));
+    await expect(app.locator('.tpnow')).toHaveText(((await base(app)) - 15).toFixed(2));
   });
 });

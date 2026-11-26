@@ -124,6 +124,11 @@ describe('moveTempoPoint', () => {
     expect(moved[0]).toEqual(pt(2, 90, true));
     expect(moved[1]).toEqual(pt(8, 120));
   });
+
+  it('a lone point clamps to the song ends', () => {
+    expect(moveTempoPoint([pt(4, 100)], 0, -20, 130)[0].beat).toBe(0);
+    expect(moveTempoPoint([pt(4, 100)], 0, TOTAL_BEATS + 99, 130)[0].beat).toBe(TOTAL_BEATS);
+  });
 });
 
 describe('the remaining point edits', () => {

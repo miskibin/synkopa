@@ -264,6 +264,10 @@ describe('applyLocal (optimistic edits)', () => {
     expect(store.S.project.tempoPoints).toBeUndefined();
     store.applyLocal([{ op: 'setTempoPoints', points: [{ beat: 4, bpm: 150 }] }]);
     expect(store.S.project.tempoPoints).toEqual([{ beat: 4, bpm: 150, ramp: false }]);
+    // above the cap the optimistic arm refuses whole (the engine's reply reports the refusal)
+    const over = Array.from({ length: 4097 }, (_, i) => ({ beat: i % 2048, bpm: 100 + (i % 10) }));
+    store.applyLocal([{ op: 'setTempoPoints', points: over }]);
+    expect(store.S.project.tempoPoints).toEqual([{ beat: 4, bpm: 150, ramp: false }]);
     store.applyLocal([{ op: 'setBpm', bpm: 132 }]);
     expect(store.S.project.bpm).toBe(132);
     expect(store.S.project.tempoPoints).toBeUndefined();
