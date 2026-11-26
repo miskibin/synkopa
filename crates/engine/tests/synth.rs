@@ -266,7 +266,7 @@ fn stealing_retriggering_legato_and_preset_changes_do_not_click() {
         assert_eq!(clicks(&l, &r), 0, "{name}: steal");
         // retrigger with gaps and overlaps, mono and legato with glide, and the preset's own
         // mode (poly overlaps of distorted 808s are left out: two square-ish waves whose edges
-        // happen to coincide read as a spike to the detector, see docs/synth.md)
+        // happen to coincide read as a spike to the detector, see docs/instruments/synth.md)
         let own = p.patch[ix::V_MODE];
         for mode in [own, 1.0, 2.0] {
             let mut q = p.patch;
@@ -498,7 +498,7 @@ fn wavetables_scan_their_frames_and_the_catalog_draws_them() {
 #[test]
 fn warps_stay_clean_up_to_c6() {
     // live phase warps cannot be band-limited exactly; the mip choice and the smooth warp curves
-    // keep them above 50 dB SNR to C6 (docs/synth.md: `synth_lab warps`)
+    // keep them above 50 dB SNR to C6 (docs/instruments/synth.md: `synth_lab warps`)
     for (mode, amt) in [(voice::warp::SYNC, 0.6), (voice::warp::BEND, 0.6), (voice::warp::ASYM, 1.0), (voice::warp::FM, 0.6)] {
         for k in [36, 60, 84] {
             let f = 440.0 * 2f64.powf((k as f64 - 69.0) / 12.0);

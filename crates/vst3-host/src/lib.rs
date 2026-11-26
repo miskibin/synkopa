@@ -39,7 +39,7 @@
 //! ```
 //!
 //! [`PluginInfo`] and [`ParamInfo`] serialise to the camelCase shapes of the
-//! `plugin_scan` / `plugin_params` commands in `docs/architecture.md` (the older
+//! `plugin_scan` / `plugin_params` commands in `docs/dev/architecture.md` (the older
 //! `vst3_scan` / `vst3_params` session and CLI verb names serve the same shapes).
 //!
 //! # How the app wires it (Tauri)

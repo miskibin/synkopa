@@ -87,7 +87,7 @@ pub trait Processor: Send {
     }
 
     /// Up to 32 live readings for the effect's visualisation (pitch, envelope, …);
-    /// meaning is per effect type, documented in docs/architecture.md.
+    /// meaning is per effect type, documented in docs/dev/architecture.md.
     fn meters(&self, _out: &mut [f32; METERS]) {}
 
     /// Mono tap of the wet signal only, for effects whose interesting output is

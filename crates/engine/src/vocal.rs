@@ -1,7 +1,7 @@
 //! Vocal processors: FET compressor (1176 style), de-esser, real-time pitch correction,
 //! voice character (pitch / formant / robot / drive).
 //!
-//! Meter layout (`Processor::meters`, documented in docs/architecture.md):
+//! Meter layout (`Processor::meters`, documented in docs/dev/architecture.md):
 //! * fet:   [GR dB, input dB, output dB]
 //! * deess: [GR dB, sidechain dB (Relative: high/low band ratio dB), sibilance 0..1, threshold dB]
 //! * tune:  [input Hz (0 = unvoiced), target Hz, output Hz, confidence, input cents off target, applied correction cents]

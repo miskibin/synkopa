@@ -108,8 +108,8 @@ the kit and its mixer routing in every pattern.
 * `channel.kind`: `sample` (the sampler: plays project source `source`; the note's key
   repitches it, `root` = the key at which the file plays at its own pitch, default 60 = C5 in
   FL's naming / C4 in this app's labels; `sampler` = how it plays, see below), `keys` (Synkopa
-  Keys, sampled SFZ instruments: `keys: {instrument, release?, dynamics, articulation?, attack, tone, width, tune, noise}`, see [keys.md](keys.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
-  parameter ids from `fx_catalog().synth`; see [synth.md](synth.md)) or `plugin` (a hosted VST3
+  Keys, sampled SFZ instruments: `keys: {instrument, release?, dynamics, articulation?, attack, tone, width, tune, noise}`, see [Synkopa Instruments](../instruments/synkopa-instruments.md)), `synth` (the built-in polyphonic synth, `synth: {preset, params}` with
+  parameter ids from `fx_catalog().synth`; see [Synthesizer](../instruments/synth.md)) or `plugin` (a hosted VST3
   instrument, `plugin: PluginRef`; see [Plugin instruments](#plugin-instruments)). `vol` is a fader position (unity = 0.7937, gain normalised so unity is exactly
   1), `pan` −1..1 (balance law of the mixer), `mute`/`solo` (with any solo, only soloed
   channels play), `insert`: a mixer insert id, or `null` = **the insert of the playlist track
@@ -446,11 +446,11 @@ the audio thread drains with the command ring. Offline renders may run the inser
 worker threads (`Engine::set_render_workers`), bit-identical to one thread.
 
 Effect types: `eq` (7 `bands`), `comp`, `sat` (character saturator, see
-`docs/saturator.md`), `delay` (echo with a processing loop, `docs/delay.md`), `half`, `warp`
-(time and volume maps, `maps: {time, vol}` slots, `docs/warp.md`), `chorus` (Chorus / Ensemble /
-Vibrato, `docs/modulation.md`), `phaser` (2–12 swept all-pass stages, `docs/modulation.md`), `gate` (gate / expander / ducker with
-hysteresis, hold and look-ahead, `docs/gate-filter.md`), `filter` (SVF, ladder and DJ filter moved by an LFO or an
-envelope follower, `docs/gate-filter.md`), `stereo` (width,
+`docs/effects/saturator.md`), `delay` (echo with a processing loop, `docs/effects/delay.md`), `half`, `warp`
+(time and volume maps, `maps: {time, vol}` slots, `docs/effects/warp.md`), `chorus` (Chorus / Ensemble /
+Vibrato, `docs/effects/chorus-phaser.md`), `phaser` (2–12 swept all-pass stages, `docs/effects/chorus-phaser.md`), `gate` (gate / expander / ducker with
+hysteresis, hold and look-ahead, `docs/effects/gate.md`), `filter` (SVF, ladder and DJ filter moved by an LFO or an
+envelope follower, `docs/effects/filter.md`), `stereo` (width,
 mono-safe spread, bass mono, gain, balance, polarity, `dsp/stereo.rs`), `multiband` (three-band upward + downward
 compression, the OTT sound, `dsp/multiband.rs`), `master` (tone EQ, three-band glue with width and bass mono, 2×
 soft clipper, true-peak limiter, level match; `dsp/master.rs`, set by a whole-song listen in `mastering.rs` through
@@ -899,8 +899,8 @@ u32 nCol  × { u32 masker, u32 protect, f32 lo, f32 hi,         // mix assistant
 | `master` | `[0..3]` band glue gain dB (≤ 0) low/mid/high, `[3]` clipper dB, `[4]` limiter dB, `[5]` input short-term loudness (K-weighted, ~3 s), `[6]` output loudness before level match, `[7]` level-match gain dB, `[8..11]` band detector level dB. Latency: limiter look-ahead (3 ms) + the clipper's 2× half-bands |
 | `multiband` | `[0..3]` band level dB low/mid/high (after the +5.2 dB band drive), `[3..6]` gain dB (+ lifted, − pulled down), `[6..9]` band level out dB, `[9]`/`[10]` crossovers Hz. Zero latency |
 | `analyzer` | `[0]` momentary LUFS, `[1]` short-term LUFS, `[2]` integrated LUFS (−200 = not yet), `[3]` loudness range LU (−1 = not yet), `[4]` true-peak hold dBTP, `[5]` true peak of the last 100 ms, `[6]` correlation, `[7]` balance, `[8]` seconds measured, `[9]` side/mid dB. Integrated, range and the hold restart when playback starts. Zero latency; X/Y points and a long FFT (8192) for the bass bands of `specOut` |
-| `delay` | see `docs/delay.md`: `[0]`/`[1]` read heads L/R ms, `[2]` loop dBFS, `[3]` drive reduction dB, `[4]` LFO, `[5]` model, `[6]` wet dBFS, `[7]` set time ms. Zero latency |
-| `warp` | see `docs/warp.md`: `[0]` bar position (−1 stopped), `[1]`/`[2]` playing slots, `[3]`/`[4]` queued slots, `[5]` offset beats, `[6]` speed, `[7]` gain, `[9]` hold state, `[10]` buffered s. 2 samples latency, compensated by PDC; maps arrive through `Processor::swap_data` (`Cmd::FxData`) |
+| `delay` | see `docs/effects/delay.md`: `[0]`/`[1]` read heads L/R ms, `[2]` loop dBFS, `[3]` drive reduction dB, `[4]` LFO, `[5]` model, `[6]` wet dBFS, `[7]` set time ms. Zero latency |
+| `warp` | see `docs/effects/warp.md`: `[0]` bar position (−1 stopped), `[1]`/`[2]` playing slots, `[3]`/`[4]` queued slots, `[5]` offset beats, `[6]` speed, `[7]` gain, `[9]` hold state, `[10]` buffered s. 2 samples latency, compensated by PDC; maps arrive through `Processor::swap_data` (`Cmd::FxData`) |
 
 ## Where a recording goes
 
@@ -1181,7 +1181,7 @@ unsure, confidence, stability), a comparison with another performance (Tune to R
 alignment with a looser timing tolerance for another singer's phrasing, any interval, note
 relations match/merged/split/extra, ornaments, `related` only when most matched notes agree) and
 a cautious proposal (`suggest`) — kept apart from the decision, which the caller makes and applies
-with `editTune`. See [cli.md](cli.md#pitch-editing-for-agents).
+with `editTune`. See [CLI: edit pitch note by note](../cli/recording-and-vocals.md#edit-pitch-note-by-note).
 
 **Retune speed.** The correction (edited − sung pitch) follows its target with a one-pole
 lag that reaches 95 % of a change in `speed` ms (Auto-Tune's Retune Speed): a note's own

@@ -1,4 +1,4 @@
-// Typed wrappers over the Tauri commands/events in docs/architecture.md.
+// Typed wrappers over the Tauri commands/events in docs/dev/architecture.md.
 // When `window.__TAURI_INTERNALS__` is absent (plain browser) the in-browser mock is used.
 import type { AskService } from '../lib/askLink';
 import { Channel, invoke } from '@tauri-apps/api/core';

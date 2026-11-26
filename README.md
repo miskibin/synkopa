@@ -28,7 +28,7 @@ Synkopa is a desktop digital audio workstation (DAW) written in Rust (audio engi
 
 **Recording, vocals, stems and chords are all in the one free build.** Loop recording with takes and comping, measured latency compensation, a note-level pitch editor, live pitch correction, Tune to Reference (pull a take onto a guide vocal), vocal rider, and one-command Auto Vocal. Offline models (downloaded on demand, MIT-licensed) also extract stems onto tracks below a clip (HTDemucs) and detect chords from audio directly into the piano roll with smooth voice leading (ChordMini).
 
-**Eleven sampled instruments, a wavetable synth, and a slice-mode sampler.** [Synkopa Instruments](docs/keys.md) ships with a bundled Yamaha C5 concert grand and ten one-click downloads from open and public-domain recordings—upright piano, Wurlitzer EP200, Electric Grand CP80, Pianet T, String Section (with keyswitches and automatic short/long articulation switching), Solo Violin, Concert Harp, Hollow Body Guitar, Jazz Club Guitar, and Vibraphone—all inside one unified player.
+**Eleven sampled instruments, a wavetable synth, and a slice-mode sampler.** [Synkopa Instruments](docs/instruments/synkopa-instruments.md) ships with a bundled Yamaha C5 concert grand and ten one-click downloads from open and public-domain recordings—upright piano, Wurlitzer EP200, Electric Grand CP80, Pianet T, String Section (with keyswitches and automatic short/long articulation switching), Solo Violin, Concert Harp, Hollow Body Guitar, Jazz Club Guitar, and Vibraphone—all inside one unified player.
 
 <table>
   <tr>
@@ -57,7 +57,7 @@ A selection of instrument and effect windows is on the [website](https://miskibi
 
 ## Measured speed vs FL Studio
 
-The Rust audio callback never allocates, locks, or touches a file (a benchmark counts allocations on the audio thread: zero). Moving a knob never rebuilds the audio graph. Sixteen synth voices with two oscillators and seven-voice unison each, every effect on, take about 17% of one core at 48 kHz with 64-sample blocks, and the oscillators stay more than 60 dB above their aliasing up to C7 ([synth measurements](docs/synth.md), [`docs/architecture.md`](docs/architecture.md)).
+The Rust audio callback never allocates, locks, or touches a file (a benchmark counts allocations on the audio thread: zero). Moving a knob never rebuilds the audio graph. Sixteen synth voices with two oscillators and seven-voice unison each, every effect on, take about 17% of one core at 48 kHz with 64-sample blocks, and the oscillators stay more than 60 dB above their aliasing up to C7 ([synth measurements](docs/instruments/synth.md), [`docs/dev/architecture.md`](docs/dev/architecture.md)).
 
 To measure what a musician actually waits for on desktop, [`perf/realworld/bench.py`](perf/realworld/README.md) drives both apps with real OS input and DXGI frame capture on matched-size projects (~89 channels, 82 patterns, ~5,500 notes, ~120 native effects, Windows 11, i5-12400F, 144 Hz, 2026-11-16, medians):
 
@@ -88,7 +88,7 @@ Download installers and packages from the [latest release](https://github.com/mi
 
 ## The `synkopa` command line & AI agents
 
-Synkopa installs a `synkopa` CLI that talks to the running desktop app over a local socket—or edits and renders `.synkopa` project files headless with `-p song.synkopa` (no GUI required). An external agent such as Claude Code or your own script can inspect the project as JSON, write notes, route sidechains, extract chords or stems, run Auto Vocal, bounce offline, and read back peak, LUFS, and clipping statistics to verify its own work. Every command is one step in your undo history, so `Ctrl+Z` removes anything you do not like. [This trap beat](https://miskibin.github.io/synkopa/#listen) was made that way.
+Synkopa installs a `synkopa` CLI that talks to the running desktop app over a local socket—or edits and renders `.synkopa` project files headless with `-p song.synkopa` (no GUI required). An external agent such as Claude Code or your own script can inspect the project as JSON, write notes, route sidechains, extract chords or stems, run Auto Vocal, bounce offline, and read back peak, RMS, and clipping statistics to verify its own work. Every command is one step in your undo history, so `Ctrl+Z` removes anything you do not like. [This trap beat](https://miskibin.github.io/synkopa/#listen) was made that way.
 
 ```sh
 synkopa context --pretty                                # tracks, inserts, patterns, channels, markers
@@ -96,7 +96,7 @@ synkopa chords --clip 5012 --to-pattern                 # detect chords from aud
 synkopa pattern --id 2 --ch hat --steps "x.x. x.x. x.x5 x.x9"
 synkopa sidechain --from 1 --to 3                       # duck bass (insert 3) from kick (insert 1)
 synkopa auto-vocal --clip 412 --beat-clip 300           # measure vocal, build FX chain & bake rider
-synkopa render --out check.wav --to 16                  # offline bounce + peak/LUFS/clipping stats
+synkopa render --out check.wav --to 16                  # offline bounce + peak/RMS/clipping stats
 synkopa undo                                            # or press Ctrl+Z in the app
 ```
 
@@ -135,8 +135,8 @@ Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Stud
 | --- | --- |
 | **Arranging** | Pattern, audio, and automation clips on free lanes; slice, fade, reverse, normalize; edge time-stretching (`Shift+M`, pitch-preserving or resampled); on-clip automation curves; export selected clips or loop range in place; named timeline markers (`Alt+T`) to jump between and loop song sections |
 | **Writing** | Step sequencer with swing, velocity, key, pan, and shift lanes; piano roll with scale guides and vocal pitch reference; typing keyboard and MIDI keyboard input; MIDI import and export |
-| **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Instruments](docs/keys.md) (11 sampled instruments: Grand Piano bundled + Upright, Wurlitzer, CP80, Pianet T, String Section, Solo Violin, Harp, Hollow Body & Jazz Guitars, Vibraphone); Music Box; slice-mode sampler (chop at transients or equal slices, dump to pattern) with built-in drum/tonal library and downloadable CC0 kits |
-| **Mixing (22 effects)** | 24-band dynamic EQ, compressor, FET compressor, gate, resonant filter, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser, stereo imager with bass mono, OTT-style multiband, a Master that listens to the whole song and masters it to a loudness target, loudness analyzer (LUFS, true peak); sidechain routing (`Sidechain to →` with ghost-kick option); saved mixer FX chains; dockable/floating/maximizable mixer (`F9`); insert-to-insert routing and plugin delay compensation |
+| **Instruments** | Two-oscillator wavetable [synth](docs/instruments/synth.md) (unison, mod matrix, 50 presets); [Synkopa Instruments](docs/instruments/synkopa-instruments.md) (11 sampled instruments: Grand Piano bundled + Upright, Wurlitzer, CP80, Pianet T, String Section, Solo Violin, Harp, Hollow Body & Jazz Guitars, Vibraphone); Music Box; slice-mode sampler (chop at transients or equal slices, dump to pattern) with built-in drum/tonal library and downloadable CC0 kits |
+| **Mixing (22 effects)** | 24-band dynamic EQ, compressor, FET compressor, gate, resonant filter, [saturator](docs/effects/saturator.md), delay, [reverb](docs/effects/reverb.md), [limiter](docs/effects/limiter.md), de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser, stereo imager with bass mono, OTT-style multiband, a Master that listens to the whole song and masters it to a loudness target, loudness analyzer (LUFS, true peak); sidechain routing (`Sidechain to →` with ghost-kick option); saved mixer FX chains; dockable/floating/maximizable mixer (`F9`); insert-to-insert routing and plugin delay compensation |
 | **Recording & vocals** | Loop recording with takes and comping, measured latency compensation, live monitoring; note-level pitch editor, live pitch correction, Tune to Reference, vocal rider, one-command Auto Vocal |
 | **Offline audio tools** | Local stem separation (HTDemucs, 90 MB MIT) extracting stems onto tracks below the clip; local chord detection (ChordMini, 17 MB MIT) sending voiced chords straight to a piano roll pattern |
 | **Plugins & audio I/O** | VST3 instruments and effects (Windows & Linux); LV2 effects (Linux); native plugin editor windows on Windows and Linux where supported, otherwise Synkopa's parameter UI; out-of-process plugin scanning; WASAPI and ASIO (Windows), ALSA and JACK / PipeWire JACK (Linux), Core Audio (macOS) |
@@ -199,7 +199,7 @@ Audio I/O uses WASAPI and ASIO on Windows, ALSA and JACK (including PipeWire's J
 Yes. Synkopa is offline by default, with no account, subscription, or cloud API. Stem separation (HTDemucs, ~90 MB, MIT), chord detection to piano roll (ChordMini, ~17 MB, MIT), and pitch analysis run locally on your machine after a one-time on-demand model download.
 
 **How does AI agent or script control work—and do I need AI to use Synkopa?**
-You do not need an AI agent; Synkopa is a normal desktop DAW operated with mouse, keyboard, and MIDI. The optional `synkopa` CLI connects to the running app over a local socket (or runs headless on `.synkopa` files via `-p`), letting scripts or coding agents read the project as JSON, edit patterns/routing/FX, and verify changes through offline renders with peak, LUFS, and clipping stats. Every CLI edit is a single `Ctrl+Z` undo step.
+You do not need an AI agent; Synkopa is a normal desktop DAW operated with mouse, keyboard, and MIDI. The optional `synkopa` CLI connects to the running app over a local socket (or runs headless on `.synkopa` files via `-p`), letting scripts or coding agents read the project as JSON, edit patterns/routing/FX, and verify changes through offline renders with peak, RMS, and clipping stats. Every CLI edit is a single `Ctrl+Z` undo step.
 
 **How is audio stability verified if much of the codebase is AI-assisted?**
 The project is directed by a musician who works professionally in telecom DSP, with open-source contributors. Every change runs automated engine tests for clicks, aliasing, and loudness, alongside a real-time benchmark verifying zero allocations on the audio callback and reproducible desktop latency/dropout timings against FL Studio ([`perf/realworld/README.md`](perf/realworld/README.md)).

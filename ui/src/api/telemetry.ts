@@ -1,4 +1,4 @@
-// Binary telemetry frame (little-endian), see docs/architecture.md.
+// Binary telemetry frame (little-endian), see docs/dev/architecture.md.
 //
 //   u32 magic 'WAVT' · u32 seq · f64 beat · u8 flags · u8 pad · u16 pad
 //   f32 inLevel · f32 previewPos · f32 cpu
@@ -22,7 +22,7 @@ export const XY_MAX = 1024;
 export interface FxFrame {
   id: number;
   inPeak: number; outPeak: number; grDb: number;
-  /** per-type live readings (pitch, envelope, …), see docs/architecture.md */
+  /** per-type live readings (pitch, envelope, …), see docs/dev/architecture.md */
   meters: Float32Array;
   specIn: Float32Array; specOut: Float32Array; scopeIn: Float32Array; scopeOut: Float32Array;
   /** Interleaved L, R output samples for a vectorscope (`xyN` pairs valid; 0 for most effects). */

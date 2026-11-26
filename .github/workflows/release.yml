@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       # both jobs add their platform to the same latest.json (the updater manifest): one at a time, or one overwrites the other
       max-parallel: 1
-      # One installer per kind of system people download (docs/releasing.md). No MSI: the
+      # One installer per kind of system people download (docs/dev/releasing.md). No MSI: the
       # NSIS setup.exe is the same app, and it is the one the updater installs.
       matrix:
         include:
@@ -79,7 +79,7 @@ jobs:
           newest=$(printf '%s\n%s\n' "$need" GLIBC_2.35 | sort -V | tail -1)
           [ "$newest" = "GLIBC_2.35" ] || { echo "::error::wave-app needs $need, newer than Ubuntu 22.04's glibc 2.35"; exit 1; }
       # The release notes are the CHANGELOG.md section of this version (fails when it is missing). They
-      # become the release body and the "notes" the in-app updater shows; see docs/releasing.md.
+      # become the release body and the "notes" the in-app updater shows; see docs/dev/releasing.md.
       - name: Release notes from CHANGELOG.md
         id: notes
         shell: bash

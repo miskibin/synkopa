@@ -2,7 +2,7 @@
 // 1. Downloads the original recordings (24-bit, 185 MB: 4 dynamics and the key-release noises) into target/keys-src, each checked
 //    against the SHA-256 pinned in assets-manifest.json; files already there are reused.
 // 2. Runs `wave-keys-prep`, which cuts them to the 9 s the engine plays and stores 16-bit
-//    FLAC (about 33 MB). See docs/keys.md.
+//    FLAC (about 33 MB). See docs/instruments/synkopa-instruments.md.
 //   node scripts/fetch-keys.mjs
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

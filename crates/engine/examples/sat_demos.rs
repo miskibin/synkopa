@@ -1,4 +1,4 @@
-//! Listening demos for the character saturator (docs/saturator.md):
+//! Listening demos for the character saturator (docs/effects/saturator.md):
 //! `cargo run -p wave-engine --release --example sat_demos -- <vocal.wav> <out dir>`
 //!
 //! Writes WAVs (44.1 kHz): the vocal dry then each voicing; a synthesized drum loop the

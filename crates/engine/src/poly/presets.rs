@@ -1,6 +1,6 @@
 //! Factory presets. Each one is a patch over the defaults; `fx_out` (the output trim) of every
 //! preset was set by measurement so a fixed probe lands in the same loudness band (see
-//! docs/synth.md and the `synth_lab levels` example).
+//! docs/instruments/synth.md and the `synth_lab levels` example).
 //!
 //! Every preset puts its main gestures on the macros (Macro 1..4 → matrix slots), so one knob
 //! opens a filter, adds growl or widens a pad without opening the matrix; the panel names each
