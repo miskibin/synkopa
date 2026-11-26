@@ -7,6 +7,7 @@ if (Audio) {
     { name: "Clap", sample: "clap-808", steps: [5, 13] },
     { name: "Hat", sample: "hat-808-closed", steps: [1, 3, 5, 7, 9, 11, 13, 15] },
   ];
+  const workflowPanel = example.closest("section");
   const grid = example.querySelector(".steps");
   const play = example.querySelector("[data-play]");
   const reset = example.querySelector("[data-reset]");
@@ -20,6 +21,7 @@ if (Audio) {
   let nextStep;
   let frame;
   let sounding = -1;
+  let playRequest = 0;
   const scheduled = new Set();
 
   for (const row of rows) {
@@ -78,6 +80,7 @@ if (Audio) {
   }
 
   function stop() {
+    playRequest += 1;
     clearInterval(timer);
     timer = undefined;
     cancelAnimationFrame(frame);
@@ -92,6 +95,7 @@ if (Audio) {
       stop();
       return;
     }
+    const request = ++playRequest;
     play.disabled = true;
     status.textContent = "";
     try {
@@ -107,7 +111,7 @@ if (Audio) {
         if (!response.ok) throw new Error("Could not load drum sample");
         return context.decodeAudioData(await response.arrayBuffer());
       }));
-      if (!document.hidden) {
+      if (request === playRequest && !document.hidden && !workflowPanel.hidden) {
         startTime = context.currentTime + .025;
         nextStep = 0;
         schedule();
@@ -116,8 +120,10 @@ if (Audio) {
         play.textContent = "Stop loop";
       }
     } catch {
-      stop();
-      status.textContent = "Could not play audio.";
+      if (request === playRequest) {
+        stop();
+        status.textContent = "Could not play audio.";
+      }
     } finally {
       play.disabled = false;
     }
@@ -131,6 +137,9 @@ if (Audio) {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stop();
   });
+  new MutationObserver(() => {
+    if (workflowPanel.hidden) stop();
+  }).observe(workflowPanel, { attributeFilter: ["hidden"] });
   window.addEventListener("pagehide", stop);
   example.hidden = false;
 }

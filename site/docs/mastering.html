@@ -71,25 +71,53 @@
           </dl>
         </section>
         <section>
-          <h2 id="master">Master</h2>
+          <h2 id="master" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#master"></use></svg>Master</h2>
           <p>Listens to the Playlist and sets tone, compression, width, clipping, and limiting for the selected <strong>Target</strong>. The loudness target sets the desired average level. <strong>Ceiling</strong> sets the true-peak limit.</p>
           <ol>
             <li>On the Master insert, add <strong>Master</strong> after your mix effects. Choose a <strong>Target</strong>, such as <strong>Streaming −14</strong>, then use <strong>Listen to the song</strong> or <strong>Listen again</strong>.</li>
             <li>Enable <strong>Level match</strong> and toggle power while you listen to the loudest section. Compare bass, vocal clarity, and drum attack at a similar loudness.</li>
             <li>If the effect reports it stopped short of the target, listen for peak distortion before turning up <strong>Loudness</strong>. Disable <strong>Level match</strong> before checking the finished level or exporting.</li>
           </ol>
-          <figure class="plugin-shot">
-            <a class="shot" href="images/plugin-master.webp"><img src="images/plugin-master.webp" width="1075" height="811" alt="Master after listening to a demo, showing the Streaming target, tone graph, and Level match." loading="lazy"></a>
+          <figure class="plugin-shot annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/plugin-master.webp"><img src="images/plugin-master.webp" width="1075" height="811" alt="Master shows loudness settings and the processing proposed by its listen pass." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 7.4%; --y: 60.2%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 35.8%; --y: 95.4%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Click <strong>Listen to the song</strong> or <strong>Listen again</strong> to measure the whole mix up to this effect.</li>
+                <li>Enable <strong>Level match</strong> before comparing the sound with bypass.</li>
+              </ol>
+            </figcaption>
           </figure>
+          <details class="listen-check">
+            <summary>At matched loudness, the kick lost its punch.</summary>
+            <p>Loop the loudest chorus and lower <strong>Loudness</strong> a few dB while watching gain reduction. If the kick regains its attack, gauge the trade-off with <strong>Level match</strong> on. Turn it off for the final reading.</p>
+          </details>
         </section>
         <section>
-          <h2 id="analyzer">Analyzer</h2>
-          <p>Measures the signal without changing it. The spectrum shows frequency balance, the stereo display shows left/right behavior, and the loudness view shows LUFS and true peak. Its <strong>Target</strong> is a reference line.</p>
+          <h2 id="analyzer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Analyzer</h2>
+          <p>Measures the signal without changing it. The spectrum shows frequency balance, the stereo display shows left/right behavior, and the loudness view shows LUFS and true peak. Its <strong>Target</strong> is a reference line for the measurement.</p>
           <p><strong>Try it.</strong> Add a fresh Analyzer after the last effect on the Master insert and play the full song once without looping. Compare integrated LUFS and true peak. A louder chorus may raise the whole-song measurement while the highest true peak comes from a single earlier hit.</p>
           <p><a href="export.html#mix">Export the finished mix</a>.</p>
-          <figure class="plugin-shot">
-            <a class="shot" href="images/plugin-analyzer.webp"><img src="images/plugin-analyzer.webp" width="1125" height="608" alt="Analyzer in a demo with a spectrum, loudness history, true peak, and stereo scope." loading="lazy"></a>
+          <figure class="plugin-shot annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/plugin-analyzer.webp"><img src="images/plugin-analyzer.webp" width="1125" height="608" alt="Analyzer shows a spectrum, loudness history, stereo scope, true peak and LUFS readings." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 94.6%; --y: 20.7%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 94.6%; --y: 32.4%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Read <strong>Integrated</strong> after a full pass to see the whole-song LUFS.</li>
+                <li>Read <strong>True peak</strong> to check the largest peak of the same pass.</li>
+              </ol>
+            </figcaption>
           </figure>
+          <details class="listen-check">
+            <summary>True peak is near the ceiling, but the integrated LUFS looks low.</summary>
+            <p>Use the loudness history to find the quiet passages and look for isolated peaks. The highest peak and the whole-song average answer different questions. If one snare is holding down the level you want, address that hit in the mix and measure the full song again.</p>
+          </details>
         </section>
       </article>
     </main>

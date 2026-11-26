@@ -1,15 +1,31 @@
 :root {
   color-scheme: light;
-  --base: #fff;
-  --sidebar: #f8f9fa;
-  --hover: #f2f3f5;
-  --active: #edf0f7;
-  --text: #171921;
-  --muted: #515665;
-  --border: #e0e2e8;
-  --accent: #384778;
-  --focus: #5367b4;
   font: 16px/1.65 system-ui, sans-serif;
+  --base: #f7f8fa;
+  --sidebar: #eef0f3;
+  --hover: #e9ecf0;
+  --active: #dce7f9;
+  --text: #0f1318;
+  --muted: #525b67;
+  --border: #d3d8df;
+  --accent: #1f56c2;
+  --focus: #2563d9;
+  --annotation: #f6ba57;
+  --annotation-ink: #18202a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --base: #13161c;
+    --sidebar: #191c23;
+    --hover: #242a34;
+    --active: #2c3a52;
+    --text: #f4f6f9;
+    --muted: #a8b0bb;
+    --border: #343b47;
+    --accent: #8fb6ff;
+    --focus: #8fb6ff;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -137,9 +153,8 @@ dialog::backdrop { background: #161c2a80; }
 .directory li { border-bottom: 1px solid var(--border); }
 .directory a { display: grid; grid-template-columns: minmax(8.5rem, 1fr) 2.15fr; gap: .3rem .8rem; padding: .52rem .6rem; text-decoration: none; }
 .directory a:hover { background: var(--sidebar); }
-.directory a:hover strong { text-decoration: underline; }
+.directory a:hover .plugin-title { text-decoration: underline; }
 .directory a span { color: var(--muted); }
-.directory a strong { font-weight: 650; }
 .contents details { width: 100%; }
 .contents details summary { cursor: pointer; }
 .contents details a { display: block; padding-top: .25rem; }
@@ -160,3 +175,75 @@ dialog::backdrop { background: #161c2a80; }
 .plugin-audition button { padding: .25rem .55rem; background: var(--sidebar); border: 1px solid var(--border); border-radius: .3rem; }
 .plugin-audition button:hover:not(:disabled) { background: var(--active); }
 .plugin-audition button:disabled { cursor: default; opacity: .55; }
+
+
+.plugin-title { display: flex; align-items: center; gap: .42rem; }
+.plugin-icon { width: 1.6rem; height: 1.6rem; flex: none; }
+.plugin-icon.library-art { object-fit: cover; border-radius: .23rem; }
+.directory .plugin-title { font-weight: 650; }
+.directory .plugin-title svg { margin-left: -.12rem; }
+.directory span.plugin-title { color: var(--accent); }
+
+.shot-frame { position: relative; }
+.shot-frame .shot { border: 0; box-shadow: 0 0 0 1px var(--border); }
+.shot-pin {
+  position: absolute; z-index: 1; left: var(--x); top: var(--y);
+  transform: translate(-50%, calc(-100% - .34rem));
+  display: grid; place-items: center; width: 1.2rem; height: 1.2rem;
+  border-radius: 50%; background: var(--annotation); color: var(--annotation-ink);
+  box-shadow: 0 0 0 1px #222a35; font: 700 .74rem/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.shot-pin::after {
+  position: absolute; top: calc(100% - .02rem); left: 50%; transform: translateX(-50%);
+  border: .28rem solid transparent; border-top: .42rem solid var(--annotation); content: "";
+  filter: drop-shadow(0 1px 0 #222a35);
+}
+.annotated-shot figcaption ol, .lightbox-content figcaption ol {
+  margin: .55rem 0 0; padding-left: 1.45rem;
+}
+.annotated-shot figcaption li::marker, .lightbox-content figcaption li::marker { font-weight: 750; color: var(--accent); }
+.lightbox-content { margin: 0; }
+.lightbox-content .shot-frame { width: fit-content; margin-inline: auto; }
+.lightbox-content img { max-height: 74dvh; max-width: calc(100vw - 1.2rem); }
+.lightbox-content figcaption { padding: 0 .7rem .55rem; }
+.listen-check { margin: .7rem 0; padding: .5rem .75rem; background: var(--sidebar); border: 1px solid var(--border); border-radius: .34rem; }
+.listen-check summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.listen-check p:last-child { margin-bottom: 0; }
+
+main:has(.workflow-tabs) { display: block; width: min(100%, 66rem); }
+.workflow-tabs {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin: 1rem 0 0; padding: .25rem;
+  border: 1px solid var(--border); border-radius: .4rem; background: var(--sidebar); position: static;
+}
+.workflow-tabs a { padding: .3rem .55rem; border-radius: .25rem; }
+.workflow-tabs a[aria-selected="true"] { color: var(--text); background: var(--active); font-weight: 650; }
+.prose section[role="tabpanel"] { border-top: 0; padding-top: 0; }
+.workflow-progress { max-width: 47rem; display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.2rem; }
+.workflow-progress a { padding: .4rem .6rem; background: var(--sidebar); border: 1px solid var(--border); border-radius: .35rem; text-decoration: none; font-size: .85rem; }
+.workflow-progress a[data-next] { margin-left: auto; }
+.lightbox-controls { display: flex; gap: .35rem; }
+.lightbox-controls [aria-pressed="true"] { background: var(--active); }
+.image-viewport { max-width: calc(100vw - 1.25rem); max-height: 74dvh; overflow: auto; }
+.image-viewport.actual-size { width: calc(100vw - 1.25rem); }
+.image-viewport.actual-size img { max-width: none; max-height: none; }
+.result-title { display: flex; align-items: center; gap: .35rem; }
+.result-title .plugin-icon { width: 1.3rem; height: 1.3rem; }
+.shot-pin[data-pin-side="below"] { transform: translate(-50%, .34rem); }
+.shot-pin[data-pin-side="below"]::after {
+  top: auto; bottom: calc(100% - .02rem); border-top: .28rem solid transparent;
+  border-bottom: .42rem solid var(--annotation); filter: drop-shadow(0 -1px 0 #222a35);
+}
+.compression-example {
+  margin: .95rem 0; padding: .45rem .8rem .65rem; min-width: 0;
+  border: 1px solid var(--border); border-radius: .4rem;
+  background: var(--sidebar); font-size: .86rem;
+}
+.compression-example legend { font-weight: 700; padding-inline: .25rem; }
+.compression-example label { display: flex; justify-content: space-between; gap: .5rem; max-width: 30rem; }
+.compression-example output { color: var(--muted); font-variant-numeric: tabular-nums; }
+.compression-example input, .compression-example meter { display: block; width: min(100%, 30rem); }
+.compression-example input { accent-color: var(--accent); margin: .15rem 0 .55rem; }
+.compression-example meter { margin-top: .65rem; }
+.compression-example .compression-result { margin: .15rem 0 .4rem; font-weight: 650; }
+.compression-example .compression-note { margin: 0; color: var(--muted); }

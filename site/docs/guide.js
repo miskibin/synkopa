@@ -1,6 +1,10 @@
 const compact = matchMedia("(max-width: 45rem)");
 const menu = document.querySelector(".menu");
-const syncMenu = () => { menu.open = !compact.matches; };
+const pageContents = document.querySelector(".contents details");
+const syncMenu = () => {
+  menu.open = !compact.matches;
+  if (pageContents) pageContents.open = !compact.matches;
+};
 syncMenu();
 compact.addEventListener("change", syncMenu);
 
@@ -63,6 +67,7 @@ function setupSearch() {
           url: new URL("#" + heading.id, topic.url).href,
           topic: topic.title,
           body: normalize(section.textContent),
+          icon: heading.querySelector(".plugin-icon"),
         };
       });
     }));
@@ -92,7 +97,11 @@ function setupSearch() {
     for (const [index, entry] of matches.entries()) {
       const link = document.createElement("a");
       link.href = entry.url;
-      link.textContent = entry.title;
+      const title = document.createElement("span");
+      title.className = "result-title";
+      if (entry.icon) title.append(document.importNode(entry.icon, true));
+      title.append(entry.title);
+      link.append(title);
       link.classList.toggle("active", index === selection);
       if (entry.topic) {
         const topic = document.createElement("small");
@@ -161,13 +170,33 @@ function setupScreenshots() {
   if (!shots.length) return;
   const panel = addDialog("lightbox", "Screenshot", `
     <form method="dialog">
-      <a>Open full size</a>
-      <button class="close">Close</button>
+      <a>Open image</a>
+      <div class="lightbox-controls">
+        <button type="button" class="close" data-size aria-pressed="false">Actual size</button>
+        <button class="close" data-close>Close</button>
+      </div>
     </form>
-    <img alt="">
+    <figure class="lightbox-content">
+      <div class="image-viewport" aria-label="Scroll screenshot">
+        <div class="shot-frame"><img alt=""></div>
+      </div>
+      <figcaption hidden></figcaption>
+    </figure>
   `);
-  const preview = panel.querySelector("img");
+  const frame = panel.querySelector(".shot-frame");
+  const preview = frame.querySelector("img");
+  const instructions = panel.querySelector("figcaption");
   const fullSize = panel.querySelector("a");
+  const viewport = panel.querySelector(".image-viewport");
+  const size = panel.querySelector("[data-size]");
+  const close = panel.querySelector("[data-close]");
+  function setActualSize(actual) {
+    viewport.classList.toggle("actual-size", actual);
+    viewport.tabIndex = actual ? 0 : -1;
+    size.setAttribute("aria-pressed", actual);
+    viewport.scrollTo(0, 0);
+  }
+  size.addEventListener("click", () => setActualSize(!viewport.classList.contains("actual-size")));
   for (const shot of shots) {
     shot.classList.add("zoomable");
     shot.setAttribute("aria-haspopup", "dialog");
@@ -177,7 +206,14 @@ function setupScreenshots() {
       preview.src = shot.href;
       preview.alt = shot.querySelector("img").alt;
       fullSize.href = shot.href;
+      const pins = shot.parentElement.querySelectorAll(".shot-pin");
+      frame.replaceChildren(preview, ...Array.from(pins, pin => pin.cloneNode(true)));
+      const caption = shot.closest("figure")?.querySelector("figcaption");
+      instructions.replaceChildren(...Array.from(caption?.childNodes ?? [], node => node.cloneNode(true)));
+      instructions.hidden = !caption;
+      setActualSize(false);
       panel.showModal();
+      close.focus();
     });
   }
 }
@@ -220,3 +256,124 @@ function setupPluginFilter() {
 }
 
 setupPluginFilter();
+
+function setupWorkflowSteps() {
+  const nav = document.querySelector("[data-workflow]");
+  if (!nav) return;
+  const steps = Array.from(nav.querySelectorAll("a"), link => {
+    const heading = document.getElementById(link.hash.slice(1));
+    return { link, panel: heading.closest("section") };
+  });
+  const progress = document.querySelector(".workflow-progress");
+  const back = progress.querySelector("[data-back]");
+  const next = progress.querySelector("[data-next]");
+  let active = 0;
+
+  nav.setAttribute("role", "tablist");
+  nav.classList.add("workflow-tabs");
+  steps.forEach(({ link, panel }, index) => {
+    panel.id = link.hash.slice(1) + "-panel";
+    link.id = "step-" + (index + 1);
+    link.setAttribute("role", "tab");
+    link.setAttribute("aria-controls", panel.id);
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", link.id);
+  });
+
+  function render(index) {
+    active = index;
+    steps.forEach(({ link, panel }, i) => {
+      const selected = i === active;
+      link.setAttribute("aria-selected", selected);
+      link.tabIndex = selected ? 0 : -1;
+      panel.hidden = !selected;
+    });
+    back.hidden = active === 0;
+    next.hidden = active === steps.length - 1;
+    if (!back.hidden) {
+      back.href = steps[active - 1].link.hash;
+      back.textContent = "← " + steps[active - 1].link.textContent;
+    }
+    if (!next.hidden) {
+      next.href = steps[active + 1].link.hash;
+      next.textContent = steps[active + 1].link.textContent + " →";
+    }
+    progress.hidden = back.hidden && next.hidden;
+  }
+
+  function activate(index, focus) {
+    if (location.hash !== steps[index].link.hash) history.pushState(null, "", steps[index].link.hash);
+    render(index);
+    if (focus) steps[index].link.focus();
+  }
+
+  function syncHash(scroll = false) {
+    const index = steps.findIndex(({ link }) => link.hash === location.hash);
+    if (index >= 0) {
+      render(index);
+      if (scroll) requestAnimationFrame(() => steps[index].panel.scrollIntoView({ block: "start" }));
+    } else if (!location.hash) render(0);
+  }
+
+  steps.forEach(({ link }, index) => {
+    link.addEventListener("click", event => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      activate(index, true);
+    });
+    link.addEventListener("keydown", event => {
+      const last = steps.length - 1;
+      const offsets = { ArrowRight: 1, ArrowLeft: -1 };
+      const target = event.key === "Home" ? 0 : event.key === "End" ? last :
+        Object.hasOwn(offsets, event.key) ? (index + offsets[event.key] + steps.length) % steps.length : null;
+      if (target === null) return;
+      event.preventDefault();
+      activate(target, true);
+    });
+  });
+
+  progress.addEventListener("click", event => {
+    const link = event.target.closest("a");
+    if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    activate(active + (link === back ? -1 : 1), true);
+    nav.scrollIntoView({ block: "nearest" });
+  });
+  addEventListener("hashchange", () => syncHash(true));
+  addEventListener("popstate", () => syncHash());
+  render(0);
+  syncHash();
+}
+
+setupWorkflowSteps();
+
+function setupCompressionExample() {
+  const example = document.querySelector("[data-compression]");
+  if (!example) return;
+  const [input, threshold, ratio] = example.querySelectorAll("input");
+  const values = example.querySelectorAll("output");
+  const meter = example.querySelector("meter");
+  const result = example.querySelector(".compression-result");
+  const decibels = value => value.toLocaleString("en", { maximumFractionDigits: 1 }).replace("-", "−") + " dB";
+
+  function update() {
+    const level = input.valueAsNumber;
+    const thresh = threshold.valueAsNumber;
+    const factor = ratio.valueAsNumber;
+    const above = Math.max(0, level - thresh);
+    const reduction = above * (1 - 1 / factor);
+    const descriptions = [decibels(level), decibels(thresh), factor + ":1"];
+    [input, threshold, ratio].forEach((control, index) => {
+      values[index].value = descriptions[index];
+      control.setAttribute("aria-valuetext", descriptions[index]);
+    });
+    meter.value = level - reduction;
+    result.textContent = "Output " + decibels(meter.value) + " · " + decibels(reduction) + " reduction";
+  }
+
+  example.addEventListener("input", update);
+  update();
+  example.hidden = false;
+}
+
+setupCompressionExample();
