@@ -44,8 +44,10 @@ describe('tempoSegments', () => {
     expect(tempoSegments([pt(4, 90, true)], 120, 16)).toEqual([{ a: 0, b: 4, va: 120, vb: 120 }, { a: 4, b: 16, va: 90, vb: 90 }]);
   });
 
-  it('stops at the end of the view and drops a duplicate beat', () => {
-    expect(tempoSegments([pt(4, 90, true), pt(8, 60)], 120, 6)).toEqual([{ a: 0, b: 4, va: 120, vb: 120 }, { a: 4, b: 6, va: 90, vb: 60 }]);
+  it('stops at the end of the view, at the value the glide REACHES there', () => {
+    // 90 gliding to 60 over beats 4..8: at beat 6 (the view's end) it has reached 75, it does
+    // not bend to hit 60 early
+    expect(tempoSegments([pt(4, 90, true), pt(8, 60)], 120, 6)).toEqual([{ a: 0, b: 4, va: 120, vb: 120 }, { a: 4, b: 6, va: 90, vb: 75 }]);
     expect(tempoSegments([pt(4, 90), pt(4, 60)], 120, 16)).toEqual([{ a: 0, b: 4, va: 120, vb: 120 }, { a: 4, b: 16, va: 60, vb: 60 }]);
   });
 });

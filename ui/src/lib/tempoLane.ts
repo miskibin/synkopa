@@ -52,8 +52,10 @@ export function tempoSegments(points: readonly TempoPoint[] | undefined, base: n
     const p = list[i], n = list[i + 1];
     if (p.beat >= end - 1e-9) break;
     if (p.beat > pos + 1e-9) { out.push({ a: pos, b: p.beat, va: v, vb: v }); pos = p.beat; }
-    const vb = n && p.ramp ? n.bpm : p.bpm;
     const to = Math.min(n ? n.beat : end, end);
+    // a ramp cut short by the view's end still shows the value it REACHES there (the glide
+    // continues past the edge, it does not bend to hit its target early)
+    const vb = n && p.ramp ? p.bpm + (n.bpm - p.bpm) * ((to - p.beat) / (n.beat - p.beat)) : p.bpm;
     out.push({ a: pos, b: to, va: p.bpm, vb });
     pos = to;
     v = vb;

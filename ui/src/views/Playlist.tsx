@@ -1582,6 +1582,9 @@ export function Playlist() {
       return;
     }
     if (dblCheck('tpstrip')) { tempoAddAndDrag(e, x, y); return; }
+    // a plain click stays inert: routing it into the ruler's press would stamp the shared
+    // double-click state ('ruler') between our two presses, and double-click-to-add would
+    // never fire (the marker strip's empty-space double-click-add is dead for exactly this)
   };
   const tempoMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -1592,6 +1595,7 @@ export function Playlist() {
       openMenu(e.clientX, e.clientY, [
         { t: 'title', label: fmtPos(beat) },
         { t: 'item', label: tl('a.tp.addHere'), act: () => {
+          if (tpList().length >= MAX_TEMPO_POINTS) { say(tl('a.tp.tooMany', { n: MAX_TEMPO_POINTS })); return; }
           commit([putTempo(addTempoPoint(tpList(), beat, S.project.bpm).points)], tl('a.tp.addPoint'));
           say(`${bpmLabel(S.project.bpm)} BPM · ${fmtPos(beat)}`);
         } },
@@ -1608,7 +1612,7 @@ export function Playlist() {
         commit([putTempo(points)], tl('a.tp.movePoint'));
         say(`${bpmLabel(points[hit]?.bpm ?? v)} BPM`);
       }, tl('a.tp.valueTitle')) },
-      { t: 'item', label: tl('a.tp.glide'), checked: !!p.ramp, act: () => {
+      { t: 'item', label: tl('a.tp.glide'), checked: !!p.ramp, disabled: hit === pts.length - 1, act: () => {
         commit([putTempo(setTempoRamp(tpList(), hit, !p.ramp))], tl('a.tp.glide'));
         say(p.ramp ? tl('a.tp.glideOff') : tl('a.tp.glideOn'));
       } },

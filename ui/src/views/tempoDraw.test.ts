@@ -37,6 +37,15 @@ describe('drawTempoLane', () => {
     return { g: g as unknown as CanvasRenderingContext2D, calls };
   };
 
+  it('draws a ramp scrolled past the left edge along its TRUE slope (the canvas clips)', () => {
+    // the glide 90 -> 60 over beats 4..8, viewed from beat 5: the line starts off-screen at the
+    // segment's real start value, not pinned at the viewport edge
+    const G2 = tempoGeom(10, 20, 60, 120);
+    const c = recordingCtx();
+    drawTempoLane(c.g, 50, 40, [pt(4, 90, true), pt(8, 60)], 90, 10, G2, null);
+    expect(c.calls.slice(0, 7)).toEqual(['fill', 'move 40,10', 'line 80,17', 'move 80,17', 'line 90,17', 'stroke', 'fill']);
+  });
+
   it('draws the base flat when the map is empty and flats plus a ramp with points', () => {
     const G = tempoGeom(10, 20, 90, 150);
     const a = recordingCtx();

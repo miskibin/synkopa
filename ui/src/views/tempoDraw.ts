@@ -42,14 +42,16 @@ export function drawTempoLane(g: CanvasRenderingContext2D, offX: number, W: numb
   g.save();
   g.translate(-offX, 0);
   const end = G.T(offX + W);
-  // one path for the curve: flats and ramps (a lead-in at the base tempo included)
+  // one path for the curve: flats and ramps (a lead-in at the base tempo included). The true
+  // endpoints are drawn even off-screen and the canvas clips: clamping x and pinning the value
+  // there would bend every ramp that scrolls past either edge.
   g.strokeStyle = T.blue;
   g.lineWidth = 1.5;
   g.beginPath();
   for (const s of tempoSegments(points, base, end)) {
     if (s.b * bw < offX - 4 || s.a * bw - 4 > offX + W) continue;
-    g.moveTo(Math.max(s.a * bw, offX - 4), G.Y(s.va));
-    g.lineTo(Math.min(s.b * bw, offX + W + 4), G.Y(s.vb));
+    g.moveTo(s.a * bw, G.Y(s.va));
+    g.lineTo(s.b * bw, G.Y(s.vb));
   }
   g.stroke();
   const list = points ?? [];
