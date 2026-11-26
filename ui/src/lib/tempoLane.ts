@@ -4,7 +4,7 @@
 // strip draws, and the point edits the lane dispatches as `setTempoPoints` ops. A ramp glides
 // linearly in beats from a point to the next one, so the drawn line is straight; the flag belongs
 // to the segment's START point.
-import { MAX_TEMPO_BPM, MIN_TEMPO_BPM, TOTAL_BEATS, type TempoPoint } from '../api/types';
+import { MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS, type TempoPoint } from '../api/types';
 
 /** Strip height (px), like MARKER_H for the marker strip above it. */
 export const TEMPO_H = 20;
@@ -40,6 +40,20 @@ export function dedupeTempo(points: readonly TempoPoint[] | undefined): TempoPoi
     else out.push(p);
   }
   return out;
+}
+
+/**
+ * The map as the engine PLAYS it: clamped, sorted, two at one beat folded, capped at
+ * MAX_TEMPO_POINTS — the mirror of `TempoMap::compile`. The op path normalizes too, but a
+ * project FILE loads raw (nothing truncates `tempo_points` on load), so the lane draws, hits
+ * and reads from this bounded list: everything per-frame here costs at most what plays.
+ */
+export function compiledTempo(points: readonly TempoPoint[] | undefined): TempoPoint[] {
+  return dedupeTempo((points ?? []).map(p => ({
+    beat: Math.min(Math.max(p.beat, 0), TOTAL_BEATS),
+    bpm: Math.min(Math.max(p.bpm, MIN_TEMPO_BPM), MAX_TEMPO_BPM),
+    ramp: p.ramp ?? false,
+  }))).slice(0, MAX_TEMPO_POINTS);
 }
 
 export interface TempoSeg { a: number; b: number; va: number; vb: number }

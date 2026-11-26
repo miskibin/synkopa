@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOTAL_BEATS, type TempoPoint } from '../api/types';
-import { addTempoPoint, bpmAt, bpmLabel, deleteTempoPoint, dedupeTempo, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, tempoSegments } from './tempoLane';
+import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, dedupeTempo, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, tempoSegments } from './tempoLane';
 
 const pt = (beat: number, bpm: number, ramp = false): TempoPoint => ({ beat, bpm, ramp });
 
@@ -144,6 +144,18 @@ describe('the remaining point edits', () => {
 
   it('dedupe keeps the last of each beat as the engine plays it', () => {
     expect(dedupeTempo([pt(8, 90), pt(4, 100), pt(8, 60)])).toEqual([pt(4, 100), pt(8, 60)]);
+  });
+});
+
+describe('compiledTempo', () => {
+  it('clamps, sorts, folds duplicates and caps at MAX_TEMPO_POINTS — a raw file cannot make the lane unbounded', () => {
+    const many: TempoPoint[] = Array.from({ length: 5000 }, (_, i) => ({ beat: i * 0.4, bpm: 100 + (i % 5), ramp: i % 2 === 0 }));
+    const out = compiledTempo(many);
+    expect(out).toHaveLength(4096);
+    expect(out[0].beat).toBeLessThanOrEqual(out[1].beat);
+    expect(out.every(p => p.bpm >= 20 && p.bpm <= 300 && p.beat >= 0)).toBe(true);
+    expect(compiledTempo([pt(4, 90), pt(4, 60)])).toEqual([pt(4, 60)]);
+    expect(compiledTempo(undefined)).toEqual([]);
   });
 });
 

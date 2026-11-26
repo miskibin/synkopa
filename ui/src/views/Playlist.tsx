@@ -42,7 +42,7 @@ import { rgba, T, theme } from '../ui/theme';
 import { markerAtX } from '../lib/markers';
 import * as MK from '../state/markers';
 import { drawMarkers, drawMarkerTicks, MARKER_H, markerBoxes } from './markerDraw';
-import { addTempoPoint, bpmAt, bpmLabel, deleteTempoPoint, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, TEMPO_H } from '../lib/tempoLane';
+import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, TEMPO_H } from '../lib/tempoLane';
 import { drawTempoLane } from './tempoDraw';
 import { MAX_TEMPO_POINTS, type TempoPoint } from '../api/types';
 
@@ -357,7 +357,7 @@ export function Playlist() {
   effect(() => { for (const m of S.project.markers ?? []) { void m.at; void m.name; } mkDrag(); mkHover(); dirtyRuler = true; });
   // the tempo lane: the map, the base tempo it hangs from, the hover focus and the frozen drag axis
   effect(() => {
-    for (const p of S.project.tempoPoints ?? []) { void p.beat; void p.bpm; void p.ramp; }
+    for (const p of tpShown()) { void p.beat; void p.bpm; void p.ramp; }
     S.project.bpm; tpHover();
     dirtyRuler = true;
   });
@@ -522,11 +522,11 @@ export function Playlist() {
     rulerCv.style.width = t.w + 'px';
     rulerCv.style.transform = `translateX(${t.x}px)`;
     if (tpCv) {
-      const sc = tpDragScale ?? tempoScale(S.project.tempoPoints, S.project.bpm);
+      const sc = tpDragScale ?? tempoScale(tpShown(), S.project.bpm);
       fitCanvas(tpCv, t.w, TEMPO_H);
       const tg = tpCv.getContext('2d')!;
       tg.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawTempoLane(tg, t.x, t.w, S.project.tempoPoints, S.project.bpm, U.bw, tempoGeom(U.bw, TEMPO_H, sc.lo, sc.hi), tpHover());
+      drawTempoLane(tg, t.x, t.w, tpShown(), S.project.bpm, U.bw, tempoGeom(U.bw, TEMPO_H, sc.lo, sc.hi), tpHover());
       tpCv.style.width = t.w + 'px';
       tpCv.style.transform = `translateX(${t.x}px)`;
     }
@@ -550,7 +550,7 @@ export function Playlist() {
   /** The head cell's live BPM: what the map plays at the playhead (the draw loop runs per frame). */
   const updateTpHead = (beat: number) => {
     if (!tpNowEl) return;
-    const txt = bpmAt(S.project.tempoPoints, S.project.bpm, Math.max(0, beat)).toFixed(2);
+    const txt = bpmAt(tpShown(), S.project.bpm, Math.max(0, beat)).toFixed(2);
     if (tpNowEl.textContent !== txt) tpNowEl.textContent = txt;
   };
 
@@ -1517,7 +1517,7 @@ export function Playlist() {
   // ---------- the tempo lane (lib/tempoLane: the song's tempo map as an editable strip) ----------
   /** The strip's geometry; while a drag moves, the axis frozen at gesture open (no rescaling under the pointer). */
   const tpGeom = () => {
-    const sc = tpDragScale ?? tempoScale(S.project.tempoPoints, S.project.bpm);
+    const sc = tpDragScale ?? tempoScale(tpShown(), S.project.bpm);
     return tempoGeom(U.bw, TEMPO_H, sc.lo, sc.hi);
   };
   /** The strip-local pointer position: content x like the ruler's, y within the strip's height. */
@@ -1526,11 +1526,14 @@ export function Playlist() {
     return { x: e.clientX - gridLeft(), y: e.clientY - top };
   };
   const putTempo = (points: TempoPoint[]): Op => ({ op: 'setTempoPoints', points });
-  /** The points as plain copies for an edit (the project may hold undefined for an empty map). */
-  const tpList = (): TempoPoint[] => (S.project.tempoPoints ? plain(S.project.tempoPoints) : []);
+  /** The map as the engine PLAYS it: clamped, sorted, folded, capped (a project file loads raw,
+   *  nothing bounds it on load) — every per-frame read below costs at most what plays. */
+  const tpShown = createMemo(() => compiledTempo(S.project.tempoPoints));
+  /** The points as plain copies for an edit. */
+  const tpList = (): TempoPoint[] => plain(tpShown());
   const tempoHover = (e: PointerEvent) => {
     const { x, y } = tpAt(e);
-    const i = hitTempo(S.project.tempoPoints, tpGeom(), x, y);
+    const i = hitTempo(tpShown(), tpGeom(), x, y);
     if (i !== tpHover()) setTpHover(i);
     (e.currentTarget as HTMLElement).style.cursor = i != null ? 'grab' : 'default';
   };
