@@ -118,6 +118,8 @@ In Claude Code, the plugin adds the tools and a skill that teaches the workflow 
 
 Other hosts: [`docs/cli.md`](docs/cli.md#agent-hosts-synkopa-mcp).
 
+[![Synkopa MCP server on Glama](https://glama.ai/mcp/servers/miskibin/synkopa/badges/score.svg)](https://glama.ai/mcp/servers/miskibin/synkopa)
+
 ## How Synkopa fits next to other DAWs
 
 Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Studio has more than twenty-five years behind it and wins on ecosystem and breadth.
