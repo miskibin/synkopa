@@ -1069,6 +1069,7 @@ fn a_held_note_ends_where_its_beats_really_are() {
         min_len: 8.0,
         notes: vec![Note::new(cid, 12.0, 8.0, None)],
         swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
     };
     let mut ops: Vec<Op> = p0.inserts[0].fx.iter().map(|f| Op::RemoveFx { fx_id: f.id }).collect();
     ops.extend([
