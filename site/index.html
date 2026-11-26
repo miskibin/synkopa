@@ -68,6 +68,8 @@
   .key small { font: 500 11.5px var(--mono); opacity: .8; }
   svg.dc { width: 1.15em; height: 1.15em; fill: currentColor; vertical-align: -.2em; margin-right: .4em; flex: none; }
   .key.icon { padding-inline: 12px; }
+  svg.gh { width: 17px; height: 17px; fill: currentColor; margin-right: 7px; flex: none; }
+
   .key.icon svg.dc { margin: 0; width: 20px; height: 20px; }
   .key .row { display: inline-flex; align-items: center; }
   .key.amber { background: var(--amber); color: var(--on-amber); }
@@ -217,7 +219,23 @@
 
   @media (max-width: 760px) {
     body { font-size: 16px; }
+    header.top { flex-wrap: nowrap; gap: 8px; }
     header.top nav a.opt { display: none; }
+    header.top .long { display: none; }
+    /* Phones rarely install a desktop DAW: the trailer leads, downloads shrink to one row of chips. */
+    .hero { display: flex; flex-direction: column; }
+    .hero .video { order: 1; margin-top: 26px; }
+    .hero .cap { order: 2; margin-top: 10px; }
+    .hero .keys.dl { order: 3; }
+    .keys.dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
+    .keys.dl::before { content: "Download for desktop"; grid-column: 1 / -1; font: 600 11.5px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+    .keys.dl .key { min-height: 40px; padding: 0 6px; align-items: center; text-align: center; font-size: 14.5px; box-shadow: 0 2px 0 var(--ink); }
+    .keys.dl small { display: none; }
+    .keys.dl .dl-for { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .video button .key { min-height: 0; padding: 8px 14px; font-size: 15px; }
+    .video button .key small { font-size: 10.5px; }
+    .star .keys { flex-direction: column; gap: 10px; }
+    .star .key { width: 100%; min-height: 46px; }
     .hero { padding: 26px 0 44px; }
     .ask { padding: 38px 0 42px; }
     .reason { grid-template-columns: 1fr; }
@@ -259,7 +277,7 @@
       <a href="docs/">Docs</a>
     </nav>
     <a class="key sm icon" href="https://discord.gg/zHMjE3fCY" title="Join the Synkopa Discord" aria-label="Discord"><svg class="dc" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a>
-    <a class="key sm" href="https://github.com/miskibin/synkopa">★ Star on GitHub<span data-stars></span></a>
+    <a class="key sm" href="https://github.com/miskibin/synkopa" aria-label="Star on GitHub"><svg class="gh" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.03 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>★<span class="long">&nbsp;Star on GitHub</span><span data-stars></span></a>
     <a class="key sm amber" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
   </header>
 
@@ -277,10 +295,10 @@
     </div>
     <p class="tag">A free, open-source DAW that works <mark>the FL Studio way.</mark></p>
     <p class="label">Patterns · Channel Rack · piano roll · playlist · recording · vocal tuning</p>
-    <div class="keys">
-      <a class="key amber" href="https://github.com/miskibin/synkopa/releases/latest">Download for Windows<small><span data-ver>latest release</span> · installer with ASIO</small></a>
-      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download for macOS<small>Apple Silicon · .dmg</small></a>
-      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download for Linux<small>deb · rpm · AppImage</small></a>
+    <div class="keys dl">
+      <a class="key amber" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>Windows</span><small><span data-ver>latest release</span> · installer with ASIO</small></a>
+      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>macOS</span><small>Apple Silicon · .dmg</small></a>
+      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>Linux</span><small>deb · rpm · AppImage</small></a>
     </div>
     <div class="video" id="video">
       <button type="button" id="video-play" aria-label="Play the Synkopa video">
@@ -697,7 +715,7 @@
   });
   gh('', function (j) {
     if (typeof j.stargazers_count !== 'number') return;
-    document.querySelectorAll('[data-stars]').forEach(function (el) { el.textContent = ' · ' + j.stargazers_count; });
+    document.querySelectorAll('[data-stars]').forEach(function (el) { el.innerHTML = '<span class="long">&nbsp;·</span>&nbsp;' + Number(j.stargazers_count); });
   });
 })();
 </script>
