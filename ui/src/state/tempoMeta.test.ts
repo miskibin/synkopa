@@ -86,4 +86,30 @@ describe('tempo edits keep the store meta current', () => {
     expect((await mock.getState()).project.tempoPoints).toBeUndefined();
     expect(store.S.canUndo).toBe(false);
   });
+
+  it('after an undo the toolbar chain reads the RESTORED tempo — the state merge edits the list in place, so no array-identity cache can live there', async () => {
+    // CodeRabbit regression on #317: the readout must follow an undo even though `mergeInto`
+    // keeps the id-less points list and mutates it positionally (state/store.ts:236) — the
+    // compiled map has to be a reactive memo, never a cache keyed on the array
+    const { createRoot, createMemo } = await import('solid-js');
+    const { compiledTempo, bpmAt } = await import('../lib/tempoLane');
+    edit.commit([{ op: 'setTempoPoints', points: [{ beat: 8, bpm: 90, ramp: false }] }], 'Add tempo point');
+    await edit.settled();
+    await flush();
+    edit.commit([{ op: 'setTempoPoints', points: [{ beat: 8, bpm: 120, ramp: false }] }], 'Edit tempo point');
+    await edit.settled();
+    await flush();
+    const arr = store.S.project.tempoPoints;
+    let dispose!: () => void;
+    const compiled = createRoot((d: () => void) => {
+      dispose = d;
+      return createMemo(() => compiledTempo(store.S.project.tempoPoints));
+    });
+    expect(bpmAt(compiled(), 128, 8)).toBe(120);
+    await (await import('../api/backend')).be().undo().then(edit.acceptReply);
+    await flush();
+    expect(store.S.project.tempoPoints).toBe(arr); // the merge kept the array…
+    expect(bpmAt(compiled(), 128, 8)).toBe(90); // …and the memo still reads the restored tempo
+    dispose();
+  });
 });

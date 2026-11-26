@@ -1197,6 +1197,26 @@ fn a_loaded_map_is_bounded_like_the_op_path() {
         (MAX_TEMPO_POINTS - 1) as f64 * 0.25,
         "the kept points are the map's head, not a residue"
     );
+
+    // the cap lands on the order `TempoMap::compile` plays, not the file's: an out-of-order
+    // over-cap list that stores its beat-0 anchor LAST keeps it (compile sorts by the clamped
+    // beat before it caps — capping the unsorted list would drop the opener and the next save
+    // would write the loss)
+    let mut v = serde_json::to_value(Project::sketch()).unwrap();
+    let mut pts: Vec<serde_json::Value> =
+        (1..=MAX_TEMPO_POINTS).map(|i| serde_json::json!({ "beat": i as f64 * 0.25, "bpm": 120.0, "ramp": false })).collect();
+    pts.push(serde_json::json!({ "beat": 0.0, "bpm": 60.0, "ramp": false }));
+    v["tempoPoints"] = serde_json::json!(pts);
+    let mut q = Project::from_json(v).unwrap();
+    q.migrate();
+    assert_eq!(q.tempo_points.len(), MAX_TEMPO_POINTS);
+    assert_eq!(q.tempo_points[0].beat, 0.0, "the beat-0 anchor survives the cap");
+    assert_eq!(q.tempo_points[0].bpm, 60.0);
+    assert_eq!(q.tempo_points[1].beat, 0.25, "the rest is sorted by beat");
+    let again = q.clone();
+    let mut twice = q.clone();
+    twice.migrate();
+    assert_eq!(twice, again, "migrate stays idempotent on the sorted list");
 }
 
 #[test]

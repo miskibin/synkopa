@@ -8,7 +8,7 @@ import { t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
 import { prefs, setPref, UI_SCALES } from '../state/prefs';
-import { For, Show } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { be } from '../api/backend';
 import { notify } from '../state/notice';
@@ -36,8 +36,7 @@ import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
 import { volText } from '../lib/format';
 import { loadProgramVolume, programVolume, setProgramVolume } from '../state/programVolume';
-import { playheadBpm } from '../lib/tempoLane';
-import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
+import { bpmAt, compiledTempo } from '../lib/tempoLane';
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
 import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../state/underruns';
 import { audioStatus, openAudioSettings } from '../state/audioWatch';
@@ -104,17 +103,20 @@ export function Toolbar() {
     say('Tempo ' + b.toFixed(2) + ' BPM');
   };
   // the readout shows the tempo AT THE PLAYHEAD when the map plays one (#292's "toolbar tempo
-  // shows BPM-at-playhead when mapped"): the frame task moves a signal, Solid renders it.
+  // shows BPM-at-playhead when mapped"): a memo compiles the map reactively (Solid tracks the
+  // elements' leaves, so the store's in-place state merges recompute it — an array-identity
+  // cache would serve a stale tempo after an undo), and the frame task reads it per frame.
   // PAT mode plays one constant base tempo, so it keeps the base; the knob still edits the
   // base — and clears the map (a.tb.bpmTipMapped says so). The JSX fallback reads the base
   // reactively, so a broken project value fails this one cell (the boundary test bombs bpm).
   const mapped = () => !!S.project.tempoPoints?.length;
   const bpmTip = () => (mapped() ? t('a.tb.bpmTipMapped', { base: S.project.bpm.toFixed(2) }) : t('a.tb.bpmTip'));
+  const compiled = createMemo(() => compiledTempo(S.project.tempoPoints));
   const [bpmShown, setBpmShown] = createSignal('');
   let lastBpmTxt = '';
   onMount(() => onCleanup(addFrameTask(() => {
     const pts = S.project.tempoPoints;
-    const txt = !patMode() && pts?.length ? playheadBpm(pts, S.project.bpm, curBeat()).toFixed(2) : S.project.bpm?.toFixed(2) ?? '';
+    const txt = !patMode() && pts?.length ? bpmAt(compiled(), S.project.bpm, curBeat()).toFixed(2) : S.project.bpm?.toFixed(2) ?? '';
     if (txt === lastBpmTxt) return;
     lastBpmTxt = txt;
     setBpmShown(txt);

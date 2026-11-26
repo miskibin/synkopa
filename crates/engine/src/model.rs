@@ -1773,6 +1773,10 @@ impl Project {
         // a file is data, not an op: nothing else on the load path bounds the map (the op path
         // refuses above the cap, the compiled copy truncates), so a hand-edited file with more
         // points than can ever play would sit raw in the project — bring it to the same bound
+        // ON THE SAME ORDER: `TempoMap::compile` sorts by the clamped beat before it caps, and
+        // capping in file order would keep a different set (a 4097-point file that stores its
+        // beat-0 anchor last would lose it, and the next save would write the loss)
+        self.tempo_points.sort_by(|a, b| a.beat.clamp(0.0, TOTAL_BEATS).total_cmp(&b.beat.clamp(0.0, TOTAL_BEATS)));
         self.tempo_points.truncate(MAX_TEMPO_POINTS);
         self.version = self.version.max(PROJECT_VERSION);
         // ids the file used must stay taken
