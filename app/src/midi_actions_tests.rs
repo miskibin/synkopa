@@ -219,6 +219,45 @@ fn a_mapped_project_exports_its_map_and_a_ramp_as_per_beat_events() {
 }
 
 #[test]
+fn inspect_exposes_the_tempo_map_even_without_a_tick_0_tempo() {
+    // MidiInfo requires `tempoPoints`, and the dialog reads its length whenever the tick-0
+    // tempo is null — which includes files with no tempo events at all: the response must
+    // always carry the array (a TypeError here broke the dialog for every such file)
+    let d = tmp("inspectmap");
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("late.mid");
+    std::fs::write(&path, midi_file::write(&[(2.0, 140.0)], "L", &tracks).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_inspect", json!({ "path": path }));
+    assert_eq!(r["bpm"], Value::Null, "no event at tick 0: the default governs");
+    let pts = r["tempoPoints"].as_array().expect("tempoPoints is always an array");
+    assert_eq!(pts.len(), 1);
+    assert_eq!(pts[0]["beat"], 2.0);
+    assert_eq!(pts[0]["bpm"], 140.0);
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn importing_a_point_above_the_limit_discloses_the_clamp() {
+    // SetTempoPoints clamps values into 20–300; the import says so instead of normalizing
+    // silently (a 400-BPM change arriving as 300 without a word would corrupt the user's
+    // reading of the file)
+    let d = tmp("clamped");
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("fast.mid");
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 400.0)], "F", &tracks).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true }));
+    assert_eq!(r["tempoSet"], true);
+    let warns: Vec<String> = r["warnings"].as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect();
+    assert!(warns.iter().any(|w| w.contains("outside Synkopa's 20–300")), "{warns:?}");
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert_eq!(proj["tempoPoints"][0]["bpm"], 300.0, "clamped to the engine's limit");
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
 fn bad_files_and_empty_choices_are_errors_and_change_nothing() {
     let d = tmp("bad");
     let junk = d.join("x.mid");

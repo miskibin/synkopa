@@ -44,8 +44,9 @@ export function MidiImport() {
       setPicked(new Set(into() ? [(withNotes.find(p => !p.drums) ?? withNotes[0])?.index].filter((x): x is number => x != null) : withNotes.map(p => p.index)));
       // a fresh project takes the file's tempo (the tick-0 value, or MIDI's implied 120 when
       // the file's first change comes later — the map arrives with it); one with an
-      // arrangement keeps its own
-      setTempo(hasTempo(f) && Math.abs(fileBpm(f) - f.projectBpm) > 0.005 && !S.project.clips.length);
+      // arrangement keeps its own. A map is a reason on its own: even when the file's base
+      // matches the project's, its later changes are worth importing.
+      setTempo(hasTempo(f) && (f.tempoPoints.length > 0 || Math.abs(fileBpm(f) - f.projectBpm) > 0.005) && !S.project.clips.length);
       queueMicrotask(() => importBtn?.focus());
     }).catch(e => { if (id === req) setErr(String(e)); });
   });
@@ -123,7 +124,7 @@ export function MidiImport() {
                   </For>
                 </ul>
                 <Show when={into()} fallback={
-                  <Show when={hasTempo(f()) && Math.abs(fileBpm(f()) - f().projectBpm) > 0.005}>
+                  <Show when={hasTempo(f()) && (f().tempoPoints.length > 0 || Math.abs(fileBpm(f()) - f().projectBpm) > 0.005)}>
                     <label class="row midiopt"><input type="checkbox" checked={tempo()} disabled={busy()} onChange={e => setTempo(e.currentTarget.checked)} />
                       {t('d.midi.tempo', { bpm: fileBpm(f()).toFixed(2).replace(/\.?0+$/, ''), now: f().projectBpm.toFixed(2).replace(/\.?0+$/, '') })}</label>
                   </Show>

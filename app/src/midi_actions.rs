@@ -72,6 +72,7 @@ pub fn inspect(app: &dyn Host, a: &Value) -> R<Value> {
         .collect();
     Ok(json!({
         "path": need_str(a, "path")?, "format": f.format, "ppq": f.ppq, "bpm": f.bpm.map(r4), "tempoChanges": f.tempo_changes,
+        "tempoPoints": f.tempo_points.iter().map(|t| json!({ "beat": r4(t.beat), "bpm": r4(t.bpm) })).collect::<Vec<_>>(),
         "end": r4(f.end), "warnings": f.warnings, "parts": parts, "projectBpm": app.engine().project().bpm,
     }))
 }
@@ -219,7 +220,16 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
         })
         .map_err(|x| x.to_string())?;
     made["revision"] = json!(rev);
-    made["warnings"] = json!(f.warnings);
+    let mut warnings = f.warnings;
+    // a point the engine cannot keep is disclosed, not silently normalized (the op clamps it)
+    let clipped: Vec<String> = f
+        .tempo_points
+        .iter()
+        .filter(|t| t.bpm > wave_engine::model::MAX_TEMPO_BPM || t.bpm < wave_engine::model::MIN_TEMPO_BPM)
+        .map(|t| format!("the file's tempo of {:.2} BPM at beat {} is outside Synkopa's 20–300: it imports clamped", t.bpm, r4(t.beat)))
+        .collect();
+    warnings.extend(clipped);
+    made["warnings"] = json!(warnings);
     made["tempoSet"] = json!(set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()));
     Ok(made)
 }

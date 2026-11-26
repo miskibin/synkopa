@@ -176,19 +176,24 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
     // the base tempo is what the file sets at tick 0 (last one there wins); without one the
     // MIDI default of 120 governs until the file's first change — which `tempo_points` carries
     let bpm = tempos.iter().take_while(|t| t.0 == 0).last().map(|t| us_to_bpm(t.1));
-    // the changes after tick 0 become the project's tempo map: one point per change of the
-    // running tempo (a repeated value is no change), the last of the events at one tick winning
+    // the changes after tick 0 become the project's tempo map: the last event at each tick
+    // wins, and only changes of the running tempo become points (a tick that ends where it
+    // started leaves no residue to spend the point cap on)
+    let mut last_at_tick: Vec<(u64, u32)> = vec![];
+    for (tick, us) in tempos.iter().filter(|t| t.0 > 0) {
+        match last_at_tick.last_mut() {
+            Some(l) if l.0 == *tick => l.1 = *us,
+            _ => last_at_tick.push((*tick, *us)),
+        }
+    }
     let mut tempo_points: Vec<SmfTempo> = vec![];
     let mut running = bpm.unwrap_or(120.0);
-    for (tick, us) in tempos.iter().filter(|t| t.0 > 0) {
-        let b = us_to_bpm(*us);
-        let same_tick = tempo_points.last().is_some_and(|t| t.beat == beats(*tick));
-        if same_tick {
-            *tempo_points.last_mut().unwrap() = SmfTempo { beat: beats(*tick), bpm: b };
-        } else if b != running {
-            tempo_points.push(SmfTempo { beat: beats(*tick), bpm: b });
+    for (tick, us) in last_at_tick {
+        let b = us_to_bpm(us);
+        if b != running {
+            tempo_points.push(SmfTempo { beat: beats(tick), bpm: b });
+            running = b;
         }
-        running = b;
     }
     if tempo_points.len() > crate::model::MAX_TEMPO_POINTS {
         warnings.push(format!(
@@ -688,6 +693,21 @@ mod tests {
         assert_eq!(f.bpm, Some(150.0), "the last event at tick 0 is the base");
         assert_eq!(f.tempo_points, vec![SmfTempo { beat: 8.0, bpm: 100.0 }], "no-change events fold away");
         assert!(f.warnings.is_empty(), "{:?}", f.warnings);
+    }
+
+    #[test]
+    fn a_tick_that_ends_where_it_started_leaves_no_point() {
+        // 150 then back to 120 within one tick: the tick's last value is the running tempo,
+        // so the tick leaves no point — a residue here would spend the point cap on nothing
+        let tempo = |us: u32| TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us)));
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(480))));
+        smf.tracks.push(vec![ev(0, tempo(500_000)), ev(480, tempo(400_000)), ev(0, tempo(500_000))]);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.bpm, Some(120.0));
+        assert!(f.tempo_points.is_empty(), "{:?}", f.tempo_points);
     }
 
     #[test]
