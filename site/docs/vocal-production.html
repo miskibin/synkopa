@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Correct a sung note, tune to a guide performance, and mix and export the vocal in Synkopa.">
+  <meta name="description" content="Choose between Pitch Correct, the pitch editor and Tune to Reference, fix an off-key word, and give a vocal its own effects in Synkopa.">
   <title>Edit and mix a vocal · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,21 +63,42 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Edit and mix a vocal</h1>
-        <p>Find one off-key syllable in a recorded take, correct it by ear, and check the result against the backing.</p>
+        <p class="lede">You have recorded a vocal and some notes are off. This page shows which pitch tool to use, how to fix a single word without making the voice sound robotic, how to pull a whole take onto a melody, and how to give the vocal its own effects and export it.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#open-pitch">Open the recorded phrase</a>
+        <a href="#tools">Choose a pitch tool</a>
+        <a href="#open-pitch">Open the pitch editor</a>
         <a href="#fix-a-word">Fix one off-key word</a>
-        <a href="#compare">Compare and keep the edit</a>
-        <a href="#reference">Tune to a guide performance</a>
-        <a href="#process">Route and process the vocal</a>
+        <a href="#compare">Compare before and after</a>
+        <a href="#reference">Tune a take to a melody</a>
+        <a href="#process">Give the vocal its own effects</a>
         <a href="#deliver">Save and export</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="open-pitch">Open the recorded phrase</h2>
-          <p>Start with a short vocal clip over your backing. If you followed <a href="record.html#comp">the recording guide</a>, play your comp and check that the joins sound natural. Save the project with its takes first. Then use <strong>File → Save as…</strong> and give the working copy a different name. Right-click the comp’s name and choose <strong>Flatten comp</strong>. The new audio clip is on the same track.</p>
+          <h2 id="tools">Choose a pitch tool</h2>
+          <p>Synkopa has three ways to fix pitch. They solve different problems, and you can combine them.</p>
+          <table class="windows">
+            <thead><tr><th>Tool</th><th>What it does</th><th>Use it when</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Pitch Correct</strong><br>(mixer effect)</td><td>Tunes everything that passes through the insert, live while the song plays, toward the nearest note of a key. You edit nothing in the recording.</td><td>The singer is mostly in tune and you want it tighter, or you want the hard "robot" tuning sound.</td></tr>
+              <tr><td><strong>Pitch editor</strong>, <strong>Manual</strong></td><td>Shows every sung note as a block. You move, straighten or reshape single notes by hand.</td><td>One or a few notes are wrong and you want the fix to sound natural.</td></tr>
+              <tr><td><strong>Pitch editor</strong>, <strong>To reference</strong></td><td>Pulls each note of the take onto a melody you give it: notes in a pattern, or another recording of the same melody.</td><td>Many notes miss, or the nearest note of the key is the wrong target.</td></tr>
+            </tbody>
+          </table>
+          <p class="why">Why not just use Pitch Correct? It only knows the key, so a note sung closer to the wrong scale note is pulled to the wrong note. The pitch editor lets you decide the target note yourself.</p>
+        </section>
+
+        <section>
+          <h2 id="open-pitch">Open the pitch editor</h2>
+          <p>The pitch editor works on one ordinary audio clip. If your vocal is a comp of several takes, flatten it first; flattening removes the takes, so keep a copy of the project that still has them.</p>
+          <ol>
+            <li>Play the comp once and check that the joins between takes sound natural.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save the project with its takes.</li>
+            <li>Choose <strong>File → Save as…</strong> and give the working copy a new name.</li>
+            <li>Right-click the comp's name and choose <strong>Flatten comp</strong>.<span class="result">One audio clip replaces the comp on the same track.</span></li>
+          </ol>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/vocal-flatten-comp.webp"><img src="images/vocal-flatten-comp.webp" width="565" height="584" alt="The context menu of a comp with two takes open below it." loading="lazy"></a>
@@ -84,11 +106,13 @@
             </div>
             <figcaption>
               <ol>
-                <li>After saving the version with the takes, choose <strong>Flatten comp</strong>.</li>
+                <li>After saving a version with the takes, choose <strong>Flatten comp</strong>.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Right-click the resulting audio clip’s <strong>name</strong> and choose <strong>Edit pitch…</strong>. Wait for analysis. Pitch editor shows the voiced notes as blobs with the pitch trace over time. It shows breath and other unvoiced sounds below the grid and leaves them unchanged.</p>
+          <ol start="5">
+            <li>Right-click the new audio clip's name and choose <strong>Edit pitch…</strong>.<span class="result">After a short analysis, each sung note appears as a block on a piano grid, with a line tracing the exact pitch over time. Breaths and other unpitched sounds sit below the grid and are never changed.</span></li>
+          </ol>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/vocal-open-pitch.webp"><img src="images/vocal-open-pitch.webp" width="600" height="729" alt="The audio clip context menu for the flattened Comp 1 clip." loading="lazy"></a>
@@ -96,24 +120,28 @@
             </div>
             <figcaption>
               <ol>
-                <li>Right-click the new clip’s name and choose <strong>Edit pitch…</strong>.</li>
+                <li>Right-click the clip's name and choose <strong>Edit pitch…</strong>.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>If you’re trying the controls without a microphone, drag an existing solo vocal recording into the Playlist. For a quick look at the editor, use <strong>File → Open demo project</strong> and open <strong>Edit pitch…</strong> on the first <strong>Vox Dark 120 Dm</strong> clip on the <strong>Dark Vox</strong> track at bar 1.</p>
+          <p>No recording yet? Drag any solo vocal file onto the Playlist, or choose <strong>File → Open demo project</strong> and open <strong>Edit pitch…</strong> on the first <strong>Vox Dark 120 Dm</strong> clip on the <strong>Dark Vox</strong> track.</p>
         </section>
+
         <section>
           <h2 id="fix-a-word">Fix one off-key word</h2>
+          <p>Fixing only the note that is wrong keeps the rest of the performance exactly as sung. Work by ear first, then by eye.</p>
           <ol>
-            <li><strong>Find it by ear.</strong> In <strong>Manual</strong>, click the ruler just before the word and press <strong>Solo</strong> to hear the take from that point. Use <strong>Play</strong> to hear the backing too. Drag a short loop on the ruler to compare the word repeatedly in the mix.</li>
-            <li><strong>Find the sung note.</strong> Compare the blob’s position with the intended note from the melody. Use <kbd>F</kbd> to fit the take or <kbd>Ctrl</kbd> + mouse wheel to zoom in. If the syllable spans two notes, listen for which note is off and edit that one first.</li>
-            <li><strong>Move it to the intended pitch.</strong> Set the song’s <strong>Key</strong> and scale. Use the <strong>Pitch</strong> tool (<kbd>1</kbd>) and drag only that blob up or down. The tool snaps to the selected scale. Hold <kbd>Alt</kbd> while dragging for a smaller, unsnapped adjustment. Dragging changes pitch while the word stays at its original time.</li>
+            <li>Set <strong>Mode</strong> to <strong>Manual</strong>, and set <strong>Key</strong> and its scale to the key of the song.</li>
+            <li>Drag on the ruler around the word to loop it, then click <strong>Play</strong>.<span class="result">The word repeats with the backing. <strong>Solo</strong> plays the vocal alone.</span></li>
+            <li>Find the block under the word. Press <kbd>F</kbd> to fit the whole take in view, or <kbd>Ctrl</kbd> + mouse wheel to zoom in.</li>
+            <li>Press <kbd>1</kbd> for the <strong>Pitch</strong> tool and drag that block up or down to the note it should be.<span class="result">It snaps to the notes of the key and stays at the same time.</span></li>
+            <li>Listen to the loop again. For a smaller, unsnapped move, hold <kbd>Alt</kbd> while you drag.</li>
           </ol>
           <figure class="motion-demo">
             <video controls playsinline preload="none" poster="images/vocal-pitch-before.webp" width="1180" height="600" style="display: block; width: 100%; height: auto;" aria-label="Pitch editor demonstration showing one selected note dragged up a semitone">
               <source src="images/vocal-pitch-edit.webm" type="video/webm">
             </video>
-            <figcaption>In this silent browser-preview capture, the selected middle note moves from D4 to D♯4 in <strong>Chromatic</strong> mode. Compare the position and length of the two neighboring notes.</figcaption>
+            <figcaption>The selected middle note moves from D4 to D♯4 while its neighbors keep their position and length. The video is silent.</figcaption>
           </figure>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
@@ -122,7 +150,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Before. The highlighted syllable reads D4. The grid shows which note to grab.</li>
+                <li>Before: the selected syllable sits on D4.</li>
               </ol>
             </figcaption>
           </figure>
@@ -133,37 +161,81 @@
             </div>
             <figcaption>
               <ol>
-                <li>After. The selected note is higher. Its start and end still line up with the same positions on the ruler.</li>
+                <li>After: the note is higher, but starts and ends at the same place on the ruler.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>If the nearest scale note is already the right target, select only the blob and choose <strong>Natural</strong>, then <strong>Correct 1 selected</strong>. <strong>Strength</strong> controls how far the pitch moves. <strong>Speed</strong> controls how quickly it gets there. Keep <strong>Flatten</strong> low to retain the singer’s vibrato.</p>
+
+          <h3>Let Synkopa pull a note into tune</h3>
+          <p>If the nearest note of the key is the right target, you do not need to drag. Click the block, pick the <strong>Natural</strong> style in the toolbar (beside <strong>STRENGTH</strong>), then click <strong>Correct 1 selected</strong>. With nothing selected, the button reads <strong>Correct all</strong>.</p>
+          <dl class="terms">
+            <dt>STRENGTH</dt>
+            <dd>How far each note moves toward the target: 100% lands exactly on it.</dd>
+            <dt>SPEED</dt>
+            <dd>How quickly the voice reaches the note. 0 ms is the instant "robot" step; 100 ms or more keeps the singer's natural slide into the note.</dd>
+            <dt>FLATTEN</dt>
+            <dd>How much of the wobble inside each note is removed. Keep it low to keep the singer's vibrato (the regular, intended wobble of a held note).</dd>
+          </dl>
+
+          <h3>Other tools for one note</h3>
+          <table class="windows">
+            <thead><tr><th>Tool</th><th>Key</th><th>Use it to</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Drift</strong></td><td><kbd>2</kbd></td><td>Steady a long note that wavers too much.</td></tr>
+              <tr><td><strong>Formant</strong></td><td><kbd>3</kbd></td><td>Fix the voice's color if a pitch move made it sound thin or boomy.</td></tr>
+              <tr><td><strong>Volume</strong></td><td><kbd>4</kbd></td><td>Turn down one syllable that jumps out.</td></tr>
+              <tr><td><strong>Split</strong></td><td><kbd>5</kbd></td><td>Cut a block in two where two syllables share it, so you can fix them separately. Click a split to join it again.</td></tr>
+              <tr><td><strong>Pencil</strong></td><td><kbd>6</kbd></td><td>Redraw a scoop or slide by hand. <kbd>Alt</kbd> + drag erases the drawing.</td></tr>
+            </tbody>
+          </table>
           <details>
-            <summary>When the pitch move needs more control</summary>
+            <summary>Analysis failed or the notes look wrong</summary>
             <ul>
-              <li>For a long note that wavers too much, drag <strong>Drift</strong> (<kbd>2</kbd>) up slightly. If a pitch move changes the vowel’s color, try a small <strong>Formant</strong> (<kbd>3</kbd>) adjustment. If one syllable jumps out, pull that note down with <strong>Volume</strong> (<kbd>4</kbd>).</li>
-              <li>When two syllables share one blob, use <strong>Split</strong> (<kbd>5</kbd>) at their boundary before correcting either. Click an existing split to merge it. To reshape a scooped onset or a short slide, draw just that contour with <strong>Pencil</strong> (<kbd>6</kbd>). <kbd>Alt</kbd> + drag erases the drawing in that range. Listen after each change.</li>
-              <li><strong>Copy notes</strong> copies selected sung notes, or all notes when none are selected. Paste them into the Piano Roll to build a guide melody.</li>
-              <li>If analysis fails, click <strong>Try again</strong>. The app has built-in detection. <strong>Better notes</strong> offers the optional GAME note finder, and <strong>Download RMVPE</strong> in <strong>To reference</strong> offers an optional pitch detector. The download dialogs show the models’ licenses.</li>
+              <li>If analysis fails, click <strong>Try again</strong>.</li>
+              <li>The built-in pitch detector works without downloads. <strong>Download RMVPE (362 MB)</strong> installs a more accurate one, and <strong>Better notes (46 MB)</strong> installs GAME, which splits a note sung twice on one pitch and ends notes where the singing does. Both are optional; the download dialog shows each license.</li>
             </ul>
           </details>
         </section>
+
         <section>
-          <h2 id="compare">Compare and keep the edit</h2>
-          <p>Play the same loop with the backing. Undo the last pitch move with <kbd>Ctrl</kbd> + <kbd>Z</kbd> to hear the original, then redo with <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd>. Listen to the transition into the word and its ending. If either sounds forced, make a smaller move or use less flattening.</p>
-          <p>To remove edits from a single note later, select the blob and click <strong>Reset notes</strong> or press <kbd>Delete</kbd>. With the selection cleared, <strong>Reset</strong> clears the clip’s manual pitch edits. An applied reference stays active until you turn it off. Double-click the ruler when you’re done with the comparison loop.</p>
-        </section>
-        <section>
-          <h2 id="reference">Tune to a guide performance</h2>
-          <p>When several notes miss the written melody, use <strong>To reference</strong> in Pitch editor. Add a guide vocal singing the same melody to the Playlist, or place a Piano Roll melody in the Playlist over the target vocal. The guide can sit on its own track so you can mute it for playback.</p>
+          <h2 id="compare">Compare before and after</h2>
+          <p>A pitch fix that looks right can still sound forced. Always judge it in the mix.</p>
           <ol>
-            <li>In <strong>Reference</strong>, choose the guide recording or the melody channel. <strong>Octave → Auto</strong> chooses the guide octave closest to your voice.</li>
-            <li>Check the original, reference, and result curves. Lower <strong>Correction</strong> to keep more of the original pitch and raise <strong>Vibrato</strong> to retain its motion. For an audio guide, <strong>Ref. Influence</strong> blends between the guide’s note centers and the nearest note in the selected key. The take keeps its timing. Sections with an uncertain match are left as sung.</li>
-            <li>Click <strong>Apply</strong> and listen. To remove the reference while keeping manual pitch edits, choose <strong>Turn off</strong>.</li>
+            <li>Keep the loop around the word and press <kbd>Ctrl</kbd> + <kbd>Z</kbd>.<span class="result">You hear the original pitch.</span></li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> to bring the edit back.</li>
+            <li>Listen to how the word starts and ends. If it sounds unnatural, make a smaller move or lower <strong>FLATTEN</strong>.</li>
+            <li>Double-click the ruler to clear the loop when you are done.</li>
           </ol>
+          <p>To undo edits later, select a block and click <strong>Reset notes</strong> (or press <kbd>Delete</kbd>). With nothing selected, <strong>Reset</strong> removes all manual edits of the clip.</p>
+        </section>
+
+        <section>
+          <h2 id="reference">Tune a take to a melody</h2>
+          <p>When many notes miss, fixing them one by one is slow, and Pitch Correct may pick the wrong targets. <strong>To reference</strong> instead pulls the take onto the melody it should follow. The take keeps its own timing; only the pitch changes.</p>
+          <p>First give Synkopa the melody, in one of two ways:</p>
+          <ul>
+            <li><strong>Notes in a pattern:</strong> write or play the melody in the Piano roll and place that pattern on the Playlist at the same time as the vocal. It can sit on its own muted track.</li>
+            <li><strong>Another recording:</strong> a guide vocal or an a cappella of the same melody, placed on the Playlist.</li>
+          </ul>
+          <ol>
+            <li>In the pitch editor, set <strong>Mode</strong> to <strong>To reference</strong>.</li>
+            <li>Under <strong>REFERENCE</strong>, pick the melody from <strong>Melodies in the project</strong> or <strong>Recordings</strong>.<span class="result">Three lines appear: the original, the reference and the result.</span></li>
+            <li>Leave <strong>Octave</strong> on <strong>Auto</strong>, so the reference moves to the octave nearest the voice.</li>
+            <li>Click <strong>Apply</strong> and play the vocal with the backing.</li>
+          </ol>
+          <dl class="terms">
+            <dt>CORRECTION</dt>
+            <dd>How strongly to pull toward the reference. Lower it to keep more of the original pitch.</dd>
+            <dt>VIBRATO</dt>
+            <dd>How much of the singer's own vibrato and note-to-note slides to keep.</dd>
+            <dt>REF. INFLUENCE</dt>
+            <dd>Where note centers come from: 100% from the reference, 0% from the nearest note of the key.</dd>
+          </dl>
+          <p>Parts where the take and the reference do not clearly match are left as sung. If you change the melody in the Piano roll later, click <strong>Update</strong>. To go back to the singer's pitch while keeping your manual edits, click <strong>Turn off</strong>.</p>
+          <p>Shortcut from the Piano roll: select the melody's notes and click <strong>Vocal reference</strong> to open the pitch editor of the vocal under them, with that melody as its reference.</p>
           <details class="listen-check">
             <summary>Hear the reference pull the melody into tune</summary>
-            <p>Play the guide, then the original and the tuned take. The original is about 47 cents sharp on each note. Listen for all three notes to settle to the guide’s pitches while keeping the take’s rhythm.</p>
+            <p>Play the guide, then the original and the tuned take. The original is about 47 cents sharp on each note (a cent is a hundredth of a semitone). Listen for all three notes to settle on the guide's pitches while the rhythm stays the same.</p>
             <p><strong>Guide melody</strong>
               <audio controls preload="none" aria-label="Guide melody at the target pitch" style="display: block; width: min(100%, 30rem);">
                 <source src="audio/pitch-example-reference.mp3" type="audio/mpeg">
@@ -179,28 +251,48 @@
                 <source src="audio/pitch-example-tuned.mp3" type="audio/mpeg">
               </audio>
             </p>
-            <p>This example uses three synthesized vowel-like notes. Synkopa’s native reference tuner used its built-in YIN detector. The centers of the tuned notes measured within 1 cent of the targets.</p>
-            <p>To reproduce this from the command line, download the <a href="audio/pitch-example-take.mp3" download>original take</a> and the <a href="audio/pitch-example-reference.mp3" download>guide melody</a> and run this command in that folder.</p>
+            <p>The example uses three synthesized vowel-like notes, tuned with the built-in detector. The tuned notes measured within 1 cent of the targets.</p>
+            <p>To reproduce it from the command line, download the <a href="audio/pitch-example-take.mp3" download>original take</a> and the <a href="audio/pitch-example-reference.mp3" download>guide melody</a> and run this command in that folder.</p>
             <pre style="overflow-x: auto;"><code>synkopa tune-file --yin --take pitch-example-take.mp3 --reference pitch-example-reference.mp3 --out pitch-example-tuned.wav</code></pre>
           </details>
+          <p>The other way round: <strong>Copy notes</strong> (<kbd>Ctrl</kbd> + <kbd>C</kbd>) copies the sung notes, and <kbd>Ctrl</kbd> + <kbd>V</kbd> in the Piano roll pastes them into a pattern, for example to double the vocal line with a synth.</p>
         </section>
+
         <section>
-          <h2 id="process">Route and process the vocal</h2>
+          <h2 id="process">Give the vocal its own effects</h2>
+          <p>Effects for the vocal go on its own <dfn>mixer insert</dfn>: a Mixer strip with its own fader and effect chain (see <a href="basics.html#routing">How a sound reaches the speakers</a>). If the vocal shares an insert with other sounds, every effect changes them too.</p>
           <ol>
-            <li>In the Playlist track menu, open <strong>Mixer channel</strong> and choose a dedicated insert. Press <kbd>F9</kbd>, select that insert, and play the phrase to confirm that its meter moves.</li>
-            <li>Start with the insert fader, then use EQ or compression where needed. For an editable one-word repair, keep working in Pitch editor. To tune everything passing through the insert during playback, add <a href="creative-effects.html#pitch-correct">Pitch Correct</a> and set its <strong>Key</strong> and <strong>Scale</strong>. Bypass the slot to compare.</li>
-            <li>For a quick processing chain on a separate version, right-click the vocal clip’s name and choose <strong>Auto vocal → Auto vocal — singing</strong> or <strong>Auto vocal — rap</strong>. This analyzes the take, can render leveling into a new audio source, and sets up effects such as compression, de-essing and real-time pitch correction on the insert. The rap setting uses harder tuning. If you run it on a comp, it flattens that comp first.</li>
+            <li>Right-click the vocal track's header, choose <strong>Mixer channel</strong> and pick an insert no other sound uses.</li>
+            <li>Press <kbd>F9</kbd> to open the Mixer and play the vocal.<span class="result">The insert you picked is selected and its meter moves.</span></li>
+            <li>Set the level with the insert's fader first, then add effects to its slots.</li>
           </ol>
-          <p>Check the result in the full mix. If the musical pitch edit already works, bypass any extra real-time tuning added to the insert. Keep the pre–Auto Vocal project version if you want to revisit the earlier pitch edits.</p>
+
+          <h3>Start from a ready vocal chain</h3>
+          <p><strong>Auto vocal</strong> builds a typical vocal chain for you, which is a good starting point to adjust by ear.</p>
+          <ol>
+            <li>Right-click the vocal clip's name and choose <strong>Auto vocal → Auto vocal — singing</strong>, or <strong>Auto vocal — rap</strong> for faster leveling and harder tuning.<span class="result">Synkopa analyzes the take, may even out its volume in the recording itself, and adds effects to the insert: leveling, compression, a de-esser, pitch correction in the song's key, a little reverb and a limiter.</span></li>
+            <li>Play the vocal in the full mix and adjust or bypass effects you do not need.</li>
+          </ol>
+          <p>The track must play through its own insert, not the Master. On a comp, Auto vocal flattens it first. One <kbd>Ctrl</kbd> + <kbd>Z</kbd> removes everything it added.</p>
+          <dl class="terms">
+            <dt>Compression</dt>
+            <dd>Turns down the loudest moments so the quiet and loud words sit closer together.</dd>
+            <dt>De-esser</dt>
+            <dd>Tames harsh "s" and "sh" sounds.</dd>
+          </dl>
+          <p>Auto vocal adds <a href="creative-effects.html#pitch-correct">Pitch Correct</a> as live tuning. If you already fixed the notes in the pitch editor, compare with that effect bypassed and keep whichever sounds better. To tune live without Auto vocal, add Pitch Correct yourself and set its <strong>Key</strong> and <strong>Scale</strong>.</p>
         </section>
+
         <section>
           <h2 id="deliver">Save and export</h2>
           <ol>
-            <li>Save the editable project with <kbd>Ctrl</kbd> + <kbd>S</kbd>. To share the project with its recordings, use <strong>File → Export project as ZIP…</strong>.</li>
-            <li>For a listening copy, choose <strong>File → Export audio…</strong>, set <strong>Output</strong> to <strong>Mix</strong>, and pick <strong>Song</strong> or the <strong>Loop</strong> around the phrase. Use <strong>Tail</strong> if you want the reverb to ring out.</li>
-            <li>To hand the edited vocal off separately, export <strong>Stems</strong> with the vocal on its dedicated insert. Play the exported file to check the edit and the end of the phrase.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save the editable project.</li>
+            <li>To send someone the project with its recordings, choose <strong>File → Export project as ZIP…</strong>.</li>
+            <li>For a file to listen to, choose <strong>File → Export audio…</strong>, set <strong>Output</strong> to <strong>Mix</strong> and <strong>Range</strong> to <strong>Song</strong>, or <strong>Loop</strong> for just the looped phrase. Set a <strong>Tail</strong> so reverb can ring out after the end.</li>
+            <li>To hand over the vocal as a separate file, choose <strong>Stems</strong> instead of <strong>Mix</strong>: each insert becomes its own file.</li>
+            <li>Play the exported file and check the edited word and the end of the phrase.</li>
           </ol>
-          <p><a href="mix.html#effects">Continue with mixing</a> or <a href="export.html">see all export options</a>.</p>
+          <p>Next: <a href="mix.html#effects">mix the song</a> or <a href="export.html">see every export option</a>.</p>
         </section>
       </article>
     </main>

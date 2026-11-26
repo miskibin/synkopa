@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Connect a controller, record notes, and import and export Standard MIDI files.">
-  <title>MIDI setup and recording · Synkopa Docs</title>
+  <meta name="description" content="Connect a MIDI keyboard or use the computer keyboard, record notes into patterns, and import and export .mid files.">
+  <title>Set up and record MIDI · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -61,7 +62,8 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>MIDI setup and recording</h1>
+        <h1>Set up and record MIDI</h1>
+        <p class="lede">Play instruments from a MIDI keyboard or pad controller (or your computer keyboard), record what you play as editable notes, and move note data in and out of Synkopa as <code>.mid</code> files. <dfn>MIDI</dfn> is note data, not sound: which keys were played, when, and how hard.</p>
       </header>
       <nav class="contents" aria-label="On this page">
         <a href="#keyboard">Connect a controller</a>
@@ -73,10 +75,13 @@
       <article class="prose">
         <section>
           <h2 id="keyboard">Connect a MIDI keyboard or pad controller</h2>
+          <p>Playing parts in by hand is faster and more musical than clicking every note. Tell Synkopa which device to listen to and which channel it should play.</p>
           <ol>
-            <li>Connect the controller and open <strong>File → Settings… → MIDI</strong>. In <strong>Device</strong>, select its port. Use <strong>Refresh</strong> if you plugged it in after opening Settings.</li>
-            <li>Set <strong>Plays on</strong> to <strong>Selected channel (Channel Rack / piano roll)</strong> to follow your selection, or select a specific instrument to keep the keyboard on that sound. Open the Rack and select a pitched instrument.</li>
-            <li>Play a short note. Check the connected status and last note in Settings, then check that the intended instrument is audible. Choose <strong>From keyboard</strong> for performance dynamics or <strong>Fixed</strong> and a value from 1 to 127 for even notes.</li>
+            <li>Plug in the controller and choose <strong>File → Settings… → MIDI</strong>.</li>
+            <li>In <strong>Device</strong>, pick your controller. Plugged it in after opening Settings? Click <strong>Refresh</strong>.</li>
+            <li>Leave <strong>Plays on</strong> at <strong>Selected channel (Channel Rack / piano roll)</strong>. The keyboard then plays whichever channel you select. Pick one instrument instead if the keyboard should always play that sound.</li>
+            <li>Leave <strong>Velocity</strong> at <strong>From keyboard</strong> so soft and hard playing sound different. Choose <strong>Fixed</strong> and a value from 1 to 127 if every note should be equally loud.</li>
+            <li>Select a melodic channel in the Channel Rack and play a key.<span class="result">Settings shows the last note it received, and you hear the instrument.</span></li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -87,21 +92,28 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose your connected MIDI device. The device shown here is a browser-demo controller.</li>
-                <li>Leave <strong>Plays on</strong> on the selected channel or pick one instrument.</li>
-                <li>Use <strong>From keyboard</strong> to retain the dynamics you play.</li>
+                <li>Your MIDI device. (The one shown here is the browser demo's controller.)</li>
+                <li><strong>Plays on</strong>: follow the selected channel, or always one instrument.</li>
+                <li><strong>From keyboard</strong> keeps the dynamics you play.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>If there is no port, reconnect it and refresh, then make sure the operating system can see the device. If the connection indicator responds but the instrument is silent, check <strong>Plays on</strong>, channel mute and the master output. With no controller, click <strong>Typing piano</strong> or press <kbd>Ctrl+T</kbd>. <kbd>Z</kbd> plays C4 and <kbd>Q</kbd> plays C5 at the default octave. Turn Typing piano off to use those keys as normal shortcuts again.</p>
+          <h3>If it doesn't work</h3>
+          <ul>
+            <li><strong>No device listed:</strong> reconnect it, click <strong>Refresh</strong>, and check that your operating system sees the device.</li>
+            <li><strong>Notes arrive but nothing sounds:</strong> check <strong>Plays on</strong>, that the channel is not muted, and that the master meter moves.</li>
+          </ul>
+          <h3 id="typing-piano">No controller? Use the computer keyboard</h3>
+          <p>Press <kbd>Ctrl</kbd> + <kbd>T</kbd> or click <strong>Typing piano</strong> in the toolbar. The bottom letter row plays from C4 (<kbd>Z</kbd> = C4, <kbd>S</kbd> = C♯4, <kbd>X</kbd> = D4…) and the top row an octave higher, starting at <kbd>Q</kbd>. <kbd>Page Up</kbd> and <kbd>Page Down</kbd> change the octave. While it is on, those letters play notes instead of running their shortcuts, so turn it off when you are done.</p>
         </section>
+
         <section>
           <h2 id="record-notes">Record a performance as editable notes</h2>
+          <p>Recording notes captures what you play into a pattern, so you can fix single notes later in the Piano roll. First tell the Record button to capture notes only.</p>
           <ol>
-            <li>Choose the instrument you tested and a pattern. Right-click the red <strong>Record</strong> button to check <strong>Notes</strong>. Disable <strong>Audio</strong> and <strong>Automation</strong> for a notes-only pass.</li>
-            <li>For a pattern overdub, select <strong>PAT</strong>, turn on the metronome if you want a cue. Arm <strong>Record</strong>, press <kbd>Space</kbd>, then play the phrase. Stop with <kbd>Space</kbd>. Open <kbd>F7</kbd> on the recorded channel to see notes in the current pattern.</li>
-            <li>To capture against the whole arrangement, switch to <strong>SONG</strong>. Click the ruler where you want the take to start. To specify a lane, right-click its track header and choose <strong>Record into this track</strong>. Enable <strong>1 BAR</strong> for a count-in if you want one. Start recording, play a phrase, and stop. Look for a new pattern clip in the Playlist, then double-click it to inspect the notes.</li>
-            <li>Use <strong>Quantize notes</strong> in the Record menu if the notes should land on a grid during capture. For a performance with deliberate timing, leave it off, then select only the notes you want to correct and quantize them in the <a href="patterns.html#piano-roll">Piano roll</a>.</li>
+            <li>Right-click the red <strong>Record</strong> button in the toolbar.</li>
+            <li>Tick <strong>Notes</strong>, and untick <strong>Audio</strong> and <strong>Automation</strong>.</li>
+            <li>Leave <strong>Quantize notes</strong> off for now. (<dfn>Quantize</dfn> moves notes onto the grid; you can do it later, only where needed.)</li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -112,21 +124,48 @@
             </div>
             <figcaption>
               <ol>
-                <li>Right-click <strong>Record</strong> to open the input menu.</li>
-                <li>Enable <strong>Notes</strong> for a MIDI performance.</li>
-                <li>Choose a recording quantize grid here, or leave it off to retain timing.</li>
+                <li>Right-click <strong>Record</strong> to choose what it records.</li>
+                <li><strong>Notes</strong> records what you play on a MIDI or computer keyboard.</li>
+                <li><strong>Quantize notes</strong> snaps notes to the grid as they are recorded. Leave it off to keep your timing.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>If no pattern clip appears after stopping, check that Record was armed, <strong>Notes</strong> was checked, and you played after any count-in. In PAT, check the current pattern and channel instead of looking for a new Playlist clip. Use <kbd>Ctrl+Z</kbd> to undo an unwanted take. For microphones or line inputs follow <a href="record.html">Record audio</a>.</p>
+          <h3>Add to a loop (PAT)</h3>
+          <p>Use this to build up a pattern layer by layer while it loops.</p>
+          <ol>
+            <li>Select the instrument channel and the pattern you want to record into.</li>
+            <li>Switch the toolbar to <strong>PAT</strong>. Turn on the metronome if you want a click.</li>
+            <li>Click <strong>Record</strong> (or press <kbd>R</kbd>), then press <kbd>Space</kbd> and play.</li>
+            <li>Press <kbd>Space</kbd> to stop.</li>
+            <li>Press <kbd>F7</kbd>.<span class="result">Your notes are in the current pattern, on the channel you played.</span></li>
+          </ol>
+          <h3>Record against the song (SONG)</h3>
+          <p>Use this to play a part over the whole arrangement. The notes land in a new pattern on the Playlist.</p>
+          <ol>
+            <li>Switch the toolbar to <strong>SONG</strong> and click the Playlist ruler where the take should start.</li>
+            <li>Optional: right-click a track header and choose <strong>Record into this track</strong> to choose where the clip goes.</li>
+            <li>Optional: turn on <strong>1 BAR</strong> for a one-bar count-in.</li>
+            <li>Click <strong>Record</strong>, press <kbd>Space</kbd>, play, and press <kbd>Space</kbd> to stop.<span class="result">A new pattern clip appears on the Playlist. Double-click it to see the notes.</span></li>
+          </ol>
+          <h3>If nothing was recorded</h3>
+          <ul>
+            <li>Check that <strong>Record</strong> was lit and <strong>Notes</strong> was ticked.</li>
+            <li>With a count-in, play only after the count bar.</li>
+            <li>In PAT, look in the current pattern on the channel you played, not on the Playlist.</li>
+          </ul>
+          <p>Unwanted take? <kbd>Ctrl</kbd> + <kbd>Z</kbd> removes it. To tighten timing afterwards, select just the late notes and press <kbd>Ctrl</kbd> + <kbd>Q</kbd> in the <a href="patterns.html#piano-roll">Piano roll</a>. Recording a microphone or guitar instead? See <a href="record.html">Record &amp; comp</a>. Turning a sung or played audio melody into notes is <a href="audio-analysis.html#midi">Convert to MIDI</a>.</p>
         </section>
+
         <section>
           <h2 id="import-midi">Import a MIDI file</h2>
+          <p>A <code>.mid</code> file from another DAW, a chord pack or a website brings its notes in as an editable pattern, played by Synkopa instruments.</p>
           <ol>
-            <li>For a full file, set the start position on the Playlist and choose <strong>File → Import MIDI file…</strong>, or drop a <code>.mid</code> at a position and lane. Select the parts you want and check the suggested instruments. Drum parts map to available drum sounds.</li>
-            <li>Keep the project BPM for an existing arrangement, or enable the file tempo in the dialog to use its BPM. Review the import warnings about tempo changes or unsupported time signatures, when present.</li>
-            <li>Click <strong>Import</strong>. Check the new clip in the Playlist and the opened Piano roll. Switch to <strong>SONG</strong> to audition it in place. If the arrangement moved tempo unexpectedly, undo and import with the tempo option cleared.</li>
-            <li>For one part played by an instrument you already configured, right-click that channel in the Rack and choose <strong>Import MIDI into this channel…</strong>. Choose a single part and decide whether to replace or append to the notes in the current pattern.</li>
+            <li>Click the Playlist ruler where the file should start.</li>
+            <li>Choose <strong>File → Import MIDI file…</strong> and pick the file. (Or drop the <code>.mid</code> on a Playlist track at the bar you want.)</li>
+            <li>In the dialog, keep ticked only the parts you want, and check the instrument suggested next to each. Drum parts are mapped to library drum sounds.</li>
+            <li>Read any warnings at the top, for example about tempo changes the file contains.</li>
+            <li>Tick the tempo option only if the project should take the file's BPM. Leave it off when the song already has its tempo.</li>
+            <li>Click <strong>Import</strong>.<span class="result">A new pattern clip appears on the Playlist and the Piano roll opens on one of its parts.</span></li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -136,8 +175,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>Leave only the parts you want selected. Review the instrument beside each part.</li>
-                <li>Import the selected parts to an editable pattern and a Playlist clip.</li>
+                <li>Keep only the parts you want, and check the instrument beside each.</li>
+                <li>Import them as one editable pattern with a clip on the Playlist.</li>
               </ol>
             </figcaption>
           </figure>
@@ -149,16 +188,29 @@
             </div>
             <figcaption>
               <ol>
-                <li>Use the channel selector to view each imported part.</li>
-                <li>Edit an imported note here, or switch to SONG and audition the clip on the Playlist.</li>
+                <li>Switch between the imported parts with the channel selector.</li>
+                <li>Edit the notes here, or switch to SONG to hear the clip in the song.</li>
               </ol>
             </figcaption>
           </figure>
+          <p>The tempo changed when it shouldn't have? Undo and import again with the tempo option off. The Playlist uses a 4/4 grid, so the dialog warns about other time signatures.</p>
+          <h3>Import one part into an instrument you already set up</h3>
+          <ol>
+            <li>Right-click the channel in the Channel Rack and choose <strong>Import MIDI into this channel…</strong>.</li>
+            <li>Pick one part of the file.</li>
+            <li>Tick <strong>Replace the channel's notes in this pattern</strong> to overwrite, or leave it off to add to them.</li>
+            <li>Click <strong>Import</strong>.</li>
+          </ol>
         </section>
+
         <section>
-          <h2 id="export-midi">Export a pattern or song as MIDI</h2>
-          <p>Right-click a pattern in <strong>Browser → Patterns</strong> and click <strong>Export pattern as MIDI…</strong> to share an editable phrase. For the arrangement, place your patterns on the Playlist and choose <strong>File → Export song as MIDI…</strong>. Give the file a name, then import it into a new project or another DAW to check timing and note parts.</p>
-          <p>If song export is unavailable, check that the Playlist contains an unmuted pattern clip with notes. A <code>.mid</code> carries musical note data for playback with instruments in the receiving app. For the sound of your mix with its instrument presets and effects, use <a href="export.html">audio export</a>.</p>
+          <h2 id="export-midi">Export a pattern or the song as MIDI</h2>
+          <p>Export MIDI to continue a part in another DAW or share an editable melody. A <code>.mid</code> holds notes only: the other app plays them with its own instruments. To share how your song actually sounds, use <a href="export.html">audio export</a>.</p>
+          <ul>
+            <li><strong>One pattern:</strong> right-click it in the Browser's <strong>PATTERNS</strong> tab and choose <strong>Export pattern as MIDI…</strong>.</li>
+            <li><strong>The whole song:</strong> choose <strong>File → Export song as MIDI…</strong>. It writes the pattern clips as placed on the Playlist.</li>
+          </ul>
+          <p>To check the file, import it into a new project. If a pattern's export is greyed out, the pattern has no notes.</p>
         </section>
       </article>
     </main>

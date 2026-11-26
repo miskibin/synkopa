@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Render a WAV, an MP3, or stems. Pack a project with its audio.">
+  <meta name="description" content="Export a song as WAV or MP3, a seamless loop, or stems, and share the editable project as a ZIP.">
   <title>Export &amp; share · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,23 +63,41 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Export and share</h1>
+        <p class="lede">Exporting turns your project into audio files anyone can play: one finished song, a loop that repeats seamlessly, or <dfn>stems</dfn> (one file per mixer insert) for someone who will mix or master it elsewhere. To hand over the editable project itself, pack it as a ZIP.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#mix">Render a WAV or MP3</a>
-        <a href="#loop">Render a clean loop</a>
-        <a href="#stems">Export mixer stems</a>
-        <a href="#project">Share an editable project</a>
+        <a href="#mix">Export the song</a>
+        <a href="#loop">Export a seamless loop</a>
+        <a href="#stems">Export stems</a>
+        <a href="#project">Share the project</a>
+        <a href="#more">Other exports</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="mix">Render a WAV or MP3</h2>
+          <h2 id="mix">Export the song as WAV or MP3</h2>
+          <p>Do this when the song is finished, or whenever you want to play a draft on your phone or send it to someone.</p>
           <ol>
-            <li>For a release or listening copy, play the ending in <strong>SONG</strong> and listen to how long the last effect rings. Open <strong>File → Export audio…</strong>, select <strong>Mix</strong> and choose <strong>Song</strong> under <strong>Range</strong>. For one pattern, choose <strong>Pattern</strong> and check the displayed pattern name.</li>
-            <li>Choose <strong>WAV</strong> for a file you plan to edit or send for mastering. Choose <strong>MP3</strong> for a smaller listening copy. Set the bit depth and sample rate to match any delivery requirements.</li>
-            <li>Choose <strong>Tail</strong> <strong>2 s</strong> or <strong>8 s</strong> for the last delay or reverb to fade. <strong>Cut</strong> ends the file at the range boundary. Check the duration in the dialog, choose <strong>Export…</strong>, and save the file.</li>
-            <li>Open the saved file and listen to the start, loudest section, and end. If the tail cuts off, choose a longer Tail. If the render reports clipping, reduce the level before export and check again.</li>
+            <li>Choose <strong>File → Export audio…</strong> (<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>).</li>
+            <li>Set <strong>Output</strong> to <strong>Mix</strong>: one file with everything.</li>
+            <li>Set <strong>Range</strong> to <strong>Song</strong> for the whole Playlist, or <strong>Pattern</strong> for the current pattern alone.</li>
+            <li>Choose a <strong>Format</strong>: <strong>WAV</strong> for full quality (to master or edit further), <strong>MP3</strong> for a small file to share.</li>
+            <li>Choose a <strong>Tail</strong>: <strong>2 s</strong> or <strong>8 s</strong> leave time after the end for the last reverb or delay to fade. <strong>Cut</strong> stops exactly at the end.</li>
+            <li>Click <strong>Export…</strong> and choose where to save.<span class="result">When it finishes, the status line names the file, its length and its peak level, and how many samples clipped, if any.</span></li>
+            <li>Open the file in any player and listen to the start, the loudest part and the ending.</li>
           </ol>
+          <p>If the ending is cut off, export again with a longer Tail. If the export reports clipped samples, the mix is too loud: turn the faders down, or keep a Limiter or the Master effect last on the Master insert (see <a href="mastering.html">Master and measure</a>).</p>
+          <h3>Format settings</h3>
+          <dl class="terms">
+            <dt>MP3 quality</dt>
+            <dd>320 kbps is the best.</dd>
+            <dt>Bit depth (WAV)</dt>
+            <dd><strong>16</strong> for CD and the widest compatibility, <strong>24</strong> for masters and delivery, <strong>32 float</strong> for further editing (nothing above 0 dB clips).</dd>
+            <dt>Dither</dt>
+            <dd>Adds a tiny amount of noise when converting to 16 or 24 bits, so fades end in soft hiss instead of distortion. Leave it on for 16-bit.</dd>
+            <dt>Sample rate</dt>
+            <dd><strong>48 kHz</strong> for video and most streaming, <strong>44.1 kHz</strong> for CD.</dd>
+          </dl>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/export.webp"><img src="images/export.webp" width="825" height="370" alt="Synkopa Export dialog set to a WAV mix of the whole song." loading="lazy"></a>
@@ -88,21 +107,26 @@
             </div>
             <figcaption>
               <ol>
-                <li>Output: Mix creates one file.</li>
-                <li>Range: Song uses the entire Playlist.</li>
-                <li>Choose Export to render the file.</li>
+                <li><strong>Output: Mix</strong> makes one file.</li>
+                <li><strong>Range: Song</strong> uses the whole Playlist.</li>
+                <li><strong>Export…</strong> renders the file.</li>
               </ol>
             </figcaption>
           </figure>
-          <div class="note"><p>Empty Playlist? Choose <strong>Pattern</strong> or add clips before exporting <strong>Song</strong>.</p></div>
+          <div class="note"><p>Empty Playlist? <strong>Song</strong> would be silence, and the dialog offers to export the current pattern instead.</p></div>
         </section>
+
         <section>
-          <h2 id="loop">Render a loop that repeats cleanly</h2>
+          <h2 id="loop">Export a loop that repeats seamlessly</h2>
+          <p>A loop for a sample pack or a beat to reuse must repeat without a gap or a click. <strong>Wrap</strong> takes the reverb and delay that ring past the end and mixes them into the start, so the file is exactly one pass long and still sounds continuous.</p>
           <ol>
-            <li>Drag across the Playlist ruler from the first bar of the loop to the next section boundary. Play the selection in <strong>SONG</strong> and listen across the join.</li>
-            <li>Open Export, select <strong>Mix</strong>, then choose <strong>Loop</strong> for Range and <strong>WAV</strong> for Format. Choose <strong>Wrap</strong> so effect spill from the end carries into the beginning without adding extra seconds.</li>
-            <li>Re-import the WAV and place two copies end to end at the original tempo. If there is still a gap or a doubled beat, verify the ruler selection starts and ends on the intended bars and that the two clips meet exactly.</li>
+            <li>Drag across the Playlist ruler from the first bar of the loop to the bar where it should repeat.<span class="result">The selected range is highlighted.</span></li>
+            <li>Play it in <strong>SONG</strong> and listen across the join.</li>
+            <li>Open <strong>File → Export audio…</strong> and set <strong>Output</strong> to <strong>Mix</strong>, <strong>Range</strong> to <strong>Loop</strong> and <strong>Format</strong> to <strong>WAV</strong>.</li>
+            <li>Set <strong>Tail</strong> to <strong>Wrap</strong>, then click <strong>Export…</strong>.</li>
+            <li>Drag the WAV into a project at the same tempo and place two copies end to end.<span class="result">They play as one continuous loop.</span></li>
           </ol>
+          <p>Hear a gap or a doubled beat? Check that the ruler selection starts and ends exactly on the bars you meant.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/export-loop-settings.webp"><img src="images/export-loop-settings.webp" width="660" height="292" alt="Export set to Mix, Loop, WAV, and Wrap, with a duration of 7.1 seconds." loading="lazy"></a>
@@ -111,21 +135,25 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose <strong>Loop</strong> to use the ruler selection.</li>
-                <li>Choose <strong>Wrap</strong> to carry spill across the loop join.</li>
+                <li><strong>Loop</strong> uses the range selected on the ruler.</li>
+                <li><strong>Wrap</strong> carries the tail across the join.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="stems">Export mixer stems</h2>
+          <h2 id="stems">Export stems for mixing or mastering elsewhere</h2>
+          <p>Stems let a mix engineer or another program rebuild your song: each Mixer insert that has sound becomes its own file, named after the insert. All files have the same start and length, so they line up when placed at the same point. Each stem includes its insert's effects, fader and pan, but not the Master insert's effects.</p>
           <ol>
-            <li>Name the Mixer inserts so the filenames identify the sounds. Unmute anything you want included. Solo is ignored by stem export.</li>
-            <li>Set <strong>Output</strong> to <strong>Stems</strong> and choose a range. Set <strong>Master</strong> to <strong>Include</strong> for a reference mix alongside the stems. Choose <strong>WAV</strong> for editing and select <strong>Pick folder…</strong>. Save to an empty folder so the delivery is easy to review.</li>
-            <li>Check the files in the folder. Stems have the same start and length, including the tail. Each is tapped after its Mixer insert’s effects and fader. The separate Master mix includes Master processing.</li>
-            <li>For a round-trip check, create an empty project at the same tempo and drag the exported WAVs from your file manager onto separate Playlist tracks at the same start. Play the section and confirm the drum hits and vocals line up. Keep the reference mix on a separate muted track so you can compare it by soloing it.</li>
+            <li>Name the Mixer inserts clearly (double-click a name). The file names come from them.</li>
+            <li>Unmute every insert you want exported. Muted inserts are skipped; solo is ignored.</li>
+            <li>Open <strong>File → Export audio…</strong> and set <strong>Output</strong> to <strong>Stems</strong>.</li>
+            <li>Set <strong>Master</strong> to <strong>Include</strong> to add the finished mix, with the Master effects, as a reference file.</li>
+            <li>Choose <strong>WAV</strong>, then click <strong>Pick folder…</strong> and choose an empty folder.<span class="result">One WAV per insert appears in the folder, plus the master mix if you included it.</span></li>
           </ol>
-          <p>If a drum bus and its source inserts are all exported, audition the bus or the source tracks when reassembling that part. Layering both doubles the routed material. A compressor or limiter on Master can also make the reference mix sound different from the reassembled stems.</p>
+          <p>To check the stems, drag them from your file manager onto separate Playlist tracks of an empty project at the same tempo, all at the same start, and play them.</p>
+          <div class="note"><p>A bus and the inserts that feed it are all exported. When you rebuild the song, use either the bus or its sources, not both, or that part plays twice as loud. The reassembled stems can also sound different from the master mix if the Master insert has a compressor or limiter.</p></div>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/export-stems-settings.webp"><img src="images/export-stems-settings.webp" width="660" height="330" alt="Export set to Stems with Master included, Song range and WAV encoding." loading="lazy"></a>
@@ -135,17 +163,31 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose <strong>Stems</strong> to export Mixer inserts.</li>
-                <li>Choose <strong>Include</strong> to add a finished Master mix as a reference.</li>
-                <li>Choose <strong>Pick folder…</strong> and select a destination folder.</li>
+                <li><strong>Stems</strong> writes one file per Mixer insert.</li>
+                <li><strong>Include</strong> adds the finished master mix as a reference.</li>
+                <li><strong>Pick folder…</strong> chooses where the files go.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="project">Share an editable project</h2>
-          <p>Save your edits, then choose <strong>File → Export project as ZIP…</strong> to collect the project, samples, and recorded takes. Extract a copy into a new folder and open the included <code>.synkopa</code> file to check that the audio plays. Ask the recipient to extract the whole ZIP and keep the <code>Audio</code> folder beside the project.</p>
-          <p>Send any third-party plugin requirements and files loaded inside those plugins separately. Include a mix or stems for playback without the plugins.</p>
+          <h2 id="project">Share the editable project</h2>
+          <p>A <code>.synkopa</code> file refers to samples and recordings stored elsewhere on your computer. To send the project to another computer, pack everything into one ZIP.</p>
+          <ol>
+            <li>Save the project (<kbd>Ctrl</kbd> + <kbd>S</kbd>).</li>
+            <li>Choose <strong>File → Export project as ZIP…</strong> and save the file.<span class="result">The ZIP holds the project, its samples and its recorded takes.</span></li>
+            <li>To test it, extract the ZIP into a new folder and open the <code>.synkopa</code> file inside.<span class="result">The audio plays.</span></li>
+          </ol>
+          <p>Tell the recipient to extract the whole ZIP and keep the <code>Audio</code> folder next to the project file. Third-party plugins are not included, nor files loaded inside them: list them separately, and send a mix or stems too, so the song can be heard without those plugins.</p>
+        </section>
+
+        <section>
+          <h2 id="more">Other exports</h2>
+          <ul>
+            <li><strong>Export in place</strong> (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>E</kbd>, also in the File menu and a clip's menu): turns the selected clips, with their mixer effects, into one audio clip on a new track below and mutes the originals. Use it to commit a part with its effects, or to edit it as audio.</li>
+            <li><strong>File → Export song as MIDI…</strong>: writes the notes as a standard MIDI file, one track per channel, to open in another program.</li>
+          </ul>
         </section>
       </article>
     </main>

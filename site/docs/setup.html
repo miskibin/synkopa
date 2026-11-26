@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Install Synkopa, choose audio devices and buffer size, arrange the workspace, and check for updates.">
+  <meta name="description" content="Install Synkopa on Windows, macOS or Linux, play the demo, choose your audio device, and fix crackles or recording delay.">
   <title>Install and set up Synkopa · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html" aria-current="page">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,30 +63,92 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Install and set up Synkopa</h1>
+        <p class="lede">Install Synkopa, start it for the first time and make sure you hear sound. This takes about five minutes. Come back here later if playback crackles or your recordings land out of time.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#install">Install and verify playback</a>
-        <a href="#audio">Choose your audio driver and devices</a>
-        <a href="#buffer">Fix clicks and recording delay</a>
-        <a href="#workspace">Arrange the workspace</a>
-        <a href="#updates">Check for an update</a>
+        <a href="#install">1. Install</a>
+        <a href="#welcome">2. Start Synkopa</a>
+        <a href="#audio">3. Choose where sound plays</a>
+        <a href="#buffer">Fix crackles and delay</a>
+        <a href="#workspace">Arrange the windows</a>
+        <a href="#updates">Keep Synkopa up to date</a>
       </nav>
       <article class="prose">
         <section>
-          <h2 id="install">Install and verify playback</h2>
+          <h2 id="install">1. Install Synkopa</h2>
+          <p>Synkopa is free. Download the file for your computer from the <a href="https://github.com/miskibin/synkopa/releases/latest">latest release</a> (scroll to <strong>Assets</strong>).</p>
+          <table class="windows">
+            <thead><tr><th>Your computer</th><th>Download</th><th>What works</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Windows</strong></td><td>The file ending in <code>-setup.exe</code></td><td>Everything, including VST3 plugins and ASIO audio interfaces</td></tr>
+              <tr><td><strong>Mac</strong> with Apple Silicon (M1 or later), macOS 13.4 or newer</td><td>The <code>.dmg</code> file</td><td>All built-in instruments and effects. No third-party plugins yet, and no build for Intel Macs</td></tr>
+              <tr><td><strong>Linux</strong>: Ubuntu 22.04, Debian 12 or a newer distribution</td><td><code>.deb</code>, <code>.rpm</code> or <code>.AppImage</code></td><td>Everything, including VST3 plugins and LV2 effects</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Windows</h3>
           <ol>
-            <li>Download the package for your computer from the <a href="https://github.com/miskibin/synkopa/releases/latest">latest release</a>.</li>
-            <li><strong>Windows:</strong> run the <code>-setup.exe</code> installer. <strong>macOS:</strong> use the DMG on Apple Silicon with macOS 13.4 or later. <strong>Linux:</strong> install the DEB or RPM for your distribution, or make the AppImage executable and run it.</li>
-            <li>Open Synkopa. Choose <strong>File → Open demo project</strong> and press <kbd>Space</kbd>. You should hear the demo and see the Playlist playhead move. If it moves in silence, set your output below.</li>
+            <li>Double-click the downloaded <code>-setup.exe</code> file.</li>
+            <li>Follow the installer.<span class="result">Synkopa is installed, and <code>.synkopa</code> project files open in it from Explorer.</span></li>
           </ol>
-          <p>See the <a href="https://github.com/miskibin/synkopa#install">platform notes</a> for macOS first launch and Linux packages.</p>
-        </section>
-        <section>
-          <h2 id="audio">Choose your audio driver and devices</h2>
+          <p>If Windows shows <strong>Windows protected your PC</strong>, click <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+
+          <h3>macOS</h3>
+          <p>Synkopa is not notarized by Apple yet, so macOS blocks it the first time you start it. You allow it once and it opens normally from then on.</p>
           <ol>
-            <li>Open <strong>File → Settings… → Audio</strong>. Choose a driver. On Windows, start with <strong>WASAPI</strong> for system audio or <strong>ASIO</strong> for an interface with its own ASIO driver. On Linux, use <strong>ALSA</strong> or an already running JACK or PipeWire JACK server. macOS uses <strong>Core Audio</strong>.</li>
-            <li>Set <strong>Output</strong> to the device your speakers or headphones use. Set <strong>Input</strong> to your recording device. For ASIO, the same driver supplies input and output. Choose <strong>Input channel</strong> after arming Record or turning on monitoring to open the input.</li>
-            <li>Set <strong>Sample rate</strong> to <strong>Auto</strong> unless the device or session needs a specific rate. Check that <strong>Status</strong> says running. Play the demo again and check that sound comes through the output you selected.</li>
+            <li>Open the <code>.dmg</code> file and drag Synkopa into <strong>Applications</strong>.</li>
+            <li>Start Synkopa from Applications.<span class="result">macOS says Synkopa cannot be opened. Close that message.</span></li>
+            <li>Open <strong>System Settings → Privacy &amp; Security</strong>.</li>
+            <li>Scroll down to the message about Synkopa and click <strong>Open Anyway</strong>.</li>
+            <li>Start Synkopa again and confirm that you want to open it.<span class="result">Synkopa starts. You will not be asked again.</span></li>
+          </ol>
+
+          <h3>Linux</h3>
+          <p>Pick one package. The <code>.deb</code> and <code>.rpm</code> packages also install <code>liblilv</code>, the library Synkopa needs to load LV2 effects.</p>
+          <ul>
+            <li><strong>Debian, Ubuntu:</strong> run <code>sudo apt install ./</code> followed by the <code>.deb</code> file name.</li>
+            <li><strong>Fedora:</strong> run <code>sudo dnf install ./</code> followed by the <code>.rpm</code> file name.</li>
+            <li><strong>Any distribution:</strong> make the AppImage executable (<code>chmod +x</code> followed by its file name) and run it.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="welcome">2. Start Synkopa and play the demo</h2>
+          <p>The first time you start Synkopa, it shows <strong>Welcome to Synkopa</strong> and offers a finished song. Playing it is the quickest way to check that your sound works.</p>
+          <ol>
+            <li>Click <strong>Open demo project</strong>.<span class="result">OBSIDIAN 2093, a 40-bar trap song, opens.</span></li>
+            <li>Press <kbd>Space</kbd>.<span class="result">You hear the song and a line (the playhead) moves across the Playlist, the big timeline in the middle.</span></li>
+            <li>Press <kbd>Space</kbd> again to stop.</li>
+          </ol>
+          <p>Clicked <strong>Start empty</strong> instead, or the welcome did not appear? Choose <strong>File → Open demo project</strong>. It works the same at any time.</p>
+          <div class="note"><p>Heard the song? Your setup is done. Go to <a href="basics.html">How Synkopa works</a>, or straight to <a href="first-song.html">Make your first song</a>. If the playhead moved but you heard nothing, continue with the next step.</p></div>
+        </section>
+
+        <section>
+          <h2 id="audio">3. Choose where the sound plays</h2>
+          <p>Synkopa plays through the device your computer uses by default. If that is not where your headphones or speakers are, or if you have an <dfn>audio interface</dfn> (an external sound card for microphones and studio speakers), choose it here.</p>
+          <p>The settings, in plain words:</p>
+          <dl class="terms">
+            <dt>Driver</dt>
+            <dd>How Synkopa talks to your sound hardware. On Windows, <strong>WASAPI</strong> works with every sound card; choose <strong>ASIO</strong> only if your audio interface came with an ASIO driver, which gives less delay. On a Mac there is only Core Audio. On Linux, choose ALSA, or JACK if you run JACK or PipeWire.</dd>
+            <dt>Output</dt>
+            <dd>The device you listen on. <strong>Default</strong> follows your system's sound settings.</dd>
+            <dt>Input</dt>
+            <dd>The device you record from, such as a USB microphone. You only need it for recording.</dd>
+            <dt>Input channel</dt>
+            <dd>Which socket of the input device is recorded (a microphone is usually on input 1). The list fills in once recording or input monitoring is on.</dd>
+            <dt>Sample rate</dt>
+            <dd>How many times per second the sound is measured, for example 48000 Hz. Leave it on <strong>Auto</strong>.</dd>
+            <dt>Buffer</dt>
+            <dd>How much sound Synkopa prepares ahead of time. Leave it on <strong>Auto</strong>; <a href="#buffer">Fix crackles and delay</a> explains when to change it.</dd>
+          </dl>
+          <ol>
+            <li>Choose <strong>File → Settings…</strong>.</li>
+            <li>Click <strong>Audio</strong> on the left.</li>
+            <li>Choose a <strong>Driver</strong>. If you are not sure, keep the one already selected.</li>
+            <li>Set <strong>Output</strong> to your headphones, speakers or audio interface.</li>
+            <li>Check the <strong>Status</strong> line.<span class="result">It says <strong>● running</strong>, followed by the sample rate, the buffer size and the delay in milliseconds.</span></li>
+            <li>Press <kbd>Esc</kbd> to close Settings, then press <kbd>Space</kbd>.<span class="result">You hear the demo through the device you chose.</span></li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -95,31 +158,58 @@
               <span class="shot-pin" style="--x: 68%; --y: 75%" aria-hidden="true">3</span>
             </div>
             <figcaption><ol>
-              <li>Choose the driver for your device.</li>
-              <li>Choose your output and check the input controls just below it.</li>
-              <li>Check Status after changing drivers or devices.</li>
+              <li>Driver: how Synkopa reaches your sound hardware.</li>
+              <li>Output: where you listen. Input and Input channel below it are for recording.</li>
+              <li>Status: <strong>● running</strong> means sound can play.</li>
             </ol></figcaption>
           </figure>
-          <p>If you unplug an ASIO interface on Windows, use <strong>Switch to WASAPI</strong> in the audio notice or select WASAPI in Settings. Switch back to ASIO after reconnecting.</p>
-          <p>Once playback works, <a href="record.html#input">set up a microphone</a> or <a href="midi.html">connect a MIDI keyboard</a>.</p>
+          <h3>If you still hear nothing</h3>
+          <ul>
+            <li><strong>Status says ● stopped, or you see “Cannot play — the audio output did not open”:</strong> choose another Output or Driver, or click <strong>Try again</strong> in the message. On Windows, WASAPI with Output <strong>Default</strong> works with any sound card.</li>
+            <li><strong>“Windows has no default audio output”:</strong> plug in headphones or speakers, or choose a default output in the Windows sound settings, then try again.</li>
+            <li><strong>Your ASIO interface is unplugged:</strong> click <strong>Switch to WASAPI</strong> in the message or in Settings to keep playing through the computer's speakers. After you plug it back in, choose ASIO again or click <strong>Retry ASIO</strong>.</li>
+            <li><strong>“ASIO is not compiled into this version”:</strong> this build has no ASIO. Use WASAPI.</li>
+          </ul>
+          <p>Sound works but one project is silent? See <a href="reference.html#playback">The project plays in silence</a>. Ready to record? <a href="record.html#input">Set up a microphone</a> or <a href="midi.html">connect a MIDI keyboard</a>.</p>
         </section>
+
         <section>
-          <h2 id="buffer">Fix clicks and recording delay</h2>
+          <h2 id="buffer">Fix crackles and recording delay</h2>
+          <p>Synkopa computes sound in small chunks, the <dfn>buffer</dfn>. A larger buffer gives the computer more time per chunk, so it crackles less, but everything you play or sing comes back a little later. That delay is called <dfn>latency</dfn>. Pick the smallest buffer that plays without crackles.</p>
+
+          <h3>Playback crackles or drops out</h3>
+          <p>A crackle happens when a chunk is not ready in time. Synkopa counts each one as an <dfn>underrun</dfn>. The CPU meter in the toolbar flashes red when one happens.</p>
           <ol>
-            <li>Loop a busy part of the song and reset the <strong>Underruns</strong> counter when a count is present. If it climbs, increase <strong>Buffer</strong> one step. Play the same part and compare. A larger buffer gives the engine more time but adds monitoring delay.</li>
-            <li>For recording, start with a stable buffer. To measure where takes land, hold the microphone near a speaker or one headphone cup and choose <strong>Measure latency</strong>. Synkopa plays a few clicks and sets <strong>Recording offset</strong> from the measurement.</li>
-            <li>Record a short test against the click and check where the waveform lands. A positive offset moves recorded audio earlier. If the measurement is uncertain, move the microphone closer and try again.</li>
+            <li>Play the busiest part of your song in a loop.</li>
+            <li>Open <strong>File → Settings… → Audio</strong> and look at <strong>Underruns</strong>. Click <strong>Reset</strong> next to it if it shows a count.</li>
+            <li>If the count climbs, choose the next larger <strong>Buffer</strong>. While mixing, 512 or 1024 samples is fine.<span class="result"><strong>Underruns</strong> stays at <strong>None since reset</strong> while the loop plays.</span></li>
           </ol>
-          <p>JACK controls sample rate and buffer size on its server. Change those settings in JACK or PipeWire.</p>
+          <p>Still crackling? Close other heavy programs. Many instances of heavy plugins cost the most.</p>
+
+          <h3>You hear yourself late while recording</h3>
+          <p>When you play a MIDI keyboard or sing through Synkopa, a large buffer makes the sound reach your headphones late. Choose a smaller <strong>Buffer</strong> while you record, then raise it again for mixing.</p>
+
+          <h3>Recordings land behind the beat</h3>
+          <p>Your interface takes a few milliseconds to send sound out and bring it back. Synkopa can measure that delay once and shift every new recording back into time.</p>
+          <ol>
+            <li>In a quiet room, hold the microphone near a speaker or one headphone cup.</li>
+            <li>In <strong>File → Settings… → Audio</strong>, click <strong>Measure latency</strong>.<span class="result">Synkopa plays a few clicks for about five seconds, then fills in <strong>Recording offset</strong>.</span></li>
+            <li>Record a short test against the metronome (<kbd>Ctrl</kbd> + <kbd>M</kbd>) and check that the waveform lines up with the beat.</li>
+          </ol>
+          <p>If Synkopa reports an uncertain measurement, move the microphone closer, turn the volume up and try again. A positive offset moves recordings earlier.</p>
+          <div class="note"><p>With the JACK driver on Linux, JACK or PipeWire sets the sample rate and buffer size. Change them there.</p></div>
         </section>
+
         <section>
-          <h2 id="workspace">Arrange the workspace</h2>
+          <h2 id="workspace">Arrange the windows</h2>
+          <p>The Channel Rack, the Piano roll and the Mixer can float over the Playlist or dock to an edge of the screen. Arrange them so the windows you use most stay in view.</p>
           <ol>
-            <li>Open Channel Rack (<kbd>F6</kbd>), Piano roll (<kbd>F7</kbd>), or Mixer (<kbd>F9</kbd>). Drag its title bar onto a docking guide, or choose a position in <strong>View → Window layout</strong>.</li>
-            <li>For more editing room, double-click the Mixer title bar to maximize it. Use <kbd>F5</kbd> to bring the Playlist forward or restore tucked windows. Use <kbd>F11</kbd> to toggle full screen.</li>
-            <li>To get back to a known layout, choose <strong>View → Window layout → Reset window layout</strong>. The Mixer docks below, the Rack and Piano roll float, and the Browser is shown.</li>
+            <li>Open a window with its key: Channel Rack <kbd>F6</kbd>, Piano roll <kbd>F7</kbd>, Mixer <kbd>F9</kbd>.</li>
+            <li>To dock it, drag its title bar onto one of the arrows that appear, or choose a position in <strong>View → Window layout</strong>.</li>
+            <li>To give the Mixer the whole screen, double-click its title bar.</li>
           </ol>
-          <p>Change <strong>Theme</strong>, interface <strong>Scale</strong>, or <strong>Channel Rack step spacing</strong> in <strong>Settings… → Look</strong>. Set language, note preview, and hints in <strong>General</strong>.</p>
+          <p><kbd>F5</kbd> brings the Playlist to the front and hides floating windows; press it again to show them. <kbd>F11</kbd> switches full screen. If you lose track of a window, <strong>View → Window layout → Reset window layout</strong> docks the Mixer at the bottom, floats the Channel Rack and Piano roll, and shows the Browser.</p>
+          <p>To change how Synkopa looks, open <strong>File → Settings… → Look</strong>: <strong>Theme</strong>, interface <strong>Scale</strong> and <strong>Channel Rack step spacing</strong>. Language, note preview and hints are in <strong>General</strong>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/settings-look.webp"><img src="images/settings-look.webp" width="1150" height="850" alt="Look settings showing Synkopa’s dark and light theme choices." loading="lazy"></a>
@@ -127,19 +217,21 @@
               <span class="shot-pin" style="--x: 34%; --y: 27%" aria-hidden="true">2</span>
             </div>
             <figcaption><ol>
-              <li>Open Look to change the interface.</li>
-              <li>Choose a theme. Scroll below the themes to change scale and step spacing.</li>
+              <li>Look: the interface settings.</li>
+              <li>Click a theme. Scale and step spacing are further down.</li>
             </ol></figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="updates">Check for an update</h2>
+          <h2 id="updates">Keep Synkopa up to date</h2>
+          <p>Synkopa updates itself. A new version downloads in the background, and nothing restarts until you say so.</p>
           <ol>
-            <li>Open <strong>Help → Check for updates</strong>, or go to <strong>Settings… → Updates</strong> to check the installed version and turn <strong>Update automatically</strong> on or off.</li>
-            <li>If an update is available, review <strong>What's new</strong>, then choose <strong>Download update</strong> when offered. Wait until the app reports the update is ready.</li>
-            <li>Choose the restart action when you can stop working. Save the project when prompted. After restart, check the version in Updates.</li>
+            <li>When an update is ready, click <strong>Restart to update</strong> in the toolbar.</li>
+            <li>Save your project if Synkopa asks about unsaved changes.<span class="result">Synkopa restarts in the new version and shows what changed.</span></li>
           </ol>
-          <p>If in-app updating is unavailable for your package, install the appropriate package from the <a href="https://github.com/miskibin/synkopa/releases/latest">release page</a>.</p>
+          <p>To check right now, choose <strong>Help → Check for updates</strong>. If a new version is available, click <strong>Download update</strong>, then <strong>Restart and install</strong> when it is ready. To stop automatic updates, turn off <strong>Update automatically</strong> in <strong>File → Settings… → Updates</strong>; the same page shows your version.</p>
+          <p>If an update fails, the version you have keeps working. You can always install the newest version from the <a href="https://github.com/miskibin/synkopa/releases/latest">release page</a>.</p>
         </section>
       </article>
     </main>

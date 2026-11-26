@@ -28,6 +28,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html" aria-current="page">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -63,28 +64,40 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Make your first song</h1>
+        <p class="lede">In about ten minutes you will program a drum beat, add a short synth melody, turn the loop into a few bars of song and export it as an audio file. You need nothing but Synkopa and headphones or speakers.</p>
       </header>
-      <nav class="contents" data-workflow aria-label="First song steps">
-        <a href="#install">Set up</a>
-        <a href="#drums">Drums</a>
-        <a href="#melody">Melody</a>
-        <a href="#arrange">Arrange</a>
-        <a href="#finish">Export</a>
+      <nav class="contents" aria-label="On this page">
+        <a href="#install">1. Check your sound</a>
+        <a href="#drums">2. Program drums</a>
+        <a href="#melody">3. Add a melody</a>
+        <a href="#arrange">4. Make it a song</a>
+        <a href="#finish">5. Save and export</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="install">Install and check sound</h2>
-          <p><a href="https://github.com/miskibin/synkopa/releases/latest">Download Synkopa</a> for Windows, macOS (Apple Silicon), or Linux. See <a href="https://github.com/miskibin/synkopa#install">installation notes</a> for your system.</p>
-          <p>Choose <strong>File → Open demo project</strong> and press <kbd>Space</kbd>. If you hear silence, <a href="reference.html#playback">check your audio output</a>.</p>
-        </section>
-        <section>
-          <h2 id="drums">Program one bar of drums</h2>
+          <h2 id="install">1. Check that you hear sound</h2>
+          <p>Before making anything, make sure Synkopa plays through your speakers. The demo song is the quickest test.</p>
           <ol>
-            <li>Choose <strong>File → New project</strong>. The <strong>Channel Rack</strong> opens with Kick, Clap, Hat, and Snare. Press <kbd>F6</kbd> if it is hidden.</li>
-            <li>Click steps 1, 5, 9, and 13 on <strong>Kick</strong>, 5 and 13 on <strong>Clap</strong>, and odd steps on <strong>Hat</strong>. Right-click to erase a step.</li>
-            <li>Select <strong>PAT</strong> and press <kbd>Space</kbd> to start or stop the loop.</li>
+            <li><a href="https://github.com/miskibin/synkopa/releases/latest">Download Synkopa</a> and install it. On a Mac, read <a href="setup.html">Install and set up</a> first: macOS blocks the first launch.</li>
+            <li>Start Synkopa and choose <strong>File → Open demo project</strong>.</li>
+            <li>Press <kbd>Space</kbd>.<span class="result">You hear a finished trap song. Press <kbd>Space</kbd> again to stop.</span></li>
           </ol>
+          <div class="note"><p>Silence? Pick your speakers or headphones in <strong>File → Settings… → Audio</strong>. <a href="setup.html#audio">Choose audio devices</a> explains each setting.</p></div>
+          <p>New to Synkopa's windows? <a href="basics.html">How Synkopa works</a> explains channels, patterns, the Playlist and the Mixer in five minutes. This tutorial works without it, too.</p>
+        </section>
+
+        <section>
+          <h2 id="drums">2. Program one bar of drums</h2>
+          <p>Drums are written in the <strong>Channel Rack</strong>. Each row is one sound (a <dfn>channel</dfn>), and its 16 buttons are the 16 sixteenth notes of one bar. A lit button plays the sound at that moment.</p>
+          <ol>
+            <li>Choose <strong>File → New project</strong>.<span class="result">The Channel Rack shows four drum sounds: Kick, Clap, Hat and Snare. If it is hidden, press <kbd>F6</kbd>.</span></li>
+            <li>On the <strong>Kick</strong> row, click steps 1, 5, 9 and 13: one kick on every beat.</li>
+            <li>On the <strong>Clap</strong> row, click steps 5 and 13: a clap on beats 2 and 4.</li>
+            <li>On the <strong>Hat</strong> row, click every odd step (1, 3, 5 … 15).</li>
+            <li>Make sure <strong>PAT</strong> is lit in the toolbar, then press <kbd>Space</kbd>.<span class="result">The bar loops. Keep it playing while you change steps.</span></li>
+          </ol>
+          <p>Clicked a wrong step? Right-click it to clear it.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/compose-rack-after.webp"><img src="images/compose-rack-after.webp" width="909" height="229" alt="The same Channel Rack with four kicks, two claps and eight hi-hat hits." loading="lazy"></a>
@@ -100,6 +113,7 @@
               </ol>
             </figcaption>
           </figure>
+          <p>Try the same beat here in the browser:</p>
           <div class="drum-example" data-drums hidden>
             <div class="controls">
               <button type="button" data-play>Play loop</button>
@@ -110,14 +124,17 @@
             <div class="steps-scroll"><div class="steps" role="group" aria-label="16-step drum example"></div></div>
           </div>
         </section>
+
         <section>
-          <h2 id="melody">Add a melody</h2>
+          <h2 id="melody">3. Add a melody</h2>
+          <p>Melodies need pitch, so they are written in the <strong>Piano roll</strong>: keys run from bottom to top, time runs from left to right. First add an instrument to play them.</p>
           <ol>
-            <li>In the Channel Rack, choose <strong>+ Channel → Empty synth</strong> to add a synth.</li>
-            <li>Right-click the synth channel name and choose <strong>Piano roll</strong>. Click the grid to place notes. Drag a note to move it or drag its right edge to resize it.</li>
-            <li>Keep the notes within bar 1 and play in <strong>PAT</strong> to hear the synth with the drums.</li>
+            <li>Below the channels in the Channel Rack, click <strong>+ Channel</strong> and choose <strong>Empty synth</strong>.<span class="result">A new row named <strong>Synth</strong> appears under the drums.</span></li>
+            <li>Right-click the name <strong>Synth</strong> and choose <strong>Piano roll</strong>.</li>
+            <li>Click in the grid to place a note. Place two or three notes within the first bar.</li>
+            <li>To lengthen a note, drag its right edge. To change its pitch, drag it up or down.</li>
+            <li>Press <kbd>Space</kbd>.<span class="result">The melody plays together with the drums, because both are in the same pattern.</span></li>
           </ol>
-          <p>See <a href="patterns.html#piano-roll">Piano roll editing</a> for selection and velocity, or <a href="midi.html#record-notes">record the part from a MIDI keyboard</a>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/compose-piano-after.webp"><img src="images/compose-piano-after.webp" width="820" height="430" alt="The same Piano roll after drawing a three-note synth phrase." loading="lazy"></a>
@@ -133,16 +150,21 @@
               </ol>
             </figcaption>
           </figure>
+          <p>Want a better sound than an empty synth? The <strong>+ Channel</strong> menu also has ready-made synth sounds sorted by type (Bass, Lead, Pad…) and sampled pianos, strings and guitars. See <a href="instruments.html">Play instruments</a>, or <a href="midi.html#record-notes">play the melody in from a MIDI keyboard</a>.</p>
         </section>
+
         <section>
-          <h2 id="arrange">Turn the loop into a song</h2>
+          <h2 id="arrange">4. Turn the loop into a song</h2>
+          <p>So far you have one <dfn>pattern</dfn>: one bar of drums and melody. A song is made by placing patterns on the <strong>Playlist</strong>, the timeline in the middle of the window. Each placed copy is a <dfn>clip</dfn>.</p>
           <ol>
-            <li>Stop playback and bring the <strong>Playlist</strong> forward with <kbd>F5</kbd>.</li>
-            <li>In the Browser’s <strong>Patterns</strong> tab, drag <strong>Pattern 1</strong> to bars 1 and 2. Press <kbd>Alt</kbd> + <kbd>F8</kbd> if the Browser is hidden.</li>
-            <li>Click the Playlist ruler at bar 1 to set the start and switch to <strong>SONG</strong>. Press <kbd>Space</kbd> to hear the Playlist.</li>
+            <li>Stop playback and press <kbd>F5</kbd> to bring the Playlist to the front.</li>
+            <li>In the <strong>Browser</strong> on the left, open the <strong>PATTERNS</strong> tab. Press <kbd>Alt</kbd> + <kbd>F8</kbd> if the Browser is hidden.</li>
+            <li>Drag <strong>Pattern 1</strong> onto Track 1 at bar 1.</li>
+            <li>Drag it again to bar 2.<span class="result">Two clips of the same pattern sit side by side.</span></li>
+            <li>Click the Playlist's ruler at bar 1.<span class="result">The toolbar switches to <strong>SONG</strong>: <kbd>Space</kbd> now plays the Playlist instead of the pattern.</span></li>
+            <li>Press <kbd>Space</kbd> to hear both bars.</li>
           </ol>
-          <p>Continue with <a href="arrangement.html#timeline">loops and section markers</a> when you want separate sections.</p>
-          <div class="note"><p>Edits affect every clip that uses the pattern. To edit just one clip, open its menu and choose <strong>Make unique</strong>.</p></div>
+          <div class="note"><p>Both clips play the same pattern, so a change in the Channel Rack changes both. To change only one clip, right-click the bar with its name and choose <strong>Make unique</strong>.</p></div>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/compose-arrange-after.webp"><img src="images/compose-arrange-after.webp" width="1080" height="420" alt="Playlist with two drum clips, a section marker and a loop range." loading="lazy"></a>
@@ -153,20 +175,25 @@
             </div>
             <figcaption>
               <ol>
-                <li>Click the <strong>Intro</strong> marker to jump to its bar.</li>
-                <li>The highlighted ruler area is the loop. Double-click the ruler to clear it.</li>
+                <li>A section marker named <strong>Intro</strong>. You do not need one yet; <a href="arrangement.html">Arrange a song</a> shows how to add them.</li>
+                <li>A loop range on the ruler. You do not need one yet either; double-click the ruler to clear it.</li>
                 <li>This second clip is another instance of the same pattern.</li>
                 <li>Use <strong>SONG</strong> to play the Playlist.</li>
               </ol>
             </figcaption>
           </figure>
+          <p>For a real song, press <kbd>F4</kbd> to start a second pattern for a variation, then mark the sections. See <a href="arrangement.html">Arrange a song</a>.</p>
         </section>
+
         <section>
-          <h2 id="finish">Save the project and export audio</h2>
+          <h2 id="finish">5. Save the project and export audio</h2>
+          <p>Saving keeps your editable project. Exporting renders the song into an audio file anyone can play.</p>
           <ol>
-            <li>Choose <strong>File → Save</strong> to save the editable <code>.synkopa</code> project.</li>
-            <li>Choose <strong>File → Export audio…</strong>. Set <strong>Output</strong> to <strong>Mix</strong>, <strong>Range</strong> to <strong>Song</strong>, and <strong>Format</strong> to <strong>WAV</strong>.</li>
-            <li>Choose <strong>Export…</strong>, save the file, and listen to it in your audio player.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>S</kbd> and choose a name.<span class="result">Synkopa saves a <code>.synkopa</code> project file.</span></li>
+            <li>Choose <strong>File → Export audio…</strong>.</li>
+            <li>Set <strong>Output</strong> to <strong>Mix</strong> (one file with everything) and <strong>Range</strong> to <strong>Song</strong> (the whole Playlist).</li>
+            <li>Set <strong>Format</strong> to <strong>WAV</strong> for full quality, or <strong>MP3</strong> to share it.</li>
+            <li>Click <strong>Export…</strong> and choose where to save the file.<span class="result">When the progress bar finishes, open the file in any audio player.</span></li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -183,12 +210,9 @@
               </ol>
             </figcaption>
           </figure>
+          <p>That is the whole loop: channels → pattern → Playlist → export. Next, <a href="patterns.html">write longer patterns</a>, <a href="record.html">record vocals</a> or <a href="mix.html">mix the song</a>.</p>
         </section>
       </article>
-      <nav class="workflow-progress" aria-label="Move between steps" hidden>
-        <a data-back></a>
-        <a data-next></a>
-      </nav>
     </main>
   </div>
 </body>

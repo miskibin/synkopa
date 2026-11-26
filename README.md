@@ -78,7 +78,7 @@ Download installers and packages from the [latest release](https://github.com/mi
 
 | Platform | Package | Audio & plugins | Notes |
 | --- | --- | --- | --- |
-| **Windows** | Installer (`.exe` / `.msi`) | WASAPI, ASIO; VST3 instruments & effects | Bundled Grand Piano; associates `.synkopa` files in Explorer |
+| **Windows** | Installer (`-setup.exe`) | WASAPI, ASIO; VST3 instruments & effects | Bundled Grand Piano; associates `.synkopa` files in Explorer |
 | **Linux** | `.deb`, `.rpm`, `.AppImage` | ALSA, JACK (incl. PipeWire JACK); VST3 instruments & effects, LV2 effects | `.deb`/`.rpm` pull `liblilv` for LV2; AppImage uses system `liblilv` if installed |
 | **macOS** | `.dmg` (Apple Silicon, macOS 13.4+) | Core Audio; built-in instruments & effects | Not notarized yet (first launch: System Settings → Privacy & Security → **Open Anyway**); no VST3 hosting or Intel build yet |
 

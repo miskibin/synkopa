@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Use the Master effect and Analyzer to check loudness and true peaks.">
-  <title>Mastering &amp; meters · Synkopa Docs</title>
+  <meta name="description" content="Master a finished mix to a release loudness with the Master effect, and measure LUFS and true peak with the Analyzer.">
+  <title>Master &amp; measure · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -61,32 +62,71 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>Mastering &amp; meters</h1>
+        <h1>Master and measure</h1>
+        <p class="lede">Mastering is the last step before you export: it makes the finished mix as loud as a released song without audible distortion. The <strong>Master</strong> effect does it in one window after listening to your song, and the <strong>Analyzer</strong> tells you how loud the result is.</p>
       </header>
       <nav class="contents" aria-label="On this page">
         <a href="#loudness-and-peaks">Loudness and peaks</a>
-        <a href="#master">Master</a>
-        <a href="#analyzer">Analyzer</a>
+        <a href="#master">Master the song</a>
+        <a href="#analyzer">Measure the result</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="loudness-and-peaks">Loudness and peaks</h2>
-          <p>Mastering prepares the whole mix for release. Play a chorus and a quieter section before adding Master. If only one instrument is off balance, correct it on its insert so the rest of the mix can stay where it is.</p>
+          <h2 id="loudness-and-peaks">Loudness and peaks in plain words</h2>
+          <p>Two numbers decide whether a master is ready: how loud it sounds on average, and how high its loudest instant reaches. Streaming services turn songs louder than about −14 LUFS down to that level, so pushing far past it mostly costs punch.</p>
           <dl class="terms">
-            <div><dt>LUFS</dt><dd>Estimated perceived loudness. Integrated LUFS summarizes the measured playback.</dd></div>
-            <div><dt>dBTP</dt><dd>True peak. Estimates how high the reconstructed signal reaches between digital samples.</dd></div>
-            <div><dt>Gain reduction</dt><dd>How many decibels a processor is turning down at that moment.</dd></div>
+            <dt>LUFS</dt>
+            <dd>Loudness as people hear it, measured over time. Closer to 0 is louder: −10 LUFS is louder than −14 LUFS.</dd>
+            <dt>Integrated</dt>
+            <dd>The loudness of the whole song from start to end, as one number. This is the value streaming services compare.</dd>
+            <dt>True peak (dBTP)</dt>
+            <dd>The highest point the waveform reaches, including between the digital samples. A file over 0 dBTP can distort when it is played or turned into an MP3.</dd>
+            <dt>Ceiling</dt>
+            <dd>The level a limiter never lets the true peak cross. −1 dBTP is the safe value for streaming.</dd>
+            <dt>Gain reduction</dt>
+            <dd>How many decibels a compressor or limiter is turning the sound down right now. A few dB on the loudest hits is normal; much more flattens them.</dd>
           </dl>
+          <p>Master the song only when the mix itself sounds right. If one instrument is too loud or too dull, fix it on its own insert first: see <a href="mix.html">Mix and route</a>.</p>
         </section>
+
         <section>
-          <h2 id="master" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#master"></use></svg>Master</h2>
-          <p>Listens to the Playlist and sets tone, compression, width, clipping, and limiting for the selected <strong>Target</strong>. The loudness target sets the desired average level. <strong>Ceiling</strong> sets the true-peak limit.</p>
+          <h2 id="master" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#master"></use></svg>Master the song with Master</h2>
+          <p><strong>Use it when</strong> the mix is finished and you want it release-ready. Master renders the song up to itself, measures it and sets a whole mastering chain for the loudness you choose: a gentle tone EQ, three-band <dfn>glue</dfn> (light compression that holds the mix together), stereo width per band, a clipper that shaves the kick and bass peaks, and a true-peak limiter with a −1 dBTP ceiling. Every setting stays a knob you can change.</p>
           <ol>
-            <li>On the Master insert, add <strong>Master</strong> after your mix effects. Choose a <strong>Target</strong>, such as <strong>Streaming −14</strong>, then use <strong>Listen to the song</strong> or <strong>Listen again</strong>.</li>
-            <li>Enable <strong>Level match</strong> and toggle power while you listen to the loudest section. Compare bass, vocal clarity, and drum attack at a similar loudness.</li>
-            <li>If the effect reports it stopped short of the target, listen for peak distortion before turning up <strong>Loudness</strong>. Disable <strong>Level match</strong> before checking the finished level or exporting.</li>
+            <li>Press <kbd>F9</kbd> and select the <strong>Master</strong> insert, the first strip.</li>
+            <li>Add the <strong>Master</strong> effect and keep it last in the chain.<span class="result">Its window opens and says <em>Not listened yet: the controls are neutral</em>.</span></li>
+            <li>Choose a <strong>Target</strong>. <strong>Streaming −14</strong> is the default and suits most releases.</li>
+            <li>Click <strong>Listen to the song</strong>.<span class="result">It shows <em>Listening to the song…</em> with a percentage, then the status line reports the loudness and peak it reached. You can <strong>Stop</strong> it; nothing changes then.</span></li>
+            <li>Turn on <strong>Level match</strong>, play the loudest section and click the power button at the top left of the window to compare with and without Master.<span class="result">Both play at the same loudness, so you judge the sound, not the volume.</span></li>
+            <li>Turn <strong>Level match</strong> off again before you export.</li>
           </ol>
+          <p class="why">Why Level match: a louder version almost always sounds better at first. Level match turns the master down to the mix's own loudness while you compare. Left on, it also keeps the export at the mix's loudness.</p>
+          <dl class="terms">
+            <dt>Target</dt>
+            <dd>The integrated loudness to aim for: <strong>Dynamic −16</strong>, <strong>Streaming −14</strong>, <strong>Balanced −12</strong>, <strong>Loud −10</strong> or <strong>Club −8</strong> LUFS. After you change it, click <strong>Listen again</strong>.</dd>
+            <dt>Loudness</dt>
+            <dd>How hard the mix is pushed into the limiter. The listen sets it; raise it to go louder.</dd>
+            <dt>Ceiling</dt>
+            <dd>The highest true peak allowed, −1 dBTP by default.</dd>
+            <dt>Tone</dt>
+            <dd>How much of the listen's tone EQ to apply. 0% is flat.</dd>
+            <dt>Glue</dt>
+            <dd>How firmly the three bands are compressed.</dd>
+            <dt>Width per band</dt>
+            <dd>Stereo width of the lows, mids and highs. 0% makes a band mono. The listen narrows wide lows and opens narrow highs.</dd>
+            <dt>Advanced</dt>
+            <dd>The five tone bands, each band's level and glue threshold, <strong>Glue time</strong>, the crossovers between the bands, and the <strong>Clipper</strong>.</dd>
+          </dl>
+          <p>You can also shape the result in the display: drag the blue dots to change the tone EQ, the dashed lines to move the crossovers, and the orange marks to set each band's glue threshold. Double-click one to reset it. The strip at the bottom shows the last ten seconds: peaks in and out, and how much the clipper and limiter turn down.</p>
+          <h3>What the warnings mean</h3>
+          <ul>
+            <li><strong>stopped short of … to stay clean</strong>: reaching the target would cut the song's peaks so hard you would hear crunch and pumping, so Master stopped at the loudest clean level. Turn <strong>Loudness</strong> up to push further anyway, and listen for distortion on the kick and snare.</li>
+            <li><strong>target out of reach</strong>: the target would need more than 24 dB of limiting. Make the mix itself denser, or choose a quieter target.</li>
+            <li><strong>set for another target</strong>: you changed the Target after the listen. Click <strong>Listen again</strong>.</li>
+          </ul>
+          <p>Changed the mix? Click <strong>Listen again</strong>, because the settings were made for the old mix.</p>
+          <div class="note"><p>Master ends in its own true-peak limiter, so you can bypass the <strong>Limiter</strong> a new project puts on the Master insert and compare: with Master in place it should have nothing left to catch. Keep the Master fader and the toolbar's main volume at 0 dB or below. They act after the Master insert's effects, so the limiter cannot catch what they add.</p></div>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-master.webp"><img src="images/plugin-master.webp" width="1075" height="811" alt="Master shows loudness settings and the processing proposed by its listen pass." loading="lazy"></a>
@@ -95,21 +135,28 @@
             </div>
             <figcaption>
               <ol>
-                <li>Click <strong>Listen to the song</strong> or <strong>Listen again</strong> to measure the whole mix up to this effect.</li>
-                <li>Enable <strong>Level match</strong> before comparing the sound with bypass.</li>
+                <li><strong>Listen to the song</strong> (or <strong>Listen again</strong>) measures the whole mix up to this effect and sets the controls.</li>
+                <li><strong>Level match</strong>: turn it on to compare with bypass, off to export.</li>
               </ol>
             </figcaption>
           </figure>
           <details class="listen-check">
-            <summary>At matched loudness, the kick lost its punch.</summary>
-            <p>Loop the loudest chorus and lower <strong>Loudness</strong> a few dB while watching gain reduction. If the kick regains its attack, gauge the trade-off with <strong>Level match</strong> on. Turn it off for the final reading.</p>
+            <summary>With Level match on, the kick has lost its punch.</summary>
+            <p>Loop the loudest chorus and lower <strong>Loudness</strong> a few dB while watching the reduction. If the kick's attack comes back, a slightly quieter master is the better trade. Turn Level match off for the final reading.</p>
           </details>
         </section>
+
         <section>
-          <h2 id="analyzer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Analyzer</h2>
-          <p>Measures the signal without changing it. The spectrum shows frequency balance, the stereo display shows left/right behavior, and the loudness view shows LUFS and true peak. Its <strong>Target</strong> is a reference line for the measurement.</p>
-          <p><strong>Try it.</strong> Place Analyzer in the final slot on the Master insert. Turn off the Playlist loop, start playback at the beginning and let it run through the final tail. Read <strong>Integrated</strong> and <strong>True peak</strong> before starting another pass. Restarting playback starts a fresh measurement.</p>
-          <p>If the Master is clipping, check levels upstream before trying to make the average louder. After an adjustment, replay from the beginning for a new reading, then <a href="export.html#mix">export and listen to the finished file</a>.</p>
+          <h2 id="analyzer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Measure the result with Analyzer</h2>
+          <p><strong>Use it when</strong> you want to know how loud the song is, how high its peaks reach, or how the frequencies and stereo image are spread. Analyzer only measures; it never changes the sound.</p>
+          <ol>
+            <li>Add <strong>Analyzer</strong> as the last effect on the Master insert, after Master or the Limiter.</li>
+            <li>Clear the Playlist loop (double-click the ruler), so the whole song plays.</li>
+            <li>Start playback from the beginning and let it run to the end of the last tail.<span class="result">The readings start over each time playback starts.</span></li>
+            <li>Read <strong>Integrated</strong> for the whole-song loudness and <strong>True peak</strong> for the highest peak.</li>
+          </ol>
+          <p>Choose a <strong>Target</strong> in the Analyzer (<strong>Streaming −14</strong>, <strong>Loud −9</strong> or <strong>Broadcast −23</strong>) to draw it as a reference line. The Analyzer then tells you, for example, how many dB quieter streaming would play the song. It also shows <strong>Short-term</strong> and <strong>Momentary</strong> loudness and the <strong>Loudness range</strong>; hover the spectrum to read the note at that frequency.</p>
+          <p>When the numbers are right, <a href="export.html#mix">export the song</a> and listen to the finished file.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-analyzer.webp"><img src="images/plugin-analyzer.webp" width="1125" height="608" alt="Analyzer shows a spectrum, loudness history, stereo scope, true peak and LUFS readings." loading="lazy"></a>
@@ -118,14 +165,14 @@
             </div>
             <figcaption>
               <ol>
-                <li>Read <strong>Integrated</strong> after a full pass to see the whole-song LUFS.</li>
-                <li>Read <strong>True peak</strong> to check the largest peak of the same pass.</li>
+                <li><strong>Integrated</strong>: the whole song's loudness, after a full pass.</li>
+                <li><strong>True peak</strong>: the highest peak of the same pass.</li>
               </ol>
             </figcaption>
           </figure>
           <details class="listen-check">
-            <summary>True peak is near the ceiling, but the integrated LUFS looks low.</summary>
-            <p>Use the loudness history to find the quiet passages and look for isolated peaks. The highest peak and the whole-song average answer different questions. If one snare is holding down the level you want, address that hit in the mix and measure the full song again.</p>
+            <summary>True peak is near the ceiling, but Integrated is low.</summary>
+            <p>A few very loud hits are holding the whole song down. Use the loudness history to find them, often one snare or a single effect. Turn that hit down in the mix, then measure the full song again.</p>
           </details>
         </section>
       </article>

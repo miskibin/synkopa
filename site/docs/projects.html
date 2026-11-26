@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Save project versions, recover work, relink missing audio, and transfer an editable project.">
-  <title>Save and manage projects · Synkopa Docs</title>
+  <meta name="description" content="Save a Synkopa song, keep versions, recover work after a crash, relink missing audio and move a project to another computer.">
+  <title>Save and recover projects · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html" aria-current="page">Save &amp; recover projects</a></li>
           </ul>
@@ -61,55 +62,93 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>Save and manage projects</h1>
+        <h1>Save and recover projects</h1>
+        <p class="lede">Save your song, keep earlier versions, get your work back after a crash, fix audio files that went missing and move a project to another computer. Read the first section before your first save; come back to the others when something goes wrong.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#save">Start, save, and reopen a project</a>
-        <a href="#backup">Recover work after a crash or mistaken save</a>
-        <a href="#relink">Relink missing audio</a>
+        <a href="#save">Save and reopen a song</a>
+        <a href="#versions">Try an idea without losing the old one</a>
+        <a href="#backup">Get your work back</a>
+        <a href="#relink">Fix missing audio</a>
         <a href="#portable">Move a project to another computer</a>
       </nav>
       <article class="prose">
         <section>
-          <h2 id="save">Start, save, and reopen a project</h2>
+          <h2 id="save">Save and reopen a song</h2>
+          <p>A song is saved as one <code>.synkopa</code> project file. It holds your patterns, the Playlist, the Mixer and every setting. Audio files are not inside it: the project points to them where they are on disk.</p>
           <ol>
-            <li>Choose <strong>File → New project</strong> to start with the drum channels, or <strong>File → Open demo project</strong> to explore the included song.</li>
-            <li>Choose <strong>File → Save</strong> or press <kbd>Ctrl</kbd> + <kbd>S</kbd>. Name the <code>.synkopa</code> file and give the song a folder. On the first save, recorded files can move into the project's <code>Audio</code> folder.</li>
-            <li>Reopen the file with <strong>File → Open…</strong> or <strong>Open recent</strong>. If a recent project is marked missing, use <strong>Open…</strong> to find its new location. Older <code>.wave</code> projects can still open.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>S</kbd> (or choose <strong>File → Save</strong>).</li>
+            <li>Choose a folder for the song, type a name and confirm.<span class="result">The status line under the menus says <strong>Saved</strong> with the file's path.</span></li>
           </ol>
-          <p>If Synkopa asks about unsaved changes before opening another project, save to keep them or cancel to stay in the current project.</p>
-          <p><strong>Save as…</strong> lets you choose a different name or path. <strong>Save new version</strong> creates a numbered file beside the current one and continues working in that version.</p>
+          <p>On save, audio you recorded moves from a temporary folder into a folder next to the project named after it: <code>Song.synkopa</code> keeps its takes in <code>Song Audio</code>. Samples you imported stay where they were.</p>
+          <p>To open a song again, choose <strong>File → Open…</strong> (<kbd>Ctrl</kbd> + <kbd>O</kbd>) or pick it from <strong>File → Open recent</strong>. A project marked <em>(missing)</em> in that list was moved or deleted; find it with <strong>Open…</strong>. Projects saved by older versions as <code>.wave</code> files still open.</p>
+          <p>If the open song has unsaved changes, Synkopa asks before it opens another one.</p>
         </section>
+
         <section>
-          <h2 id="backup">Recover work after a crash or mistaken save</h2>
+          <h2 id="versions">Try an idea without losing the old one</h2>
+          <p>Before a big change, such as a new arrangement or a different drum sound, keep the current version as it is.</p>
           <ol>
-            <li>In <strong>File → Settings… → General</strong>, choose an <strong>Autosave</strong> interval. Autosave keeps a recovery copy of unsaved edits. The project file updates when you save.</li>
-            <li>If Synkopa opens <strong>Recover unsaved project?</strong> after an unexpected exit, choose <strong>Recover</strong>. Play back the recovered project and use <strong>Save</strong> to keep it, or <strong>Save as…</strong> to keep a separate file. <strong>Not now</strong> keeps the copy and asks again next launch.</li>
-            <li>To go back after a mistaken save, use <strong>File → Open…</strong> and open <code>Song (backup).synkopa</code> next to the original. It holds the previous save. Use <strong>Save as…</strong> to name the recovered version before continuing.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>N</kbd> (<strong>File → Save new version</strong>).<span class="result">Synkopa saves a copy next to the current file with the next number (<code>Beat</code> becomes <code>Beat_2</code>) and you continue working in the copy. The earlier file stays as it was.</span></li>
           </ol>
-          <figure class="annotated-shot">
-            <div class="shot-frame">
-              <a class="shot" href="images/settings-general.webp"><img src="images/settings-general.webp" width="1150" height="850" alt="General settings showing the project Autosave interval." loading="lazy"></a>
-              <span class="shot-pin" style="--x: 66%; --y: 36.5%" aria-hidden="true">1</span>
-            </div>
-            <figcaption><ol><li>Set the Autosave interval under Project.</li></ol></figcaption>
-          </figure>
+          <p>To pick a name or folder yourself, use <strong>File → Save as…</strong> (<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>). A new, empty project is <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>.</p>
+        </section>
+
+        <section>
+          <h2 id="backup">Get your work back</h2>
+          <p>Synkopa keeps three safety nets, from the smallest mistake to the largest:</p>
+          <dl class="terms">
+            <dt>Undo</dt>
+            <dd><kbd>Ctrl</kbd> + <kbd>Z</kbd> takes back any edit, one step at a time. <strong>Edit → Undo</strong> names the step.</dd>
+            <dt>Autosave</dt>
+            <dd>Every 2 minutes Synkopa keeps a recovery copy of your unsaved changes. It never writes over your project file: that changes only when you save.</dd>
+            <dt>Backup file</dt>
+            <dd>Each save keeps the previous save next to the project as <code>Song (backup).synkopa</code>.</dd>
+          </dl>
+
+          <h3>After a crash</h3>
+          <ol>
+            <li>Start Synkopa again.<span class="result">It asks <strong>Recover unsaved project?</strong> and says when the copy was made.</span></li>
+            <li>Click <strong>Recover</strong>.<span class="result">The song opens with your autosaved changes, still unsaved.</span></li>
+            <li>Play it to check it, then press <kbd>Ctrl</kbd> + <kbd>S</kbd> to keep it. To keep the old file untouched, use <strong>Save as…</strong> instead.</li>
+          </ol>
+          <p><strong>Not now</strong> keeps the copy and asks again at the next start. <strong>Delete copy</strong> throws it away.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/project-recover.webp"><img src="images/project-recover.webp" width="550" height="225" alt="Recovery prompt for a project that closed before its first save." loading="lazy"></a>
               <span class="shot-pin" style="--x: 85%; --y: 80%" aria-hidden="true">1</span>
             </div>
-            <figcaption><ol><li>Recover opens the snapshot so you can listen and save it.</li></ol></figcaption>
+            <figcaption><ol><li>Recover opens the copy so you can listen to it and save it.</li></ol></figcaption>
+          </figure>
+
+          <h3>After saving something you did not want</h3>
+          <ol>
+            <li>Choose <strong>File → Open…</strong> and open <code>Song (backup).synkopa</code> next to your project.<span class="result">You get the song as it was one save earlier.</span></li>
+            <li>Choose <strong>File → Save as…</strong> and give it a new name before you continue.</li>
+          </ol>
+
+          <h3>Change how often autosave runs</h3>
+          <p>Open <strong>File → Settings… → General</strong> and pick an <strong>Autosave</strong> interval under <strong>Project</strong>, or <strong>Off</strong>.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/settings-general.webp"><img src="images/settings-general.webp" width="1150" height="850" alt="General settings showing the project Autosave interval." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 66%; --y: 36.5%" aria-hidden="true">1</span>
+            </div>
+            <figcaption><ol><li>The Autosave interval, under Project.</li></ol></figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="relink">Relink missing audio</h2>
+          <h2 id="relink">Fix missing audio</h2>
+          <p>If you move, rename or delete an audio file a project uses, its clips play silence and show <strong>FILE MISSING</strong>. Synkopa opens the <strong>Missing audio</strong> window when you open such a project, and the toolbar shows a <strong>missing</strong> count until you fix it. Point Synkopa at the files and the song plays again.</p>
           <ol>
-            <li>Click the <strong>missing</strong> count near the menus. You can also open a missing clip’s menu and choose <strong>Relink missing file…</strong>.</li>
-            <li>If you moved a whole library, choose <strong>Search folder…</strong>. It checks subfolders and relinks an unambiguous match with the remembered length. When several files match, choose one and click <strong>Use</strong>.</li>
-            <li>For a renamed or single file, choose <strong>Locate…</strong>. For a missing factory sample, install its kit in the Browser’s Library. Play the affected clips, check for shifted ends if the new file has a different length, then save.</li>
+            <li>If the window is closed, click the <strong>missing</strong> count in the toolbar.<span class="result">The <strong>Missing audio</strong> window lists each missing file and how many clips use it.</span></li>
+            <li>If you moved a whole folder, click <strong>Search folder…</strong> and choose the folder the files are in now.<span class="result">Synkopa looks through it and its subfolders and relinks each file it finds once, with the right length.</span></li>
+            <li>If a file matched more than once, choose the right one and click <strong>Use</strong>.</li>
+            <li>For a file you renamed, click <strong>Locate…</strong> next to it and pick the file yourself.</li>
+            <li>Play the song, then save.</li>
           </ol>
-          <p>Use <kbd>Ctrl</kbd> + <kbd>Z</kbd> to undo a wrong relink. For a project moved from another machine, look for its adjacent <code>Audio</code> folder before replacing sources.</p>
+          <p>A missing <em>library sample</em> needs its kit installed in the Browser's Library instead. If a relinked file has a different length, Synkopa warns you: check the ends of its clips. Relinked the wrong file? <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes it. You can also relink one clip: open its menu and choose <strong>Relink missing file…</strong>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/project-relink.webp"><img src="images/project-relink.webp" width="800" height="373" alt="Missing audio dialog with two missing takes, a folder search, and a Locate button for each take." loading="lazy"></a>
@@ -117,19 +156,23 @@
               <span class="shot-pin" style="--x: 92%; --y: 47%" aria-hidden="true">2</span>
             </div>
             <figcaption><ol>
-              <li>Search a moved folder and its subfolders for all missing takes.</li>
-              <li>Locate one renamed or moved file manually.</li>
+              <li>Search folder: finds every missing file in a folder and its subfolders.</li>
+              <li>Locate: pick one renamed or moved file yourself.</li>
             </ol></figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="portable">Move a project to another computer</h2>
+          <p>Because audio files live outside the project file, copying only the <code>.synkopa</code> file leaves its audio behind. Export a ZIP that collects everything.</p>
           <ol>
-            <li>Resolve <a href="#relink">missing audio</a>. Choose <strong>File → Export project as ZIP…</strong> to collect source audio and takes with the project.</li>
-            <li>Unzip the whole package on the other computer. Keep the <code>Audio</code> folder beside the project and open the <code>.synkopa</code> file.</li>
-            <li>Install any third-party plugins separately and copy samples loaded inside them. Play a busy section to check that clips, takes, and instrument tracks sound as expected.</li>
+            <li>Fix any <a href="#relink">missing audio</a> first.</li>
+            <li>Choose <strong>File → Export project as ZIP…</strong> and pick where to save it.<span class="result">The status line says <strong>ZIP exported</strong>. The ZIP holds the project and an <code>Audio</code> folder with every sample and take.</span></li>
+            <li>On the other computer, unzip the whole file.</li>
+            <li>Open the <code>.synkopa</code> file. Keep the <code>Audio</code> folder next to it.<span class="result">The song plays with all its audio.</span></li>
           </ol>
-          <p>Send a <a href="export.html#mix">reference mix</a> with an editable project when the recipient may have different plugins.</p>
+          <p>Third-party plugins are not in the ZIP: install them on the other computer too. Samples loaded inside a third-party plugin are not collected either. A plugin that is missing keeps its slot and settings, so the project opens and saves unchanged and plays again once the plugin is installed.</p>
+          <p>Sending the song to someone with different plugins? Add a <a href="export.html#mix">rendered mix</a> so they can hear how it should sound.</p>
         </section>
       </article>
     </main>

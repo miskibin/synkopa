@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Channels, patterns, the Playlist and the Mixer: how a Synkopa song is built and which window does what.">
+  <title>How Synkopa works · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html" aria-current="page">How Synkopa works</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>How Synkopa works</h1>
+        <p class="lede">A song in Synkopa is built from four things: <strong>channels</strong> make sound, <strong>patterns</strong> hold notes, the <strong>Playlist</strong> arranges patterns into a song, and the <strong>Mixer</strong> shapes what you hear. Read this page once and every other guide will make sense.</p>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#model">The four building blocks</a>
+        <a href="#windows">The five windows</a>
+        <a href="#pat-song">PAT and SONG</a>
+        <a href="#current">The current pattern</a>
+        <a href="#routing">How a sound reaches the speakers</a>
+        <a href="#safety">Undo, save and recover</a>
+        <a href="#find">Find any command</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="model">The four building blocks</h2>
+          <p>If you have used FL Studio, this is the same model. If you come from a track-based DAW such as Ableton Live or Logic, read this section carefully: here a pattern is not tied to one track or one instrument.</p>
+          <div class="flow" aria-label="How a note becomes sound">
+            <span><b>Channel</b>an instrument</span><i>→</i>
+            <span><b>Pattern</b>a short piece of music</span><i>→</i>
+            <span><b>Clip</b>on the Playlist</span><i>→</i>
+            <span><b>Mixer insert</b>fader + effects</span><i>→</i>
+            <span><b>Master</b>what you hear</span>
+          </div>
+          <dl class="terms">
+            <dt>Channel</dt>
+            <dd>One instrument: a sample (a kick, a clap), the built-in Synthesizer, a sampled piano, or a VST3 plugin. All channels live in the <strong>Channel Rack</strong> and belong to the whole project.</dd>
+            <dt>Pattern</dt>
+            <dd>A short piece of music: steps and notes for <em>any</em> of the channels. A drum loop and a bass line can be one pattern or two. Every pattern can use every channel.</dd>
+            <dt>Clip</dt>
+            <dd>A pattern placed on the <strong>Playlist</strong>, the song timeline. Ten clips of one pattern all play that pattern, so editing the pattern changes all ten. Audio files and automation curves are clips too.</dd>
+            <dt>Mixer insert</dt>
+            <dd>A strip on the <strong>Mixer</strong> with a fader, a pan knob and a chain of effects (FL Studio calls it a mixer track). Each channel plays into one insert.</dd>
+            <dt>Master</dt>
+            <dd>The last insert. Every other insert ends here, and its effects (a Limiter in a new project) process the whole song.</dd>
+          </dl>
+          <div class="note"><p>The surprise for newcomers: a pattern has no fixed place in the song. You decide where and how often it plays by placing clips on the Playlist.</p></div>
+        </section>
+
+        <section>
+          <h2 id="windows">The five windows</h2>
+          <p>Each building block has its own window. The function keys open them, as in FL Studio.</p>
+          <table class="windows">
+            <thead><tr><th>Window</th><th>What you do there</th><th>Open it</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Channel Rack</strong></td><td>Add channels and click in drum steps for the current pattern</td><td><kbd>F6</kbd></td></tr>
+              <tr><td><strong>Piano roll</strong></td><td>Write notes with pitch and length for one channel</td><td><kbd>F7</kbd>, or right-click a channel → <strong>Piano roll</strong></td></tr>
+              <tr><td><strong>Playlist</strong></td><td>Arrange clips into a song, add markers and automation</td><td>Always open; <kbd>F5</kbd> brings it to the front</td></tr>
+              <tr><td><strong>Mixer</strong></td><td>Balance levels, add effects, route and sidechain</td><td><kbd>F9</kbd></td></tr>
+              <tr><td><strong>Browser</strong></td><td>Find patterns, audio and the sample library</td><td><kbd>Alt</kbd> + <kbd>F8</kbd></td></tr>
+            </tbody>
+          </table>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/overview.webp"><img src="images/overview.webp" width="1600" height="900" alt="Synkopa with the Browser on the left, the Playlist in the center, and the Mixer docked below." loading="lazy"></a>
+            </div>
+            <figcaption>The Browser on the left, the Playlist in the middle, the Mixer docked at the bottom.</figcaption>
+          </figure>
+          <p>The Channel Rack, Piano roll and Mixer can float or dock to an edge: drag a window's title bar onto one of the arrows that appear. <strong>View → Window layout → Reset window layout</strong> puts everything back.</p>
+        </section>
+
+        <section>
+          <h2 id="pat-song">PAT and SONG: what Space plays</h2>
+          <p>The <strong>PAT / SONG</strong> switch in the toolbar decides what <kbd>Space</kbd> plays. Press <kbd>L</kbd> to flip it.</p>
+          <ul>
+            <li><strong>PAT</strong> loops the current pattern only. Use it while you write a beat or a melody.</li>
+            <li><strong>SONG</strong> plays the Playlist. Clicking the Playlist's ruler or grid switches to SONG for you.</li>
+          </ul>
+          <p>If <kbd>Space</kbd> plays something you did not expect, check this switch first.</p>
+        </section>
+
+        <section>
+          <h2 id="current">The current pattern</h2>
+          <p>There is always one <dfn>current pattern</dfn>. It is the one the Channel Rack and the Piano roll show, the one PAT plays, and the one the Playlist's Draw tool places.</p>
+          <ul>
+            <li>Change it with the pattern selector in the toolbar, the number pad (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>+</kbd>, <kbd>−</kbd>), or by clicking a pattern clip.</li>
+            <li>Press <kbd>F4</kbd> to start a new, empty pattern.</li>
+            <li>Press <kbd>F2</kbd> to rename the current pattern.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 id="routing">How a sound reaches the speakers</h2>
+          <p>Each row in the Channel Rack has a small box between its knobs and its name. It shows the mixer insert that channel plays into.</p>
+          <ul>
+            <li><strong>A number</strong>: the channel always plays through that insert. The starter drums use inserts 1–4.</li>
+            <li><strong>A dash</strong> (<em>Like clip track</em>): the channel plays through the insert of the Playlist track its clip sits on. New synths and instruments start this way.</li>
+            <li><strong>Double-click</strong> the box to give the channel a free insert of its own, named after it.</li>
+          </ul>
+          <p class="why">Why it matters: a sound needs its own insert before you can give it its own volume fader and its own effects. Two sounds that share an insert are mixed together.</p>
+          <p>Every insert ends in the Master. Inserts can also send to other inserts, for example all drums into a drum bus. <a href="mix.html">Mix and route</a> shows how.</p>
+        </section>
+
+        <section>
+          <h2 id="safety">Undo, save and recover</h2>
+          <ul>
+            <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes any edit; <kbd>Ctrl</kbd> + <kbd>Y</kbd> redoes it. <strong>Edit → Undo</strong> names the step it will undo.</li>
+            <li><kbd>Ctrl</kbd> + <kbd>S</kbd> saves a <code>.synkopa</code> project. Each save keeps the previous file as a backup next to it.</li>
+            <li><kbd>Ctrl</kbd> + <kbd>N</kbd> saves a new version beside the current file (<code>Beat_2</code>, <code>Beat_3</code>…), so you can try an idea without losing the old one.</li>
+            <li>Autosave keeps a recovery copy every few minutes. If Synkopa closes unexpectedly, it offers that copy the next time it starts.</li>
+          </ul>
+          <p>More in <a href="projects.html">Save and recover projects</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="find">Find any command</h2>
+          <ul>
+            <li><kbd>Ctrl</kbd> + <kbd>K</kbd> opens <strong>Find a command</strong>. Type what you want to do (export, mixer, quantize) and pick it from the list, with its shortcut.</li>
+            <li><kbd>?</kbd> shows the keyboard shortcuts.</li>
+            <li>The status line under the menus tells you what the control under the mouse does.</li>
+          </ul>
+          <p>Ready? <a href="first-song.html">Make your first song</a>.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

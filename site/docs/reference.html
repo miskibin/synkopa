@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Find the shortcuts you need and troubleshoot playback, input, and export.">
+  <meta name="description" content="Synkopa keyboard shortcuts by window, a glossary of music-production terms, fixes for common problems and where to get help.">
   <title>Shortcuts &amp; help · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,81 +63,272 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Shortcuts and help</h1>
+        <p class="lede">Look up a key, a word you do not know, or a fix for a common problem. If your question is not answered here, the last section says where to ask.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#shortcuts">Everyday shortcuts</a>
+        <a href="#shortcuts">Keyboard shortcuts</a>
+        <a href="#glossary">Glossary</a>
         <a href="#playback">The project plays in silence</a>
         <a href="#recording">The input meter does not move</a>
-        <a href="#third-party-plugins">Third-party plugins</a>
+        <a href="#third-party-plugins">A plugin does not show up</a>
         <a href="#find-command">Find a command or ask for help</a>
-        <a href="#more">Links and support</a>
+        <a href="#more">Report a problem</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="shortcuts">Everyday shortcuts</h2>
-          <p>For the full list, open <strong>Help → Keyboard shortcuts</strong>.</p>
+          <h2 id="shortcuts">Keyboard shortcuts</h2>
+          <p>Most keys match FL Studio. On macOS, use <kbd>⌘</kbd> wherever this page says <kbd>Ctrl</kbd>. Press <kbd>?</kbd> in the app for the complete list.</p>
+          <p>A key a window uses for itself wins while that window has the keyboard: <kbd>Ctrl</kbd> + <kbd>L</kbd> makes notes legato in the Piano roll but routes channels elsewhere. Click a window to give it the keyboard.</p>
+
+          <h3 id="keys-everywhere">Everywhere</h3>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key</th></tr></thead>
+            <tbody>
+              <tr><td>Play or stop</td><td><kbd>Space</kbd></td></tr>
+              <tr><td>Switch between PAT (current pattern) and SONG (the Playlist)</td><td><kbd>L</kbd></td></tr>
+              <tr><td>Record on or off</td><td><kbd>R</kbd></td></tr>
+              <tr><td>Go back to the start of the song</td><td><kbd>Home</kbd></td></tr>
+              <tr><td>Stop and cut every ringing sound</td><td><kbd>Ctrl</kbd> + <kbd>H</kbd></td></tr>
+              <tr><td>Metronome on or off</td><td><kbd>Ctrl</kbd> + <kbd>M</kbd></td></tr>
+              <tr><td>Play notes on the computer keyboard (again: back to shortcuts)</td><td><kbd>Ctrl</kbd> + <kbd>T</kbd></td></tr>
+              <tr><td>Playlist to the front (again: show floating windows)</td><td><kbd>F5</kbd></td></tr>
+              <tr><td>Channel Rack</td><td><kbd>F6</kbd></td></tr>
+              <tr><td>Piano roll of the selected channel</td><td><kbd>F7</kbd></td></tr>
+              <tr><td>Notebook (lyrics)</td><td><kbd>F8</kbd></td></tr>
+              <tr><td>Browser</td><td><kbd>Alt</kbd> + <kbd>F8</kbd></td></tr>
+              <tr><td>Mixer</td><td><kbd>F9</kbd></td></tr>
+              <tr><td>Full screen</td><td><kbd>F11</kbd></td></tr>
+              <tr><td>New empty pattern / rename the current pattern</td><td><kbd>F4</kbd> / <kbd>F2</kbd></td></tr>
+              <tr><td>Pick pattern 1–9 / next / previous</td><td>Number pad <kbd>1</kbd>–<kbd>9</kbd> / <kbd>+</kbd> / <kbd>−</kbd></td></tr>
+              <tr><td>Undo / redo</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd></td></tr>
+              <tr><td>Save / save as</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td></tr>
+              <tr><td>Save a new version (Beat → Beat_2)</td><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td></tr>
+              <tr><td>New project / open</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> / <kbd>Ctrl</kbd> + <kbd>O</kbd></td></tr>
+              <tr><td>Export audio</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></td></tr>
+              <tr><td>Add a marker at the song position</td><td><kbd>Alt</kbd> + <kbd>T</kbd></td></tr>
+              <tr><td>Find a command</td><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td></tr>
+              <tr><td>Ask ChatGPT about Synkopa</td><td><kbd>F1</kbd></td></tr>
+              <tr><td>Close the window in front, or deselect</td><td><kbd>Esc</kbd></td></tr>
+            </tbody>
+          </table></div>
+          <p>While <kbd>Ctrl</kbd> + <kbd>T</kbd> is on, the bottom letter row (<kbd>Z</kbd> <kbd>S</kbd> <kbd>X</kbd> <kbd>D</kbd> <kbd>C</kbd>…) plays from C4 and the top row (<kbd>Q</kbd> <kbd>2</kbd> <kbd>W</kbd> <kbd>3</kbd> <kbd>E</kbd>…) an octave higher. <kbd>Page Up</kbd> and <kbd>Page Down</kbd> change the octave. Those keys play notes instead of their shortcuts until you press <kbd>Ctrl</kbd> + <kbd>T</kbd> again.</p>
+
+          <h3 id="keys-playlist">Playlist</h3>
           <div class="table"><table>
             <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
             <tbody>
-              <tr><td>Play or stop</td><td><kbd>Space</kbd></td></tr>
-              <tr><td>Switch between current pattern and song</td><td><kbd>L</kbd></td></tr>
-              <tr><td>Bring the Playlist forward</td><td><kbd>F5</kbd></td></tr>
-              <tr><td>Toggle the Channel Rack</td><td><kbd>F6</kbd></td></tr>
-              <tr><td>Toggle the Piano roll</td><td><kbd>F7</kbd></td></tr>
-              <tr><td>Toggle the Browser</td><td><kbd>Alt</kbd> + <kbd>F8</kbd></td></tr>
-              <tr><td>Toggle the Mixer</td><td><kbd>F9</kbd></td></tr>
-              <tr><td>Arm or disarm recording</td><td><kbd>R</kbd></td></tr>
-              <tr><td>Undo an edit</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td></tr>
-              <tr><td>Save the project</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
+              <tr><td>Tools: Draw, Paint, Delete, Mute, Slice, Select</td><td><kbd>P</kbd> <kbd>B</kbd> <kbd>D</kbd> <kbd>T</kbd> <kbd>C</kbd> <kbd>E</kbd></td></tr>
+              <tr><td>Delete a clip</td><td>Right-click it</td></tr>
+              <tr><td>Open a clip's menu</td><td>Right-click the bar with its name</td></tr>
+              <tr><td>Copy a clip</td><td><kbd>Shift</kbd> + drag it</td></tr>
+              <tr><td>Select with a box / add to the selection</td><td><kbd>Ctrl</kbd> + drag / <kbd>Ctrl</kbd> + click</td></tr>
+              <tr><td>Move without snapping to the grid</td><td>Hold <kbd>Alt</kbd> while dragging</td></tr>
+              <tr><td>Select all / deselect</td><td><kbd>Ctrl</kbd> + <kbd>A</kbd> / <kbd>Ctrl</kbd> + <kbd>D</kbd></td></tr>
+              <tr><td>Duplicate after the selection</td><td><kbd>Ctrl</kbd> + <kbd>B</kbd></td></tr>
+              <tr><td>Copy / cut / paste</td><td><kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd></td></tr>
+              <tr><td>Mute or unmute the selection</td><td><kbd>Alt</kbd> + <kbd>M</kbd></td></tr>
+              <tr><td>Open a pattern clip / an audio clip</td><td>Double-click it</td></tr>
+              <tr><td>Set where playback starts</td><td>Click the ruler</td></tr>
+              <tr><td>Draw a loop / remove it</td><td>Drag on the ruler / double-click the ruler</td></tr>
+              <tr><td>Zoom in or out at the pointer</td><td><kbd>Page Up</kbd> / <kbd>Page Down</kbd>, or <kbd>Ctrl</kbd> + wheel</td></tr>
+              <tr><td>Show the whole song</td><td><kbd>Shift</kbd> + <kbd>4</kbd></td></tr>
+              <tr><td>Follow the playhead on or off</td><td><kbd>F</kbd></td></tr>
             </tbody>
           </table></div>
-          <p>In the docs, <kbd>Ctrl</kbd> or <kbd>⌘</kbd> + <kbd>K</kbd> searches guides. In the app, <kbd>Ctrl</kbd> + <kbd>K</kbd> runs commands.</p>
-          <p>If letter keys play notes, turn off <strong>View → Computer keyboard as piano</strong>. If your system uses the function keys, use the <strong>View</strong> menu.</p>
+
+          <h3 id="keys-rack">Channel Rack</h3>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
+            <tbody>
+              <tr><td>Turn a step on / off</td><td>Click / right-click it</td></tr>
+              <tr><td>Paint or clear many steps</td><td>Drag / right-drag over them</td></tr>
+              <tr><td>Hear one channel</td><td><kbd>Ctrl</kbd> + click its name</td></tr>
+              <tr><td>Channel menu (Piano roll, fill, rename…)</td><td>Right-click the channel</td></tr>
+              <tr><td>Mute / solo a channel</td><td>Click / right-click its light</td></tr>
+              <tr><td>Give the channel its own mixer insert</td><td>Double-click the insert box</td></tr>
+              <tr><td>Select the channel above or below / move it</td><td><kbd>↑</kbd> <kbd>↓</kbd> / <kbd>Alt</kbd> + <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
+              <tr><td>Graph editor (velocity, pan per step)</td><td><kbd>G</kbd></td></tr>
+            </tbody>
+          </table></div>
+
+          <h3 id="keys-roll">Piano roll</h3>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
+            <tbody>
+              <tr><td>Tools: Draw, Paint, Erase, Select, Chord stamp</td><td><kbd>P</kbd> <kbd>B</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>C</kbd></td></tr>
+              <tr><td>Add a note / delete it</td><td>Click / right-click</td></tr>
+              <tr><td>Change a note's length</td><td>Drag its right edge</td></tr>
+              <tr><td>Change a note's velocity (loudness)</td><td><kbd>Alt</kbd> + wheel over it</td></tr>
+              <tr><td>Move the selection a semitone / an octave</td><td><kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>Ctrl</kbd> + <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
+              <tr><td>Quantize note starts</td><td><kbd>Ctrl</kbd> + <kbd>Q</kbd></td></tr>
+              <tr><td>Legato (each note lasts until the next)</td><td><kbd>Ctrl</kbd> + <kbd>L</kbd></td></tr>
+              <tr><td>Duplicate to the right</td><td><kbd>Ctrl</kbd> + <kbd>B</kbd></td></tr>
+              <tr><td>Arpeggiator</td><td><kbd>Alt</kbd> + <kbd>A</kbd></td></tr>
+              <tr><td>Delete the selected notes</td><td><kbd>Delete</kbd></td></tr>
+            </tbody>
+          </table></div>
+          <p>With nothing selected, quantize, legato, duplicate and the arrow keys act on every note of the channel. Delete only removes a selection.</p>
+
+          <h3 id="keys-mixer">Mixer</h3>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
+            <tbody>
+              <tr><td>Show or hide / fill the screen</td><td><kbd>F9</kbd> / double-click its title bar</td></tr>
+              <tr><td>Add an effect to the selected insert</td><td><kbd>Shift</kbd> + <kbd>F9</kbd></td></tr>
+              <tr><td>Rename the selected insert</td><td><kbd>F2</kbd></td></tr>
+              <tr><td>Route the selected Channel Rack channels here</td><td><kbd>Ctrl</kbd> + <kbd>L</kbd></td></tr>
+              <tr><td>Fader to 0 dB / pan to centre</td><td>Double-click it</td></tr>
+              <tr><td>Solo an insert</td><td>Right-click its <strong>M</strong></td></tr>
+              <tr><td>Insert menu (send, sidechain, effect chains)</td><td>Right-click the strip</td></tr>
+              <tr><td>Reorder effects / move one to another insert</td><td>Drag it (<kbd>Ctrl</kbd>: copy)</td></tr>
+            </tbody>
+          </table></div>
+
+          <h3 id="keys-knobs">Knobs, faders and the Browser</h3>
+          <div class="table"><table>
+            <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
+            <tbody>
+              <tr><td>Change a knob or fader / fine</td><td>Drag up or down / <kbd>Ctrl</kbd> + drag</td></tr>
+              <tr><td>Back to the default value</td><td>Double-click, or <kbd>Alt</kbd> + click</td></tr>
+              <tr><td>Type a value, automate, reset</td><td>Right-click the control</td></tr>
+              <tr><td>Preview a sample in the Browser / the next one</td><td>Click it / <kbd>↓</kbd></td></tr>
+              <tr><td>Add the selected sample as a channel</td><td><kbd>Enter</kbd></td></tr>
+            </tbody>
+          </table></div>
+          <p>If letter keys play notes instead of running shortcuts, turn off <strong>View → Computer keyboard as piano</strong>. If your laptop's function keys control volume or brightness, hold its <kbd>Fn</kbd> key, or open the windows from the <strong>View</strong> menu.</p>
         </section>
+
+        <section>
+          <h2 id="glossary">Glossary</h2>
+          <p>The words you meet in Synkopa and in this guide, in plain language.</p>
+          <dl class="terms">
+            <dt id="term-automation">Automation</dt>
+            <dd>A curve on the Playlist that moves a control by itself while the song plays, such as a filter opening over eight bars. See <a href="automation.html">Automate controls</a>.</dd>
+            <dt id="term-bar">Bar, beat, step</dt>
+            <dd>A bar is one count of “1 2 3 4”; each count is a beat. The Channel Rack splits a bar into 16 steps, four per beat.</dd>
+            <dt id="term-bpm">BPM</dt>
+            <dd>Beats per minute: the tempo of the song, shown in the toolbar.</dd>
+            <dt id="term-buffer">Buffer</dt>
+            <dd>The chunk of sound Synkopa computes ahead of time. Larger means fewer crackles but more delay. See <a href="setup.html#buffer">Fix crackles and delay</a>.</dd>
+            <dt id="term-bus">Bus</dt>
+            <dd>A mixer insert that other inserts send into, so you can treat a group of sounds (all drums, all vocals) with one fader and one set of effects.</dd>
+            <dt id="term-channel">Channel</dt>
+            <dd>One instrument in the Channel Rack: a sample, a synth or a plugin. See <a href="basics.html#model">How Synkopa works</a>.</dd>
+            <dt id="term-clip">Clip</dt>
+            <dd>A block on the Playlist: a pattern, a piece of audio or an automation curve placed in time.</dd>
+            <dt id="term-clipping">Clipping</dt>
+            <dd>Sound louder than the maximum (0 dBFS). It distorts; the toolbar's output meter shows <strong>CLIP</strong>.</dd>
+            <dt id="term-comp">Comp</dt>
+            <dd>Short for composite: one performance built from the best parts of several takes. See <a href="record.html#comp">Record and comp</a>. Not the same as a compressor.</dd>
+            <dt id="term-compressor">Compressor</dt>
+            <dd>An effect that turns loud moments down so a sound stays at a steadier level. See <a href="dynamics.html">EQ and dynamics</a>.</dd>
+            <dt id="term-db">dB, dBFS</dt>
+            <dd>Decibels, the unit of level. 0 dBFS is the loudest a digital file can hold; mix levels are negative numbers below it.</dd>
+            <dt id="term-driver">Driver</dt>
+            <dd>The software that connects Synkopa to your sound hardware: WASAPI or ASIO on Windows, Core Audio on a Mac, ALSA or JACK on Linux.</dd>
+            <dt id="term-eq">EQ</dt>
+            <dd>Equalizer: an effect that makes some frequencies (bass, mids, treble) louder or quieter.</dd>
+            <dt id="term-insert">Insert</dt>
+            <dd>A strip in the Mixer with its own fader, pan and effects. Each channel plays into one insert, and every insert ends in the Master.</dd>
+            <dt id="term-latency">Latency</dt>
+            <dd>The delay between playing or singing something and hearing it back. A smaller buffer lowers it.</dd>
+            <dt id="term-lufs">LUFS</dt>
+            <dd>A measure of how loud a song sounds over time, used by streaming services. Higher (closer to zero) is louder. See <a href="mastering.html">Master and measure</a>.</dd>
+            <dt id="term-master">Master</dt>
+            <dd>The last mixer insert. Everything you hear passes through it.</dd>
+            <dt id="term-midi">MIDI</dt>
+            <dd>Notes as data (which key, when, how hard), not sound. A MIDI keyboard sends them; an instrument channel turns them into sound.</dd>
+            <dt id="term-monitoring">Monitoring</dt>
+            <dd>Hearing your microphone or instrument through Synkopa while you play or record.</dd>
+            <dt id="term-pattern">Pattern</dt>
+            <dd>A short piece of music with notes for any of the channels. You place it on the Playlist as clips.</dd>
+            <dt id="term-playlist">Playlist</dt>
+            <dd>The big timeline where clips are arranged into a song.</dd>
+            <dt id="term-plugin">Plugin</dt>
+            <dd>An instrument or effect from another company, in VST3 format (or LV2 effects on Linux).</dd>
+            <dt id="term-quantize">Quantize</dt>
+            <dd>Move notes onto the nearest grid line so they play exactly in time.</dd>
+            <dt id="term-sample">Sample</dt>
+            <dd>A short recorded sound, such as a kick or a vocal phrase, played by a channel.</dd>
+            <dt id="term-sample-rate">Sample rate</dt>
+            <dd>How many times per second sound is measured, for example 48000 Hz.</dd>
+            <dt id="term-send">Send</dt>
+            <dd>A copy of an insert's sound routed to another insert, such as a shared reverb or a bus.</dd>
+            <dt id="term-sidechain">Sidechain</dt>
+            <dd>Letting one sound control an effect on another, such as the kick briefly turning the bass down. See <a href="mix.html#sidechain">Mix and route</a>.</dd>
+            <dt id="term-stem">Stem</dt>
+            <dd>One part of a song as its own audio file (drums, bass, vocals). Synkopa can export stems or split a finished song into them.</dd>
+            <dt id="term-take">Take</dt>
+            <dd>One recording attempt. Recording over a loop several times keeps every pass as a take, so you can pick the best or comp them.</dd>
+            <dt id="term-transient">Transient</dt>
+            <dd>The short, sharp start of a sound, such as the click of a kick drum.</dd>
+            <dt id="term-true-peak">True peak</dt>
+            <dd>The highest level a file reaches once it is played back, which can be slightly above its highest sample. Measured in dBTP.</dd>
+            <dt id="term-underrun">Underrun</dt>
+            <dd>A moment when the computer could not compute sound in time. You hear a click or crackle.</dd>
+            <dt id="term-velocity">Velocity</dt>
+            <dd>How hard a note is played, which usually sets how loud it is.</dd>
+          </dl>
+        </section>
+
         <section>
           <h2 id="playback">The project plays in silence</h2>
+          <p>Work from the outside in: first check that any sound plays at all, then follow the signal through your song.</p>
           <ol>
-            <li>Open the demo with <strong>File → Open demo project</strong>. Press <kbd>Space</kbd>. If nothing plays, confirm the <a href="setup.html#audio">audio output and driver</a>. On Windows, switch to WASAPI if your ASIO device is unplugged.</li>
-            <li>If the demo plays, reopen your project. Choose <strong>PAT</strong> to hear the selected pattern or <strong>SONG</strong> to hear Playlist clips from the start marker. Set the start before the material you want to hear.</li>
-            <li>Follow the signal. Check that the channel or track is unmuted and its insert meter moves. Clear unwanted solos. Then check the Master meter and output level.</li>
-            <li>If only specific clips are silent or show a missing label, <a href="projects.html#relink">relink their audio</a>. For crackles, <a href="setup.html#buffer">check underruns and adjust the buffer</a>.</li>
+            <li>Choose <strong>File → Open demo project</strong> and press <kbd>Space</kbd>.<span class="result">If the demo is silent too, the problem is your audio device: see <a href="setup.html#audio">Choose where the sound plays</a>.</span></li>
+            <li>Open your project again. Check the <strong>PAT / SONG</strong> switch in the toolbar: PAT plays only the current pattern, SONG plays the Playlist from the start marker.</li>
+            <li>Check that the channel is not muted in the Channel Rack and that its mixer insert's meter moves.</li>
+            <li>Look for a lit solo anywhere in the Channel Rack or the Mixer, and turn it off.</li>
+            <li>Check that the Master meter moves and the main volume in the toolbar is up.</li>
           </ol>
+          <p>Only some audio clips are silent and say <strong>FILE MISSING</strong>? <a href="projects.html#relink">Relink their audio</a>. <kbd>Space</kbd> does nothing at all? A text box may have the keyboard: click the Playlist and try again.</p>
         </section>
+
         <section>
           <h2 id="recording">The input meter does not move</h2>
+          <p>The <strong>IN</strong> meter in the toolbar shows the level coming from your microphone or instrument. If it stays still, Synkopa is not receiving anything.</p>
           <ol>
-            <li>Choose your device under <strong>Audio → Input</strong>. Check the operating system’s microphone permission and that the interface is connected.</li>
-            <li>Right-click <strong>Record</strong>, enable <strong>Audio</strong>, then click Record once to arm it. Speak into the mic and watch the <strong>IN</strong> meter. Choose the correct <strong>Input channel</strong> after the device opens.</li>
-            <li>If <strong>IN</strong> moves but there’s no new clip, check the track destination and press <kbd>Space</kbd> to start. Review the <a href="record.html#take">recording workflow</a> before trying another take.</li>
+            <li>In <strong>File → Settings… → Audio</strong>, choose your device under <strong>Input</strong>.</li>
+            <li>Check that the interface is connected and that your operating system allows Synkopa to use the microphone.</li>
+            <li>Right-click the Record button and make sure <strong>Audio</strong> is on.</li>
+            <li>Press <kbd>R</kbd> to arm recording, then speak or play.<span class="result">The <strong>IN</strong> meter moves.</span></li>
+            <li>If the sound is on one side or from the wrong socket, set <strong>Input channel</strong> in Settings to the socket your microphone is plugged into.</li>
           </ol>
+          <p>“Recording input could not open … Playback works” usually means another program holds the input, or the input and output are devices that cannot run together. Try the same device for both. More in <a href="record.html#input">Record and comp</a>.</p>
         </section>
+
         <section>
-          <h2 id="third-party-plugins">Third-party plugins</h2>
-          <p>Windows and Linux host VST3 instruments and effects. Linux also hosts LV2 effects when <code>liblilv</code> is available. On macOS use the built-in instruments and effects.</p>
+          <h2 id="third-party-plugins">A plugin does not show up</h2>
+          <p>Synkopa hosts VST3 instruments and effects on Windows and Linux, and LV2 effects on Linux. macOS does not host third-party plugins yet; use the built-in instruments and effects there. CLAP and AU plugins are not supported.</p>
           <ol>
-            <li>Install the plugin in a standard plugin folder for your system. In the Channel Rack, choose <strong>+ Channel → Plugin instruments (VST3)</strong> to load a sound source. For an effect, select the destination insert and use <strong>Mixer → Add effect… → Plugins</strong>.</li>
-            <li>If the plugin is missing, choose <strong>Rescan plugins</strong> in the instrument menu or <strong>Rescan</strong> in the effect picker. Check the format and any reason shown in the list. Install <code>liblilv</code> if the Linux picker reports it missing.</li>
-            <li>Open the plugin from its channel or effect slot. If its native window is unavailable, use Synkopa’s parameter list. Play a test note for an instrument, or pass a signal through the selected insert and toggle the effect’s power to check the change.</li>
+            <li>Install the plugin into a standard folder: <code>C:\Program Files\Common Files\VST3</code> on Windows, or <code>~/.vst3</code>, <code>/usr/lib/vst3</code> or <code>/usr/local/lib/vst3</code> on Linux.</li>
+            <li>Rescan. For an instrument: in the Channel Rack, <strong>+ Channel → Plugin instruments (VST3) → Rescan plugins</strong>. For an effect: select an insert, click <strong>Add effect…</strong> (<kbd>Shift</kbd> + <kbd>F9</kbd>), open <strong>Plugins</strong> and click <strong>Rescan</strong>.<span class="result">The plugin appears in the list. If it shows a reason it cannot run, that reason applies to this plugin.</span></li>
           </ol>
-          <p>Save the project to keep the plugin settings. If a project’s plugin fails to load, its slot and settings stay in the project and audio passes through. Restore that plugin on the machine before checking the mix.</p>
-          <p>If a plugin was loaded when Synkopa last crashed, the startup dialog can <strong>Block</strong> it from future scans. Recover your project and check whether the problem still occurs without that plugin.</p>
+          <p>To add a folder outside the standard ones, set the <code>VST3_PATH</code> environment variable. On Linux, “LV2 is unavailable” means the <code>lilv</code> library is missing: install <code>liblilv-0-0</code> (Debian, Ubuntu), <code>lilv-libs</code> (Fedora) or <code>lilv</code> (Arch) and restart Synkopa.</p>
+          <h3>A plugin says it is not loaded</h3>
+          <p>Synkopa tests each new plugin in a separate process first. If the test crashes, the plugin is not loaded: an effect lets the sound pass through unchanged, an instrument stays silent, and its settings stay in the project. Update the plugin, or choose <strong>Load anyway</strong> to load it from now on. If Synkopa closed while a plugin was loaded, the next start lists the loaded plugins; <strong>Block</strong> keeps one out of future scans.</p>
         </section>
+
         <section>
           <h2 id="find-command">Find a command or ask for help</h2>
+          <p>You do not need to remember where every command lives.</p>
           <ol>
-            <li>Press <kbd>Ctrl</kbd> + <kbd>K</kbd> in the app to open <strong>Find a command</strong>. Type a command such as <em>Reset window layout</em>, choose it, and press <kbd>Enter</kbd>. This runs the corresponding app action.</li>
-            <li>For help instead of an app command, use <strong>Ask ChatGPT</strong> or <kbd>F1</kbd>. For a specific question, type it in the palette and select <strong>Ask ChatGPT</strong> in the results. This opens ChatGPT in your browser with your question, the app version if available, and names of visible app views.</li>
-            <li>If a long question is copied rather than opened with the prompt, paste it in the browser chat. For a reproducible problem, use the support links below.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (<strong>Help → Find a command</strong>).</li>
+            <li>Type what you want to do, such as <em>export</em>, <em>mixer</em> or <em>reset window layout</em>.<span class="result">Matching commands appear with their shortcuts.</span></li>
+            <li>Pick one and press <kbd>Enter</kbd> to run it.</li>
           </ol>
+          <p>If you type a question rather than a command, the list offers <strong>Ask ChatGPT</strong> with your question. It opens ChatGPT in your browser with the question, your Synkopa version and the windows you have open. <kbd>F1</kbd>, the <strong>Ask ChatGPT</strong> button next to the menus and <strong>Help → Ask ChatGPT</strong> start a general Synkopa help chat. If the question is long, Synkopa copies it instead: paste it into the chat.</p>
+          <p>Elsewhere in Synkopa, the status line under the menus explains the control under the mouse and reports what just happened.</p>
         </section>
+
         <section>
-          <h2 id="more">Links and support</h2>
+          <h2 id="more">Report a problem</h2>
           <ul>
-            <li><a href="cli.html">CLI walkthrough</a> for scripting a running app or rendering project files.</li>
-            <li><a href="https://github.com/miskibin/synkopa/blob/main/docs/keys.md">Synkopa Instruments</a> for the built-in player and its downloadable library.</li>
-            <li><a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">Changelog</a> for recent features and fixes.</li>
-            <li><a href="https://github.com/miskibin/synkopa/issues">Report an issue</a> or ask on <a href="https://discord.gg/zHMjE3fCY">Discord</a>.</li>
+            <li><a href="https://github.com/miskibin/synkopa/issues">Open an issue on GitHub</a> for a bug you can repeat. Say what you did, what you expected and what happened.</li>
+            <li>Ask other users on <a href="https://discord.gg/zHMjE3fCY">Discord</a> (<strong>Help → Join the Discord</strong>).</li>
+            <li>See what changed in each version in the <a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">changelog</a>, or in the app with <strong>Help → What's new</strong>.</li>
+            <li>Script Synkopa from a terminal: <a href="cli.html">CLI and coding agents</a>.</li>
           </ul>
         </section>
       </article>

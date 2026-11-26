@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Trim, split, fade, stretch or chop an audio clip in Synkopa.">
+  <meta name="description" content="Shorten, cut, fade, stretch, reverse or chop an audio clip in Synkopa.">
   <title>Edit audio clips · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,19 +63,24 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Edit audio clips</h1>
+        <p class="lede">Shorten a recording or sample, cut it into pieces, fade it in and out, make a loop fit your tempo, or chop it into hits you can play from the keyboard. None of these edits change the audio file on disk, so you can always go back.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#import">Place audio on the Playlist</a>
-        <a href="#trim-split">Trim, split and fade</a>
-        <a href="#stretch">Fit a loop to the grid or reverse it</a>
-        <a href="#chop">Play chops from the Sampler</a>
+        <a href="#import">Put audio on the Playlist</a>
+        <a href="#trim-split">Shorten, cut and fade a clip</a>
+        <a href="#stretch">Fit a loop to the tempo</a>
+        <a href="#chop">Chop a sample into playable hits</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="import">Place audio on the Playlist</h2>
-          <p>Start with one loop or recording. Drag an audio file from your file manager, or drag a sample from the Browser, onto the Playlist track and beat where you want it to start. In <strong>SONG</strong> mode, click the ruler at the start of the clip and press <kbd>Space</kbd> to check it.</p>
-          <p>To follow the screenshots with a bundled example, choose <strong>File → Open demo project</strong> and locate the first clip on the <strong>Dark Vox</strong> track. The clip menu opens from its small top-left icon or by right-clicking its name.</p>
+          <h2 id="import">Put audio on the Playlist</h2>
+          <p>An audio file on the Playlist becomes an audio <dfn>clip</dfn>: a window onto the file that you can move, shorten and shape.</p>
+          <ol>
+            <li>Drag a WAV, MP3, FLAC, OGG or AIFF file from your file manager, or a sample from the Browser, onto a Playlist track at the beat where it should start.</li>
+            <li>Click the ruler at the start of the clip and press <kbd>Space</kbd>.<span class="result">The clip plays with the rest of the song.</span></li>
+          </ol>
+          <p>Every clip has a menu: right-click its name, or click the small icon at its top left. To follow the pictures below, choose <strong>File → Open demo project</strong> and find the first clip on the <strong>Dark Vox</strong> track.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/audio-edit-before.webp"><img src="images/audio-edit-before.webp" width="1350" height="468" alt="Dark Vox and adjacent audio tracks on the Playlist." loading="lazy"></a>
@@ -84,23 +90,43 @@
             <figcaption>
               <ol>
                 <li>The first Dark Vox clip starts at bar 1.</li>
-                <li>Set the edge behavior here before dragging.</li>
+                <li><strong>Edges</strong> decides what dragging a clip's edge does: trim or stretch.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="trim-split">Trim, split and fade</h2>
+          <h2 id="trim-split">Shorten, cut and fade a clip</h2>
+          <p>Use these to remove a count-in or noise before the music, to split a recording into parts you can move separately, and to avoid clicks where a clip starts or stops abruptly.</p>
+
+          <h3>Shorten a clip</h3>
           <ol>
-            <li>Choose <strong>Trim</strong> in the Playlist’s <strong>Edges</strong> control. Drag a clip’s left or right edge to change the region it plays. Drag the body to move the clip. The audio on disk stays intact.</li>
-            <li>Choose <strong>Slice</strong> from the Playlist toolbar and click inside the clip. In the example, cut at bar 3. Drag up or down to cut across multiple tracks at the same position. Hold <kbd>Alt</kbd> to cut without snap. Switch back to <strong>Draw</strong> when you are done.</li>
-            <li>Hover at the clip’s upper left or right, just below its name. Drag the fade handle toward the middle of the clip for a fade in or fade out. If you cannot grab the handle, zoom in so the clip is wider, or use the <strong>FADE IN</strong> and <strong>FADE OUT</strong> controls in the Sample editor.</li>
+            <li>Make sure <strong>Edges</strong> above the tracks is set to <strong>Trim</strong>.</li>
+            <li>Drag the clip's left or right edge inward.<span class="result">The clip plays less of the file. Drag the edge back out to get the rest back.</span></li>
           </ol>
+          <p>Drag the middle of a clip to move it.</p>
+
+          <h3>Cut a clip in two</h3>
+          <ol>
+            <li>Choose the <strong>Slice</strong> tool in the Playlist toolbar.</li>
+            <li>Click inside the clip where you want the cut, for example at bar 3.<span class="result">Two clips, one on each side of the cut.</span></li>
+            <li>Switch back to the <strong>Draw</strong> tool.</li>
+          </ol>
+          <p>Drag up or down with the Slice tool to cut every track the line crosses at the same point. Hold <kbd>Alt</kbd> to cut off the grid.</p>
+
+          <h3>Fade in or out</h3>
+          <p>A <dfn>fade</dfn> raises or lowers the volume gradually at the start or end of a clip.</p>
+          <ol>
+            <li>Point at the top left or top right corner of the clip, just below its name.<span class="result">A small fade handle appears.</span></li>
+            <li>Drag the handle toward the middle of the clip.<span class="result">A curve shows the fade.</span></li>
+          </ol>
+          <p>Can't grab the handle? Zoom in so the clip is wider, or set <strong>FADE IN</strong> and <strong>FADE OUT</strong> in the Sample editor (double-click the clip).</p>
           <figure class="annotated-shot">
             <video controls preload="none" playsinline width="1350" height="252" poster="images/audio-edit-animation-poster.webp" aria-label="Clip editing in Synkopa" style="display: block; max-width: 100%; height: auto">
               <source src="images/audio-edit-fade-slice.webm" type="video/webm">
             </video>
-            <figcaption>The ring follows the pointer as it lengthens both edge fades. Then Slice cuts the clip at bar 3. The stills below show where those edits landed.</figcaption>
+            <figcaption>Both fade handles are dragged inward, then the Slice tool cuts the clip at bar 3. The pictures below show the result.</figcaption>
           </figure>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -110,8 +136,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>Drag the left handle inward to raise the level gradually.</li>
-                <li>Drag the right handle inward to fade to silence.</li>
+                <li>Fade in: the left handle dragged inward.</li>
+                <li>Fade out: the right handle dragged inward.</li>
               </ol>
             </figcaption>
           </figure>
@@ -122,21 +148,35 @@
             </div>
             <figcaption>
               <ol>
-                <li>The cut creates a separate clip on each side of bar 3.</li>
+                <li>The cut at bar 3 leaves a separate clip on each side.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Choose <strong>Trim to the part that plays</strong> in the clip menu when you need a new file containing only the used region. This saves a separate copy and leaves the source intact.</p>
-          <p>For a crossfade between comp takes, use the <strong>Crossfade</strong> setting in the comp clip’s menu. Right-click a boundary in the comp to set only that transition. For two ordinary audio clips, shape their individual fades and listen to the overlap.</p>
+          <ul>
+            <li><strong>Need a file with only the part that plays?</strong> Choose <strong>Trim to the part that plays</strong> in the clip menu. It saves a new copy; the original file stays untouched.</li>
+            <li><strong>Blending two clips:</strong> overlap them on the track and give each a fade. Between comp takes, use the comp's <strong>Crossfade</strong> instead (see <a href="record.html#comp">Record audio</a>).</li>
+          </ul>
         </section>
+
         <section>
-          <h2 id="stretch">Fit a loop to the grid or reverse it</h2>
+          <h2 id="stretch">Fit a loop to the tempo</h2>
+          <p>A loop recorded at a different tempo drifts against your beat. Stretching makes it play faster or slower so it fills exactly the bars you want.</p>
           <ol>
-            <li>Place the clip’s start on the beat you want. Choose <strong>Stretch</strong> under <strong>Edges</strong>, then drag its right edge to the end of the desired bar. Use <kbd>Shift</kbd>+<kbd>M</kbd> to switch between Trim and Stretch.</li>
-            <li>Double-click the clip to open the <strong>Sample editor</strong>. Under <strong>How a stretch plays</strong>, choose <strong>Keep pitch</strong> to change speed while retaining pitch, or <strong>Resample</strong> to change speed and pitch together. Use <strong>Fit to</strong> when you know the exact length in beats or bars.</li>
-            <li>Use <strong>Reverse</strong> to play the audio backward. If several clips share the source and you want separate sound settings, open the clip menu and choose <strong>Make unique</strong> first.</li>
-            <li>Loop the region and listen for the start and end transients. If pitch-preserving rendering fails, Synkopa can play the stretch resampled. Check the clip menu for the error before exporting. The <a href="creative-effects.html#warp">Warp mixer effect</a> reshapes playback time or level over a bar and can be added after you have fitted the clip to the grid.</li>
+            <li>Move the clip so it starts on the right beat.</li>
+            <li>Set <strong>Edges</strong> to <strong>Stretch</strong>, or press <kbd>Shift</kbd> + <kbd>M</kbd>.</li>
+            <li>Drag the clip's right edge to the end of the bar where the loop should end.<span class="result">The clip plays faster or slower to fill that length.</span></li>
+            <li>Press <kbd>Shift</kbd> + <kbd>M</kbd> to switch the edges back to trimming.</li>
+            <li>Loop the clip and listen to the first and last beats.</li>
           </ol>
+          <p>A clip can stretch from a quarter to four times its speed. Comp clips cannot be stretched.</p>
+
+          <h3>Choose how a stretch sounds</h3>
+          <p>Double-click the clip to open the <strong>Sample editor</strong>. Under <strong>How a stretch plays</strong>:</p>
+          <ul>
+            <li><strong>Keep pitch</strong> changes only the speed. Use it for vocals and melodic loops.</li>
+            <li><strong>Resample</strong> changes speed and pitch together, like a record played faster or slower.</li>
+          </ul>
+          <p>If you know the length you want, pick it under <strong>Fit to</strong> (1 or 2 beats, or 1 to 8 bars) instead of dragging. <strong>Reverse</strong> plays the audio backward.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/audio-edit-sample-editor.webp"><img src="images/audio-edit-sample-editor.webp" width="930" height="743" alt="Sample editor with waveform, Reverse, stretch method and Fit to." loading="lazy"></a>
@@ -147,23 +187,33 @@
             </div>
             <figcaption>
               <ol>
-                <li>Drag the markers around the part to play.</li>
-                <li>Choose Keep pitch or Resample.</li>
-                <li>Fit the selected region to a beat or bar length.</li>
-                <li>Toggle Reverse to play the audio backward.</li>
+                <li>Drag the markers to choose the part that plays.</li>
+                <li><strong>Keep pitch</strong> or <strong>Resample</strong>.</li>
+                <li><strong>Fit to</strong> stretches the part to an exact number of beats or bars.</li>
+                <li><strong>Reverse</strong> plays the audio backward.</li>
               </ol>
             </figcaption>
           </figure>
+          <div class="note"><p>The Sample editor's settings belong to the sound, so every clip of the same file changes with them. To change one clip only, choose <strong>Make unique</strong> in its menu first.</p></div>
+          <p>A <strong>Keep pitch</strong> stretch is rendered in the background; until it is ready, the clip plays resampled. If rendering fails, the clip menu shows <strong>Stretch failed — plays resampled</strong>. Check for it before you export.</p>
+          <p>For rhythmic speed effects such as a tape stop, add the <a href="creative-effects.html#warp">Warp</a> effect to the clip's insert after fitting it.</p>
         </section>
+
         <section>
-          <h2 id="chop">Play chops from the Sampler</h2>
+          <h2 id="chop">Chop a sample into playable hits</h2>
+          <p>Chopping cuts one recording, such as a drum break or a vocal phrase, into short pieces called <dfn>slices</dfn>, each on its own key. You can then replay the pieces in a new order from the Piano roll or a keyboard.</p>
           <ol>
-            <li>Open the audio clip’s menu and choose <strong>Add as sampler channel</strong>. Open its channel in the Channel Rack and select <strong>Slice</strong>.</li>
-            <li>Choose <strong>Transients</strong> for hits or <strong>Equal</strong> for regular divisions. Click a slice to audition it. Drag a marker to move it, or double-click to add or remove one.</li>
-            <li>Play from the sample’s root note upward to trigger slices in order. Use <strong>Dump to pattern</strong> to write one note per slice into the current pattern at the original timing, then rearrange the notes in the Piano roll.</li>
+            <li>Open the audio clip's menu and choose <strong>Add as sampler channel</strong>.<span class="result">A new channel with the sample appears in the Channel Rack.</span></li>
+            <li>Click the channel's name in the Channel Rack to open its settings, then select <strong>Slice</strong>.</li>
+            <li>Choose <strong>Transients</strong> to cut at every hit, or <strong>Equal</strong> to cut into equal parts. A <dfn>transient</dfn> is the sharp start of a sound, such as a drum hit.</li>
+            <li>Click a slice to hear it.<span class="result">The slice plays from the sampler.</span></li>
+            <li>Fix the cuts: drag a marker to move it, double-click to add or remove one.</li>
+            <li>Click <strong>Dump to pattern</strong>.<span class="result">The current pattern gets one note per slice, in the original timing, so it plays the sample back as it was.</span></li>
+            <li>Open the pattern in the Piano roll and move the notes to make a new rhythm.</li>
           </ol>
-          <p>The Playlist Slice tool divides an arrangement clip on the timeline. The Sampler’s Slice mode turns one file into several playable keys.</p>
-          <p>Next, <a href="audio-analysis.html">analyze the audio</a>, <a href="patterns.html#clips">arrange the clips</a>, or <a href="export.html">export the result</a>.</p>
+          <p>The root note plays slice 1; each key above it plays the next slice.</p>
+          <p class="why">Don't confuse the two slice features: the Playlist's <strong>Slice</strong> tool cuts a clip on the timeline, while the Sampler's <strong>Slice</strong> mode turns one file into many playable keys.</p>
+          <p>Next: <a href="audio-analysis.html">find the tempo, chords or stems of a recording</a>, <a href="arrangement.html">arrange the song</a> or <a href="export.html">export it</a>.</p>
         </section>
       </article>
     </main>

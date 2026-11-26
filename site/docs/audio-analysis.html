@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Detect tempo, key and chords, convert a sung melody to MIDI and extract stems in Synkopa.">
+  <meta name="description" content="Find the tempo, key and chords of a recording, turn a melody into notes and split a song into stems in Synkopa.">
   <title>Analyze and extract from audio · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,23 +63,27 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Analyze and extract from audio</h1>
+        <p class="lede">Got a sample, a demo or a finished song and want to build on it? Synkopa can tell you its tempo and key, write its chords into a pattern, turn a sung melody into notes, and split a mixed song into drums, bass, vocals and the rest. Every result is a starting point: check it by ear before you build on it.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#tempo-key">Find a tempo and key by ear and on the grid</a>
-        <a href="#chords">Turn detected chords into a pattern</a>
-        <a href="#midi">Convert a sung melody to MIDI notes</a>
-        <a href="#stems">Separate the parts of a mixed recording</a>
-        <a href="#offline">Recover from a model download or analysis failure</a>
+        <a href="#tempo-key">Find the tempo and key</a>
+        <a href="#chords">Turn chords into a pattern</a>
+        <a href="#midi">Turn a sung melody into notes</a>
+        <a href="#stems">Split a song into stems</a>
+        <a href="#offline">When a download or analysis fails</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="tempo-key">Find a tempo and key by ear and on the grid</h2>
+          <h2 id="tempo-key">Find the tempo and key</h2>
+          <p>Matching your project's tempo to a sample keeps it on the grid, and knowing its key tells you which notes fit over it.</p>
           <ol>
-            <li>Open a Playlist audio clip’s menu and choose <strong>Detect tempo, key and chords…</strong>. For a project-wide estimate from active audio, use the BPM menu’s <strong>Detect tempo and key from the project…</strong>.</li>
-            <li>Compare the leading BPM with the half- or double-time alternatives. Count where the beat should land. If it stays aligned through several bars, choose <strong>Set tempo</strong>. From the clip dialog this changes the project tempo and adjusts that clip’s length so the same source region plays.</li>
-            <li>Check the key candidates against a sustained bass note or chord. A short or quiet clip can yield no tempo, and percussion alone may give no useful key. Analyze a longer, clearer passage or leave the existing settings when the result disagrees with what you hear. If you use <strong>Pitch Correct</strong>, the dialog can send the chosen key and scale to that effect.</li>
+            <li>Right-click the audio clip's name and choose <strong>Detect tempo, key and chords…</strong>.<span class="result">The dialog lists tempo candidates, key candidates and a strip of chords.</span></li>
+            <li>Play the clip and count along. Pick the BPM that matches the pulse you feel. Detectors often suggest half or double the real tempo, so the dialog shows those too.</li>
+            <li>Click <strong>Set tempo</strong>.<span class="result">The project takes that tempo, and the clip's length is adjusted so it still plays the same audio.</span></li>
+            <li>Check the key candidates against a held bass note or chord in the recording.</li>
           </ol>
+          <p>To estimate the tempo and key of everything in the project instead, right-click the BPM display in the toolbar and choose <strong>Detect tempo and key from the project…</strong>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/audio-analysis-tempo.webp"><img src="images/audio-analysis-tempo.webp" width="1080" height="834" alt="Tempo, key and chords dialog showing tempo candidates, key estimates, and a chord timeline." loading="lazy"></a>
@@ -89,28 +94,45 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose the BPM candidate that matches the pulse.</li>
-                <li>Apply the verified BPM.</li>
-                <li>Compare the candidate keys before passing one to Pitch Correct.</li>
-                <li>Select a chord or drag a range to send to the Piano roll.</li>
+                <li>Tempo candidates: pick the one that matches the pulse.</li>
+                <li><strong>Set tempo</strong> applies it to the project.</li>
+                <li>Key candidates, which can also be sent to Pitch Correct.</li>
+                <li>Detected chords: click one, or drag across several, to send them to the Piano roll.</li>
               </ol>
             </figcaption>
           </figure>
+          <ul>
+            <li><strong>No tempo found:</strong> the clip is too short or too quiet. Analyze a longer, clearer passage.</li>
+            <li><strong>No key found:</strong> drums alone have no clear key. Use a part with chords or bass.</li>
+            <li><strong>Result disagrees with your ears:</strong> trust your ears and leave the settings as they are.</li>
+          </ul>
+          <p>If a vocal insert has <a href="creative-effects.html#pitch-correct">Pitch Correct</a>, the dialog can pass it the detected key with one click.</p>
         </section>
+
         <section>
-          <h2 id="chords">Turn detected chords into a pattern</h2>
+          <h2 id="chords">Turn chords into a pattern</h2>
+          <p>Writing a recording's chords into a pattern lets you play them on your own instrument, or write a bass line and melody that fit.</p>
           <ol>
-            <li>In the same dialog, install the optional ChordMini model if prompted. Tempo and key estimates appear separately.</li>
-            <li>Choose <strong>Detailed</strong> for more detailed chord names or <strong>Simple</strong> for a reduced reading. Click a chord or drag across the timeline to choose a range. Use <strong>Whole clip</strong> to restore the full range.</li>
-            <li>Choose the destination instrument, then <strong>Send to piano roll</strong>. Compare the generated notes with the recording and fix chord changes, voicings or octave choices before arranging the pattern.</li>
+            <li>In the same dialog, click <strong>Download model</strong> if asked. Chord detection uses the ChordMini model, downloaded once.</li>
+            <li>Choose <strong>Simple</strong> for plain major and minor chords, or <strong>Detailed</strong> to include sevenths, suspended and diminished chords.</li>
+            <li>Click a chord, or drag across the strip to pick a range. <strong>Whole clip</strong> picks everything again.</li>
+            <li>Choose the instrument that should play the chords: an existing channel or <strong>New piano channel</strong>.</li>
+            <li>Click <strong>Send to piano roll</strong>.<span class="result">A new pattern with the chords is placed on the Playlist under the clip.</span></li>
+            <li>Play both together and fix any wrong chord or octave in the Piano roll.</li>
           </ol>
         </section>
+
         <section>
-          <h2 id="midi">Convert a sung melody to MIDI notes</h2>
+          <h2 id="midi">Turn a sung melody into notes</h2>
+          <p>Converting a melody to MIDI notes lets an instrument double or replace the voice, or gives you the melody to edit in the Piano roll. It works best on one clear line, such as a solo vocal or a whistled idea.</p>
           <ol>
-            <li>Use a clip with one clear melodic line. Open its menu and choose <strong>Convert to MIDI…</strong>. For a mixed recording, try extracting the vocal stem first.</li>
-            <li>Preview the notes. Raise <strong>Shortest</strong> to omit short consonants or breaths, and narrow the <strong>Lowest</strong> and <strong>Highest</strong> notes to remove obvious octave errors. Use <strong>As sung</strong> to retain timing or select a grid to snap the notes.</li>
-            <li>Choose a new piano or an existing channel and click <strong>Convert</strong>. Synkopa creates a pattern below the audio clip and opens it in the Piano roll. Compare the two, then fix starts, durations or missed notes.</li>
+            <li>Right-click the clip's name and choose <strong>Convert to MIDI…</strong>.<span class="result">A preview shows the sung pitch and the notes that will be written.</span></li>
+            <li>Raise <strong>SHORTEST</strong> to drop very short notes, such as breaths and consonants.</li>
+            <li>Narrow <strong>LOWEST</strong> and <strong>HIGHEST</strong> to drop notes the detector put an octave too high or low.</li>
+            <li>Under <strong>Timing</strong>, keep <strong>As sung</strong>, or pick a grid to snap the notes to it.</li>
+            <li>Choose the channel that plays the notes: a new piano or one of yours.</li>
+            <li>Click <strong>Convert</strong>.<span class="result">A new pattern appears under the audio clip and opens in the Piano roll.</span></li>
+            <li>Play them together and fix wrong starts, lengths or missing notes.</li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -121,9 +143,9 @@
             </div>
             <figcaption>
               <ol>
-                <li>Set the minimum note duration and pitch range.</li>
-                <li>Inspect the detected notes over the pitch trace.</li>
-                <li>Write the preview to a pattern.</li>
+                <li>Shortest note and pitch range.</li>
+                <li>The detected notes over the sung pitch.</li>
+                <li><strong>Convert</strong> writes the notes to a pattern.</li>
               </ol>
             </figcaption>
           </figure>
@@ -134,18 +156,27 @@
             </div>
             <figcaption>
               <ol>
-                <li>Compare the generated melody with the audio. Drag notes to fix timing or pitch.</li>
+                <li>The converted melody. Drag notes to fix their timing or pitch.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>The built-in tracker can convert a melody without the optional GAME note finder. If notes repeat on the same pitch or end in the wrong place, see <strong>Better notes…</strong> in the dialog for the Pitch editor’s model download. If the preview is empty, widen the range, lower the minimum duration or choose another region.</p>
+          <ul>
+            <li><strong>Preview is empty:</strong> widen the note range, lower <strong>SHORTEST</strong> or pick another part of the clip.</li>
+            <li><strong>Two notes sung on the same pitch become one, or notes end too late:</strong> <strong>Better notes…</strong> points you to GAME, an optional note finder you download in the pitch editor.</li>
+            <li><strong>Mixed song, not a solo voice:</strong> <a href="#stems">extract the vocal stem</a> first and convert that.</li>
+          </ul>
         </section>
+
         <section>
-          <h2 id="stems">Separate the parts of a mixed recording</h2>
+          <h2 id="stems">Split a song into stems</h2>
+          <p><dfn>Stems</dfn> are the separate parts of a mixed recording: drums, bass, vocals and everything else. Splitting a song lets you remix it, practice over it without the vocal, or sample just the drums.</p>
           <ol>
-            <li>Save the project before separating. Open the audio clip’s menu and choose <strong>Extract stems…</strong>. Select the parts you need: <strong>Drums</strong>, <strong>Bass</strong>, <strong>Other</strong> and <strong>Vocals</strong>.</li>
-            <li>The first run downloads HTDemucs. Click <strong>Download and extract</strong>, or <strong>Extract</strong> once it is installed. You can close the dialog with <strong>Run in background</strong> and return through the status chip. Avoid editing the source region until it finishes.</li>
-            <li>The separated clips land on new tracks below the original, aligned to its start. Synkopa mutes the original. Solo each result and check alignment, bleed and artifacts before you use it. Undo removes the whole set in one step.</li>
+            <li>Save the project.</li>
+            <li>Right-click the clip's name and choose <strong>Extract stems…</strong>.</li>
+            <li>Tick the parts you need: <strong>Drums</strong>, <strong>Bass</strong>, <strong>Other</strong> (keys, guitars, pads and the rest) and <strong>Vocals</strong>.</li>
+            <li>Click <strong>Extract</strong>. The first time, the button reads <strong>Download … and extract</strong> and also downloads the HTDemucs separation model once.<span class="result">A progress bar shows each stage. Separation takes a while; the dialog shows an estimate.</span></li>
+            <li>To keep working meanwhile, click <strong>Run in background</strong>. The progress stays in the corner; click it to come back. Don't edit the clip until it finishes.</li>
+            <li>When it is done, solo each stem and listen for bits of other instruments and watery artifacts.<span class="result">Each stem sits on a new track below the original, starting at the same beat. The original clip is muted.</span></li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -155,8 +186,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>Select the stems you want to place in the arrangement.</li>
-                <li>Download the model if needed and start extraction.</li>
+                <li>Tick the stems you want.</li>
+                <li>Download the model if needed, and start.</li>
               </ol>
             </figcaption>
           </figure>
@@ -168,19 +199,22 @@
             </div>
             <figcaption>
               <ol>
-                <li>The source clip remains in place and is muted.</li>
-                <li>The separated clips start at the same beat.</li>
+                <li>The original clip stays in place, muted.</li>
+                <li>The stems start at the same beat.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Extraction uses the clip’s region. Stretch, pitch, fades and gain carry over, while detailed Pitch editor edits do not. If you need the audio after effects, render it in place first. For a clip over 30 minutes, split it and process the required sections.</p>
+          <p>One <kbd>Ctrl</kbd> + <kbd>Z</kbd> removes all the stems. Only the part of the clip that plays is separated, with its stretch, pitch, fades and gain; pitch-editor edits are not carried over. Clips longer than 30 minutes must be split first.</p>
+          <p>Want your own song's mixer tracks as separate files instead? That is <a href="export.html#stems">exporting stems</a>, not extracting them.</p>
         </section>
+
         <section>
-          <h2 id="offline">Recover from a model download or analysis failure</h2>
+          <h2 id="offline">When a download or analysis fails</h2>
+          <p>Chord detection, stem separation and the optional note finder each need a model downloaded once. After that, they run on your computer without internet.</p>
           <ul>
-            <li>If the first model download fails offline, reconnect and choose <strong>Try again</strong> in the dialog. Once the relevant model is installed, processing runs locally. Chords, stems and the optional neural note finder have separate installation steps.</li>
-            <li>If the audio file is missing, relink it before processing. If you edited or deleted the clip while separation was running, restore the region and start again.</li>
-            <li>If a result sounds wrong, keep the original, audition alternatives or shorter regions, and edit the generated pattern or audio on the Playlist. A tempo/key estimate or detected note is a starting point for listening.</li>
+            <li><strong>Download failed:</strong> the dialog explains why. Reconnect and click <strong>Try again</strong>.</li>
+            <li><strong>Audio file missing:</strong> relink the file (clip menu → <strong>Relink missing file…</strong>), then try again.</li>
+            <li><strong>Clip changed during separation:</strong> restore the clip and start again.</li>
           </ul>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -190,13 +224,13 @@
             </div>
             <figcaption>
               <ol>
-                <li>The error explains why the model could not be downloaded.</li>
-                <li>Reconnect, then use Try again.</li>
+                <li>Why the model could not be downloaded.</li>
+                <li>Reconnect, then click <strong>Try again</strong>.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Continue with <a href="audio-editing.html">clip editing</a>, <a href="mix.html">mixing and routing</a>, or <a href="export.html">exporting the finished arrangement</a>. To export your own mixer tracks as files, use the Export dialog’s <strong>Stems</strong> mode.</p>
-          <p>The screenshots use Synkopa’s browser development mode with the demo project. Analysis readings, model downloads and separated audio are simulated there.</p>
+          <p>The screenshots on this page come from the demo project in a test build, where readings, downloads and separated audio are simulated.</p>
+          <p>Next: <a href="audio-editing.html">edit the clips</a>, <a href="mix.html">mix them</a> or <a href="export.html">export the song</a>.</p>
         </section>
       </article>
     </main>

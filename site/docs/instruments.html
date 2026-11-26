@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Make sounds with Sampler, Synthesizer, Synkopa Instruments, and Music Box.">
-  <title>Instruments · Synkopa Docs</title>
+  <meta name="description" content="Pick the right instrument for a part, then shape the Sampler, Synthesizer, Synkopa Instruments and Music Box.">
+  <title>Play instruments · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -28,6 +28,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,15 +63,17 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>Instruments</h1>
+        <h1>Play instruments</h1>
+        <p class="lede">Every sound in a pattern comes from an instrument on a Channel Rack channel. Start with the table below to pick the right one for your part, then jump to that instrument to learn how to shape it.</p>
       </header>
       <nav class="contents" aria-label="On this page">
         <details open>
           <summary>On this page</summary>
+          <a href="#choose">Which instrument?</a>
           <a href="#sampler">Sampler</a>
-          <a href="#slice-pattern">Slice, choke and arrange</a>
+          <a href="#slice-pattern">Chop a loop</a>
           <a href="#synthesizer">Synthesizer</a>
-          <a href="#synth-pattern">Turn a patch into a part</a>
+          <a href="#glide">808 and bass slides</a>
           <a href="#synkopa-instruments">Synkopa Instruments</a>
           <a href="#grand-piano">Grand Piano</a>
           <a href="#upright-piano">Upright Piano</a>
@@ -84,13 +87,36 @@
           <a href="#jazz-guitar">Jazz Club Guitar</a>
           <a href="#vibraphone">Vibraphone</a>
           <a href="#music-box">Music Box</a>
+          <a href="#plugins">Plugin instruments</a>
         </details>
       </nav>
 
       <article class="prose">
         <section>
+          <h2 id="choose">Which instrument for which part?</h2>
+          <table class="windows">
+            <thead><tr><th>Instrument</th><th>Use it for</th><th>In <strong>+ Channel</strong></th></tr></thead>
+            <tbody>
+              <tr><td><a href="#sampler"><strong>Sampler</strong></a></td><td>Drums and one-shots, one sound per channel. Also a loop chopped into slices you can replay.</td><td>A sample under <strong>Sampler</strong>, <strong>Project audio</strong> or <strong>File from disk…</strong></td></tr>
+              <tr><td><a href="#synthesizer"><strong>Synthesizer</strong></a></td><td>808s, basses, leads, pads, plucks, arps and risers. Electronic sounds you can reshape.</td><td>A preset under <strong>Synthesizer</strong>, or <strong>Empty synth</strong></td></tr>
+              <tr><td><a href="#synkopa-instruments"><strong>Synkopa Instruments</strong></a></td><td>Parts that should sound played by a person: pianos, electric pianos, strings, guitars, harp, vibraphone.</td><td><strong>Synkopa Instruments — pianos, strings, guitars</strong></td></tr>
+              <tr><td><a href="#music-box"><strong>Music Box</strong></a></td><td>Delicate bell-like melodies for intros and lullabies. Nothing to download.</td><td><strong>Music Box — modeled tines</strong></td></tr>
+              <tr><td><a href="#plugins"><strong>Plugin instruments</strong></a></td><td>A third-party VST3 instrument you already own.</td><td>Under <strong>Plugin instruments (VST3)</strong></td></tr>
+            </tbody>
+          </table>
+          <p>Not sure? <strong>Drums:</strong> samplers. <strong>Bass:</strong> the synthesizer's <strong>808</strong> or <strong>Bass</strong> presets. <strong>Chords that should sound real:</strong> Grand Piano, ready without a download. <strong>Electronic chords and leads:</strong> synthesizer presets.</p>
+          <h3>Add an instrument</h3>
+          <ol>
+            <li>In the Channel Rack, click <strong>+ Channel</strong> below the last channel.</li>
+            <li>Pick an instrument from the menu.<span class="result">A new channel appears at the bottom of the Rack.</span></li>
+            <li>Click the channel's name to open its window, or press <kbd>F7</kbd> to write notes in the <a href="patterns.html#piano-roll">Piano roll</a>.</li>
+          </ol>
+          <p>Every instrument plays from steps, the Piano roll and a <a href="midi.html#keyboard">MIDI keyboard</a>. To swap the sound of a channel and keep its notes and mixer routing, right-click the channel and choose <strong>Replace</strong>.</p>
+        </section>
+
+        <section>
           <h2 id="sampler" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#sample"></use></svg>Sampler</h2>
-          <p>In the Channel Rack, click <strong>+ Channel</strong> and choose a factory sample, an item under <strong>Project audio</strong>, or <strong>File from disk…</strong>. Click the channel name to open its controls.</p>
+          <p>The Sampler plays one audio file (a <dfn>sample</dfn>). It is what every drum row in the Rack uses. Add one from <strong>+ Channel</strong> (a library sample, <strong>Project audio</strong> or <strong>File from disk…</strong>), or drag a sample from the Browser onto the Rack. Click the channel's name to open it.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-sampler.webp"><img src="images/plugin-sampler.webp" width="837" height="667" alt="Open Hat sample editor with trim handles, the Envelope tab, and Cut group set to 1." loading="lazy"></a>
@@ -100,15 +126,26 @@
             </div>
             <figcaption>
               <ol>
-                <li>Drag the start marker past the first strike and hit play. The hat now starts softer. Use <strong>FADE IN</strong> to soften a hard cut.</li>
-                <li>Put an open and closed hat in the same <strong>Cut group</strong>. A closed hit immediately after the open hit chokes the open hat’s tail.</li>
-                <li>Open <strong>Envelope</strong> to make the sound follow note length.</li>
+                <li>The start marker: drag it right to skip the start of the sound. <strong>FADE IN</strong> softens a hard cut.</li>
+                <li><strong>Cut group</strong>: channels in the same group stop each other.</li>
+                <li><strong>Envelope</strong> makes the sound follow the note's length.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Right-click a key on the sampler’s keyboard to set the <strong>Root note</strong>. At zero <strong>PITCH</strong> and <strong>FINE</strong>, the root plays the sample at its recorded pitch. Hold a voice sample at the root, then an octave higher and lower. The higher note plays twice as fast. The lower note plays at half speed. Switch on <strong>Reverse</strong> to play the selected range backwards.</p>
+
+          <h3>Stop an open hi-hat when the closed one hits</h3>
+          <p>On a real kit, closing the hi-hat silences the open ring. A <dfn>cut group</dfn> does the same between channels, and also stops long 808s from overlapping themselves.</p>
+          <ol>
+            <li>Open the open-hat channel and set <strong>Cut group</strong> to <strong>1</strong>.</li>
+            <li>Open the closed-hat channel and set its <strong>Cut group</strong> to <strong>1</strong> too.</li>
+            <li>In the Rack, light step 1 on the open hat and step 3 on the closed hat, then play.<span class="result">The open hat's tail stops the moment the closed hat hits.</span></li>
+          </ol>
+
+          <h3>Play a sample up and down the keyboard</h3>
+          <p>The <dfn>root note</dfn> is the key that plays the sample at its recorded pitch; other keys pitch it up or down (an octave up plays twice as fast). Pitched library sounds set it for you. For your own file, right-click the matching key on the window's keyboard. <strong>PITCH</strong> (semitones) and <strong>FINE</strong> (cents) retune the whole channel, and <strong>Reverse</strong> plays the trimmed part backwards.</p>
+
           <h3>Make notes control the tail</h3>
-          <p>In the Piano Roll, trigger the same long sample with two notes of different lengths. With <strong>Envelope</strong> off, both play through. The settings below make the shorter note fade earlier.</p>
+          <p>By default a sample plays to its end, whatever the note length. Switch on the envelope when a short note should cut the sound short.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-sampler-envelope.webp"><img src="images/plugin-sampler-envelope.webp" width="837" height="675" alt="Sampler Envelope tab with the volume envelope enabled, its graph, and six stage controls." loading="lazy"></a>
@@ -117,13 +154,22 @@
             </div>
             <figcaption>
               <ol>
-                <li>Click the <strong>Envelope</strong> switch to turn it on. The tab alone only opens the controls.</li>
+                <li>Click the <strong>Envelope</strong> switch to turn it on. Opening the tab alone changes nothing.</li>
                 <li>Keep <strong>Sustain</strong> at 100% and shorten <strong>Release</strong>. To soften the start instead, lengthen <strong>Attack</strong>.</li>
               </ol>
             </figcaption>
           </figure>
-          <h3>Chop a loop into playable slices</h3>
-          <p>Add a loop from <strong>+ Channel</strong> → <strong>Loops</strong> and open <strong>Slice</strong>. Play the root for slice 1 and the next semitone for slice 2. Click a slice in the waveform to audition it or drag a marker to move the boundary.</p>
+          <ol>
+            <li>In the Piano roll, draw a short and a long note for the same long sample.</li>
+            <li>Open the <strong>Envelope</strong> tab and click the <strong>Envelope</strong> switch.</li>
+            <li>Shorten <strong>Release</strong> and play.<span class="result">The short note now fades out early; the long one plays on.</span></li>
+          </ol>
+          <div class="note"><p>A Channel Rack step has no length, so it always holds the sound. For a short tail on steps, set <strong>Sustain</strong> to 0% so the decay ends the sound.</p></div>
+        </section>
+
+        <section>
+          <h2 id="slice-pattern">Chop a loop into playable slices</h2>
+          <p><dfn>Slicing</dfn> cuts a loop into pieces and puts each piece on its own key. Use it to rearrange a drum break or play a phrase back in a new order, at any tempo.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-sampler-slice.webp"><img src="images/plugin-sampler-slice.webp" width="837" height="572" alt="Slice tab showing a keys loop divided into eight slices with Equal selected." loading="lazy"></a>
@@ -132,29 +178,39 @@
             </div>
             <figcaption>
               <ol>
-                <li>Pick <strong>Equal</strong> for even cuts or <strong>Transients</strong> to find attacks. Raise <strong>Sensitivity</strong> to catch quieter hits.</li>
-                <li>Use <strong>Dump to pattern</strong> to write the slices at their original times. Move a note up one semitone in the Piano Roll to swap that slice for the next one.</li>
+                <li><strong>Transients</strong> cuts at every hit (raise <strong>Sensitivity</strong> to catch quieter ones); <strong>Equal</strong> cuts into even parts.</li>
+                <li><strong>Dump to pattern</strong> writes one note per slice at its original time.</li>
               </ol>
             </figcaption>
           </figure>
-        </section>
-
-        <section>
-          <h2 id="slice-pattern">Chop a loop and tighten the hats</h2>
           <ol>
-            <li>Start a new pattern from <strong>Browser → Patterns → New</strong>. Add a loop under <strong>+ Channel → Loops</strong> and open its <strong>Slice</strong> tab. Pick <strong>Transients</strong> for cuts on attacks or <strong>Equal</strong> for evenly spaced slices. Click a slice to audition it. Drag a marker to correct a cut between hits.</li>
-            <li>Choose <strong>Dump to pattern</strong>, then open <kbd>F7</kbd> on that sampler. Use <strong>PAT</strong> to check the original order. The root note triggers the first slice and each higher semitone triggers the next one. Move selected notes to reorder the hits or leave a gap before the last one.</li>
-            <li>For tighter hats, add open and closed hat sampler channels. In each channel’s <strong>Sample</strong> controls, set <strong>Cut group</strong> to the same nonzero value. In the Rack, put an open hit on step 1 and a closed hit on step 3. In PAT playback, listen for the open tail stopping as the closed hit begins.</li>
-            <li>Drop the slice pattern onto the Playlist and make its final repeat unique before editing it into a fill. Use <strong>SONG</strong> to check the fill against the original pattern.</li>
+            <li>Press <kbd>F4</kbd> for a new, empty pattern.</li>
+            <li>Click <strong>+ Channel</strong> and pick a loop under <strong>Sampler → Loops</strong>.</li>
+            <li>Open the channel and its <strong>Slice</strong> tab.</li>
+            <li>Click <strong>Transients</strong> for a drum loop, or <strong>Equal</strong> and a count for anything else.</li>
+            <li>Click a slice to hear it. Drag a marker if a cut is in the wrong place; double-click to add or remove one.</li>
+            <li>Click <strong>Dump to pattern</strong>.<span class="result">The Piano roll opens with one note per slice. Played in PAT, it sounds like the original loop.</span></li>
+            <li>Move notes to new times, or up and down to swap slices.<span class="result">The root key plays slice 1, the next key up slice 2, and so on.</span></li>
           </ol>
-          <p>If a cut begins late, move its Slice marker toward the transient and audition it again. If the open hat still rings, check the two group values and confirm the closed hit plays after the open hit. Undo a dump or note move with <kbd>Ctrl+Z</kbd>.</p>
+          <ul>
+            <li><strong>A cut starts late:</strong> drag its marker toward the start of the hit.</li>
+            <li><strong>The loop plays at the wrong speed:</strong> the notes are placed at the project tempo. Set the tempo to the loop's tempo (often in its name) before dumping, or quantize afterwards.</li>
+            <li><strong>Some keys are silent:</strong> keys outside the slices play nothing. <strong>Clear</strong> turns slicing off.</li>
+          </ul>
+          <p>Dump to pattern replaces this channel's notes in the current pattern; <kbd>Ctrl</kbd> + <kbd>Z</kbd> brings them back. To turn a fill into the last repeat of a section, place the pattern on the Playlist and <a href="arrangement.html#make-unique">make that clip unique</a>.</p>
         </section>
 
         <section>
           <h2 id="synthesizer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#synth"></use></svg>Synthesizer</h2>
-          <p>In <strong>+ Channel</strong>, choose a <strong>Synthesizer</strong> preset and click the channel name to open it. Start with <strong>808 Deep</strong> for a low single note, <strong>Pluck Glass</strong> for separated notes or <strong>Pad Warm</strong> for a held chord. Turn the preset’s named <strong>Macros</strong> while it plays to hear which characteristics they change.</p>
-          <h3>Build a pluck from a saw</h3>
-          <p>Choose <strong>Empty synth</strong> in the picker, open its channel and select <strong>OSC</strong>. Loop a C4 note in the Piano Roll, or play C4 on a MIDI keyboard after each change.</p>
+          <p>The built-in synthesizer makes its sound from oscillators instead of recordings, so every part of the sound can be changed. Start from a preset: under <strong>+ Channel → Synthesizer</strong>, try <strong>808 Deep</strong> for a low single note, <strong>Pluck Glass</strong> for short melodies, or <strong>Pad Warm</strong> for held chords.</p>
+          <ul>
+            <li><strong>Audition presets:</strong> open the channel and click <strong>‹</strong> or <strong>›</strong> beside the preset name while a loop plays.</li>
+            <li><strong>Change the character quickly:</strong> turn the named <strong>Macros</strong> knobs. Each preset puts its main moves (brightness, growl, width) there.</li>
+          </ul>
+          <p>Once you turn a knob the name shows <strong>Custom sound</strong>: your version is saved with the project.</p>
+
+          <h3>Build a pluck from scratch</h3>
+          <p>This recipe shows what the three most important sections do. Choose <strong>Empty synth</strong>, open it, stay on the <strong>OSC</strong> tab, and loop a C4 note in the Piano roll while you change things.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-synth.webp"><img src="images/plugin-synth.webp" width="1215" height="1385" alt="Empty synth on the OSC tab, showing the oscillator, filter, and amp envelope controls." loading="lazy"></a>
@@ -164,15 +220,20 @@
             </div>
             <figcaption>
               <ol>
-                <li>Play <strong>Oscillator 1</strong> on <strong>Sine</strong>, then <strong>Saw</strong>. The saw sounds brighter and buzzier because it has more upper harmonics.</li>
-                <li>Keep <strong>Saw</strong> and choose <strong>LP 24</strong>. Lower <strong>Cutoff</strong> toward 800 Hz to remove that buzz. Raise <strong>Resonance</strong> a little to hear the cutoff stand out.</li>
-                <li>Keep <strong>Attack</strong> short, set <strong>Decay</strong> near 200 ms and <strong>Sustain</strong> to 0%. Try a held note. <strong>Release</strong> controls the fade if you let go before it decays.</li>
+                <li><strong>Oscillator</strong>: the raw tone. A saw is brighter and buzzier than a sine.</li>
+                <li><strong>Filter</strong>: removes the highs above <strong>Cutoff</strong>, so the sound gets darker.</li>
+                <li><strong>Amp envelope</strong>: how the volume rises and falls on each note.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>For a swell, try <strong>Attack</strong> at 450 ms, <strong>Sustain</strong> at 65%, and <strong>Release</strong> at 650 ms. Hold the same note and let go to hear the longer fade.</p>
+          <ol>
+            <li>Set <strong>Oscillator 1</strong> to <strong>Saw</strong>.<span class="result">The tone gets bright and buzzy.</span></li>
+            <li>In <strong>Filter</strong>, choose <strong>LP 24</strong> and lower <strong>Cutoff</strong> toward 800 Hz.<span class="result">The buzz goes away. Raise <strong>Resonance</strong> a little to hear the cutoff point.</span></li>
+            <li>In <strong>Amp envelope</strong>, keep <strong>Attack</strong> short, set <strong>Decay</strong> near 200 ms and <strong>Sustain</strong> to 0%.<span class="result">Each note now plucks and dies away, even if you hold it.</span></li>
+          </ol>
+          <p>For a slow swell instead, try <strong>Attack</strong> 450 ms, <strong>Sustain</strong> 65% and <strong>Release</strong> 650 ms. <strong>Release</strong> is how long a note fades after you let go.</p>
           <div class="plugin-audition" data-envelope-demo hidden>
-            <p>Hear a pluck and a swell on the same note in this envelope illustration. The pluck rises quickly and decays while the note is held. The swell takes longer to start and fades after the note is released.</p>
+            <p>Hear a pluck and a swell on the same note. The pluck rises quickly and decays while the note is held. The swell takes longer to start and fades after the note is released.</p>
             <div class="controls">
               <button type="button" data-envelope-note="pluck">Play pluck</button>
               <button type="button" data-envelope-note="swell">Play swell</button>
@@ -181,8 +242,9 @@
               <span role="status"></span>
             </div>
           </div>
-          <h3>Make the filter pulse</h3>
-          <p>Bring <strong>Sustain</strong> back up on <strong>OSC</strong> so the sound continues while you hold the note. Open <strong>MOD</strong> and use the first row of <strong>Modulation (source → target)</strong>.</p>
+
+          <h3>Make the filter pulse with the beat</h3>
+          <p>An <dfn>LFO</dfn> is a slow wave that moves a knob for you. Routed to the filter, it makes the sound open and close in time with the song. Raise <strong>Sustain</strong> again first, so the note keeps sounding while held.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-synth-mod.webp"><img src="images/plugin-synth-mod.webp" width="1215" height="1006" alt="Synthesizer MOD tab with LFO 1 in the first modulation row and Cutoff as its target." loading="lazy"></a>
@@ -191,27 +253,41 @@
             </div>
             <figcaption>
               <ol>
-                <li>Set the source to <strong>LFO 1</strong> and the target to <strong>Cutoff</strong>. Drag the amount to the right. With the amount at zero, the target stays still.</li>
-                <li>Set <strong>LFO 1</strong> to a sine and choose <strong>1/4</strong>. Hold C4 to hear the buzz come and go once per quarter note.</li>
+                <li>Source <strong>LFO 1</strong>, target <strong>Cutoff</strong>, and drag the amount to the right. At zero nothing moves.</li>
+                <li>Give <strong>LFO 1</strong> a sine shape and a rate of <strong>1/4</strong>: one pulse per beat.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>For stereo width, set <strong>Unison</strong> to 3 on <strong>OSC</strong> and raise <strong>Detune</strong> and <strong>Width</strong>. For a sliding bass phrase, switch the voice mode to <strong>Legato</strong>, raise <strong>Glide</strong> and overlap two notes. On <strong>FX</strong>, add <strong>Delay</strong> to repeat a short note or <strong>Reverb</strong> to give it a tail.</p>
+          <ol>
+            <li>Open the <strong>MOD</strong> tab.</li>
+            <li>In the first row of <strong>Modulation (source → target)</strong>, set the source to <strong>LFO 1</strong> and the target to <strong>Cutoff</strong>.</li>
+            <li>Drag the amount to the right.</li>
+            <li>Set <strong>LFO 1</strong>'s rate to <strong>1/4</strong> and hold C4.<span class="result">The buzz comes and goes once per beat.</span></li>
+          </ol>
+          <p>More to try: on <strong>OSC</strong>, set <strong>Unison</strong> to 3 and raise <strong>Detune</strong> and <strong>Width</strong> for a wide, thick sound. On <strong>FX</strong>, add <strong>Delay</strong> to repeat short notes or <strong>Reverb</strong> to give them a tail.</p>
         </section>
 
         <section>
-          <h2 id="synth-pattern">Turn your synth patch into a melody</h2>
+          <h2 id="glide">Make an 808 or a bass slide between notes</h2>
+          <p>Trap 808s and many bass lines bend from one note into the next instead of striking again. In <dfn>Legato</dfn> mode the synth plays one note at a time and slides when notes overlap.</p>
           <ol>
-            <li>Choose <strong>Empty synth</strong> for a new channel. Use the oscillator, filter and amp-envelope recipe above to make a short pluck. Test a held note against a short note. If the envelope stays open, lower <strong>Sustain</strong> and check that you’re adjusting the amp envelope.</li>
-            <li>Create a melody pattern, select the synth channel and press <kbd>F7</kbd>. Draw a one-bar phrase in eighth notes, adding a rest at the end. Listen in <strong>PAT</strong>. Adjust <strong>Cutoff</strong> until the pluck leaves space for the drums.</li>
-            <li>Drop the phrase onto a separate Playlist track after the first drum bar. Listen in <strong>SONG</strong>. Duplicate the melody clip and choose <strong>Make unique</strong> before changing just the last note of the copy.</li>
+            <li>Load a preset from <strong>Synthesizer → 808</strong>, for example <strong>808 Glide</strong>. (Or set any synth's voice mode to <strong>Legato</strong>.)</li>
+            <li>Turn up <strong>Glide</strong>: it sets how long the slide takes.</li>
+            <li>In the Piano roll, draw two notes so the second starts before the first ends.<span class="result">The second note slides out of the first, like one note bending.</span></li>
           </ol>
-          <p>If both clips change, undo and make the second clip unique before editing. If the synth still plays when you switch to another Rack channel on your controller, check <a href="midi.html#keyboard"><strong>Plays on</strong> in MIDI Settings</a>.</p>
+          <p>Notes that don't overlap strike normally. In <strong>Mono</strong> mode every note glides from the previous one, overlapping or not.</p>
         </section>
 
         <section>
           <h2 id="synkopa-instruments" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#piano"></use></svg>Synkopa Instruments</h2>
-          <p>Choose <strong>Synkopa Instruments — pianos, strings, guitars</strong> from <strong>+ Channel</strong>. Click <strong>Grand Piano</strong> in the Channel Rack to open its controls, then choose <strong>Instruments</strong> to see the library.</p>
+          <p>Synkopa Instruments plays real recordings of acoustic and electric instruments from one channel. Use it when a part should sound played rather than synthesized. One channel plays one instrument; switch it at any time.</p>
+          <ol>
+            <li>Click <strong>+ Channel → Synkopa Instruments — pianos, strings, guitars</strong>.<span class="result">A channel named <strong>Grand Piano</strong> appears.</span></li>
+            <li>Click its name, then click <strong>Instruments</strong>.<span class="result">Every instrument shows as a card.</span></li>
+            <li>Click a card.<span class="result">The channel plays that instrument at once, and the library stays open so you can try the next one.</span></li>
+            <li>If a card shows <strong>Download</strong> with a size, click it. The instrument is saved into your sample library for every project.</li>
+            <li>Double-click the card (or press <kbd>Esc</kbd>) to get back to the instrument's knobs.</li>
+          </ol>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-keys.webp"><img src="images/plugin-keys.webp" width="1323" height="797" alt="Synkopa Instruments library with the Grand Piano selected and download buttons for other kits." loading="lazy"></a>
@@ -220,18 +296,48 @@
             </div>
             <figcaption>
               <ol>
-                <li>Click a card to select a sound. Play its on-screen keyboard and double-click the card to open the controls.</li>
-                <li>Click <strong>Download</strong> for the kit first if its recordings are missing. <strong>Grand Piano</strong> ships with the app.</li>
+                <li>Click a card to play it on this channel. Double-click it to open its controls.</li>
+                <li><strong>Download</strong> fetches an instrument once. Only <strong>Grand Piano</strong> ships with the app.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>A sampled instrument can use different recordings for different pitches, playing strengths and articulations. Some use <em>round robins</em>, rotating recordings to make repeated strikes vary. Lower <strong>Dynamics</strong> to reduce level differences between soft and hard strikes while retaining their tone differences.</p>
-          <p><strong>Tone</strong> darkens or brightens the recordings. <strong>Attack</strong> fades them in. <strong>Release</strong> changes how quickly they fade after the key comes up. Double-click <strong>Release</strong> for <strong>Auto</strong>. <strong>Width</strong> adjusts stereo recordings, <strong>Tune</strong> adjusts pitch in cents, and <strong>Noise</strong> sets the level of recorded release sounds where available.</p>
+          <p>On the instrument's controls, <strong>‹</strong> and <strong>›</strong> step to the previous or next instrument, so you can compare them over the same part. The filters above the cards narrow the list to <strong>Pianos</strong>, <strong>Electric pianos</strong>, <strong>Guitars</strong>, <strong>Strings</strong> or <strong>Mallets</strong>.</p>
+
+          <h3>Pick the instrument</h3>
+          <table class="windows">
+            <thead><tr><th>Instrument</th><th>Sound</th><th>Good for</th></tr></thead>
+            <tbody>
+              <tr><td><a href="#grand-piano">Grand Piano</a></td><td>Concert grand, full and bright</td><td>Ballads, chords, anything piano. No download.</td></tr>
+              <tr><td><a href="#upright-piano">Upright Piano</a></td><td>Felt and wood, intimate</td><td>Lo-fi, indie, close and soft parts</td></tr>
+              <tr><td><a href="#wurlitzer">Wurlitzer EP200</a></td><td>Reedy, barks when hit hard</td><td>Soul, pop and R&amp;B chords</td></tr>
+              <tr><td><a href="#cp80">Electric Grand CP80</a></td><td>Bright, glassy attack</td><td>80s ballads, cutting chords</td></tr>
+              <tr><td><a href="#pianet">Pianet T</a></td><td>Soft, woody, short</td><td>Gentle rhythmic chords</td></tr>
+              <tr><td><a href="#string-section">String Section</a></td><td>Violins, violas and cellos together</td><td>Pads, swells, cinematic and pizzicato parts</td></tr>
+              <tr><td><a href="#solo-violin">Solo Violin</a></td><td>One violin with bow and vibrato</td><td>Melodies and fast runs</td></tr>
+              <tr><td><a href="#harp">Concert Harp</a></td><td>Plucked strings that ring on</td><td>Arpeggios and glissandi</td></tr>
+              <tr><td><a href="#hollow-body-guitar">Hollow Body Guitar</a></td><td>Clean, bright electric</td><td>Strummed chords, rhythm, lines</td></tr>
+              <tr><td><a href="#jazz-guitar">Jazz Club Guitar</a></td><td>Warm, round archtop</td><td>Jazz comping, mellow melodies</td></tr>
+              <tr><td><a href="#vibraphone">Vibraphone</a></td><td>Soft mallets, metallic tail</td><td>Jazz, lo-fi and chill chords</td></tr>
+            </tbody>
+          </table>
+
+          <h3>The knobs</h3>
+          <dl class="terms">
+            <dt>Tone</dt><dd>Darker (left) or brighter (right).</dd>
+            <dt>Width</dt><dd>Stereo width: 0% is mono, 100% as recorded. Dimmed on instruments recorded in mono.</dd>
+            <dt>Tune</dt><dd>Fine tuning in cents (100 cents = a semitone), to match a recording.</dd>
+            <dt>Attack</dt><dd>Fades every note in. Long values turn strings into swells.</dd>
+            <dt>Release</dt><dd>How long a note rings after the key comes up. Double-click for <strong>Auto</strong>: each recording's natural fade.</dd>
+            <dt>Dynamics</dt><dd>How much hitting harder makes a note louder. The tone still changes with how hard you play.</dd>
+            <dt>Noise</dt><dd>Level of recorded release sounds (piano dampers, fingers leaving strings), where the instrument has them.</dd>
+          </dl>
+          <p>Many instruments have several recordings per key for different playing strengths (<dfn>velocity layers</dfn>), and some rotate between recordings so repeated notes don't sound identical (<dfn>round robins</dfn>). Double-click any knob to reset it; right-click it to <a href="automation.html">automate</a> it.</p>
+          <div class="note"><p><strong>The channel is silent?</strong> The instrument is not downloaded yet: its controls say <strong>Not downloaded</strong> and offer <strong>Download</strong>. Export also waits until every instrument the song uses is loaded, and refuses to start if one is missing, instead of rendering silence.</p></div>
         </section>
 
         <section>
           <h2 id="grand-piano" class="plugin-title"><img class="plugin-icon library-art" src="images/library/grand-piano.webp" alt="" width="24" height="24" loading="lazy">Grand Piano</h2>
-          <p>The sampled Yamaha C5 has four velocity layers and damper sounds.</p>
+          <p>A Yamaha C5 concert grand with four velocity layers and the sound of the dampers as you let go. Ships with the app.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-grand-piano.webp"><img src="images/instrument-grand-piano.webp" width="1323" height="797" alt="Grand Piano selected, with Sound, Envelope, and Playing controls." loading="lazy"></a>
@@ -239,7 +345,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>In the Piano Roll, draw two C4 notes. Set their velocities near 30% and 85% in the lane below the notes. Listen for the brighter attack of the harder strike. Repeat a detached phrase with <strong>Noise</strong> at 100% and then 0% to hear the difference as you let the keys go.</li>
+                <li>Try it: draw two C4 notes with velocities near 30% and 85%. The harder one is brighter, not just louder. Then play a detached phrase with <strong>Noise</strong> at 100% and at 0% to hear the dampers come and go.</li>
               </ol>
             </figcaption>
           </figure>
@@ -247,7 +353,7 @@
 
         <section>
           <h2 id="upright-piano" class="plugin-title"><img class="plugin-icon library-art" src="images/library/upright-piano.webp" alt="" width="24" height="24" loading="lazy">Upright Piano</h2>
-          <p>An upright with three velocity layers and two round robins.</p>
+          <p>A felt-and-wood upright with three velocity layers and two round robins. Softer and closer than the grand.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-upright-piano.webp"><img src="images/instrument-upright-piano.webp" width="1323" height="797" alt="Upright Piano selected, showing the Tone, Width, Tune, and Dynamics controls." loading="lazy"></a>
@@ -255,7 +361,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Program eight even C4 eighth notes at a fixed velocity. Listen for the strikes changing slightly from hit to hit. Switch to <strong>Grand Piano</strong> for the same phrase and compare the woodier attack and the tails.</li>
+                <li>Try it: eight C4 eighth notes at one velocity. Each strike sounds slightly different. Press <strong>‹</strong> to switch to the Grand Piano and compare the woodier attack.</li>
               </ol>
             </figcaption>
           </figure>
@@ -263,7 +369,7 @@
 
         <section>
           <h2 id="wurlitzer" class="plugin-title"><img class="plugin-icon library-art" src="images/library/wurlitzer.webp" alt="" width="24" height="24" loading="lazy">Wurlitzer EP200</h2>
-          <p>A reed electric piano that gets raspier as the strike gets harder.</p>
+          <p>A reed electric piano that gets raspier the harder you play.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-wurlitzer.webp"><img src="images/instrument-wurlitzer.webp" width="1323" height="797" alt="Wurlitzer EP200 selected, showing its sound controls with Width dimmed for mono recordings." loading="lazy"></a>
@@ -271,7 +377,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Repeat C4–E4–G4, alternating soft and accented strikes. Listen for the reed bark on the accents. Lower <strong>Tone</strong> and compare how much of the upper edge remains.</li>
+                <li>Try it: repeat C4–E4–G4, alternating soft and accented notes, and listen for the bark on the accents. Lower <strong>Tone</strong> to tame the edge.</li>
               </ol>
             </figcaption>
           </figure>
@@ -279,7 +385,7 @@
 
         <section>
           <h2 id="cp80" class="plugin-title"><img class="plugin-icon library-art" src="images/library/cp80.webp" alt="" width="24" height="24" loading="lazy">Electric Grand CP80</h2>
-          <p>A stringed electric grand with a bright, glassy attack.</p>
+          <p>Yamaha's stringed electric grand: a bright, glassy attack that cuts through a mix.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-cp80.webp"><img src="images/instrument-cp80.webp" width="1323" height="797" alt="Electric Grand CP80 selected in Synkopa Instruments." loading="lazy"></a>
@@ -287,7 +393,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Play C3–G3–E4, then switch to <strong>Wurlitzer EP200</strong> and play the same voicing. Listen to the difference between the glassy CP80 attack and the Wurlitzer’s reed sound. Lower <strong>Tone</strong> on the CP80 to soften its attack.</li>
+                <li>Try it: play C3–G3–E4, then the same chord on the Wurlitzer, and compare glass against reed. Lower <strong>Tone</strong> to soften the CP80's attack.</li>
               </ol>
             </figcaption>
           </figure>
@@ -295,7 +401,7 @@
 
         <section>
           <h2 id="pianet" class="plugin-title"><img class="plugin-icon library-art" src="images/library/pianet.webp" alt="" width="24" height="24" loading="lazy">Pianet T</h2>
-          <p>A plucked-reed electric piano with a soft, short sound.</p>
+          <p>A plucked-reed electric piano: soft, woody and short.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-pianet.webp"><img src="images/instrument-pianet.webp" width="1323" height="797" alt="Pianet T selected in Synkopa Instruments." loading="lazy"></a>
@@ -303,7 +409,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Hold C4–E4–G4 and hear it recede on its own. Repeat the chord with short, separated notes. Leave <strong>Attack</strong> at zero to hear the tiny pluck, then raise it to hear the same notes fade in.</li>
+                <li>Try it: hold C4–E4–G4 and hear it fade on its own. With <strong>Attack</strong> at zero you hear a tiny pluck; raise it and the same chord fades in.</li>
               </ol>
             </figcaption>
           </figure>
@@ -311,7 +417,8 @@
 
         <section>
           <h2 id="string-section" class="plugin-title"><img class="plugin-icon library-art" src="images/library/strings.webp" alt="" width="24" height="24" loading="lazy">String Section</h2>
-          <p>An ensemble of violins, violas and cellos. <strong>Sustain</strong> holds the bow, <strong>Tremolo</strong> repeats bow strokes, <strong>Pizzicato</strong> plucks and <strong>Spiccato</strong> bounces the bow.</p>
+          <p>Violins, violas and cellos playing together. Its <dfn>articulations</dfn> (playing styles) are buttons above the knobs: <strong>Sustain</strong> holds the bow, <strong>Tremolo</strong> repeats fast bow strokes, <strong>Pizzicato</strong> plucks, <strong>Spiccato</strong> bounces the bow for short notes.</p>
+          <p>It starts on <strong>Auto</strong>: drawn notes shorter than about 130 ms play spiccato, longer ones sustain, and notes played live sustain. To switch articulation inside a part, put a note on one of the tinted <dfn>keyswitch</dfn> keys (C1–D♯1) just before the phrase. A keyswitch changes the style instead of sounding; hover over an articulation button to see its key.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-string-section.webp"><img src="images/instrument-string-section.webp" width="1323" height="797" alt="String Section selected, with Auto, Sustain, Tremolo, Pizzicato, and Spiccato controls." loading="lazy"></a>
@@ -319,15 +426,16 @@
             </div>
             <figcaption>
               <ol>
-                <li>At 120 BPM, alternate eighth and sixteenth notes on C4 and select <strong>Auto</strong>. The sequenced notes below about 130 ms use <strong>Spiccato</strong>. Try C4 held on the keyboard to hear the <strong>Sustain</strong> used for live notes.</li>
+                <li>Try it: at 120 BPM, alternate eighth and sixteenth notes on C4 with <strong>Auto</strong> selected. The short ones play spiccato. Hold C4 on a keyboard to hear sustain.</li>
               </ol>
             </figcaption>
           </figure>
+          <p>A held string note lasts as long as its recording (a few seconds), not as long as the note.</p>
         </section>
 
         <section>
           <h2 id="solo-violin" class="plugin-title"><img class="plugin-icon library-art" src="images/library/solo-violin.webp" alt="" width="24" height="24" loading="lazy">Solo Violin</h2>
-          <p>A single violin with audible bow and vibrato.</p>
+          <p>One violin with audible bow and vibrato, for melodies and fast runs. Same articulations and keyswitches as the String Section, with <strong>Arco</strong> (bowed) in place of Sustain.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-solo-violin.webp"><img src="images/instrument-solo-violin.webp" width="1323" height="797" alt="Solo Violin selected, with Arco, Tremolo, Pizzicato, and Spiccato controls." loading="lazy"></a>
@@ -335,7 +443,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Record a long note followed by two short ones. Compare <strong>Arco</strong> (bowed) with <strong>Pizzicato</strong> (plucked) to hear the attack change. In either string instrument, place a tinted keyswitch note just before the phrase to switch articulation in the Piano Roll. Hover over an articulation button for its keyswitch pitch.</li>
+                <li>Try it: a long note followed by two short ones, first on <strong>Arco</strong>, then on <strong>Pizzicato</strong>. The attack changes completely.</li>
               </ol>
             </figcaption>
           </figure>
@@ -343,7 +451,7 @@
 
         <section>
           <h2 id="harp" class="plugin-title"><img class="plugin-icon library-art" src="images/library/harp.webp" alt="" width="24" height="24" loading="lazy">Concert Harp</h2>
-          <p>A plucked harp whose strings ring after a short note has ended.</p>
+          <p>A plucked harp whose strings keep ringing after a short note ends.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-harp.webp"><img src="images/instrument-harp.webp" width="1323" height="797" alt="Concert Harp selected in Synkopa Instruments." loading="lazy"></a>
@@ -351,7 +459,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Use very short notes for C4, E4, G4, and C5 in ascending order. The tails still overlap. Space the notes farther apart to hear each pluck and its decay.</li>
+                <li>Try it: very short notes C4, E4, G4, C5 in a row. The tails still overlap into a chord. Space the notes out to hear each pluck decay.</li>
               </ol>
             </figcaption>
           </figure>
@@ -359,7 +467,7 @@
 
         <section>
           <h2 id="hollow-body-guitar" class="plugin-title"><img class="plugin-icon library-art" src="images/library/hollow-body-guitar.webp" alt="" width="24" height="24" loading="lazy">Hollow Body Guitar</h2>
-          <p>A clean Gretsch hollow body for strumming and picked lines. Each string damps its previous note when the player reuses it.</p>
+          <p>A clean Gretsch hollow body for strummed chords, rhythm and picked lines. Like a real guitar, each note goes to one of six strings, and a new note on a string stops the one ringing there, so repeated strums don't pile up.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-hollow-body-guitar.webp"><img src="images/instrument-hollow-body-guitar.webp" width="1323" height="797" alt="Hollow Body Guitar selected, showing Sustain and Staccato." loading="lazy"></a>
@@ -367,15 +475,16 @@
             </div>
             <figcaption>
               <ol>
-                <li>Select <strong>Sustain</strong>. Voice C as C3–E3–G3–C4–E4. Select the chord and use the Piano Roll’s <strong>Strum</strong> tool to spread the starts slightly. Compare with the same notes played together.</li>
+                <li>Try it: select <strong>Sustain</strong> and write a C chord as C3–E3–G3–C4–E4. Select it and choose <strong>Tools → Strum</strong> in the Piano roll to spread the starts a little. Compare with the unstrummed chord.</li>
               </ol>
             </figcaption>
           </figure>
+          <p>Both guitars have <strong>Sustain</strong> (keyswitch C2) and <strong>Staccato</strong> (C♯2). On <strong>Auto</strong>, drawn notes shorter than about 150 ms play staccato.</p>
         </section>
 
         <section>
           <h2 id="jazz-guitar" class="plugin-title"><img class="plugin-icon library-art" src="images/library/jazz-guitar.webp" alt="" width="24" height="24" loading="lazy">Jazz Club Guitar</h2>
-          <p>A warm Höfner archtop for comping and melodies.</p>
+          <p>A warm, round Höfner archtop for jazz comping and mellow melodies.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-jazz-guitar.webp"><img src="images/instrument-jazz-guitar.webp" width="1323" height="797" alt="Jazz Club Guitar selected, showing Sustain and Staccato." loading="lazy"></a>
@@ -383,7 +492,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Loop a short offbeat chord and switch between <strong>Sustain</strong> and <strong>Staccato</strong>. Listen to how the staccato strike changes the gap before the next chord. On both guitars, <strong>Auto</strong> uses <strong>Staccato</strong> for sequenced notes shorter than about 150 ms and <strong>Sustain</strong> for longer or live notes.</li>
+                <li>Try it: loop a short offbeat chord and switch between <strong>Sustain</strong> and <strong>Staccato</strong>. Staccato leaves a tight gap before the next chord.</li>
               </ol>
             </figcaption>
           </figure>
@@ -391,7 +500,7 @@
 
         <section>
           <h2 id="vibraphone" class="plugin-title"><img class="plugin-icon library-art" src="images/library/vibraphone.webp" alt="" width="24" height="24" loading="lazy">Vibraphone</h2>
-          <p>A soft-mallet vibraphone recorded with the motor off.</p>
+          <p>A soft-mallet vibraphone recorded with the motor off, in two dynamics.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/instrument-vibraphone.webp"><img src="images/instrument-vibraphone.webp" width="1323" height="797" alt="Vibraphone selected in Synkopa Instruments." loading="lazy"></a>
@@ -399,7 +508,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Play a soft C4 followed by a hard C4 and compare the mallet strikes. Try a chord with a short <strong>Release</strong>, then double-click the knob for <strong>Auto</strong> and listen to the longer metallic tail.</li>
+                <li>Try it: a soft C4 then a hard one, to compare the mallet strikes. Play a chord with a short <strong>Release</strong>, then double-click the knob for <strong>Auto</strong> and hear the long metallic tail return.</li>
               </ol>
             </figcaption>
           </figure>
@@ -407,7 +516,7 @@
 
         <section>
           <h2 id="music-box" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#synth"></use></svg>Music Box</h2>
-          <p>Choose <strong>Music Box — modeled tines</strong> under <strong>Sampled instruments</strong> in the picker. It models a steel tine, the pin’s tick and the wooden box’s resonance. Play a soft C5 and then an accented C5. The harder pluck’s metallic overtones fade before the main pitch.</p>
+          <p>A cylinder music box for intros, lullabies and delicate bell-like melodies. Its sound is calculated from a plucked steel tine, the pin's tick and the wooden box, so there is nothing to download. Add it with <strong>+ Channel → Music Box — modeled tines</strong> and write in the upper octaves, where music boxes sound best.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-music-box.webp"><img src="images/plugin-music-box.webp" width="945" height="292" alt="Music Box controls for release, ring, brightness, body, mechanical tick, and spread." loading="lazy"></a>
@@ -417,13 +526,28 @@
             </div>
             <figcaption>
               <ol>
-                <li>Hold a low note and compare <strong>Ring</strong> at 25% and 200%. The lower setting decays sooner while the note is held.</li>
-                <li>Repeat a high note with <strong>Mechanical</strong> at 0% and then 80%. Listen for the tick at the start of each note.</li>
-                <li>Try the same short note with <strong>Release</strong> near 40 ms and then 800 ms. Listen for the longer fade after you let go.</li>
+                <li><strong>Ring</strong>: how long notes ring while held. Low for a dry, plucky box; high for long overlapping notes.</li>
+                <li><strong>Mechanical</strong>: the pin's tick at the start of each note. 0% for a pure bell.</li>
+                <li><strong>Release</strong>: how long a note fades after you let go.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>Turn up <strong>Brightness</strong> for more metallic overtones and <strong>Body</strong> for more wooden resonance. Play a phrase that jumps between low and high notes and raise <strong>Spread</strong> to place them farther apart in stereo.</p>
+          <ul>
+            <li><strong>More real:</strong> raise <strong>Mechanical</strong> and <strong>Body</strong> (the wooden box's resonance).</li>
+            <li><strong>Cleaner, more bell-like:</strong> lower them and raise <strong>Brightness</strong>.</li>
+            <li><strong>Wider:</strong> raise <strong>Spread</strong> to fan low and high notes across the speakers.</li>
+          </ul>
+          <p>Harder notes sound brighter, not just louder, so varying velocity in the Piano roll makes it feel mechanical and real.</p>
+        </section>
+
+        <section>
+          <h2 id="plugins">Use a VST3 instrument you own</h2>
+          <p>Synkopa finds the VST3 instruments installed in the standard VST3 folders and lists them under <strong>Plugin instruments (VST3)</strong> in <strong>+ Channel</strong> (grouped by maker when there are many).</p>
+          <ul>
+            <li><strong>Just installed one?</strong> Click <strong>Rescan plugins</strong> at the end of that list.</li>
+            <li><strong>No VST3 instruments found:</strong> nothing is installed in the standard VST3 folders. Install the instrument there, then rescan.</li>
+          </ul>
+          <p>Clicking a plugin channel's name opens the plugin's own window. Its settings are saved with the project. For effect plugins, see the <a href="plugins.html">Plugin guide</a>.</p>
         </section>
       </article>
     </main>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Set up an input, record a take, and combine the best parts of multiple passes.">
+  <meta name="description" content="Connect a microphone, hear yourself without delay, record takes and combine the best parts into one comp in Synkopa.">
   <title>Record audio · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,29 +63,60 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Record audio</h1>
+        <p class="lede">Record a voice, a guitar or any other sound through a microphone or audio interface, then sing the part a few times and keep the best moments of each pass. Read the first two sections before your first session: they decide whether you hear yourself on time and whether the recording lands on the beat.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#input">Set up your input</a>
-        <a href="#latency">Check timing and monitoring</a>
-        <a href="#take">Record a take</a>
-        <a href="#comp">Combine takes from a loop</a>
-        <a href="#next">Edit the vocal</a>
+        <a href="#input">1. Connect your microphone</a>
+        <a href="#latency">2. Hear yourself on time</a>
+        <a href="#take">3. Record a take</a>
+        <a href="#comp">4. Keep the best parts of several takes</a>
+        <a href="#next">5. Tune and mix the vocal</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="input">Set up your input</h2>
+          <h2 id="input">1. Connect your microphone</h2>
+          <p>Synkopa records one input of your audio interface, in mono. First tell it which device to listen to, which socket the microphone is in and which track the recording goes to.</p>
           <ol>
-            <li>Connect the microphone to the interface and plug headphones into your playback device. In <strong>File → Settings… → Audio</strong>, select your <strong>Input</strong> and <strong>Output</strong>.</li>
-            <li>In the Playlist, right-click the vocal track header and choose <strong>Record into this track</strong>. Right-click the round <strong>Record</strong> button and enable <strong>Audio</strong>. For a vocal pass, turn off <strong>Notes</strong> so keyboard input stays out of that recording.</li>
-            <li>Click <strong>Record</strong> to arm. Return to Audio settings and choose <strong>Input channel</strong> for the socket the mic is plugged into. Recording and monitoring open the input so its channels appear. The selected channel is captured in mono.</li>
-            <li>Sing the loudest phrase and check the <strong>IN</strong> meter. If the signal clips, turn down the interface input gain. If the meter stays blank, check the interface’s own signal light, the input socket and the system’s microphone permission for Synkopa. Re-arm after changing the input.</li>
+            <li>Plug the microphone into your audio interface and put on headphones. With speakers, the backing track would leak into the microphone.</li>
+            <li>Choose <strong>File → Settings… → Audio</strong>. Set <strong>Input</strong> to your interface and <strong>Output</strong> to the device your headphones are plugged into.</li>
+            <li>In the Playlist, right-click the header of the track you want to sing on and choose <strong>Record into this track</strong>.<span class="result">A red dot on the header shows that recordings go there.</span></li>
+            <li>Right-click the round <strong>Record</strong> button in the toolbar. Tick <strong>Audio</strong> and untick <strong>Notes</strong>, so a MIDI keyboard does not record at the same time.</li>
+            <li>Click <strong>Record</strong>, or press <kbd>R</kbd>.<span class="result">The button turns red and an <strong>IN</strong> meter appears in the toolbar.</span></li>
+            <li>Back in <strong>Settings → Audio</strong>, set <strong>Input channel</strong> to the socket your microphone uses: <strong>Input 1</strong> for the first one. The list fills only while Record or monitoring is on.</li>
+            <li>Sing the loudest line of the song.<span class="result">The <strong>IN</strong> meter moves. If it reaches the top, turn down the gain knob on your interface.</span></li>
           </ol>
+          <p>Without <strong>Record into this track</strong>, a recording goes to the first track that is empty from the playhead on, or to a new track below the others.</p>
+          <div class="note"><p>The <strong>IN</strong> meter stays empty? Check the signal light on the interface, the socket you chose and that your operating system allows Synkopa to use the microphone. After changing the input, turn <strong>Record</strong> off and on again.</p></div>
         </section>
+
         <section>
-          <h2 id="latency">Check timing and monitoring</h2>
-          <p>Choose one path for your headphones. For input through Synkopa, turn on <strong>View → Monitor input</strong>. With a vocal track armed, this follows its mixer routing. If you monitor directly from the interface, leave Synkopa monitoring off to avoid hearing a delayed copy.</p>
-          <p>If monitoring feels delayed, try a smaller <strong>Buffer</strong> in <strong>Audio</strong>. If you hear clicks or the dropout count rises, try a larger buffer. To correct where the recorded take lands, use <strong>Measure latency</strong>. Hold the mic near the speaker or headphone so it can pick up the test clicks. A confident measurement updates <strong>Recording offset</strong>. A positive offset moves newly recorded audio earlier. Test the timing again after changing devices or buffer settings.</p>
+          <h2 id="latency">2. Hear yourself on time</h2>
+          <p>Two things can feel wrong when you record: your voice in the headphones comes back late, or the take lands slightly after the beat. Both come from latency.</p>
+          <dl class="terms">
+            <dt>Monitoring</dt>
+            <dd>Hearing your own voice in the headphones while you record.</dd>
+            <dt>Latency</dt>
+            <dd>The short delay between a sound reaching the microphone and coming out of the headphones, or landing in the recording.</dd>
+            <dt>Buffer</dt>
+            <dd>The computer handles audio in small chunks. The buffer is the size of one chunk, in samples. A smaller buffer means less delay but more work for the computer; too small and playback crackles.</dd>
+          </dl>
+
+          <h3>Choose one way to hear yourself</h3>
+          <ul>
+            <li><strong>Through your interface.</strong> Many interfaces have a direct-monitor knob or switch. You hear yourself with no delay, but without Synkopa's effects. Leave Synkopa's monitoring off, or you hear a second, late copy of your voice.</li>
+            <li><strong>Through Synkopa.</strong> Click the headphones button in the toolbar, or choose <strong>View → Monitor input</strong>. Your voice plays through the track you record on, with the effects on its mixer insert. Effects that add delay (Vocal Rider, Pitch Correct, Denoiser, Limiter, De-esser) are skipped while you monitor. The recording itself is always your clean input.</li>
+          </ul>
+          <p>If your voice sounds late when monitoring through Synkopa, choose a smaller <strong>Buffer</strong> in <strong>Settings → Audio</strong>: 128 or 256 samples works for most recording. If you then hear clicks, or the <strong>Underruns</strong> or <strong>Input dropouts</strong> count rises, go one size up. Switch back to a larger buffer for mixing.</p>
+
+          <h3>Make takes land on the beat</h3>
+          <p>Your audio driver does not always report its full delay, so takes can land a few milliseconds late. Measure it once for each device and buffer setting.</p>
+          <ol>
+            <li>In <strong>Settings → Audio</strong>, click <strong>Measure latency</strong>.</li>
+            <li>Hold the microphone close to a speaker or one headphone cup for about five seconds, in a quiet room.<span class="result">Synkopa plays a few clicks, records them and fills in <strong>Recording offset</strong>.</span></li>
+            <li>If it reports an uncertain measurement, try again louder and closer.</li>
+          </ol>
+          <p><strong>Recording offset</strong> is how far each new take is moved; a positive value moves it earlier. Measure again after changing the device or the buffer.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/vocal-settings.webp"><img src="images/vocal-settings.webp" width="1150" height="850" alt="Audio settings with a USB microphone selected, mono input 1 and the recording calibration controls." loading="lazy"></a>
@@ -94,21 +126,26 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose the microphone under <strong>Input</strong> and the matching <strong>Input channel</strong>.</li>
-                <li>Adjust <strong>Buffer</strong> if monitoring lags or playback crackles.</li>
-                <li>Use <strong>Measure latency</strong> to check where newly recorded audio lands.</li>
+                <li>The microphone under <strong>Input</strong>, and the socket it is in under <strong>Input channel</strong>.</li>
+                <li><strong>Buffer</strong>: smaller if you hear yourself late, larger if playback crackles.</li>
+                <li><strong>Measure latency</strong> sets how far new takes are shifted.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
-          <h2 id="take">Record a take</h2>
+          <h2 id="take">3. Record a take</h2>
+          <p>A <dfn>take</dfn> is one recorded pass of a part. Start with a single take of one phrase.</p>
           <ol>
-            <li>Choose <strong>SONG</strong> and click the Playlist ruler at the start of the phrase. Double-click the ruler to clear an existing loop for one pass. Enable <strong>1 BAR</strong> for a count-in if you want one.</li>
-            <li>With <strong>Record</strong> armed and the <strong>IN</strong> meter moving, press <kbd>Space</kbd>, sing the phrase, then press <kbd>Space</kbd> again to stop. The recording lands on the armed track. Without an armed track, Synkopa finds the first track with room.</li>
-            <li>Disarm <strong>Record</strong> before playing back. Listen through the phrase once with the backing. Use <a href="reference.html#recording">recording troubleshooting</a> if the take is missing or silent.</li>
+            <li>Click the Playlist ruler a bar before the phrase.<span class="result">The playhead moves there and the toolbar switches to <strong>SONG</strong>.</span></li>
+            <li>If part of the ruler is highlighted, a loop is set: double-click the ruler to clear it. With a loop, Synkopa records several takes instead of one.</li>
+            <li>Optional: turn on <strong>1 BAR</strong> in the toolbar for a bar of clicks before recording starts, and press <kbd>Ctrl</kbd> + <kbd>M</kbd> for the metronome.</li>
+            <li>Press <kbd>R</kbd> to arm Record.<span class="result">The button is red and the status line says which track the recording goes to.</span></li>
+            <li>Press <kbd>Space</kbd> and perform the phrase.</li>
+            <li>Press <kbd>Space</kbd> to stop.<span class="result">A new audio clip appears on the track.</span></li>
+            <li>Press <kbd>R</kbd> to turn Record off, then press <kbd>Space</kbd> to listen back. While Record is on, <kbd>Space</kbd> starts a new recording.</li>
           </ol>
-          <p>To punch in while the song is playing, start playback with <strong>Record</strong> off. Click <strong>Record</strong> at the start of the line you want to record and click it again to end the take while playback continues.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/record-armed.webp"><img src="images/record-armed.webp" width="1124" height="90" alt="Synkopa transport during a recording, with the red Record button and input meter." loading="lazy"></a>
@@ -117,18 +154,41 @@
             </div>
             <figcaption>
               <ol>
-                <li>Click Record to arm capture. Red means it is armed.</li>
-                <li>Check the IN meter before recording and while the take runs.</li>
+                <li><strong>Record</strong> is red while it is armed.</li>
+                <li>Watch the <strong>IN</strong> meter before and during the take.</li>
               </ol>
             </figcaption>
           </figure>
-        </section>
-        <section>
-          <h2 id="comp">Combine takes from a loop</h2>
+
+          <h3>Replace one line while the song plays (punch in)</h3>
+          <p><dfn>Punching in</dfn> starts recording in the middle of playback, so you can redo one line without stopping the song.</p>
           <ol>
-            <li>Drag across the Playlist ruler to set the loop around the phrase. Arm <strong>Record</strong>, start playback, and sing through two or three passes. Stop and disarm. Synkopa groups the passes into a comp.</li>
-            <li>Double-click the comp to open the take lanes. During playback, click the triangle beside a take to solo-preview it in place. Click it again to return to the current comp.</li>
-            <li>Click the name of the strongest take to use it in full. If another take has a better word or line, drag across that section of its lane. Play the whole comp and listen for changes in breath, level and tone at the joins.</li>
+            <li>With Record off, press <kbd>Space</kbd> a few bars before the line.</li>
+            <li>Press <kbd>R</kbd> just before the line.<span class="result">Recording starts at the playhead.</span></li>
+            <li>Press <kbd>R</kbd> again after the line.<span class="result">Recording stops and the song keeps playing.</span></li>
+          </ol>
+          <p>Take missing or silent? See <a href="reference.html#recording">recording problems</a>.</p>
+        </section>
+
+        <section>
+          <h2 id="comp">4. Keep the best parts of several takes</h2>
+          <p>Few singers get a whole line right in one pass. <dfn>Comping</dfn> (short for compiling) means recording the same part several times, then picking the best moment of each pass: the first words from take 2, the last word from take 3. The result is the <dfn>comp</dfn>. Synkopa keeps every take, so you can change your picks at any time.</p>
+
+          <h3>Record several takes in a loop</h3>
+          <ol>
+            <li>Drag across the Playlist ruler over the phrase, starting a little before it.<span class="result">The ruler highlights the loop.</span></li>
+            <li>Press <kbd>R</kbd>, then <kbd>Space</kbd>.</li>
+            <li>Perform the phrase each time the loop comes round, two or three times.</li>
+            <li>Press <kbd>Space</kbd> to stop, then <kbd>R</kbd> to turn Record off.<span class="result">One comp clip holds a take for each pass.</span></li>
+          </ol>
+
+          <h3>Pick the best parts</h3>
+          <ol>
+            <li>Double-click the comp clip.<span class="result">Take lanes open below it, one per take.</span></li>
+            <li>Press <kbd>Space</kbd>. Click the small triangle on a take lane to hear that take instead of the comp. Click it again to go back to the comp.</li>
+            <li>Click the name of the best take to use all of it.</li>
+            <li>If another take has a better word, drag across that word in its lane.<span class="result">That part now plays in the comp. Each lane shows how much of it is used.</span></li>
+            <li>Play the whole comp and listen at each join for a cut-off breath or a jump in level.</li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
@@ -138,16 +198,29 @@
             </div>
             <figcaption>
               <ol>
-                <li>Open the take lanes, then use the triangle beside a take to hear it in place.</li>
-                <li>Drag across the phrase on a take lane to use that part in the comp.</li>
+                <li>The triangle plays this take in place of the comp.</li>
+                <li>Drag across part of a take to put it in the comp.</li>
               </ol>
             </figcaption>
           </figure>
-          <p>If a join sounds sharp, right-click the boundary for a local <strong>Crossfade</strong>, or change <strong>Crossfade</strong> in the comp menu for the group. Before note-level editing, save the project with its takes, then use <strong>File → Save as…</strong> to make a working copy. In the copy, choose <strong>Flatten comp</strong> in the comp menu. This renders the chosen regions into one audio clip and removes the take group from the current project. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes that step.</p>
+          <ul>
+            <li><strong>A join clicks or sounds abrupt:</strong> right-click the boundary and pick a longer <strong>Crossfade</strong> (a short blend between the two takes). <strong>Crossfade</strong> in the comp clip's menu sets it for every join.</li>
+            <li><strong>Try another take for one section:</strong> point at it in the comp and press <kbd>Ctrl</kbd> + <kbd>↑</kbd> or <kbd>Ctrl</kbd> + <kbd>↓</kbd> to step through the takes.</li>
+            <li><strong>Tidy up:</strong> <strong>Delete unused takes</strong> in the comp clip's menu removes takes the comp does not play.</li>
+          </ul>
+
+          <h3>Turn the comp into one clip</h3>
+          <p>The pitch editor works on ordinary audio clips, so flatten the comp before tuning it. Flattening removes the takes, so keep a copy of the project that still has them.</p>
+          <ol>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save the project with its takes.</li>
+            <li>Choose <strong>File → Save as…</strong> and give the working copy a new name.</li>
+            <li>Right-click the comp clip's name and choose <strong>Flatten comp</strong>.<span class="result">One audio clip replaces the comp on the same track. <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes it.</span></li>
+          </ol>
         </section>
+
         <section>
-          <h2 id="next">Edit the vocal</h2>
-          <p>Take the recorded or flattened audio clip into <a href="vocal-production.html#open-pitch">the vocal-production walkthrough</a> to repair one word, try a reference melody, and export the result.</p>
+          <h2 id="next">5. Tune and mix the vocal</h2>
+          <p>Continue with <a href="vocal-production.html#open-pitch">Produce vocals</a> to fix an off-key word, tune the take to a melody, add a vocal effect chain and export the result.</p>
         </section>
       </article>
     </main>
