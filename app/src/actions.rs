@@ -182,7 +182,7 @@ pub(crate) fn opt_f64(a: &Value, k: &str) -> Option<f64> {
 
 pub fn parse_kind(s: &str) -> R<FxKind> {
     serde_json::from_value(json!(s)).map_err(|_| {
-        format!("unknown effect type `{s}` (eq, comp, gate, filter, sat, delay, half, warp, chorus, phaser, stereo, multiband, analyzer, reverb, limit, master, fet, deess, tune, denoise, voice, rider)")
+        format!("unknown effect type `{s}` (eq, comp, gate, filter, sat, delay, half, warp, chorus, phaser, stereo, multiband, patina, analyzer, reverb, limit, master, fet, deess, tune, denoise, voice, rider)")
     })
 }
 

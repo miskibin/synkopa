@@ -49,6 +49,7 @@ import { AnalyzerViz } from './fx/analyzer';
 import { dbOf, fOf, mbGeom, mbHit, MultibandViz } from './fx/multiband';
 import { MasterViz, msBalDb, msFreq, msGeom, msHit, msLvlDb } from './fx/master';
 import { MasterHeader } from './fx/MasterHeader';
+import { PatinaViz } from './fx/patina';
 
 
 function makeViz(f: Fx): Viz | null {
@@ -74,10 +75,11 @@ function makeViz(f: Fx): Viz | null {
     case 'analyzer': return new AnalyzerViz();
     case 'multiband': return new MultibandViz();
     case 'master': return new MasterViz();
+    case 'patina': return new PatinaViz();
     default: return null;
   }
 }
-const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270, master: 340 };
+const VIZ_H: Partial<Record<Fx['type'], number>> = { eq: 300, reverb: 300, tune: 280, fet: 250, sat: 240, deess: 230, denoise: 240, voice: 250, rider: 220, half: 250, delay: 230, warp: 360, chorus: 170, phaser: 220, gate: 210, filter: 220, stereo: 250, analyzer: 360, multiband: 270, patina: 170, master: 340 };
 
 const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   eq: 'c.fx.hint.eq',
@@ -98,6 +100,7 @@ const HINTS: Partial<Record<Fx['type'], TranslationKey>> = {
   analyzer: 'c.fx.hint.analyzer',
   multiband: 'c.fx.hint.multiband',
   master: 'c.fx.hint.master',
+  patina: 'c.fx.hint.patina',
 };
 
 export { moveWindow };
@@ -279,7 +282,7 @@ const L = (s: string) => (s.startsWith('c.') ? t(s as TranslationKey) : s);
 // Size tiers: `lg` for the one or two controls that define the effect, `md` standard, `sm` trims.
 // Choices render as segmented buttons; `stack` puts items in a column; `x` is a custom widget.
 /** `when`: the control is shown only while it applies (e.g. the delay's Offset vs Pan per model). */
-type Item = { id: string; size?: KnobSize; ends?: [string, string] | ((fx: Fx) => [string, string] | undefined); labels?: string[]; danger?: number; small?: boolean; when?: (fx: Fx) => boolean }
+type Item = { id: string; size?: KnobSize; ends?: [string, string] | ((fx: Fx) => [string, string] | undefined); labels?: string[]; danger?: number; small?: boolean; hideLabel?: boolean; when?: (fx: Fx) => boolean }
   | { stack: Item[] } | { x: 'fetMeter' | 'key' };
 /** Titles, labels and ends: keys starting with `c.` (see `L`). `adv`: shown only after the window's "Advanced" toggle (keeps the first view simple). */
 type Section = { title: string; items: Item[]; adv?: boolean };
@@ -456,6 +459,22 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
     { title: 'c.fx.sec.envelope', items: [{ id: 'env' }, { id: 'eatt', size: 'sm' }, { id: 'erel', size: 'sm' }, { x: 'key' }] },
     { title: 'c.fx.sec.output', adv: true, items: [{ stack: [{ id: 'clip', small: true }] }] },
   ],
+  // RC-20-style strip: one big Amount per module in chain order, its few details beside it;
+  // Magnitude and Wander scale and move them all; the master tone section is under "Advanced"
+  // (columns: the five modules line up under their pictures; Magnitude and the output below)
+  patina: [
+    { title: 'c.fx.sec.noise', items: [
+      { id: 'noise', size: 'lg' },
+      { stack: [{ id: 'ntype', small: true, hideLabel: true, labels: ['c.fx.pt.nt0', 'c.fx.pt.nt1', 'c.fx.pt.nt2', 'c.fx.pt.nt3', 'c.fx.pt.nt4', 'c.fx.pt.nt5'] }, { id: 'nroute', small: true }] },
+      { id: 'nfollow', size: 'sm', ends: ['c.fx.end.duck', 'c.fx.end.follow'] }, { id: 'ntone', size: 'sm', ends: ['c.fx.end.dark', 'c.fx.end.bright'] },
+    ] },
+    { title: 'c.fx.sec.wobble', items: [{ id: 'wobble', size: 'lg' }, { id: 'wrate', size: 'sm' }, { id: 'flutter', size: 'sm' }, { id: 'wstereo', size: 'sm', ends: ['c.fx.end.mono', 'c.fx.end.stereo'] }] },
+    { title: 'c.fx.sec.drive', items: [{ id: 'drive', size: 'lg' }, { stack: [{ id: 'dstyle', small: true, hideLabel: true }] }, { id: 'dlow', size: 'sm' }, { id: 'dhigh', size: 'sm' }] },
+    { title: 'c.fx.sec.digital', items: [{ id: 'digital', size: 'lg' }, { id: 'srate', size: 'sm' }, { id: 'bits', size: 'sm' }, { id: 'dsmooth', size: 'sm' }] },
+    { title: 'c.fx.sec.wear', items: [{ id: 'wear', size: 'lg' }, { stack: [{ id: 'tape', small: true, hideLabel: true, labels: ['c.fx.pt.tape0', 'c.fx.pt.tape1', 'c.fx.pt.tape2'] }, { id: 'dstereo', small: true }] }, { id: 'drops', size: 'sm' }] },
+    { title: 'c.fx.sec.magnitude', items: [{ id: 'amount', size: 'lg' }, { id: 'wander', size: 'sm' }] },
+    { title: 'c.fx.sec.output', items: [{ id: 'lowcut', size: 'sm' }, { id: 'highcut', size: 'sm' }, { id: 'tone', size: 'sm', ends: ['c.fx.end.dark', 'c.fx.end.bright'] }, { id: 'width', size: 'sm', ends: ['c.fx.end.mono', 'c.fx.end.wide'] }, { id: 'out', size: 'sm' }] },
+  ],
   half: [
     { title: 'c.fx.sec.slowdown', items: [{ stack: [{ id: 'speed', labels: ['c.fx.lab.halfFifth', 'c.fx.lab.halfOctave', 'c.fx.lab.halfTwoOct'], small: true }, { id: 'loop', small: true }] }] },
     { title: 'c.fx.sec.transitions', items: [{ id: 'smooth', size: 'lg', ends: ['c.fx.end.percussive', 'c.fx.end.swell'] }] },
@@ -464,6 +483,8 @@ const LAYOUT: Partial<Record<FxKind, Section[]>> = {
   ],
 };
 
+/** Effects laid out as a strip of module columns (under a picture per module), RC-20 style. */
+const COLUMNS = new Set<string>(['patina']);
 /** The Multiband's thresholds: dragged in its display, not knobs. */
 const MB_THRESHOLDS = ['dl', 'dm', 'dh', 'ul', 'um', 'uh'];
 /** Chorus / Phaser: the LFO follows the tempo. */
@@ -480,7 +501,7 @@ function LayoutItem(props: { fx: Fx; it: Item }) {
     return <Segmented label={t('c.fx.meter')} small options={['GR', 'OUT']} value={() => (mode() === 'gr' ? 0 : 1)} pick={i => fetModes.set(props.fx.id, i ? 'out' : 'gr')} title={t('c.fx.meterTip')} />;
   }
   const ends = () => { const e = typeof it.ends === 'function' ? it.ends(props.fx) : it.ends; return e ? [L(e[0]), L(e[1])] as [string, string] : undefined; };
-  return <Ctl fx={props.fx} id={it.id} size={it.size} ends={ends()} labels={it.labels?.map(L)} danger={it.danger} small={it.small} />;
+  return <Ctl fx={props.fx} id={it.id} size={it.size} ends={ends()} labels={it.labels?.map(L)} danger={it.danger} small={it.small} hideLabel={it.hideLabel} />;
 }
 
 /** What a keyed source does to each effect that takes one (the hint under the picker, the tooltip). */
@@ -533,7 +554,7 @@ function Sections(props: { fx: Fx }) {
   const adv = () => !!advOpen()[props.fx.id];
   const shown = () => secs().filter(s => !s.adv || adv());
   return (
-    <div class="fxsecs" style={{ '--fxc': FXMETA[props.fx.type].color }}>
+    <div class={['fxsecs', { 'fxsecs-cols': COLUMNS.has(props.fx.type) }]} style={{ '--fxc': FXMETA[props.fx.type].color }}>
       <For each={shown()}>
         {(sec, i) => (
           <>
