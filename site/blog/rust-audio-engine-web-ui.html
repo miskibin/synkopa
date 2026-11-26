@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A real-time Rust audio engine behind a SolidJS UI: how Synkopa's two halves talk</title>
+<meta name="description" content="How a DAW keeps a lock-free, allocation-free Rust audio callback while its interface is a web view: command rings, graph swaps, a binary telemetry frame at 60 Hz, and one requestAnimationFrame loop in SolidJS 2.">
+<link rel="canonical" href="https://miskibin.github.io/synkopa/blog/rust-audio-engine-web-ui.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://miskibin.github.io/synkopa/blog/rust-audio-engine-web-ui.html">
+<meta property="og:title" content="A real-time Rust audio engine behind a SolidJS UI">
+<meta property="og:description" content="Command rings, graph swaps, a binary telemetry frame at 60 Hz and one requestAnimationFrame loop: how Synkopa's audio engine and web UI talk.">
+<meta property="og:image" content="https://miskibin.github.io/synkopa/img/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "A real-time Rust audio engine behind a SolidJS UI: how Synkopa's two halves talk",
+  "datePublished": "2026-11-26",
+  "about": ["Rust", "real-time audio", "SolidJS", "Tauri", "digital audio workstation"],
+  "url": "https://miskibin.github.io/synkopa/blog/rust-audio-engine-web-ui.html",
+  "isPartOf": { "@type": "WebSite", "name": "Synkopa", "url": "https://miskibin.github.io/synkopa/" }
+}
+</script>
+<link rel="icon" type="image/png" href="../img/icon.png">
+<style>
+  :root { color-scheme: light; --bg: #fbfaf7; --text: #16181d; --muted: #5a6270; --rule: #dedbd3; --accent: #1f56c2; --code-bg: #f0eee8; --note: #fff4d6; }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --bg: #13161c; --text: #f1f3f6; --muted: #a4adba; --rule: #2f3642; --accent: #8fb6ff; --code-bg: #1b2029; --note: #2c2814; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 16px 4rem; }
+  header.top { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; padding: 1rem 0; border-bottom: 1px solid var(--rule); font-size: .92rem; }
+  header.top a { color: var(--muted); text-decoration: none; }
+  header.top a:hover { color: var(--text); }
+  header.top .brand { display: flex; align-items: center; gap: .5rem; color: var(--text); font-weight: 650; margin-right: auto; }
+  h1 { font-size: clamp(1.75rem, 5vw, 2.4rem); line-height: 1.15; margin: 2.5rem 0 .75rem; text-wrap: balance; letter-spacing: -.01em; }
+  h2 { font-size: 1.35rem; line-height: 1.25; margin: 2.75rem 0 .5rem; text-wrap: balance; }
+  p { margin: .9rem 0; }
+  .lede { font-size: 1.12rem; color: var(--muted); }
+  .meta { color: var(--muted); font-size: .9rem; }
+  a { color: var(--accent); text-underline-offset: .2em; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  code { font: .88em/1.5 ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; background: var(--code-bg); padding: .08em .3em; border-radius: .25rem; }
+  pre { background: var(--code-bg); padding: .9rem 1rem; border-radius: .5rem; overflow-x: auto; margin: 1.1rem 0; }
+  pre code { background: none; padding: 0; font-size: .82rem; }
+  .src { color: var(--muted); font-size: .82rem; margin: -.6rem 0 1.1rem; }
+  .table { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: .45rem .75rem .45rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; padding-right: 0; padding-left: .75rem; white-space: nowrap; }
+  .note { background: var(--note); padding: .8rem 1rem; border-radius: .5rem; margin: 1.25rem 0; }
+  .note p { margin: 0; }
+  figure { margin: 1.5rem 0; }
+  figure pre code { font-size: .78rem; line-height: 1.35; }
+  figcaption { color: var(--muted); font-size: .88rem; }
+  footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .92rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="../"><img src="../img/icon.png" width="24" height="24" alt="">Synkopa</a>
+    <a href="../docs/">Docs</a>
+    <a href="https://github.com/miskibin/synkopa">GitHub</a>
+    <a href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
+  </header>
+
+  <main>
+    <h1>A real-time Rust audio engine behind a SolidJS UI</h1>
+    <p class="meta">26 November 2026 · file and line references are to <a href="https://github.com/miskibin/synkopa/tree/b3a49c37">commit b3a49c37</a></p>
+    <p class="lede"><a href="../">Synkopa</a> is an open-source DAW. Its audio engine is Rust; its interface is SolidJS in a Tauri web view. The two halves have opposite needs: the audio callback has about 2.7 ms per block at 128 frames and must never wait, while the interface runs in a garbage-collected runtime that pauses when it likes. This is how they talk without either one stalling the other.</p>
+
+    <h2>The rule, and what it rules out</h2>
+    <p>The audio callback does not allocate, lock, or do I/O. That removes every ordinary way of sharing data: no mutex around the project, no <code>Arc</code> whose last reference might drop on the audio thread, no channel that allocates a node per message.</p>
+    <p>What is left is four one-way paths, each sized for what it carries.</p>
+    <figure>
+<pre><code> UI (SolidJS, canvas)                         audio thread (Rust)
+ ────────────────────                         ───────────────────
+ ops ──invoke──▶ engine: Mutex&lt;Project&gt;
+                   │ build graph off-thread
+                   ├── Cmd ring (rtrb, 4096) ──────────▶ drain, apply
+                   │                                      │
+                   ◀── Garbage ring (rtrb, 4096) ──────── old graph, to be freed
+                   │
+ "state" event ◀───┘ (JSON, after an edit)
+                                                          │ atomics, tap rings
+ binary frame ◀── housekeeping thread, 60 Hz ◀────────────┘
+ (Tauri Channel)</code></pre>
+      <figcaption>Edits go down as commands; memory comes back up to be freed; numbers that move come back as one binary frame.</figcaption>
+    </figure>
+
+    <h2>Down: commands on a ring</h2>
+    <p>The engine owns the project behind a mutex that only non-audio threads take. Anything the audio thread must know travels as a <code>Cmd</code> through a single-producer, single-consumer ring from the <a href="https://crates.io/crates/rtrb"><code>rtrb</code></a> crate. The first thing the callback does each block is drain it:</p>
+<pre><code>fn drain(&amp;mut self) {
+    while let Ok(cmd) = self.cmds.pop() {
+        self.apply(cmd);
+    }
+    // live keyboard events arrive on their own ring (the UI side never waits for a lock)
+    ...
+}</code></pre>
+    <p class="src">crates/engine/src/rt.rs:1347</p>
+    <p>MIDI keyboard input gets a second ring, so a key press never queues behind a project edit that holds the engine lock.</p>
+    <p>A knob move is the common case, so it is the cheap one. Effect parameters are resolved to numbers on the non-audio side and sent by value:</p>
+<pre><code>pub const MAX_PARAMS: usize = 32;
+/// Parameters of a built-in effect, already resolved to numbers on the
+/// non-audio side. Fixed size so it travels through a ring buffer by value.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ParamBlock {
+    pub values: [f32; MAX_PARAMS],
+    /// EQ bands (unused slots have `on = false`).
+    pub bands: [BandParams; 24],
+}</code></pre>
+    <p class="src">crates/engine/src/processor.rs:146</p>
+    <p>That makes <code>Cmd::Params</code> a large enum variant, and Clippy says to box it. The comment above the enum explains why not: a box would have to be freed, and the thread that finishes reading it is the audio thread. The block is copied instead. Each processor then smooths its own continuous parameters per sample with a one-pole filter (about 20 ms for EQ gain), and faders ramp linearly across the block, so a jump in the message is never a jump in the signal.</p>
+
+    <h2>Structure changes: build elsewhere, swap, send the old one back</h2>
+    <p>Adding an effect or a track changes the shape of the mixer. The new graph is built on the calling thread, with all the allocation that takes, and arrives as <code>Cmd::Graph(Box&lt;Graph&gt;)</code>. The audio thread does three things with it.</p>
+    <p>First it moves running processors across by effect id, so a reverb keeps its tail and a delay keeps its buffer when something else in the chain changes. Delay-compensation lines and fader ramps are carried the same way.</p>
+    <p>Then it swaps, and sends the old graph back:</p>
+<pre><code>let old = std::mem::replace(&amp;mut self.graph, g);
+self.trash(Garbage::Graph(old));</code></pre>
+<pre><code>fn trash(&amp;mut self, g: Garbage) {
+    // The ring is sized generously; if it is ever full we leak rather than free here.
+    if let Err(rtrb::PushError::Full(g)) = self.garbage.push(g) {
+        std::mem::forget(g);
+    }
+}</code></pre>
+    <p class="src">crates/engine/src/rt.rs:1340, 1451</p>
+    <p>Freeing is as forbidden as allocating, so the old graph rides a second ring to a housekeeping thread that drops it. If that ring were ever full, the code leaks on purpose: a leak is a bug to fix later, while a <code>free</code> on the audio thread is a click now.</p>
+
+    <h2>Up, slowly: the project as an event</h2>
+    <p>The interface never edits its own copy of the project and hopes the engine agrees. It sends <em>ops</em> (<code>putClips</code>, <code>putFx</code>, <code>setBpm</code> and so on), and a batch is atomic by the simplest means available:</p>
+<pre><code>pub fn apply_all(p: &amp;mut Project, ops: &amp;[Op]) -> Result&lt;Dirty, OpError&gt; {
+    let mut work = p.clone();
+    let mut d = Dirty::default();
+    for op in ops {
+        d.merge(apply(&amp;mut work, op)?);
+    }
+    *p = work;
+    Ok(d)
+}</code></pre>
+    <p class="src">crates/engine/src/ops.rs:1308</p>
+    <p>Undo is the same idea: up to 200 whole-project snapshots, not inverse operations. It costs memory and a clone per edit. In return, undo cannot drift from the edit it reverses, and the command line, which sends the same ops over a local socket, gets atomic batches and one undo step per command with no extra code.</p>
+    <p>After an edit the engine emits a <code>state</code> event with the project as JSON. On a large song that is close to 1 MB, which is fine once per edit and ruinous sixty times a second. So a drag is a <em>gesture</em>: the interface applies each step to its own copy at once, coalesces what it sends to one batch per animation frame, and the engine stays quiet until the gesture ends.</p>
+    <div class="note"><p>This is the unfinished part. A full-project event per edit is simple and has been easy to keep correct, but its cost grows with the song, not with the edit. Sending only what an op touched is the obvious next step.</p></div>
+
+    <h2>Up, fast: one binary frame</h2>
+    <p>Meters, the playhead and the spectrum in an open EQ window change every frame, and none of them belong in JSON. The audio thread publishes them without knowing whether anyone is listening: plain atomics for the playhead and CPU load, a peak per insert that the reader takes with <code>swap(0)</code>, and for effects whose window is open, raw samples pushed into a small ring. If that ring is full, the audio thread skips the write.</p>
+    <p>A housekeeping thread wakes 60 times a second, reads the atomics, runs the FFTs for the watched effects, and packs everything into one little-endian frame. Tauri hands the bytes to the web view over a <code>Channel</code> with no JSON step:</p>
+<pre><code>#[tauri::command]
+async fn telemetry_subscribe(app: St&lt;'_&gt;, channel: Channel&lt;InvokeResponseBody&gt;) -> R&lt;()&gt; {
+    app.engine.set_frame_sink(Some(Box::new(move |bytes| {
+        let _ = channel.send(InvokeResponseBody::Raw(bytes));
+    })));
+    Ok(())
+}</code></pre>
+    <p class="src">app/src/lib.rs:261</p>
+    <p>On the other side a <code>DataView</code> reads it into objects that live for the whole session, so a 60 Hz stream creates no garbage for the JavaScript collector to pause on:</p>
+<pre><code>decode(buf: ArrayBuffer): boolean {
+  if (buf.byteLength &lt; 36) return false;
+  const v = new DataView(buf);
+  if (v.getUint32(0, true) !== MAGIC) return false;
+  const f = this.frame;
+  f.seq = v.getUint32(4, true);
+  f.beat = v.getFloat64(8, true);
+  ...</code></pre>
+    <p class="src">ui/src/api/telemetry.ts:70</p>
+    <p>Analysis is paid for only when someone looks: the interface tells the engine which effect windows are open, and only those get taps and FFTs (eight at most). The playhead in the frame is the beat being <em>heard</em>, the rendered position minus plugin delay compensation, so the line on screen matches the speakers.</p>
+
+    <h2>The interface: reactivity for structure, a loop for motion</h2>
+    <p>SolidJS updates the DOM node that depends on a value and nothing else, which suits a DAW's static structure: tracks, channels, effect chains. It is the wrong tool for sixty meter values a second. So telemetry never enters the reactive store. It lands in plain mutable objects, and one loop draws from them:</p>
+<pre><code>// The one requestAnimationFrame loop. Everything that animates (playhead, clock, meters,
+// effect visualisations) registers a task here and writes straight to canvas/DOM.
+const tasks = new Set&lt;FrameTask&gt;();
+function frame() {
+  raf = requestAnimationFrame(frame);
+  const t0 = performance.now();
+  for (const t of tasks) {
+    try { t(t0); } catch (e) { console.error(e); }
+  }
+  ...</code></pre>
+    <p class="src">ui/src/ui/frameLoop.ts</p>
+    <p>Only edges, such as play turning into stop, are written to the store. Everything that moves is canvas. Layers that depend only on parameters (an EQ's grid, a compressor's curve) are drawn once into an offscreen canvas and reused until their key changes. The playlist draws tiles larger than the view, shifts existing pixels on scroll, and paints only the newly exposed strip. Long lists build only the rows on screen.</p>
+    <p>The project in the store is updated by a keyed merge of what changed, so a component that holds a clip keeps the same object across edits.</p>
+
+    <h2>Keeping the rule true</h2>
+    <p>A rule about what a thread never does is only as good as its test. The engine's tests install a counting global allocator, arm it on the audio thread and on the worker threads, and play: 400 blocks, 8 synths, 8 insert chains, 4 threads.</p>
+<pre><code>let (_, allocs, threads) = play(4, 400, true);
+assert_eq!(threads, 3);
+assert_eq!(allocs, 0, "the audio thread or a worker allocated");</code></pre>
+    <p class="src">crates/engine/tests/rt_workers.rs:193</p>
+    <p>The same file checks that four threads produce output bit-identical to one. Independent chains run on a small pool whose dispatch is a few atomics: workers and the audio thread pull job indices from one counter, so if no worker wakes in time the audio thread does the work itself, and results are summed in a fixed order.</p>
+    <p>A callback that runs longer than its period is counted, as are the driver's own xruns, and the count travels in the telemetry frame.</p>
+
+    <h2>What it adds up to</h2>
+    <p>Measured on 16 November 2026 against FL Studio 20.7.2 on the same PC (i5-12400F, 32 GB, Windows 11, both at a 512-sample buffer), with songs of matched size, medians of five runs:</p>
+    <div class="table">
+      <table>
+        <thead><tr><th>Task</th><th class="n">Synkopa</th><th class="n">FL Studio</th></tr></thead>
+        <tbody>
+          <tr><td>Open a large project</td><td class="n">0.44 s</td><td class="n">10.57 s</td></tr>
+          <tr><td>Open the piano roll</td><td class="n">39 ms</td><td class="n">639 ms</td></tr>
+          <tr><td>Add an effect and open its window</td><td class="n">59 ms</td><td class="n">575 ms</td></tr>
+          <tr><td>Cold startup</td><td class="n">1.32 s</td><td class="n">1.64 s</td></tr>
+          <tr><td>Move clips, input to screen (median / p95)</td><td class="n">17 / 25 ms</td><td class="n">16 / 18 ms</td></tr>
+          <tr><td>Audio dropouts in 10 minutes of editing</td><td class="n">0</td><td class="n">0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>FL Studio is ahead on raw drag latency, and its demo song loads heavier synth patches than the Synkopa one, so the loading row flatters Synkopa. The <a href="https://github.com/miskibin/synkopa/blob/main/perf/realworld/README.md">method and scripts</a> are in the repository.</p>
+    <p>None of the pieces here is new. Lock-free rings, graph swapping and deferred frees are how real-time audio has been written for decades. The useful finding is how little the web view costs once it is kept to its own side: it never holds anything the audio thread needs, and nothing that moves at frame rate goes through JSON or a reactive graph.</p>
+
+    <footer>
+      <p>Synkopa is free software under AGPL-3.0. <a href="https://github.com/miskibin/synkopa">Source on GitHub</a> · <a href="https://github.com/miskibin/synkopa/blob/main/docs/architecture.md">Full architecture notes</a> · <a href="https://github.com/miskibin/synkopa/releases/latest">Download</a></p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
