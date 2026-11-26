@@ -4,69 +4,73 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Send sounds to mixer inserts, balance levels, and add effects.">
-  <title>Mix and route · Synkopa Docs</title>
+  <title>Mix &amp; route · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="top">
-    <div class="top-inner">
-      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
-      <nav class="top-links" aria-label="Synkopa links">
-        <a href="https://miskibin.github.io/synkopa/">Website</a>
-        <a href="https://github.com/miskibin/synkopa">GitHub</a>
-        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
-      </nav>
-    </div>
-  </header>
   <div class="shell">
     <aside class="sidebar">
-      <nav aria-label="Documentation">
-        <p>Start here</p>
-        <ul>
-          <li><a href="index.html">Overview</a></li>
-          <li><a href="first-song.html">Make your first song</a></li>
-        </ul>
-        <p>Workflow</p>
-        <ul>
-          <li><a href="patterns.html">Write and arrange</a></li>
-          <li><a href="record.html">Record audio</a></li>
-          <li><a href="mix.html" aria-current="page">Mix and route</a></li>
-          <li><a href="export.html">Export and share</a></li>
-        </ul>
-        <p>Reference</p>
-        <ul>
-          <li><a href="reference.html">Shortcuts and help</a></li>
-        </ul>
-      </nav>
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html" aria-current="page">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
     </aside>
-    <main id="main">
+    <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Mix and route</h1>
-        <p class="lede">Send sounds to mixer inserts, balance levels, and add effects.</p>
       </header>
-      <nav class="contents" aria-label="On this page"><a href="#routing">Send a sound to a mixer insert</a><a href="#levels">Balance levels</a><a href="#effects">Add an effect</a></nav>
+      <nav class="contents" aria-label="On this page">
+        <a href="#routing">Send a sound to a mixer insert</a>
+        <a href="#levels">Balance levels</a>
+        <a href="#effects">Add an effect</a>
+      </nav>
 
       <article class="prose">
         <section>
           <h2 id="routing">Send a sound to a mixer insert</h2>
-          <p>A Playlist track positions clips in time. A mixer insert controls the level, pan, and effects of the signal routed to it.</p>
+          <p>Route sounds to separate inserts to adjust their levels and effects independently.</p>
           <ul>
             <li><strong>Audio on a Playlist track</strong> → click the track’s mixer routing control or choose <strong>Mixer channel</strong> from its menu, then pick an insert.</li>
             <li><strong>Instrument in the Channel Rack</strong> → use the mixer channel control on the left of its row. Click to choose an insert. When the channel is following the clip track, double-click the control to give that channel a free insert of its own.</li>
           </ul>
-          <p>Open the Mixer with <kbd>F9</kbd> and play the song. The insert’s meter should move when that sound plays. Separate inserts let you adjust sounds independently even when they share a pattern.</p>
-<figure>
-  <a href="images/mixer.webp"><img src="images/mixer.webp" width="1600" height="900" alt="Synkopa Mixer with a Master strip, several insert strips, faders, and an Add effect control on the right." loading="lazy"></a>
-  <figcaption>The Mixer shows the Master on the left, inserts across the center, and effects for the selected insert on the right. Select the image to view it at full size.</figcaption>
-</figure>
+          <p>Open the Mixer with <kbd>F9</kbd>. The insert’s meter moves when its sound plays.</p>
+          <figure>
+            <a class="shot" href="images/mixer.webp"><img src="images/mixer.webp" width="1600" height="900" alt="Synkopa Mixer with a Master strip, several insert strips, faders, and an Add effect control on the right." loading="lazy"></a>
+            <figcaption>Master, inserts, and the selected insert’s effects.</figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="levels">Balance levels</h2>
           <ol>
-            <li>Play a busy section in <strong>SONG</strong> mode and listen for the sounds that overpower the rest.</li>
-            <li>Lower their insert faders and use pan to position them left or right. Use mute and solo to check what each insert carries.</li>
+            <li>Play a busy section in <strong>SONG</strong> mode.</li>
+            <li>Lower sounds that overpower the rest. Pan sounds left or right. Use mute and solo to check which sounds each insert carries.</li>
             <li>Watch the Master meter. If it clips, reduce the levels feeding it, then listen again.</li>
           </ol>
         </section>
@@ -74,16 +78,11 @@
           <h2 id="effects">Add an effect</h2>
           <ol>
             <li>Click the insert you want to process. Choose <strong>Add effect…</strong> or press <kbd>Shift</kbd> + <kbd>F9</kbd>.</li>
-            <li>Pick an effect in the browser. For example, add <strong>Reverb</strong> to a piano insert to give that sound a sense of space.</li>
+            <li>Pick an effect, such as <strong>Reverb</strong> on a piano insert.</li>
             <li>Play the song while you adjust the effect. Toggle the effect’s bypass to compare it with the original sound. Drag effect slots up or down to change their processing order.</li>
           </ol>
         </section>
       </article>
-    <nav class="next" aria-label="Related guides">
-      <a href="record.html">← Record audio</a>
-      <a href="export.html">Export and share →</a>
-    </nav>
-      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
     </main>
   </div>
 </body>

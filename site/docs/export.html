@@ -4,49 +4,53 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Render a WAV, an MP3, or stems. Pack a project with its audio.">
-  <title>Export and share · Synkopa Docs</title>
+  <title>Export &amp; share · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="top">
-    <div class="top-inner">
-      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
-      <nav class="top-links" aria-label="Synkopa links">
-        <a href="https://miskibin.github.io/synkopa/">Website</a>
-        <a href="https://github.com/miskibin/synkopa">GitHub</a>
-        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
-      </nav>
-    </div>
-  </header>
   <div class="shell">
     <aside class="sidebar">
-      <nav aria-label="Documentation">
-        <p>Start here</p>
-        <ul>
-          <li><a href="index.html">Overview</a></li>
-          <li><a href="first-song.html">Make your first song</a></li>
-        </ul>
-        <p>Workflow</p>
-        <ul>
-          <li><a href="patterns.html">Write and arrange</a></li>
-          <li><a href="record.html">Record audio</a></li>
-          <li><a href="mix.html">Mix and route</a></li>
-          <li><a href="export.html" aria-current="page">Export and share</a></li>
-        </ul>
-        <p>Reference</p>
-        <ul>
-          <li><a href="reference.html">Shortcuts and help</a></li>
-        </ul>
-      </nav>
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html" aria-current="page">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
     </aside>
-    <main id="main">
+    <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Export and share</h1>
-        <p class="lede">Render a WAV, an MP3, or stems. Pack a project with its audio.</p>
       </header>
-      <nav class="contents" aria-label="On this page"><a href="#mix">Render a WAV or MP3</a><a href="#stems">Export mixer stems</a><a href="#project">Share an editable project</a></nav>
+      <nav class="contents" aria-label="On this page">
+        <a href="#mix">Render a WAV or MP3</a>
+        <a href="#stems">Export mixer stems</a>
+        <a href="#project">Share an editable project</a>
+      </nav>
 
       <article class="prose">
         <section>
@@ -56,12 +60,12 @@
             <li>Under <strong>Range</strong>, choose <strong>Song</strong> for the full Playlist, <strong>Pattern</strong> for the current pattern, or <strong>Loop</strong> for a range drawn on the Playlist ruler.</li>
             <li>Under <strong>Format</strong>, choose <strong>WAV</strong> for uncompressed audio or <strong>MP3</strong> for a smaller listening copy. Choose <strong>Export…</strong> and save the file.</li>
           </ol>
-          <p>Listen to the exported file. For a song with reverb or delay, set <strong>Tail</strong> to keep enough time for the effect to fade naturally. When exporting a loop as WAV, <strong>Wrap</strong> folds the tail into the start of the loop.</p>
-<figure>
-  <a href="images/export.webp"><img src="images/export.webp" width="825" height="370" alt="Export dialog with Mix and Stems output choices, Pattern and Song ranges, and WAV and MP3 formats." loading="lazy"></a>
-  <figcaption>The Export dialog is set to render the full Playlist as a single WAV mix. Select the image to view it at full size.</figcaption>
-</figure>
-          <div class="note"><p>If the Playlist is empty, choose <strong>Pattern</strong> to render your loop or put the pattern in the Playlist before exporting <strong>Song</strong>.</p></div>
+          <p>Use <strong>Tail</strong> to let reverb and delay fade. For a WAV loop, <strong>Wrap</strong> folds the tail into the start.</p>
+          <figure>
+            <a class="shot" href="images/export.webp"><img src="images/export.webp" width="825" height="370" alt="Export dialog with Mix and Stems output choices, Pattern and Song ranges, and WAV and MP3 formats." loading="lazy"></a>
+            <figcaption>The Export dialog is set to render the full Playlist as a single WAV mix.</figcaption>
+          </figure>
+          <div class="note"><p>Empty Playlist? Choose <strong>Pattern</strong> or add clips before exporting <strong>Song</strong>.</p></div>
         </section>
         <section>
           <h2 id="stems">Export mixer stems</h2>
@@ -69,19 +73,14 @@
             <li>Set <strong>Output</strong> to <strong>Stems</strong> and select a range.</li>
             <li>Set <strong>Master</strong> to <strong>Include</strong> if you also want a full mix. Choose <strong>Pick folder…</strong>.</li>
           </ol>
-          <p>Synkopa writes equal-length files for mixer inserts that have sound. Muted inserts are skipped. The individual stems bypass Master effects, so check the included Master mix when you need the exact sound of the song.</p>
+          <p>Stems are equal-length files from active, audible inserts. Only the Master mix includes Master effects.</p>
         </section>
         <section>
           <h2 id="project">Share an editable project</h2>
           <p>Choose <strong>File → Export project as ZIP…</strong> to collect the project, samples, and recorded takes. The recipient should extract the whole ZIP and keep the <code>Audio</code> folder beside the <code>.synkopa</code> file.</p>
-          <p>The recipient needs any third-party plugins used by the project. Files loaded directly inside those plugins are outside the ZIP. Export a mix or stems as well when they need to hear the song without those plugins.</p>
+          <p>Send any third-party plugin requirements and files loaded inside those plugins separately. Include a mix or stems for playback without the plugins.</p>
         </section>
       </article>
-    <nav class="next" aria-label="Related guides">
-      <a href="mix.html">← Mix and route</a>
-      <a href="reference.html">Shortcuts and help →</a>
-    </nav>
-      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
     </main>
   </div>
 </body>

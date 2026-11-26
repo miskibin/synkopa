@@ -18,3 +18,6 @@ select `site/docs` as the project root.
 
 Keep screenshots in `images/` and update the image dimensions, alt text and caption when
 replacing them.
+
+The first-song pattern uses MP3 copies of the included Kick, Clap and Hat sounds from
+`crates/engine/library`. See the repository’s `THIRD_PARTY_NOTICES.md` for sample credits.

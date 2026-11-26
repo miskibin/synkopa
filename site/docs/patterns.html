@@ -4,63 +4,67 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Work with patterns, audio clips, samples, and the Piano roll.">
-  <title>Write and arrange · Synkopa Docs</title>
+  <title>Write &amp; arrange · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="top">
-    <div class="top-inner">
-      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
-      <nav class="top-links" aria-label="Synkopa links">
-        <a href="https://miskibin.github.io/synkopa/">Website</a>
-        <a href="https://github.com/miskibin/synkopa">GitHub</a>
-        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
-      </nav>
-    </div>
-  </header>
   <div class="shell">
     <aside class="sidebar">
-      <nav aria-label="Documentation">
-        <p>Start here</p>
-        <ul>
-          <li><a href="index.html">Overview</a></li>
-          <li><a href="first-song.html">Make your first song</a></li>
-        </ul>
-        <p>Workflow</p>
-        <ul>
-          <li><a href="patterns.html" aria-current="page">Write and arrange</a></li>
-          <li><a href="record.html">Record audio</a></li>
-          <li><a href="mix.html">Mix and route</a></li>
-          <li><a href="export.html">Export and share</a></li>
-        </ul>
-        <p>Reference</p>
-        <ul>
-          <li><a href="reference.html">Shortcuts and help</a></li>
-        </ul>
-      </nav>
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html" aria-current="page">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
     </aside>
-    <main id="main">
+    <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Write and arrange</h1>
-        <p class="lede">Work with patterns, audio clips, samples, and the Piano roll.</p>
       </header>
-      <nav class="contents" aria-label="On this page"><a href="#patterns">Write patterns</a><a href="#clips">Arrange patterns on the Playlist</a><a href="#audio">Add samples and audio</a></nav>
+      <nav class="contents" aria-label="On this page">
+        <a href="#patterns">Write patterns</a>
+        <a href="#clips">Arrange patterns on the Playlist</a>
+        <a href="#audio">Add samples and audio</a>
+      </nav>
 
       <article class="prose">
         <section>
           <h2 id="patterns">Write patterns</h2>
-          <p>The <strong>Channel Rack</strong> holds instruments and samplers. A <strong>pattern</strong> stores notes and steps for one or more of those channels. Press <kbd>F6</kbd> to open the Rack and choose a pattern in the toolbar’s pattern selector. Open its dropdown and choose <strong>New pattern</strong> to start another one.</p>
+          <p>A pattern holds steps and notes for one or more channels. Open the <strong>Channel Rack</strong> with <kbd>F6</kbd>. Choose a pattern in the toolbar or click the <strong>+</strong> beside it to start a new one.</p>
           <ul>
             <li>For drums, click the step squares on a channel’s row.</li>
             <li>For a melody or chords, select a channel and press <kbd>F7</kbd>. In the Piano roll, vertical position is pitch and horizontal position is time. Drag a note’s right edge to change its length. Right-click a note to remove it.</li>
             <li>Use <strong>PAT</strong> and <kbd>Space</kbd> to audition just the current pattern.</li>
           </ul>
-<figure>
-  <a href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Piano roll with pitches on the vertical keyboard, note lengths on the grid, and velocity markers along the bottom." loading="lazy"></a>
-  <figcaption>The Piano roll edits pitch, timing, length, and velocity for one channel in the current pattern. Select the image to view it at full size.</figcaption>
-</figure>
+          <figure>
+            <a class="shot" href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Piano roll with pitches on the vertical keyboard, note lengths on the grid, and velocity markers along the bottom." loading="lazy"></a>
+            <figcaption>Piano roll with the velocity lane below.</figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="clips">Arrange patterns on the Playlist</h2>
@@ -73,15 +77,10 @@
         </section>
         <section>
           <h2 id="audio">Add samples and audio</h2>
-          <p>Open <strong>Library</strong> in the Browser and click a sample to preview it. Drag it to the Playlist to play the file as audio. Drag it between Channel Rack rows to create a sampler channel that can play steps or notes. Dropping it onto an existing row replaces that sound.</p>
-          <p>You can also drag a WAV or MP3 file from your file manager into the Playlist or Channel Rack. Imported and recorded audio is available in the Browser’s <strong>Audio</strong> tab. When sharing your edits, <a href="export.html#project">export a project ZIP</a> to collect the audio.</p>
+          <p>In the Browser’s <strong>Library</strong>, click a sample to preview it. Drag it onto the Playlist to make an audio clip, between Rack rows to make a sampler, or onto a Rack row to replace the sound.</p>
+          <p>You can also drag WAV or MP3 files from your file manager. Find imported audio and takes under <strong>Audio</strong>.</p>
         </section>
       </article>
-    <nav class="next" aria-label="Related guides">
-      <a href="first-song.html">← Make your first song</a>
-      <a href="record.html">Record audio →</a>
-    </nav>
-      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
     </main>
   </div>
 </body>

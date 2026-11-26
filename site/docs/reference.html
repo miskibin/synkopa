@@ -4,54 +4,59 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Find the shortcuts you need and troubleshoot playback, input, and export.">
-  <title>Shortcuts and help · Synkopa Docs</title>
+  <title>Shortcuts &amp; help · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="top">
-    <div class="top-inner">
-      <a class="brand" href="index.html"><img src="images/icon.png" width="32" height="32" alt="">Synkopa <span>Docs</span></a>
-      <nav class="top-links" aria-label="Synkopa links">
-        <a href="https://miskibin.github.io/synkopa/">Website</a>
-        <a href="https://github.com/miskibin/synkopa">GitHub</a>
-        <a class="download" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
-      </nav>
-    </div>
-  </header>
   <div class="shell">
     <aside class="sidebar">
-      <nav aria-label="Documentation">
-        <p>Start here</p>
-        <ul>
-          <li><a href="index.html">Overview</a></li>
-          <li><a href="first-song.html">Make your first song</a></li>
-        </ul>
-        <p>Workflow</p>
-        <ul>
-          <li><a href="patterns.html">Write and arrange</a></li>
-          <li><a href="record.html">Record audio</a></li>
-          <li><a href="mix.html">Mix and route</a></li>
-          <li><a href="export.html">Export and share</a></li>
-        </ul>
-        <p>Reference</p>
-        <ul>
-          <li><a href="reference.html" aria-current="page">Shortcuts and help</a></li>
-        </ul>
-      </nav>
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html" aria-current="page">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
     </aside>
-    <main id="main">
+    <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Shortcuts and help</h1>
-        <p class="lede">Find the shortcuts you need and troubleshoot playback, input, and export.</p>
       </header>
-      <nav class="contents" aria-label="On this page"><a href="#shortcuts">Everyday shortcuts</a><a href="#playback">The project plays in silence</a><a href="#recording">The input meter does not move</a><a href="#more">More reference material</a></nav>
+      <nav class="contents" aria-label="On this page">
+        <a href="#shortcuts">Everyday shortcuts</a>
+        <a href="#playback">The project plays in silence</a>
+        <a href="#recording">The input meter does not move</a>
+        <a href="#more">Links and support</a>
+      </nav>
 
       <article class="prose">
         <section>
           <h2 id="shortcuts">Everyday shortcuts</h2>
-          <p>Open <strong>Help → Keyboard shortcuts</strong> in the app for the full list. The labels here match the app’s English interface.</p>
+          <p>For the full list, open <strong>Help → Keyboard shortcuts</strong>.</p>
           <div class="table"><table>
             <thead><tr><th scope="col">Action</th><th scope="col">Key or gesture</th></tr></thead>
             <tbody>
@@ -67,7 +72,7 @@
               <tr><td>Save the project</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td></tr>
             </tbody>
           </table></div>
-          <p>If a letter plays a note, toggle <strong>View → Computer keyboard as piano</strong> off and try the shortcut again. If a function key controls the system, use the corresponding <strong>View</strong> menu item.</p>
+          <p>If letter keys play notes, turn off <strong>View → Computer keyboard as piano</strong>. If your system uses the function keys, use the <strong>View</strong> menu.</p>
         </section>
         <section>
           <h2 id="playback">The project plays in silence</h2>
@@ -80,22 +85,18 @@
         </section>
         <section>
           <h2 id="recording">The input meter does not move</h2>
-          <p>Check that the correct recording device and channel are selected in <strong>Audio</strong> settings. Arm <strong>Record</strong> with its <strong>Audio</strong> filter enabled, or enable <strong>Monitor input</strong>, to open the input. If you see a signal but get no take, use <a href="record.html#take">the recording checklist</a>.</p>
+          <p>Check the device and channel in <strong>Audio</strong> settings. To open the input, arm <strong>Record</strong> with <strong>Audio</strong> enabled or turn on <strong>Monitor input</strong>. If the meter moves, <a href="record.html#take">check the recording steps</a>.</p>
         </section>
         <section>
-          <h2 id="more">More reference material</h2>
+          <h2 id="more">Links and support</h2>
           <ul>
             <li><a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">Command-line reference</a> for scripting a running app or rendering project files.</li>
             <li><a href="https://github.com/miskibin/synkopa/blob/main/docs/keys.md">Synkopa Instruments</a> for the built-in player and its downloadable library.</li>
             <li><a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">Changelog</a> for recent features and fixes.</li>
+            <li><a href="https://github.com/miskibin/synkopa/issues">Report an issue</a> or ask on <a href="https://discord.gg/zHMjE3fCY">Discord</a>.</li>
           </ul>
         </section>
       </article>
-    <nav class="next" aria-label="Related guides">
-      <a href="export.html">← Export and share</a>
-      <a href="index.html">Overview →</a>
-    </nav>
-      <footer class="footer"><a href="https://github.com/miskibin/synkopa/issues">Report a problem</a> · <a href="https://discord.gg/zHMjE3fCY">Synkopa Discord</a></footer>
     </main>
   </div>
 </body>
