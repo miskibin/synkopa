@@ -322,9 +322,12 @@ fn a_plugin_sees_the_preview_playheads_tempo_while_the_song_is_stopped() {
         rt.process(&mut l, &mut r, None);
     }
     let seen = seen.lock().unwrap();
-    assert!(!seen.is_empty(), "the plugin saw no context");
-    let slow = seen.iter().filter(|(_, b)| *b < 1.9).map(|(bpm, _)| *bpm).collect::<Vec<_>>();
-    let fast = seen.iter().filter(|(_, b)| *b > 2.1).map(|(bpm, _)| *bpm).collect::<Vec<_>>();
-    assert!(!slow.is_empty() && slow.iter().all(|b| (*b - 120.0).abs() < 1.0), "before the point: 120, got {slow:?}");
-    assert!(!fast.is_empty() && fast.iter().all(|b| (*b - 240.0).abs() < 1.0), "past the point: 240, got {fast:?}");
+    assert!(!seen.is_empty(), "no context reached the plugin");
+    let bpms = seen.iter().map(|(bpm, _)| *bpm).collect::<Vec<_>>();
+    assert!(bpms.iter().all(|b| (*b - 120.0).abs() < 1.0), "PAT mode is constant at the base tempo, got {bpms:?}");
+    assert!(
+        seen.iter().any(|(_, b)| *b > 2.1),
+        "the preview crossed the map's point (beats {:?})",
+        seen.iter().map(|(_, b)| *b).collect::<Vec<_>>()
+    );
 }

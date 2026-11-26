@@ -9,6 +9,15 @@
 
 use crate::model::{TempoPoint, MAX_BASE_BPM, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS};
 
+impl crate::model::Project {
+    /// The compiled tempo map of this project (no points = the constant base tempo).
+    /// Everything that converts beats to seconds or back outside the audio thread goes
+    /// through this, so a mapped tempo is measured the way it plays.
+    pub(crate) fn tempo_map(&self) -> TempoMap {
+        TempoMap::compile(&self.tempo_points, self.bpm)
+    }
+}
+
 /// The tempo map of one timeline snapshot.
 #[derive(Clone, Debug)]
 pub(crate) struct TempoMap {
@@ -116,7 +125,7 @@ impl TempoMap {
         }
         let bpm_b = self.points.get(i + 1).map_or(bpm_a, |&(_, bpm, _)| bpm);
         let d = b - a;
-        if !ramp || (bpm_b - bpm_a).abs() < 1e-9 {
+        if (bpm_b - bpm_a).abs() < 1e-9 {
             return a + rem * bpm_a / 60.0;
         }
         // s(u) = 60·d·ln(1 + c·u)/... with bpm(u) = bpm_a + (bpm_b−bpm_a)·u/d:

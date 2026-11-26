@@ -2203,7 +2203,8 @@ export class MockBackend implements Backend {
     this.checkExportRange(opts);
     const { from, to } = exportRange(this.p, opts.useLoop, opts.pattern);
     const tail = opts.format !== 'mp3' && opts.wrapTail ? 0 : opts.tail;
-    const secs = exportSeconds(from, to, this.p.bpm, tail, this.p.tempoPoints);
+    // a pattern bounce plays at one constant tempo (the base BPM, like PAT mode)
+    const secs = exportSeconds(from, to, this.p.bpm, tail, opts.pattern != null ? undefined : this.p.tempoPoints);
     const name = (this.path ? this.path.replace(/\.(synkopa|wave)$/i, '') : 'C:\\Users\\michal\\Music\\Song') + (opts.format === 'mp3' ? '.mp3' : '.wav');
     // a short offline bounce with the engine's progress reports, so the dialog's readout and cancel work
     if (!(await this.mockBounce(0, 1, name.split(/[\\/]/).pop()!, from, to, 12))) return { cancelled: true };
@@ -2232,7 +2233,8 @@ export class MockBackend implements Backend {
     const { from, to } = exportRange(this.p, opts.useLoop, opts.pattern);
     const format = opts.format ?? 'wav';
     const tail = opts.format !== 'mp3' && opts.wrapTail ? 0 : opts.tail;
-    const secs = exportSeconds(from, to, this.p.bpm, tail, this.p.tempoPoints);
+    // a pattern bounce plays at one constant tempo (the base BPM, like PAT mode)
+    const secs = exportSeconds(from, to, this.p.bpm, tail, opts.pattern != null ? undefined : this.p.tempoPoints);
     const jobs = [
       ...(opts.includeMaster ? [{ name: 'Master', master: true }] : []),
       ...stemInserts(opts.pattern != null ? patternProject(this.p, opts.pattern) : this.p).map(m => ({ name: m.name.trim() || `Insert ${m.id}`, master: false })),

@@ -2064,9 +2064,11 @@ impl Rt {
         self.shared.heard.store(heard.to_bits(), Relaxed);
         // tempo-locked effects follow the pattern loop preview like the song
         let pat_ctx = if !self.playing && self.pat_play.is_some() { Some(self.pat_beat) } else { None };
-        // the pattern preview follows the map at its own playhead (per block, like everything
-        // else) — and the context the processors see follows the same playhead as `beat` does
-        let pat_bpm = self.timeline.tempo.bpm_at(self.pat_beat);
+        // PAT mode plays at one constant tempo — the project's base BPM (FL's behavior): the
+        // preview's playhead wraps inside the pattern, so the song's map would re-read its
+        // points on every loop pass — and the context the processors see follows the same
+        // playhead as `beat` does
+        let pat_bpm = self.timeline.bpm;
         let pat_spb = 60.0 / pat_bpm;
         let ctx_bpm = if pat_ctx.is_some() { pat_bpm } else { bpm };
         self.schedule_pattern(n, 1.0 / (pat_spb * sr as f64), pat_spb);
@@ -2484,15 +2486,11 @@ impl Rt {
                         let Some((tl_l, tl_r)) = self.graph.track_bufs.get_mut(c.track) else { continue };
                         self.graph.track_dirty[c.track] = true;
                         // seconds already spent of the clip's source at the block start: the
-                        // map's integral, so a tempo point inside the clip does not jump the
-                        // audio back (clipmix advances within the block at its own rate)
-                        // seconds already spent of the clip's source at the block start: the
-                        // offset at the clip's own start tempo (a stable conversion — at the
-                        // block's tempo a point inside the clip would step it back) plus the
-                        // map's integral, negative before the clip's start
-                        let off0 = c.offset * (60.0 / tempo.bpm_at(c.start));
-                        let sec0 =
-                            off0 + if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
+                        // map's integral from the source origin (the beat `c.start - c.offset`,
+                        // which both halves of a split share, so the position survives splits
+                        // and left-trims at any tempo); negative before that origin
+                        let origin = c.start - c.offset;
+                        let sec0 = if b0 < origin { -tempo.seconds_between(b0, origin) } else { tempo.seconds_between(origin, b0) };
                         crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, &mut tl_l[at..at + n], &mut tl_r[at..at + n]);
                     }
                     // its own insert: past the track's insert, still muted and scaled by the track (as a routed channel)
@@ -2506,8 +2504,8 @@ impl Rt {
                         let (bl, br) = (&mut self.comp_l[..n], &mut self.comp_r[..n]);
                         bl.fill(0.0);
                         br.fill(0.0);
-                        let sec0 = c.offset * (60.0 / tempo.bpm_at(c.start))
-                            + if b0 < c.start { -tempo.seconds_between(b0, c.start) } else { tempo.seconds_between(c.start, b0) };
+                        let origin = c.start - c.offset;
+                        let sec0 = if b0 < origin { -tempo.seconds_between(b0, origin) } else { tempo.seconds_between(origin, b0) };
                         crate::clipmix::mix_audio_clip(c, a, b0, bps, spb, sec0, bl, br);
                         for i in 0..n {
                             ins.l[at + i] += bl[i] * gain;

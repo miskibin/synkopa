@@ -88,7 +88,7 @@ impl CompRt {
 
 /// Resolves a comp. `audition` plays one whole take instead of the comp.
 /// Regions whose take has no loaded audio are silent.
-pub fn build(comp: &Comp, spb: f64, audition: Option<Id>, audio: &HashMap<Id, Arc<Audio>>) -> CompRt {
+pub(crate) fn build(comp: &Comp, tempo: &crate::engine::tempo::TempoMap, audition: Option<Id>, audio: &HashMap<Id, Arc<Audio>>) -> CompRt {
     let mut segs = vec![];
     if let Some(t) = audition.and_then(|id| comp.take(id)) {
         if let Some(a) = audio.get(&t.source) {
@@ -97,7 +97,8 @@ pub fn build(comp: &Comp, spb: f64, audition: Option<Id>, audio: &HashMap<Id, Ar
         return CompRt { segs };
     }
     let rs = &comp.regions;
-    let to_beats = |s: f32| (s as f64 / spb).max(0.0);
+    // xfade seconds at a region's own position: seconds → beats through the map
+    let to_beats = |at: f64, s: f32| (tempo.beat_at(tempo.seconds_at(at) + s as f64) - at).max(0.0);
     let def = comp.xfade;
     let adjacent = |i: usize| i + 1 < rs.len() && (rs[i + 1].from - rs[i].to).abs() < 1e-9;
     let len = |i: usize| rs[i].to - rs[i].from;
@@ -105,7 +106,7 @@ pub fn build(comp: &Comp, spb: f64, audition: Option<Id>, audio: &HashMap<Id, Ar
     // touch, and never longer than either side (so both halves of every fade fit)
     let fade_in: Vec<f64> = (0..rs.len())
         .map(|i| {
-            let x = to_beats(rs[i].xfade.unwrap_or(def)).min(len(i));
+            let x = to_beats(rs[i].from, rs[i].xfade.unwrap_or(def)).min(len(i));
             if i > 0 && adjacent(i - 1) {
                 x.min(len(i - 1))
             } else {
@@ -117,7 +118,7 @@ pub fn build(comp: &Comp, spb: f64, audition: Option<Id>, audio: &HashMap<Id, Ar
         let Some(t) = comp.take(r.take) else { continue };
         let Some(a) = audio.get(&t.source) else { continue };
         let xin = fade_in[i];
-        let xout = if adjacent(i) { fade_in[i + 1] } else { to_beats(r.xfade.unwrap_or(def)).min(len(i)) };
+        let xout = if adjacent(i) { fade_in[i + 1] } else { to_beats(r.from, r.xfade.unwrap_or(def)).min(len(i)) };
         segs.push(CompSeg { audio: a.clone(), a: r.from - xin / 2.0, b: r.to + xout / 2.0, xin, xout, src0: t.offset - t.start });
     }
     segs.sort_by(|x, y| x.a.total_cmp(&y.a));

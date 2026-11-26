@@ -86,7 +86,9 @@ function ExportDialog() {
   };
   const nFiles = () => stemNames().length;
   const range = () => exportRange(S.project, useLoop(), patId());
-  const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds(), S.project.tempoPoints);
+  // a pattern bounce plays at one constant tempo (the base BPM, like PAT mode): the song's
+  // map would apply to pattern-local beats
+  const seconds = () => exportSeconds(range().from, range().to, S.project.bpm, tailSeconds(), patId() != null ? undefined : S.project.tempoPoints);
   const bytes = () => exportBytes(seconds(), RATES[rateI()], enc()) * (stems() ? nFiles() : 1);
   const songName = () => (S.path ? baseName(S.path).replace(/\.(synkopa|wave)$/i, '') : 'Song') + '.' + (mp3() ? 'mp3' : 'wav');
 

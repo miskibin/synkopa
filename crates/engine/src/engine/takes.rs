@@ -32,7 +32,10 @@ impl Engine {
         if self.midi_take.lock().played {
             return Ok(()); // the armed track was played on a MIDI keyboard: this is a MIDI take
         }
-        let spb = 60.0 / c.project.bpm;
+        // one beat's worth of seconds and every beat conversion below go through the map
+        // (anchored where the take plays), not the base tempo
+        let tempo = c.project.tempo_map();
+        let spb = 60.0 / tempo.bpm_at(take.start.max(0.0));
         let sr = take.sr as f64;
         // Latency compensation: input captured at frame `j` was sung to what was heard
         // `skip` frames earlier. Dropping the first `skip` frames moves the whole take
@@ -61,7 +64,10 @@ impl Engine {
             // Each loop boundary is rounded to a device frame. Normalize that rounding only;
             // a tempo or range edit during recording can change the actual pass length.
             let exact = full_len
-                .map(|beats| (beats, (beats * spb * sr).round() as usize))
+                .map(|beats| {
+                    let from = if k == 0 { take.start } else { take.lap.map(|l| l.0).unwrap_or(take.start) };
+                    (beats, (tempo.seconds_between(from.max(0.0), from.max(0.0) + beats) * sr).round() as usize)
+                })
                 .filter(|(_, frames)| *frames > 0 && frames.abs_diff(f1 - f0) <= 1);
             passes.push((start, exact, &data[f0 * 2..f1 * 2]));
         }
@@ -104,7 +110,11 @@ impl Engine {
                 peak_db: crate::dsp::gain_to_db(audio.peak()),
             });
             c.sources.insert(id, Arc::new(audio));
-            landed.push((id, start, exact.map_or(secs / spb, |(beats, _)| beats).min(TOTAL_BEATS - start)));
+            // the take's length in beats: its seconds laid on the map from where it plays
+            let beats = exact
+                .map_or(tempo.beat_at(tempo.seconds_at(start.max(0.0)) + secs) - start.max(0.0), |(beats, _)| beats)
+                .min(TOTAL_BEATS - start);
+            landed.push((id, start, beats));
         }
         if landed.is_empty() {
             // nothing landed: no undo step for a recording that never made it to disk

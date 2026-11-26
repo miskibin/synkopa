@@ -35,6 +35,8 @@ export function patternProject(p: Project, id: Id): Project {
   const q = structuredClone(p);
   const len = Math.max(4, q.patterns.find(x => x.id === id)?.len ?? 4);
   q.clips = []; if (q.comps) q.comps = []; q.loop = null;
+  // PAT mode plays at one constant tempo, the base BPM: the song's map would apply to pattern-local beats
+  delete q.tempoPoints;
   if (!q.tracks.length) q.tracks.push({ id: 1, name: 'Pattern', color: '#4f8ef7', muted: false, solo: false, arm: false, vol: VOL_UNITY, h: 56, insert: 0 });
   q.tracks.forEach((t, i) => { t.solo = false; if (i === 0) { t.muted = false; t.vol = VOL_UNITY; t.insert = 0; } });
   q.clips.push(newClip(q.nextId++, 0, 0, len, 'pat', id));

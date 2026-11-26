@@ -127,7 +127,13 @@ impl Engine {
         }
         let scope = move |p: Project| {
             let p = match pattern {
-                Some(id) => pattern_project(p, id),
+                // a pattern bounce plays at one constant tempo, the base BPM (like PAT mode):
+                // the song's map would apply to pattern-local beats
+                Some(id) => {
+                    let mut p = pattern_project(p, id);
+                    p.tempo_points.clear();
+                    p
+                }
                 None => p,
             };
             match stem {
@@ -478,7 +484,7 @@ impl Engine {
                 return Err(err("the time selection is empty"));
             }
         }
-        let (picked, from, to, bpm, at_rev) = {
+        let (picked, from, to, tempo, at_rev) = {
             let c = self.core.lock();
             let p = &c.project;
             let any_solo = p.tracks.iter().any(|t| t.solo);
@@ -504,7 +510,7 @@ impl Engine {
                 from = from.max(a);
                 to = to.min(b);
             }
-            (picked, from, to, p.bpm, c.revision)
+            (picked, from, to, p.tempo_map(), c.revision)
         };
         let ids: HashSet<Id> = picked.iter().map(|x| x.id).collect();
         let tracks: HashSet<u32> = picked.iter().map(|x| x.track).collect();
@@ -547,8 +553,9 @@ impl Engine {
         };
         let tail = RenderTail::Decay { max: IN_PLACE_MAX_TAIL_S };
         let data = self.render_scoped(&scope, from, to, tail, sample_rate, cancel, progress, None)?;
-        // the render's own tempo turns its length into beats: the span plus the tail
-        let len = ((data.len() / 2) as f64 / f64::from(sample_rate) * bpm / 60.0).max(to - from);
+        // the render's own tempo turns its length into beats: the span plus the tail, laid
+        // on the map from where the selection plays (not the base tempo)
+        let len = (tempo.beat_at(tempo.seconds_at(from) + (data.len() / 2) as f64 / f64::from(sample_rate)) - from).max(to - from);
         let audio = Audio::from_stereo(data.clone(), sample_rate, 2);
         if audio.peak() < 1e-6 {
             return Err(err("the selection renders silent: nothing to export"));

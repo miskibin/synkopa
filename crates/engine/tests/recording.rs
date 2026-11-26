@@ -492,3 +492,23 @@ fn a_count_in_crosses_beat_zero_at_its_real_pace() {
         let _ = e.stop();
     }
 }
+
+#[test]
+fn a_take_lands_on_the_beats_its_seconds_really_are() {
+    // recording under a mapped tempo: the take's clip length goes through the map's
+    // seconds->beats, not the base tempo (8 beats at a mapped 90 with base 120 would
+    // land as 10.67 beats)
+    let mut p = armed();
+    p.bpm = 120.0;
+    p.tempo_points = vec![TempoPoint { beat: 0.0, bpm: 90.0, ramp: false }];
+    let e = engine(p, "takemap");
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.set_transport(None, Some(false), Some(true), None);
+    e.play(0.0);
+    let mut at = 0;
+    feed(&mut rt, &mut at, frames(8.0, 90.0), &|_| 0.0); // 8 beats at the mapped 90
+    let _ = e.stop();
+    let p = e.project();
+    let take = p.clips.iter().find(|c| c.kind == ClipKind::Audio).expect("the take clip");
+    assert!((take.len - 8.0).abs() < 0.1, "the take is {} beats, want 8 (8 beats at the mapped 90)", take.len);
+}
