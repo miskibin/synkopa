@@ -11,7 +11,7 @@ async function xOf(page: Page, beat: number) {
 const marks = (s: StateDto) => (s.project.markers ?? []).map(m => ({ at: m.at, name: m.name }));
 const markers = (page: Page) => engine(page).then(marks);
 const stripY = async (page: Page) => { const b = (await page.locator('canvas.mkstrip').boundingBox())!; return b.y + b.height / 2; };
-const rulerY = async (page: Page) => { const b = (await page.locator('canvas.ruler:not(.mkstrip)').boundingBox())!; return b.y + b.height / 2; };
+const rulerY = async (page: Page) => { const b = (await page.locator('canvas.ruler:not(.mkstrip):not(.tpstrip)').boundingBox())!; return b.y + b.height / 2; };
 const readout = (page: Page) => page.locator('[data-readout]');
 
 test.describe('Playlist markers', () => {
