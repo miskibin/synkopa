@@ -222,13 +222,17 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
     made["revision"] = json!(rev);
     let mut warnings = f.warnings;
     // a point the engine cannot keep is disclosed, not silently normalized (the op clamps it)
-    let clipped: Vec<String> = f
-        .tempo_points
-        .iter()
-        .filter(|t| t.bpm > wave_engine::model::MAX_TEMPO_BPM || t.bpm < wave_engine::model::MIN_TEMPO_BPM)
-        .map(|t| format!("the file's tempo of {:.2} BPM at beat {} is outside Synkopa's 20–300: it imports clamped", t.bpm, r4(t.beat)))
-        .collect();
-    warnings.extend(clipped);
+    // — only when the tempo is applied at all: without setTempo nothing imports, and a
+    // warning about an imported tempo would be false
+    if set_tempo {
+        let clipped: Vec<String> = f
+            .tempo_points
+            .iter()
+            .filter(|t| t.bpm > wave_engine::model::MAX_TEMPO_BPM || t.bpm < wave_engine::model::MIN_TEMPO_BPM)
+            .map(|t| format!("the file's tempo of {:.2} BPM at beat {} is outside Synkopa's 20–300: it imports clamped", t.bpm, r4(t.beat)))
+            .collect();
+        warnings.extend(clipped);
+    }
     made["warnings"] = json!(warnings);
     made["tempoSet"] = json!(set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty()));
     Ok(made)

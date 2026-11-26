@@ -254,6 +254,11 @@ fn importing_a_point_above_the_limit_discloses_the_clamp() {
     let ctx = call(&*doc, "context", json!({ "full": true }));
     let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
     assert_eq!(proj["tempoPoints"][0]["bpm"], 300.0, "clamped to the engine's limit");
+    // the opt-out imports nothing: no warning about an imported tempo may fire either
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path }));
+    assert_eq!(r["tempoSet"], false);
+    assert_eq!(r["warnings"].as_array().unwrap().len(), 0, "{:?}", r["warnings"]);
     std::fs::remove_dir_all(&d).ok();
 }
 
