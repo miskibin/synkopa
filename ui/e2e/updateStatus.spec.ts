@@ -59,7 +59,7 @@ test('Restart to update restarts into the new version and shows what is new', as
   await expect(page.getByRole('button', { name: 'Restart to update' })).toHaveCount(0);
 });
 
-test('a long readout (the demo project) leaves the tool hint half the status line', async ({ page }) => {
+test('the status line shows one message at a time: what happened for a moment, then the tool hint', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/');
   const welcome = page.getByRole('dialog', { name: 'Welcome to Synkopa' });
@@ -68,6 +68,8 @@ test('a long readout (the demo project) leaves the tool hint half the status lin
   const readout = page.locator('.tbstatus .readout');
   await expect(readout).toHaveText(/^Demo project/);
   await expect(readout).toHaveAttribute('title', /^Demo project/); // the full readout on hover
-  const line = (await page.locator('.tbstatus').boundingBox())!.width;
-  expect((await page.locator('.tbstatus .hinttxt').boundingBox())!.width).toBeGreaterThan(line * 0.35);
+  await expect(page.locator('.tbstatus .hinttxt')).toHaveCount(0); // never both at once
+  // a few seconds later the tool's hint has the whole line
+  await expect(page.locator('.tbstatus .hinttxt')).toContainText('Draw', { timeout: 15_000 });
+  await expect(readout).toHaveCount(0);
 });

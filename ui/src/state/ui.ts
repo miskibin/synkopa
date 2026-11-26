@@ -179,7 +179,9 @@ createRoot(() => effect(() => {
 export const tucked = (z: number | undefined) => U.plugsHidden && (z ?? 0) <= U.tuckZ;
 /** The panel is docked (anywhere); otherwise it floats as a window when open. */
 export const docked = (id: PaneId) => isDocked(U.dock, id);
-export const say = (msg: string) => { readoutPristine = false; setU('readout', msg); };
+/** Bumped by every `say`, a repeat of the same text included: the status line shows a new message for a moment. */
+export const [saidN, setSaidN] = createSignal(0);
+export const say = (msg: string) => { readoutPristine = false; setU('readout', msg); setSaidN(saidN() + 1); };
 export const closeMenu = () => { if (U.menu) setU('menu', null); };
 export function menuPos(x: number, y: number, h: number) {
   return { x: Math.max(4, Math.min(x, window.innerWidth - 240)), y: Math.max(4, Math.min(y, window.innerHeight - h)) };

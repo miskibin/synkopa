@@ -4,7 +4,8 @@ test('the app boots into the sketch project with its main views', async ({ app }
   await expect(app.getByRole('menubar')).toBeVisible();
   for (const m of ['File', 'Edit', 'View', 'Help']) await expect(app.getByRole('menuitem', { name: m })).toBeVisible();
   await expect(app.getByRole('radiogroup', { name: 'Playlist tools' })).toBeVisible();
-  await expect(app.getByText('Ready', { exact: true })).toBeVisible();
+  // the status line: with no news, what the tool does
+  await expect(app.locator('.tbstatus .hinttxt')).toContainText('Draw');
   // the Playlist lists the project's tracks, the Mixer its inserts
   const s = await engine(app);
   await expect(app.locator('.lane .nm')).toHaveText(s.project.tracks.map(t => t.name));

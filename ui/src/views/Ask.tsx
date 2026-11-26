@@ -5,7 +5,6 @@ import { notify } from '../state/notice';
 import { rackFloating, rollFloating } from '../state/pattern';
 import { say, tucked, U } from '../state/ui';
 import { upd } from '../state/updates';
-import { APP_GLYPH } from '../ui/menuIcons';
 
 /** View names match the English menus so ChatGPT can find them in the source. */
 function currentView(): string {
@@ -37,14 +36,4 @@ export async function askChatGPT(question = t('d.ask.starter')): Promise<boolean
     notify(t(copy ? 'd.ask.copiedOpenFailed' : 'd.ask.openFailed'));
     return false;
   }
-}
-
-/** The labelled button beside the application menus. */
-export function AskButton() {
-  return (
-    <button class="askbtn" title={t('d.ask.tip')} onClick={() => void askChatGPT()}>
-      <svg width="13" height="13" viewBox={APP_GLYPH.ask.vb} aria-hidden="true"><path d={APP_GLYPH.ask.d} fill="currentColor" /></svg>
-      <span>{t('d.ask.button')}</span>
-    </button>
-  );
 }

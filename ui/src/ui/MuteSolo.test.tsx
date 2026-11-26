@@ -45,6 +45,12 @@ describe('MuteSolo', () => {
     expect(p.onMute).not.toHaveBeenCalled();
   });
 
+  it('Ctrl+right-click on M adds to the soloed ones (a Playlist track has no S to Ctrl+click)', () => {
+    const p = pair();
+    fireEvent.pointerDown(p.m, { button: 2, ctrlKey: true });
+    expect(p.onSolo).toHaveBeenCalledWith(true);
+  });
+
   it('presses stay on the buttons (the track row under them does not start a drag)', () => {
     const p = pair();
     fireEvent.pointerDown(p.m, { button: 0 });

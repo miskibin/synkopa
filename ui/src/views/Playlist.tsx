@@ -1715,7 +1715,8 @@ function LaneHeader(props: { t: Track; i: number; auto: string | null }) {
               </button>
             )}</Show>
             <Show when={t().h < 50}>{route()}</Show>
-            <MuteSolo muted={t().muted} solo={t().solo} muteTip={tl('a.pl.muteTip')} soloTip={tl('a.pl.soloTip')}
+            {/* one switch per track (FL): M mutes, a right-click on it solos; S shows only while the track is soloed */}
+            <MuteSolo muted={t().muted} solo={t().solo} noSolo={!t().solo} muteTip={tl('a.pl.muteTip')} soloTip={tl('a.pl.soloTip')}
               onMute={() => A.toggleTrackMute(props.i)} onSolo={add => A.toggleTrackSolo(props.i, add)} />
             {/* recordings go to the first free track (FL); only a track picked with "Record into this track" shows it */}
             <Show when={t().arm}>

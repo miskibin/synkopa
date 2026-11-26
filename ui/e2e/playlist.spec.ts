@@ -162,4 +162,18 @@ test.describe('Playlist', () => {
     await expect.poll(names).toEqual(start);
     expect((await clipsOn(app, 0)).map(c => c.id).sort()).toEqual(firstClips);
   });
+  test('a track header has one switch: M mutes, right-click solos, S shows only while soloed', async ({ app }) => {
+    const lane = app.locator('.lane').first();
+    const m = lane.getByRole('button', { name: 'M', exact: true });
+    const sBtn = lane.getByRole('button', { name: 'S', exact: true });
+    await expect(sBtn).toHaveCount(0);
+    await m.click({ button: 'right' });
+    await pollEngine(app, s => s.project.tracks[0].solo).toBe(true);
+    await expect(sBtn).toHaveClass(/(^| )on( |$)/);
+    await sBtn.click();
+    await pollEngine(app, s => s.project.tracks[0].solo).toBe(false);
+    await expect(sBtn).toHaveCount(0);
+    await m.click();
+    await pollEngine(app, s => s.project.tracks[0].muted).toBe(true);
+  });
 });

@@ -20,14 +20,15 @@ async function destination(app: Page, act: () => Promise<void>): Promise<URL> {
   }
 }
 
-test('the toolbar, Help menu and F1 each open ChatGPT with a Synkopa starter prompt', async ({ app }) => {
+test('the Help menu and F1 each open ChatGPT with a Synkopa starter prompt', async ({ app }) => {
   await app.setViewportSize({ width: 1366, height: 768 });
-  const fromToolbar = await destination(app, () => app.getByRole('button', { name: 'Ask ChatGPT', exact: true }).click());
+  // the bar has no Ask button (it is a Help item, F1): the space goes to the controls used all the time
+  await expect(app.getByRole('button', { name: 'Ask ChatGPT', exact: true })).toHaveCount(0);
   await app.getByRole('menuitem', { name: 'Help', exact: true }).click();
   const fromHelp = await destination(app, () => app.getByRole('menuitem', { name: /^Ask ChatGPT/ }).click());
   const fromF1 = await destination(app, () => app.keyboard.press('F1'));
 
-  for (const url of [fromToolbar, fromHelp, fromF1]) {
+  for (const url of [fromHelp, fromF1]) {
     const prompt = url.searchParams.get('q');
     expect(prompt).toContain('I use Synkopa ');
     expect(prompt).toContain('https://github.com/miskibin/synkopa');

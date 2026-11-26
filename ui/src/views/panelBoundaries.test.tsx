@@ -222,8 +222,8 @@ describe('panels in the main window', () => {
   });
 
   it('Toolbar: the menus', async () => journey({
-    cause: bombed('d.ask.button'), where: '.tbmenus', text: 'Menus: error', retry: true, readout: false,
-    ok: () => { expect(screen.getByRole('button', { name: /Ask/ })).toBeTruthy(); },
+    cause: bombed('a.cmd.title'), where: '.tbmenus', text: 'Menus: error', retry: true, readout: false,
+    ok: () => { expect(screen.getByRole('button', { name: /Find a command/ })).toBeTruthy(); },
   }));
 
   it('Toolbar: the panel buttons', async () => journey({

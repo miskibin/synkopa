@@ -1,5 +1,5 @@
 import { isFullscreen, setFullscreen, toggleFullscreen } from '../state/fullscreen';
-import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, scrollPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
+import { curPat, openRack, patMode, rackFloating, rollFloating, scrollPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { APP_GLYPH as G } from '../ui/menuIcons';
 import { forgetRecent, recent, recentLabels, refreshRecent } from '../state/recent';
@@ -19,7 +19,7 @@ import * as MK from '../state/markers';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { S } from '../state/store';
 import { tele } from '../state/telemetry';
-import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
+import { closeMenu, openMenu, saidN, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { anyTucked } from '../state/winOrder';
 import { checkUpdates, showWhatsNew } from '../state/updates';
 import { toggleMixer, toggleMixView } from '../state/mixView';
@@ -29,7 +29,7 @@ import { track } from '../ui/drag';
 import { addFrameTask } from '../ui/frameLoop';
 import { Icon } from '../ui/icons';
 import { UpdateChip } from './Updates';
-import { AskButton, askChatGPT } from './Ask';
+import { askChatGPT } from './Ask';
 import { setCommandMenus, setPaletteOpen } from './Palette';
 import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
@@ -41,7 +41,7 @@ import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../s
 import { audioStatus, openAudioSettings } from '../state/audioWatch';
 import { fitLevel, FIT_MAX, gridFits } from '../lib/toolbarFit';
 import { KeyBadge } from './KeyBadge';
-import { PosReadout, PreviewLine, SongPos } from './ToolbarParts';
+import { PosReadout, PreviewLine } from './ToolbarParts';
 import { shownPreview } from '../state/previewWave';
 import { ChipBoundary, DialogBoundary } from '../ui/PanelBoundary';
 import { modal } from '../ui/modal';
@@ -49,6 +49,8 @@ import { modal } from '../ui/modal';
 export const TOOLS: [Tool, string, TranslationKey][] = [
   ['draw', 'P', 'a.tb.toolDraw'], ['paint', 'B', 'a.tb.toolPaint'], ['erase', 'D', 'a.tb.toolErase'], ['mute', 'T', 'a.tb.toolMute'], ['slice', 'C', 'a.tb.toolSlice'], ['select', 'E', 'a.tb.toolSelect'],
 ];
+/** How long a status message holds the status line before the tool's hint returns (FL's hint bar is as brief). */
+const SAY_HOLD_MS = 4000;
 export const TOOL_HINT: Record<Tool, TranslationKey> = { draw: 'a.tb.hint_draw', paint: 'a.tb.hint_paint', erase: 'a.tb.hint_erase', mute: 'a.tb.hint_mute', slice: 'a.tb.hint_slice', select: 'a.tb.hint_select' };
 
 const clampBpm = (v: number) => clamp(Math.round(v * 100) / 100, 20, 999);
@@ -63,7 +65,7 @@ export function Toolbar() {
     const refit = () => { raf = 0; if (barEl.isConnected && barEl.clientWidth > 0) fitLevel(apply, fits); };
     const later = () => { if (!raf) raf = requestAnimationFrame(refit); };
     // what ticks while playing (the position, the status line, the meters) never changes what fits
-    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .tbstatus, .cpumeter, .inmeter, .songpos');
+    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .tbstatus, .cpumeter, .inmeter');
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(later) : null;
     ro?.observe(barEl);
     const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(rs => { if (rs.some(r => !ticking(r.target))) later(); }) : null;
@@ -135,6 +137,10 @@ export function Toolbar() {
       { t: 'sep' },
       { t: 'sub', label: t('a.tb.recQuantize'), items: A.REC_QUANTIZE.map(q => ({ t: 'item' as const, label: t(q.label), checked: T().recQuantize === q.beats, act: () => void A.setRecQuantize(q.beats) })) },
       { t: 'item', label: t('a.tb.recTyping'), kbd: 'Ctrl+T', title: t('a.tb.typOff'), checked: typingOn(), act: () => setTypingOn(!typingOn()) },
+      { t: 'sep' },
+      // FL keeps the countdown and input monitoring with recording, not as bar buttons
+      { t: 'item', label: t('a.mn.countIn'), title: t('a.tb.countTip'), checked: T().countIn, act: () => void A.setTransportFlag('countIn', !T().countIn) },
+      { t: 'item', label: t('a.mn.monitor'), checked: T().monitor, act: A.toggleMonitor },
     ]);
   };
   const bpmMenu = (e: MouseEvent) => {
@@ -183,6 +189,11 @@ export function Toolbar() {
     void win.startDragging();
   };
   const wins = () => U.plugs.length + (rackFloating() ? 1 : 0) + (rollFloating() ? 1 : 0);
+  // a new status message holds the line for a moment, then the tool's hint comes back
+  const [fresh, setFresh] = createSignal(false);
+  let freshT: ReturnType<typeof setTimeout> | undefined;
+  watch(saidN, () => { setFresh(true); clearTimeout(freshT); freshT = setTimeout(() => setFresh(false), SAY_HOLD_MS); }, { defer: true });
+  onCleanup(() => clearTimeout(freshT));
   const hint = () => t('a.tb.statusHint', { tool: t(TOOLS.find(x => x[0] === U.tool)![2]), hint: t(TOOL_HINT[U.tool]), snap: U.alt ? 'off' : snapLabel(U.snap, U.bw).replace('Snap: ', '') });
   // Two rows on shared columns (FL's bar): row 1 holds what is used all the time — menus, transport,
   // tempo and key, pattern, output, panels — at one height; row 2, quieter, holds what belongs to
@@ -199,20 +210,21 @@ export function Toolbar() {
             <button class="cmdbtn" title={t('a.cmd.title') + ' (Ctrl+K)'} aria-label={t('a.cmd.title')} onClick={() => setPaletteOpen(true)}>
               <Icon d="M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z M20 20l-4-4" size={13} /><kbd>Ctrl K</kbd>
             </button>
-            <AskButton />
             <MissingChip />
             {/* the project's name is the window's (taskbar) title; here only the unsaved mark, with the path on hover */}
             <Show when={S.dirty}><span data-drag class="projName" title={(S.path ?? t('a.tb.unsavedProj')) + t('a.tb.unsavedChanges')}><span data-drag class="dirty">•</span></span></Show>
           </ChipBoundary>
         </div>
-        {/* the status line (FL's hint bar): the Browser's preview while it plays, else what the last action did and what the tool does */}
+        {/* the status line (FL's hint bar), one message at a time: the Browser's preview while it plays, else what the
+            last action did for a few seconds, then what the tool does */}
         <div class="tbc tbstatus" data-drag>
           <ChipBoundary name={t('d.ui.pn.menus')}>
             <span class="hled" style={{ background: S.transport.rec && U.playing ? 'var(--red)' : U.playing ? 'var(--green)' : 'var(--fg6)' }} />
-            <Show when={shownPreview()} fallback={<>
-              <span class="readout" data-readout title={U.readout}>{U.readout}</span>
-              <Show when={prefs().hints}><span class="hinttxt" title={hint()}>{hint()}</span></Show>
-            </>}>
+            <Show when={shownPreview()} fallback={
+              <Show when={!prefs().hints || fresh()} fallback={<span class="hinttxt" title={hint()}>{hint()}</span>}>
+                <span class="readout" data-readout title={U.readout}>{U.readout}</span>
+              </Show>
+            }>
               <PreviewLine />
             </Show>
             <Show when={U.alt}><span class="offgrid">OFF GRID</span></Show>
@@ -243,7 +255,6 @@ export function Toolbar() {
             </div>
           </ChipBoundary>
         </div>
-        <div class="tbc tbpos"><ChipBoundary name={t('d.ui.pn.transport')}><SongPos /></ChipBoundary></div>
         <div class="tbc tbtempo">
           <ChipBoundary name={t('d.ui.pn.transport')}>
             <div class="clockbox" onContextMenu={bpmMenu}>
@@ -259,13 +270,9 @@ export function Toolbar() {
         {/* the transport's switches, under the pattern: plain icons, lit when on */}
         <div class="tbc tbtoggles">
           <ChipBoundary name={t('d.ui.pn.transport')}>
-            <button title={t('a.tb.monTip')} class={['tsw monbtn', { on: T().monitor }]} aria-pressed={T().monitor ? 'true' : 'false'} onClick={A.toggleMonitor}>
-              <Icon d="M4 15v-3a8 8 0 0 1 16 0v3 M3 14h4v7H3z M17 14h4v7h-4z" size={13} />
-            </button>
             <button title={t('a.tb.metroTip')} class={['tsw metrobtn', { on: T().metro }]} aria-pressed={T().metro ? 'true' : 'false'} onClick={() => void A.setTransportFlag('metro', !T().metro)}>
               <Icon d="M9 3h6l4 18H5z M12 16l6-9" size={13} />
             </button>
-            <button class={['tsw count', { on: T().countIn }]} aria-pressed={T().countIn ? 'true' : 'false'} title={t('a.tb.countTip')} onClick={() => void A.setTransportFlag('countIn', !T().countIn)}>1 BAR</button>
             {/* an input mode, like record and monitor: with the transport's switches */}
             <button class={['tsw typkb', { on: typingOn() }]} aria-pressed={typingOn() ? 'true' : 'false'} title={typingOn() ? t('a.tb.typOn', { z: noteName(typingBase()), q: noteName(typingBase() + 12) }) : t('a.tb.typOff')}
               onClick={() => setTypingOn(!typingOn())}>
@@ -462,7 +469,7 @@ function MenuBar() {
       })) },
     ]],
     ['a.mn.help', () => [
-      { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
+      { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', title: t('d.ask.tip'), act: () => void askChatGPT() },
       { t: 'item', label: t('a.cmd.title'), glyph: G.shortcuts, kbd: 'Ctrl+K', act: () => setPaletteOpen(true) },
       { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },
       { t: 'sep' },
@@ -522,11 +529,6 @@ function PatSelector() {
           </>}
         </Show>
       </button>
-      <button class="patselarrow" title={t('b.ps.list')} aria-label={t('b.ps.list')}
-        onClick={e => { const r = (e.currentTarget.previousElementSibling as HTMLElement).getBoundingClientRect(); patternMenu(r.left, r.bottom + 4, true); }}>
-        <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 2.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
-      </button>
-      <button class="patselnew" title={t('b.pat.new')} onClick={() => { newPattern(); openRack(); }}><Icon d="M12 5v14 M5 12h14" size={11} /></button>
     </div>
   );
 }

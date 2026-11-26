@@ -86,6 +86,7 @@ function openStripMenu(x: number, y: number, id: Id) {
     { t: 'sep' },
     { t: 'item', label: tr('c.mix.addFx'), act: () => openFxMenu(x, y, id) },
     { t: 'sub', label: tr('c.mix.fxChain'), items: chainItems(x, y, m) },
+    ...(m.fx.length ? [{ t: 'item', label: tr(m.fx.some(f => !f.bypass) ? 'd.act.op.fxoff' : 'd.act.op.fxon'), act: () => A.toggleInsertFx(id) } as MenuItem] : []),
     { t: 'item', label: tr('c.mix.resetVolPan'), act: () => A.setInsert(id, { vol: VOL_UNITY, pan: 0 }, tr('c.mix.undoReset')) },
     { t: 'sep' },
     // only while channels are selected in the Channel Rack (the header's chip says so too)
@@ -142,7 +143,7 @@ function sendItems(m: Insert): MenuItem[] {
 const FADER_H = 140;
 /** The fader's dB marks as [dB, fader position 0..1]; the gain law is 2t³ (`gainLin`), so 0 dB sits at 0.7937. */
 const FADER_MARKS: [number, number][] = [6, 0, -6, -12, -24, -48].map(db => [db, Math.cbrt(Math.pow(10, db / 20) / 2)]);
-/** Effect rows the maximized mixer always has room for (and the "+ effect" row after them). */
+/** Effect rows the maximized mixer always has room for (and the "+N more" row after them). */
 const FX_ROWS_FULL = 5;
 /** One effect row in a strip, its 2 px gap included. */
 const FX_ROW = 20;
@@ -152,17 +153,19 @@ const SFX_EMPTY_PULL = 6;
 /**
  * The insert's effects as rows, in the room a taller mixer leaves above the knobs (the strip below
  * keeps its size): the effect's icon and name (click = open it), a dot (on / bypassed). As many as
- * fit; the last row then says how many more there are (click = the chain beside the strips), or
- * offers to add one when there is room.
+ * fit; the last row then says how many more there are (click = the chain beside the strips). Adding
+ * one is the strip's right-click menu or the chain beside the strips: a "+ effect" row on every
+ * strip repeated that. `shown` hears whether every effect has its row (the strip's count is then redundant).
  */
-function StripFx(props: { m: Insert; full: boolean }) {
+function StripFx(props: { m: Insert; full: boolean; shown: (all: boolean) => void }) {
   let el!: HTMLDivElement;
   const size = useSize(() => el);
   // `.sfx:empty` pulls the strip 6 px up, which makes the empty box 6 px taller: measured as is,
   // a mixer at just the wrong height fits a row, shows it, loses the 6 px, hides it… every frame
   // (#160). The room is measured without that margin, so both states agree.
   const room = () => Math.floor((size().h - (el?.firstElementChild ? 0 : SFX_EMPTY_PULL) + 2) / FX_ROW);
-  const fit = () => { const r = room(), n = props.m.fx.length; return n + 1 <= r ? n : Math.max(0, r - 1); };
+  const fit = () => { const r = room(), n = props.m.fx.length; return n <= r ? n : Math.max(0, r - 1); };
+  effect(() => props.shown(props.m.fx.length > 0 && fit() >= props.m.fx.length));
   const stop = (e: Event) => e.stopPropagation();
   return (
     <div ref={el} class="sfx" style={props.full ? { flex: `0 0 ${(FX_ROWS_FULL + 1) * FX_ROW}px` } : undefined}>
@@ -176,9 +179,10 @@ function StripFx(props: { m: Insert; full: boolean }) {
               onPointerDown={stop} onClick={e => { e.stopPropagation(); A.toggleBypass(f.id); }} />
           </div>
         )}</For>
-        <Show when={props.m.fx.length > fit()} fallback={
-          <div class="sfxr add" title={tr('c.mix.addFxTip')} onClick={e => openFxMenu(e.clientX, e.clientY, props.m.id)}>+ {tr('c.mix.addFxShort')}</div>
-        }>
+        {/* an empty box pulls the strip up only when there is no room for rows at all: with room, a strip
+            without effects keeps its knobs and fader level with its neighbours' */}
+        <Show when={!props.m.fx.length}><div class="sfxpad" /></Show>
+        <Show when={props.m.fx.length > fit()}>
           <div class="sfxr more" title={tr('c.mix.fxMoreTip')} onClick={() => A.selectInsert(props.m.id)}>{tr('c.mix.fxMore', { n: props.m.fx.length - fit() })}</div>
         </Show>
       </Show>
@@ -261,6 +265,8 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
   // the instrument icon gives way when the name would be cut off (it is decoration; the name is the information)
   let nmEl: HTMLSpanElement | undefined, nmText: HTMLSpanElement | undefined;
   const [tight, setTight] = createSignal(false);
+  // every effect has its row in the strip: the count beside the name would only repeat them
+  const [fxShown, setFxShown] = createSignal(false);
   const measure = () => { if (nmEl && nmText) setTight(nmText.getBoundingClientRect().width + ICON_W > nmEl.clientWidth); };
   effect(() => { label(); icon(); U.mixView; m().fx.length; requestAnimationFrame(measure); });
   onMount(() => { void document.fonts?.ready.then(measure); });
@@ -306,14 +312,14 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
             onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMaskMenu(r.left, r.bottom + 2, m().id); }}
             title={maskedBy(m().id).map(collisionText).join('\n') + ' — ' + tr('c.mask.dotTip')} aria-label={tr('c.mask.title')} />
         </Show>
-        <Show when={m().fx.length}>
+        <Show when={m().fx.length && !fxShown()}>
           {/* docked: a dot and the count; the wider Mix view strips spell out "3 FX" */}
           <button class={['fxn', { off: m().fx.every(f => f.bypass) }]} onPointerDown={stop} onDblClick={stop} onClick={() => A.toggleInsertFx(m().id)}
             title={tr('c.mix.fxCountTip', { n: m().fx.length }) + ' · ' + tr('c.mix.fxToggleTip')} aria-label={tr('c.mix.fxCountTip', { n: m().fx.length })}>
             <span class="fxdot" /><span class="fxt">{m().fx.length}<span class="fxw"> FX</span></span></button>
         </Show>
       </div>
-      <StripFx m={m()} full={props.full} />
+      <StripFx m={m()} full={props.full} shown={setFxShown} />
       <div class="knobrow">
       <div style={{ display: 'flex', 'flex-direction': 'column', 'align-items': 'center', gap: '2px' }}>
         <div class={['pandial', { auto: isAutomated(panT()) }]} onPointerDown={panDown} onWheel={wheel('pan')} onContextMenu={e => e.preventDefault()} title={tr('c.mix.panTip')}>
@@ -349,7 +355,7 @@ function Strip(props: { m: Insert; idx: number; full: boolean }) {
         </Show>
       </div>
       {/* docked, the fader keeps one height (a taller mixer shows effect rows above the knobs instead,
-          StripFx); maximized, the effect rows have a fixed room (five and "+ effect") and the fader
+          StripFx); maximized, the effect rows have a fixed room (five and "+N more") and the fader
           takes all the rest, for fine moves */}
       <div style={{ flex: props.full ? '1 1 0' : `0 1 ${FADER_H}px`, 'min-height': '50px', display: 'flex', 'justify-content': 'center', gap: '3px' }}>
         <div class="meter"><div ref={fl} /></div>
@@ -698,20 +704,14 @@ const MIXHD_H = 28;
 
 /**
  * The Mixer's title bar, the same docked, floating or maximized (FL: every window has one):
- * its name, what Ctrl+L would route, then dock / float, maximize, hide. Double-click = maximize.
+ * its name, then dock / float, maximize, hide. Double-click = maximize. Routing the Channel rack's
+ * selection here is Ctrl+L or the strip's right-click menu.
  */
 function MixHead() {
-  const n = () => selectedChannels().length;
   return (
     <>
       <span class="tile" style={{ width: '20px', height: '20px', background: 'var(--line)', color: 'var(--fg2)' }}><Icon d={MIX_ICON} size={12} /></span>
       <span class="wintitle">{tr('c.mv.mixer')}</span>
-      {/* channels picked in the Channel rack can be sent to the selected insert from here (Ctrl+L); nothing picked, nothing shown */}
-      <Show when={n()}>
-        <button class="chip mvroute" title={tr('c.mv.selHint', { n: n() })} onPointerDown={e => e.stopPropagation()} onClick={e => routeSelectedChannels(U.mixSel, e.shiftKey)}>
-          {tr('c.mv.routeBtn', { n: n() })}<kbd>Ctrl L</kbd>
-        </button>
-      </Show>
     </>
   );
 }
