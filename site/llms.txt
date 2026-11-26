@@ -46,5 +46,6 @@ The rules that decide which features, built-in plugins, factory content and pull
 - [Synkopa Instruments](https://github.com/miskibin/synkopa/blob/main/docs/keys.md): the 11 sampled instruments, articulations and credits
 - [Benchmarks vs FL Studio](https://github.com/miskibin/synkopa/blob/main/perf/realworld/README.md): real-world desktop timings and methodology
 - [Architecture](https://github.com/miskibin/synkopa/blob/main/docs/architecture.md): engine, ops and undo, telemetry, UI boundaries
+- [How the Rust audio engine and the SolidJS UI talk](https://miskibin.github.io/synkopa/blog/rust-audio-engine-web-ui.html): command rings, graph swaps, binary telemetry, one frame loop
 - [Changelog](https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md): what changed in each release
 - [Video](https://www.youtube.com/watch?v=wtuHDyIQpYk)
