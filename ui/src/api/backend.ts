@@ -294,6 +294,11 @@ export interface Backend {
   updateSetAuto(on: boolean): Promise<void>;
   /** Whether downloads (sample kits, models) skip the HTTPS certificate check: for a company proxy whose root certificate is not installed. Downloads are checksum-verified either way. */
   netIgnoreCertErrors(): Promise<boolean>;
+  /** The toolbar's main volume (a fader position, `VOL_UNITY` = 0 dB): how loud the app plays,
+   *  independent of the Master fader and of the project. A per-user setting. */
+  programVolume(): Promise<number>;
+  /** Sets the main volume at once; `save` writes it to the settings. Returns the clamped value. */
+  setProgramVolume(vol: number, save: boolean): Promise<number>;
   netSetIgnoreCertErrors(on: boolean): Promise<void>;
   /** Remembers that the release notes of `version` were shown. */
   updateMarkSeen(version: string): Promise<void>;
@@ -556,6 +561,8 @@ export function tauriBackend(): Backend {
     updateInstall: () => invoke('update_install'),
     updateSetAuto: on => invoke('update_set_auto', { on }),
     netIgnoreCertErrors: () => invoke('net_ignore_cert_errors'),
+    programVolume: () => invoke('program_volume'),
+    setProgramVolume: (vol, save) => invoke('set_program_volume', { vol, save }),
     netSetIgnoreCertErrors: on => invoke('net_set_ignore_cert_errors', { on }),
     updateMarkSeen: version => invoke('update_mark_seen', { version }),
     openReleasePage: version => invoke('open_release_page', { version: version ?? null }),

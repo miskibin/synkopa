@@ -1334,6 +1334,10 @@ The app updates itself from GitHub Releases (public repository: no token). See
   `app_info` (also `pluginEditors`: plugin windows can be shown in this session, and `pluginEditorsWhy` when not), `update_set_auto` and `update_mark_seen` read and write `settings.json`
   (`seenVersion`, `noAutoUpdate`). Views reach them only through `backend.ts`
   (`appInfo`, `updateCheck`, …); `api/mockUpdates.ts` is the browser mock with a fake newer release.
+* The toolbar's main volume is FL Studio's: a per-user setting (`settings.json` `programVolume`,
+  `set_program_volume`), not part of the project. `Engine::set_program_volume` stores a linear gain in
+  `Shared` that the device callback (`wave-audio-io`) applies, smoothed, after `Rt::process`: it scales
+  the song, the previews and the metronome, but not the Master fader, the meters or offline renders.
 * Downloads (library kits, RMVPE and stem models) go through `app/src/net.rs`: a `ureq` agent on the OS
   certificate store (so a company proxy's root works), or with verification off when
   `settings.json` has `ignoreCertErrors` (`net_set_ignore_cert_errors`, Settings → General → Network;

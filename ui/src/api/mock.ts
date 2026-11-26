@@ -46,7 +46,7 @@ import type {
 import { exportRange, exportSeconds, patternProject, patternSilent, stemInserts, uniqueFileStems } from '../lib/export';
 import { MockUpdates } from './mockUpdates';
 import { MOCK_LV2 } from './mockPlugins';
-import { UNSAFE_PLUGIN } from './types';
+import { UNSAFE_PLUGIN, VOL_UNITY } from './types';
 import { fromNormalized, lv2Param } from '../lib/pluginParam';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, SAMPLE_ROOT, samplerDefault } from './types';
 import { KEYS_CATALOG } from '../lib/keysCatalog';
@@ -2382,6 +2382,12 @@ export class MockBackend implements Backend {
   private ignoreCertErrors = false;
   async netIgnoreCertErrors() { return this.ignoreCertErrors; }
   async netSetIgnoreCertErrors(on: boolean) { this.ignoreCertErrors = on; }
+  private programVol = VOL_UNITY;
+  async programVolume() { return this.programVol; }
+  async setProgramVolume(vol: number, _save: boolean) {
+    this.programVol = Number.isFinite(vol) ? Math.min(1, Math.max(0, vol)) : VOL_UNITY;
+    return this.programVol;
+  }
   updateMarkSeen(version: string) { return this.upd.updateMarkSeen(version); }
   openReleasePage(version?: string | null) { return this.upd.openReleasePage(version); }
   async openAsk(service: AskService, prompt: string | null) {

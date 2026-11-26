@@ -4,8 +4,8 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -517,6 +517,8 @@ pub struct Engine {
     sink: Mutex<Option<FrameSink>>,
     /// Effect chains that are silent past their tails are not processed (on by default).
     skip_silent: std::sync::atomic::AtomicBool,
+    /// The program volume's linear gain (f32 bits), carried over to each new stream's `Shared`.
+    program_gain: AtomicU32,
     midi_fast: MidiFast,
     midi_take: Mutex<MidiTake>,
     /// Serializes transport changes while the callback drains a stopped take.
@@ -597,6 +599,7 @@ impl Engine {
             listeners: Mutex::new(vec![]),
             sink: Mutex::new(None),
             skip_silent: std::sync::atomic::AtomicBool::new(true),
+            program_gain: AtomicU32::new(1f32.to_bits()),
             assist: AtomicBool::new(true),
             mask: Mutex::new(None),
             collisions: Mutex::new(vec![]),
@@ -675,6 +678,7 @@ impl Engine {
         }
         let shared = Arc::new(Shared::new());
         shared.assist.store(self.assist.load(Relaxed), Relaxed);
+        shared.set_program_gain(f32::from_bits(self.program_gain.load(Relaxed)));
         let (mut mask_tx, mut mask_rx) = (vec![], vec![]);
         for _ in 0..MAX_INSERTS {
             let (a, b) = rtrb::RingBuffer::<f32>::new(crate::masking::MASK_TAP_CAPACITY);
@@ -735,6 +739,17 @@ impl Engine {
         self.settle_rec_track(&mut c);
         self.changed(c);
         rt
+    }
+
+    /// FL Studio's main volume: how loud the app plays, independent of the project's Master
+    /// fader. `vol` is a fader position (0..1, [`crate::model::VOL_UNITY`] = 0 dB) on the
+    /// mixer's curve. It scales the device output — song, pattern and sample previews, the
+    /// metronome — and survives device changes; exports and bounces are not affected.
+    pub fn set_program_volume(&self, vol: f32) {
+        use crate::model::{fader_gain, VOL_UNITY};
+        let g = fader_gain(if vol.is_finite() { vol.clamp(0.0, 1.0) } else { VOL_UNITY }) / fader_gain(VOL_UNITY);
+        self.program_gain.store(g.to_bits(), Relaxed);
+        self.shared().set_program_gain(g);
     }
 
     pub fn shared(&self) -> Arc<Shared> {
