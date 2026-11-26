@@ -186,3 +186,37 @@ if (typeof HTMLDialogElement !== "undefined" && HTMLDialogElement.prototype.show
   setupSearch();
   setupScreenshots();
 }
+
+function setupPluginFilter() {
+  const directory = document.querySelector(".directory");
+  if (!directory) return;
+  const label = directory.querySelector(".plugin-filter");
+  const input = label.querySelector("input");
+  const empty = directory.querySelector(".filter-empty");
+  const status = directory.querySelector(".filter-status");
+  const groups = Array.from(directory.querySelectorAll("section")).map(section => ({
+    section,
+    items: Array.from(section.querySelectorAll("li")).map(item => ({
+      item,
+      text: item.textContent.toLowerCase() + " " + section.querySelector("h2").textContent.toLowerCase(),
+    })),
+  }));
+  label.hidden = false;
+  input.addEventListener("input", () => {
+    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let count = 0;
+    for (const { section, items } of groups) {
+      let matches = 0;
+      for (const { item, text } of items) {
+        item.hidden = !words.every(word => text.includes(word));
+        if (!item.hidden) matches += 1;
+      }
+      section.hidden = matches === 0;
+      count += matches;
+    }
+    empty.hidden = count !== 0;
+    status.textContent = count === 0 ? "No matching plugins" : count + " results";
+  });
+}
+
+setupPluginFilter();

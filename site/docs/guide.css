@@ -126,3 +126,37 @@ dialog::backdrop { background: #161c2a80; }
 .step:hover { border-color: var(--focus); }
 .step[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 -.24rem #17264755; }
 .step.playing { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.directory { max-width: 47rem; font-size: .93rem; }
+.plugin-filter { display: grid; gap: .28rem; font-weight: 600; margin-top: 1rem; }
+.plugin-filter input { width: min(100%, 25rem); border: 1px solid var(--border); border-radius: .38rem; background: var(--base); padding: .42rem .6rem; font-weight: 400; }
+.filter-empty { color: var(--muted); }
+.directory section { margin-top: 1.45rem; }
+.directory h2 { font-size: 1.05rem; }
+.directory ul { padding: 0; margin: .5rem 0 0; border-top: 1px solid var(--border); list-style: none; }
+.directory li { border-bottom: 1px solid var(--border); }
+.directory a { display: grid; grid-template-columns: minmax(8.5rem, 1fr) 2.15fr; gap: .3rem .8rem; padding: .52rem .6rem; text-decoration: none; }
+.directory a:hover { background: var(--sidebar); }
+.directory a:hover strong { text-decoration: underline; }
+.directory a span { color: var(--muted); }
+.directory a strong { font-weight: 650; }
+.contents details { width: 100%; }
+.contents details summary { cursor: pointer; }
+.contents details a { display: block; padding-top: .25rem; }
+.terms { margin-block: .9rem; }
+.terms div { display: grid; grid-template-columns: minmax(6rem, .4fr) 1.6fr; gap: .45rem; border-top: 1px solid var(--border); padding: .45rem 0; }
+.terms dt { font-weight: 650; }
+.terms dd { margin: 0; }
+@media (max-width: 34rem) {
+  .directory a { grid-template-columns: 1fr; }
+}
+@media (min-width: 68rem) {
+  .contents:has(details) { max-height: calc(100dvh - 2.5rem); overflow: auto; }
+}
+.plugin-shot { max-width: 38rem; }
+.plugin-audition { margin-block: 1rem; padding: .7rem .8rem; border: 1px solid var(--border); border-radius: .45rem; }
+.plugin-audition p { margin: 0 0 .55rem; }
+.plugin-audition .controls { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-size: .83rem; }
+.plugin-audition button { padding: .25rem .55rem; background: var(--sidebar); border: 1px solid var(--border); border-radius: .3rem; }
+.plugin-audition button:hover:not(:disabled) { background: var(--active); }
+.plugin-audition button:disabled { cursor: default; opacity: .55; }

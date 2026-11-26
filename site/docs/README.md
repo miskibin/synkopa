@@ -23,3 +23,9 @@ replacing them.
 
 The first-song pattern uses MP3 copies of the included Kick, Clap and Hat sounds from
 `crates/engine/library`. See the repository’s `THIRD_PARTY_NOTICES.md` for sample credits.
+
+Plugin images are WebP copies of the app screenshots in `site/img`, except
+`plugin-master.webp`, `plugin-analyzer.webp` and `plugin-warp.webp`, which are
+browser-mode captures of the actual frontend at `aa7215f` with mock demo data.
+The two Delay listening clips illustrate a dry hit and timed repeats. They come from
+the bundled `rimshot-808.flac` with an offline echo applied to the second clip.

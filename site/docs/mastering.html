@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Use the Master effect and Analyzer to check loudness and true peaks.">
+  <title>Mastering &amp; meters · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="first-song.html">First song</a></li>
+          </ul>
+          <p>Workflow</p>
+          <ul>
+            <li><a href="patterns.html">Write &amp; arrange</a></li>
+            <li><a href="record.html">Record audio</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Plugins</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="instruments.html">Instruments</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="mastering.html" aria-current="page">Mastering &amp; meters</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Mastering &amp; meters</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#loudness-and-peaks">Loudness and peaks</a>
+        <a href="#master">Master</a>
+        <a href="#analyzer">Analyzer</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="loudness-and-peaks">Loudness and peaks</h2>
+          <p>Mastering prepares the whole mix for release. Fix a buried vocal or an overpowering kick in the mix first. Changes on the Master affect everything.</p>
+          <dl class="terms">
+            <div><dt>LUFS</dt><dd>Estimated perceived loudness. Integrated LUFS summarizes the measured playback.</dd></div>
+            <div><dt>dBTP</dt><dd>True peak. Estimates how high the reconstructed signal reaches between digital samples.</dd></div>
+            <div><dt>Gain reduction</dt><dd>How many decibels a processor is turning down at that moment.</dd></div>
+          </dl>
+        </section>
+        <section>
+          <h2 id="master">Master</h2>
+          <p>Listens to the Playlist and sets tone, compression, width, clipping, and limiting for the selected <strong>Target</strong>. The loudness target sets the desired average level. <strong>Ceiling</strong> sets the true-peak limit.</p>
+          <ol>
+            <li>On the Master insert, add <strong>Master</strong> after your mix effects. Choose a <strong>Target</strong>, such as <strong>Streaming −14</strong>, then use <strong>Listen to the song</strong> or <strong>Listen again</strong>.</li>
+            <li>Enable <strong>Level match</strong> and toggle power while you listen to the loudest section. Compare bass, vocal clarity, and drum attack at a similar loudness.</li>
+            <li>If the effect reports it stopped short of the target, listen for peak distortion before turning up <strong>Loudness</strong>. Disable <strong>Level match</strong> before checking the finished level or exporting.</li>
+          </ol>
+          <figure class="plugin-shot">
+            <a class="shot" href="images/plugin-master.webp"><img src="images/plugin-master.webp" width="1075" height="811" alt="Master after listening to a demo, showing the Streaming target, tone graph, and Level match." loading="lazy"></a>
+          </figure>
+        </section>
+        <section>
+          <h2 id="analyzer">Analyzer</h2>
+          <p>Measures the signal without changing it. The spectrum shows frequency balance, the stereo display shows left/right behavior, and the loudness view shows LUFS and true peak. Its <strong>Target</strong> is a reference line.</p>
+          <p><strong>Try it.</strong> Add a fresh Analyzer after the last effect on the Master insert and play the full song once without looping. Compare integrated LUFS and true peak. A louder chorus may raise the whole-song measurement while the highest true peak comes from a single earlier hit.</p>
+          <p><a href="export.html#mix">Export the finished mix</a>.</p>
+          <figure class="plugin-shot">
+            <a class="shot" href="images/plugin-analyzer.webp"><img src="images/plugin-analyzer.webp" width="1125" height="608" alt="Analyzer in a demo with a spectrum, loudness history, true peak, and stereo scope." loading="lazy"></a>
+          </figure>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>
