@@ -4,6 +4,14 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
+## Unreleased
+
+### Fixed
+
+- **Linux: the deb and rpm packages install the ALSA library they need.** On a minimal system
+  without it, Synkopa (and the `synkopa` command) did not start: "libasound.so.2: cannot open
+  shared object file".
+
 ## 0.9.36 — 2026-11-26
 
 ### Added
