@@ -31,7 +31,10 @@ pub fn fader_gain(t: f32) -> f32 {
 
 /// The project format `migrate` brings a file up to. 3: the Reverb's Decay reaches 20 s
 /// (was 6 s), so automation of it (stored normalised over the range) is rescaled once.
-pub const PROJECT_VERSION: u32 = 3;
+/// 4: tempo points (the tempo map). A build drops fields it does not know (serde ignores
+/// them), so a round-trip through an older app loses them silently and the version it
+/// leaves behind is the only trace — `open` warns about files saved by a newer app.
+pub const PROJECT_VERSION: u32 = 4;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1767,6 +1770,10 @@ impl Project {
                 }
             }
         }
+        // a file is data, not an op: nothing else on the load path bounds the map (the op path
+        // refuses above the cap, the compiled copy truncates), so a hand-edited file with more
+        // points than can ever play would sit raw in the project — bring it to the same bound
+        self.tempo_points.truncate(MAX_TEMPO_POINTS);
         self.version = self.version.max(PROJECT_VERSION);
         // ids the file used must stay taken
         let max = self.channels.iter().map(|c| c.id).chain(self.sources.iter().map(|s| s.id)).max().unwrap_or(0);

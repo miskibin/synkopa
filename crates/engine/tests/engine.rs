@@ -159,6 +159,31 @@ fn save_and_open_round_trip() {
 }
 
 #[test]
+fn a_file_from_a_newer_app_opens_with_a_warning() {
+    // serde drops fields a build does not know, so a round-trip through an older app loses
+    // the newer content silently — the file's version is the only trace, and the open says
+    // so instead of pretending nothing happened (the save stays allowed: a deliberate edit)
+    let dir = std::env::temp_dir().join(format!("wave-ver-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("newer.wave");
+    let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    e.save(&path).unwrap();
+    let mut doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let pj: &mut serde_json::Value = if doc.get("project").is_some() { &mut doc["project"] } else { &mut doc };
+    pj["version"] = serde_json::json!(u64::from(wave_engine::model::PROJECT_VERSION) + 1);
+    std::fs::write(&path, serde_json::to_string(&doc).unwrap()).unwrap();
+    let warnings = e.open(&path).unwrap();
+    assert!(warnings.iter().any(|w| w.contains("newer app")), "the open names the newer format: {warnings:?}");
+    // this build's own format opens quiet (the opened engine's project keeps the file's
+    // higher version — the save must come from a project this build owns)
+    let f = Engine::new(Project::sketch(), Arc::new(NoPlugins));
+    f.save(&path).unwrap();
+    let warnings = e.open(&path).unwrap();
+    assert!(warnings.is_empty(), "an up-to-date file warns nothing: {warnings:?}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn a_stale_open_does_not_replace_newer_edits() {
     let e = Engine::new(Project::empty(), Arc::new(NoPlugins));
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/demo_v1.wave");

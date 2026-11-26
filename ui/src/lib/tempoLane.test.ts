@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOTAL_BEATS, type TempoPoint } from '../api/types';
-import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, dedupeTempo, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, tempoSegments } from './tempoLane';
+import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, dedupeTempo, hitTempo, moveTempoPoint, playheadBpm, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, tempoSegments } from './tempoLane';
 
 const pt = (beat: number, bpm: number, ramp = false): TempoPoint => ({ beat, bpm, ramp });
 
@@ -193,6 +193,21 @@ describe('compiledTempo', () => {
     expect(drawn).toBe(bpmAt(shown, 120, 4));
     // at the beat itself the last twin plays
     expect(bpmAt(shown, 120, 8)).toBe(120);
+  });
+});
+
+describe('playheadBpm', () => {
+  it('reads the map the engine plays, through the compiled chain, and is stable across frames', () => {
+    // the toolbar's readout entry point: same through-path as the lane's (duplicates glide
+    // toward the next stored point — 75 at beat 4, the last twin plays at the beat itself)
+    const pts = [pt(0, 60, true), pt(8, 90), pt(8, 120)];
+    expect(playheadBpm(pts, 120, 4)).toBe(75);
+    expect(playheadBpm(pts, 120, 8)).toBe(120);
+    // the base before the first point and when there is no map; the toolbar calls this every
+    // frame, so repeated calls hold and a replaced array recompiles
+    expect(playheadBpm(undefined, 120, 8)).toBe(120);
+    expect(playheadBpm(pts, 120, 4)).toBe(playheadBpm(pts, 120, 4));
+    expect(playheadBpm([pt(16, 200)], 120, 8)).toBe(120);
   });
 });
 

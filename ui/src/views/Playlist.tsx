@@ -1442,6 +1442,11 @@ export function Playlist() {
   };
   const rulerHover = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.cursor = rulerCursor(ruler, e); };
   const rulerDown = (e: PointerEvent) => { if (e.button === 0) closeMenu(); rulerPress(ruler, e); };
+  // the marker strip's empty-space press forwards to the ruler (it owns the seek and the loop
+  // drag) but owns the double-click itself — add a marker — so the forwarded host skips the
+  // ruler's own stamp: two writers to one tap tracker were why the strip's double-click-add
+  // never fired (the ruler stamped between the two presses)
+  const mkRuler: RulerHost = { ...ruler, noDbl: true };
   /** Right-click (no drag) on the ruler or an empty part of the marker strip: add a marker there (FL). The ruler opens it on release (`ruler.menu`); the keyboard's menu key still reaches it here. */
   const timelineMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -1475,7 +1480,7 @@ export function Playlist() {
     if (!m) {
       // an empty part of the strip: double-click adds a marker, otherwise it is the ruler
       if (dblCheck('mkstrip')) { e.preventDefault(); MK.addMarker(clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL)); return; }
-      rulerPress(ruler, e);
+      rulerPress(mkRuler, e);
       return;
     }
     e.preventDefault();

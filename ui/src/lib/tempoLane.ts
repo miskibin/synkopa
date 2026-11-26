@@ -58,6 +58,23 @@ export function compiledTempo(points: readonly TempoPoint[] | undefined): TempoP
   })).sort((a, b) => a.beat - b.beat).slice(0, MAX_TEMPO_POINTS);
 }
 
+/** The compiled map, kept per points array (ops replace the array, never mutate it): the
+ *  toolbar's readout asks for the playhead BPM every frame, and compiling per frame would
+ *  sort the whole map each time. */
+const playheadCache = new WeakMap<object, TempoPoint[]>();
+
+/** The BPM the toolbar's readout shows at `beat`: what the engine plays there (`bpmAt` over
+ *  the compiled map). Callers pass the playhead's beat; the base before the first point. */
+export function playheadBpm(points: readonly TempoPoint[] | undefined, base: number, beat: number): number {
+  let map: TempoPoint[];
+  if (points && playheadCache.has(points)) map = playheadCache.get(points)!;
+  else {
+    map = compiledTempo(points);
+    if (points) playheadCache.set(points, map);
+  }
+  return bpmAt(map, base, beat);
+}
+
 export interface TempoSeg { a: number; b: number; va: number; vb: number }
 
 /** The curve as straight pieces over `[0, end]`: flats and ramps, what the strip draws. Walks

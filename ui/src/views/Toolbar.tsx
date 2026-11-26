@@ -18,7 +18,7 @@ import * as A from '../state/actions';
 import * as MK from '../state/markers';
 import { commit, Gesture, wheelEdit } from '../state/edit';
 import { S } from '../state/store';
-import { tele } from '../state/telemetry';
+import { curBeat, tele } from '../state/telemetry';
 import { closeMenu, openMenu, say, setU, U, type MenuItem, type Tool } from '../state/ui';
 import { anyTucked } from '../state/winOrder';
 import { checkUpdates, showWhatsNew } from '../state/updates';
@@ -36,6 +36,8 @@ import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
 import { volText } from '../lib/format';
 import { loadProgramVolume, programVolume, setProgramVolume } from '../state/programVolume';
+import { playheadBpm } from '../lib/tempoLane';
+import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
 import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../state/underruns';
 import { audioStatus, openAudioSettings } from '../state/audioWatch';
@@ -63,7 +65,7 @@ export function Toolbar() {
     const refit = () => { raf = 0; if (barEl.isConnected && barEl.clientWidth > 0) fitLevel(apply, fits); };
     const later = () => { if (!raf) raf = requestAnimationFrame(refit); };
     // what ticks while playing (the position, the status line, the meters) never changes what fits
-    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .tbstatus, .cpumeter, .inmeter, .songpos');
+    const ticking = (n: Node) => !!(n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.clock, .clockbox, .tbstatus, .cpumeter, .inmeter, .songpos');
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(later) : null;
     ro?.observe(barEl);
     const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(rs => { if (rs.some(r => !ticking(r.target))) later(); }) : null;
@@ -101,6 +103,22 @@ export function Toolbar() {
     wheelEdit('bpm', 'Tempo', [{ op: 'setBpm', bpm: b }]);
     say('Tempo ' + b.toFixed(2) + ' BPM');
   };
+  // the readout shows the tempo AT THE PLAYHEAD when the map plays one (#292's "toolbar tempo
+  // shows BPM-at-playhead when mapped"): the frame task moves a signal, Solid renders it.
+  // PAT mode plays one constant base tempo, so it keeps the base; the knob still edits the
+  // base — and clears the map (a.tb.bpmTipMapped says so). The JSX fallback reads the base
+  // reactively, so a broken project value fails this one cell (the boundary test bombs bpm).
+  const mapped = () => !!S.project.tempoPoints?.length;
+  const bpmTip = () => (mapped() ? t('a.tb.bpmTipMapped', { base: S.project.bpm.toFixed(2) }) : t('a.tb.bpmTip'));
+  const [bpmShown, setBpmShown] = createSignal('');
+  let lastBpmTxt = '';
+  onMount(() => onCleanup(addFrameTask(() => {
+    const pts = S.project.tempoPoints;
+    const txt = !patMode() && pts?.length ? playheadBpm(pts, S.project.bpm, curBeat()).toFixed(2) : S.project.bpm?.toFixed(2) ?? '';
+    if (txt === lastBpmTxt) return;
+    lastBpmTxt = txt;
+    setBpmShown(txt);
+  })));
   const tapper = new TapTracker();
   const [tapping, setTapping] = createSignal(false);
   let tapTimer = 0;
@@ -147,7 +165,7 @@ export function Toolbar() {
     };
     const hasAudio = S.project.clips.some(c => c.kind === 'audio');
     openMenu(e.clientX, e.clientY, [
-      { t: 'title', label: 'Tempo · ' + b.toFixed(2) + ' BPM' },
+      { t: 'title', label: 'Tempo · ' + b.toFixed(2) + ' BPM' + (mapped() ? ' · ' + t('a.tb.baseTag') : '') },
       { t: 'item', label: t('a.tb.tapMenu'), kbd: t('a.tb.tapKbd'), act: () => doTap() },
       { t: 'item', label: t('a.tb.detectProj'), disabled: !hasAudio, act: () => A.openMusicAnalysis({}) },
       { t: 'sep' },
@@ -247,7 +265,7 @@ export function Toolbar() {
         <div class="tbc tbtempo">
           <ChipBoundary name={t('d.ui.pn.transport')}>
             <div class="clockbox" onContextMenu={bpmMenu}>
-              <span class="bpm" title={t('a.tb.bpmTip')} onPointerDown={bpmDown} onWheel={bpmWheel}>{S.project.bpm.toFixed(2)}</span>
+              <span class="bpm" title={bpmTip()} onPointerDown={bpmDown} onWheel={bpmWheel}>{bpmShown() || S.project.bpm.toFixed(2)}</span>
               <span class="tag9">BPM</span>
               <button class={['tapbtn', { on: tapping() }]} data-tap title={t('a.tb.tapTip')} onClick={e => doTap(e)}>TAP</button>
             </div>
