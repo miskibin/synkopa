@@ -10,8 +10,10 @@ select `site/docs` as the project root.
 
 ## Screenshots
 
-- `overview.webp`, `rack.webp` and `mixer.webp` are desktop screenshots from the
+- `overview.webp` and `mixer.webp` are desktop screenshots from the
   [Synkopa UX audit](https://github.com/miskibin/synkopa/pull/302) before the proposed changes.
+- `rack.webp` shows the first-song drum pattern entered through Synkopa’s Channel Rack
+  in browser development mode at `aa7215f`.
 - `roll.webp` and `export.webp` show the actual Synkopa frontend with the built-in
   OBSIDIAN 2093 demo, captured using the repository's browser development mode at
   `aa7215f`. Development mode uses the browser mock backend.
