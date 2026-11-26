@@ -144,7 +144,11 @@ impl Engine {
     fn open_inner(&self, path: &Path, if_revision: Option<u64>, recovered: Option<Option<&Path>>) -> Result<Vec<String>, EngineError> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let doc: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("not a Synkopa project: {e}"))?;
-        let mut p = Project::from_json(doc.get("project").cloned().unwrap_or(doc)).map_err(|e| format!("not a Synkopa project: {e}"))?;
+        let pj = doc.get("project").cloned().unwrap_or(doc);
+        // a file saved by a newer app may hold fields this build drops (serde ignores unknown
+        // ones) — saving here would lose them, so say so instead of opening silently
+        let file_version = pj.get("version").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let mut p = Project::from_json(pj).map_err(|e| format!("not a Synkopa project: {e}"))?;
         p.migrate();
         // the channel-loop bound is a write-path check; a hand-edited file skips it, and the
         // graph build trusts what it is given — so the loaded project re-validates, and a
@@ -160,6 +164,11 @@ impl Engine {
         let parent = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
         let dir = std::path::absolute(parent).map_err(|e| e.to_string())?;
         let mut warnings = vec![];
+        if file_version > u64::from(PROJECT_VERSION) {
+            warnings.push(format!(
+                "saved by a newer app (project format {file_version} > {PROJECT_VERSION}): saving here drops anything this app does not know"
+            ));
+        }
         let mut errors = HashMap::new();
         let mut store = SourceStore::default();
         for s in p.sources.iter_mut() {

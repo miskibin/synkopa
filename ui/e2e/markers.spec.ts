@@ -75,6 +75,23 @@ test.describe('Playlist markers', () => {
     await pollEngine(app, marks).toEqual([{ at: 0, name: 'Intro' }, { at: 32, name: 'Drop' }]);
   });
 
+  test('double-click an empty part of the marker strip adds a marker there', async ({ app }) => {
+    await app.keyboard.press('Alt+t');
+    const box = app.locator('.menu input');
+    await expect(box).toBeFocused();
+    await box.fill('Intro');
+    await box.press('Enter');
+    await pollEngine(app, marks).toEqual([{ at: 0, name: 'Intro' }]);
+
+    // the strip's tooltip has always promised this — and it was dead code: the ruler's own
+    // double-press stamp (its loop-clear) ran between the two presses and consumed the
+    // shared tap tracker, so the strip's own never matched
+    await app.mouse.dblclick(await xOf(app, 40) + 3, await stripY(app));
+    await expect(box).toBeFocused();
+    await box.press('Enter'); // keeps the default name (Intro counted as #1)
+    await pollEngine(app, marks).toEqual([{ at: 0, name: 'Intro' }, { at: 40, name: 'Marker 2' }]);
+  });
+
   test('right-click on the ruler adds a marker where it was clicked', async ({ app }) => {
     await app.mouse.click(await xOf(app, 8.1), await rulerY(app), { button: 'right' });
     await app.getByText('Add marker here').click();

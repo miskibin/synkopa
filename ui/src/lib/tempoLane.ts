@@ -58,6 +58,14 @@ export function compiledTempo(points: readonly TempoPoint[] | undefined): TempoP
   })).sort((a, b) => a.beat - b.beat).slice(0, MAX_TEMPO_POINTS);
 }
 
+// The toolbar's readout asks for the playhead BPM every frame. Compiling per frame would sort
+// the whole map each time, and a cache keyed on the points ARRAY is wrong: the store's state
+// merges (`mergeInto` in state/store.ts) update an id-less list POSITIONALLY IN PLACE — after
+// an undo the array is the same object with restored content, and an identity cache would play
+// the edited tempo forever. Memoize reactively at the call site instead (`createMemo(() =>
+// compiledTempo(S.project.tempoPoints))`): Solid tracks the elements' leaves, so an in-place
+// merge recomputes, and unchanged frames reuse the compiled map.
+
 export interface TempoSeg { a: number; b: number; va: number; vb: number }
 
 /** The curve as straight pieces over `[0, end]`: flats and ramps, what the strip draws. Walks
