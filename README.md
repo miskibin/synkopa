@@ -9,12 +9,9 @@
   <a href="https://www.youtube.com/watch?v=wtuHDyIQpYk">Watch the video</a> ·
   <a href="https://miskibin.github.io/synkopa/">Website</a> ·
   <a href="https://miskibin.github.io/synkopa/docs/">User guide</a> ·
-  <a href="https://discord.gg/zHMjE3fCY">Discord</a>
 </p>
 <p align="center">
   <a href="https://github.com/miskibin/synkopa/releases/latest"><img src="https://img.shields.io/github/v/release/miskibin/synkopa?label=release" alt="Latest release"></a>
-  <a href="https://github.com/miskibin/synkopa/stargazers"><img src="https://img.shields.io/github/stars/miskibin/synkopa?style=flat&label=stars" alt="GitHub stars"></a>
-  <a href="https://github.com/miskibin/synkopa/actions/workflows/ci.yml"><img src="https://github.com/miskibin/synkopa/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0 license"></a>
   <a href="https://discord.gg/zHMjE3fCY"><img src="https://img.shields.io/badge/Discord-join%20the%20chat-5865F2?logo=discord&logoColor=white" alt="Join the Synkopa Discord"></a>
 </p>
