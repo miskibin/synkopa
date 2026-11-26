@@ -35,7 +35,7 @@ import { MissingChip } from './MissingAudio';
 import { MiniKnob } from '../ui/Knob';
 import { VOL_UNITY } from '../api/types';
 import { volText } from '../lib/format';
-import { autoDisplay, autoTweak, autoWheel, isAutomated, isOverridden, paramMenu, type Tweak } from '../state/automation';
+import { loadProgramVolume, programVolume, setProgramVolume } from '../state/programVolume';
 import { masterClip, masterClipTip, resetMasterClip } from '../state/masterClip';
 import { cpuBand, cpuText, resetUnderruns, underrunFlash, underruns } from '../state/underruns';
 import { audioStatus, openAudioSettings } from '../state/audioWatch';
@@ -684,11 +684,6 @@ export function Help() {
   );
 }
 
-/**
- * FL's main volume knob next to the transport: the Master insert's volume (the same value as
- * the mixer's Master fader, saved with the project and undone like it). Drag ↕ (Shift = fine),
- * wheel, double-click = unity, right-click = automation menu.
- */
 /** Meter position (0..1) of a linear peak: −60 … +6 dBFS, the mixer meters' scale. */
 const meterPos = (v: number) => clamp(((v > 1e-5 ? 20 * Math.log10(v) : -90) + 60) / 66, 0, 1);
 /** Where 0 dBFS sits on that scale. */
@@ -721,28 +716,22 @@ function MasterOut() {
   );
 }
 
+/**
+ * FL Studio's main volume knob next to the transport: how loud the app plays (the song, pattern and
+ * sample previews, the metronome), independent of the Master fader and not part of the project —
+ * a per-user setting, not undone and not exported. Drag ↕ (Shift = fine), wheel, double-click = 0 dB.
+ */
 function MainVolume() {
-  const master = () => S.project.inserts.find(m => m.id === 0);
-  const target = { kind: 'insertVol' as const, id: 0 };
-  const vol = () => autoDisplay(target) ?? master()?.vol ?? VOL_UNITY;
-  let g: Tweak | null = null;
-  const put = (v: number) => A.insertOp(0, { vol: clamp(v, 0, 1) });
-  const staticOps = (v: number) => { const op = put(v); return op ? [op] : null; };
+  onMount(loadProgramVolume);
   const tell = (v: number) => say(t('a.tb.mainVol') + ' · ' + volText(v));
-  // Alt-click / double-click reset is a tweak too: it records while capturing, overrides while playing
-  const resetOnce = () => { const tw = autoTweak(target, t('a.tb.mainVol'), staticOps); tw.move(VOL_UNITY); tw.end(); tell(VOL_UNITY); };
+  const set = (v: number) => { setProgramVolume(v); tell(v); };
+  const tip = () => t('a.tb.mainVolTip', { v: volText(programVolume()) });
   return (
-    <Show when={master()}>
-      <div class="mainvol" title={t('a.tb.mainVolTip', { v: volText(vol()) })}>
-        <MiniKnob t={vol} key="mainvol" title={t('a.tb.mainVolTip', { v: volText(vol()) })} automated={() => isAutomated(target)} overridden={() => isOverridden(target)}
-          onStart={() => { g = autoTweak(target, t('a.tb.mainVol'), staticOps); }}
-          onChange={v => { g?.move(v); tell(v); }}
-          onEnd={() => { g?.end(); g = null; }}
-          onReset={() => resetOnce()}
-          onWheel={v => { autoWheel(target, 'mainvol', t('a.tb.mainVol'), v, staticOps); tell(v); }}
-          onMenu={(x, y) => paramMenu(x, y, target, () => resetOnce())} />
-      </div>
-    </Show>
+    <div class="mainvol" title={tip()}>
+      <MiniKnob t={programVolume} key="mainvol" title={tip()}
+        onStart={() => {}} onChange={set} onEnd={() => {}}
+        onReset={() => set(VOL_UNITY)} onWheel={set} />
+    </div>
   );
 }
 

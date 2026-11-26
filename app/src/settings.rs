@@ -24,6 +24,9 @@ pub struct Settings {
     pub no_auto_update: bool,
     /// Downloads skip the certificate check (a company proxy whose root is not installed).
     pub ignore_cert_errors: bool,
+    /// The toolbar's main volume (FL Studio's): a fader position, `None` = 0 dB. How loud the
+    /// app plays, not part of any project.
+    pub program_volume: Option<f32>,
 }
 
 /// How many projects File → Open recent keeps.

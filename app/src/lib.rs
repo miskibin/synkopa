@@ -1353,6 +1353,25 @@ async fn net_set_ignore_cert_errors(app: St<'_>, on: bool) -> R<()> {
     Ok(())
 }
 
+/// The toolbar's main volume (a fader position, 0 dB = `VOL_UNITY`): how loud the app plays.
+#[tauri::command]
+async fn program_volume(app: St<'_>) -> R<f32> {
+    Ok(app.settings.lock().program_volume.unwrap_or(wave_engine::VOL_UNITY))
+}
+
+/// Sets the main volume at once; `save` writes it to the settings (at the end of a drag).
+#[tauri::command]
+async fn set_program_volume(app: St<'_>, vol: f32, save: bool) -> R<f32> {
+    let vol = if vol.is_finite() { vol.clamp(0.0, 1.0) } else { wave_engine::VOL_UNITY };
+    app.engine.set_program_volume(vol);
+    let mut s = app.settings.lock();
+    s.program_volume = Some(vol);
+    if save {
+        s.save();
+    }
+    Ok(vol)
+}
+
 #[tauri::command]
 async fn update_set_auto(app: St<'_>, on: bool) -> R<()> {
     let mut s = app.settings.lock();
@@ -1584,6 +1603,8 @@ pub fn run(project_arg: Option<&str>) {
             midi_status,
             midi_set_target,
             midi_set_velocity,
+            program_volume,
+            set_program_volume,
             library_list,
             library_install,
             keys_status,
@@ -1759,6 +1780,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
     // reopen the saved keyboard (it may be unplugged: the status says so, and it opens when it returns)
     let a = app.clone();
     a.midi.set_fixed_velocity(a.settings.lock().midi_fixed_velocity);
+    a.engine.set_program_volume(a.settings.lock().program_volume.unwrap_or(wave_engine::VOL_UNITY));
     std::thread::spawn(move || {
         let saved = a.settings.lock().midi_device.clone();
         if let Some(d) = saved {
