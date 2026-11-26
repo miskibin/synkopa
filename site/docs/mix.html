@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Send sounds to mixer inserts, balance levels, and add effects.">
+  <meta name="description" content="Give each sound its own fader, balance levels, add effects, build a drum bus or shared reverb, fix clashing sounds and duck the bass under the kick.">
   <title>Mix &amp; route · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,25 +63,29 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Mix and route</h1>
+        <p class="lede">Mixing makes every part of the song audible at the right level. This page shows how to give each sound its own fader, balance the levels, add effects, group sounds on a bus and keep the kick and bass from fighting. Start once the arrangement is mostly in place.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#routing">Send a sound to a mixer insert</a>
-        <a href="#levels">Balance levels</a>
-        <a href="#sends">Create a bus or effect send</a>
+        <a href="#routing">Give a sound its own fader</a>
+        <a href="#levels">Balance the levels</a>
         <a href="#effects">Add an effect</a>
-        <a href="#masking">Make room when sounds compete</a>
-        <a href="#sidechain">Sidechain a compressor</a>
+        <a href="#sends">Group sounds on a bus</a>
+        <a href="#masking">Fix two sounds that clash</a>
+        <a href="#sidechain">Duck the bass under the kick</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="routing">Send a sound to a mixer insert</h2>
-          <p>Route sounds to separate inserts to adjust their levels and effects independently.</p>
-          <ul>
-            <li><strong>Audio on a Playlist track</strong> → click the track’s mixer routing control or choose <strong>Mixer channel</strong> from its menu, then pick an insert.</li>
-            <li><strong>Instrument in the Channel Rack</strong> → use the mixer channel control on the left of its row. Click to choose an insert. When the channel is following the clip track, double-click the control to give that channel a free insert of its own.</li>
-          </ul>
-          <p>Open the Mixer with <kbd>F9</kbd>. The insert’s meter moves when its sound plays.</p>
+          <h2 id="routing">Give a sound its own fader</h2>
+          <p>Every sound plays into a <dfn>mixer insert</dfn>: one strip in the Mixer with a fader, a pan knob and a chain of effects. Sounds that share an insert share its fader and effects. To change one sound on its own, it needs an insert of its own. <a href="basics.html#routing">How a sound reaches the speakers</a> explains the idea.</p>
+          <ol>
+            <li>Press <kbd>F9</kbd> to open the Mixer.<span class="result">The first strip is the <strong>Master</strong>: everything you hear passes through it.</span></li>
+            <li>In the Channel Rack, find the small box between a channel's knobs and its name. It shows the insert that channel plays into. A dash means it follows the Playlist track its clip is on.</li>
+            <li>Double-click the box.<span class="result">The channel gets a free insert of its own, named after it.</span></li>
+            <li>Play the song.<span class="result">That insert's meter moves when the sound plays.</span></li>
+          </ol>
+          <p>To pick an existing insert instead, click the box and choose one. For an audio clip on the Playlist, right-click the clip and choose <strong>Mixer channel…</strong>, or right-click the track name and open <strong>Mixer channel</strong>.</p>
+          <p>Many channels at once: <kbd>Shift</kbd>-click their names in the Channel Rack, select an insert in the Mixer, then press <kbd>Ctrl</kbd> + <kbd>L</kbd> to send them all there, or <kbd>Shift</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd> to give each its own insert from that one on.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/mixer.webp"><img src="images/mixer.webp" width="1600" height="900" alt="Synkopa Mixer with the Master, selected insert, and effect rack." loading="lazy"></a>
@@ -90,56 +95,84 @@
             </div>
             <figcaption>
               <ol>
-                <li>The Master fader and meter show the combined output.</li>
-                <li>Select an insert to see its effects. Its fader controls the level routed through it.</li>
-                <li>Use Add effect on the selected insert.</li>
+                <li>The Master fader and meter: the whole song.</li>
+                <li>The selected insert. Its fader sets the level of everything routed into it.</li>
+                <li><strong>Add effect</strong> adds an effect to the selected insert.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
-        <section>
-          <h2 id="levels">Balance levels</h2>
 
-          <p>Balance a loop from the busiest section before adding processing. That gives you a stable reference when you compare effects.</p>
-          <ol>
-            <li>Switch to <strong>SONG</strong> and drag across the Playlist ruler to loop a section where the kick, bass, and lead all play. Play it and select those inserts in the Mixer with <kbd>F9</kbd>.</li>
-            <li>Solo each insert briefly to check that its meter matches the sound you expect. Clear all solos. Bring the kick and bass into balance, then raise the lead just enough to follow the words or melody. Listen again with the rest of the instruments in.</li>
-            <li>Watch the Master meter during the loudest hits. If it clips, lower the inserts feeding it and listen again. Check both the busy section and a quieter one before moving on.</li>
-          </ol>
-          <p>If a fader also changes an unrelated sound, check which sources share the insert. Give the sound its own insert when you need separate processing or level moves.</p>
-        </section>
         <section>
-          <h2 id="sends">Create a bus or effect send</h2>
-          <p>Use a bus to share one fader or processor across several inserts. Use a parallel send when you want the original sounds and a shared wet effect at the same time.</p>
+          <h2 id="levels">Balance the levels</h2>
+          <p>Set the faders before you add effects. A good balance often fixes what you were about to fix with an effect, and it gives you a fair starting point to compare against.</p>
           <ol>
-            <li>In the Mixer, use <strong>+</strong> to add an insert and rename it <strong>Drum Bus</strong>. Right-click the kick insert and choose <strong>Send to → Drum Bus</strong>. Do the same for the snare.</li>
-            <li>Turn off the <strong>M</strong> switch on each source to route it through the bus alone. Keep <strong>M</strong> on for Drum Bus. Pull the bus fader down briefly. Both drums should get quieter together. If one stays loud, check for a direct route to Master.</li>
-            <li>For a shared reverb, create a separate <strong>Reverb</strong> insert, load Reverb, and set the effect’s <strong>Mix</strong> to 100% and its slot Mix to 100%. Send a vocal or snare to it and leave each source’s <strong>M</strong> on so its dry sound still reaches Master.</li>
-            <li>Select the source in the expanded Mixer and drag its send cable up or down to adjust the feed. Start quietly and listen at the end of a phrase. Lower the return fader to change the wet level for all sources together.</li>
+            <li>Switch to <strong>SONG</strong> and drag across the Playlist ruler over the busiest section, where the kick, bass and lead all play.<span class="result">That section loops.</span></li>
+            <li>Pull every fader down a little, then bring up the kick and the bass until they sit well together.</li>
+            <li>Raise the lead or vocal until you can follow it easily, then bring in the rest.</li>
+            <li>Watch the Master meter on the loudest hits.<span class="result">If <strong>CLIP</strong> lights red above it, the mix is too loud: lower the faders that feed it, not just the Master.</span></li>
+            <li>Loop a quieter section and check the balance there too.</li>
           </ol>
+          <p>Double-click a fader to reset it to 0 dB, or a pan knob to center it. <strong>M</strong> mutes a strip and <strong>S</strong> solos it; <kbd>Ctrl</kbd>-click or right-click <strong>M</strong> also solos.</p>
+          <p>If moving one fader also changes a sound you did not mean to touch, both sounds share that insert. Give one of them its own insert.</p>
         </section>
+
         <section>
           <h2 id="effects">Add an effect</h2>
-
-          <p>Build a short chain on one insert and compare it while that sound plays in the song. A vocal chain is a useful first example.</p>
+          <p>Effects change a sound: EQ shapes its tone, a compressor evens its level, reverb gives it space. Each insert runs its effects from top to bottom. Not sure which effect you need? <a href="plugins.html">Pick one by what you hear</a>.</p>
           <ol>
-            <li>Select the vocal insert. Choose <strong>Add effect…</strong> or press <kbd>Shift</kbd> + <kbd>F9</kbd>. Add <strong>Parametric EQ</strong> for a cut you can hear, then add <strong>Reverb</strong> to give the vocal space.</li>
-            <li>Click a slot to open its effect. Choose a starting preset from the preset name in the window header. In Reverb, try a short <strong>Decay</strong> and <strong>Mix</strong> around 15%. The tail should be audible at the end of a phrase.</li>
-            <li>Toggle the slot’s power to compare in context. Adjust the effect’s output to match levels when possible. Use the slot’s <strong>Mix</strong> control to blend any effect with its input. If Reverb already blends through its own <strong>Mix</strong>, leave the slot at 100% while you learn that knob.</li>
-            <li>Drag slots up or down to change processing order. With EQ first, the signal entering the reverb already has the cut. With EQ last, it shapes the voice and the reverb together. Compare on the same phrase and keep the order that gives you the clearer tail.</li>
+            <li>Select the insert, for example the vocal.</li>
+            <li>Press <kbd>Shift</kbd> + <kbd>F9</kbd>, or click <strong>Add effect</strong> under the insert's effect list.<span class="result">The effect picker opens. Type to search, or pick a category.</span></li>
+            <li>Choose <strong>Reverb</strong>.<span class="result">Its window opens, already set to its first preset.</span></li>
+            <li>Play a phrase and listen to the end of it.<span class="result">You hear the reverb tail after the last word.</span></li>
+            <li>Click the dot on the effect's row in the Mixer to bypass it, then click again to turn it back on. Compare the two.</li>
           </ol>
-          <p>Drag a slot onto another Mixer strip to move it. Hold <kbd>Ctrl</kbd> while dragging to copy it. To reuse the whole chain, right-click the insert and open <strong>FX chain preset → Save FX chain as preset…</strong>. On an empty destination insert, use <strong>Load FX chain preset…</strong> to recall it. The loader can also <strong>Append</strong> the preset after existing effects or <strong>Replace</strong> them. Check gain and sidechain sources on the new track.</p>
-          <p><a href="plugins.html">Pick an effect by what you hear</a> or <a href="automation.html">change an effect as the song plays</a>.</p>
+          <p>To try other settings, step through presets with <strong>‹</strong> and <strong>›</strong> at the top right of the effect window, or click the preset name for the full list.</p>
+          <p class="why">Order matters. With an EQ before a reverb, the reverb receives the already-shaped sound. With the EQ after it, the EQ shapes the voice and its tail together. Drag an effect up or down to change the order.</p>
+          <h3>Blend, move and reuse effects</h3>
+          <ul>
+            <li>Each effect row has a <strong>Mix</strong> control that blends the effect with the unprocessed sound (<dfn>dry/wet</dfn>: dry is the original, wet is the effect). Effects with their own Mix knob, such as Reverb, are easier to set there.</li>
+            <li>Drag an effect onto another strip to move it there. Hold <kbd>Ctrl</kbd> to copy it.</li>
+            <li>To reuse a whole chain, right-click the insert and choose <strong>FX chain preset → Save FX chain as preset…</strong>. On another insert, <strong>Load FX chain preset…</strong> brings it back: <strong>Append</strong> adds it after the effects already there, <strong>Replace</strong> swaps them out.</li>
+          </ul>
+          <p>To change an effect as the song plays (a filter that opens in the chorus), see <a href="automation.html">Automate controls</a>.</p>
         </section>
+
         <section>
-          <h2 id="masking">Make room when sounds compete</h2>
-          <p>Listen for two parts that are clear on their own and crowded together. For example, loop a kick and 808 that play at the same time and check whether the kick loses definition.</p>
+          <h2 id="sends">Group sounds on a bus</h2>
+          <p>A <dfn>bus</dfn> is an insert that other inserts feed, so one fader and one set of effects control them all: turn all the drums down at once, or compress them together. A <dfn>send</dfn> is the connection from one insert to another. Sends are taken after the source's fader.</p>
           <ol>
-            <li>While the section plays, look for a masking dot on the insert that covers another. Click the dot to see the reported pair and frequency range. Listen to those sounds together and check that you hear the overlap before applying a fix.</li>
-            <li>Choose <strong>Make room for</strong> the other insert. Synkopa adds a Parametric EQ at the end of the masking insert’s chain, with a dynamic band keyed by the other sound. Use <strong>Review existing</strong> when a keyed effect already handles the pair.</li>
-            <li>Open the EQ and toggle bypass while both parts play. Check whether the covered sound is easier to hear and whether the other sound retains enough body. If the change is too strong, reduce the dynamic band’s cut. Undo the addition if the first balance worked better.</li>
+            <li>Click <strong>+</strong> after the last strip in the Mixer to add an insert.</li>
+            <li>Double-click its name and call it <strong>Drum Bus</strong>.</li>
+            <li>Right-click the kick's strip and choose <strong>Send to → Drum Bus</strong>. Do the same for the snare and the hats.</li>
+            <li>Maximize the Mixer: double-click its title bar, or choose <strong>View → Maximize mixer</strong>.<span class="result">A lane of cables under the strips shows every send.</span></li>
+            <li>Under each drum strip, beside the cable dot, click <strong>M</strong> to turn off its direct output to the Master. (This is not the mute button above the fader.)<span class="result">The drums now reach the Master only through the bus.</span></li>
+            <li>Pull the Drum Bus fader down.<span class="result">All the drums get quieter together. If one stays loud, its <strong>M</strong> is still on.</span></li>
           </ol>
-          <p>Choose <strong>Ignore this pair</strong> for intentional overlap. To switch off the assistant, use <strong>Settings → Editing</strong>.</p>
+          <p>Right-click a cable for <strong>Only here (not to the Master)</strong>, which does the same as turning off <strong>M</strong>, or for <strong>Remove send</strong>. Drag a cable up or down to change how much is sent. Synkopa refuses a send that would loop back on itself.</p>
+          <h3>Share one reverb between several sounds</h3>
+          <p>Put a single reverb on its own insert and send several sounds to it. They sound like they are in the same room, and one fader sets the amount of reverb for all of them.</p>
+          <ol>
+            <li>Add an insert, name it <strong>Reverb</strong> and add the <strong>Reverb</strong> effect to it.</li>
+            <li>Set the effect's <strong>Mix</strong> to 100%, so the insert carries only the reverb.</li>
+            <li>Right-click the vocal's strip and choose <strong>Send to → Reverb</strong>. Leave the vocal's <strong>M</strong> on, so its dry sound still reaches the Master.</li>
+            <li>Start with a low send level and raise it while listening to the end of a phrase.</li>
+            <li>Use the Reverb insert's fader to set the overall amount for every sound you sent.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2 id="masking">Fix two sounds that clash</h2>
+          <p>Two parts can each sound fine alone and blur together, typically a kick and an 808 that are both loud around 50 Hz. This is called <dfn>masking</dfn>: one sound covers the other. While you play, the mix assistant listens for it and marks the insert that should make room with a small amber badge. Nothing changes until you click.</p>
+          <ol>
+            <li>Play the section where both parts sound together.</li>
+            <li>Click the amber badge on the strip.<span class="result">A menu names the pair and the frequency, for example <em>808 covers Kick at 45–56 Hz</em>.</span></li>
+            <li>Listen to the two parts together and check that you hear the problem.</li>
+            <li>Choose <strong>Make room for</strong> the other sound.<span class="result">Synkopa adds a Parametric EQ at the end of the strip's chain. Its one band dips that range only while the other sound plays.</span></li>
+            <li>Bypass the new EQ and compare.<span class="result">The covered sound should come through more clearly, while the other keeps its body between hits.</span></li>
+          </ol>
+          <p>If the dip is too strong, open the EQ and make its cut smaller. If you preferred it before, undo with <kbd>Ctrl</kbd> + <kbd>Z</kbd>. When the menu offers <strong>Review existing</strong>, an effect already ducks that pair: open it and adjust it instead.</p>
+          <p>Overlap on purpose? Choose <strong>Ignore this pair</strong>. To turn the assistant off, go to <strong>File → Settings… → General → Mix assistant</strong>.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/mixer-masking-menu.webp"><img src="images/mixer-masking-menu.webp" width="350" height="139" alt="The 808 masking menu reports that it covers Kick at 45–56 Hz." loading="lazy"></a>
@@ -147,7 +180,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose <strong>Make room for Kick</strong> after checking the overlap by ear.</li>
+                <li><strong>Make room for Kick</strong>, chosen after hearing the overlap.</li>
               </ol>
             </figcaption>
           </figure>
@@ -159,22 +192,24 @@
             </div>
             <figcaption>
               <ol>
-                <li>The dynamic band dips around 50 Hz in this example.</li>
-                <li>Kick is selected as the sidechain source.</li>
+                <li>The band dips around 50 Hz, only while the kick plays.</li>
+                <li>The kick is the sound the band listens to.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
-        <section>
-          <h2 id="sidechain">Sidechain a compressor</h2>
 
-          <p>Duck a bass around the kick. The Compressor on the bass receives the bass as its audio and follows the kick as its detection source.</p>
+        <section>
+          <h2 id="sidechain">Duck the bass under the kick</h2>
+          <p>When the kick and bass hit together, the low end gets crowded. <dfn>Ducking</dfn> turns the bass down for a moment on every kick, so the kick punches through and the bass comes back between hits. It works through a <dfn>sidechain</dfn>: the compressor on the bass listens to the kick instead of to the bass.</p>
           <ol>
-            <li>Route kick and bass to separate inserts. Play a section containing both and confirm each insert shows activity.</li>
-            <li>Right-click the kick insert. Choose <strong>Sidechain to</strong>, then the bass insert. Synkopa connects the kick to a Clean Compressor on the bass, adding one if needed. Click the Compressor slot to check that its sidechain input shows the kick.</li>
-            <li>While both sounds play, lower <strong>Thresh</strong> until the red <strong>GR</strong> meter moves on kick hits. Start with a short <strong>Attack</strong> and adjust <strong>Release</strong> so the bass recovers before the next kick. Toggle bypass and listen for the kick’s attack to come through. For subtler movement, use less reduction.</li>
+            <li>Make sure the kick and the bass each have their own insert.</li>
+            <li>Right-click the kick's strip and choose <strong>Sidechain to</strong>, then the bass insert.<span class="result">The bass's Compressor now listens to the kick. If the bass had none, one set up for ducking is added and opens.</span></li>
+            <li>Play a section with both.<span class="result">The red <strong>GR</strong> (gain reduction) meter moves on every kick, and the bass dips.</span></li>
+            <li>For more ducking, lower <strong>Thresh</strong>. For less, raise it.</li>
+            <li>Adjust <strong>Release</strong> so the bass comes back up before the next kick.</li>
           </ol>
-          <p>When the meter stays flat, confirm the source name and make sure the kick plays in that range. In the Compressor, use <strong>Own input</strong> or the current source name to open the source menu. Choose the kick insert there when wiring the Compressor directly.</p>
+          <p>If the meter does not move, check that the kick plays in that section. In the Compressor window, the sidechain box (<strong>Own input</strong> or a source name) shows what it listens to; click it to pick the kick insert yourself. The <a href="dynamics.html#compressor">Compressor</a> section explains Thresh, Attack and Release.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/mixer-sidechain-menu.webp"><img src="images/mixer-sidechain-menu.webp" width="610" height="315" alt="Kick insert menu with Sidechain to open and the 808 insert in the destination list." loading="lazy"></a>
@@ -183,8 +218,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>Open <strong>Sidechain to</strong> on the kick insert.</li>
-                <li>Choose the bass destination, <strong>Ins 6 · 808</strong> in this project.</li>
+                <li><strong>Sidechain to</strong> in the kick's menu.</li>
+                <li>The bass insert, here <strong>Ins 6 · 808</strong>.</li>
               </ol>
             </figcaption>
           </figure>
@@ -196,8 +231,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>The sidechain chooser shows <strong>Ins 7 · Kick</strong>.</li>
-                <li>Gain-reduction history shows what happened on the recent hits.</li>
+                <li>The sidechain box shows <strong>Ins 7 · Kick</strong>.</li>
+                <li>The history shows how much the bass was turned down on recent kicks.</li>
               </ol>
             </figcaption>
           </figure>

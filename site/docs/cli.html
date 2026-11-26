@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Edit a running Synkopa project, render without the app, automate with an agent, and live-code a beat.">
+  <meta name="description" content="Use the synkopa command to edit the running app, render project files without it, let a coding agent work on a song, or live-code a beat.">
   <title>CLI and coding agents · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,61 +63,84 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>CLI and coding agents</h1>
+        <p class="lede"><code>synkopa</code> is a command you type in a terminal to read, edit and render a Synkopa project. Use it to script repetitive edits, render variations without opening the app, or let a coding agent work on your song. You never need it to make music: everything it does is also in the app.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#connect">Connect to the running app</a>
-        <a href="#headless">Render from a project file</a>
-        <a href="#agent">Give a coding agent one musical task</a>
+        <a href="#connect">Talk to the running app</a>
+        <a href="#headless">Render a project without the app</a>
+        <a href="#agent">Let a coding agent edit your song</a>
         <a href="#live-coding">Live-code a beat from a text file</a>
       </nav>
       <article class="prose">
         <section>
-          <h2 id="connect">Connect to the running app</h2>
+          <h2 id="connect">Talk to the running app</h2>
+          <p>By default the command edits the song open in Synkopa. You watch each change appear, and each command is one <dfn>undo step</dfn>, so <kbd>Ctrl</kbd> + <kbd>Z</kbd> in the app takes it back. Nothing is saved until you save.</p>
           <ol>
-            <li>Launch the desktop app once. Open a new terminal and run <code>synkopa status</code>. If the shell cannot find it, open <strong>File → Settings… → Audio</strong> and scroll to <strong>Command line</strong> to check the launcher path.</li>
-            <li>Open the project you want to work on. Run <code>synkopa context --pretty</code> to find the current revision, tracks, inserts, patterns, and channel IDs. If more than one app is running, use <code>synkopa sessions</code> and pass <code>--session ID</code>.</li>
-            <li>Run one edit with a value that differs from the current project. Check that the app changed, then undo the edit by pressing <kbd>Ctrl</kbd> + <kbd>Z</kbd> or running <code>synkopa undo</code>.</li>
+            <li>Start Synkopa once. It installs the <code>synkopa</code> command for you.</li>
+            <li>Open a <em>new</em> terminal (one that was already open does not see the command yet) and run <code>synkopa status</code>.<span class="result">It prints the transport state, the project's file and the audio device.</span></li>
+            <li>Run <code>synkopa context --pretty</code>.<span class="result">You get a map of the song: tracks, mixer inserts, patterns and channels, each with the number (ID) other commands use.</span></li>
+            <li>Run <code>synkopa bpm 128</code>.<span class="result">The tempo in the toolbar changes to 128.</span></li>
+            <li>Run <code>synkopa undo</code>, or press <kbd>Ctrl</kbd> + <kbd>Z</kbd> in the app.<span class="result">The tempo goes back.</span></li>
           </ol>
           <pre tabindex="0" data-copy-command><code>synkopa status
-        synkopa context --pretty
-        synkopa bpm 128
-        synkopa undo</code></pre>
-          <p>The default target is the open project. Edits are undoable there and you decide when to save. JSON goes to stdout, messages go to stderr.</p>
+synkopa context --pretty
+synkopa bpm 128
+synkopa undo</code></pre>
+          <h3>If it does not work</h3>
+          <ul>
+            <li><strong>The terminal does not know <code>synkopa</code>:</strong> open <strong>File → Settings… → Audio</strong> and scroll to <strong>Command line</strong>. It says whether the command is in your PATH, the list of folders your terminal searches for commands.</li>
+            <li><strong>It says Synkopa is not running:</strong> start the app and try again.</li>
+            <li><strong>Several Synkopa windows are open:</strong> run <code>synkopa sessions</code> and add <code>--session</code> with the ID of the one you mean.</li>
+          </ul>
+          <p>For scripts: the result is printed as <dfn>JSON</dfn> (structured text programs can read), and messages go to the error stream. Add <code>--pretty</code> to make it readable. Run <code>synkopa help</code> for every command.</p>
         </section>
+
         <section>
-          <h2 id="headless">Render from a project file</h2>
+          <h2 id="headless">Render a project without the app</h2>
+          <p>With <code>-p</code> and a file name, the command works on a project file directly. The app does not need to be running and no audio device is used. This is useful for rendering variations in a batch.</p>
           <ol>
-            <li>Use an unused filename in a scratch folder. Create a demo project and render it to a WAV without opening the app. This is a headless render.</li>
-            <li>Listen to the WAV. Read the JSON render result for peaks and clipping. If it reports missing sources, fix the links or use a <a href="projects.html#portable">portable project</a>.</li>
-            <li>For a variation, use <code>--save-as</code> on the edit to keep the source project. Render the new file to a different WAV and compare.</li>
+            <li>In an empty folder, create a project from the demo song: <code>synkopa new walkthrough.synkopa --template demo</code>.</li>
+            <li>Render it to a WAV file: <code>synkopa -p walkthrough.synkopa render --out walkthrough.wav</code>.<span class="result">The result lists the peak and loudness of the file and whether it clipped.</span></li>
+            <li>Make a faster copy without touching the original: <code>synkopa -p walkthrough.synkopa bpm 144 --save-as faster.synkopa</code>.</li>
+            <li>Render the copy and listen to both files.</li>
           </ol>
           <pre tabindex="0" data-copy-command><code>synkopa new walkthrough.synkopa --template demo
-        synkopa -p walkthrough.synkopa render --out walkthrough.wav
-        synkopa -p walkthrough.synkopa bpm 144 --save-as faster.synkopa
-        synkopa -p faster.synkopa render --out faster.wav</code></pre>
-          <p><code>-p</code> edits write back to the project unless you use <code>--dry-run</code> or <code>--save-as</code>. If the app already has that project open, use the live CLI or close the file before editing it on disk. Offline playback means rendering to a file.</p>
+synkopa -p walkthrough.synkopa render --out walkthrough.wav
+synkopa -p walkthrough.synkopa bpm 144 --save-as faster.synkopa
+synkopa -p faster.synkopa render --out faster.wav</code></pre>
+          <div class="note"><p>An edit with <code>-p</code> saves the file right away; there is no undo. Add <code>--save-as</code> to write a copy, or <code>--dry-run</code> to save nothing. Synkopa refuses to edit a file the app has open, because the app would overwrite the change on its next save.</p></div>
+          <p>If the render reports missing audio, <a href="projects.html#relink">relink it in the app</a> or work from a <a href="projects.html#portable">project ZIP</a>.</p>
         </section>
+
         <section>
-          <h2 id="agent">Give a coding agent one musical task</h2>
+          <h2 id="agent">Let a coding agent edit your song</h2>
+          <p>A coding agent can run <code>synkopa</code> like you do: read the song, make an edit, render it and check the levels. Every edit lands in your undo history, so you stay in control.</p>
           <ol>
-            <li>Start the app, open a saved project, and start your agent in a folder where it can render previews. Ask it to run <code>synkopa context --pretty</code> and identify the correct pattern and channel before editing.</li>
-            <li>Give it a bounded goal, such as making one hi-hat pattern less repetitive. Ask it to preview a single reversible change first. For a batch of edits it can inspect <code>synkopa schema</code> and use <code>apply --file</code> for one atomic edit.</li>
-            <li>Ask it to use <code>--if-revision</code> with the revision just inspected. On <code>REVISION_CONFLICT</code>, it should read the current project again before deciding how to proceed.</li>
-            <li>Have it render a preview WAV and report peaks or clipping. Listen and compare with undo in the app. Save only the version you want.</li>
+            <li>Open the song in Synkopa and save it.</li>
+            <li>Start the agent in any folder and tell it to run <code>synkopa context --pretty</code> first, to find the right pattern and channel.</li>
+            <li>Give it one small, clear task, for example: “make the hi-hats in pattern 2 less repetitive”.</li>
+            <li>Ask it to render a preview and report peaks or clipping: <code>synkopa render --out preview.wav</code>.</li>
+            <li>Listen in the app. Keep the change with <kbd>Ctrl</kbd> + <kbd>S</kbd>, or take it back with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.</li>
           </ol>
-          <p>Use <code>synkopa catalog</code> for valid effects, parameter IDs and ranges. The <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">complete CLI reference</a> includes MIDI, vocal editing, notes, chords, stems, and mixer tasks.</p>
+          <p>Tips for the agent: <code>synkopa catalog</code> lists every effect with its parameters and ranges, and <code>synkopa schema</code> lists the edits <code>apply --file</code> accepts as one all-or-nothing step. Every edit raises the project's <dfn>revision</dfn> number; with <code>--if-revision</code> an edit is refused with <code>REVISION_CONFLICT</code> if you changed the song in the meantime, and the agent should read it again.</p>
+          <p>The <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">complete CLI reference</a> covers notes, chords, stems, vocals, mixing, MIDI and exit codes.</p>
         </section>
+
         <section>
           <h2 id="live-coding">Live-code a beat from a text file</h2>
+          <p>Write the song as a text file, one command per line. Each time you save the file, Synkopa applies it to the loop that is playing, so you hear the change at once.</p>
           <ol>
-            <li>Start a loop in the app. Save a text file with one command per line. Use IDs and channel names from <code>synkopa context</code>.</li>
-            <li>Run <code>synkopa watch song.txt</code> in a terminal. In your editor, change a step or tempo and save. A successful save updates the looping project as one undo step.</li>
-            <li>To remove a scripted change, delete its line and save. Watch reapplies the file from the project state at start. If you edit the project separately and get a revision conflict, restart watch from the new project state.</li>
+            <li>Start a loop playing in the app.</li>
+            <li>Find the pattern ID and channel names with <code>synkopa context</code>, and save a file such as <code>song.txt</code> with your commands.</li>
+            <li>Run <code>synkopa watch song.txt</code> in a terminal.</li>
+            <li>Change a step or the tempo in your editor and save.<span class="result">The loop changes. Each save is one undo step.</span></li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the terminal to stop watching.</li>
           </ol>
           <pre tabindex="0" data-copy-command><code># song.txt (replace 1 with the pattern ID you found)
-        bpm 128
-        pattern --id 1 --ch hat --steps "x.x. x.x. x.x5 x.x9"</code></pre>
-          <p>Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the terminal to stop watching. Use <code>synkopa script song.txt</code> to run a file once. A script edits a project file once at the end, or applies commands one by one in the live app.</p>
+bpm 128
+pattern --id 1 --ch hat --steps "x.x. x.x. x.x5 x.x9"</code></pre>
+          <p>In a step string each character is one sixteenth note: <code>x</code> is a full hit, <code>1</code>–<code>9</code> a softer one (10–90 %), and <code>.</code> a rest. Spaces only help reading.</p>
+          <p>Every save applies the file to the song as it was when <code>watch</code> started, so deleting a line removes its change. If you edit the song in the app meanwhile, restart <code>watch</code>. To run a file once instead, use <code>synkopa script song.txt</code>.</p>
         </section>
       </article>
     </main>

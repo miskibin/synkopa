@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Draw and record control changes over time in Synkopa.">
+  <meta name="description" content="Make knobs and faders move by themselves: draw or record automation in Synkopa.">
   <title>Automate a mix · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -62,22 +63,28 @@
     <main id="main" tabindex="-1">
       <header class="intro">
         <h1>Automate a mix</h1>
+        <p class="lede"><dfn>Automation</dfn> makes a knob or fader move by itself as the song plays: a filter that opens into the chorus, a vocal that gets louder on the last line, an echo that appears on one word. You draw the movement as a line on the Playlist, or record it by turning the knob while the song plays.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#create">Make a filter sweep</a>
-        <a href="#shape">Edit the shape</a>
-        <a href="#record">Record a control move</a>
+        <a href="#create">Draw a filter sweep</a>
+        <a href="#shape">Change the shape of the movement</a>
+        <a href="#record">Record a knob move</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="create">Make a filter sweep</h2>
-          <p>Open a low-pass filter over four bars so a synth moves from dark to bright as the next section approaches.</p>
+          <h2 id="create">Draw a filter sweep</h2>
+          <p>A filter sweep is the classic build-up: a synth starts dull and gets brighter over four bars until the next section hits. A <dfn>low-pass filter</dfn> removes the high frequencies above its <strong>Cutoff</strong>; raising the cutoff lets the highs back in.</p>
           <ol>
-            <li>Route a sustained synth to its own Mixer insert. Add <a href="creative-effects.html#filter">Filter</a> and select <strong>LP</strong>. Sweep <strong>Cutoff</strong> while the part plays so you know which values sound dark and open.</li>
-            <li>In the Playlist, drag on the ruler to select the bars you want to sweep over. Right-click the Filter’s <strong>Cutoff</strong> knob and choose <strong>Automate on the playlist</strong>. The new clip covers the selected loop. With no loop, it starts from the start marker and lasts four bars.</li>
-            <li>Drag the clip’s left endpoint down and its right endpoint up. Drag the bottom edge of the track header down if you need more room to see the line. Play in <strong>SONG</strong> mode from the start of the clip. The Cutoff knob follows the rising line and the highs come back as the section plays.</li>
+            <li>Give the synth its own Mixer insert (see <a href="basics.html#routing">How a sound reaches the speakers</a>).</li>
+            <li>Add the <a href="creative-effects.html#filter">Filter</a> effect to that insert and select <strong>LP</strong>.</li>
+            <li>Play the part and turn <strong>Cutoff</strong> by hand.<span class="result">You hear which values sound closed and which sound open.</span></li>
+            <li>Drag across the Playlist ruler over the bars the sweep should cover.<span class="result">The loop is highlighted on the ruler.</span></li>
+            <li>Right-click the <strong>Cutoff</strong> knob and choose <strong>Automate on the playlist</strong>.<span class="result">An automation clip covering the loop appears on the first empty track, or on a new track at the bottom.</span></li>
+            <li>Drag the clip's left point down and its right point up.<span class="result">A rising line.</span></li>
+            <li>Click the ruler at the start of the clip and press <kbd>Space</kbd>.<span class="result">The <strong>Cutoff</strong> knob follows the line and the synth gets brighter.</span></li>
           </ol>
+          <p>With no loop set, the clip starts at the playhead and lasts four bars. If the line is hard to see, drag the bottom edge of the track header down to make the track taller.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/automation-menu.webp"><img src="images/automation-menu.webp" width="430" height="225" alt="Context menu on the Cutoff knob with Automate on the playlist available." loading="lazy"></a>
@@ -85,7 +92,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose <strong>Automate on the playlist</strong>. The menu shows <strong>loop</strong> because the Playlist already has a loop range.</li>
+                <li><strong>Automate on the playlist</strong> shows <strong>loop</strong> when a loop is set, and <strong>4 bars</strong> when it is not.</li>
               </ol>
             </figcaption>
           </figure>
@@ -97,8 +104,8 @@
             </div>
             <figcaption>
               <ol>
-                <li>The low starting point keeps the filter mostly closed.</li>
-                <li>The high ending point lets more highs through.</li>
+                <li>Low start: the filter is mostly closed.</li>
+                <li>High end: more of the highs come through.</li>
               </ol>
             </figcaption>
           </figure>
@@ -107,22 +114,46 @@
               <source src="images/automation-playback.webm" type="video/webm">
               <a href="images/automation-playback.webm">Download the playback video</a>.
             </video>
-            <figcaption>The playhead crosses the rising automation clip as the Cutoff readout climbs. This video is silent.</figcaption>
+            <figcaption>As the playhead crosses the rising clip, the Cutoff readout climbs. The video is silent.</figcaption>
           </figure>
+          <p>Any knob, fader or slider works the same way: right-click it and choose <strong>Automate on the playlist</strong>.</p>
         </section>
+
         <section>
-          <h2 id="shape">Edit the shape</h2>
-          <p>To keep the synth dark longer, drag the small dot between the endpoints to bend the ramp, or right-click empty space below the clip header to add a point. Put that point late in the clip and close in height to the first point. The horizontal position is when the value changes. The vertical position controls how far the filter opens. Play again and listen for the change to happen nearer the transition.</p>
-          <p>Choose <strong>Hold</strong> on the point where a value should jump. For example, add a high point on a section boundary, right-click it and choose Hold. Cutoff stays at the preceding point’s value until it reaches the high point.</p>
-          <p>If the envelope stops driving the knob after you move it by hand during playback, right-click it and choose <strong>Re-enable automation</strong>. If the clip is hard to find, choose <strong>Select automation clips</strong> from the same menu.</p>
-        </section>
-        <section>
-          <h2 id="record">Record a control move</h2>
+          <h2 id="shape">Change the shape of the movement</h2>
+          <p>A straight line changes at an even pace. Often you want the change to happen mostly at the end, or to jump at a section boundary. In the clip, left to right is time and bottom to top is the control's value.</p>
+          <ul>
+            <li><strong>Bend the line:</strong> drag the small dot halfway between two points. Bend it so the sweep stays dark longer and opens quickly just before the next section.</li>
+            <li><strong>Add a point:</strong> right-click empty space in the clip.</li>
+            <li><strong>Move a point:</strong> drag it. Hold <kbd>Shift</kbd> to keep its value, <kbd>Ctrl</kbd> to keep its time, <kbd>Alt</kbd> to move it off the grid.</li>
+            <li><strong>Delete a point:</strong> double-click it. Double-click a bend dot to straighten the line.</li>
+            <li><strong>Several points:</strong> <kbd>Ctrl</kbd> + drag to select them, then drag one to move them all or press <kbd>Delete</kbd>.</li>
+          </ul>
+
+          <h3>Make a value jump instead of glide</h3>
           <ol>
-            <li>Right-click the transport’s Record button. Enable <strong>Automation</strong> in the record filter and disable audio and notes if you only want to capture the control move. Leave <strong>Latch</strong> off for touch recording, which writes until you release the control. Enable <strong>Latch</strong> to keep writing its last value until you stop.</li>
-            <li>Set the playhead just before the move. Arm record, start playback in <strong>SONG</strong>, and sweep <strong>Cutoff</strong> through the transition. Stop playback and turn recording off.</li>
-            <li>Look for the recorded points in the automation clip. Replay the same bars with hands off the knob. If a movement is too abrupt, drag its points or bend the section between them.</li>
+            <li>Add a point on the section boundary and drag it to the new value.</li>
+            <li>Right-click that point and choose <strong>Hold</strong> under <strong>Curve</strong>.<span class="result">The control stays at the previous point's value, then jumps at this point.</span></li>
           </ol>
+          <p>The same menu can type in an exact value and has other curve shapes, such as <strong>Stairs</strong> and <strong>Wave</strong>.</p>
+
+          <h3>If the knob stops following the line</h3>
+          <p>Moving an automated knob by hand during playback takes over from the line. Right-click the knob and choose <strong>Re-enable automation</strong>, or stop playback, to hand control back. To find a control's automation clip, choose <strong>Select automation clips</strong> in the same menu.</p>
+        </section>
+
+        <section>
+          <h2 id="record">Record a knob move</h2>
+          <p>Recording is faster than drawing when you want a performed, human feel: you turn the knob while the song plays, and Synkopa writes the movement into an automation clip.</p>
+          <ol>
+            <li>Right-click the <strong>Record</strong> button in the toolbar and tick <strong>Automation</strong>. Untick <strong>Audio</strong> and <strong>Notes</strong> if you only want the knob move.</li>
+            <li>Choose how writing stops. With <strong>Latch</strong> off, writing stops as soon as you let go of the knob. With <strong>Latch</strong> on, the last value keeps being written until playback stops.</li>
+            <li>Click the ruler a bar or two before the move.</li>
+            <li>Press <kbd>R</kbd> to arm Record, then <kbd>Space</kbd> to play.</li>
+            <li>Turn <strong>Cutoff</strong> through the transition.</li>
+            <li>Press <kbd>Space</kbd> to stop, then <kbd>R</kbd> to turn Record off.<span class="result">The move appears as points in the knob's automation clip.</span></li>
+            <li>Play the same bars again without touching the knob.<span class="result">The knob repeats your move.</span></li>
+          </ol>
+          <p>Each recorded move is one undo step. If part of it is too abrupt, drag its points or bend the line between them.</p>
         </section>
       </article>
     </main>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Shape tone, control peaks, and balance vocals with built-in effects.">
+  <meta name="description" content="When and how to use EQ, Compressor, FET, Gate, De-esser, Vocal Rider, Multiband and Limiter, with quick starts and plain explanations of every control.">
   <title>EQ &amp; dynamics · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -61,10 +62,11 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>EQ &amp; dynamics</h1>
+        <h1>EQ and dynamics</h1>
+        <p class="lede">These effects fix the two most common mix problems: a sound whose <strong>tone</strong> is wrong (muddy, harsh, dull) and a sound whose <strong>level</strong> is uneven (words that disappear, hits that jump out, noise in the gaps). Each section says when to use the effect, gets you to a useful setting in a few steps, then explains the controls.</p>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#tone-vs-level">Tone vs. level</a>
+        <a href="#tone-vs-level">EQ or dynamics?</a>
         <a href="#parametric-eq">Parametric EQ</a>
         <a href="#compressor">Compressor</a>
         <a href="#fet-compressor">FET Compressor</a>
@@ -77,19 +79,58 @@
 
       <article class="prose">
         <section>
-          <h2 id="tone-vs-level">Tone vs. level</h2>
-          <p>Use EQ when the tone needs to change. Use dynamics when the level needs to change with the performance.</p>
-          <p>Loop a few bars. Toggle the effect’s power to compare with and without it. Match the listening levels before deciding which sounds better.</p>
+          <h2 id="tone-vs-level">EQ or dynamics?</h2>
+          <p>Ask whether the problem is there all the time or only at certain moments.</p>
+          <ul>
+            <li>Always there (every snare hit rings, the voice always sounds boxy): it is a <strong>tone</strong> problem. Use an <dfn>EQ</dfn>, which turns frequency ranges up or down.</li>
+            <li>Only sometimes (a few words too loud, some too quiet, noise between phrases): it is a <strong>level</strong> problem. Use a <dfn>dynamics</dfn> effect, which turns the sound up or down as it plays.</li>
+          </ul>
+          <p>Whatever you add, compare it with and without the effect (the round power button at the top left of every effect window) at the same loudness. A louder version always seems better at first.</p>
+          <dl class="terms">
+            <dt>dB</dt>
+            <dd>Decibels, the unit for level. +6 dB is clearly louder, −1 dB is a small change.</dd>
+            <dt>Hz</dt>
+            <dd>Frequency, from low (bass around 50–200 Hz) to high (cymbal shimmer around 10 kHz).</dd>
+            <dt>Gain reduction (GR)</dt>
+            <dd>How many dB a dynamics effect is turning the sound down right now. Most windows show it in red.</dd>
+          </dl>
           <details class="listen-check">
-            <summary>Choose a tool for two different snare problems</summary>
-            <p>If every snare hit has the same ring, start with a narrow <strong>Parametric EQ</strong> cut. If the snare tone is good and only the loud hits jump forward, start with <strong>Compressor</strong> and set the threshold so the gain reduction meter moves on those hits.</p>
+            <summary>Two snare problems: which tool for each?</summary>
+            <p>If every snare hit has the same ring, start with a narrow <strong>Parametric EQ</strong> cut. If the tone is good but a few hits jump forward, start with <strong>Compressor</strong> and set the threshold so the gain reduction meter moves only on those hits.</p>
           </details>
         </section>
+
         <section>
           <h2 id="parametric-eq" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#eq"></use></svg>Parametric EQ</h2>
-          <p>Change the tone by cutting or boosting a frequency range. A bell affects frequencies around a point. A shelf changes one end of the spectrum. A high-pass filter cuts frequencies below its cutoff.</p>
-          <p>Double-click the graph to add a band. Drag it sideways for frequency and up or down for gain. Scroll over it to adjust <strong>Q</strong>. A high Q narrows the band. Right-click the point to change its shape.</p>
-          <p><strong>Try it.</strong> On a piano or guitar, move a bell down around 250 Hz with a broad Q. Compare clarity and body before and after. If harshness appears only on a few notes, use <strong>Dynamic band</strong> with a negative <strong>RANGE</strong> and adjust <strong>THRESH</strong> until the cut moves on those notes.</p>
+          <p><strong>Use it when</strong> a sound is muddy, boomy, boxy, harsh or dull, or a single frequency rings.</p>
+          <h3>Quick start: clean up a muddy piano or guitar</h3>
+          <ol>
+            <li>Add <strong>Parametric EQ</strong> to the insert and play the sound.<span class="result">The graph shows the sound before the EQ in grey and after it in color. The bands start flat.</span></li>
+            <li>Drag the band point near 250 Hz down by 3–4 dB.</li>
+            <li>Scroll the mouse wheel over the point to make the band wider.</li>
+            <li>Turn the EQ off and on to compare.<span class="result">With the cut, the sound is clearer but should still have body. If it turns thin, cut less.</span></li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Drag a point</dt>
+            <dd>Sideways changes the frequency, up and down changes the gain.</dd>
+            <dt>Q</dt>
+            <dd>The width of a band. Scroll over a point to change it: a higher Q is narrower. Cut narrow, boost wide: a narrow boost tends to sound harsh.</dd>
+            <dt>Band shapes</dt>
+            <dd>A <strong>Bell</strong> changes the frequencies around one point. A <strong>Low shelf</strong> or <strong>High shelf</strong> changes everything below or above it. A <strong>Low cut</strong> removes everything below its frequency (also called a high-pass filter), a <strong>High cut</strong> everything above. Right-click a point to change its shape.</dd>
+            <dt>Add a band</dt>
+            <dd>Double-click empty space on the graph for a new bell. To catch a ringing frequency, drag down from the highlighted peak in the spectrum: a narrow cut appears exactly there.</dd>
+            <dt>Channel</dt>
+            <dd>Right-click a point to make it act on both sides, left, right, <strong>M</strong> (mid: what is in the center) or <strong>S</strong> (side: what is only in the stereo spread).</dd>
+          </dl>
+          <h3>Cut only when it gets loud (dynamic band)</h3>
+          <p>If a frequency is harsh only on loud notes, a fixed cut dulls the quiet ones too. A dynamic band moves only while its range is loud.</p>
+          <ol>
+            <li>Right-click the band's point and choose <strong>Dynamic: on</strong>.</li>
+            <li>Below the graph, set <strong>RANGE</strong> to a negative value: how far it may cut.</li>
+            <li>Lower <strong>THRESH</strong> until the band moves on the harsh notes only.<span class="result">The graph animates the band as it cuts.</span></li>
+          </ol>
+          <p>Once an EQ has a dynamic band, a <strong>Sidechain</strong> box appears: choose another insert, and the band dips only when that insert is loud. The <a href="mix.html#masking">mix assistant</a> sets this up for you.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-eq.webp"><img src="images/plugin-eq.webp" width="975" height="413" alt="Parametric EQ showing an editable band near 250 Hz." loading="lazy"></a>
@@ -97,16 +138,41 @@
             </div>
             <figcaption>
               <ol>
-                <li>Drag this bell band down to cut the low mids. Drag sideways to move the cut.</li>
+                <li>Drag this bell down to cut the low mids; drag it sideways to move the cut.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="compressor" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#comp"></use></svg>Compressor</h2>
-          <p>The Clean compressor turns down louder moments. <strong>Thresh</strong> sets where reduction begins. At a <strong>Ratio</strong> of 4:1, a steady input 4 dB above threshold comes out about 1 dB above it before <strong>Makeup</strong> gain. <strong>Attack</strong> sets how quickly the compressor reacts. <strong>Release</strong> sets how quickly it lets go.</p>
-          <p><strong>Try it.</strong> Loop a drum bus. Lower <strong>Thresh</strong> until the red <strong>GR</strong> meter moves on hits. Compare short and long <strong>Attack</strong> settings. A longer attack leaves more of the initial hit. If the level audibly swells between hits, adjust <strong>Release</strong>. Match the bypass level with <strong>Makeup</strong>.</p>
-          <p>For kick-triggered ducking, open Clean Compressor on the bass insert and choose the kick insert from <a href="mix.html#sidechain"><strong>Own input</strong></a>. The kick triggers the gain reduction on the bass.</p>
+          <p><strong>Use it when</strong> a sound's level jumps around (a vocal with loud and soft words, an uneven bass), when a drum bus should sound like one kit, or to <a href="mix.html#sidechain">duck the bass under the kick</a>. A compressor turns the loud moments down, so the whole sound can sit louder and steadier.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Add <strong>Compressor</strong> to the insert and play the sound.</li>
+            <li>Lower <strong>Thresh</strong> until the red <strong>GR</strong> meter shows 3–6 dB on the loudest parts.</li>
+            <li>Set <strong>Ratio</strong> between 2:1 and 4:1 for gentle control.</li>
+            <li>Raise <strong>Makeup</strong> by about the amount of gain reduction.</li>
+            <li>Turn the effect off and on to compare.<span class="result">At the same loudness, the sound is steadier and the quiet parts are easier to hear.</span></li>
+          </ol>
+          <p>Faster start: the presets <strong>Vocal — leveling</strong> and <strong>Drum bus — glue</strong> are good first settings.</p>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Thresh</dt>
+            <dd>Threshold: the level where compression starts. Only the sound above it is turned down. Lower means more of the sound gets compressed.</dd>
+            <dt>Ratio</dt>
+            <dd>How strongly it turns down what goes over the threshold. At 4:1, a sound 4 dB over comes out only 1 dB over.</dd>
+            <dt>Attack</dt>
+            <dd>How fast it reacts. A longer attack lets the first crack of each hit through, so drums keep their punch. A shorter one catches it.</dd>
+            <dt>Release</dt>
+            <dd>How fast it lets go after the sound drops. Too long and it is still turning down at the next hit; too short and the level audibly pumps.</dd>
+            <dt>Makeup</dt>
+            <dd>Turns the whole result up again to make up for the reduction.</dd>
+            <dt>Sidechain</dt>
+            <dd>What it listens to: <strong>Own input</strong>, or another insert, such as the kick for ducking.</dd>
+            <dt>Detect (Advanced)</dt>
+            <dd><strong>Peak</strong> follows fast hits; <strong>RMS</strong> follows the body of the sound, smoother for vocals.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-compressor.webp"><img src="images/plugin-compressor.webp" width="725" height="493" alt="Clean Compressor with gain-reduction history and timing controls." loading="lazy"></a>
@@ -114,7 +180,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Lower <strong>Thresh</strong> until the gain-reduction meter moves on drum hits.</li>
+                <li>Lower <strong>Thresh</strong> until the gain-reduction meter moves on the loud hits.</li>
               </ol>
             </figcaption>
           </figure>
@@ -131,14 +197,35 @@
             <p class="compression-note">Steady signal example before Makeup. Attack and Release affect when you hear the change.</p>
           </fieldset>
           <details class="listen-check">
-            <summary>The snare goes soft even though the meter shows only a few dB.</summary>
-            <p>Lengthen <strong>Attack</strong> while looping the same hit. When the leading crack returns, match the level with <strong>Makeup</strong> and compare bypass. If gain reduction is still active at the next hit, shorten <strong>Release</strong> and listen again.</p>
+            <summary>The snare sounds soft even though the meter shows only a few dB.</summary>
+            <p>Lengthen <strong>Attack</strong> while looping the same hit. When the crack returns, match the level with <strong>Makeup</strong> and compare again. If gain reduction is still active at the next hit, shorten <strong>Release</strong>.</p>
           </details>
         </section>
+
         <section>
           <h2 id="fet-compressor" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#fet"></use></svg>FET Compressor</h2>
-          <p>Choose <strong>FET</strong> in the Compressor window or select a FET preset in the picker. Switching types loads defaults. This 1176-style circuit reacts quickly and adds color when driven. <strong>Input</strong> drives the compressor harder and <strong>Output</strong> sets the listening level.</p>
-          <p><strong>Try it.</strong> On room drums, raise <strong>Input</strong> until the meter shows reduction, then lower <strong>Output</strong> to compare fairly. Hear how the room comes forward. Blend some dry sound back with <strong>Mix</strong> if the hits lose impact. Compare <strong>4</strong> against <strong>All</strong> in the Ratio row at a matched level to hear the stronger effect on the room tone.</p>
+          <p><strong>Use it when</strong> a vocal should jump forward and sound upfront, or room drums should be squashed for an aggressive sound. FET is the second type of the Compressor, modeled on the classic 1176: very fast, and it adds a little color as you push it.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>In the Compressor window, click <strong>FET</strong> next to the effect name, or pick a preset starting with <strong>FET ·</strong> in the effect picker.<span class="result">Switching type loads the FET's default settings.</span></li>
+            <li>Raise <strong>Input</strong> until the needle shows 3–7 dB of gain reduction on the loud words or hits.</li>
+            <li>Lower <strong>Output</strong> until bypassing the effect does not change the loudness.</li>
+            <li>Compare with and without it.<span class="result">The vocal sounds closer and more even; room drums sound bigger.</span></li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Input</dt>
+            <dd>How hard you drive the sound into the compressor. The FET has no threshold knob: more Input means more compression.</dd>
+            <dt>Ratio</dt>
+            <dd>4, 8, 12, 20 or <strong>All</strong>. <strong>All</strong> is the famous "all buttons in" mode: aggressive pumping and distortion, for drums and rooms rather than a lead vocal.</dd>
+            <dt>Attack, Release</dt>
+            <dd>As on the Compressor, but much faster: attack is in microseconds.</dd>
+            <dt>Output</dt>
+            <dd>The level after compression.</dd>
+            <dt>Mix</dt>
+            <dd>Blends in the uncompressed sound. 30–50% gives <dfn>parallel compression</dfn>: the density of the compressed sound with the punch of the original.</dd>
+          </dl>
+          <p>Click the meter to switch it between gain reduction (<strong>GR</strong>) and output level (<strong>OUT</strong>).</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-fet.webp"><img src="images/plugin-fet.webp" width="875" height="539" alt="Compressor with FET selected in the header and Input and Output controls." loading="lazy"></a>
@@ -146,16 +233,41 @@
             </div>
             <figcaption>
               <ol>
-                <li>Raise <strong>Input</strong> to drive the FET and watch the gain-reduction meter.</li>
+                <li>Raise <strong>Input</strong> and watch the gain-reduction needle.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="gate" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#gate"></use></svg>Gate</h2>
-          <p>A gate turns down the signal below its threshold. It can quiet room noise between phrases. Noise still passes through while the gate is open.</p>
-          <p><strong>Try it.</strong> Loop a vocal with gaps. Raise <strong>Thresh</strong> just above the room noise. Set <strong>Floor</strong> around −14 dB for a quieter gap with some room tone left. If the gate flutters, increase <strong>Hold</strong> or <strong>Hysteresis</strong>. If it chops off the ends of words, increase <strong>Release</strong> or lower the threshold.</p>
-          <p>For steady noise underneath the words, try <a href="creative-effects.html#denoiser">Denoiser</a>.</p>
+          <p><strong>Use it when</strong> you hear room noise, hum or other instruments in the gaps between notes, phrases or drum hits. A gate turns the sound down whenever it is quieter than the threshold. It does not remove noise <em>during</em> the notes: for steady noise under the words, use <a href="creative-effects.html#denoiser">Denoiser</a>.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Add <strong>Gate</strong> to the insert and play a part with gaps.<span class="result">The window draws the level as it plays; the lamp shows <strong>open</strong>, <strong>hold</strong> or <strong>closed</strong>.</span></li>
+            <li>Raise <strong>Thresh</strong> until it sits just above the noise in the gaps.<span class="result">The gaps go quiet.</span></li>
+            <li>Set <strong>Floor</strong> to about −14 dB, so some room sound stays and the silence does not sound unnatural.</li>
+            <li>If the ends of notes or words are cut off, lengthen <strong>Release</strong> or <strong>Hold</strong>, or lower <strong>Thresh</strong>.</li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Thresh</dt>
+            <dd>The level that opens the gate.</dd>
+            <dt>Floor</dt>
+            <dd>How far the gate turns the sound down when closed. −∞ is silence.</dd>
+            <dt>Ratio</dt>
+            <dd>How hard it closes. ∞ is a hard gate; lower values turn quiet parts down gradually, which sounds more natural on vocals.</dd>
+            <dt>Hysteresis, Hold</dt>
+            <dd>Stop the gate from chattering (flickering open and closed) on a fading note: it closes only once the level is this far below Thresh, and stays open this long.</dd>
+            <dt>Attack, Release</dt>
+            <dd>How fast it opens and closes.</dd>
+            <dt>Lookahead</dt>
+            <dd>Lets the gate open a few ms before each hit, so drum attacks are not cut. The mixer keeps everything in time.</dd>
+            <dt>Mode</dt>
+            <dd><strong>Duck</strong> turns the sound <em>down</em> while the detector hears something, for example music under a voice-over.</dd>
+            <dt>Sidechain</dt>
+            <dd>Let another insert open the gate, for example a hi-hat chopping a pad in rhythm.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-gate.webp"><img src="images/plugin-gate.webp" width="900" height="655" alt="Gate with input and gain information, threshold and time controls." loading="lazy"></a>
@@ -168,10 +280,31 @@
             </figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="de-esser" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#deess"></use></svg>De-esser</h2>
-          <p>Detects sharp consonants such as S and SH, then turns them down as they happen. <strong>Split</strong> mode lowers the high band. <strong>Wide</strong> mode lowers the whole signal when detection fires.</p>
-          <p><strong>Try it.</strong> Loop a vocal with sharp esses. Choose <strong>Only S</strong> under <strong>Listen</strong> and move <strong>Freq</strong> until you hear the consonants clearly. Turn Listen off. Lower <strong>Threshold</strong> so reduction happens mainly on those sounds. Lower <strong>Range</strong> if the voice starts to lisp.</p>
+          <p><strong>Use it when</strong> a vocal's S, SH and T sounds sting. The De-esser turns them down only at the moments they happen, so the rest of the voice stays bright. Put it after the vocal's EQ and compressor.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Add <strong>De-esser</strong> to the vocal and loop a phrase with sharp S sounds.</li>
+            <li>Set <strong>Listen</strong> to <strong>Only S</strong>.<span class="result">You hear only the part being removed.</span></li>
+            <li>Move <strong>Freq</strong> until you hear mainly the S sounds and no vowels. Male voices are often around 5 kHz, female voices around 8 kHz.</li>
+            <li>Set <strong>Listen</strong> back to <strong>Off</strong>.</li>
+            <li>Lower <strong>Threshold</strong> until the S sounds get 3–6 dB of reduction and the rest of the vocal gets none.</li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Threshold</dt>
+            <dd>How loud the S range must get before it is turned down.</dd>
+            <dt>Freq</dt>
+            <dd>Where the S range starts; the De-esser listens from there up.</dd>
+            <dt>Mode</dt>
+            <dd><strong>Split</strong> turns down only the highs during an S, leaving the body of the voice alone. <strong>Wide</strong> turns down the whole voice for a moment.</dd>
+            <dt>Range</dt>
+            <dd>The most an S can be turned down. Lower it if the voice starts to lisp.</dd>
+            <dt>Lookahead</dt>
+            <dd>Lets it react before the S arrives, so the start of each S is caught.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-deesser.webp"><img src="images/plugin-deesser.webp" width="850" height="508" alt="De-esser with detection, reduction and listen controls." loading="lazy"></a>
@@ -179,19 +312,39 @@
             </div>
             <figcaption>
               <ol>
-                <li>Choose <strong>Only S</strong> to hear the detector band before setting the threshold.</li>
+                <li><strong>Only S</strong> lets you hear the detected range before you set the threshold.</li>
               </ol>
             </figcaption>
           </figure>
           <details class="listen-check">
-            <summary>The singer’s S sounds are calmer, but the whole voice dips.</summary>
-            <p>Compare <strong>Split</strong> and <strong>Wide</strong> at the same threshold and range. Split only reduces the high band, so it can preserve more of the vowel level. If the S itself sounds unnatural, lower <strong>Range</strong>.</p>
+            <summary>The S sounds are calmer, but the whole voice dips with them.</summary>
+            <p>Switch from <strong>Wide</strong> to <strong>Split</strong> at the same threshold and range. Split reduces only the highs, so the vowels keep their level. If the S itself sounds unnatural, lower <strong>Range</strong>.</p>
           </details>
         </section>
+
         <section>
           <h2 id="vocal-rider" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#rider"></use></svg>Vocal Rider</h2>
-          <p>Moves level like a fader. It raises quieter words and lowers louder ones around a target. This helps phrase-to-phrase balance. A compressor can still catch faster peaks.</p>
-          <p><strong>Try it.</strong> Loop a vocal that changes level. Keep <strong>Auto target</strong> on and raise <strong>Amount</strong> until words sit more evenly. The green trace shows gain going up or down. Lower <strong>Max boost</strong> or raise <strong>Gate</strong> if breaths become too loud. Use <strong>Live</strong> under <strong>Look-ahead</strong> when monitoring. Compare an uneven phrase with bypass and listen for quiet words becoming clearer without breaths stepping forward.</p>
+          <p><strong>Use it when</strong> some words in a vocal are much quieter than others. It works like an engineer riding the fader: it raises quiet words and lowers loud ones toward the level of their phrase, slowly enough to sound natural. It does not catch fast peaks, so a compressor after it is still useful.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Add <strong>Vocal Rider</strong> to the vocal, before any compressor, and loop a phrase that changes level.</li>
+            <li>Set <strong>Speed</strong> to <strong>Singing</strong> or <strong>Rap</strong>.</li>
+            <li>Raise <strong>Amount</strong> until the words sit more evenly.<span class="result">The green line shows the rider turning the vocal up or down.</span></li>
+            <li>Compare with and without it.<span class="result">Quiet words are easier to follow, without breaths jumping forward.</span></li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Amount</dt>
+            <dd>How much each word is moved toward the level of its phrase.</dd>
+            <dt>Phrase</dt>
+            <dd>How much whole phrases are also nudged toward the take's usual level. Keep it low to preserve verse and chorus dynamics.</dd>
+            <dt>Max boost, Max cut</dt>
+            <dd>The furthest it may turn a word up or down. Lower <strong>Max boost</strong> if breaths get too loud.</dd>
+            <dt>Look-ahead</dt>
+            <dd>How far ahead it listens. <strong>Short +0.3 s</strong> and <strong>Long +1.6 s</strong> ride more accurately but delay the sound by that much; <strong>Live</strong> adds no delay, for recording and monitoring.</dd>
+            <dt>Advanced</dt>
+            <dd><strong>Auto target</strong> (on by default) finds the take's level for you; <strong>Noise floor</strong> and <strong>Gate</strong> keep it from lifting breaths and room noise; <strong>Output</strong> sets the final level.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-rider.webp"><img src="images/plugin-rider.webp" width="725" height="604" alt="Vocal Rider with a gain history and bounds for upward and downward moves." loading="lazy"></a>
@@ -199,15 +352,35 @@
             </div>
             <figcaption>
               <ol>
-                <li>Raise <strong>Amount</strong> to even out more of the differences between words.</li>
+                <li>Raise <strong>Amount</strong> to even out more of the difference between words.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="multiband" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#multiband"></use></svg>Multiband</h2>
-          <p>Splits the sound into low, mid, and high ranges. The dividers set where the bands meet. <strong>Downward</strong> reduces loud parts in each band. <strong>Upward</strong> lifts quieter parts, including room tone and noise.</p>
-          <p><strong>Try it.</strong> On a drum loop, start with low <strong>Depth</strong> and <strong>Upward</strong> at zero. Raise Upward and listen for quieter cymbal tails and room sound coming forward. If those details take over, lower <strong>Depth</strong> or <strong>Upward</strong>. Use <strong>Out gain</strong> to match the bypass level. If you lose impact in the kick while lifting the high-band detail, lower <strong>Downward</strong> and compare again.</p>
+          <p><strong>Use it when</strong> you want the dense, bright, in-your-face sound popular on synths, drums and vocals in electronic music (often called the "OTT" sound). It splits the sound into lows, mids and highs and compresses each one separately in two directions: <dfn>downward</dfn> turns loud parts down, <dfn>upward</dfn> lifts quiet details such as reverb tails, room sound and noise.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Add <strong>Multiband</strong> to a drum loop or synth.</li>
+            <li>Turn <strong>Depth</strong> down low, then raise it slowly.<span class="result">Quiet tails and details come forward and the sound gets denser.</span></li>
+            <li>If the noise and room take over, lower <strong>Upward</strong>. If the kick loses its impact, lower <strong>Downward</strong>.</li>
+            <li>Match the level with <strong>Out gain</strong> and compare with and without it.</li>
+          </ol>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Depth</dt>
+            <dd>How much of the effect is blended in. Start low.</dd>
+            <dt>Time</dt>
+            <dd>How fast the compression reacts and lets go.</dd>
+            <dt>Upward, Downward</dt>
+            <dd>The strength of each direction.</dd>
+            <dt>In gain, Out gain</dt>
+            <dd>Level into and out of the effect. More In gain drives the bands harder.</dd>
+            <dt>Thresholds</dt>
+            <dd>Drag the lines in the display: orange for downward, blue for upward. Drag the dividers to move where the bands meet. Band levels and crossovers are also under <strong>Advanced</strong>.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-multiband.webp"><img src="images/plugin-multiband.webp" width="900" height="558" alt="Multiband with three frequency bands and upward and downward compression controls." loading="lazy"></a>
@@ -215,15 +388,32 @@
             </div>
             <figcaption>
               <ol>
-                <li>Start with a low <strong>Depth</strong> to blend subtle processing across the three bands.</li>
+                <li>Start with a low <strong>Depth</strong> for subtle processing across the three bands.</li>
               </ol>
             </figcaption>
           </figure>
         </section>
+
         <section>
           <h2 id="limiter" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#limit"></use></svg>Limiter</h2>
-          <p>Set a maximum output peak with <strong>Ceiling</strong>. The limiter looks ahead to reduce peaks before they cross that line. A compressor usually shapes a wider range of dynamics. A limiter near the end of a chain can catch the last fast peaks.</p>
-          <p><strong>Try it.</strong> Loop the loudest part of the song on the Master insert. Start with <strong>Ceiling</strong> at −1 dBTP and turn up <strong>Gain</strong> until the red <strong>GR</strong> meter just catches peaks. Push it further to hear the change, then back off if kick and snare flatten or the mix pumps.</p>
+          <p><strong>Use it when</strong> the Master clips, or the finished mix should be louder without any peak crossing a set level. A limiter is a very fast, very strong compressor that guarantees a maximum level. A new project already has one on the Master insert. For a full mastering chain, use <a href="mastering.html#master">Master</a> instead.</p>
+          <h3>Quick start</h3>
+          <ol>
+            <li>Keep the <strong>Limiter</strong> as the last effect on the Master insert and loop the loudest part of the song.</li>
+            <li>Leave <strong>Ceiling</strong> at −1 dBTP, the safe value for streaming.</li>
+            <li>Turn <strong>Gain</strong> up slowly.<span class="result">The mix gets louder and the red <strong>GR</strong> meter shows how much the peaks are turned down.</span></li>
+            <li>Stop while the mix still keeps its punch. A few dB of reduction on the loudest hits is usually enough.</li>
+          </ol>
+          <p>If the kick and snare flatten or the mix starts to pump, back <strong>Gain</strong> off: more loudness has to come from the mix itself.</p>
+          <h3>Controls</h3>
+          <dl class="terms">
+            <dt>Gain</dt>
+            <dd>How hard the mix is pushed into the limiter. More gain is louder, with more reduction.</dd>
+            <dt>Ceiling</dt>
+            <dd>The highest level the output can reach, measured as <a href="mastering.html#loudness-and-peaks">true peak</a>.</dd>
+            <dt>Advanced</dt>
+            <dd><strong>Release</strong> and <strong>Auto release</strong> set how fast the level comes back after a peak (auto keeps dense mixes from pumping). <strong>Lookahead</strong>: longer is smoother, shorter keeps more snap. <strong>Stereo link</strong> at 100% keeps the stereo image steady. <strong>Output</strong> lowers the final level.</dd>
+          </dl>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-limiter.webp"><img src="images/plugin-limiter.webp" width="725" height="458" alt="Limiter with output peak and gain-reduction displays." loading="lazy"></a>
@@ -231,7 +421,7 @@
             </div>
             <figcaption>
               <ol>
-                <li>Set <strong>Ceiling</strong> to −1 dBTP for the listening exercise.</li>
+                <li><strong>Ceiling</strong> at −1 dBTP keeps peaks safe for streaming.</li>
               </ol>
             </figcaption>
           </figure>

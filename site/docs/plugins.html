@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Find a built-in effect or instrument by the sound you want.">
-  <title>Plugin guide · Synkopa Docs</title>
+  <meta name="description" content="Find the right built-in effect by describing what you hear: muddy, harsh, uneven, noisy, dry or too quiet.">
+  <title>Pick an effect · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -27,6 +27,7 @@
           <ul>
             <li><a href="index.html">Overview</a></li>
             <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="basics.html">How Synkopa works</a></li>
             <li><a href="first-song.html">First song</a></li>
             <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
@@ -61,15 +62,82 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>Plugin guide</h1>
+        <h1>Pick an effect by what you hear</h1>
+        <p class="lede">Find the sentence that describes your problem, and the effect next to it is where to start. Each link opens that effect's quick start. Instruments and sampled sounds are listed at the end.</p>
       </header>
+      <div class="prose">
+          <p>To add an effect, select a Mixer insert and press <kbd>Shift</kbd> + <kbd>F9</kbd> (or click <strong>Add effect</strong>). Add instruments from the Channel Rack's <strong>+ Channel</strong> menu. New to effects? <a href="mix.html#effects">Add an effect</a> walks you through the first one.</p>
+      </div>
       <div class="directory">
-        <p>Add effects from <strong>Mixer → Add effect…</strong> and instruments from <strong>Channel Rack → + Channel</strong>.</p>
         <label class="plugin-filter" hidden>Filter plugins
           <input type="search" placeholder="Try “harsh”, “delay”, or “LUFS”" autocomplete="off">
         </label>
         <p class="filter-status visually-hidden" role="status"></p>
         <p class="filter-empty" hidden>No matching plugins.</p>
+        <section>
+          <h2>The tone is muddy, harsh or dull</h2>
+          <ul>
+            <li><a href="dynamics.html#parametric-eq"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#eq"></use></svg>Parametric EQ</span><span>Boomy or muddy low end, a harsh or ringing frequency, or no sparkle: cut or boost that range.</span></a></li>
+            <li><a href="dynamics.html#de-esser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#deess"></use></svg>De-esser</span><span>A vocal's S and SH sounds sting your ears.</span></a></li>
+            <li><a href="creative-effects.html#saturator"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#sat"></use></svg>Saturator</span><span>A bass or vocal sounds thin, too clean or lost on small speakers: add warmth, harmonics or grit.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>The level jumps around</h2>
+          <ul>
+            <li><a href="dynamics.html#compressor"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#comp"></use></svg>Compressor</span><span>Loud hits jump out of the mix, or the drums do not sound like one kit.</span></a></li>
+            <li><a href="dynamics.html#fet-compressor"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#fet"></use></svg>FET Compressor</span><span>A vocal or drum room should sound upfront and aggressive (the FET type of the Compressor).</span></a></li>
+            <li><a href="dynamics.html#vocal-rider"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#rider"></use></svg>Vocal Rider</span><span>Some words are much quieter than others.</span></a></li>
+            <li><a href="dynamics.html#multiband"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#multiband"></use></svg>Multiband</span><span>You want the dense, bright, in-your-face sound: quiet details lifted, loud parts held.</span></a></li>
+            <li><a href="dynamics.html#limiter"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#limit"></use></svg>Limiter</span><span>The Master clips, or the song should be louder without going over a peak ceiling.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>Two sounds fight each other</h2>
+          <ul>
+            <li><a href="mix.html#sidechain"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#comp"></use></svg>Compressor (sidechain)</span><span>The bass muddies the kick: duck the bass on every kick hit.</span></a></li>
+            <li><a href="mix.html#masking"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#eq"></use></svg>Parametric EQ (make room)</span><span>Two parts blur together in the same range: dip one only while the other plays.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>There is noise in the recording</h2>
+          <ul>
+            <li><a href="dynamics.html#gate"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#gate"></use></svg>Gate</span><span>Room noise or bleed from other instruments is audible in the gaps between notes or hits.</span></a></li>
+            <li><a href="creative-effects.html#denoiser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#denoise"></use></svg>Denoiser</span><span>Steady hiss, hum or fan noise sits underneath the words.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>It sounds dry, flat or narrow</h2>
+          <ul>
+            <li><a href="creative-effects.html#reverb"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#reverb"></use></svg>Reverb</span><span>A voice or instrument sounds dry and close: put it in a room, hall or plate.</span></a></li>
+            <li><a href="creative-effects.html#delay"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#delay"></use></svg>Delay</span><span>A part needs echoes that follow the beat, or a slapback.</span></a></li>
+            <li><a href="creative-effects.html#chorus"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#chorus"></use></svg>Chorus</span><span>A guitar, synth or vocal sounds thin: thicken and widen it, or add a wobble.</span></a></li>
+            <li><a href="creative-effects.html#phaser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#phaser"></use></svg>Phaser</span><span>A pad or chord sits still: add a slow sweeping movement.</span></a></li>
+            <li><a href="creative-effects.html#stereo"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#stereo"></use></svg>Stereo</span><span>A sound is too narrow or too wide, or the low end should stay in the center.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>The vocal is out of tune, or should sound different</h2>
+          <ul>
+            <li><a href="creative-effects.html#pitch-correct"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#tune"></use></svg>Pitch Correct</span><span>Sung notes are off key: pull them to the scale, from natural to the hard-tune effect.</span></a></li>
+            <li><a href="creative-effects.html#voice"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#voice"></use></svg>Voice</span><span>Change a voice's pitch or character (deeper, brighter), or make it robotic.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>You want a transition or a rhythmic trick</h2>
+          <ul>
+            <li><a href="creative-effects.html#filter"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#filter"></use></svg>Filter</span><span>Build-ups, sweeps and DJ-style transitions: muffle a sound and open it up.</span></a></li>
+            <li><a href="creative-effects.html#half-speed"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#half"></use></svg>Half-Speed</span><span>A loop should drop to half time, an octave lower, and stay on the grid.</span></a></li>
+            <li><a href="creative-effects.html#warp"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#warp"></use></svg>Warp</span><span>Stutters, tape stops, reverses and rhythmic gating drawn per bar.</span></a></li>
+          </ul>
+        </section>
+        <section>
+          <h2>The song is finished and needs release loudness</h2>
+          <ul>
+            <li><a href="mastering.html#master"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#master"></use></svg>Master</span><span>Master the whole mix to a loudness target such as Streaming −14 LUFS.</span></a></li>
+            <li><a href="mastering.html#analyzer"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Analyzer</span><span>Measure loudness (LUFS), true peak, spectrum and stereo without changing the sound.</span></a></li>
+          </ul>
+        </section>
         <section>
           <h2>Instruments</h2>
           <ul>
@@ -77,53 +145,6 @@
             <li><a href="instruments.html#synthesizer"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#synth"></use></svg>Synthesizer</span><span>Build bass, leads, and pads from oscillators.</span></a></li>
             <li><a href="instruments.html#synkopa-instruments"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#piano"></use></svg>Synkopa Instruments</span><span>Play pianos, strings, guitars, harp, or vibraphone.</span></a></li>
             <li><a href="instruments.html#music-box"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#synth"></use></svg>Music Box</span><span>Play bright plucked tines.</span></a></li>
-          </ul>
-        </section>
-        <section>
-          <h2>Tone &amp; dynamics</h2>
-          <ul>
-            <li><a href="dynamics.html#parametric-eq"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#eq"></use></svg>Parametric EQ</span><span>Remove muddiness or tame harsh frequencies.</span></a></li>
-            <li><a href="dynamics.html#compressor"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#comp"></use></svg>Compressor</span><span>Control peaks or duck bass under the kick.</span></a></li>
-            <li><a href="dynamics.html#fet-compressor"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#fet"></use></svg>FET Compressor</span><span>Use FET mode in Compressor for fast, colored compression.</span></a></li>
-            <li><a href="dynamics.html#gate"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#gate"></use></svg>Gate</span><span>Quiet the room or bleed between notes.</span></a></li>
-            <li><a href="dynamics.html#de-esser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#deess"></use></svg>De-esser</span><span>Tame harsh or sharp S and SH sounds on vocals.</span></a></li>
-            <li><a href="dynamics.html#vocal-rider"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#rider"></use></svg>Vocal Rider</span><span>Keep quiet and loud words at a steadier level.</span></a></li>
-            <li><a href="dynamics.html#multiband"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#multiband"></use></svg>Multiband</span><span>Control loud and quiet sounds separately in lows, mids, and highs.</span></a></li>
-            <li><a href="dynamics.html#limiter"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#limit"></use></svg>Limiter</span><span>Catch fast peaks before the output clips.</span></a></li>
-          </ul>
-        </section>
-        <section>
-          <h2>Space &amp; movement</h2>
-          <ul>
-            <li><a href="creative-effects.html#delay"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#delay"></use></svg>Delay</span><span>Add repeats that can follow the beat.</span></a></li>
-            <li><a href="creative-effects.html#reverb"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#reverb"></use></svg>Reverb</span><span>Put a voice or instrument in a room, hall, or plate.</span></a></li>
-            <li><a href="creative-effects.html#chorus"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#chorus"></use></svg>Chorus</span><span>Thicken a sound with detuned copies.</span></a></li>
-            <li><a href="creative-effects.html#phaser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#phaser"></use></svg>Phaser</span><span>Sweep moving notches through a sound.</span></a></li>
-            <li><a href="creative-effects.html#stereo"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#stereo"></use></svg>Stereo</span><span>Adjust width and center the low end.</span></a></li>
-          </ul>
-        </section>
-        <section>
-          <h2>Color, time &amp; pitch</h2>
-          <ul>
-            <li><a href="creative-effects.html#filter"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#filter"></use></svg>Filter</span><span>Sweep the cutoff for a transition.</span></a></li>
-            <li><a href="creative-effects.html#saturator"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#sat"></use></svg>Saturator</span><span>Add harmonics, warmth, or grit.</span></a></li>
-            <li><a href="creative-effects.html#half-speed"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#half"></use></svg>Half-Speed</span><span>Drop a loop to half speed and an octave down.</span></a></li>
-            <li><a href="creative-effects.html#warp"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#warp"></use></svg>Warp</span><span>Draw repeats, tape stops, and rhythmic cuts.</span></a></li>
-            <li><a href="creative-effects.html#pitch-correct"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#tune"></use></svg>Pitch Correct</span><span>Tune a vocal to a key and scale in real time.</span></a></li>
-            <li><a href="creative-effects.html#voice"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#voice"></use></svg>Voice</span><span>Shift pitch or formants, or make a robot voice.</span></a></li>
-          </ul>
-        </section>
-        <section>
-          <h2>Repair</h2>
-          <ul>
-            <li><a href="creative-effects.html#denoiser"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#denoise"></use></svg>Denoiser</span><span>Reduce background noise, hum, or room sound under a recording.</span></a></li>
-          </ul>
-        </section>
-        <section>
-          <h2>Mastering &amp; meters</h2>
-          <ul>
-            <li><a href="mastering.html#master"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#master"></use></svg>Master</span><span>Set tone, dynamics, and loudness across the full mix.</span></a></li>
-            <li><a href="mastering.html#analyzer"><span class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#analyzer"></use></svg>Analyzer</span><span>Measure LUFS, true peak, spectrum, and stereo.</span></a></li>
           </ul>
         </section>
         <section>
@@ -142,7 +163,9 @@
             <li><a href="instruments.html#vibraphone"><span class="plugin-title"><img class="plugin-icon library-art" src="images/library/vibraphone.webp" alt="" width="24" height="24" loading="lazy">Vibraphone</span><span>Soft mallet sound with a metallic tail.</span></a></li>
           </ul>
         </section>
-        <p><a href="reference.html#third-party-plugins">Load third-party VST3 or LV2 plugins</a>.</p>
+      </div>
+      <div class="prose">
+        <p>You can also use your own VST3 and LV2 plugins: see <a href="reference.html#third-party-plugins">Load third-party plugins</a>.</p>
       </div>
     </main>
   </div>
