@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Connect a controller, record notes, and import and export Standard MIDI files.">
+  <title>MIDI setup and recording · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html" aria-current="page">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>MIDI setup and recording</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#keyboard">Connect a controller</a>
+        <a href="#record-notes">Record notes</a>
+        <a href="#import-midi">Import a MIDI file</a>
+        <a href="#export-midi">Export MIDI</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="keyboard">Connect a MIDI keyboard or pad controller</h2>
+          <ol>
+            <li>Connect the controller and open <strong>File → Settings… → MIDI</strong>. In <strong>Device</strong>, select its port. Use <strong>Refresh</strong> if you plugged it in after opening Settings.</li>
+            <li>Set <strong>Plays on</strong> to <strong>Selected channel (Channel Rack / piano roll)</strong> to follow your selection, or select a specific instrument to keep the keyboard on that sound. Open the Rack and select a pitched instrument.</li>
+            <li>Play a short note. Check the connected status and last note in Settings, then check that the intended instrument is audible. Choose <strong>From keyboard</strong> for performance dynamics or <strong>Fixed</strong> and a value from 1 to 127 for even notes.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-midi-settings.webp"><img src="images/compose-midi-settings.webp" width="920" height="680" alt="Settings MIDI tab with the device, target and velocity controls." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 71.3%; --y: 20.7%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 73.4%; --y: 26.8%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 73.4%; --y: 34.0%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Choose your connected MIDI device. The device shown here is a browser-demo controller.</li>
+                <li>Leave <strong>Plays on</strong> on the selected channel or pick one instrument.</li>
+                <li>Use <strong>From keyboard</strong> to retain the dynamics you play.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <p>If there is no port, reconnect it and refresh, then make sure the operating system can see the device. If the connection indicator responds but the instrument is silent, check <strong>Plays on</strong>, channel mute and the master output. With no controller, click <strong>Typing piano</strong> or press <kbd>Ctrl+T</kbd>. <kbd>Z</kbd> plays C4 and <kbd>Q</kbd> plays C5 at the default octave. Turn Typing piano off to use those keys as normal shortcuts again.</p>
+        </section>
+        <section>
+          <h2 id="record-notes">Record a performance as editable notes</h2>
+          <ol>
+            <li>Choose the instrument you tested and a pattern. Right-click the red <strong>Record</strong> button to check <strong>Notes</strong>. Disable <strong>Audio</strong> and <strong>Automation</strong> for a notes-only pass.</li>
+            <li>For a pattern overdub, select <strong>PAT</strong>, turn on the metronome if you want a cue. Arm <strong>Record</strong>, press <kbd>Space</kbd>, then play the phrase. Stop with <kbd>Space</kbd>. Open <kbd>F7</kbd> on the recorded channel to see notes in the current pattern.</li>
+            <li>To capture against the whole arrangement, switch to <strong>SONG</strong>. Click the ruler where you want the take to start. To specify a lane, right-click its track header and choose <strong>Record into this track</strong>. Enable <strong>1 BAR</strong> for a count-in if you want one. Start recording, play a phrase, and stop. Look for a new pattern clip in the Playlist, then double-click it to inspect the notes.</li>
+            <li>Use <strong>Quantize notes</strong> in the Record menu if the notes should land on a grid during capture. For a performance with deliberate timing, leave it off, then select only the notes you want to correct and quantize them in the <a href="patterns.html#piano-roll">Piano roll</a>.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-midi-record.webp"><img src="images/compose-midi-record.webp" width="470" height="268" alt="Transport with its Record menu open in notes-only mode." loading="lazy"></a>
+              <span class="shot-pin" data-pin-side="below" style="--x: 43.1%; --y: 6.3%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 53.5%; --y: 30.2%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 58.8%; --y: 61.9%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Right-click <strong>Record</strong> to open the input menu.</li>
+                <li>Enable <strong>Notes</strong> for a MIDI performance.</li>
+                <li>Choose a recording quantize grid here, or leave it off to retain timing.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <p>If no pattern clip appears after stopping, check that Record was armed, <strong>Notes</strong> was checked, and you played after any count-in. In PAT, check the current pattern and channel instead of looking for a new Playlist clip. Use <kbd>Ctrl+Z</kbd> to undo an unwanted take. For microphones or line inputs follow <a href="record.html">Record audio</a>.</p>
+        </section>
+        <section>
+          <h2 id="import-midi">Import a MIDI file</h2>
+          <ol>
+            <li>For a full file, set the start position on the Playlist and choose <strong>File → Import MIDI file…</strong>, or drop a <code>.mid</code> at a position and lane. Select the parts you want and check the suggested instruments. Drum parts map to available drum sounds.</li>
+            <li>Keep the project BPM for an existing arrangement, or enable the file tempo in the dialog to use its BPM. Review the import warnings about tempo changes or unsupported time signatures, when present.</li>
+            <li>Click <strong>Import</strong>. Check the new clip in the Playlist and the opened Piano roll. Switch to <strong>SONG</strong> to audition it in place. If the arrangement moved tempo unexpectedly, undo and import with the tempo option cleared.</li>
+            <li>For one part played by an instrument you already configured, right-click that channel in the Rack and choose <strong>Import MIDI into this channel…</strong>. Choose a single part and decide whether to replace or append to the notes in the current pattern.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-midi-import.webp"><img src="images/compose-midi-import.webp" width="560" height="319" alt="MIDI import dialog with multiple parts and their destination instruments." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 8.9%; --y: 33.2%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 87.9%; --y: 88.7%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Leave only the parts you want selected. Review the instrument beside each part.</li>
+                <li>Import the selected parts to an editable pattern and a Playlist clip.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-midi-result.webp"><img src="images/compose-midi-result.webp" width="850" height="430" alt="Piano roll opened on a channel of the imported MIDI pattern." loading="lazy"></a>
+              <span class="shot-pin" data-pin-side="below" style="--x: 13.8%; --y: 3.7%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 92.0%; --y: 93.0%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Use the channel selector to view each imported part.</li>
+                <li>Edit an imported note here, or switch to SONG and audition the clip on the Playlist.</li>
+              </ol>
+            </figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="export-midi">Export a pattern or song as MIDI</h2>
+          <p>Right-click a pattern in <strong>Browser → Patterns</strong> and click <strong>Export pattern as MIDI…</strong> to share an editable phrase. For the arrangement, place your patterns on the Playlist and choose <strong>File → Export song as MIDI…</strong>. Give the file a name, then import it into a new project or another DAW to check timing and note parts.</p>
+          <p>If song export is unavailable, check that the Playlist contains an unmuted pattern clip with notes. A <code>.mid</code> carries musical note data for playback with instruments in the receiving app. For the sound of your mix with its instrument presets and effects, use <a href="export.html">audio export</a>.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

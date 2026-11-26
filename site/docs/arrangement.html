@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Place patterns, create a variation, mark sections, and set tempo, key and lyric pages.">
+  <title>Arrange a song · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html" aria-current="page">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>Arrange a song</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#place-patterns">Place and vary clips</a>
+        <a href="#timeline">Loop and mark sections</a>
+        <a href="#tempo-key">Tempo and song key</a>
+        <a href="#notebook">Notebook and lyrics</a>
+      </nav>
+
+      <article class="prose">
+        <section>
+          <h2 id="place-patterns">Place two patterns and make a variation</h2>
+          <p>Start with the <a href="patterns.html#patterns">one-bar drum pattern</a> and a separate synth or melody pattern. Press <kbd>F5</kbd> to bring the <strong>Playlist</strong> forward. Open <strong>Browser → Patterns</strong>.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-arrange-before.webp"><img src="images/compose-arrange-before.webp" width="1080" height="420" alt="Playlist before placing the first drum pattern clip." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 10.2%; --y: 34.9%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 40.6%; --y: 32.6%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Grab <strong>Pattern 1</strong> from <strong>Patterns</strong> in the Browser.</li>
+                <li>Drop it on the first track at bar 1.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <ol>
+            <li>In the Playlist, set <strong>Snap</strong> to <strong>bar</strong> for arranging. Drag the drum pattern from the Browser onto a lane at bar 1. Hold <kbd>Shift</kbd> and drag the placed clip to bar 2 to copy it.</li>
+            <li>Place the melody on another lane, starting at bar 2. Switch to <strong>SONG</strong> and press <kbd>Space</kbd>. The melody enters after the first bar of drums. In <strong>PAT</strong>, playback is limited to the current pattern.</li>
+            <li>Open the second drum clip’s context menu, choose <strong>Make unique</strong>, then double-click that clip. Change the last few hats in the copy. Play from bar 1 and check that the original still sounds the same.</li>
+            <li>Use <strong>Trim</strong> when dragging a clip edge to shorten the audible portion. Use the Playlist’s <strong>Stretch</strong> mode on audio when the goal is to fit its duration to the grid.</li>
+          </ol>
+          <p>If both instances change, undo the note edit and use <strong>Make unique</strong> first. If the clip lands early, switch to <strong>bar</strong> snap and drag it into place. Check track mute and <strong>SONG</strong> if a clip is silent.</p>
+        </section>
+        <section>
+          <h2 id="timeline">Loop and mark sections</h2>
+          <ol>
+            <li>At bar 1, right-click the ruler and choose <strong>Add marker here</strong>. Name it <strong>Intro</strong>. At bar 3, add <strong>Verse</strong>. You can also use <kbd>Alt+T</kbd> at the current song position.</li>
+            <li>Click a marker to jump there. Drag it to correct the section boundary. Right-click it to rename, delete or choose <strong>Loop this section</strong>. Double-clicking the marker also loops up to the next marker.</li>
+            <li>For a custom loop, drag on the ruler across the span you want. Switch to <strong>SONG</strong> and play to check the repeat. Double-click the ruler to clear the range and click a bar to reset your playback start.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-arrange-after.webp"><img src="images/compose-arrange-after.webp" width="1080" height="420" alt="Playlist with two drum clips, a section marker and a loop range." loading="lazy"></a>
+              <span class="shot-pin" data-pin-side="below" style="--x: 39.9%; --y: 24.3%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 46.3%; --y: 29.5%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 49.4%; --y: 37.4%" aria-hidden="true">3</span>
+              <span class="shot-pin" data-pin-side="below" style="--x: 42.1%; --y: 4.0%" aria-hidden="true">4</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Click the <strong>Intro</strong> marker to jump to its bar.</li>
+                <li>The highlighted ruler area is the loop. Double-click the ruler to clear it.</li>
+                <li>This second clip is another instance of the same pattern.</li>
+                <li>Use <strong>SONG</strong> to play the Playlist.</li>
+              </ol>
+            </figcaption>
+          </figure>
+        </section>
+        <section>
+          <h2 id="tempo-key">Set tempo, meter and song key</h2>
+          <p>Drag or scroll on the <strong>BPM</strong> value. Right-click it for preset values, half and double tempo, or use <strong>TAP</strong> on each beat of the groove. Turn on the metronome and play a few bars to verify the speed. The Playlist uses a fixed 4/4 grid. For a phrase that groups in threes, place accents by ear over that grid. A MIDI import can report time signatures other than 4/4 as unsupported.</p>
+          <p>Click <strong>No key</strong> or the current key beside the BPM, then choose the root and scale. For a C-minor melody choose <strong>C</strong> and <strong>Minor</strong>. The Piano roll now highlights that scale for writing. Existing notes keep their pitches. To remove the guide, reopen the picker and clear the key.</p>
+          <h3>Write a tempo change or ramp with the CLI</h3>
+          <p>The desktop BPM control sets a single tempo. To edit tempo points, save the project, close it in the app, and use the installed Synkopa CLI on a copy. This map starts at 110 BPM and ramps from bar 5 to bar 9, where it holds at 140 BPM. The positions are zero-based beats, four to a bar.</p>
+          <pre><code>synkopa -p song.synkopa apply --json '[{"op":"setTempoPoints","points":[{"beat":0,"bpm":110},{"beat":16,"bpm":110,"ramp":true},{"beat":32,"bpm":140}]}]' --label "Raise tempo into chorus"</code></pre>
+          <p>Append <code>--dry-run</code> first to preview the change. Set <code>"ramp":false</code> on the point at beat 16 for a jump at beat 32. Reopen the edited file and play or render across those bars to verify. To clear the map, apply <code>[{"op":"setTempoPoints","points":[]}]</code> or set the global BPM in the app. Adjusting the global BPM clears existing tempo points.</p>
+        </section>
+        <section>
+          <h2 id="notebook">Line up lyrics in the Notebook</h2>
+          <ol>
+            <li>Press <kbd>F8</kbd>, add a page, and double-click its tab to rename it <strong>Verse</strong>. Enter each bar of lyrics on its own line. An empty line takes one bar. A heading such as <code>[Verse]</code> takes zero bars.</li>
+            <li>Use <strong>+</strong> to add a Chorus page and set <strong>from bar</strong> to the Chorus marker’s bar. Click a number beside the lyrics to jump straight to that bar.</li>
+            <li>Start <strong>SONG</strong> playback. The current page’s tab lights up. Select that page to see the current bar highlighted and the text scroll to follow it. Return the playhead to the marker and check that the first lyric line lands with the intended beat.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-notebook.webp"><img src="images/compose-notebook.webp" width="460" height="540" alt="Notebook with lyric pages and a chorus starting at bar 5." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 22.1%; --y: 9.0%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 92.0%; --y: 8.5%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 5.7%; --y: 21.0%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Name pages for sections of your song.</li>
+                <li>Set <strong>from bar</strong> to the first bar where this page belongs.</li>
+                <li>Click a bar number to send the playhead there.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <p>If the text follows one bar late, check <strong>from bar</strong> and count empty lines as rests. Save with <kbd>Ctrl+S</kbd> to keep lyrics with the project. <kbd>Ctrl+Z</kbd> restores a deleted page. When reopening the same project, Synkopa can restore local unsaved lyrics if the saved Notebook has not changed since the backup.</p>
+          <p>Continue to <a href="record.html">record audio</a>, <a href="mix.html">mix and route</a>, or <a href="export.html">export the song</a>.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

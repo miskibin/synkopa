@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Work with patterns, audio clips, samples, and the Piano roll.">
-  <title>Write &amp; arrange · Synkopa Docs</title>
+  <meta name="description" content="Program drums, edit notes in the Piano roll, and find sounds in the Browser.">
+  <title>Write patterns · Synkopa Docs</title>
   <link rel="icon" href="images/icon.png">
   <link rel="stylesheet" href="guide.css">
   <script defer src="guide.js"></script>
@@ -26,25 +26,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html" aria-current="page">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html" aria-current="page">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -52,67 +61,152 @@
     </aside>
     <main id="main" tabindex="-1">
       <header class="intro">
-        <h1>Write and arrange</h1>
+        <h1>Write patterns</h1>
       </header>
       <nav class="contents" aria-label="On this page">
-        <a href="#patterns">Write patterns</a>
-        <a href="#clips">Arrange patterns on the Playlist</a>
-        <a href="#audio">Add samples and audio</a>
+        <a href="#patterns">Program a beat</a>
+        <a href="#rack-variation">Loop or split channels</a>
+        <a href="#piano-roll">Edit notes in the Piano roll</a>
+        <a href="#clips">Use patterns in a song</a>
+        <a href="#audio">Find and load samples</a>
       </nav>
 
       <article class="prose">
         <section>
-          <h2 id="patterns">Write patterns</h2>
-          <p>A pattern holds steps and notes for one or more channels. Open the <strong>Channel Rack</strong> with <kbd>F6</kbd>. Choose a pattern in the toolbar or click the <strong>+</strong> beside it to start a new one.</p>
-          <ul>
-            <li>For drums, click the step squares on a channel’s row.</li>
-            <li>For a melody or chords, select a channel and press <kbd>F7</kbd>. In the Piano roll, vertical position is pitch and horizontal position is time. Drag a note’s right edge to change its length. Right-click a note to remove it.</li>
-            <li>Use <strong>PAT</strong> and <kbd>Space</kbd> to audition just the current pattern.</li>
-          </ul>
+          <h2 id="patterns">Program a beat in the Channel Rack</h2>
+          <p>Choose <strong>File → New project</strong> for the starter Kick, Clap, Hat and Snare channels, then press <kbd>F6</kbd> to open the <strong>Channel Rack</strong> if it is hidden. Select <strong>Pattern 1</strong> in the toolbar.</p>
           <figure class="annotated-shot">
             <div class="shot-frame">
-              <a class="shot" href="images/roll.webp"><img src="images/roll.webp" width="1600" height="933" alt="Synkopa Piano roll with notes and the velocity lane." loading="lazy"></a>
-              <span class="shot-pin" style="--x: 3%; --y: 59%" aria-hidden="true">1</span>
-              <span class="shot-pin" style="--x: 45%; --y: 62%" aria-hidden="true">2</span>
-              <span class="shot-pin" style="--x: 57%; --y: 90%" aria-hidden="true">3</span>
+              <a class="shot" href="images/compose-rack-before.webp"><img src="images/compose-rack-before.webp" width="909" height="229" alt="Empty one-bar Channel Rack with Kick, Clap, Hat and Snare channels." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 25.5%; --y: 23.8%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 34.5%; --y: 37.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 29.9%; --y: 51.5%" aria-hidden="true">3</span>
             </div>
             <figcaption>
               <ol>
-                <li>Rows match keys on the left. Drag a note up or down to change pitch.</li>
-                <li>Drag the note’s right edge to change its length.</li>
-                <li>The velocity lane sets how hard each note is played.</li>
+                <li>Start on the first step of the <strong>Kick</strong> row.</li>
+                <li>Count to step 5 in the <strong>Clap</strong> row.</li>
+                <li>Every other step on <strong>Hat</strong> is an eighth note.</li>
               </ol>
             </figcaption>
           </figure>
-        </section>
-        <section>
-          <h2 id="clips">Arrange patterns on the Playlist</h2>
           <ol>
-            <li>Open <strong>Patterns</strong> in the Browser. Drag a pattern onto a Playlist track at the bar where it should start.</li>
-            <li>Drag clips to move them. Use <kbd>Shift</kbd> while dragging a clip to copy it. Clip edges in <strong>Trim</strong> mode change how much of the clip plays.</li>
-            <li>Double-click a pattern clip to edit its source. To edit only that copy, open the clip menu and choose <strong>Make unique</strong> first.</li>
-            <li>Click the ruler to set the playback start. Drag on the ruler to set a loop or double-click it to clear the loop. Use <strong>SONG</strong> to hear the arrangement.</li>
+            <li>Click Kick steps 1, 5, 9 and 13. Click Clap steps 5 and 13. Click odd Hat steps from 1 through 15.</li>
+            <li>Select <strong>PAT</strong> and press <kbd>Space</kbd>. Listen for the kick on every beat, the clap on beats 2 and 4, and the hat between beats.</li>
+            <li>Right-click a lit step to remove it. Undo an accidental edit with <kbd>Ctrl+Z</kbd>. Use <strong>Swing</strong> in the Rack to move the offbeat sixteenths later. Try steady eighth notes alongside a few sixteenths to hear the difference.</li>
           </ol>
           <figure class="annotated-shot">
             <div class="shot-frame">
-              <a class="shot" href="images/overview.webp"><img src="images/overview.webp" width="1600" height="900" alt="Synkopa Playlist with the Browser on the left and the Mixer docked below." loading="lazy"></a>
-              <span class="shot-pin" style="--x: 7%; --y: 22%" aria-hidden="true">1</span>
-              <span class="shot-pin" style="--x: 49%; --y: 32%" aria-hidden="true">2</span>
-              <span class="shot-pin" data-pin-side="below" style="--x: 22%; --y: 2.8%" aria-hidden="true">3</span>
+              <a class="shot" href="images/compose-rack-after.webp"><img src="images/compose-rack-after.webp" width="909" height="229" alt="The same Channel Rack with four kicks, two claps and eight hi-hat hits." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 25.5%; --y: 23.8%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 34.5%; --y: 37.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 29.9%; --y: 51.5%" aria-hidden="true">3</span>
             </div>
             <figcaption>
               <ol>
-                <li>Select a pattern in the Browser.</li>
-                <li>Drop it onto a Playlist lane where it should play.</li>
-                <li>Select SONG to hear clips on the Playlist.</li>
+                <li>Kick starts the bar and marks each beat.</li>
+                <li>Clap lands on beats 2 and 4.</li>
+                <li>Hat fills the spaces between beats.</li>
               </ol>
             </figcaption>
           </figure>
+          <p>Use <strong>Browser → Patterns → New</strong> to build a second pattern with the same instrument channels. Use the pattern menu to rename or clone your work. The <strong>+</strong> beside <strong>1 bar</strong> in the Rack extends the current pattern by a bar. Its <strong>−</strong> removes the last bar and the notes in it.</p>
         </section>
         <section>
-          <h2 id="audio">Add samples and audio</h2>
-          <p>In the Browser’s <strong>Library</strong>, click a sample to preview it. Drag it onto the Playlist to make an audio clip, between Rack rows to make a sampler, or onto a Rack row to replace the sound.</p>
-          <p>You can also drag WAV or MP3 files from your file manager. Find imported audio and takes under <strong>Audio</strong>.</p>
+          <h2 id="rack-variation">Loop, accent or split individual channels</h2>
+          <ol>
+            <li>In the Rack, right-click <strong>Hat → Loop → 3 steps</strong>. Edit just those first three steps. In <strong>PAT</strong>, the hat cell repeats to fill the pattern while Kick and Clap keep their regular one-bar cycle. The loop options stop below the current pattern length.</li>
+            <li>To edit a later repetition on its own, right-click the Hat and choose <strong>Burn repeats into steps</strong>. The repetitions become editable steps and the channel loop ends. Choose <strong>Loop → Off</strong> instead to keep just your original steps without repeating them.</li>
+            <li>With the Rack focused, select Hat and open <strong>Graph editor</strong> with <kbd>G</kbd>. Choose <strong>Velocity</strong> and drag a hit’s bar lower for a softer note. Use the <strong>Key</strong>, <strong>Pan</strong> and <strong>Shift</strong> lanes to change pitch, stereo position and timing on individual steps. Pan is available for channels that support per-note pan.</li>
+            <li>For separate Playlist lanes, right-click a pattern with at least two playing channels in <strong>Browser → Patterns</strong> and choose <strong>Split by channel</strong>. The original is replaced by one pattern per used channel. Each placed clip is replaced at the same time by those parts on consecutive tracks. Play in <strong>SONG</strong> and check the parts independently.</li>
+          </ol>
+          <p>Undo the split if you still want to edit the beat as a single unit. If a loop blocks shortening the pattern, shorten the channel loop or burn its repeats first.</p>
+        </section>
+        <section>
+          <h2 id="piano-roll">Draw, trim, and move notes in the Piano roll</h2>
+          <ol>
+            <li>In the Rack, choose <strong>+ Channel → Empty synth</strong> or <strong>Synkopa Instruments — pianos, strings, guitars</strong>. Select that channel and press <kbd>F7</kbd>. Confirm the pattern name and the channel selector at the top of the roll.</li>
+            <li>Set <strong>Snap</strong> to <strong>1/16</strong> and pick <strong>Draw</strong>. Click three different rows at different points in bar 1. Drag the body of a note to move it in time or pitch. Drag its right edge for duration.</li>
+            <li>Switch to <strong>Select</strong> to draw a box around the phrase. Press <kbd>Ctrl+B</kbd> to duplicate it to the right, or <kbd>Ctrl+Q</kbd> to bring note starts onto the selected grid. Without a selection, these shortcuts can affect the whole channel in the current pattern.</li>
+            <li>Drag a bar in the <strong>Velocity</strong> lane to soften or accent a note. Press <kbd>Space</kbd> in <strong>PAT</strong> to hear the changes.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-piano-before.webp"><img src="images/compose-piano-before.webp" width="820" height="430" alt="Piano roll before drawing a synth phrase." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 7.0%; --y: 53.5%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 18.8%; --y: 61.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 24.6%; --y: 70.2%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Put the first note on a row near the middle of the keyboard.</li>
+                <li>Place the next note farther right for a later start.</li>
+                <li>Use a different row to change pitch.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-piano-after.webp"><img src="images/compose-piano-after.webp" width="820" height="430" alt="The same Piano roll after drawing a three-note synth phrase." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 11.6%; --y: 53.5%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 28.9%; --y: 61.6%" aria-hidden="true">2</span>
+              <span class="shot-pin" style="--x: 29.1%; --y: 70.2%" aria-hidden="true">3</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>This note begins the phrase. Horizontal position sets onset.</li>
+                <li>Use a note’s right edge to change its length.</li>
+                <li>Drag a note vertically to change its pitch.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure>
+            <video controls preload="none" poster="images/compose-piano-after.webp" width="820" height="430" playsinline aria-label="Drawing three notes in the Piano roll">
+              <source src="videos/compose-draw-notes.mp4" type="video/mp4">
+            </video>
+            <figcaption>Draw three notes across the grid. The horizontal position sets when each note starts. The vertical position sets its pitch. The annotated stills above show the same edits.</figcaption>
+          </figure>
+          <p>If the roll looks empty, check that the selected channel belongs to the pattern you are playing. Switch to a smaller snap increment to place shorter notes. Right-click a note in Draw mode to remove it. If quantize moved more notes than intended, press <kbd>Ctrl+Z</kbd>, select just the notes to fix, and try again.</p>
+        </section>
+        <section>
+          <h2 id="clips">Use patterns in a song</h2>
+          <p>Place each pattern once as a starting point, then repeat it where it should play. Editing the source pattern updates its instances. For a fill that belongs only at the end of a section, make that instance unique first. Follow the <a href="arrangement.html#place-patterns">arrangement walkthrough</a> for the drag, loop and marker steps.</p>
+        </section>
+        <section>
+          <h2 id="audio">Find, install, and load samples</h2>
+          <ol>
+            <li>Open <strong>Browser → Library</strong>. Expand <strong>Standard library</strong> for built-in sounds. Click <strong>+</strong> at the bottom of the browser to see downloadable packs, then click <strong>Install</strong>. Expand the pack after it finishes.</li>
+            <li>To use your own audio folder, click <strong>Add</strong> under <strong>Folders</strong> and choose it. Expand its entry or type part of a filename in the library search. Clear the search to browse available packs again.</li>
+            <li>Click a sample to preview it. Use <kbd>Esc</kbd> to stop a preview. Press <kbd>Enter</kbd> on the focused sample or drag it between Rack rows to create a sampler. Drop it onto an existing Rack row to replace that sound while keeping the notes.</li>
+            <li>Drag a sound onto an empty Playlist lane for a waveform clip. Use that route for a full loop or take so you can trim it against the song. Find imported and recorded sources under <strong>Audio</strong>.</li>
+          </ol>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-library-install.webp"><img src="images/compose-library-install.webp" width="220" height="595" alt="Browser Library with downloadable kits expanded and an Install button visible." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 85.3%; --y: 55.0%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 84.0%; --y: 28.6%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Click <strong>Install</strong> on the kit you want.</li>
+                <li>Use <strong>Add</strong> to make a local samples folder browsable.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/compose-library-preview.webp"><img src="images/compose-library-preview.webp" width="220" height="595" alt="Browser Library filtered to hi-hat samples." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 49.5%; --y: 7.5%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 50.0%; --y: 21.7%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Search for a kit file or for a sample in the standard or local library.</li>
+                <li>Click a result to preview it. Press Enter to create a sampler channel.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <p>If a pack disappears when you search, clear the query and check that it finished installing. If a local sound goes missing after moving a project, <a href="projects.html#relink">relink the project audio</a>. To split a loop into triggers, work in the <a href="instruments.html#slice-pattern">Sampler’s Slice tab</a>.</p>
         </section>
       </article>
     </main>

@@ -27,25 +27,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html" aria-current="page">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html" aria-current="page">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -59,7 +68,9 @@
         <details open>
           <summary>On this page</summary>
           <a href="#sampler">Sampler</a>
+          <a href="#slice-pattern">Slice, choke and arrange</a>
           <a href="#synthesizer">Synthesizer</a>
+          <a href="#synth-pattern">Turn a patch into a part</a>
           <a href="#synkopa-instruments">Synkopa Instruments</a>
           <a href="#grand-piano">Grand Piano</a>
           <a href="#upright-piano">Upright Piano</a>
@@ -129,6 +140,17 @@
         </section>
 
         <section>
+          <h2 id="slice-pattern">Chop a loop and tighten the hats</h2>
+          <ol>
+            <li>Start a new pattern from <strong>Browser → Patterns → New</strong>. Add a loop under <strong>+ Channel → Loops</strong> and open its <strong>Slice</strong> tab. Pick <strong>Transients</strong> for cuts on attacks or <strong>Equal</strong> for evenly spaced slices. Click a slice to audition it. Drag a marker to correct a cut between hits.</li>
+            <li>Choose <strong>Dump to pattern</strong>, then open <kbd>F7</kbd> on that sampler. Use <strong>PAT</strong> to check the original order. The root note triggers the first slice and each higher semitone triggers the next one. Move selected notes to reorder the hits or leave a gap before the last one.</li>
+            <li>For tighter hats, add open and closed hat sampler channels. In each channel’s <strong>Sample</strong> controls, set <strong>Cut group</strong> to the same nonzero value. In the Rack, put an open hit on step 1 and a closed hit on step 3. In PAT playback, listen for the open tail stopping as the closed hit begins.</li>
+            <li>Drop the slice pattern onto the Playlist and make its final repeat unique before editing it into a fill. Use <strong>SONG</strong> to check the fill against the original pattern.</li>
+          </ol>
+          <p>If a cut begins late, move its Slice marker toward the transient and audition it again. If the open hat still rings, check the two group values and confirm the closed hit plays after the open hit. Undo a dump or note move with <kbd>Ctrl+Z</kbd>.</p>
+        </section>
+
+        <section>
           <h2 id="synthesizer" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#synth"></use></svg>Synthesizer</h2>
           <p>In <strong>+ Channel</strong>, choose a <strong>Synthesizer</strong> preset and click the channel name to open it. Start with <strong>808 Deep</strong> for a low single note, <strong>Pluck Glass</strong> for separated notes or <strong>Pad Warm</strong> for a held chord. Turn the preset’s named <strong>Macros</strong> while it plays to hear which characteristics they change.</p>
           <h3>Build a pluck from a saw</h3>
@@ -175,6 +197,16 @@
             </figcaption>
           </figure>
           <p>For stereo width, set <strong>Unison</strong> to 3 on <strong>OSC</strong> and raise <strong>Detune</strong> and <strong>Width</strong>. For a sliding bass phrase, switch the voice mode to <strong>Legato</strong>, raise <strong>Glide</strong> and overlap two notes. On <strong>FX</strong>, add <strong>Delay</strong> to repeat a short note or <strong>Reverb</strong> to give it a tail.</p>
+        </section>
+
+        <section>
+          <h2 id="synth-pattern">Turn your synth patch into a melody</h2>
+          <ol>
+            <li>Choose <strong>Empty synth</strong> for a new channel. Use the oscillator, filter and amp-envelope recipe above to make a short pluck. Test a held note against a short note. If the envelope stays open, lower <strong>Sustain</strong> and check that you’re adjusting the amp envelope.</li>
+            <li>Create a melody pattern, select the synth channel and press <kbd>F7</kbd>. Draw a one-bar phrase in eighth notes, adding a rest at the end. Listen in <strong>PAT</strong>. Adjust <strong>Cutoff</strong> until the pluck leaves space for the drums.</li>
+            <li>Drop the phrase onto a separate Playlist track after the first drum bar. Listen in <strong>SONG</strong>. Duplicate the melody clip and choose <strong>Make unique</strong> before changing just the last note of the copy.</li>
+          </ol>
+          <p>If both clips change, undo and make the second clip unique before editing. If the synth still plays when you switch to another Rack channel on your controller, check <a href="midi.html#keyboard"><strong>Plays on</strong> in MIDI Settings</a>.</p>
         </section>
 
         <section>

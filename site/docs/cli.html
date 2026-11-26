@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Edit a running Synkopa project, render without the app, automate with an agent, and live-code a beat.">
+  <title>CLI and coding agents · Synkopa Docs</title>
+  <link rel="icon" href="images/icon.png">
+  <link rel="stylesheet" href="guide.css">
+  <script defer src="guide.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar">
+      <header class="toolbar">
+        <a class="brand" href="index.html"><img src="images/icon.png" width="24" height="24" alt="">Synkopa <span>Docs</span></a>
+        <button type="button" class="search" data-search hidden aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          Search <kbd data-search-key>Ctrl K</kbd>
+        </button>
+      </header>
+      <details class="menu" open>
+        <summary>Guides</summary>
+        <nav aria-label="Guides">
+          <p>Start here</p>
+          <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
+            <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
+          </ul>
+          <p>Build a song</p>
+          <ul>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
+            <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
+            <li><a href="export.html">Export &amp; share</a></li>
+          </ul>
+          <p>Reference</p>
+          <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html" aria-current="page">CLI &amp; coding agents</a></li>
+            <li><a href="reference.html">Shortcuts &amp; help</a></li>
+          </ul>
+        </nav>
+      </details>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header class="intro">
+        <h1>CLI and coding agents</h1>
+      </header>
+      <nav class="contents" aria-label="On this page">
+        <a href="#connect">Connect to the running app</a>
+        <a href="#headless">Render from a project file</a>
+        <a href="#agent">Give a coding agent one musical task</a>
+        <a href="#live-coding">Live-code a beat from a text file</a>
+      </nav>
+      <article class="prose">
+        <section>
+          <h2 id="connect">Connect to the running app</h2>
+          <ol>
+            <li>Launch the desktop app once. Open a new terminal and run <code>synkopa status</code>. If the shell cannot find it, open <strong>File → Settings… → Audio</strong> and scroll to <strong>Command line</strong> to check the launcher path.</li>
+            <li>Open the project you want to work on. Run <code>synkopa context --pretty</code> to find the current revision, tracks, inserts, patterns, and channel IDs. If more than one app is running, use <code>synkopa sessions</code> and pass <code>--session ID</code>.</li>
+            <li>Run one edit with a value that differs from the current project. Check that the app changed, then undo the edit by pressing <kbd>Ctrl</kbd> + <kbd>Z</kbd> or running <code>synkopa undo</code>.</li>
+          </ol>
+          <pre tabindex="0" data-copy-command><code>synkopa status
+        synkopa context --pretty
+        synkopa bpm 128
+        synkopa undo</code></pre>
+          <p>The default target is the open project. Edits are undoable there and you decide when to save. JSON goes to stdout, messages go to stderr.</p>
+        </section>
+        <section>
+          <h2 id="headless">Render from a project file</h2>
+          <ol>
+            <li>Use an unused filename in a scratch folder. Create a demo project and render it to a WAV without opening the app. This is a headless render.</li>
+            <li>Listen to the WAV. Read the JSON render result for peaks and clipping. If it reports missing sources, fix the links or use a <a href="projects.html#portable">portable project</a>.</li>
+            <li>For a variation, use <code>--save-as</code> on the edit to keep the source project. Render the new file to a different WAV and compare.</li>
+          </ol>
+          <pre tabindex="0" data-copy-command><code>synkopa new walkthrough.synkopa --template demo
+        synkopa -p walkthrough.synkopa render --out walkthrough.wav
+        synkopa -p walkthrough.synkopa bpm 144 --save-as faster.synkopa
+        synkopa -p faster.synkopa render --out faster.wav</code></pre>
+          <p><code>-p</code> edits write back to the project unless you use <code>--dry-run</code> or <code>--save-as</code>. If the app already has that project open, use the live CLI or close the file before editing it on disk. Offline playback means rendering to a file.</p>
+        </section>
+        <section>
+          <h2 id="agent">Give a coding agent one musical task</h2>
+          <ol>
+            <li>Start the app, open a saved project, and start your agent in a folder where it can render previews. Ask it to run <code>synkopa context --pretty</code> and identify the correct pattern and channel before editing.</li>
+            <li>Give it a bounded goal, such as making one hi-hat pattern less repetitive. Ask it to preview a single reversible change first. For a batch of edits it can inspect <code>synkopa schema</code> and use <code>apply --file</code> for one atomic edit.</li>
+            <li>Ask it to use <code>--if-revision</code> with the revision just inspected. On <code>REVISION_CONFLICT</code>, it should read the current project again before deciding how to proceed.</li>
+            <li>Have it render a preview WAV and report peaks or clipping. Listen and compare with undo in the app. Save only the version you want.</li>
+          </ol>
+          <p>Use <code>synkopa catalog</code> for valid effects, parameter IDs and ranges. The <a href="https://github.com/miskibin/synkopa/blob/main/docs/cli.md">complete CLI reference</a> includes MIDI, vocal editing, notes, chords, stems, and mixer tasks.</p>
+        </section>
+        <section>
+          <h2 id="live-coding">Live-code a beat from a text file</h2>
+          <ol>
+            <li>Start a loop in the app. Save a text file with one command per line. Use IDs and channel names from <code>synkopa context</code>.</li>
+            <li>Run <code>synkopa watch song.txt</code> in a terminal. In your editor, change a step or tempo and save. A successful save updates the looping project as one undo step.</li>
+            <li>To remove a scripted change, delete its line and save. Watch reapplies the file from the project state at start. If you edit the project separately and get a revision conflict, restart watch from the new project state.</li>
+          </ol>
+          <pre tabindex="0" data-copy-command><code># song.txt (replace 1 with the pattern ID you found)
+        bpm 128
+        pattern --id 1 --ch hat --steps "x.x. x.x. x.x5 x.x9"</code></pre>
+          <p>Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the terminal to stop watching. Use <code>synkopa script song.txt</code> to run a file once. A script edits a project file once at the end, or applies commands one by one in the live app.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

@@ -27,25 +27,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html" aria-current="page">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html" aria-current="page">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -108,7 +117,7 @@
           <h2 id="reverb" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#reverb"></use></svg>Reverb</h2>
           <p>Reverb surrounds a sound with reflections that blend into a tail. <strong>Space</strong> changes the character from the smooth <strong>Plate</strong> to the reflections of <strong>Room</strong>, the diffuse <strong>Hall</strong>, or the short <strong>Ambience</strong>.</p>
           <p>Try <strong>Plate</strong> on a dry lead vocal with <strong>Decay</strong> around 1 second, <strong>Pre-delay</strong> at 25 ms, and <strong>Mix</strong> at 15%. Listen at the end of a line. Increase <strong>Decay</strong> to extend the tail, then compare zero and 25 ms of <strong>Pre-delay</strong> to hear how a gap before the tail keeps the start of the word distinct.</p>
-          <p><strong>Tone</strong> changes how long the highs ring. In <strong>Advanced</strong>, <strong>Low cut</strong> and <strong>High cut</strong> trim what enters the reverb, <strong>Bass decay</strong> changes how long the lows ring, and <strong>Ducking</strong> lowers the reverb while the vocal is present.</p>
+          <p><strong>Tone</strong> changes how long the highs ring. In <strong>Advanced</strong>, <strong>Low cut</strong> and <strong>High cut</strong> trim what enters the reverb, <strong>Bass decay</strong> changes how long the lows ring, and <strong>Ducking</strong> lowers the reverb while the vocal is present. For several sounds in the same space, move Reverb to a <a href="mix.html#sends">shared return</a> and control how much each source sends to it.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-reverb.webp"><img src="images/plugin-reverb.webp" width="875" height="595" alt="Reverb with a frequency-dependent decay plot and space controls." loading="lazy"></a>
@@ -241,7 +250,7 @@
           <h2 id="stereo" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#stereo"></use></svg>Stereo</h2>
           <p><strong>Width</strong> changes the difference between the left and right signals. With Spread at zero, 0% sums to mono, 100% keeps the original width, and higher settings emphasize the sides. <strong>Spread</strong> can add width to a mono signal by creating side information that cancels when summed to mono.</p>
           <p>Try a mono guitar take. Raise <strong>Width</strong> with <strong>Spread</strong> at zero, then raise <strong>Spread</strong> and listen for the guitar to spread out. Bring <strong>Spread</strong> back to 0% before setting <strong>Width</strong> to 0% for a mono check.</p>
-          <p>In <strong>Low end</strong>, choose <strong>Mono</strong> and set <strong>Mono below</strong> to center just the low end on stereo material. Use <strong>Gain</strong> and <strong>Pan</strong> for level and balance. <strong>Advanced</strong> includes polarity and left/right swap controls.</p>
+          <p>In <strong>Low end</strong>, choose <strong>Mono</strong> and set <strong>Mono below</strong> to center just the low end on stereo material. Use <strong>Gain</strong> and <strong>Pan</strong> for level and balance. <strong>Advanced</strong> includes polarity and left/right swap controls. If the bass becomes weak in your mono check, check the original left and right signals before increasing stereo width.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-stereo.webp"><img src="images/plugin-stereo.webp" width="825" height="553" alt="Stereo with scope traces for the input and output." loading="lazy"></a>
@@ -259,7 +268,7 @@
           <p>Pitch Correct detects a single sung melody and moves it toward notes allowed by <strong>Key</strong> and <strong>Scale</strong>. Set these from the song or use <strong>Detect key…</strong> to analyze the backing. Set <strong>Voice</strong> if you want to narrow the pitch detection range.</p>
           <p>Loop a dry solo vocal over its chords. Compare <strong>Retune</strong> at 40 ms and 0 ms. Listen for the softer approaches to notes at the slower setting and the stepped jumps at the fastest setting. If a note pulls to the wrong place, check the detected scale and the intended melody.</p>
           <p><strong>Humanize</strong> eases the correction on held notes. <strong>Flex</strong> narrows the range around a target before correction engages, and <strong>Vibrato</strong> preserves more of the natural wobble. <strong>Transpose</strong> shifts the melody, and <strong>Formant</strong> changes its resonant character.</p>
-          <p>To correct individual notes in a recorded clip, open its menu and choose <strong>Edit pitch…</strong>.</p>
+          <p>If automatic correction keeps choosing the wrong note on one phrase, open the clip menu and choose <strong>Edit pitch…</strong> to correct that note individually. For backing vocals or chords, process each isolated voice separately when you need individual pitch tracking.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-pitch.webp"><img src="images/plugin-pitch.webp" width="1000" height="734" alt="Pitch Correct with detected and target notes above its tuning controls." loading="lazy"></a>
@@ -280,7 +289,7 @@
           <h2 id="voice" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#voice"></use></svg>Voice</h2>
           <p>Voice reshapes a solo vocal. <strong>Transpose</strong> shifts the melody by <strong>Pitch</strong>, <strong>Quantize</strong> snaps to the nearest semitone before shifting, and <strong>Robot</strong> holds the pitched sound on a fixed note (C4 at zero).</p>
           <p>Loop a sung phrase in <strong>Transpose</strong> mode. Leave <strong>Pitch</strong> at zero and move <strong>Formant</strong> from −3 to +3 semitones. Listen for the vowel color to get deeper or brighter while the melody stays in place. Raise <strong>Pitch</strong> and try <strong>Link</strong> to hear the formants follow the shift.</p>
-          <p><strong>Drive</strong> adds saturation after the shift. Set <strong>Output</strong> to match the original when comparing.</p>
+          <p><strong>Drive</strong> adds saturation after the shift. Set <strong>Output</strong> to match the original when comparing. If a chord or stacked vocal makes the detected pitch jump, move Voice onto a single dry take first.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-voice.webp"><img src="images/plugin-voice.webp" width="875" height="553" alt="Voice with a two-axis pitch and formant pad and matching knobs." loading="lazy"></a>
@@ -297,7 +306,7 @@
           <h2 id="denoiser" class="plugin-title"><svg class="plugin-icon" aria-hidden="true" width="24" height="24"><use href="images/plugin-icons.svg#denoise"></use></svg>Denoiser</h2>
           <p>Denoiser learns a noise profile across frequencies and reduces sounds close to that profile, such as steady fan noise, hiss, or hum. <strong>Adaptive</strong> keeps updating the profile and <strong>Hold</strong> freezes it.</p>
           <p>Play a vocal take starting with a second of room tone. Start with <strong>Reduction</strong> at 6 dB and <strong>Profile</strong> on <strong>Adaptive</strong>. Switch <strong>Listen</strong> to <strong>Noise</strong> to hear what is removed. If you hear clear words or consonants in that signal, lower <strong>Sensitivity</strong> or <strong>Reduction</strong>. Return <strong>Listen</strong> to <strong>Off</strong> to hear the cleaned take.</p>
-          <p>Raise <strong>Smoothing</strong> if the residual noise sounds watery or sparkly. Compare in bypass during the words and in the gaps to find the lightest useful setting.</p>
+          <p>Raise <strong>Smoothing</strong> if the residual noise sounds watery or sparkly. Compare in bypass during the words and in the gaps to find the lightest useful setting. If the room sound changes halfway through the take, switch <strong>Profile</strong> back to <strong>Adaptive</strong> and listen across that transition.</p>
           <figure class="plugin-shot annotated-shot">
             <div class="shot-frame">
               <a class="shot" href="images/plugin-denoiser.webp"><img src="images/plugin-denoiser.webp" width="800" height="521" alt="Denoiser with its frequency display, profile and audition controls." loading="lazy"></a>

@@ -26,25 +26,34 @@
           <p>Start here</p>
           <ul>
             <li><a href="index.html">Overview</a></li>
+            <li><a href="setup.html">Install &amp; set up</a></li>
             <li><a href="first-song.html">First song</a></li>
+            <li><a href="projects.html">Save &amp; recover projects</a></li>
           </ul>
-          <p>Workflow</p>
+          <p>Build a song</p>
           <ul>
-            <li><a href="patterns.html">Write &amp; arrange</a></li>
-            <li><a href="record.html">Record audio</a></li>
+            <li><a href="patterns.html">Write patterns</a></li>
+            <li><a href="midi.html">Set up &amp; record MIDI</a></li>
+            <li><a href="instruments.html">Play instruments</a></li>
+            <li><a href="arrangement.html">Arrange a song</a></li>
+            <li><a href="audio-editing.html">Edit audio clips</a></li>
+            <li><a href="audio-analysis.html">Find chords &amp; stems</a></li>
+          </ul>
+          <p>Record &amp; finish</p>
+          <ul>
+            <li><a href="record.html">Record &amp; comp</a></li>
+            <li><a href="vocal-production.html">Produce vocals</a></li>
             <li><a href="mix.html" aria-current="page">Mix &amp; route</a></li>
+            <li><a href="automation.html">Automate controls</a></li>
+            <li><a href="mastering.html">Master &amp; measure</a></li>
             <li><a href="export.html">Export &amp; share</a></li>
-          </ul>
-          <p>Plugins</p>
-          <ul>
-            <li><a href="plugins.html">Plugin guide</a></li>
-            <li><a href="instruments.html">Instruments</a></li>
-            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
-            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
-            <li><a href="mastering.html">Mastering &amp; meters</a></li>
           </ul>
           <p>Reference</p>
           <ul>
+            <li><a href="plugins.html">Plugin guide</a></li>
+            <li><a href="dynamics.html">EQ &amp; dynamics</a></li>
+            <li><a href="creative-effects.html">Creative &amp; repair effects</a></li>
+            <li><a href="cli.html">CLI &amp; coding agents</a></li>
             <li><a href="reference.html">Shortcuts &amp; help</a></li>
           </ul>
         </nav>
@@ -57,7 +66,9 @@
       <nav class="contents" aria-label="On this page">
         <a href="#routing">Send a sound to a mixer insert</a>
         <a href="#levels">Balance levels</a>
+        <a href="#sends">Create a bus or effect send</a>
         <a href="#effects">Add an effect</a>
+        <a href="#masking">Make room when sounds compete</a>
         <a href="#sidechain">Sidechain a compressor</a>
       </nav>
 
@@ -88,30 +99,108 @@
         </section>
         <section>
           <h2 id="levels">Balance levels</h2>
+
+          <p>Balance a loop from the busiest section before adding processing. That gives you a stable reference when you compare effects.</p>
           <ol>
-            <li>Play a busy section in <strong>SONG</strong> mode.</li>
-            <li>Lower sounds that overpower the rest. Pan sounds left or right. Use mute and solo to check which sounds each insert carries.</li>
-            <li>Watch the Master meter. If it clips, reduce the levels feeding it, then listen again.</li>
+            <li>Switch to <strong>SONG</strong> and drag across the Playlist ruler to loop a section where the kick, bass, and lead all play. Play it and select those inserts in the Mixer with <kbd>F9</kbd>.</li>
+            <li>Solo each insert briefly to check that its meter matches the sound you expect. Clear all solos. Bring the kick and bass into balance, then raise the lead just enough to follow the words or melody. Listen again with the rest of the instruments in.</li>
+            <li>Watch the Master meter during the loudest hits. If it clips, lower the inserts feeding it and listen again. Check both the busy section and a quieter one before moving on.</li>
+          </ol>
+          <p>If a fader also changes an unrelated sound, check which sources share the insert. Give the sound its own insert when you need separate processing or level moves.</p>
+        </section>
+        <section>
+          <h2 id="sends">Create a bus or effect send</h2>
+          <p>Use a bus to share one fader or processor across several inserts. Use a parallel send when you want the original sounds and a shared wet effect at the same time.</p>
+          <ol>
+            <li>In the Mixer, use <strong>+</strong> to add an insert and rename it <strong>Drum Bus</strong>. Right-click the kick insert and choose <strong>Send to → Drum Bus</strong>. Do the same for the snare.</li>
+            <li>Turn off the <strong>M</strong> switch on each source to route it through the bus alone. Keep <strong>M</strong> on for Drum Bus. Pull the bus fader down briefly. Both drums should get quieter together. If one stays loud, check for a direct route to Master.</li>
+            <li>For a shared reverb, create a separate <strong>Reverb</strong> insert, load Reverb, and set the effect’s <strong>Mix</strong> to 100% and its slot Mix to 100%. Send a vocal or snare to it and leave each source’s <strong>M</strong> on so its dry sound still reaches Master.</li>
+            <li>Select the source in the expanded Mixer and drag its send cable up or down to adjust the feed. Start quietly and listen at the end of a phrase. Lower the return fader to change the wet level for all sources together.</li>
           </ol>
         </section>
         <section>
           <h2 id="effects">Add an effect</h2>
+
+          <p>Build a short chain on one insert and compare it while that sound plays in the song. A vocal chain is a useful first example.</p>
           <ol>
-            <li>Click the insert you want to process. Choose <strong>Add effect…</strong> or press <kbd>Shift</kbd> + <kbd>F9</kbd>.</li>
-            <li>Pick an effect, such as <strong>Reverb</strong> on a piano insert.</li>
-            <li>Play the song while you adjust the effect. Toggle the effect’s bypass to compare it with the original sound. Drag effect slots up or down to change their processing order.</li>
+            <li>Select the vocal insert. Choose <strong>Add effect…</strong> or press <kbd>Shift</kbd> + <kbd>F9</kbd>. Add <strong>Parametric EQ</strong> for a cut you can hear, then add <strong>Reverb</strong> to give the vocal space.</li>
+            <li>Click a slot to open its effect. Choose a starting preset from the preset name in the window header. In Reverb, try a short <strong>Decay</strong> and <strong>Mix</strong> around 15%. The tail should be audible at the end of a phrase.</li>
+            <li>Toggle the slot’s power to compare in context. Adjust the effect’s output to match levels when possible. Use the slot’s <strong>Mix</strong> control to blend any effect with its input. If Reverb already blends through its own <strong>Mix</strong>, leave the slot at 100% while you learn that knob.</li>
+            <li>Drag slots up or down to change processing order. With EQ first, the signal entering the reverb already has the cut. With EQ last, it shapes the voice and the reverb together. Compare on the same phrase and keep the order that gives you the clearer tail.</li>
           </ol>
-          <p><a href="plugins.html">Pick an effect by what you hear</a>.</p>
+          <p>Drag a slot onto another Mixer strip to move it. Hold <kbd>Ctrl</kbd> while dragging to copy it. To reuse the whole chain, right-click the insert and open <strong>FX chain preset → Save FX chain as preset…</strong>. On an empty destination insert, use <strong>Load FX chain preset…</strong> to recall it. The loader can also <strong>Append</strong> the preset after existing effects or <strong>Replace</strong> them. Check gain and sidechain sources on the new track.</p>
+          <p><a href="plugins.html">Pick an effect by what you hear</a> or <a href="automation.html">change an effect as the song plays</a>.</p>
+        </section>
+        <section>
+          <h2 id="masking">Make room when sounds compete</h2>
+          <p>Listen for two parts that are clear on their own and crowded together. For example, loop a kick and 808 that play at the same time and check whether the kick loses definition.</p>
+          <ol>
+            <li>While the section plays, look for a masking dot on the insert that covers another. Click the dot to see the reported pair and frequency range. Listen to those sounds together and check that you hear the overlap before applying a fix.</li>
+            <li>Choose <strong>Make room for</strong> the other insert. Synkopa adds a Parametric EQ at the end of the masking insert’s chain, with a dynamic band keyed by the other sound. Use <strong>Review existing</strong> when a keyed effect already handles the pair.</li>
+            <li>Open the EQ and toggle bypass while both parts play. Check whether the covered sound is easier to hear and whether the other sound retains enough body. If the change is too strong, reduce the dynamic band’s cut. Undo the addition if the first balance worked better.</li>
+          </ol>
+          <p>Choose <strong>Ignore this pair</strong> for intentional overlap. To switch off the assistant, use <strong>Settings → Editing</strong>.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/mixer-masking-menu.webp"><img src="images/mixer-masking-menu.webp" width="350" height="139" alt="The 808 masking menu reports that it covers Kick at 45–56 Hz." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 28%; --y: 54%" aria-hidden="true">1</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Choose <strong>Make room for Kick</strong> after checking the overlap by ear.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/mixer-masking-result.webp"><img src="images/mixer-masking-result.webp" width="780" height="402" alt="Parametric EQ on the 808 with a dynamic low-frequency cut keyed from Kick." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 11.5%; --y: 55%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 11%; --y: 91%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>The dynamic band dips around 50 Hz in this example.</li>
+                <li>Kick is selected as the sidechain source.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
         <section>
           <h2 id="sidechain">Sidechain a compressor</h2>
-          <p>A sidechain uses one sound to control an effect on another. For a kick and bass, the kick triggers a dip in the bass on each hit.</p>
+
+          <p>Duck a bass around the kick. The Compressor on the bass receives the bass as its audio and follows the kick as its detection source.</p>
           <ol>
-            <li>Route kick and bass to separate inserts.</li>
-            <li>Right-click the kick insert and choose <strong>Sidechain to →</strong> the bass insert. Synkopa sets the kick as the source on an existing Clean Compressor or adds one.</li>
-            <li>Play both sounds. On the bass Compressor, adjust <strong>Thresh</strong> so the red <strong>GR</strong> meter moves on kick hits. Shorten <strong>Release</strong> if the bass stays down too long.</li>
+            <li>Route kick and bass to separate inserts. Play a section containing both and confirm each insert shows activity.</li>
+            <li>Right-click the kick insert. Choose <strong>Sidechain to</strong>, then the bass insert. Synkopa connects the kick to a Clean Compressor on the bass, adding one if needed. Click the Compressor slot to check that its sidechain input shows the kick.</li>
+            <li>While both sounds play, lower <strong>Thresh</strong> until the red <strong>GR</strong> meter moves on kick hits. Start with a short <strong>Attack</strong> and adjust <strong>Release</strong> so the bass recovers before the next kick. Toggle bypass and listen for the kick’s attack to come through. For subtler movement, use less reduction.</li>
           </ol>
-          <p>To choose a source from the Compressor window, open <strong>Own input</strong> and select the kick insert.</p>
+          <p>When the meter stays flat, confirm the source name and make sure the kick plays in that range. In the Compressor, use <strong>Own input</strong> or the current source name to open the source menu. Choose the kick insert there when wiring the Compressor directly.</p>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/mixer-sidechain-menu.webp"><img src="images/mixer-sidechain-menu.webp" width="610" height="315" alt="Kick insert menu with Sidechain to open and the 808 insert in the destination list." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 12%; --y: 80.7%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 70%; --y: 47%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>Open <strong>Sidechain to</strong> on the kick insert.</li>
+                <li>Choose the bass destination, <strong>Ins 6 · 808</strong> in this project.</li>
+              </ol>
+            </figcaption>
+          </figure>
+          <figure class="annotated-shot">
+            <div class="shot-frame">
+              <a class="shot" href="images/mixer-sidechain-result.webp"><img src="images/mixer-sidechain-result.webp" width="580" height="388" alt="Clean Compressor with Kick selected as its sidechain and visible gain reduction history." loading="lazy"></a>
+              <span class="shot-pin" style="--x: 86%; --y: 82%" aria-hidden="true">1</span>
+              <span class="shot-pin" style="--x: 43%; --y: 40%" aria-hidden="true">2</span>
+            </div>
+            <figcaption>
+              <ol>
+                <li>The sidechain chooser shows <strong>Ins 7 · Kick</strong>.</li>
+                <li>Gain-reduction history shows what happened on the recent hits.</li>
+              </ol>
+            </figcaption>
+          </figure>
         </section>
       </article>
     </main>
