@@ -19,6 +19,8 @@ pub const MAX_ASK_URL: usize = 2000;
 const CHATGPT_URL: &str = "https://chatgpt.com/?q=";
 const CHATGPT_HOME: &str = "https://chatgpt.com/";
 const DEEPWIKI_URL: &str = "https://deepwiki.com/miskibin/synkopa";
+/// The published user guide (Help ▸ User guide). `ui/src/lib/askLink.ts` has the same link.
+pub const DOCS_URL: &str = "https://miskibin.github.io/synkopa/docs/";
 /// The Synkopa community server (Help ▸ Join the Discord). `ui/src/lib/askLink.ts` has the same link.
 pub const DISCORD_URL: &str = "https://discord.gg/zHMjE3fCY";
 

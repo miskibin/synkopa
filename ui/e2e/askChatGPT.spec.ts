@@ -30,8 +30,23 @@ test('the toolbar, Help menu and F1 each open ChatGPT with a Synkopa starter pro
   for (const url of [fromToolbar, fromHelp, fromF1]) {
     const prompt = url.searchParams.get('q');
     expect(prompt).toContain('I use Synkopa ');
-    expect(prompt).toContain('https://github.com/miskibin/synkopa');
+    expect(prompt).toContain('https://miskibin.github.io/synkopa/docs/');
+    expect(prompt).toContain('Read the official user guide and relevant linked pages before answering.');
     expect(prompt).toContain('Start by asking what I’m trying to do.');
+  }
+});
+
+test('the Help menu opens the published user guide', async ({ app, context }) => {
+  await context.route('https://miskibin.github.io/synkopa/docs/**', route => route.fulfill({ body: 'Synkopa user guide' }));
+  await app.getByRole('menuitem', { name: 'Help', exact: true }).click();
+  const tabOpened = context.waitForEvent('page');
+  await app.getByRole('menuitem', { name: 'User guide', exact: true }).click();
+  const tab = await tabOpened;
+  try {
+    await tab.waitForURL('https://miskibin.github.io/synkopa/docs/');
+    expect(tab.url()).toBe('https://miskibin.github.io/synkopa/docs/');
+  } finally {
+    await tab.close();
   }
 });
 
