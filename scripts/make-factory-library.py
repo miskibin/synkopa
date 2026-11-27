@@ -213,6 +213,30 @@ FREESOUND = {
     "261410": ("https://cdn.freesound.org/previews/261/261410_3797507-hq.mp3", "Logicogonist", "tom 4.wav"),
     "488463": ("https://cdn.freesound.org/previews/488/488463_10527164-hq.mp3", "Trvth", "FloorTom1Drum.wav"),
     "112504": ("https://cdn.freesound.org/previews/112/112504_1985275-hq.mp3", "cdiupe", "new tom 1.wav"),
+    "879767": ("https://cdn.freesound.org/previews/879/879767_15176424-hq.mp3", "Robo9418", "Rainstick Shaker 90bpm Loop"),
+    "651231": ("https://cdn.freesound.org/previews/651/651231_14238989-hq.mp3", "trubalesk", "small-djembe-88bpm-loop.wav"),
+    "456131": ("https://cdn.freesound.org/previews/456/456131_178421-hq.mp3", "funkologic", "Tambourine 2-bars loop 90BPM 44.1kHz"),
+    "429539": ("https://cdn.freesound.org/previews/429/429539_8655249-hq.mp3", "stevysound", "Indian Percussion Loop 121 bpm"),
+    "270737": ("https://cdn.freesound.org/previews/270/270737_5137234-hq.mp3", "bcnlab", "Song7_SHAKER_Fa_3:4_120bpms.wav"),
+    "761490": ("https://cdn.freesound.org/previews/761/761490_15628574-hq.mp3", "BB_909", "Hi-Hat Loop 128bpm"),
+    "610356": ("https://cdn.freesound.org/previews/610/610356_8667548-hq.mp3", "KJose", "120bpm_tumbao_on_bongos_1.flac"),
+    "610360": ("https://cdn.freesound.org/previews/610/610360_8667548-hq.mp3", "KJose", "bongo_martillo_120bpm_var.flac"),
+    "678284": ("https://cdn.freesound.org/previews/678/678284_14784311-hq.mp3", "msx2plus", "135bpm house hand percussion loop"),
+    "165143": ("https://cdn.freesound.org/previews/165/165143_2997898-hq.mp3", "rhythmpeople", "Rpeople_126_TOPLOOP_07.wav"),
+    "427469": ("https://cdn.freesound.org/previews/427/427469_28920-hq.mp3", "mikesh", "djembe grooves_kassa_120bpm.wav"),
+    "868105": ("https://cdn.freesound.org/previews/868/868105_3173681-hq.mp3", "tkky", "120 BPM Funky Cowbell Drummer"),
+    "276574": ("https://cdn.freesound.org/previews/276/276574_1823830-hq.mp3", "SeryLis", "Shaker 122 bpm.wav"),
+    "44706": ("https://cdn.freesound.org/previews/44/44706_183905-hq.mp3", "uiop", "bongos_109bpm.aif"),
+    "485401": ("https://cdn.freesound.org/previews/485/485401_9585786-hq.mp3", "Ancient.Sounds", "Djembe Loop 11 - 120 BPM.wav"),
+    "539218": ("https://cdn.freesound.org/previews/539/539218_6043685-hq.mp3", "nnaudio", "Dirty Deeds Trippy Piano - 123bpm - Fmin"),
+    "699085": ("https://cdn.freesound.org/previews/699/699085_11532701-hq.mp3", "deadrobotmusic", "KTHNXBYE Piano [104bpm Dsharp maj]"),
+    "527327": ("https://cdn.freesound.org/previews/527/527327_3173681-hq.mp3", "tkky", "90 bpm wavey loop.wav"),
+    "689911": ("https://cdn.freesound.org/previews/689/689911_15018884-hq.mp3", "deleted_user_15018884", "ATM Nowhere 1 (126BPM)"),
+    "559453": ("https://cdn.freesound.org/previews/559/559453_4246353-hq.mp3", "Crabflag", "Spooky Loopy5_110BPM_F_Loop_PSS560.aif"),
+    "684852": ("https://cdn.freesound.org/previews/684/684852_12701714-hq.mp3", "h3rb4", "Dark cowbell melody loop 85BPM.wav"),
+    "277042": ("https://cdn.freesound.org/previews/277/277042_1743037-hq.mp3", "tmog.762", "Em 91-bpm Low Key Guitar Groove A.wav"),
+    "411660": ("https://cdn.freesound.org/previews/411/411660_546044-hq.mp3", "deep into perspectives", "120bpmchodrprogrssion.wav"),
+    "339982": ("https://cdn.freesound.org/previews/339/339982_6035865-hq.mp3", "FullMetalJedi", "Jazz01-140bpm.wav"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -281,7 +305,8 @@ PIZZ = [
 # unlisted (keep embedded for saved projects, omit from the browser),
 # loop ((bpm, bars): a loop of that many bars, see the module comment; max seconds unused),
 # gemini ((score, note): how Gemini rated the sound for its use when it was picked, 1-10, and its
-# few-word description; kept as metadata for a later search or tagging, not used by the build).
+# few-word description; kept as metadata for a later search or tagging, not used by the build),
+# tags ((instrument, genres, mood): Gemini's description of a loop, metadata like gemini).
 T = {"tune": True}
 SOFT = {"soft": True}
 UNLISTED = {"unlisted": True}
@@ -289,8 +314,8 @@ SG = "stargate:stargate-sample-pack/fugue-state-audio/drums/"
 TR8 = "mck:TR8/"
 
 
-def loop(bpm, bars):
-    return {"loop": (bpm, bars)}
+def loop(bpm, bars, **opt):
+    return {"loop": (bpm, bars), **opt}
 
 
 def g(score, note, **opt):
@@ -635,7 +660,23 @@ PICKS = [
     ("sub-drop.flac", "Sub Drop", "FX", "fs:428073", 4.0, 60),
     ("downlifter-dark.flac", "Dark Downlifter", "FX", "omi:OMI_FX/OMI_fx_downlifter_melodic.wav", 6.0, 60),
     ("riser-drone.flac", "Drone Riser", "FX", "fs:561207", 2.5, 60, SOFT),
-    # loops: tempo and key are in the name (the library has no fields for them)
+    # percussion loops (to layer over a beat), then melodic loops: tempo and key are in the name
+    # (the library has no fields for them)
+    ("loop-perc-shaker-rainstick-90.ogg", "Shaker Rainstick 90", "Perc Loops", "fs:879767", 0, 60, loop(90, 4, **g(9, "Crisp, dynamic shaker top loop with great pocket and seam", tags=("shaker + cabasa", "house, pop, hip-hop", "groovy, crisp, upbeat")))),
+    ("loop-perc-djembe-small-88.ogg", "Djembe Small 88", "Perc Loops", "fs:651231", 0, 60, loop(88, 4, **g(9, "Well-recorded, musical hand drum groove with tight timing", tags=("tabla-like hand drum", "hip-hop, film, pop", "organic, rhythmic, expressive")))),
+    ("loop-perc-tambourine-90.ogg", "Tambourine 90", "Perc Loops", "fs:456131", 0, 60, loop(90, 2, **g(8, "Clean 16th-note groove with natural accents, seamless loop", tags=("tambourine / shaker", "pop, house, lo-fi", "crisp, steady, tight")))),
+    ("loop-perc-indian-121.ogg", "Indian Percussion 121", "Perc Loops", "fs:429539", 0, 60, loop(121, 2, **g(8, "Clean hand drum and woodblock groove that loops seamlessly", tags=("tabla + woodblock", "film, house, hip-hop", "organic, rhythmic, earthy")))),
+    ("loop-perc-shaker-song-120.ogg", "Shaker Song 120", "Perc Loops", "fs:270737", 0, 60, loop(120, 16, **g(8, "Warm, natural acoustic shaker groove with seamless loop transition", tags=("shaker", "pop, house, lo-fi", "organic, chugging, steady")))),
+    ("loop-perc-hat-top-128.ogg", "Hat Top 128", "Perc Loops", "fs:761490", 0, 60, loop(128, 2, **g(8, "Clean sixteenth-note jingle top loop that repeats seamlessly", tags=("hi-hat / tambourine", "house, pop, rock", "energetic, bright, driving")))),
+    ("loop-perc-bongo-tumbao-120.ogg", "Bongo Tumbao 120", "Perc Loops", "fs:610356", 0, 60, loop(120, 2, **g(8, "Clean, tight bongo pattern with clear tone and seamless loop", tags=("bongos", "house, film, lo-fi", "organic, playful, woody")))),
+    ("loop-perc-bongo-martillo-120.ogg", "Bongo Martillo 120", "Perc Loops", "fs:610360", 0, 60, loop(120, 2, **g(8, "Clean, melodic bongo pattern with steady groove", tags=("bongos", "lo-fi, house, film", "warm, minimal, organic")))),
+    ("loop-perc-house-hand-135.ogg", "House Hand Perc 135", "Perc Loops", "fs:678284", 0, 60, loop(135, 4, **g(8, "Crisp syncopated Latin percussion top loop, seamless and musical", tags=("shaker + conga + woodblock", "house, pop, hip-hop", "energetic, driving, tight")))),
+    ("loop-perc-top-126.ogg", "Top Loop 126", "Perc Loops", "fs:165143", 0, 60, loop(126, 2, **g(8, "Tight tambourine, shaker and clap top loop", tags=("tambourine + shaker + clap", "house, pop, hip-hop", "crisp, driving, bright")))),
+    ("loop-perc-djembe-kassa-120.ogg", "Djembe Kassa 120", "Perc Loops", "fs:427469", 0, 60, loop(120, 4, **g(8, "Clean, natural hand drum groove that loops and layers well", tags=("djembe", "house, lo-fi, film", "organic, warm, steady")))),
+    ("loop-perc-cowbell-funky-120.ogg", "Cowbell Funky 120", "Perc Loops", "fs:868105", 0, 60, loop(120, 4, **g(8, "Clean syncopated percussion groove, tight timing", tags=("cowbell + shaker + clap", "house, pop, hip-hop", "groovy, tight, playful")))),
+    ("loop-perc-shaker-122.ogg", "Shaker 122", "Perc Loops", "fs:276574", 0, 60, loop(122, 4, **g(7, "Clean, steady sixteenth-note shaker that loops smoothly", tags=("shaker", "house, pop, lo-fi", "steady, driving, crisp")))),
+    ("loop-perc-bongos-109.ogg", "Bongos 109", "Perc Loops", "fs:44706", 0, 60, loop(109, 2, **g(7, "Live hand drum and bell groove with natural acoustic feel", tags=("bongos + bell", "film, house, lo-fi", "raw, organic, lively")))),
+    ("loop-perc-djembe-120.ogg", "Djembe 120", "Perc Loops", "fs:485401", 0, 60, loop(120, 2, **g(7, "Clean, dry hand drum phrase, simple and well recorded", tags=("djembe", "hip-hop, lo-fi, pop", "sparse, warm, clean")))),
     ("loop-keys-sinister-148-cmin.ogg", "Keys Sinister 148 Cm", "Loops", "fs:574346", 0, 60, loop(148, 16)),
     ("loop-rhodes-suspense-70-csharpmin.ogg", "Rhodes Suspense 70 C#m", "Loops", "fs:428292", 0, 60, loop(70, 4)),
     ("loop-rhodes-dream-160.ogg", "Rhodes Dream 160", "Loops", "fs:663687", 0, 60, loop(160, 8)),
@@ -647,6 +688,15 @@ PICKS = [
     ("loop-pad-cinematic-110-ebmin.ogg", "Pad Cinematic 110 Ebm", "Loops", "fs:521664", 0, 60, loop(110, 4)),
     ("loop-flute-eastern-130-cmin.ogg", "Flute Eastern 130 Cm", "Loops", "fs:713120", 0, 60, loop(130, 8)),
     ("loop-vox-dark-120-dmin.ogg", "Vox Dark 120 Dm", "Loops", "fs:703686", 0, 60, loop(120, 4)),
+    ("loop-piano-trippy-123-fmin.ogg", "Piano Trippy 123 Fm", "Loops", "fs:539218", 0, 60, loop(123, 8, **g(8, "Clean, seamless dark bell-like arpeggio; simple trap starter", tags=("bell piano arpeggio", "trap, hip-hop, lo-fi", "melancholic, hypnotic, nocturnal")))),
+    ("loop-piano-ambient-104-dsharp.ogg", "Piano Ambient 104 D#", "Loops", "fs:699085", 0, 60, loop(104, 8, **g(8, "Warm, spacious reverberant piano chords; emotive", tags=("reverberant piano", "lo-fi, film, hip-hop", "melancholic, intimate, spacious")))),
+    ("loop-synth-wavey-90.ogg", "Synth Wavey 90", "Loops", "fs:527327", 0, 60, loop(90, 4, **g(8, "Warm retro polysynth chord progression, musical", tags=("polysynth chords + synth bass", "pop, synthwave, hip-hop", "nostalgic, warm, dreamy")))),
+    ("loop-pluck-nowhere-126.ogg", "Pluck Nowhere 126", "Loops", "fs:689911", 0, 60, loop(126, 8, **g(8, "Warm melodic pluck arpeggio, slight bass dip at the seam", tags=("synth pluck + sub bass", "pop, lo-fi, film", "gentle, warm, hypnotic")))),
+    ("loop-pluck-spooky-110.ogg", "Pluck Spooky 110", "Loops", "fs:559453", 0, 60, loop(110, 4, **g(8, "Catchy syncopated chordal pluck riff that loops cleanly", tags=("synth pluck", "pop, house, hip-hop", "upbeat, playful, clean")))),
+    ("loop-cowbell-dark-85.ogg", "Cowbell Dark 85", "Loops", "fs:684852", 0, 60, loop(85, 2, **g(8, "Musical pitched percussion pattern, clean and seamless", tags=("tuned cowbell / hand percussion", "film, lo-fi, trap", "hypnotic, mystical, warm")))),
+    ("loop-guitar-lowkey-91-emin.ogg", "Guitar Low Key 91 Em", "Loops", "fs:277042", 0, 60, loop(91, 2, **g(8, "Clean soulful guitar riff with tight pocket", tags=("clean electric guitar", "lo-fi, hip-hop, pop", "smooth, chill, soulful")))),
+    ("loop-keys-progression-120.ogg", "Keys Progression 120", "Loops", "fs:411660", 0, 60, loop(120, 12, **g(8, "Lush, warm ambient keys and pad progression", tags=("synth pad + keys", "lo-fi, hip-hop, film", "warm, dreamy, nostalgic")))),
+    ("loop-guitar-jazz-140.ogg", "Guitar Jazz 140", "Loops", "fs:339982", 0, 60, loop(140, 4, **g(7, "Fingerstyle jazz guitar with fret noise, slightly rushed turnaround", tags=("acoustic guitar", "lo-fi, hip-hop, pop", "intimate, jazzy, warm")))),
 ]
 
 
@@ -876,8 +926,13 @@ def decoded(path):
 
 def cut_loop(x, bpm, bars):
     """The first `bars` bars of 4/4 at `bpm`, unfaded: the source starts on the downbeat (the
-    decoder drops the MP3 encoder's padding), so the cut repeats in time."""
+    decoder drops the MP3 encoder's padding), so the cut repeats in time. A source up to 1% short
+    of the bars (exported a few milliseconds early) is stretched to them by resampling, a pitch
+    change of under 17 cents, rather than padded with a gap at the loop point."""
     n = int(round(bars * 4 * 60 / bpm * SR))
+    if n - int(0.01 * SR) > len(x) >= n * 0.99:
+        t = np.linspace(0, len(x) - 1, n)
+        x = np.stack([np.interp(t, np.arange(len(x)), x[:, c]) for c in range(2)], axis=1)
     if len(x) < n - int(0.01 * SR):
         sys.exit(f"loop is {len(x) / SR:.3f} s, {bars} bars at {bpm} BPM need {n / SR:.3f} s")
     x = np.concatenate([x, np.zeros((max(0, n - len(x)), 2))])[:n].copy()
@@ -894,7 +949,7 @@ def write_ogg(dst, y, mono, tag):
             return False
     ch = "1" if mono else "2"
     best = None
-    for _ in range(5):
+    for _ in range(12):
         pcm = np.clip(y, -1, 1).astype("<f4").tobytes()
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", ch, "-i", "-", "-c:a", "libvorbis", "-q:a", "6",
                         "-map_metadata", "-1", "-metadata:s:a", f"WAVE_SRC={tag}", "-bitexact", dst], input=pcm, check=True)
@@ -907,7 +962,7 @@ def write_ogg(dst, y, mono, tag):
             best = (abs(err), data)
         if abs(err) < 0.03:
             break
-        y = y * 10 ** (-0.5 * err / 20)
+        y = y * 10 ** (-0.8 * err / 20)
     with open(dst, "wb") as f:
         f.write(best[1])
     return True
