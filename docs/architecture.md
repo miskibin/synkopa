@@ -85,6 +85,25 @@ resampled (`ClipRt::rate = 1/s`, pitch follows speed), and the state's `stretchi
 is rendered once, on release). Offline bounces render missing stretches themselves, outside
 the project lock. `"resample": true` always plays resampled (turntable-style), no render.
 
+### Warp markers
+
+An audio clip may carry `"warp": [{"at": s, "to": t}, …]` (at most 1024, sorted by `at`).
+`at` is a second of the clip's source (after normalize/reverse/pitch edits), `to` the
+stretched-audio second it plays at: the marker pins that moment, and between two markers the
+material stretches by their slope — dragging a pin re-times the material around it (Ableton
+Live's warp markers; REAPER's stretch markers). Before the first and after the last marker
+the audio stretches to reach them, so the render is exactly as long as the plain `stretch`
+one and every reader of the stretched axis (regions, peaks, exports, the read path) keeps
+working. The map is in seconds on both sides, so it survives BPM changes (no re-render) and
+splits and trims untouched; a `stretch` drag or Fit-to-beats rescales `to` with the offset.
+Markers need the keep-pitch stretch (`putClips` rejects them with `resample`, which maps
+linearly), each pair of neighbours must imply a stretch within 0.25–4, and markers sit at
+least 5 ms apart. The render goes through the same `wave-stretch` thread and cache — the key
+gains a hash of the map — as one continuous piecewise stretch (no seams at the markers);
+while it renders the clip plays its baseline approximation, and the pins are drawn on the
+clip with the waveform following the map. (Not to be confused with the *Warp* insert effect,
+whose time/volume maps mangle playback live.)
+
 ### Transposed audio clips
 
 An audio clip may carry `"pitch": p`, semitones within ±12 (cents as the fraction, absent = 0):

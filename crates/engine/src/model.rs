@@ -31,10 +31,11 @@ pub fn fader_gain(t: f32) -> f32 {
 
 /// The project format `migrate` brings a file up to. 3: the Reverb's Decay reaches 20 s
 /// (was 6 s), so automation of it (stored normalised over the range) is rescaled once.
-/// 4: tempo points (the tempo map). A build drops fields it does not know (serde ignores
-/// them), so a round-trip through an older app loses them silently and the version it
-/// leaves behind is the only trace — `open` warns about files saved by a newer app.
-pub const PROJECT_VERSION: u32 = 4;
+/// 4: tempo points (the tempo map). 5: clip warp markers. A build drops fields it does
+/// not know (serde ignores them), so a round-trip through an older app loses them
+/// silently and the version it leaves behind is the only trace — `open` warns about
+/// files saved by a newer app.
+pub const PROJECT_VERSION: u32 = 5;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1322,6 +1323,10 @@ pub struct Clip {
     /// plays the sample transposed from here; a sampler channel made from the clip starts here.
     #[serde(default = "clip_root", skip_serializing_if = "is_clip_root")]
     pub root: u8,
+    /// Audio clips: warp markers pinning source moments to stretched-audio positions,
+    /// sorted by `at` (see [`WarpPoint`]). Empty = the plain `stretch` mapping.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warp: Vec<WarpPoint>,
 }
 
 /// Default `Clip::root`: C5 (MIDI 60), like a new sampler channel.
@@ -1354,6 +1359,24 @@ fn is_false(x: &bool) -> bool {
 pub const STRETCH_MIN: f64 = 0.25;
 pub const STRETCH_MAX: f64 = 4.0;
 
+/// One warp marker: the audio at `at` seconds of the clip's source plays at `to` seconds
+/// of the stretched clip audio. Markers sort by `at`; between two of them the material
+/// stretches by their slope (so a marker pins a moment, and dragging it re-times the
+/// material around it, Ableton Live's warp markers); before the first and after the last
+/// it stretches to reach them. Markers need keep-pitch (`resample` maps linearly and
+/// cannot honor them).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarpPoint {
+    pub at: f64,
+    pub to: f64,
+}
+
+/// Most `Clip::warp` markers a clip may hold.
+pub const WARP_MAX: usize = 1024;
+/// Closest two markers may sit, seconds (tinier segments stretch nothing recognizably).
+pub const WARP_SPACING: f64 = 0.005;
+
 impl Clip {
     /// The part of its source the clip plays, in source seconds (before stretching).
     pub fn source_span(&self, bpm: f64) -> (f64, f64) {
@@ -1363,7 +1386,8 @@ impl Clip {
     }
     /// A pitch-preserving time-stretch and/or a transposition must be rendered for this clip.
     pub fn needs_stretch(&self) -> bool {
-        self.kind == ClipKind::Audio && ((self.stretch != 1.0 && !self.resample) || self.pitch != 0.0)
+        self.kind == ClipKind::Audio
+            && ((self.stretch != 1.0 && !self.resample) || self.pitch != 0.0 || (!self.warp.is_empty() && !self.resample))
     }
     /// The length ratio the render makes (a resampled clip is stretched by its read rate instead).
     pub fn render_ratio(&self) -> f64 {
@@ -1380,6 +1404,47 @@ impl Clip {
         } else {
             1.0
         }
+    }
+    /// Whether a warp map (not the plain `stretch` slope) shapes this clip's audio.
+    pub fn warp_active(&self) -> bool {
+        self.kind == ClipKind::Audio && !self.resample && !self.warp.is_empty()
+    }
+    /// The stretched-audio second the source second `s` plays at: piecewise through the
+    /// markers (the baseline `stretch` slope at the ends, see [`WarpPoint`]), of a source
+    /// `dur` seconds long.
+    pub fn warped_to(&self, s: f64, dur: f64) -> f64 {
+        let mut prev = (0.0, 0.0);
+        for w in &self.warp {
+            if s <= w.at {
+                return prev.1 + (s - prev.0) * (w.to - prev.1) / (w.at - prev.0);
+            }
+            prev = (w.at, w.to);
+        }
+        let end = (dur, dur * self.stretch);
+        prev.1 + (s - prev.0) * (end.1 - prev.1) / (end.0 - prev.0)
+    }
+    /// The inverse of [`Self::warped_to`]: the source second played at stretched second
+    /// `t`, of a source `dur` seconds long.
+    pub fn warped_from(&self, t: f64, dur: f64) -> f64 {
+        let mut prev = (0.0, 0.0);
+        for w in &self.warp {
+            if t <= w.to {
+                return prev.0 + (t - prev.1) * (w.at - prev.0) / (w.to - prev.1);
+            }
+            prev = (w.at, w.to);
+        }
+        let end = (dur, dur * self.stretch);
+        prev.0 + (t - prev.1) * (end.0 - prev.0) / (end.1 - prev.1)
+    }
+    /// The warp map as whole-source render anchors in frames: `(0, 0)`, each marker, and
+    /// the source's end at the baseline `stretch` — so the render is exactly as long as
+    /// the plain one and every reader of the stretched axis keeps working.
+    pub fn warp_anchors(&self, frames: usize, sr: u32) -> Vec<(f64, f64)> {
+        let mut a: Vec<(f64, f64)> =
+            std::iter::once((0.0, 0.0)).chain(self.warp.iter().map(|w| (w.at * f64::from(sr), w.to * f64::from(sr)))).collect();
+        let dur = frames as f64 / f64::from(sr);
+        a.push((frames as f64, dur * self.stretch * f64::from(sr)));
+        a
     }
 }
 

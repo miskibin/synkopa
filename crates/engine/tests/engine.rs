@@ -401,6 +401,7 @@ fn automation_moves_volume_and_effect_params() {
         t.muted = true;
     }
     p.clips.push(Clip {
+        warp: Vec::new(),
         id: 8001,
         track: 7,
         start: 0.0,
@@ -666,6 +667,7 @@ fn an_arrangement_can_run_past_the_old_128_bar_limit() {
     // bar 476: past the old 512-beat end, inside the new one
     let start = 1900.0;
     p.clips.push(Clip {
+        warp: Vec::new(),
         id: last + 1,
         track: 0,
         start,
@@ -709,6 +711,7 @@ fn a_loop_does_not_play_the_downbeat_after_its_end() {
     p.patterns[0].notes = vec![Note::new(kick, 16.0, 1.0, None)];
     p.patterns[0].len = 8.0;
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: 50,
         track: 0,
         start: 0.0,
@@ -761,6 +764,7 @@ fn wrapped_mix_and_stem_keep_exactly_one_pass_with_the_echo_at_its_start() {
     p.patterns[0].notes = vec![Note::new(kick, 15.0, 1.0, None)];
     p.patterns[0].len = 8.0;
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: 50,
         track: 0,
         start: 4.0,

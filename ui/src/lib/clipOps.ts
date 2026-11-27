@@ -1,5 +1,5 @@
 // Pure builders for playlist edits. They return new clips / ops; nothing here touches the store.
-import { STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, VOL_UNITY, type Clip, type Id, type Op, type Project, type Track } from '../api/types';
+import { STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, VOL_UNITY, WARP_MAX, WARP_SPACING, type Clip, type Id, type Op, type Project, type Track } from '../api/types';
 import { clamp } from './format';
 
 export const TOTAL = TOTAL_BEATS;
@@ -37,6 +37,69 @@ export function sliceClip(c: Clip, b: number, newId: number): [Clip, Clip] | nul
   const a = { ...c, len: b - c.start, fadeOut: 0 };
   const z = { ...c, id: newId, start: b, len: c.start + c.len - b, offset: c.offset + (b - c.start), fadeIn: 0 };
   return [a, z];
+}
+
+// Warp markers (audio clips). The map lives on the clip in seconds on both sides — source
+// `at`, stretched-audio `to` — so splits and trims never touch it, and only the stretch
+// builders below rescale it (with the offset they already scale).
+
+/** Whether a warp map (not the plain `stretch` slope) shapes this clip's audio. */
+export function warpActive(c: Clip): boolean {
+  return c.kind === 'audio' && !c.resample && !!c.warp?.length;
+}
+
+/** The stretched-audio second the source second `s` plays at (the mirror of `Clip::warped_to`). */
+export function warpedTo(c: Clip, s: number, dur: number): number {
+  let prev: [number, number] = [0, 0];
+  for (const w of c.warp ?? []) {
+    if (s <= w.at) return prev[1] + (s - prev[0]) * (w.to - prev[1]) / (w.at - prev[0]);
+    prev = [w.at, w.to];
+  }
+  const end = dur * (c.stretch ?? 1);
+  return prev[1] + (s - prev[0]) * (end - prev[1]) / (dur - prev[0]);
+}
+
+/** The source second played at stretched second `t` (the mirror of `Clip::warped_from`). */
+export function warpedFrom(c: Clip, t: number, dur: number): number {
+  let prev: [number, number] = [0, 0];
+  for (const w of c.warp ?? []) {
+    if (t <= w.to) return prev[0] + (t - prev[1]) * (w.at - prev[0]) / (w.to - prev[1]);
+    prev = [w.at, w.to];
+  }
+  const end = dur * (c.stretch ?? 1);
+  return prev[0] + (t - prev[1]) * (dur - prev[0]) / (end - prev[1]);
+}
+
+/** `c` with a marker pinned at source second `at`, landing where the current map puts it
+ *  (so pinning never jumps the audio; dragging the pin then re-times around it). Null when
+ *  the clip is full or the spot is taken (markers sit `WARP_SPACING` apart). */
+export function pinWarp(c: Clip, at: number, dur: number): Clip | null {
+  if ((c.warp?.length ?? 0) >= WARP_MAX) return null;
+  if (c.warp?.some(w => Math.abs(w.at - at) < WARP_SPACING)) return null;
+  const warp = [...(c.warp ?? []), { at, to: warpedTo(c, at, dur) }].sort((a, b) => a.at - b.at);
+  return { ...c, warp };
+}
+
+/** `c` with marker `i` moved to land at stretched second `to` (its audio moment stays). */
+export function moveWarp(c: Clip, i: number, to: number): Clip {
+  const warp = (c.warp ?? []).map((w, k) => (k === i ? { ...w, to } : w));
+  return { ...c, warp };
+}
+
+/** `c` without marker `i`. */
+export function removeWarp(c: Clip, i: number): Clip {
+  const warp = (c.warp ?? []).filter((_, k) => k !== i);
+  return { ...c, warp };
+}
+
+/** Markers pinned at every onset position (`seconds` into the source), landing where the
+ *  current map puts each; the clip keeps playing as it does until they are dragged. */
+export function markersAtTransients(c: Clip, seconds: readonly number[], dur: number): Clip | null {
+  if ((c.warp?.length ?? 0) + seconds.length > WARP_MAX) return null;
+  const warp = [...(c.warp ?? []), ...seconds.map(at => ({ at, to: warpedTo(c, at, dur) }))]
+    .sort((a, b) => a.at - b.at)
+    .filter((w, i, ws) => i === 0 || w.at - ws[i - 1].at >= WARP_SPACING);
+  return { ...c, warp };
 }
 
 /** Span to shift a duplicate by: the selection length rounded up to the snap unit. */
@@ -94,7 +157,9 @@ export function stretchClip(o: Clip, edge: 'l' | 'r', target: number, minL: numb
   const k = len / o.len, s = s0 * k;
   // a stretch back to (almost) 1 snaps to exactly 1, so the clip plays its file untouched
   const exact = Math.abs(s - 1) < 1e-6;
-  const n: Clip = { ...o, len: exact ? o.len / s0 : len, offset: exact ? o.offset / s0 : o.offset * k };
+  // the markers' `to` lives on the same stretched axis the offset scales on
+  const warp = o.warp?.map(w => ({ at: w.at, to: exact ? w.to / s0 : w.to * k }));
+  const n: Clip = { ...o, len: exact ? o.len / s0 : len, offset: exact ? o.offset / s0 : o.offset * k, warp };
   if (exact) { delete n.stretch; delete n.resample; } else n.stretch = s;
   if (edge === 'l') n.start = end - n.len;
   return n;
@@ -167,7 +232,7 @@ export function fitClip(c: Clip, beats: number): Clip | null {
   const s = c.stretch ?? 1, k = beats / c.len, ns = s * k;
   if (ns < STRETCH_MIN - 1e-9 || ns > STRETCH_MAX + 1e-9 || c.start + beats > TOTAL_BEATS + 1e-9) return null;
   const r = (x: number) => Math.round(x * 1e9) / 1e9;
-  return { ...c, stretch: r(Math.min(STRETCH_MAX, Math.max(STRETCH_MIN, ns))), offset: r(c.offset * k), len: beats };
+  return { ...c, stretch: r(Math.min(STRETCH_MAX, Math.max(STRETCH_MIN, ns))), offset: r(c.offset * k), len: beats, warp: c.warp?.map(w => ({ at: w.at, to: r(w.to * k) })) };
 }
 
 /**

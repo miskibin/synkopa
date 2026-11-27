@@ -183,6 +183,7 @@ impl Engine {
                         pitch: 0.0,
                         insert: None,
                         root: crate::model::CLIP_ROOT,
+                        warp: Vec::new(),
                     });
                     clip_ids.push(cid);
                 }

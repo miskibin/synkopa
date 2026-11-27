@@ -7,6 +7,7 @@ import { valueAt } from '../lib/automation';
 import { EDGE_INSET, handleAt, HANDLE_MIN_W, type EnvHit } from '../lib/envEdit';
 import type { LaneOverlaps } from '../lib/overlaps';
 import { boundaries, takeEnd, toComp } from '../lib/comp';
+import { warpActive } from '../lib/clipOps';
 import { mix } from '../lib/color';
 import { rgba, T } from '../ui/theme';
 import { clamp, dbg, mod } from '../lib/format';
@@ -486,18 +487,48 @@ function drawClip(g: CanvasRenderingContext2D, v: View, c: Clip, src: Pattern | 
     const pk = getClipPeaks(c);
     // peaks are in source time: a stretched clip shows them stretched
     const mid = by + bh / 2, gain = dbg(c.gain), rate = 100 * v.spb / (c.stretch ?? 1);
+    const warping = warpActive(c), dur = pk ? pk.length / 2 / 100 : 0;
+    // the map walked forward only (pixel x only grows): one marker pass serves every pixel
+    let fromAt: (t: number) => number = t => t;
+    if (warping) {
+      const ws = c.warp!, endAt = dur, endTo = dur * (c.stretch ?? 1);
+      let wi = 0, pAt = 0, pTo = 0;
+      fromAt = (t: number) => {
+        while (wi < ws.length && t > ws[wi].to) { pAt = ws[wi].at; pTo = ws[wi].to; wi++; }
+        const n = wi < ws.length ? ws[wi] : null;
+        return n ? pAt + (t - pTo) * (n.at - pAt) / (n.to - pTo) : pAt + (t - pTo) * (endAt - pAt) / (endTo - pTo);
+      };
+    }
     if (pk) {
       g.fillStyle = ink; g.beginPath();
       const xs = Math.floor(vis0 - cx), xe = Math.ceil(vis1 - cx);
       for (let x = Math.max(0, xs); x < xe; x++) {
-        const i0 = Math.floor((c.offset + x / v.bw) * rate), i1 = Math.floor((c.offset + (x + 1) / v.bw) * rate);
+        let i0: number, i1: number;
+        if (warping) {
+          const t0 = (c.offset + x / v.bw) * v.spb, t1 = (c.offset + (x + 1) / v.bw) * v.spb;
+          i0 = Math.floor(fromAt(t0) * 100);
+          i1 = Math.floor(fromAt(t1) * 100);
+        } else {
+          i0 = Math.floor((c.offset + x / v.bw) * rate);
+          i1 = Math.floor((c.offset + (x + 1) / v.bw) * rate);
+        }
         if (i0 * 2 >= pk.length) break;
-        const [mn, mx] = peakRange(pk, i0, i1);
+        const [mn, mx] = peakRange(pk, i0, Math.max(i0 + 1, i1));
         const ya = mid - clamp(mx * gain, 0, 1) * bh / 2 * 0.92, yb = mid - clamp(mn * gain, -1, 0) * bh / 2 * 0.92;
         g.rect(cx + x, ya, 1, Math.max(0.6, yb - ya));
       }
       g.fill();
     } else { g.fillStyle = mix(color, 30, T.clipBase); g.fillRect(cx, mid, cw, 1); }
+    // warp pins: a triangle at the top of the wave and a hairline where the moment lands
+    if (warping) {
+      for (const w of c.warp!) {
+        const x = cx + (w.to / v.spb - c.offset) * v.bw;
+        if (x < vis0 - 4 || x > vis1 + 4) continue;
+        g.strokeStyle = ink; g.globalAlpha *= 0.5; g.beginPath(); g.moveTo(x + 0.5, by); g.lineTo(x + 0.5, by + bh); g.stroke(); g.globalAlpha = c.muted ? 0.38 : prevAlpha;
+        g.fillStyle = sel ? T.ink : mix(color, 20, T.clipInkTo);
+        g.beginPath(); g.moveTo(x - 3.5, by); g.lineTo(x + 3.5, by); g.lineTo(x, by + 4.5); g.closePath(); g.fill();
+      }
+    }
   }
   g.restore();
   // ring

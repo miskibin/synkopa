@@ -402,6 +402,7 @@ impl Engine {
             pitch: 0.0,
             insert: None,
             root: crate::model::CLIP_ROOT,
+            warp: Vec::new(),
         };
         if let Err(e) = self.apply_locked(c, &[Op::PutPattern { pattern }, Op::PutClips { clips: vec![clip] }], false, None, None) {
             log::error!("could not place the MIDI take: {e}");

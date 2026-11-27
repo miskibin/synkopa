@@ -224,6 +224,7 @@ pub fn land_takes(p: &mut Project, track: u32, passes: &[(Id, f64, f64)]) {
             pitch: 0.0,
             insert: None,
             root: crate::model::CLIP_ROOT,
+            warp: Vec::new(),
         });
         return;
     }
@@ -268,6 +269,7 @@ pub fn land_takes(p: &mut Project, track: u32, passes: &[(Id, f64, f64)]) {
         pitch: 0.0,
         insert: None,
         root: crate::model::CLIP_ROOT,
+        warp: Vec::new(),
     });
     p.comps.push(comp);
 }

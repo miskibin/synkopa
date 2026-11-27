@@ -121,6 +121,7 @@ fn project() -> Project {
     }];
     let cid = p.alloc_id();
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: cid,
         track: 0,
         start: 0.0,

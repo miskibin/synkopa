@@ -54,6 +54,7 @@ fn engine(name: &str, notes: &[N], other: &[N]) -> Arc<Engine> {
         channel_loops: std::collections::BTreeMap::new(),
     };
     let clip = Clip {
+        warp: Vec::new(),
         id: 2,
         track: 0,
         start: 0.0,

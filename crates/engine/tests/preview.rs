@@ -33,6 +33,7 @@ fn engine_with_tone(name: &str) -> (Arc<Engine>, Id, std::path::PathBuf, std::pa
 /// A pattern clip on track 1 over the sketch's "Beat" pattern.
 fn pattern_clip(id: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track: 1,
         start: 0.0,

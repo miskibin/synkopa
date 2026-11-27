@@ -315,6 +315,68 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 if !known {
                     return Err(OpError::Missing { what: "clip source", id: c.source });
                 }
+                if !c.warp.is_empty() {
+                    if c.kind != ClipKind::Audio {
+                        return Err(OpError::Invalid(format!("clip {}: only audio clips carry warp markers", c.id)));
+                    }
+                    if c.resample {
+                        return Err(OpError::Invalid(format!(
+                            "clip {}: warp markers need the keep-pitch stretch (turn resampling off)",
+                            c.id
+                        )));
+                    }
+                    if c.warp.len() > crate::model::WARP_MAX {
+                        return Err(OpError::Invalid(format!(
+                            "clip {}: too many warp markers ({} > {})",
+                            c.id,
+                            c.warp.len(),
+                            crate::model::WARP_MAX
+                        )));
+                    }
+                    if c.warp.iter().any(|w| !w.at.is_finite() || !w.to.is_finite() || w.at < 0.0 || w.to < 0.0) {
+                        return Err(OpError::Invalid(format!("clip {}: warp markers must be finite and not negative", c.id)));
+                    }
+                    let dur = p.sources.iter().find(|x| x.id == c.source).map(|x| x.dur).unwrap_or(0.0);
+                    if let Some(w) = c.warp.iter().find(|w| w.at > dur + 1e-6) {
+                        return Err(OpError::Invalid(format!(
+                            "clip {}: a warp marker sits at {} s, past the source's {} s",
+                            c.id, w.at, dur
+                        )));
+                    }
+                    if let Some(w) = c.warp.iter().find(|w| w.to > dur * crate::model::STRETCH_MAX + 1e-6) {
+                        return Err(OpError::Invalid(format!(
+                            "clip {}: a warp marker lands at {} s, past what the source can stretch to",
+                            c.id, w.to
+                        )));
+                    }
+                    // the slope each pair of neighbours implies, from (0, 0) through the
+                    // markers to the source's end at the baseline `stretch` (sorted, since
+                    // the map normalizes on commit)
+                    let mut pts: Vec<(f64, f64)> = c.warp.iter().map(|w| (w.at, w.to)).collect();
+                    pts.sort_by(|a, b| a.0.total_cmp(&b.0));
+                    let mut prev = (0.0f64, 0.0f64);
+                    let end = (dur, dur * c.stretch);
+                    for w in pts.into_iter().chain(std::iter::once(end)) {
+                        if w.0 - prev.0 < crate::model::WARP_SPACING - 1e-9 {
+                            return Err(OpError::Invalid(format!(
+                                "clip {}: warp markers {} s apart are too close (the minimum is {} s)",
+                                c.id,
+                                w.0 - prev.0,
+                                crate::model::WARP_SPACING
+                            )));
+                        }
+                        let r = (w.1 - prev.1) / (w.0 - prev.0);
+                        if !(crate::model::STRETCH_MIN - 1e-9..=crate::model::STRETCH_MAX + 1e-9).contains(&r) {
+                            return Err(OpError::Invalid(format!(
+                                "clip {}: a warp segment would stretch by {r:.2}, outside {}..{}",
+                                c.id,
+                                crate::model::STRETCH_MIN,
+                                crate::model::STRETCH_MAX
+                            )));
+                        }
+                        prev = w;
+                    }
+                }
                 if let Some(r) = c.tune.as_ref().and_then(|t| t.reference.as_ref()) {
                     if r.melody.is_none() && !p.sources.iter().any(|x| x.id == r.source) {
                         return Err(OpError::Missing { what: "reference source", id: r.source });
@@ -343,6 +405,10 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 match p.clips.iter_mut().find(|x| x.id == c.id) {
                     Some(x) => *x = c.clone(),
                     None => p.clips.push(c.clone()),
+                }
+                // the marker map is stored sorted (its meaning is order-independent)
+                if let Some(x) = p.clips.iter_mut().find(|x| x.id == c.id) {
+                    x.warp.sort_by(|a, b| a.at.total_cmp(&b.at));
                 }
             }
             d.timeline = true;

@@ -478,6 +478,7 @@ const VOCAL: &[FxKind] =
 
 fn new_clip(id: Id, track: u32, start: f64, len: f64, kind: ClipKind, source: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track,
         start,

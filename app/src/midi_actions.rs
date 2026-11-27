@@ -199,6 +199,7 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             if ntracks > 0 {
                 ops.push(Op::PutClips {
                     clips: vec![Clip {
+                        warp: Vec::new(),
                         id: clip_id,
                         track,
                         start: beat,
@@ -409,6 +410,7 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
 
 fn placeholder_clip(pattern: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id: 0,
         track: 0,
         start: 0.0,

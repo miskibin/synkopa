@@ -223,6 +223,7 @@ fn live_keys_play_where_the_song_plays_the_channel_not_through_the_armed_track()
         channel_loops: std::collections::BTreeMap::new(),
     }];
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: 2,
         track: 0,
         start: 0.0,

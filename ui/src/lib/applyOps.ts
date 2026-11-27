@@ -2,7 +2,7 @@
 // Parity with the engine is enforced by fixtures, not by discipline: ops.json
 // (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
 // error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
-import { CLIP_PITCH, MAX_BANDS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
+import { CLIP_PITCH, MAX_BANDS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, WARP_MAX, WARP_SPACING, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { forgetInsert, keyError, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
@@ -15,11 +15,12 @@ export class OpError extends Error {}
 
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
-/** Drops the fields the engine's serde omits on write (stretch 1, not resampled, no pitch). */
+/** Drops the fields the engine's serde omits on write (stretch 1, not resampled, no pitch, no markers). */
 export function stripClipDefaults(c: Clip): void {
   if (c.stretch === 1) delete c.stretch;
   if (c.resample === false) delete c.resample;
   if (c.pitch === 0) delete c.pitch;
+  if (c.warp != null && c.warp.length === 0) delete c.warp;
 }
 
 export function applyOp(p: Project, op: Op): void {
@@ -41,6 +42,27 @@ export function applyOp(p: Project, op: Op): void {
         }
         const known = c.kind === 'pat' ? p.patterns.some(x => x.id === c.ref) : c.kind === 'auto' ? (p.automations ?? []).some(x => x.id === c.ref) : c.kind === 'comp' ? (p.comps ?? []).some(x => x.id === c.ref) : p.sources.some(x => x.id === c.ref);
         if (!known) throw new OpError(`no clip source with id ${c.ref}`);
+        if (c.warp != null && c.warp.length > 0) {
+          if (c.kind !== 'audio') throw new OpError(`clip ${c.id}: only audio clips carry warp markers`);
+          if (c.resample) throw new OpError(`clip ${c.id}: warp markers need the keep-pitch stretch (turn resampling off)`);
+          if (c.warp.length > WARP_MAX) throw new OpError(`clip ${c.id}: too many warp markers (${c.warp.length} > ${WARP_MAX})`);
+          if (c.warp.some(w => !Number.isFinite(w.at) || !Number.isFinite(w.to) || w.at < 0 || w.to < 0)) throw new OpError(`clip ${c.id}: warp markers must be finite and not negative`);
+          const dur = p.sources.find(x => x.id === c.ref)?.dur ?? 0;
+          const past = c.warp.find(w => w.at > dur + 1e-6);
+          if (past) throw new OpError(`clip ${c.id}: a warp marker sits at ${past.at} s, past the source's ${dur} s`);
+          const far = c.warp.find(w => w.to > dur * STRETCH_MAX + 1e-6);
+          if (far) throw new OpError(`clip ${c.id}: a warp marker lands at ${far.to} s, past what the source can stretch to`);
+          // the slope each pair of neighbours implies, from (0, 0) through the markers to
+          // the source's end at the baseline `stretch` (sorted, since the map normalizes)
+          const pts = c.warp.map(w => [w.at, w.to] as [number, number]).sort((a, b) => a[0] - b[0]);
+          let prev: [number, number] = [0, 0];
+          for (const w of [...pts, [dur, dur * s] as [number, number]]) {
+            if (w[0] - prev[0] < WARP_SPACING - 1e-9) throw new OpError(`clip ${c.id}: warp markers ${w[0] - prev[0]} s apart are too close (the minimum is ${WARP_SPACING} s)`);
+            const r = (w[1] - prev[1]) / (w[0] - prev[0]);
+            if (!(r >= STRETCH_MIN - 1e-9 && r <= STRETCH_MAX + 1e-9)) throw new OpError(`clip ${c.id}: a warp segment would stretch by ${r.toFixed(2)}, outside ${STRETCH_MIN}..${STRETCH_MAX}`);
+            prev = w;
+          }
+        }
         const r = c.tune?.reference;
         if (r) {
           if (!r.melody && !p.sources.some(x => x.id === r.source)) throw new OpError(`no reference source with id ${r.source}`);
@@ -54,6 +76,8 @@ export function applyOp(p: Project, op: Op): void {
         bump(p, c.id);
         const nc = structuredClone(c);
         stripClipDefaults(nc);
+        // the marker map is stored sorted (its meaning is order-independent)
+        nc.warp?.sort((a, b) => a.at - b.at);
         const i = p.clips.findIndex(x => x.id === c.id);
         if (i >= 0) p.clips[i] = nc; else p.clips.push(nc);
       }

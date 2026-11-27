@@ -21,6 +21,7 @@ fn main() {
     let pats = [1u64, 2, 3];
     p.clips = (0..8u32)
         .map(|t| Clip {
+            warp: Vec::new(),
             id: 30_000 + t as u64,
             track: t,
             start: 0.0,
