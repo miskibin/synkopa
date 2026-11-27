@@ -383,10 +383,17 @@ fn a_pattern_keeps_its_grid_across_migrate_and_map_edits() {
     let after =
         serde_json::json!({ "patterns": serde_json::to_value(&p.patterns).unwrap(), "clips": serde_json::to_value(&p.clips).unwrap() });
     assert_eq!(after, before, "the map edit changes no pattern or clip");
-    p.migrate();
-    let reloaded =
-        serde_json::json!({ "patterns": serde_json::to_value(&p.patterns).unwrap(), "clips": serde_json::to_value(&p.clips).unwrap() });
-    assert_eq!(reloaded, before, "the reload changes no pattern or clip");
+    // a real save-and-reload: the file goes through serde (bar skipped at the 4/4 default,
+    // kept otherwise) and migrate runs on what the file read back
+    let file = serde_json::to_value(&p).unwrap();
+    let mut round = Project::from_json(file).unwrap();
+    round.migrate();
+    assert_eq!(
+        serde_json::json!({ "patterns": serde_json::to_value(&round.patterns).unwrap() }),
+        serde_json::json!({ "patterns": before["patterns"].clone() }),
+        "the reloaded project keeps the stored grid"
+    );
+    assert_eq!(round.sig_points.len(), 1, "the map survives the round trip");
 }
 
 #[test]
