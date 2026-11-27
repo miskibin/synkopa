@@ -163,7 +163,7 @@ a { color: var(--blue); }
 .vsplit:hover { background: var(--blue); }
 
 /* ---------- playlist ---------- */
-.plwrap { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
+.plwrap { --editor-vbar: 24px; flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
 .plscroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; position: relative; background: var(--bg2); }
 /* the overview bar on top replaces the native horizontal scrollbar (vertical one stays) */
 .plscroll::-webkit-scrollbar:horizontal { height: 0; }
@@ -171,7 +171,7 @@ a { color: var(--blue); }
 .plbody { flex: 1; min-height: 0; min-width: 0; display: flex; }
 .plbody > .plscroll { scrollbar-width: none; }
 .plbody > .plscroll::-webkit-scrollbar:vertical { width: 0; }
-.plbody > .zbar.plv { flex: none; width: 14px; margin: 27px 1px 1px 2px; }
+.plbody > .zbar.plv { flex: none; width: var(--editor-vbar); margin: 27px 1px 1px 2px; }
 /* FL-style overview scrollbar on top: minimap of the song + a wide, easy-to-grab thumb */
 .rulerRow { position: sticky; top: 0; z-index: 5; display: flex; height: 26px; }
 .plhead { position: sticky; left: 0; z-index: 6; flex: none; background: var(--bg5); border-right: 1px solid var(--sep); border-bottom: 1px solid var(--sep); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
@@ -690,8 +690,9 @@ select option { background: var(--bg4); color: var(--fg); }
 .plab { display: flex; flex-direction: column; gap: 2px; font: 600 10px var(--sans); color: var(--fg5); letter-spacing: .08em; }
 .plab .sel { height: 24px; }
 /* piano roll: note grid with zoom scrollbars (right = key height, bottom = time) */
-.rollgrid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 14px; grid-template-rows: 28px 26px minmax(0, 1fr); background: var(--bg1); border-bottom: 1px solid var(--sep); }
-.rollgrid > .ovrow { grid-column: 1 / -1; padding-right: 17px; }
+.roll { --editor-vbar: 24px; }
+.rollgrid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--editor-vbar) + 3px); grid-template-rows: 28px 26px minmax(0, 1fr); background: var(--bg1); border-bottom: 1px solid var(--sep); }
+.rollgrid > .ovrow { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) var(--editor-vbar); gap: 3px; padding-right: 1px; }
 .rollgrid > .parea { min-width: 0; grid-row: 3; grid-column: 1; }
 .rollgrid > .zbar.v { margin: 1px 1px 1px 2px; grid-row: 3; grid-column: 2; }
 /* the Piano roll's time ruler (ui/timeRuler, as in the Playlist) */
@@ -699,7 +700,7 @@ select option { background: var(--bg4); color: var(--fg); }
 .rollruler .corner { flex: none; background: var(--bg5); border-right: 1px solid var(--sep); border-bottom: 1px solid var(--sep); box-sizing: border-box; }
 .rollruler .rcv { position: relative; flex: 1; min-width: 0; overflow: hidden; }
 .rollruler canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; touch-action: none; }
-.roll .lanerow { padding-right: 14px; }
+.roll .lanerow { padding-right: calc(var(--editor-vbar) + 3px); }
 /* piano roll: shortcut hint (full list on hover) and the note properties popover (double-click a note) */
 .roll .rollhint { min-width: 0; overflow: hidden; text-overflow: ellipsis; cursor: help; }
 .rollprops { z-index: 5; gap: 1px; }
@@ -752,7 +753,9 @@ select option { background: var(--bg4); color: var(--fg); }
 .toolbar .projName .dirty { margin-left: 4px; color: var(--amber); }
 .toolbar.native { padding-right: 0; }
 /* the Playlist's tools and snap, left of its overview */
-.ovrow.tools { grid-template-columns: auto minmax(0, 1fr); height: 32px; padding: 3px 14px 3px 0; }
+.ovrow.tools { grid-template-columns: auto minmax(0, 1fr) var(--editor-vbar); gap: 3px; height: 32px; padding: 3px 1px 3px 0; }
+.ovrow .fitview { width: var(--editor-vbar); height: 24px; align-self: center; }
+.fitview:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
 .pltools { display: flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; box-sizing: border-box; }
 .pltools .seg { height: 26px; box-sizing: border-box; align-items: center; }
 .pltools .seg > button { width: 27px; height: 20px; }

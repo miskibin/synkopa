@@ -1,3 +1,4 @@
+import { rememberSample } from './recentSamples';
 // Pattern commands: the current pattern (FL's pattern selector), the Channel Rack and Piano roll
 // windows, pattern and channel edits, auditions and the pattern loop preview.
 // Every edit is an op (putPattern / putChannel / removeChannel) and one undo step.
@@ -522,11 +523,12 @@ export function replaceChannel(c: Channel, pick: InstrumentPick) {
   say(t('b.st.replacedCh', { from: c.name, to: fresh.name }));
 }
 /** An audio file to make a sampler of: a library file (which may know its root key) or a path dropped from disk. */
-export type SampleFile = Pick<LibFile, 'path'> & { root?: number };
+export type SampleFile = Pick<LibFile, 'path'> & Partial<LibFile>;
 /** Imports files and waits until their sources are in the store (the import's state event may still be in flight). */
-async function importSources(paths: string[]): Promise<Id[]> {
-  const r = await be().importAudio({ paths, step: false }); // the channel made from them is the undo step
+async function importSources(files: SampleFile[]): Promise<Id[]> {
+  const r = await be().importAudio({ paths: files.map(f => f.path), step: false }); // the channel made from them is the undo step
   for (let k = 0; k < 50 && !r.sourceIds.every(id => S.project.sources.some(s => s.id === id)); k++) await new Promise(res => setTimeout(res, 20));
+  if (r.sourceIds.length) for (const f of files) if (!r.errors.some(e => e.path === f.path)) rememberSample(f);
   return r.sourceIds;
 }
 /**
@@ -537,7 +539,7 @@ export async function replaceWithFile(c: Channel, file?: SampleFile) {
   try {
     const path = file?.path ?? (await be().pickAudioFiles())?.[0];
     if (!path) return;
-    const [id] = await importSources([path]);
+    const [id] = await importSources([file ?? { path }]);
     if (id == null) return;
     replaceWithSource(c, id, file?.root);
   } catch (e) { say(t('b.st.samplerErr', { err: String(e) })); }
@@ -621,7 +623,7 @@ export async function addSamplerFiles(files?: SampleFile[] | null, index?: () =>
   try {
     const list: SampleFile[] | undefined = files ?? (await be().pickAudioFiles())?.map(path => ({ path }));
     if (!list?.length) return;
-    const ids = await importSources(list.map(f => f.path));
+    const ids = await importSources(list);
     const at = index?.();
     if (ids.length === 1) { addSampler(ids[0], list[0]?.root, at); return; }
     // several files dropped at once are one edit: one Ctrl+Z takes them all back

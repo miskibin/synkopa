@@ -2,8 +2,7 @@ import type { Page } from '@playwright/test';
 import type { Note } from '../src/api/types';
 import { drag, engine, expect, MOD, pollEngine, test } from './fixtures';
 
-// The roll is a canvas: a note is found by what the engine holds after a click, and moves are
-// checked by direction (later / higher), so the test does not hard-code the zoom.
+// The roll is a canvas: read the notes from the engine and check the direction of each move.
 const notesOf = async (page: Page, pattern: number, ch: number): Promise<Note[]> =>
   (await engine(page)).project.patterns.find(p => p.id === pattern)!.notes.filter(n => n.ch === ch);
 /** Switches the UI language through the app's own i18n module (the one the page loaded). */
@@ -17,28 +16,31 @@ test('Piano roll: draw, move, transpose and delete a note, with undo', async ({ 
   await expect(roll).toBeVisible();
   const chName = await roll.getByRole('combobox', { name: /Channel being edited/ }).locator('option:checked').textContent();
   const s0 = await engine(app);
-  const pat = s0.project.patterns[0].id;
+  const pattern = s0.project.patterns[0];
+  const pat = pattern.id;
   const ch = s0.project.channels!.find(c => c.name === chName)!.id;
   const before = await notesOf(app, pat, ch);
 
-  // draw: a click on an empty spot of the first bar
-  // the note grid: the window's largest canvas (beside the ruler, the overview and the velocity lane)
-  const grid = await roll.locator('canvas').evaluateAll(cs => cs.map(c => c.getBoundingClientRect()).map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })).sort((a, b) => b.width * b.height - a.width * a.height)[0]);
-  const p0 = { x: grid.x + grid.width * 0.25, y: grid.y + grid.height * 0.3 };
+  const grid = (await roll.locator('.parea > canvas').boundingBox())!;
+  const keyboardWidth = (await roll.locator('.rollruler .corner').boundingBox())!.width;
+  // The opening view fits the pattern at 6–48 pixels per step. Aim inside the note body.
+  const stepWidth = Math.max(6, Math.min(48, (grid.width - keyboardWidth) / (pattern.len * 4)));
+  const xAtStep = (step: number) => grid.x + keyboardWidth + (step + 0.25) * stepWidth;
+  const p0 = { x: xAtStep(5), y: grid.y + grid.height * 0.3 };
   await app.mouse.click(p0.x, p0.y);
   await pollEngine(app, s => s.project.patterns.find(p => p.id === pat)!.notes.filter(n => n.ch === ch).length).toBe(before.length + 1);
   const drawn = (await notesOf(app, pat, ch)).find(n => !before.some(same(n)))!;
   expect(drawn.len).toBeGreaterThan(0);
 
   // drag right: later, same key
-  await drag(app, { x: p0.x + 3, y: p0.y }, { x: p0.x + 3 + 120, y: p0.y });
+  await drag(app, { x: xAtStep(drawn.step), y: p0.y }, { x: xAtStep(drawn.step + 3), y: p0.y });
   await expect.poll(async () => (await notesOf(app, pat, ch)).some(same(drawn))).toBe(false);
   const moved = (await notesOf(app, pat, ch)).find(n => !before.some(same(n)))!;
   expect(moved.step).toBeGreaterThan(drawn.step);
   expect(moved.p).toBe(drawn.p);
 
   // drag up: higher, same time
-  const p1 = { x: p0.x + 3 + 120, y: p0.y };
+  const p1 = { x: xAtStep(moved.step), y: p0.y };
   await drag(app, p1, { x: p1.x, y: p1.y - 60 });
   await expect.poll(async () => (await notesOf(app, pat, ch)).some(same(moved))).toBe(false);
   const up = (await notesOf(app, pat, ch)).find(n => !before.some(same(n)))!;

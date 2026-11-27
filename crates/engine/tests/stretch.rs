@@ -260,7 +260,6 @@ fn pitch_is_checked_and_saved() {
     assert_eq!(back.pitch, 0.0);
 }
 
-
 #[test]
 fn constant_tempo_change_preserves_trimmed_audio_in_both_modes() {
     for follow_tempo in [false, true] {

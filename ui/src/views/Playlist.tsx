@@ -29,6 +29,7 @@ import { drawFades, drawFollowFlash, drawGrid, drawOverlaps, type View } from '.
 import { FOLLOW_FLASH_MS, followFlash } from '../state/patternFollow';
 import { drawRuler, drawSigChips, rulerCursor, rulerDown as rulerPress, sigHit, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
+import { FitViewButton } from '../ui/FitViewButton';
 import { PlaylistTools } from './PlaylistTools';
 import type { ZRange } from '../lib/zoomBar';
 import { laneOverlaps } from '../lib/overlaps';
@@ -1784,6 +1785,7 @@ export function Playlist() {
         <PlaylistTools />
         <ZoomScrollbar orient="h" class="ov" range={ovView} limits={ovLimits} onChange={ovChange} title={tl('a.pl.ovTip')}
           paint={paintOverview} paintKey={ovVer} />
+        <FitViewButton title={tl('a.pl.fitViewTip')} onClick={() => playlistZoom.fit()} />
       </div>
       <div class="plbody">
       <div ref={scrollEl} class="plscroll" onPointerDown={panDown} onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}

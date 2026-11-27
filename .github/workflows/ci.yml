@@ -84,6 +84,13 @@ jobs:
           name: tempo-follow-screenshots
           path: ui/e2e/.results/**/tempo-follow-*.png
           if-no-files-found: ignore
+      - name: Upload fit-view screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-view-screenshots
+          path: ui/e2e/.results/**/fit-view-*.png
+          if-no-files-found: ignore
       - name: Upload the traces of failed journeys
         if: failure()
         uses: actions/upload-artifact@v4

@@ -355,3 +355,38 @@ describe('crash recovery (the autosave)', () => {
     expect(pat.patMode()).toBe(false);
   });
 });
+
+describe('recent unnamed drafts', () => {
+  const editTempo = async (bpm: number) => {
+    await mock.applyOps([{ op: 'setBpm', bpm }]);
+    store.replaceState(await mock.getState());
+  };
+
+  it('keeps only three distinct sketches, restores the oldest while leaving a fourth, and names it', async () => {
+    for (const bpm of [101, 102, 103, 104]) {
+      await editTempo(bpm);
+      expect(await A.projectNew()).toBe(true);
+    }
+    const rows = await mock.draftList();
+    expect(rows.map(r => r.details.bpm)).toEqual([104, 103, 102]);
+    await A.projectNew();
+    await editTempo(105);
+    await A.projectOpen(undefined, rows[2].id);
+    expect(store.S.path).toBeNull();
+    expect(store.S.dirty).toBe(true);
+    expect(store.S.project.bpm).toBe(102);
+    await editTempo(109);
+    expect(await A.closeWindowGuarded()).toBe(true);
+    expect((await mock.draftList()).map(r => r.details.bpm)).toEqual([109, 105, 104]);
+    expect(await A.projectSave()).toBe(true);
+    expect((await mock.draftList()).map(r => r.details.bpm)).toEqual([105, 104]);
+  });
+
+  it('keeps the project open when writing the final snapshot fails', async () => {
+    await editTempo(139);
+    vi.spyOn(mock, 'draftKeep').mockRejectedValue(new Error('disk full'));
+    expect(await A.closeWindowGuarded()).toBe(false);
+    expect(await A.projectNew()).toBe(false);
+    expect(store.S.project.bpm).toBe(139);
+  });
+});

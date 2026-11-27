@@ -2,12 +2,14 @@
 // settings, newest first). Refreshed at start and after every open or save.
 import { createSignal } from '../lib/reactive';
 import { be } from '../api/backend';
-import type { RecentProject } from '../api/types';
+import type { RecentDraft, RecentProject } from '../api/types';
 
 const [recent, setRecent] = createSignal<RecentProject[]>([]);
-export { recent };
+const [drafts, setDrafts] = createSignal<RecentDraft[]>([]);
+export { recent, drafts };
 
 export async function refreshRecent() {
+  try { setDrafts(await be().draftList()); } catch { /* keep the last list */ }
   try { setRecent(await be().recentProjects()); } catch { /* the list is a convenience: keep the last one shown */ }
 }
 
