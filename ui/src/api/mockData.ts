@@ -108,6 +108,17 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
     p('gl', 'Low gain', -24, 24, 0, 'dB'), p('gm', 'Mid gain', -24, 24, 0, 'dB'), p('gh', 'High gain', -24, 24, 0, 'dB'),
     p('dl', 'Low down thresh', -72, 0, -33.8, 'dB'), p('dm', 'Mid down thresh', -72, 0, -30.3, 'dB'), p('dh', 'High down thresh', -72, 0, -35.5, 'dB'),
     p('ul', 'Low up thresh', -90, 0, -40.8, 'dB'), p('um', 'Mid up thresh', -90, 0, -41.8, 'dB'), p('uh', 'High up thresh', -90, 0, -40.8, 'dB')],
+  // catalog.rs PATINA (dsp::patina::idx order)
+  patina: [p('amount', 'Magnitude', 0, 100, 100, '%'),
+    p('noise', 'Noise', 0, 100, 0, '%'), choice('ntype', 'Noise type', 0, ['Winyl', 'Winyl — kurz', 'Szelak 78', 'Kaseta', 'Taśma szpulowa', 'Brum']),
+    p('ntone', 'Noise tone', -100, 100, 0, '%'), p('nfollow', 'Follow', -100, 100, 0, '%'), choice('nroute', 'Noise route', 0, ['Po', 'Przed']),
+    p('wobble', 'Wobble', 0, 100, 0, '%'), p('wrate', 'Wow rate', 0.1, 8, 0.6, 'Hz', true), p('flutter', 'Flutter', 0, 100, 25, '%'), p('wstereo', 'Wobble stereo', 0, 100, 0, '%'),
+    p('drive', 'Drive', 0, 100, 0, '%'), choice('dstyle', 'Drive style', 0, ['Taśma', 'Konsola', 'Transformator', 'Trioda', 'Pentoda']),
+    p('dlow', 'Band low', 20, 2000, 20, 'Hz', true), p('dhigh', 'Band high', 500, 20000, 20000, 'Hz', true),
+    p('digital', 'Digital', 0, 100, 0, '%'), p('srate', 'Rate', 1000, 48000, 12000, 'Hz', true), p('bits', 'Bits', 2, 16, 12, 'bit'), p('dsmooth', 'Smooth', 0, 100, 40, '%'),
+    p('wear', 'Wear', 0, 100, 0, '%'), choice('tape', 'Tape', 0, ['Kaseta', 'Taśma 19 cm/s', 'Taśma 38 cm/s']), p('drops', 'Dropouts', 0, 100, 0, '%'), choice('dstereo', 'Dropouts stereo', 0, ['Mono', 'Stereo']),
+    p('wander', 'Wander', 0, 100, 30, '%'), p('lowcut', 'Low cut', 20, 1000, 20, 'Hz', true), p('highcut', 'High cut', 1000, 20000, 20000, 'Hz', true),
+    p('tone', 'Tone', -100, 100, 0, '%'), p('width', 'Width', 0, 200, 100, '%'), p('out', 'Output', -24, 12, 0, 'dB')],
   // catalog.rs MASTER (dsp::master::idx order)
   master: [choice('target', 'Target', 1, ['Dynamic −16', 'Streaming −14', 'Balanced −12', 'Loud −10', 'Club −8']),
     p('drive', 'Loudness', 0, 24, 0, 'dB'), p('ceil', 'Ceiling', -6, 0, -1, 'dBTP'), p('tone', 'Tone', 0, 100, 100, '%'),
@@ -123,7 +134,7 @@ const PARAMS: Record<AnyBuiltinKind, ParamDef[]> = {
 };
 const NAMES: Record<AnyBuiltinKind, string> = { eq: 'Parametric EQ', comp: 'Compressor', sat: 'Saturator', delay: 'Delay', reverb: 'Reverb', limit: 'Limiter',
   fet: 'FET Compressor', deess: 'De-esser', tune: 'Pitch Correct', denoise: 'Denoiser', voice: 'Voice', rider: 'Vocal Rider', half: 'Half-Speed', warp: 'Warp', chorus: 'Chorus', phaser: 'Phaser', gate: 'Gate', filter: 'Filter',
-  stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband', master: 'Master' };
+  stereo: 'Stereo', analyzer: 'Analyzer', multiband: 'Multiband', patina: 'Patina', master: 'Master' };
 
 type BandEdit = [number, boolean | null, number | null, number | null, number | null];
 function eqp(name: string, out: number, edits: BandEdit[]): Preset {
@@ -210,6 +221,25 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
     ste('Mono', 0, 0, 0, 120),
   ],
   master: [],
+  // catalog.rs patina presets: overrides on top of the defaults
+  patina: [
+    pr('Ciepła kaseta', { noise: 25, ntype: 3, nfollow: 30, wobble: 18, wrate: 0.7, flutter: 30, drive: 25, wear: 30, highcut: 16000 }),
+    pr('Taśma — klej na bus', { wobble: 6, wrate: 0.8, drive: 18, wear: 15, tape: 2, lowcut: 25, wander: 20 }),
+    pr('Tylko szum winylu', { noise: 40, ntype: 0 }),
+    pr('Winyl — kurz i trzaski', { noise: 28, ntype: 1, nfollow: 45, wobble: 15, wrate: 0.556, flutter: 10, drive: 20, dstyle: 3, dlow: 150, dhigh: 8000, wear: 15, tape: 1, lowcut: 40, highcut: 14000, width: 90 }),
+    pr('Lo-fi hip-hop — klawisze', { noise: 35, nfollow: 35, wobble: 40, wrate: 1, wstereo: 40, drive: 30, dstyle: 3, dlow: 200, dhigh: 6000, digital: 15, srate: 22000, dsmooth: 45, wear: 35, drops: 10, lowcut: 60, highcut: 11000, tone: -20, width: 110 }),
+    pr('Sampler 12-bit — bębny', { digital: 85, srate: 26040, bits: 12, dsmooth: 50, drive: 25, dstyle: 2, wear: 12, tape: 1, highcut: 15000, wander: 10 }),
+    pr('Lo-fi house — akordy', { noise: 30, ntype: 1, nfollow: 65, wobble: 24, wrate: 2, wstereo: 60, drive: 30, dlow: 180, dhigh: 9000, digital: 20, srate: 22000, wear: 34, tape: 1, drops: 14, dstereo: 1, lowcut: 50, highcut: 11500, tone: -15, width: 115 }),
+    pr('Rozmarzony pad', { noise: 15, ntype: 4, nfollow: 50, wobble: 45, wrate: 0.4, flutter: 15, wstereo: 100, drive: 15, dlow: 250, dhigh: 10000, wear: 20, tape: 1, drops: 8, dstereo: 1, highcut: 13000, width: 130, out: 1.5 }),
+    pr('Wokal — ziarno', { drive: 30, dstyle: 1, dlow: 600, dhigh: 7500, wobble: 8, wrate: 1.4, wear: 12, tape: 2, lowcut: 80 }),
+    pr('808 — kolor', { drive: 45, dstyle: 3, dlow: 90, dhigh: 3500, digital: 15, srate: 24000, dsmooth: 55, wear: 10, tape: 2, wander: 10 }),
+    pr('Walkman', { noise: 25, ntype: 3, nfollow: 40, wobble: 36, wrate: 1.3, flutter: 60, wstereo: 30, drive: 22, wear: 50, drops: 18, dstereo: 1, lowcut: 95, highcut: 8000, width: 85, out: 1 }),
+    pr('VHS — wspomnienie', { noise: 30, ntype: 3, nfollow: 40, wobble: 58, wrate: 0.9, flutter: 65, wstereo: 80, drive: 28, dlow: 120, dhigh: 9000, wear: 52, drops: 35, dstereo: 1, wander: 60, lowcut: 55, highcut: 6500, tone: -25, width: 115, out: 1 }),
+    pr('Stara płyta 78', { noise: 32, ntype: 2, nfollow: 50, wobble: 30, wrate: 1.3, flutter: 20, drive: 45, dstyle: 3, dlow: 250, dhigh: 5000, wear: 30, lowcut: 220, highcut: 5200, tone: -10, width: 0, out: 2 }),
+    pr('Telefon / radio AM', { noise: 30, ntype: 5, drive: 45, dstyle: 4, dlow: 400, dhigh: 3200, digital: 60, srate: 8000, bits: 8, dsmooth: 30, wear: 20, lowcut: 380, highcut: 3400, tone: 5, width: 0, out: 3 }),
+    pr('Zepsuta kaseta', { noise: 32, ntype: 3, nroute: 1, nfollow: 30, wobble: 80, wrate: 0.7, flutter: 55, wstereo: 60, drive: 45, dstyle: 4, dlow: 150, dhigh: 7000, wear: 70, drops: 65, dstereo: 1, wander: 65, lowcut: 70, highcut: 8000, tone: -20, out: 1.5 }),
+    pr('Totalna destrukcja', { noise: 40, ntype: 2, nroute: 1, nfollow: 60, wobble: 90, wrate: 0.85, flutter: 80, wstereo: 90, drive: 85, dstyle: 4, dlow: 100, dhigh: 12000, digital: 80, srate: 7500, bits: 6, dsmooth: 30, wear: 75, drops: 75, dstereo: 1, wander: 70, lowcut: 65, highcut: 6000 }),
+  ],
   analyzer: [pr('Streaming (−14 LUFS)', { target: 1 }), pr('Głośno (−9 LUFS)', { target: 2 }), pr('Broadcast (−23 LUFS)', { target: 3 })],
   multiband: [
     mbp('Domyślny — klej', 40, 100, 100, 100, 0, 0, 88.3, 2500, [0, 0, 0]),
@@ -363,7 +393,7 @@ const PRESETS: Record<AnyBuiltinKind, Preset[]> = {
 };
 
 /** catalog.rs `BUILTIN` (also the order of the "add effect" menu). */
-export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'stereo', 'reverb', 'limit', 'master', 'analyzer'];
+export const BUILTIN: AnyBuiltinKind[] = ['denoise', 'tune', 'voice', 'gate', 'eq', 'filter', 'rider', 'deess', 'comp', 'fet', 'multiband', 'sat', 'delay', 'half', 'warp', 'chorus', 'phaser', 'patina', 'stereo', 'reverb', 'limit', 'master', 'analyzer'];
 
 export function mockCatalog(): Catalog {
   return {

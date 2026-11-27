@@ -45,8 +45,17 @@ fn song_file(d: &Path) -> (PathBuf, Vec<OutTrack>) {
         },
     ];
     let path = d.join("groove.mid");
-    std::fs::write(&path, midi_file::write(97.0, "Groove", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Groove", &tracks).unwrap()).unwrap();
     (path, tracks)
+}
+
+/// A file whose tempo changes: 120 at tick 0, 90 at beat 4, 150 at beat 8 (written with our
+/// own writer — the raw-event edge cases are `midi_file`'s unit tests; this is the import).
+fn mapped_file(d: &Path) -> PathBuf {
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("mapped.mid");
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 90.0), (8.0, 150.0)], "M", &tracks).unwrap()).unwrap();
+    path
 }
 
 fn call(doc: &dyn wave_cli::Doc, cmd: &str, a: Value) -> Value {
@@ -149,6 +158,141 @@ fn a_part_goes_into_a_channel_of_a_pattern_adding_or_replacing() {
         .call("midi_import", &json!({ "path": path, "parts": [0, 1], "into": { "pattern": 1, "ch": ch } }), None)
         .unwrap_err()
         .contains("exactly one part"));
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_mapped_file_imports_its_tempo_map_with_set_tempo() {
+    let d = tmp("mapped");
+    let path = mapped_file(&d);
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true }));
+    assert_eq!(r["tempoSet"], true);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert_eq!(proj["bpm"], 120.0, "the file's tick-0 tempo is the base");
+    let pts = proj["tempoPoints"].as_array().expect("the map came with the import");
+    let got: Vec<(f64, f64)> = pts.iter().map(|p| (p["beat"].as_f64().unwrap(), p["bpm"].as_f64().unwrap())).collect();
+    assert_eq!(got, vec![(4.0, 90.0), (8.0, 150.0)]);
+    // without the opt-in the project keeps its own tempo entirely
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path }));
+    assert_eq!(r["tempoSet"], false);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert!(proj.get("tempoPoints").is_none() || proj["tempoPoints"].is_null(), "no map without the opt-in");
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_mapped_project_exports_a_ramp_whose_file_elapsed_time_is_the_engines() {
+    let d = tmp("exportmap");
+    let doc = Files.create("sketch").unwrap();
+    let ch = call(&*doc, "channels", json!({})).as_array().unwrap()[0]["id"].as_u64().unwrap();
+    call(
+        &*doc,
+        "apply",
+        json!({ "ops": [
+            { "op": "setBpm", "bpm": 90.0 },
+            { "op": "setTempoPoints", "points": [
+                { "beat": 0.0, "bpm": 90.0, "ramp": true },
+                { "beat": 8.0, "bpm": 140.0, "ramp": false },
+            ] },
+            { "op": "putPattern", "pattern": { "id": 1, "name": "P", "color": "#fff", "len": 4.0, "minLen": 4.0, "notes": [
+                { "ch": ch, "step": 0.0, "len": 4.0, "p": 36 }
+            ], "swing": 0.0, "channelLoops": {} } }],
+        }),
+    );
+    let out = d.join("ramp.mid");
+    call(&*doc, "midi_export", json!({ "out": out, "pattern": 1 }));
+    let f = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
+    // the ramp 90→140 over 8 beats steps once per beat — each event at its interval's
+    // effective BPM (the tick-0 value is beat 0's interval average, so it is not 90 itself)
+    assert_eq!(f.tempo_points.len(), 8, "one point per beat of the glide plus its end: {:?}", f.tempo_points);
+    let evs: Vec<(f64, f64)> = std::iter::once((0.0, f.bpm.unwrap())).chain(f.tempo_points.iter().map(|t| (t.beat, t.bpm))).collect();
+    let mut rising = true;
+    for w in evs.windows(2) {
+        rising &= w[0].1 < w[1].1;
+    }
+    assert!(rising, "the glide rises: {evs:?}");
+    // the file's own elapsed time (its µs tempos, summed per event interval) reaches beat 8
+    // in the engine's integral time — 4.2417 s, not the 4.3629 s the stepped-start events of
+    // the old export played (#322: test the elapsed time, not just the BPM values)
+    let mut t = 0.0;
+    for w in evs.windows(2) {
+        t += (w[1].0 - w[0].0) * 60.0 / w[0].1;
+    }
+    let want = 60.0 * 8.0 * (140.0f64 / 90.0).ln() / 50.0;
+    assert!((want - 4.2417).abs() < 1e-3, "the integral is the drift benchmark: {want}");
+    assert!((t - want).abs() < 1e-3, "the file plays the glide in {t} s, the engine in {want} s");
+    // beyond the glide the hold at 140 is exact
+    assert_eq!(f.tempo_points[7], midi_file::SmfTempo { beat: 8.0, bpm: 140.0 });
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn imported_tempo_points_land_at_the_insertion_beat() {
+    // the notes respect the playlist insertion position, and the map travels with them: the
+    // file's beat 0 is where the clip starts, so its beat-4 change lands at 16 + 4
+    let d = tmp("mapoffset");
+    let path = mapped_file(&d);
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 16.0 }));
+    assert_eq!(r["beat"], 16.0);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    let pts = proj["tempoPoints"].as_array().expect("the map came with the import");
+    let got: Vec<(f64, f64)> = pts.iter().map(|p| (p["beat"].as_f64().unwrap(), p["bpm"].as_f64().unwrap())).collect();
+    assert_eq!(got, vec![(20.0, 90.0), (24.0, 150.0)]);
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn inspect_exposes_the_tempo_map_even_without_a_tick_0_tempo() {
+    // MidiInfo requires `tempoPoints`, and the dialog reads its length whenever the tick-0
+    // tempo is null — which includes files with no tempo events at all: the response must
+    // always carry the array (a TypeError here broke the dialog for every such file)
+    let d = tmp("inspectmap");
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("late.mid");
+    std::fs::write(&path, midi_file::write(&[(2.0, 140.0)], "L", &tracks).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_inspect", json!({ "path": path }));
+    assert_eq!(r["bpm"], Value::Null, "no event at tick 0: the default governs");
+    let pts = r["tempoPoints"].as_array().expect("tempoPoints is always an array");
+    assert_eq!(pts.len(), 1);
+    assert_eq!(pts[0]["beat"], 2.0);
+    assert_eq!(pts[0]["bpm"], 140.0);
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn importing_a_point_above_the_limit_discloses_the_clamp() {
+    // SetTempoPoints clamps values into 20–300; the import says so instead of normalizing
+    // silently (a 400-BPM change arriving as 300 without a word would corrupt the user's
+    // reading of the file)
+    let d = tmp("clamped");
+    let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+    let path = d.join("fast.mid");
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 400.0)], "F", &tracks).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true }));
+    assert_eq!(r["tempoSet"], true);
+    let warns: Vec<String> = r["warnings"].as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect();
+    assert!(warns.iter().any(|w| w.contains("outside Synkopa's 20–300")), "{warns:?}");
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    assert_eq!(proj["tempoPoints"][0]["bpm"], 300.0, "clamped to the engine's limit");
+    // the disclosure names where the point lands (the insertion beat included), so the user
+    // finds the clamped value in their project
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 16.0 }));
+    let warns: Vec<String> = r["warnings"].as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect();
+    assert!(warns.iter().any(|w| w.contains("landing at beat 20")), "{warns:?}");
+    // the opt-out imports nothing: no warning about an imported tempo may fire either
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path }));
+    assert_eq!(r["tempoSet"], false);
+    assert_eq!(r["warnings"].as_array().unwrap().len(), 0, "{:?}", r["warnings"]);
     std::fs::remove_dir_all(&d).ok();
 }
 

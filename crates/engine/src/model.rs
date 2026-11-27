@@ -31,7 +31,10 @@ pub fn fader_gain(t: f32) -> f32 {
 
 /// The project format `migrate` brings a file up to. 3: the Reverb's Decay reaches 20 s
 /// (was 6 s), so automation of it (stored normalised over the range) is rescaled once.
-pub const PROJECT_VERSION: u32 = 3;
+/// 4: tempo points (the tempo map). A build drops fields it does not know (serde ignores
+/// them), so a round-trip through an older app loses them silently and the version it
+/// leaves behind is the only trace — `open` warns about files saved by a newer app.
+pub const PROJECT_VERSION: u32 = 4;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -211,6 +214,8 @@ pub enum FxKind {
     Analyzer,
     /// Three-band upward + downward compression, the "OTT" sound (`dsp::multiband`).
     Multiband,
+    /// Lo-fi character: noise, wobble, drive, digital and tape wear under one Magnitude (`dsp::patina`).
+    Patina,
     /// Mastering chain: tone EQ, three-band glue, width, clipper, true-peak limiter; set from a
     /// whole-song listen (`dsp::master`, `mastering`).
     Master,
@@ -1767,6 +1772,14 @@ impl Project {
                 }
             }
         }
+        // a file is data, not an op: nothing else on the load path bounds the map (the op path
+        // refuses above the cap, the compiled copy truncates), so a hand-edited file with more
+        // points than can ever play would sit raw in the project — bring it to the same bound
+        // ON THE SAME ORDER: `TempoMap::compile` sorts by the clamped beat before it caps, and
+        // capping in file order would keep a different set (a 4097-point file that stores its
+        // beat-0 anchor last would lose it, and the next save would write the loss)
+        self.tempo_points.sort_by(|a, b| a.beat.clamp(0.0, TOTAL_BEATS).total_cmp(&b.beat.clamp(0.0, TOTAL_BEATS)));
+        self.tempo_points.truncate(MAX_TEMPO_POINTS);
         self.version = self.version.max(PROJECT_VERSION);
         // ids the file used must stay taken
         let max = self.channels.iter().map(|c| c.id).chain(self.sources.iter().map(|s| s.id)).max().unwrap_or(0);

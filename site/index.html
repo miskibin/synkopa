@@ -68,6 +68,8 @@
   .key small { font: 500 11.5px var(--mono); opacity: .8; }
   svg.dc { width: 1.15em; height: 1.15em; fill: currentColor; vertical-align: -.2em; margin-right: .4em; flex: none; }
   .key.icon { padding-inline: 12px; }
+  svg.gh { width: 17px; height: 17px; fill: currentColor; margin-right: 7px; flex: none; }
+
   .key.icon svg.dc { margin: 0; width: 20px; height: 20px; }
   .key .row { display: inline-flex; align-items: center; }
   .key.amber { background: var(--amber); color: var(--on-amber); }
@@ -149,12 +151,9 @@
   thead th { font: 600 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
   tbody th { color: var(--ink); font-weight: 600; }
   td b { color: var(--ink); }
-
-  .rel { margin-top: 26px; max-width: 760px; }
-  .rel .days { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; height: 138px; }
-  .rel .day { display: flex; flex-direction: column-reverse; gap: 4px; }
-  .rel .day i { display: block; height: 18px; background: var(--c); border: 1.5px solid var(--ink); border-radius: 3px; }
-  .rel .axis { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; margin-top: 8px; padding-top: 6px; border-top: 1.5px solid var(--ink); font: 500 11.5px var(--mono); color: var(--dim); }
+  table.four { min-width: 860px; font-size: 14.5px; }
+  table.four td:nth-child(2) { background: color-mix(in srgb, var(--amber) 14%, transparent); padding-left: 12px; }
+  table.four thead th:nth-child(2) { color: var(--ink); padding-left: 12px; }
 
   .race { margin-top: 26px; display: grid; gap: 4px; max-width: 820px; }
   .race .task { display: grid; grid-template-columns: 15em minmax(0, 1fr); gap: 4px 18px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
@@ -165,10 +164,6 @@
   .race .bar.us i { background: var(--c); }
   .race .bar b { text-align: right; color: var(--ink); font-weight: 600; }
   .race .bar.us span { color: var(--ink); font-weight: 600; }
-  ul.no { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; max-width: 66ch; }
-  ul.no li { padding-left: 30px; position: relative; }
-  ul.no li::before { content: "×"; position: absolute; left: 0; top: -.28em; font: 800 26px var(--display); color: var(--hot); }
-  ul.no b { color: var(--ink); font-weight: 600; }
 
   /* The philosophy as a chain of six pads: an idea is played through them and one of them may cut it. */
   .gate { margin-top: 26px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--face-hi); box-shadow: 0 5px 0 var(--ink); overflow: hidden; }
@@ -224,7 +219,23 @@
 
   @media (max-width: 760px) {
     body { font-size: 16px; }
+    header.top { flex-wrap: nowrap; gap: 8px; }
     header.top nav a.opt { display: none; }
+    header.top .long { display: none; }
+    /* Phones rarely install a desktop DAW: the trailer leads, downloads shrink to one row of chips. */
+    .hero { display: flex; flex-direction: column; }
+    .hero .video { order: 1; margin-top: 26px; }
+    .hero .cap { order: 2; margin-top: 10px; }
+    .hero .keys.dl { order: 3; }
+    .keys.dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
+    .keys.dl::before { content: "Download for desktop"; grid-column: 1 / -1; font: 600 11.5px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+    .keys.dl .key { min-height: 40px; padding: 0 6px; align-items: center; text-align: center; font-size: 14.5px; box-shadow: 0 2px 0 var(--ink); }
+    .keys.dl small { display: none; }
+    .keys.dl .dl-for { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .video button .key { min-height: 0; padding: 8px 14px; font-size: 15px; }
+    .video button .key small { font-size: 10.5px; }
+    .star .keys { flex-direction: column; gap: 10px; }
+    .star .key { width: 100%; min-height: 46px; }
     .hero { padding: 26px 0 44px; }
     .ask { padding: 38px 0 42px; }
     .reason { grid-template-columns: 1fr; }
@@ -237,7 +248,6 @@
     .race .task { grid-template-columns: 1fr; }
     .race .task > p { grid-row: auto; }
     .race .bar { grid-template-columns: 72px minmax(0, 1fr) 7ch; gap: 8px; }
-    .rel .days, .rel .axis { gap: 4px; } .rel .axis { font-size: 10px; }
     .pads { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 10px; }
     .pad { min-height: 104px; gap: 14px; }
     .pad[aria-pressed=true] { outline: 2.5px solid var(--ink); outline-offset: 2px; }
@@ -262,12 +272,12 @@
       <a class="opt" href="#why">Why install it</a>
       <a class="opt" href="#speed">Speed</a>
       <a class="opt" href="#rules">Philosophy</a>
-      <a class="opt" href="#not">When not to</a>
+      <a class="opt" href="#compare">Compare</a>
       <a class="opt" href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">Changelog</a>
       <a href="docs/">Docs</a>
     </nav>
     <a class="key sm icon" href="https://discord.gg/zHMjE3fCY" title="Join the Synkopa Discord" aria-label="Discord"><svg class="dc" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a>
-    <a class="key sm" href="https://github.com/miskibin/synkopa">★ Star on GitHub<span data-stars></span></a>
+    <a class="key sm" href="https://github.com/miskibin/synkopa" aria-label="Star on GitHub"><svg class="gh" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.03 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>★<span class="long">&nbsp;Star on GitHub</span><span data-stars></span></a>
     <a class="key sm amber" href="https://github.com/miskibin/synkopa/releases/latest">Download</a>
   </header>
 
@@ -285,10 +295,10 @@
     </div>
     <p class="tag">A free, open-source DAW that works <mark>the FL Studio way.</mark></p>
     <p class="label">Patterns · Channel Rack · piano roll · playlist · recording · vocal tuning</p>
-    <div class="keys">
-      <a class="key amber" href="https://github.com/miskibin/synkopa/releases/latest">Download for Windows<small><span data-ver>latest release</span> · installer with ASIO</small></a>
-      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download for macOS<small>Apple Silicon · .dmg</small></a>
-      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest">Download for Linux<small>deb · rpm · AppImage</small></a>
+    <div class="keys dl">
+      <a class="key amber" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>Windows</span><small><span data-ver>latest release</span> · installer with ASIO</small></a>
+      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>macOS</span><small>Apple Silicon · .dmg</small></a>
+      <a class="key" href="https://github.com/miskibin/synkopa/releases/latest"><span><span class="dl-for">Download for </span>Linux</span><small>deb · rpm · AppImage</small></a>
     </div>
     <div class="video" id="video">
       <button type="button" id="video-play" aria-label="Play the Synkopa video">
@@ -347,13 +357,16 @@
     <div class="tw"><table>
       <thead><tr><th>You want to</th><th>Synkopa</th><th>FL Studio</th></tr></thead>
       <tbody>
-        <tr><th>Record a vocal over the beat</th><td><b>Included</b>, with takes, comping and measured latency</td><td>Producer edition or higher</td></tr>
-        <tr><th>Fix its pitch note by note</th><td><b>Included</b>, plus live correction and Tune to Reference</td><td>NewTone and Pitcher, in the higher editions</td></tr>
-        <tr><th>Pay</th><td><b>Nothing</b></td><td>About $99 to $450</td></tr>
+        <tr><th>Record a vocal over the beat</th><td><b>Included</b>, with takes, comping and measured latency</td><td>Producer edition ($179) or higher</td></tr>
+        <tr><th>Fix its pitch note by note</th><td><b>Included</b>, plus live correction and Tune to Reference</td><td>NewTone and Pitcher, in Signature ($269) or higher</td></tr>
+        <tr><th>Pull stems out of a finished track</th><td><b>Included</b>, running on your own computer</td><td>Producer edition or higher</td></tr>
+        <tr><th>Run it on Linux</th><td><b>Yes</b>: deb, rpm and AppImage</td><td>No Linux build</td></tr>
+        <tr><th>Let a script or an AI agent edit the song</th><td><b>Included</b>: the <code>synkopa</code> command line, also as MCP tools</td><td>Gopher, an in-app assistant (experimental); the command line only renders</td></tr>
+        <tr><th>Pay</th><td><b>Nothing</b></td><td>$99 to $449, by edition</td></tr>
         <tr><th>Read the source</th><td><b>AGPL-3.0</b>, on GitHub</td><td>Closed</td></tr>
       </tbody>
     </table></div>
-    <p class="cap">FL Studio details as of November 2026; see <a href="https://www.image-line.com/fl-studio/compare-editions/" rel="noopener">Image-Line's edition comparison</a>. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.</p>
+    <p class="cap">FL Studio 2026 at its regular prices, checked 26 November 2026; see <a href="https://www.image-line.com/fl-studio/compare-editions/" rel="noopener">Image-Line's edition comparison</a>. <a href="compare.html">The full table, with LMMS and Zrythm</a>. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.</p>
   </div>
 </section>
 
@@ -403,7 +416,7 @@
       <figure><img src="img/reverb-live.gif" loading="lazy" alt="Reverb window on a piano"><figcaption><b>Reverb.</b> Each line is the tail at a later moment. The orange surface is the decay the knobs ask for.</figcaption></figure>
       <figure><img src="img/eq-live.gif" loading="lazy" alt="Parametric EQ with a live spectrum"><figcaption><b>EQ.</b> The spectrum before and after moves under the curve you drag.</figcaption></figure>
     </div>
-    <p class="cap">16 effects, a wavetable synth, a sampled grand piano and a sampler are built in. The audio thread does not allocate or lock, and a benchmark checks that on every change. <a href="https://github.com/miskibin/synkopa/blob/main/docs/architecture.md">How it is put together</a></p>
+    <p class="cap">16 effects, a wavetable synth, a sampled grand piano and a sampler are built in. The audio thread does not allocate or lock, and a benchmark checks that on every change. <a href="blog/rust-audio-engine-web-ui.html">How the engine and the interface talk</a> · <a href="https://github.com/miskibin/synkopa/blob/main/docs/architecture.md">Architecture notes</a></p>
   </div>
 </section>
 
@@ -440,11 +453,7 @@
   <div>
     <div class="label">Reason six</div>
     <h2>It started in August 2026, and you can still change where it goes.</h2>
-    <p class="body">Each block below is one version in the <a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">changelog</a>: 26 of them in the nine days from 10 to 18 November 2026. An issue you open is read by the person who writes the code.</p>
-    <div class="rel" role="img" aria-label="Versions released per day, 10 to 18 November 2026: 4, 6, 4, 1, 1, 2, 2, 3, 3">
-      <div class="days" id="days"></div>
-      <div class="axis"><span>10 Nov</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span></div>
-    </div>
+    <p class="body">New versions come out most weeks, and the app updates itself. The latest is <b data-ver>in the changelog</b>; every one is described in the <a href="https://github.com/miskibin/synkopa/blob/main/CHANGELOG.md">changelog</a>. An issue you open is read by the person who writes the code.</p>
     <p class="body" style="margin-top:24px">It is version 0.9, so expect rough edges. It is written with AI coding tools, by a musician who knows what the code is doing, together with contributors. Thank you <a href="https://github.com/rebizu">@rebizu</a> for the architecture reviews and the Piano Roll work, and <a href="https://github.com/miskibin/synkopa/graphs/contributors">everyone who has contributed</a>.</p>
   </div>
 </section>
@@ -485,15 +494,23 @@
   <p class="cap">Sending a pull request? This is what it is measured against. <a href="https://github.com/miskibin/synkopa/blob/main/CONTRIBUTING.md">Contributing guide</a></p>
 </section>
 
-<section id="not">
-  <div class="label">The other half of an honest answer</div>
-  <h2>Do not install it if</h2>
-  <ul class="no">
-    <li><b>you need your VST3 plugins on a Mac, or have an Intel Mac.</b> The macOS build is Apple Silicon only and hosts no VST3 yet.</li>
-    <li><b>your work lives in <code>.flp</code> files or FL's own plugins.</b> Neither opens here. Stems, samples and VST3 plugins do.</li>
-    <li><b>you write by launching clips.</b> There is no Session view.</li>
-    <li><b>you need twenty-five years of polish tonight.</b> FL Studio has it. This started in August 2026.</li>
-  </ul>
+<section id="compare">
+  <div class="label">Next to the others</div>
+  <h2>Synkopa, FL&nbsp;Studio, LMMS and Zrythm, side by side.</h2>
+  <div class="tw"><table class="four">
+    <thead><tr><th></th><th>Synkopa</th><th>FL Studio</th><th>LMMS</th><th>Zrythm</th></tr></thead>
+    <tbody>
+      <tr><th>Runs on</th><td><b>Windows, Linux, macOS</b> (Apple Silicon)</td><td>Windows, macOS</td><td>Windows, Linux, macOS</td><td>Linux, Windows, macOS</td></tr>
+      <tr><th>Licence and price</th><td><b>Open source</b> (AGPL-3.0), free</td><td>Closed, $99 to $449 by edition</td><td>Open source (GPL-2.0), free</td><td>Open source (AGPL-3.0); free installer limited to 25 tracks</td></tr>
+      <tr><th>Patterns and a step sequencer</th><td><b>Yes</b>: Channel Rack, piano roll, playlist</td><td>Yes</td><td>Yes</td><td>No, timeline-based</td></tr>
+      <tr><th>Audio recording</th><td><b>Yes</b>, with takes and comping</td><td>Producer edition or higher</td><td>No</td><td>Yes</td></tr>
+      <tr><th>VST3 plugins</th><td><b>Yes</b>, on Windows and Linux</td><td>Yes</td><td>No, VST2 only</td><td>Yes</td></tr>
+      <tr><th>Vocal pitch editing</th><td><b>Built in</b></td><td>Signature edition or higher</td><td>No</td><td>No</td></tr>
+      <tr><th>Stem separation</th><td><b>Built in</b>, on your own computer</td><td>Producer edition or higher</td><td>No</td><td>No</td></tr>
+      <tr><th>Edited by a script or an AI agent</th><td><b>Yes</b>: the <code>synkopa</code> command line and MCP tools</td><td>Gopher, an in-app assistant; the command line only renders</td><td>The command line only renders</td><td>No</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">Stable releases, checked 26 November 2026: FL Studio 2026.1, LMMS 1.2.2, Zrythm 1.0. <a href="compare.html">Every cell with its source, and more rows</a>. The names belong to their projects; Synkopa is not affiliated with any of them.</p>
 </section>
 
 <div class="star" id="star">
@@ -687,13 +704,6 @@
     seen.observe($('pads'));
   }
 
-  // Versions per day in CHANGELOG.md, 10-18 November 2026.
-  [4, 6, 4, 1, 1, 2, 2, 3, 3].forEach(function (n) {
-    var d = document.createElement('div'); d.className = 'day';
-    for (var k = 0; k < n; k++) d.appendChild(document.createElement('i'));
-    $('days').appendChild(d);
-  });
-
   // Current version and star count from GitHub; the static text stays if the request fails.
   function gh(path, done) {
     fetch('https://api.github.com/repos/miskibin/synkopa' + path).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) done(j); }).catch(function () {});
@@ -705,7 +715,7 @@
   });
   gh('', function (j) {
     if (typeof j.stargazers_count !== 'number') return;
-    document.querySelectorAll('[data-stars]').forEach(function (el) { el.textContent = ' · ' + j.stargazers_count; });
+    document.querySelectorAll('[data-stars]').forEach(function (el) { el.innerHTML = '<span class="long">&nbsp;·</span>&nbsp;' + Number(j.stargazers_count); });
   });
 })();
 </script>

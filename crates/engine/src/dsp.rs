@@ -12,6 +12,7 @@ pub mod loudness;
 pub mod master;
 pub mod modulation;
 pub mod multiband;
+pub mod patina;
 pub mod reverb_v2;
 pub mod saturator;
 pub mod stereo;
@@ -76,6 +77,7 @@ pub fn create(kind: FxKind) -> Option<Box<dyn Processor>> {
         FxKind::Stereo => Box::new(stereo::Stereo::default()),
         FxKind::Analyzer => Box::new(loudness::Loudness::default()),
         FxKind::Multiband => Box::new(multiband::Multiband::default()),
+        FxKind::Patina => Box::new(patina::Patina::default()),
         FxKind::Master => Box::new(master::Master::default()),
         FxKind::Reverb => Box::new(reverb_v2::ReverbV2::default()),
         FxKind::Limit => Box::new(limiter_v2::LimiterV2::default()),

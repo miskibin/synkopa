@@ -19,7 +19,7 @@ export interface Track {
 }
 
 /** `plugin`: a hosted VST3 or LV2 effect (`Fx.plugin.format`); projects from before LV2 said `vst3`, which the engine reads as `plugin`. */
-export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'chorus' | 'phaser' | 'gate' | 'filter' | 'stereo' | 'multiband' | 'master' | 'analyzer' | 'plugin';
+export type FxKind = 'eq' | 'comp' | 'sat' | 'delay' | 'reverb' | 'limit' | 'fet' | 'deess' | 'tune' | 'denoise' | 'voice' | 'rider' | 'half' | 'warp' | 'chorus' | 'phaser' | 'gate' | 'filter' | 'stereo' | 'multiband' | 'patina' | 'master' | 'analyzer' | 'plugin';
 /** Built-in kinds the effect picker lists (the views keep a label and blurb per kind). */
 export type BuiltinKind = Exclude<FxKind, 'plugin'>;
 /** Every built-in kind, including ones the picker does not list yet ('rider': added by "Auto wokal"). */
@@ -821,9 +821,11 @@ export interface MidiPart {
   index: number; track: number; channel: number; name: string; program: number | null; gmName: string;
   drums: boolean; notes: number; lowest: number; highest: number; end: number; becomes: MidiBecomes;
 }
-/** `midiInspect`: a file's parts, its first tempo (null = none set) and what the import cannot keep. */
+/** One tempo change a MIDI file sets after tick 0, for the project's tempo map. */
+export interface MidiTempoPoint { beat: number; bpm: number }
+/** `midiInspect`: a file's parts, its tick-0 tempo (null = the MIDI default of 120 governs until `tempoPoints`' first change) and what the import cannot keep. */
 export interface MidiInfo {
-  path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; end: number;
+  path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; tempoPoints: MidiTempoPoint[]; end: number;
   warnings: string[]; parts: MidiPart[]; projectBpm: number;
 }
 export interface MidiImportArgs {

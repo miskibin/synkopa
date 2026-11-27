@@ -92,6 +92,10 @@ export interface RulerHost {
   track?: (move: (e: PointerEvent) => void, up: (e: PointerEvent) => void, cursor: string) => void;
   /** Double-click key: one per ruler. */
   key: string;
+  /** The host handles double presses itself (the marker strip's empty space adds a marker
+   *  on one): the ruler skips its own double-press stamp, so both share one tap tracker
+   *  instead of fighting over it. */
+  noDbl?: boolean;
   /** A right-click that did not drag (the ruler's menu). Opened on release, so a right-drag never pops it. */
   menu?: (e: PointerEvent) => void;
 }
@@ -110,7 +114,7 @@ export function rulerDown(h: RulerHost, e: PointerEvent) {
   if (e.button === 2) return rightDown(h, e);
   if (e.button !== 0) return;
   e.preventDefault();
-  if (dblCheck(h.key)) { if (h.loop()) h.clear(); return; }
+  if (!h.noDbl && dblCheck(h.key)) { if (h.loop()) h.clear(); return; }
   const tr = h.track ?? ((m, u, c) => track(m, u, c));
   const snapAt = (ev: PointerEvent) => clamp(snapRound(h.beatAt(ev.clientX), h.unit(ev.altKey)), 0, h.max());
   const b0 = snapAt(e);

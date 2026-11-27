@@ -1,0 +1,12 @@
+{
+  "name": "synkopa",
+  "owner": { "name": "miskibin" },
+  "description": "Synkopa, the open-source DAW, for coding agents",
+  "plugins": [
+    {
+      "name": "synkopa",
+      "source": "./agent/plugin",
+      "description": "Make and edit music in Synkopa: the `synkopa mcp` tools and a skill that teaches the workflow"
+    }
+  ]
+}

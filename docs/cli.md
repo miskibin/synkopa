@@ -24,6 +24,51 @@ stdout is only JSON (`--pretty` to indent), with numbers rounded to at most four
 `0` ok, `1` bad usage, `2` Synkopa not running / unreachable, `3` refused, as
 `CODE: message` (`BAD_OPS`, `REVISION_CONFLICT`, `NEEDS_APP`, `FILE_OPEN` …).
 
+## Agent hosts: `synkopa mcp`
+
+`synkopa mcp` serves the same commands as [Model Context Protocol](https://modelcontextprotocol.io)
+tools over stdin/stdout, so an agent host calls Synkopa directly, with typed arguments and no
+shell quoting. There is nothing else to install: the host starts the command `synkopa` with the
+argument `mcp`.
+
+```sh
+claude mcp add --scope user synkopa -- synkopa mcp       # Claude Code
+codex mcp add synkopa -- synkopa mcp                     # Codex CLI
+```
+
+Cursor (`.cursor/mcp.json` or `~/.cursor/mcp.json`); VS Code uses the same entry under
+`"servers"` in `.vscode/mcp.json`:
+
+```json
+{ "mcpServers": { "synkopa": { "command": "synkopa", "args": ["mcp"] } } }
+```
+
+In Claude Code the plugin adds the server together with a skill that teaches the workflow:
+
+```text
+/plugin marketplace add miskibin/synkopa
+/plugin install synkopa@synkopa
+```
+
+| tool | what it does |
+| --- | --- |
+| `synkopa_context` | reads the project (`full: true` for every clip, note and parameter); changes nothing |
+| `synkopa_run` | one command, its words as an array: `{"args": ["bpm", "140"]}`; `["help"]` lists them all |
+| `synkopa_apply` | a batch of ops as one atomic undo step: `{"ops": [...], "label": "Busier hats", "ifRevision": 31}` |
+| `synkopa_script` | several commands, one per item of `lines`; on a file: one load, one save, nothing saved if a line fails |
+
+- **Where a call acts.** Without `project`, on the project open in the running app: each edit is
+  one undo step there. With `project` (the absolute path of a `.synkopa` file), on that file,
+  with no app. `session` picks one of several open apps. Relative paths are relative to the
+  folder the host started the server in, so pass absolute ones.
+- **Results.** A tool returns what the command prints: its JSON as text. A command that fails
+  returns a tool error with the same `CODE: message`; warnings follow the result.
+- **One at a time.** Calls run in the order received. A call the host cancels is stopped.
+  `watch` without `--once` cannot be a tool call (it never ends).
+- **The reference** (`synkopa help`) is also the resource `synkopa://cli-help`.
+- **Protocol.** The `initialize` handshake of revisions 2024-11-05 to 2025-11-25, and the
+  stateless form of 2026-07-28 (`server/discover`, the version in each request's `_meta`).
+
 ## Project files without the app
 
 Projects saved as `.wave` by earlier versions still open.

@@ -254,6 +254,9 @@ pub const DEMO_BPM: f64 = 136.0;
 /// low-pass are automated across the arrangement, a ready vocal chain and a bar-synced Notebook.
 pub fn demo_project() -> Project {
     let file = serde_json::from_str(include_str!("demo_project.json")).expect("demo_project.json is JSON");
-    // read like any project file, so one saved by an older version still opens
-    Project::from_json(file).expect("demo_project.json is a valid project")
+    // read like any project file, so one saved by an older version still opens — and what the
+    // demo() constructors hand out is this build's format (migrate is idempotent)
+    let mut p = Project::from_json(file).expect("demo_project.json is a valid project");
+    p.migrate();
+    p
 }

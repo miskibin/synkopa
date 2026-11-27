@@ -760,6 +760,27 @@ pub fn cases() -> Vec<Case> {
     c.push(("main", "setKey refuses a scale out of range", vec![Op::SetKey { key: Some(0), scale: 5 }]));
     c.push(("main", "setBpm moves the tempo", vec![Op::SetBpm { bpm: 140.0 }]));
     c.push(("main", "setBpm refuses a tempo out of range", vec![Op::SetBpm { bpm: 10.0 }]));
+    // the tempo map: sorted on the way in, values clamped, two at one beat kept in order
+    // (the last of them plays), a ramp glides to the next point
+    c.push((
+        "main",
+        "setTempoPoints writes the map sorted and clamped",
+        vec![Op::SetTempoPoints {
+            points: vec![
+                TempoPoint { beat: 8.0, bpm: 90.0, ramp: false },
+                TempoPoint { beat: 0.0, bpm: 1000.0, ramp: true },
+                TempoPoint { beat: 4.0, bpm: 60.0, ramp: false },
+                TempoPoint { beat: 4.0, bpm: 96.0, ramp: false },
+            ],
+        }],
+    ));
+    // the knob edits the constant case: a mapped project loses its map to it (one undo back)
+    c.push((
+        "main",
+        "setBpm clears the tempo map",
+        vec![Op::SetTempoPoints { points: vec![TempoPoint { beat: 4.0, bpm: 90.0, ramp: false }] }, Op::SetBpm { bpm: 140.0 }],
+    ));
+    c.push(("main", "setTempoPoints clears the map", vec![Op::SetTempoPoints { points: vec![] }]));
     c.push(("main", "setLoop sets the loop", vec![Op::SetLoop { range: Some(LoopRange { a: 4.0, b: 16.0 }) }]));
     c.push(("main", "setLoop clears the loop", vec![Op::SetLoop { range: None }]));
     c.push(("main", "setLoop refuses an empty loop", vec![Op::SetLoop { range: Some(LoopRange { a: 16.0, b: 4.0 }) }]));

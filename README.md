@@ -9,11 +9,9 @@
   <a href="https://www.youtube.com/watch?v=wtuHDyIQpYk">Watch the video</a> ·
   <a href="https://miskibin.github.io/synkopa/">Website</a> ·
   <a href="https://miskibin.github.io/synkopa/docs/">User guide</a> ·
-  <a href="https://discord.gg/zHMjE3fCY">Discord</a>
 </p>
 <p align="center">
   <a href="https://github.com/miskibin/synkopa/releases/latest"><img src="https://img.shields.io/github/v/release/miskibin/synkopa?label=release" alt="Latest release"></a>
-  <a href="https://github.com/miskibin/synkopa/actions/workflows/ci.yml"><img src="https://github.com/miskibin/synkopa/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0 license"></a>
   <a href="https://discord.gg/zHMjE3fCY"><img src="https://img.shields.io/badge/Discord-join%20the%20chat-5865F2?logo=discord&logoColor=white" alt="Join the Synkopa Discord"></a>
 </p>
@@ -102,24 +100,41 @@ synkopa undo                                            # or press Ctrl+Z in the
 
 The CLI works as soon as the app has run once (open a new terminal). Start any coding agent in any folder and tell it to run `synkopa context`. Full reference: [`docs/cli.md`](docs/cli.md).
 
+**As MCP tools.** `synkopa mcp` serves the same commands over the Model Context Protocol, so Claude Code, Cursor, VS Code or Codex call Synkopa directly. Nothing else to install:
+
+```sh
+claude mcp add --scope user synkopa -- synkopa mcp      # Claude Code
+codex mcp add synkopa -- synkopa mcp                    # Codex CLI
+```
+
+In Claude Code, the plugin adds the tools and a skill that teaches the workflow (`/plugin marketplace add miskibin/synkopa` once, then):
+
+```text
+/plugin install synkopa@synkopa
+```
+
+Other hosts: [`docs/cli.md`](docs/cli.md#agent-hosts-synkopa-mcp).
+
+[![Synkopa MCP server on Glama](https://glama.ai/mcp/servers/miskibin/synkopa/badges/score.svg)](https://glama.ai/mcp/servers/miskibin/synkopa)
+
 ## How Synkopa fits next to other DAWs
 
 Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Studio has more than twenty-five years behind it and wins on ecosystem and breadth.
 
 | | Synkopa 0.9 | FL Studio |
 | --- | --- | --- |
-| Price | Free (one build, no account) | About $99 to $450 depending on edition |
+| Price | Free (one build, no account) | $99 to $449 depending on edition (regular prices) |
 | Source code | Open (AGPL-3.0) | Closed |
 | Platforms | Windows, macOS (Apple Silicon), Linux | Windows, macOS |
-| Audio recording & comping | Included | Producer edition or higher |
-| Vocal pitch editing | Included (pitch editor, live tune, Tune to Reference, Auto Vocal) | NewTone and Pitcher in higher editions |
-| Stems & chord detection | Included offline (HTDemucs stems, ChordMini chords → piano roll) | Stem separation in Producer+; chord tools in Piano Roll |
+| Audio recording & comping | Included | Producer edition ($179) or higher |
+| Vocal pitch editing | Included (pitch editor, live tune, Tune to Reference, Auto Vocal) | NewTone and Pitcher in Signature ($269) or higher |
+| Stems & chord detection | Included offline (HTDemucs stems, ChordMini chords → piano roll) | Stem separation in Producer or higher; chord detection panel since FL Studio 2026 |
 | Built-in instruments & effects | Wavetable synth, 11 sampled instruments, sampler, 21 effects | More than a hundred across editions |
 | Third-party plugins | VST3 instruments & effects (Win/Linux); LV2 effects (Linux) | VST/VST3/AU/CLAP and native formats |
-| Automation & AI agents | Local CLI (`synkopa`) edits open project + measures renders | No CLI into the open project |
+| Automation & AI agents | Local CLI (`synkopa`) edits the open project and measures renders; the same commands as MCP tools (`synkopa mcp`) | Python scripting (MIDI controllers, piano roll); Gopher, an in-app assistant (experimental); the command line only renders |
 | Maturity | Version 0.9, active development; expect rough edges | Since 1998, huge community, tutorials, sample packs |
 
-*FL Studio details as of November 2026; see Image-Line's edition comparison for current prices. FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.*
+*FL Studio 2026, checked 26 November 2026; see Image-Line's edition comparison for current prices. A sourced table that also covers LMMS and Zrythm: [Synkopa vs FL Studio vs LMMS vs Zrythm](https://miskibin.github.io/synkopa/compare.html). FL Studio is a trademark of Image-Line, and Synkopa is not affiliated with it.*
 
 **Comparing with other free & open-source DAWs:**
 
@@ -136,7 +151,7 @@ Synkopa borrows FL Studio's workflow, so that is the primary comparison. FL Stud
 | **Arranging** | Pattern, audio, and automation clips on free lanes; slice, fade, reverse, normalize; edge time-stretching (`Shift+M`, pitch-preserving or resampled); on-clip automation curves; export selected clips or loop range in place; named timeline markers (`Alt+T`) to jump between and loop song sections |
 | **Writing** | Step sequencer with swing, velocity, key, pan, and shift lanes; piano roll with scale guides and vocal pitch reference; typing keyboard and MIDI keyboard input; MIDI import and export |
 | **Instruments** | Two-oscillator wavetable [synth](docs/synth.md) (unison, mod matrix, 46 presets); [Synkopa Instruments](docs/keys.md) (11 sampled instruments: Grand Piano bundled + Upright, Wurlitzer, CP80, Pianet T, String Section, Solo Violin, Harp, Hollow Body & Jazz Guitars, Vibraphone); Music Box; slice-mode sampler (chop at transients or equal slices, dump to pattern) with built-in drum/tonal library and downloadable CC0 kits |
-| **Mixing (22 effects)** | 24-band dynamic EQ, compressor, FET compressor, gate, resonant filter, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser, stereo imager with bass mono, OTT-style multiband, a Master that listens to the whole song and masters it to a loudness target, loudness analyzer (LUFS, true peak); sidechain routing (`Sidechain to →` with ghost-kick option); saved mixer FX chains; dockable/floating/maximizable mixer (`F9`); insert-to-insert routing and plugin delay compensation |
+| **Mixing (23 effects)** | 24-band dynamic EQ, compressor, FET compressor, gate, resonant filter, [saturator](docs/saturator.md), delay, [reverb, limiter](docs/reverb-limiter-v2.md), de-esser, denoiser, pitch correction, voice, vocal rider, halftime, warp, chorus, phaser, stereo imager with bass mono, OTT-style multiband, [Patina](docs/patina.md) lo-fi character (vinyl and tape noise, wobble, drive, bit crushing, tape wear), a Master that listens to the whole song and masters it to a loudness target, loudness analyzer (LUFS, true peak); sidechain routing (`Sidechain to →` with ghost-kick option); saved mixer FX chains; dockable/floating/maximizable mixer (`F9`); insert-to-insert routing and plugin delay compensation |
 | **Recording & vocals** | Loop recording with takes and comping, measured latency compensation, live monitoring; note-level pitch editor, live pitch correction, Tune to Reference, vocal rider, one-command Auto Vocal |
 | **Offline audio tools** | Local stem separation (HTDemucs, 90 MB MIT) extracting stems onto tracks below the clip; local chord detection (ChordMini, 17 MB MIT) sending voiced chords straight to a piano roll pattern |
 | **Plugins & audio I/O** | VST3 instruments and effects (Windows & Linux); LV2 effects (Linux); native plugin editor windows on Windows and Linux where supported, otherwise Synkopa's parameter UI; out-of-process plugin scanning; WASAPI and ASIO (Windows), ALSA and JACK / PipeWire JACK (Linux), Core Audio (macOS) |

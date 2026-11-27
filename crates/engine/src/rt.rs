@@ -60,6 +60,10 @@ pub struct Shared {
     /// The mix assistant listens (`crate::masking`): while playing, every non-master insert's
     /// post-fader output goes to its mask tap.
     pub assist: AtomicBool,
+    /// The program volume (FL Studio's toolbar main volume) as a linear gain: the device layer
+    /// scales everything the app plays by it — the mix, the click, sample and pattern previews —
+    /// after the Master insert. Not part of the project and not applied to offline renders.
+    program_gain: AtomicU32,
 }
 
 /// A callback that took longer (seconds) than the audio it rendered lasts: the device played
@@ -104,7 +108,15 @@ impl Shared {
             take_lat_sum: AtomicU64::new(0),
             take_lat_n: AtomicU32::new(0),
             rec_start: AtomicU64::new(f64::NAN.to_bits()),
+            program_gain: AtomicU32::new(1f32.to_bits()),
         }
+    }
+    /// The program volume's linear gain (see the field); the device layer reads it every callback.
+    pub fn program_gain(&self) -> f32 {
+        fget(&self.program_gain)
+    }
+    pub fn set_program_gain(&self, g: f32) {
+        fset(&self.program_gain, if g.is_finite() { g.max(0.0) } else { 1.0 });
     }
     /// The beat the audio thread is rendering (the timeline position of the next block).
     pub fn beat(&self) -> f64 {

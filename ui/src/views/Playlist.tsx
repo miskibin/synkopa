@@ -42,6 +42,9 @@ import { rgba, T, theme } from '../ui/theme';
 import { markerAtX } from '../lib/markers';
 import * as MK from '../state/markers';
 import { drawMarkers, drawMarkerTicks, MARKER_H, markerBoxes } from './markerDraw';
+import { addTempoPoint, bpmAt, bpmLabel, compiledTempo, deleteTempoPoint, hitTempo, moveTempoPoint, setTempoBpm, setTempoRamp, tempoGeom, tempoScale, TEMPO_H } from '../lib/tempoLane';
+import { drawTempoLane } from './tempoDraw';
+import { MAX_TEMPO_POINTS, type TempoPoint } from '../api/types';
 
 
 /** Shared geometry, so the browser and OS drops can find a beat/track under the pointer. */
@@ -137,6 +140,11 @@ export function Playlist() {
   let scrollEl!: HTMLDivElement, gridEl!: HTMLDivElement, gridCv!: HTMLCanvasElement, fadeCv!: HTMLCanvasElement, rulerCv!: HTMLCanvasElement;
   let phGrid!: HTMLDivElement, phRuler!: HTMLDivElement;
   let mkCv: HTMLCanvasElement | undefined, mkRow: HTMLDivElement | undefined;
+  /** The tempo lane's canvas and its head cell's live BPM readout (updated from the draw loop). */
+  let tpCv: HTMLCanvasElement | undefined, tpNowEl: HTMLElement | undefined;
+  /** The tempo point under the pointer (brighter); the strip's value axis, frozen while a drag moves so the curve does not rescale under the pointer. */
+  const [tpHover, setTpHover] = createSignal<number | null>(null);
+  let tpDragScale: { lo: number; hi: number } | null = null;
   /** A marker being dragged (not sent until it is let go: Esc puts it back) and the one under the pointer. */
   const [mkDrag, setMkDrag] = createSignal<{ id: Id; at: number } | null>(null);
   const [mkHover, setMkHover] = createSignal<Id | null>(null);
@@ -204,9 +212,10 @@ export function Playlist() {
     if (x < left || x > left + w - 40) scrollEl.scrollLeft = Math.max(0, x - 40);
     syncScroll();
   }), { defer: true });
-  // the marker strip shows above the ruler while the song has markers
+  // the marker strip shows above the ruler while the song has markers; the tempo lane sits
+  // between them, always (the song's tempo map is what the strip edits)
   const mkH = () => (S.project.markers?.length ? MARKER_H : 0);
-  const rowH = () => RULER_H + mkH();
+  const rowH = () => RULER_H + mkH() + TEMPO_H;
   effect(() => { geom.top = rowH(); });
   const gridW = () => TOTAL * U.bw;
   const gridH = () => tops()[tops().length - 1];
@@ -346,6 +355,12 @@ export function Playlist() {
   });
   effect(() => { U.bw; U.start; S.project.loop?.a; S.project.loop?.b; cw(); dirtyRuler = true; });
   effect(() => { for (const m of S.project.markers ?? []) { void m.at; void m.name; } mkDrag(); mkHover(); dirtyRuler = true; });
+  // the tempo lane: the map, the base tempo it hangs from, the hover focus and the frozen drag axis
+  effect(() => {
+    for (const p of tpShown()) { void p.beat; void p.bpm; void p.ramp; }
+    S.project.bpm; tpHover();
+    dirtyRuler = true;
+  });
 
   /** The grid view of one frame; `at` places it on a region of the tile (tile-local CSS px). */
   const frameView = (): View => ({
@@ -439,6 +454,7 @@ export function Playlist() {
         paintRuler(rt, dpr);
         if (dirtyOv) { dirtyOv = false; bumpOv(); }
         placePlayhead(beat);
+        updateTpHead(beat);
         return;
       }
     }
@@ -492,6 +508,7 @@ export function Playlist() {
     if (dirtyRuler || !rulerTile || rulerTile.x !== t.x || rulerTile.w !== t.w) paintRuler(t, dpr);
     if (dirtyOv) { dirtyOv = false; bumpOv(); }
     placePlayhead(beat);
+    updateTpHead(beat);
   };
   const paintRuler = (t: Tile, dpr: number) => {
     dirtyRuler = false;
@@ -504,6 +521,15 @@ export function Playlist() {
     drawMarkerTicks(g, t.x, t.w, ms, U.bw, RULER_H);
     rulerCv.style.width = t.w + 'px';
     rulerCv.style.transform = `translateX(${t.x}px)`;
+    if (tpCv) {
+      const sc = tpDragScale ?? tempoScale(tpShown(), S.project.bpm);
+      fitCanvas(tpCv, t.w, TEMPO_H);
+      const tg = tpCv.getContext('2d')!;
+      tg.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawTempoLane(tg, t.x, t.w, tpShown(), S.project.bpm, U.bw, tempoGeom(U.bw, TEMPO_H, sc.lo, sc.hi), tpHover());
+      tpCv.style.width = t.w + 'px';
+      tpCv.style.transform = `translateX(${t.x}px)`;
+    }
     if (!mkCv) return;
     if (!ms?.length) return;
     fitCanvas(mkCv, t.w, MARKER_H);
@@ -520,6 +546,12 @@ export function Playlist() {
       lastPhX = x;
       phGrid.style.transform = phRuler.style.transform = `translateX(${x}px)`;
     }
+  };
+  /** The head cell's live BPM: what the map plays at the playhead (the draw loop runs per frame). */
+  const updateTpHead = (beat: number) => {
+    if (!tpNowEl) return;
+    const txt = bpmAt(tpShown(), S.project.bpm, Math.max(0, beat)).toFixed(2);
+    if (tpNowEl.textContent !== txt) tpNowEl.textContent = txt;
   };
 
   onMount(() => {
@@ -1410,6 +1442,11 @@ export function Playlist() {
   };
   const rulerHover = (e: PointerEvent) => { (e.currentTarget as HTMLElement).style.cursor = rulerCursor(ruler, e); };
   const rulerDown = (e: PointerEvent) => { if (e.button === 0) closeMenu(); rulerPress(ruler, e); };
+  // the marker strip's empty-space press forwards to the ruler (it owns the seek and the loop
+  // drag) but owns the double-click itself — add a marker — so the forwarded host skips the
+  // ruler's own stamp: two writers to one tap tracker were why the strip's double-click-add
+  // never fired (the ruler stamped between the two presses)
+  const mkRuler: RulerHost = { ...ruler, noDbl: true };
   /** Right-click (no drag) on the ruler or an empty part of the marker strip: add a marker there (FL). The ruler opens it on release (`ruler.menu`); the keyboard's menu key still reaches it here. */
   const timelineMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -1443,7 +1480,7 @@ export function Playlist() {
     if (!m) {
       // an empty part of the strip: double-click adds a marker, otherwise it is the ruler
       if (dblCheck('mkstrip')) { e.preventDefault(); MK.addMarker(clamp(snapRound(ruler.beatAt(e.clientX), unit(e.altKey)), 0, TOTAL)); return; }
-      rulerPress(ruler, e);
+      rulerPress(mkRuler, e);
       return;
     }
     e.preventDefault();
@@ -1479,6 +1516,121 @@ export function Playlist() {
       { t: 'item', label: tl('a.mk.rename'), act: () => MK.renameMarker(m.id) },
       { t: 'sep' },
       { t: 'item', label: tl('a.mk.delete'), danger: true, act: () => MK.deleteMarker(m.id) },
+    ], 200);
+  };
+
+  // ---------- the tempo lane (lib/tempoLane: the song's tempo map as an editable strip) ----------
+  /** The strip's geometry; while a drag moves, the axis frozen at gesture open (no rescaling under the pointer). */
+  const tpGeom = () => {
+    const sc = tpDragScale ?? tempoScale(tpShown(), S.project.bpm);
+    return tempoGeom(U.bw, TEMPO_H, sc.lo, sc.hi);
+  };
+  /** The strip-local pointer position: content x like the ruler's, y within the strip's height. */
+  const tpAt = (e: { clientX: number; clientY: number }) => {
+    const top = tpCv?.getBoundingClientRect().top ?? 0;
+    return { x: e.clientX - gridLeft(), y: e.clientY - top };
+  };
+  const putTempo = (points: TempoPoint[]): Op => ({ op: 'setTempoPoints', points });
+  /** The map as the engine PLAYS it: clamped, sorted, folded, capped (a project file loads raw,
+   *  nothing bounds it on load) — every per-frame read below costs at most what plays. */
+  const tpShown = createMemo(() => compiledTempo(S.project.tempoPoints));
+  /** The points as plain copies for an edit. */
+  const tpList = (): TempoPoint[] => plain(tpShown());
+  const tempoHover = (e: PointerEvent) => {
+    const { x, y } = tpAt(e);
+    const i = hitTempo(tpShown(), tpGeom(), x, y);
+    if (i !== tpHover()) setTpHover(i);
+    (e.currentTarget as HTMLElement).style.cursor = i != null ? 'grab' : 'default';
+  };
+  const tempoLeave = () => setTpHover(null);
+  function tempoPointDrag(e: PointerEvent, pts0: TempoPoint[], i: number, g: Gesture) {
+    const p0 = pts0[i], sx = e.clientX, sy = e.clientY;
+    let moved = false;
+    // add-and-drag arrives with the axis frozen at the press: re-freezing here would include
+    // the new point and shift the value under a horizontal-only continuation of the same drag
+    if (!tpDragScale) tpDragScale = tempoScale(pts0, S.project.bpm);
+    trackEdge(ev => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return;
+      moved = true;
+      const q = pt(ev);
+      const b = ev.ctrlKey || ev.metaKey ? p0.beat : clamp(snapRound(q.beat, unit(ev.altKey)), 0, TOTAL);
+      const bpm = ev.shiftKey ? p0.bpm : tpGeom().V(tpAt(ev).y);
+      const points = moveTempoPoint(pts0, i, b, bpm);
+      g.update([putTempo(points)]);
+      say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat)}`);
+    }, () => { tpDragScale = null; dirtyRuler = true; g.end(); }, 'grabbing', { x: true });
+  }
+  /** Adds a point at the press and keeps it under the pointer until release, in the same undo step. */
+  function tempoAddAndDrag(e: PointerEvent, x: number, y: number) {
+    if (tpList().length >= MAX_TEMPO_POINTS) { say(tl('a.tp.tooMany', { n: MAX_TEMPO_POINTS })); return; }
+    const G0 = tpGeom(), beat = clamp(snapRound(x / U.bw, unit(e.altKey)), 0, TOTAL);
+    tpDragScale = tempoScale(tpList(), S.project.bpm);
+    const { points, i } = addTempoPoint(tpList(), beat, G0.V(y));
+    const g = new Gesture(tl('a.tp.addPoint'));
+    g.update([putTempo(points)]);
+    say(`${bpmLabel(points[i].bpm)} BPM · ${fmtPos(points[i].beat)}`);
+    tempoPointDrag(e, points, i, g);
+  }
+  /**
+   * A press on the tempo strip. Points and empties work without an edit mode, as on the
+   * automation clips: drag a point (Shift locks the BPM, Ctrl the position, Alt skips the snap);
+   * double-click a point to delete it, empty space to add one and drag its value; right-click
+   * opens the point's menu or, on empty space, adds a point here.
+   */
+  const tempoDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    closeMenu();
+    const pts = tpList(), G0 = tpGeom(), { x, y } = tpAt(e);
+    const hit = hitTempo(pts, G0, x, y);
+    if (hit != null) {
+      if (dblCheck('tp' + hit)) {
+        commit([putTempo(deleteTempoPoint(pts, hit))], tl('a.tp.deletePoint'));
+        say(tl('a.tp.pointDeleted'));
+        return;
+      }
+      tempoPointDrag(e, pts, hit, new Gesture(tl('a.tp.movePoint')));
+      return;
+    }
+    if (dblCheck('tpstrip')) { tempoAddAndDrag(e, x, y); return; }
+    // a plain click stays inert: routing it into the ruler's press would stamp the shared
+    // double-click state ('ruler') between our two presses, and double-click-to-add would
+    // never fire (the marker strip's empty-space double-click-add is dead for exactly this)
+  };
+  const tempoMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    const pts = tpList(), G0 = tpGeom(), { x, y } = tpAt(e);
+    const hit = hitTempo(pts, G0, x, y);
+    if (hit == null) {
+      const beat = clamp(snapRound(x / U.bw, unit(e.altKey)), 0, TOTAL);
+      openMenu(e.clientX, e.clientY, [
+        { t: 'title', label: fmtPos(beat) },
+        { t: 'item', label: tl('a.tp.addHere'), act: () => {
+          if (tpList().length >= MAX_TEMPO_POINTS) { say(tl('a.tp.tooMany', { n: MAX_TEMPO_POINTS })); return; }
+          commit([putTempo(addTempoPoint(tpList(), beat, S.project.bpm).points)], tl('a.tp.addPoint'));
+          say(`${bpmLabel(S.project.bpm)} BPM · ${fmtPos(beat)}`);
+        } },
+      ], 100);
+      return;
+    }
+    const p = pts[hit];
+    openMenu(e.clientX, e.clientY, [
+      { t: 'title', label: `${bpmLabel(p.bpm)} BPM · ${fmtPos(p.beat)}` },
+      { t: 'item', label: tl('a.tp.setValue'), act: () => openRename(e.clientX, e.clientY, bpmLabel(p.bpm), txt => {
+        const v = Number(txt.trim().replace(',', '.'));
+        if (!Number.isFinite(v) || v <= 0) { say(tl('a.tp.badValue', { v: txt })); return; }
+        const points = setTempoBpm(tpList(), hit, v);
+        commit([putTempo(points)], tl('a.tp.movePoint'));
+        say(`${bpmLabel(points[hit]?.bpm ?? v)} BPM`);
+      }, tl('a.tp.valueTitle')) },
+      { t: 'item', label: tl('a.tp.glide'), checked: !!p.ramp, disabled: hit === pts.length - 1, act: () => {
+        commit([putTempo(setTempoRamp(tpList(), hit, !p.ramp))], tl('a.tp.glide'));
+        say(p.ramp ? tl('a.tp.glideOff') : tl('a.tp.glideOn'));
+      } },
+      { t: 'sep' },
+      { t: 'item', label: tl('a.tp.deletePoint'), kbd: 'Del', danger: true, act: () => {
+        commit([putTempo(deleteTempoPoint(tpList(), hit))], tl('a.tp.deletePoint'));
+        say(tl('a.tp.pointDeleted'));
+      } },
     ], 200);
   };
 
@@ -1553,6 +1705,10 @@ export function Playlist() {
           <div class="rulerRow" style={{ height: rowH() + 'px' }}>
             <div class="plhead" style={{ width: U.headW + 'px' }}>
               <Show when={mkH()}><div class="mkhead" style={{ height: MARKER_H + 'px' }}>{tl('a.mk.menu')}</div></Show>
+              <div class="tphead" style={{ top: mkH() + 'px', height: TEMPO_H + 'px' }}>
+                <span>{tl('a.tp.head')}</span>
+                <span class="tpnow" ref={el => (tpNowEl = el)} />
+              </div>
             </div>
             <div ref={mkRow} style={{ position: 'relative', width: gridW() + 'px', height: rowH() + 'px', flex: 'none' }}>
               <div class="phtile"><div ref={phRuler} class="phead" style={{ height: rowH() + 'px' }} /></div>
@@ -1560,7 +1716,9 @@ export function Playlist() {
                 <canvas ref={el => { mkCv = el; dirtyRuler = true; }} class="ruler mkstrip" title={tl('a.mk.stripTip')} style={{ height: MARKER_H + 'px' }}
                   onPointerDown={markerDown} onPointerMove={markerHover} onPointerLeave={() => setMkHover(null)} onContextMenu={markerMenu} />
               </Show>
-              <canvas ref={rulerCv} class="ruler" title={tl('a.pl.rulerTip')} style={{ top: mkH() + 'px' }}
+              <canvas ref={el => { tpCv = el; dirtyRuler = true; }} class="ruler tpstrip" title={tl('a.tp.stripTip')} style={{ top: mkH() + 'px', height: TEMPO_H + 'px' }}
+                onPointerDown={tempoDown} onPointerMove={tempoHover} onPointerLeave={tempoLeave} onContextMenu={tempoMenu} />
+              <canvas ref={rulerCv} class="ruler" title={tl('a.pl.rulerTip')} style={{ top: mkH() + TEMPO_H + 'px' }}
                 onPointerDown={rulerDown} onPointerMove={rulerHover} onContextMenu={e => { e.preventDefault(); if (e.button !== 2) timelineMenu(e); }} />
 
             </div>

@@ -18,6 +18,11 @@ export const FX_ART: Record<FxKind, string> = {
   <rect x="43" y="30" width="14" height="44" rx="3" fill="#F97316"/>
   <rect x="66" y="40" width="14" height="34" rx="3" fill="#C2410C"/>
   <path d="M17 38h20 M40 26h20 M63 34h20" stroke="#7C2D12" stroke-width="3.5" stroke-linecap="round"/>`),
+  patina: svg(`
+  <rect x="10" y="18" width="80" height="64" rx="12" fill="#FFEDD5"/>
+  <path d="M16 56c6-12 10-12 16 0s10 12 16 0 10-12 16 0 8 10 18 0" stroke="#C2410C" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M16 56c6-12 10-12 16 0s10 12 16 0 10-12 16 0 8 10 18 0" stroke="#FDBA74" stroke-width="2" stroke-linecap="round" fill="none" transform="translate(0 6)" opacity=".8"/>
+  <circle cx="24" cy="32" r="2.5" fill="#9A3412"/><circle cx="41" cy="27" r="2" fill="#9A3412"/><circle cx="63" cy="33" r="2.5" fill="#9A3412"/><circle cx="76" cy="26" r="1.8" fill="#9A3412"/>`),
   master: svg(`
   <rect x="10" y="18" width="80" height="64" rx="12" fill="#FEF3C7"/>
   <path d="M16 66c8-2 10-14 18-14s8 8 16 8 10-22 18-22 8 6 16 6" stroke="#B45309" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>

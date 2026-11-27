@@ -929,6 +929,23 @@ fn guarded(crashed: &AtomicBool, work: impl FnOnce()) -> bool {
     ok
 }
 
+/// Scales the device output by the program volume (`target`, linear), moving `cur` towards it
+/// with a one-pole step of `k` per frame. Allocation-free; a settled unity gain costs nothing.
+fn program_volume(l: &mut [f32], r: &mut [f32], cur: &mut f32, target: f32, k: f32) {
+    if *cur == target && target == 1.0 {
+        return;
+    }
+    for (a, b) in l.iter_mut().zip(r.iter_mut()) {
+        *cur += (target - *cur) * k;
+        *a *= *cur;
+        *b *= *cur;
+    }
+    // close enough: snap so the unity shortcut above applies again
+    if (*cur - target).abs() < 1e-6 {
+        *cur = target;
+    }
+}
+
 /// Everything the output callback talks to besides the engine.
 struct OutWires {
     shared: Arc<wave_engine::rt::Shared>,
@@ -956,6 +973,9 @@ fn build_output(
     let mut est = Estimator::new(rate);
     let mut input: Option<InputSide> = None;
     let mut probe: Option<Box<Probe>> = None;
+    // the program volume, smoothed (~10 ms) so a knob move does not zipper
+    let mut prog = w.shared.program_gain();
+    let prog_k = 1.0 - (-1.0 / (0.010 * rate as f32)).exp();
     let mut l = vec![0f32; MAX_CALLBACK];
     let mut r = vec![0f32; MAX_CALLBACK];
     let mut il = vec![0f32; MAX_CALLBACK];
@@ -1003,6 +1023,7 @@ fn build_output(
                 }
             }
             rt.process(&mut l[..n], &mut r[..n], Some((&il[..n], &ir[..n])));
+            program_volume(&mut l[..n], &mut r[..n], &mut prog, w.shared.program_gain(), prog_k);
             // a latency measurement plays its clicks instead of the mix and keeps the input
             if let Some(p) = probe.as_mut() {
                 for i in 0..n {
@@ -1148,6 +1169,27 @@ fn build_input(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_program_volume_glides_to_its_level_and_leaves_unity_untouched() {
+        let k = 1.0 - (-1.0f32 / (0.010 * 48000.0)).exp();
+        // unity, settled: the samples pass through bit-exact
+        let (mut l, mut r) = (vec![0.5f32; 256], vec![-0.25f32; 256]);
+        let mut cur = 1.0;
+        program_volume(&mut l, &mut r, &mut cur, 1.0, k);
+        assert!(l.iter().all(|&x| x == 0.5) && r.iter().all(|&x| x == -0.25));
+        // turned down to silence: no jump at the first frame, silent after ~100 ms
+        let mut first = None;
+        for _ in 0..20 {
+            let (mut l, mut r) = (vec![1f32; 256], vec![1f32; 256]);
+            program_volume(&mut l, &mut r, &mut cur, 0.0, k);
+            first.get_or_insert(l[0]);
+        }
+        assert!(first.unwrap() > 0.99, "the first frame does not click: {first:?}");
+        let (mut l, mut r) = (vec![1f32; 256], vec![1f32; 256]);
+        program_volume(&mut l, &mut r, &mut cur, 0.0, k);
+        assert!(l.iter().chain(r.iter()).all(|&x| x.abs() < 1e-4), "silent: {}", l[255]);
+    }
 
     #[test]
     fn round_trip_adds_both_directions_and_the_backlog() {

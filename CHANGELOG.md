@@ -6,8 +6,43 @@ shown in the app after an update and is published as the release notes (see
 
 ## Unreleased
 
+### Fixed
+
+- **Linux: the deb and rpm packages install the ALSA library they need.** On a minimal system
+  without it, Synkopa (and the `synkopa` command) did not start: "libasound.so.2: cannot open
+  shared object file".
+
+## 0.9.36 — 2026-11-26
+
+### Added
+
+- **Patina, a lo-fi character effect.** One window, five modules in a row, each with one big knob
+  and a picture of what it is doing: **Noise** (vinyl, dusty vinyl, shellac 78, cassette, reel
+  tape, mains hum — made fresh, never a loop; scratches come round once per revolution, and
+  Follow / Duck lets the noise ride or step aside from the music), **Wobble** (wow and flutter,
+  stereo if you like), **Drive** (the Saturator's five voicings, limited to a band so the bass or
+  the air can stay clean), **Digital** (sample rate and bits, with a Smooth filter) and **Wear**
+  (tape head losses, soft peak compression and dropouts). **Magnitude** scales everything at
+  once, bringing noise and dropouts in last, so a little of it is colour without hiss; **Wander**
+  moves every module a little at random. 16 presets from subtle bus glue and warm cassette to
+  12-bit drums, VHS, an old 78 and total destruction. Find it in the effect picker under Tone (or
+  search "lo-fi", "vinyl", "rc-20").
+
+- **Connect Synkopa to your AI agent as tools.** `synkopa mcp` serves the command line over the
+  Model Context Protocol, so Claude Code, Cursor, VS Code or Codex can read your project, write
+  patterns and notes, mix and render without a terminal. Nothing more to install: add a server
+  with the command `synkopa` and the argument `mcp` (Claude Code:
+  `claude mcp add --scope user synkopa -- synkopa mcp`). Every edit is still one undo step in
+  the app. For Claude Code there is also a plugin with a skill that teaches the workflow:
+  `/plugin marketplace add miskibin/synkopa`.
+
 ### Changed
 
+- **Main volume is how loud Synkopa plays, not the Master fader.** The knob in the toolbar used
+  to move the mixer's Master fader. It now works like FL Studio's main volume: it turns the
+  song, pattern and sample previews and the metronome up or down on your speakers, and leaves
+  the mix alone. Exports, the Master fader and the meters do not change with it. It is
+  remembered between sessions and is not part of the project or its undo history.
 - **Master aims for Streaming −14 LUFS by default.** Blind listening tests on six mixes (each
   version loudness-matched and rated twice under anonymous names) put the assistant at −14 above
   the same chain at −12, a plain limiter and the unmastered mix; pushing to −12 cost more punch

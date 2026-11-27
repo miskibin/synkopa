@@ -175,6 +175,9 @@ a { color: var(--blue); }
 .ruler { position: absolute; left: 0; top: 0; display: block; height: 26px; cursor: pointer; }
 /* the marker strip above the ruler (only while the song has markers) and its caption in the header column */
 .mkhead { position: absolute; left: 0; right: 0; top: 0; padding: 0 10px; display: flex; align-items: center; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg4); border-bottom: 1px solid var(--sep); }
+/* the tempo lane between the marker strip and the ruler, and its caption with the live BPM at the playhead */
+.tphead { position: absolute; left: 0; right: 0; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg4); border-bottom: 1px solid var(--sep); }
+.tpnow { font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .lanesCol { position: sticky; left: 0; z-index: 4; flex: none; background: var(--bg4); border-right: 1px solid var(--sep); }
 .lane { position: relative; display: flex; border-bottom: 1px solid var(--sep); background: var(--bg4); }
 .lane.armrec { background: var(--arm-bg); }
@@ -976,6 +979,15 @@ select option { background: var(--bg4); color: var(--fg); }
   background: color-mix(in srgb, var(--fxc, var(--blue)) 3%, var(--bg2)); }
 .fxsec.adv { border-style: dashed; }
 .fxsecs > .advbtn { align-self: flex-end; }
+/* a strip of module columns (Patina): five modules side by side, lined up with the five panels
+   of the picture above (same 8 px gutters), the global sections in the row below */
+.fxsecs.fxsecs-cols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.fxsecs-cols > .fxsec { min-width: 0; }
+.fxsecs-cols > .fxsec .fxsec-b { flex-wrap: wrap; justify-content: center; align-items: flex-start; row-gap: 8px; }
+.fxsecs-cols > .fxsec:nth-child(6) { grid-column: span 2; }
+.fxsecs-cols > .fxsec:nth-child(7) { grid-column: span 3; }
+.fxsecs-cols .seg2 { flex-wrap: wrap; }
+.fxsecs-cols > .advbtn, .fxsecs-cols > div:empty { display: none; }
 /* the window's usage hint: a "?" in the header, the text on hover or focus */
 .fxhint { position: relative; flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line2); color: var(--fg4);
   font: 600 10px/14px var(--sans); text-align: center; cursor: help; user-select: none; }

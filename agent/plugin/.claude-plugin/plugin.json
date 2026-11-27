@@ -1,0 +1,9 @@
+{
+  "name": "synkopa",
+  "description": "Make and edit music in Synkopa, the open-source DAW: tools to read the project, write patterns and notes, mix, and render, plus a skill that teaches the workflow",
+  "author": { "name": "miskibin", "url": "https://github.com/miskibin" },
+  "homepage": "https://miskibin.github.io/synkopa/",
+  "repository": "https://github.com/miskibin/synkopa",
+  "license": "AGPL-3.0-only",
+  "keywords": ["daw", "music", "audio", "midi", "beat"]
+}

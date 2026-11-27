@@ -10,6 +10,7 @@ use std::process::ExitCode;
 use serde_json::{json, Value};
 use wave_session as ws;
 
+mod mcp;
 mod watch;
 
 const HELP: &str = r#"synkopa — edit, render and inspect Synkopa projects
@@ -43,6 +44,10 @@ SCRIPTS
                                            One JSON line per save on stdout. --render: bounce it each time;
                                            --once: apply and exit. With -p FILE: on the file, never saved
 
+AGENT HOSTS  (Claude Code, Cursor, VS Code, Codex …)
+  mcp                                      serve these commands as Model Context Protocol tools on
+                                           stdin/stdout (the host starts it: command `synkopa`, argument `mcp`)
+
 READ
   sessions                                 list running Synkopa apps
   status                                   transport, revision, file, audio device
@@ -67,7 +72,7 @@ EDIT  (all edits are one undo step each; --if-revision N refuses to act if the p
   apply --file ops.json | --json '[...]'   apply a batch of ops atomically   [--label TEXT]
   undo | redo                              (running app only)
   bpm <value>
-  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|analyzer|reverb|limit|master|... [--preset N]
+  add-fx --insert ID --type eq|comp|gate|filter|sat|delay|half|warp|chorus|phaser|stereo|multiband|patina|analyzer|reverb|limit|master|... [--preset N]
   route --from ID --to ID [--gain 0..2] [--only]   mixer routing: insert FROM sends to TO (post-fader;
                                                   --only: no longer to the master; --to 0: to the master again)
   unroute --from ID --to ID                       remove that send (--to 0: stop going to the master)
@@ -406,6 +411,9 @@ pub fn run_cli_with(raw: Vec<String>, files: Option<&dyn Files>) -> ExitCode {
     if cmd == "help" || a.has("help") {
         print!("{HELP}");
         return ExitCode::SUCCESS;
+    }
+    if cmd == "mcp" {
+        return mcp::serve();
     }
     match dispatch(&cmd, &a, files) {
         Ok(mut v) => {
