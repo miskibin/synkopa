@@ -365,3 +365,42 @@ fn setting_the_map_refits_every_pattern_with_its_clips_following() {
     assert!((p.patterns[0].min_len - 6.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
     assert!((p.clips[0].len - 6.0).abs() < 1e-9, "the whole-pass clip follows: {}", p.clips[0].len);
 }
+
+#[test]
+fn a_refit_that_keeps_the_length_still_re_rounds_the_minimum() {
+    // len 12 keeps under 3/4 (notes end at beat 10), but min_len 4 re-rounds to 6 — the
+    // refit commits it even though the length is unchanged, so a reload (migrate, the same
+    // formula) changes nothing
+    let mut p = Project::routed();
+    p.patterns[0].min_len = 4.0;
+    p.patterns[0].len = 12.0;
+    p.patterns[0].notes.push(wave_engine::Note::new(1, 36.0, 4.0, None)); // ends at beat 10
+    ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
+    assert!((p.patterns[0].len - 12.0).abs() < 1e-9, "{}", p.patterns[0].len);
+    assert!((p.patterns[0].min_len - 6.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
+    let before = serde_json::to_string(&p).unwrap();
+    p.migrate();
+    assert_eq!(serde_json::to_string(&p).unwrap(), before, "the reload changes nothing");
+}
+
+#[test]
+fn a_refused_refit_leaves_the_op_untouched() {
+    // a channel loop that would stick out of the shorter pattern refuses the op — and a
+    // direct `apply` (which does not copy first, unlike apply_all) must not find the map
+    // assigned or the pattern half-refitted: apply promises "on error the project is
+    // unchanged"
+    let mut p = Project::routed();
+    let ch = p.channels[0].id;
+    p.patterns[0].notes.push(wave_engine::Note::new(ch, 16.0, 4.0, None)); // ends at beat 5
+    p.patterns[0].min_len = 4.0;
+    p.patterns[0].len = 8.0;
+    p.patterns[0].channel_loops = std::collections::BTreeMap::from([(ch, 32u32)]); // 8 beats of loop
+    let before = serde_json::to_string(&p).unwrap();
+    let err = ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap_err();
+    assert!(format!("{err}").contains("a channel loop must be"), "{err}");
+    assert_eq!(serde_json::to_string(&p).unwrap(), before, "the refused op changed nothing");
+    // and once the loop is raised the same op goes through
+    p.patterns[0].channel_loops.clear();
+    ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
+    assert!((p.patterns[0].len - 6.0).abs() < 1e-9, "{}", p.patterns[0].len);
+}

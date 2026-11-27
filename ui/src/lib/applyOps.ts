@@ -2,12 +2,13 @@
 // Parity with the engine is enforced by fixtures, not by discipline: ops.json
 // (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
 // error strings, and opsParity.test.ts / mockParity.test.ts fail when this port drifts.
-import { CLIP_PITCH, MAX_BANDS, MAX_SIG_NUM, MAX_SIG_POINTS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, SIG_DENS, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Project } from '../api/types';
+import { CLIP_PITCH, MAX_BANDS, MAX_SIG_NUM, MAX_SIG_POINTS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, SIG_DENS, STRETCH_MAX, STRETCH_MIN, TOTAL_BEATS, type Clip, type ClipTune, type Fx, type Id, type Op, type Pattern, type Project } from '../api/types';
 import { applyCompOp } from './comp';
 import { forgetInsert, keyError, routingError } from './routing';
 import { applyNotebookOp } from './notebook';
 import { putMarker, removeMarker } from './markers';
 import { applyPatternOp, checkChannelLoops, fitLenIn as fitPatternLenIn, followPatternLength, patternBar, PatternOpError } from './pattern';
+import { barBeatsAt, compiledSig } from './signatures';
 import { applyTransform } from './transforms';
 import { applyTuneEdit } from './pitch';
 
@@ -17,20 +18,34 @@ export class OpError extends Error {}
  *  refit each to whole bars of the signature where it now plays and let its clips follow
  *  the length change — the mirror of `ops.rs` `refit_patterns_after_clip_change`, so an
  *  accepted project does not change shape on reload. */
-function refitPatterns(p: Project, pats: readonly Id[]): void {
+/** The refits `pats` would get on the bar length `barOf` gives per pattern — probes only,
+ *  nothing of the project moves: a channel loop that would stick out of the shorter pattern
+ *  throws here, so the op can refuse while `apply` still holds "on error the project is
+ *  unchanged" (the mirror of ops.rs `plan_refits`). A pattern whose length keeps but whose
+ *  `minLen` re-rounds is planned too: migrate fits by the same rule, and a reload must not
+ *  change the shape. */
+function planRefits(p: Project, pats: readonly Id[], barOf: (id: Id) => number): { id: Id; fitted: Pattern; oldLen: number }[] {
+  const plan: { id: Id; fitted: Pattern; oldLen: number }[] = [];
   for (const pid of pats) {
     const pt = (p.patterns ?? []).find(x => x.id === pid);
     if (!pt) continue;
-    const bar = patternBar(p, pid);
-    // fit a probe first: a loop that would stick out refuses the op before anything moves
     const fitted = structuredClone(pt);
-    const old = fitted.len;
-    fitPatternLenIn(fitted, bar);
-    if (Math.abs(old - fitted.len) <= 1e-9) continue;
-    checkChannelLoops(p, fitted, true);
-    pt.minLen = fitted.minLen;
-    pt.len = fitted.len;
-    followPatternLength(p, pid, old, pt.len);
+    const oldLen = fitted.len, oldMin = fitted.minLen ?? barOf(pid);
+    fitPatternLenIn(fitted, barOf(pid));
+    if (Math.abs(oldLen - fitted.len) <= 1e-9 && Math.abs(oldMin - (fitted.minLen ?? oldMin)) <= 1e-9) continue;
+    if (Math.abs(oldLen - fitted.len) > 1e-9) checkChannelLoops(p, fitted, true);
+    plan.push({ id: pid, fitted, oldLen });
+  }
+  return plan;
+}
+
+/** Commits what [`planRefits`] validated: the new lengths, then the clips that follow. */
+function commitRefits(p: Project, plan: { id: Id; fitted: Pattern; oldLen: number }[]): void {
+  for (const { id, fitted, oldLen } of plan) {
+    const real = (p.patterns ?? []).find(x => x.id === id)!;
+    real.minLen = fitted.minLen;
+    real.len = fitted.len;
+    followPatternLength(p, id, oldLen, fitted.len);
   }
 }
 
@@ -71,6 +86,18 @@ export function applyOp(p: Project, op: Op): void {
           if ((r.octave != null && (r.octave % 12 !== 0 || Math.abs(r.octave) > 36)) || (r.key ?? 0) > 11 || (r.scale ?? 0) > 4) throw new OpError(`clip ${c.id}: reference octave must be a multiple of 12 within ±36, key 0..11, scale 0..4`);
         }
       }
+      // a pattern's bars follow the signature where it plays: with the clips about to move,
+      // plan the refits on the positions they will land at and validate the loops before
+      // anything of the project moves (the engine plans the same way)
+      const map = compiledSig(p.sigPoints);
+      const plan = planRefits(
+        p,
+        op.clips.filter(c => c.kind === 'pat').map(c => c.ref),
+        pid => {
+          const at = [...p.clips, ...op.clips].filter(c => c.kind === 'pat' && c.ref === pid).map(c => c.start).reduce((a, b) => Math.min(a, b), Infinity);
+          return barBeatsAt(map, at === Infinity ? 0 : at);
+        },
+      );
       for (const c of op.clips) {
         bump(p, c.id);
         const nc = structuredClone(c);
@@ -78,15 +105,22 @@ export function applyOp(p: Project, op: Op): void {
         const i = p.clips.findIndex(x => x.id === c.id);
         if (i >= 0) p.clips[i] = nc; else p.clips.push(nc);
       }
-      // a pattern's bars follow the signature where it plays: the clips just moved, so the
-      // patterns they play may sit on a different bar grid now (the engine refits too)
-      refitPatterns(p, op.clips.filter(c => c.kind === 'pat').map(c => c.ref));
+      commitRefits(p, plan);
       return;
     }
     case 'removeClips': {
-      const pats = p.clips.filter(c => op.ids.includes(c.id) && c.kind === 'pat').map(c => c.ref);
+      // plan on the positions that remain after the removal, before anything moves
+      const map = compiledSig(p.sigPoints);
+      const plan = planRefits(
+        p,
+        p.clips.filter(c => op.ids.includes(c.id) && c.kind === 'pat').map(c => c.ref),
+        pid => {
+          const at = p.clips.filter(c => !op.ids.includes(c.id) && c.kind === 'pat' && c.ref === pid).map(c => c.start).reduce((a, b) => Math.min(a, b), Infinity);
+          return barBeatsAt(map, at === Infinity ? 0 : at);
+        },
+      );
       p.clips = p.clips.filter(c => !op.ids.includes(c.id));
-      refitPatterns(p, pats);
+      commitRefits(p, plan);
       return;
     }
     case 'putTrack': {
@@ -213,13 +247,21 @@ export function applyOp(p: Project, op: Op): void {
     }
     case 'setSigPoints': {
       if (op.points.length > MAX_SIG_POINTS) throw new OpError(`at most ${MAX_SIG_POINTS} signature points`);
-      p.sigPoints = op.points
+      const pts = op.points
         .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), num: Math.min(Math.max(Math.round(x.num), 1), MAX_SIG_NUM), den: SIG_DENS.includes(x.den) ? x.den : 4 }))
         .sort((x, y) => x.beat - y.beat);
-      if (!p.sigPoints.length) delete p.sigPoints;
-      // every pattern's bar grid just changed with the map: refit them all, so an accepted
-      // project reads the same on reload (migrate refits by the same rule)
-      refitPatterns(p, (p.patterns ?? []).map(x => x.id));
+      // every pattern's bar grid is about to change with the map: plan the refits on the
+      // NEW map and validate the loops before anything of the project moves (assigning the
+      // map first could leave it in on a refused op — apply promises the project is
+      // unchanged)
+      const map = compiledSig(pts);
+      const plan = planRefits(p, (p.patterns ?? []).map(x => x.id), pid => {
+        const at = p.clips.filter(c => c.kind === 'pat' && c.ref === pid).map(c => c.start).reduce((a, b) => Math.min(a, b), Infinity);
+        return barBeatsAt(map, at === Infinity ? 0 : at);
+      });
+      if (pts.length) p.sigPoints = pts;
+      else delete p.sigPoints;
+      commitRefits(p, plan);
       return;
     }
     case 'setMaskIgnore': {

@@ -796,6 +796,31 @@ pub fn cases() -> Vec<Case> {
         }],
     ));
     c.push(("main", "setSigPoints clears the map", vec![Op::SetSigPoints { points: vec![] }]));
+    // the refit: a pattern whose length keeps (notes end at beat 10) still re-rounds its
+    // min_len to the new grid, so a reload (migrate, the same formula) changes nothing
+    c.push((
+        "main",
+        "setSigPoints refits a kept length's minLen",
+        vec![
+            Op::PutPattern { pattern: pat(40, "Ten", 12.0, 4.0, vec![Note::new(31, 36.0, 4.0, None)]) },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 0.0, num: 3, den: 4 }] },
+        ],
+    ));
+    // a channel loop that would stick out of the shorter pattern refuses the op — and the
+    // map (and everything before it) stays out of the project
+    c.push((
+        "main",
+        "setSigPoints refuses when a channel loop would stick out",
+        vec![
+            Op::PutPattern {
+                pattern: Pattern {
+                    channel_loops: std::collections::BTreeMap::from([(31, 32)]),
+                    ..pat(41, "Loop", 8.0, 4.0, vec![Note::new(31, 16.0, 4.0, None)])
+                },
+            },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 0.0, num: 3, den: 4 }] },
+        ],
+    ));
     c.push(("main", "setLoop sets the loop", vec![Op::SetLoop { range: Some(LoopRange { a: 4.0, b: 16.0 }) }]));
     c.push(("main", "setLoop clears the loop", vec![Op::SetLoop { range: None }]));
     c.push(("main", "setLoop refuses an empty loop", vec![Op::SetLoop { range: Some(LoopRange { a: 16.0, b: 4.0 }) }]));

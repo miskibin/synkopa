@@ -353,16 +353,46 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     None => p.clips.push(c.clone()),
                 }
             }
-            // a pattern's bars follow the signature where it plays: the clips just moved, so
-            // the patterns they play may sit on a different bar grid now
+            // a pattern's bars follow the signature where it plays: with the clips about to
+            // move, plan the refits on the positions they will land at and validate the
+            // channel loops before anything of the project moves
             let pats: Vec<Id> = clips.iter().filter(|c| c.kind == ClipKind::Pat).map(|c| c.source).collect();
-            refit_patterns_after_clip_change(p, &mut d, &pats)?;
+            let map = p.sig_map();
+            let plan = plan_refits(p, &pats, |pid| {
+                let at = p
+                    .clips
+                    .iter()
+                    .chain(clips.iter())
+                    .filter(|c| c.kind == ClipKind::Pat && c.source == pid)
+                    .map(|c| c.start)
+                    .fold(f64::INFINITY, f64::min);
+                map.bar_beats_at(if at.is_finite() { at } else { 0.0 })
+            })?;
+            for c in clips {
+                bump(p, c.id);
+                match p.clips.iter_mut().find(|x| x.id == c.id) {
+                    Some(x) => *x = c.clone(),
+                    None => p.clips.push(c.clone()),
+                }
+            }
+            commit_refits(p, &mut d, plan);
             d.timeline = true;
         }
         Op::RemoveClips { ids } => {
+            // plan on the positions that remain after the removal, before anything moves
             let pats: Vec<Id> = p.clips.iter().filter(|c| ids.contains(&c.id) && c.kind == ClipKind::Pat).map(|c| c.source).collect();
+            let map = p.sig_map();
+            let plan = plan_refits(p, &pats, |pid| {
+                let at = p
+                    .clips
+                    .iter()
+                    .filter(|c| !ids.contains(&c.id) && c.kind == ClipKind::Pat && c.source == pid)
+                    .map(|c| c.start)
+                    .fold(f64::INFINITY, f64::min);
+                map.bar_beats_at(if at.is_finite() { at } else { 0.0 })
+            })?;
             p.clips.retain(|c| !ids.contains(&c.id));
-            refit_patterns_after_clip_change(p, &mut d, &pats)?;
+            commit_refits(p, &mut d, plan);
             d.timeline = true;
         }
         Op::PutTrack { track } => {
@@ -1109,11 +1139,18 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 })
                 .collect();
             pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
-            p.sig_points = pts;
-            // every pattern's bar grid just changed with the map: refit them all, so an
-            // accepted project reads the same on reload (migrate refits by the same rule)
+            // every pattern's bar grid is about to change with the map: plan the refits on
+            // the NEW map and validate the channel loops before anything of the project
+            // moves (assigning the map first could leave it in on a refused op)
+            let map = crate::model::SigMap::compile(&pts);
             let all: Vec<Id> = p.patterns.iter().map(|x| x.id).collect();
-            refit_patterns_after_clip_change(p, &mut d, &all)?;
+            let plan = plan_refits(p, &all, |pid| {
+                let at =
+                    p.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pid).map(|c| c.start).fold(f64::INFINITY, f64::min);
+                map.bar_beats_at(if at.is_finite() { at } else { 0.0 })
+            })?;
+            p.sig_points = pts;
+            commit_refits(p, &mut d, plan);
             d.timeline = true;
         }
         Op::SetMaskIgnore { pairs } => {
@@ -1148,34 +1185,43 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
 }
 
 /// Patterns whose bar grid may have changed (their clips moved or the signature map did):
-/// refit each to whole bars of the signature where it now plays, and let its clips follow
-/// the length change ([`follow_pattern_length`]) — the same rules `putPattern` applies, so
-/// an accepted project does not change shape on reload (migrate refits by the same rule).
-/// A channel loop that would stick out of the shorter pattern refuses the op (raise or burn
-/// it first, like the "+bar"/"−bar" verbs); nothing else of the pattern changes.
-pub(crate) fn refit_patterns_after_clip_change(p: &mut Project, d: &mut Dirty, pats: &[Id]) -> Result<(), OpError> {
+/// plan each pattern's refit to whole bars of the bar length `bar_of` gives for it — a
+/// probe, so a channel loop that would stick out of the shorter pattern refuses the op
+/// **before anything of the project moves** (`apply` promises that on error the project is
+/// unchanged). A pattern whose length keeps but whose `min_len` re-rounds is planned too:
+/// migrate refits by the same rule, and a reload must not change the shape.
+fn plan_refits(p: &Project, pats: &[Id], bar_of: impl Fn(Id) -> f64) -> Result<Vec<(Id, Pattern, f64)>, OpError> {
+    let mut plan = vec![];
     for pid in pats {
         let Some(pt) = p.patterns.iter().find(|x| x.id == *pid) else {
             continue;
         };
-        let bar = p.pattern_bar_beats(*pid);
-        // fit a probe first: a loop that would stick out of the shorter pattern refuses the
-        // op before anything of the real pattern moves
         let mut fitted = pt.clone();
-        let old_len = fitted.len;
-        fitted.fit_len_in(bar);
-        if (old_len - fitted.len).abs() <= 1e-9 {
+        let (old_len, old_min) = (fitted.len, fitted.min_len);
+        fitted.fit_len_in(bar_of(*pid));
+        if (old_len - fitted.len).abs() <= 1e-9 && (old_min - fitted.min_len).abs() <= 1e-9 {
             continue;
         }
-        check_channel_loops(p, &fitted)?;
-        let new_len = fitted.len;
-        let real = p.patterns.iter_mut().find(|x| x.id == *pid).expect("the pattern was just found");
+        // only the length bounds a channel loop's repeats: a loop that would stick out of
+        // the shorter pattern refuses the op (raise or burn it first, like "+bar"/"−bar")
+        if (old_len - fitted.len).abs() > 1e-9 {
+            check_channel_loops(p, &fitted)?;
+        }
+        plan.push((*pid, fitted, old_len));
+    }
+    Ok(plan)
+}
+
+/// Commits what [`plan_refits`] validated: the pattern's new lengths, then the clips that
+/// follow the change ([`follow_pattern_length`]).
+fn commit_refits(p: &mut Project, d: &mut Dirty, plan: Vec<(Id, Pattern, f64)>) {
+    for (pid, fitted, old_len) in plan {
+        let real = p.patterns.iter_mut().find(|x| x.id == pid).expect("the pattern was planned");
         real.min_len = fitted.min_len;
-        real.len = new_len;
-        follow_pattern_length(p, *pid, old_len, new_len);
+        real.len = fitted.len;
+        follow_pattern_length(p, pid, old_len, fitted.len);
         d.timeline = true;
     }
-    Ok(())
 }
 
 /// A pattern's length went from `old` to `new` beats; its clips follow without ever

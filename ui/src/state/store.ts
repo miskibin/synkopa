@@ -367,12 +367,14 @@ function refitOptimistic(p: Project, raw: Project, pats: readonly Id[]): void {
     const src = (raw.patterns ?? []).find(x => x.id === pid);
     if (!pt || !src) continue;
     const fitted = structuredClone(src);
-    const old = fitted.len;
+    const oldLen = fitted.len, oldMin = fitted.minLen ?? oldLen;
     fitPatternLenIn(fitted, patternBar(raw, pid));
-    if (Math.abs(old - fitted.len) <= 1e-9) continue;
+    // a length that keeps but a minLen that re-rounds still commits (migrate fits by the
+    // same rule, so a reload would change the shape otherwise)
+    if (Math.abs(oldLen - fitted.len) <= 1e-9 && Math.abs(oldMin - (fitted.minLen ?? oldMin)) <= 1e-9) continue;
     pt.minLen = fitted.minLen;
     pt.len = fitted.len;
-    followPatternLength(p, pid, old, fitted.len);
+    followPatternLength(p, pid, oldLen, fitted.len);
   }
 }
 
