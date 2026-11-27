@@ -74,15 +74,19 @@ export function barAt(map: readonly SigPoint[], beat: number): number {
 export function beatAtBar(map: readonly SigPoint[], bar: number): number {
   const list = withOpener(map);
   if (bar < 0) return bar * sigBarBeats(list[0]);
+  // the least legal bar is 4·1/16 = 0.25 beats: clamping keeps the unbounded last segment
+  // below `bar`, so the walk always answers (a crafted overflowed position cannot loop it)
+  const k = Math.min(bar, TOTAL_BEATS / 0.25);
   let bars = 0;
   for (let i = 0; i < list.length; i++) {
     const s = list[i].beat, l = sigBarBeats(list[i]);
     const e = i + 1 < list.length ? list[i + 1].beat : Infinity;
     const count = e === Infinity ? e : Math.ceil((e - s) / l);
-    if (bar < bars + count - 1e-9) return s + (bar - bars) * l;
+    if (k < bars + count - 1e-9) return s + (k - bars) * l;
     bars += count;
   }
-  return 0; // unreachable: the last segment is unbounded
+  const last = list[list.length - 1];
+  return last.beat + (k - bars) * sigBarBeats(last);
 }
 
 /** Whether `beat` sits on a bar boundary (a metronome accent lands there). Off-grid

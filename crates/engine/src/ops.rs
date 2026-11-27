@@ -353,10 +353,16 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     None => p.clips.push(c.clone()),
                 }
             }
+            // a pattern's bars follow the signature where it plays: the clips just moved, so
+            // the patterns they play may sit on a different bar grid now
+            let pats: Vec<Id> = clips.iter().filter(|c| c.kind == ClipKind::Pat).map(|c| c.source).collect();
+            refit_patterns_after_clip_change(p, &mut d, &pats)?;
             d.timeline = true;
         }
         Op::RemoveClips { ids } => {
+            let pats: Vec<Id> = p.clips.iter().filter(|c| ids.contains(&c.id) && c.kind == ClipKind::Pat).map(|c| c.source).collect();
             p.clips.retain(|c| !ids.contains(&c.id));
+            refit_patterns_after_clip_change(p, &mut d, &pats)?;
             d.timeline = true;
         }
         Op::PutTrack { track } => {
@@ -1104,6 +1110,10 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 .collect();
             pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
             p.sig_points = pts;
+            // every pattern's bar grid just changed with the map: refit them all, so an
+            // accepted project reads the same on reload (migrate refits by the same rule)
+            let all: Vec<Id> = p.patterns.iter().map(|x| x.id).collect();
+            refit_patterns_after_clip_change(p, &mut d, &all)?;
             d.timeline = true;
         }
         Op::SetMaskIgnore { pairs } => {
@@ -1135,6 +1145,37 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
         }
     }
     Ok(d)
+}
+
+/// Patterns whose bar grid may have changed (their clips moved or the signature map did):
+/// refit each to whole bars of the signature where it now plays, and let its clips follow
+/// the length change ([`follow_pattern_length`]) — the same rules `putPattern` applies, so
+/// an accepted project does not change shape on reload (migrate refits by the same rule).
+/// A channel loop that would stick out of the shorter pattern refuses the op (raise or burn
+/// it first, like the "+bar"/"−bar" verbs); nothing else of the pattern changes.
+pub(crate) fn refit_patterns_after_clip_change(p: &mut Project, d: &mut Dirty, pats: &[Id]) -> Result<(), OpError> {
+    for pid in pats {
+        let Some(pt) = p.patterns.iter().find(|x| x.id == *pid) else {
+            continue;
+        };
+        let bar = p.pattern_bar_beats(*pid);
+        // fit a probe first: a loop that would stick out of the shorter pattern refuses the
+        // op before anything of the real pattern moves
+        let mut fitted = pt.clone();
+        let old_len = fitted.len;
+        fitted.fit_len_in(bar);
+        if (old_len - fitted.len).abs() <= 1e-9 {
+            continue;
+        }
+        check_channel_loops(p, &fitted)?;
+        let new_len = fitted.len;
+        let real = p.patterns.iter_mut().find(|x| x.id == *pid).expect("the pattern was just found");
+        real.min_len = fitted.min_len;
+        real.len = new_len;
+        follow_pattern_length(p, *pid, old_len, new_len);
+        d.timeline = true;
+    }
+    Ok(())
 }
 
 /// A pattern's length went from `old` to `new` beats; its clips follow without ever

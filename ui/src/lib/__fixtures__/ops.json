@@ -21282,7 +21282,7 @@
             "gain": 0.0,
             "id": 40,
             "kind": "pat",
-            "len": 8.0,
+            "len": 16.0,
             "muted": false,
             "norm": false,
             "offset": 0.0,
@@ -21511,8 +21511,8 @@
           {
             "color": "#4f8ef7",
             "id": 20,
-            "len": 8.0,
-            "minLen": 4.0,
+            "len": 32.0,
+            "minLen": 32.0,
             "name": "Verse",
             "notes": [
               {
@@ -21560,8 +21560,8 @@
           {
             "color": "#4f8ef7",
             "id": 21,
-            "len": 8.0,
-            "minLen": 8.0,
+            "len": 32.0,
+            "minLen": 32.0,
             "name": "Hook",
             "notes": []
           }

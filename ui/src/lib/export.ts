@@ -1,4 +1,4 @@
-import { VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
+import { TOTAL_BEATS, VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
 import { newClip } from './clipOps';
 import { barAt, beatAtBar, compiledSig } from './signatures';
 import { patternBar } from './pattern';
@@ -27,8 +27,11 @@ export const SONG_END_SLACK = 0.25;
 export function songEnd(project: Pick<Project, 'clips' | 'sigPoints'>): number {
   let end = 4;
   for (const c of project.clips) end = Math.max(end, c.start + c.len - SONG_END_SLACK, c.start + 1e-6);
+  // only putClips validates ranges; a loaded file can carry a clip past the song and a
+  // position that large overflows the bar count — clamp into the song first
+  const at = Math.min(end, TOTAL_BEATS);
   const map = compiledSig(project.sigPoints);
-  return beatAtBar(map, barAt(map, end - 1e-9) + 1);
+  return beatAtBar(map, barAt(map, at - 1e-9) + 1);
 }
 
 /**

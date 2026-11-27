@@ -308,6 +308,7 @@ pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack], sigs
     for (tick, kind) in evs {
         let delta = u32::try_from(tick.min(u64::from(u28::max_value().as_int())) - at).unwrap_or(u28::max_value().as_int());
         head.push(TrackEvent { delta: u28::new(delta), kind });
+
         at = tick;
     }
     head.push(meta(0, MetaMessage::EndOfTrack));
@@ -828,6 +829,7 @@ mod tests {
         assert_eq!(f.sig_points, vec![SmfSig { beat: 0.0, num: 7, den: 8 }, SmfSig { beat: 7.0, num: 3, den: 4 }]);
         // every legal denominator round-trips, x/16 too (its exponent is 4)
         let bytes = write(&[(0.0, 120.0)], "Song", &[], &[(0.0, 1, 1), (4.0, 3, 2), (8.0, 5, 4), (12.0, 7, 16)]).unwrap();
+
         let f = parse(&bytes).unwrap();
         assert_eq!(
             f.sig_points,

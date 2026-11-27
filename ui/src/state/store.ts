@@ -357,6 +357,25 @@ const copyPattern = (pt: Pattern): Pattern => {
 };
 
 /** Apply `op` to `p` in place: the store's draft, or `M`. `raw` is `M` as it is before the op (plain). */
+/** The optimistic mirror of the engine's refit: patterns whose bar grid may have changed
+ *  (their clips moved or the signature map did) fit whole bars of the signature where they
+ *  now play, and their clips follow the length change. Reads from `raw` (a proxy does not
+ *  survive the structuredClone the probe needs); throws land on the reply's resync. */
+function refitOptimistic(p: Project, raw: Project, pats: readonly Id[]): void {
+  for (const pid of pats) {
+    const pt = (p.patterns ?? []).find(x => x.id === pid);
+    const src = (raw.patterns ?? []).find(x => x.id === pid);
+    if (!pt || !src) continue;
+    const fitted = structuredClone(src);
+    const old = fitted.len;
+    fitPatternLenIn(fitted, patternBar(raw, pid));
+    if (Math.abs(old - fitted.len) <= 1e-9) continue;
+    pt.minLen = fitted.minLen;
+    pt.len = fitted.len;
+    followPatternLength(p, pid, old, fitted.len);
+  }
+}
+
 function applyInPlace(p: Project, op: Op, raw: Project = p) {
   switch (op.op) {
     case 'putClips': {
@@ -367,9 +386,17 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
         if (i != null) assignClip(p.clips[i], c); else { p.clips.push(clone(c)); idx.set(c.id, p.clips.length - 1); }
         if (c.id >= p.nextId) p.nextId = c.id + 1;
       }
+      // the patterns the clips play may sit on another bar grid now: the engine refits
+      refitOptimistic(p, raw, op.clips.filter(c => c.kind === 'pat').map(c => c.ref));
       return;
     }
-    case 'removeClips': { const s = new Set(op.ids); p.clips = p.clips.filter(c => !s.has(c.id)); return; }
+    case 'removeClips': {
+      const s = new Set(op.ids);
+      const pats = raw.clips.filter(c => s.has(c.id) && c.kind === 'pat').map(c => c.ref);
+      p.clips = p.clips.filter(c => !s.has(c.id));
+      refitOptimistic(p, raw, pats);
+      return;
+    }
     case 'putTrack': {
       const t = p.tracks.find(x => x.id === op.track.id);
       if (t) Object.assign(t, op.track); else p.tracks.push(clone(op.track));
@@ -502,6 +529,8 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
         .sort((x, y) => x.beat - y.beat);
       if (!pts.length) delete p.sigPoints;
       else p.sigPoints = pts;
+      // every pattern's bar grid changed with the map: the engine refits them all
+      refitOptimistic(p, raw, (raw.patterns ?? []).map(x => x.id));
       return;
     }
     default: {

@@ -1145,11 +1145,16 @@ impl SigMap {
     /// The beat where 0-based bar `bar` starts (the inverse of [`Self::bar_at`]; `bar` is
     /// expected to be a whole bar number). A fragment maps to its own start like any bar;
     /// beyond the song the grid continues at the last segment's bar length — callers
-    /// clamp to [`TOTAL_BEATS`] where it matters.
+    /// clamp to [`TOTAL_BEATS`] where it matters. A bar count past what the song can hold
+    /// (a crafted file's overflowed positions) clamps into the grid: the walk is total,
+    /// the last unbounded segment always answers.
     pub fn beat_at_bar(&self, bar: f64) -> f64 {
         if bar < 0.0 {
             return bar * self.points[0].1;
         }
+        // the least legal bar is 4·1/16 = 0.25 beats: no bar index this side of the song
+        // length is larger, and clamping keeps the unbounded last segment below `bar`
+        let bar = bar.min(TOTAL_BEATS / 0.25);
         let mut bars = 0.0;
         for i in 0..self.points.len() {
             let (s, l) = self.points[i];
@@ -1161,7 +1166,8 @@ impl SigMap {
             }
             bars += count;
         }
-        unreachable!("the last segment is unbounded and always returns")
+        let (s, l) = self.points.last().unwrap();
+        s + (bar - bars) * l
     }
 
     /// Whether `beat` sits on a bar boundary (a metronome accent lands there). Off-grid
@@ -2113,6 +2119,10 @@ impl Project {
     /// that *starts* in a bar always keeps that bar.
     pub fn song_end(&self) -> f64 {
         let end = self.clips.iter().fold(4.0f64, |m, c| m.max(c.start + c.len - SONG_END_SLACK).max(c.start + 1e-6));
+        // only the putClips op validates ranges; a project file can carry a clip past the
+        // song, and a position that large overflows the bar count (1e308 over a 1/16 bar is
+        // infinity) — clamp into the song before the map conversion
+        let end = end.min(TOTAL_BEATS);
         let map = self.sig_map();
         map.beat_at_bar(map.bar_at(end - 1e-9) + 1.0)
     }

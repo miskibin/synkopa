@@ -13,6 +13,27 @@ import { applyTuneEdit } from './pitch';
 
 export class OpError extends Error {}
 
+/** Patterns whose bar grid may have changed (their clips moved or the signature map did):
+ *  refit each to whole bars of the signature where it now plays and let its clips follow
+ *  the length change — the mirror of `ops.rs` `refit_patterns_after_clip_change`, so an
+ *  accepted project does not change shape on reload. */
+function refitPatterns(p: Project, pats: readonly Id[]): void {
+  for (const pid of pats) {
+    const pt = (p.patterns ?? []).find(x => x.id === pid);
+    if (!pt) continue;
+    const bar = patternBar(p, pid);
+    // fit a probe first: a loop that would stick out refuses the op before anything moves
+    const fitted = structuredClone(pt);
+    const old = fitted.len;
+    fitPatternLenIn(fitted, bar);
+    if (Math.abs(old - fitted.len) <= 1e-9) continue;
+    checkChannelLoops(p, fitted, true);
+    pt.minLen = fitted.minLen;
+    pt.len = fitted.len;
+    followPatternLength(p, pid, old, pt.len);
+  }
+}
+
 const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 
 /** Drops the fields the engine's serde omits on write (stretch 1, not resampled, no pitch). */
@@ -57,9 +78,17 @@ export function applyOp(p: Project, op: Op): void {
         const i = p.clips.findIndex(x => x.id === c.id);
         if (i >= 0) p.clips[i] = nc; else p.clips.push(nc);
       }
+      // a pattern's bars follow the signature where it plays: the clips just moved, so the
+      // patterns they play may sit on a different bar grid now (the engine refits too)
+      refitPatterns(p, op.clips.filter(c => c.kind === 'pat').map(c => c.ref));
       return;
     }
-    case 'removeClips': p.clips = p.clips.filter(c => !op.ids.includes(c.id)); return;
+    case 'removeClips': {
+      const pats = p.clips.filter(c => op.ids.includes(c.id) && c.kind === 'pat').map(c => c.ref);
+      p.clips = p.clips.filter(c => !op.ids.includes(c.id));
+      refitPatterns(p, pats);
+      return;
+    }
     case 'putTrack': {
       if (!p.inserts.some(m => m.id === op.track.insert)) throw new OpError(`no insert with id ${op.track.insert}`);
       bump(p, op.track.id);
@@ -188,6 +217,9 @@ export function applyOp(p: Project, op: Op): void {
         .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), num: Math.min(Math.max(Math.round(x.num), 1), MAX_SIG_NUM), den: SIG_DENS.includes(x.den) ? x.den : 4 }))
         .sort((x, y) => x.beat - y.beat);
       if (!p.sigPoints.length) delete p.sigPoints;
+      // every pattern's bar grid just changed with the map: refit them all, so an accepted
+      // project reads the same on reload (migrate refits by the same rule)
+      refitPatterns(p, (p.patterns ?? []).map(x => x.id));
       return;
     }
     case 'setMaskIgnore': {

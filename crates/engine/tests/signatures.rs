@@ -309,3 +309,59 @@ fn the_count_in_is_one_bar_of_where_you_record_and_accents_its_bar_start() {
     let (_, zc_bar) = burst(&out, 2.0).unwrap();
     assert!(zc_bar > zc_plain + 20, "beat 11 opens a bar of the map: it accents");
 }
+
+#[test]
+fn a_crafted_file_that_overflows_the_bar_count_opens_without_panicking() {
+    // only putClips validates ranges: a shared file can carry a 1e308-long clip and a 1/16
+    // change, and song_end runs from the timeline build inside the open — the bar count
+    // overflows to infinity and beat_at_bar used to hit an unreachable!() there
+    let v = serde_json::json!({
+        "version": PROJECT_VERSION, "bpm": 120.0,
+        "inserts": [{ "id": 0, "name": "Master", "color": "#d5dae2", "vol": 0.7937, "pan": 0.0, "width": 1.0, "muted": false, "solo": false, "fx": [], "sends": [], "master": true }],
+        "tracks": [{ "id": 1, "name": "T", "color": "#4f8ef7", "muted": false, "solo": false, "arm": false, "vol": 0.7937, "h": 56, "insert": 0 }],
+        "sources": [],
+        "patterns": [{ "id": 1, "name": "P", "color": "#4f8ef7", "len": 4.0, "minLen": 4.0, "notes": [] }],
+        "clips": [{ "id": 10, "track": 0, "start": 0.0, "len": 1e308, "offset": 0.0, "kind": "pat", "ref": 1, "muted": false, "gain": 0.0, "pan": 0.0, "fade_in": 0.0, "fade_out": 0.0, "norm": false, "rev": false, "stretch": 1.0, "resample": false, "pitch": 0.0, "root": 60 }],
+        "sigPoints": [{ "beat": 0.0, "num": 1, "den": 16 }],
+        "loop": null, "nextId": 100,
+    });
+    let mut p = Project::from_json(v).expect("the file parses");
+    p.migrate();
+    let end = p.song_end();
+    assert!(end.is_finite(), "the song end stays finite: {end}");
+    assert!(end <= TOTAL_BEATS, "the song end clamps into the song: {end}");
+}
+
+#[test]
+fn moving_a_clip_onto_another_meter_refits_the_pattern_in_the_op() {
+    // the sizing policy reads the signature at the pattern's earliest clip: when the clip
+    // moves from 4/4 into 7/8, the pattern refits right in the op — a reload (migrate fits
+    // by the same rule) must not change the accepted project's shape
+    let mut p = Project::routed();
+    p.sig_points = pts(&[(8.0, 7, 8)]);
+    p.clips.push(clip(910, 0, 0.0, 8.0, 1));
+    p.patterns[0].min_len = 8.0;
+    p.patterns[0].len = 8.0;
+    let moved = clip(910, 0, 8.0, 8.0, 1);
+    ops::apply(&mut p, &Op::PutClips { clips: vec![moved] }).unwrap();
+    assert!((p.patterns[0].len - 10.5).abs() < 1e-9, "stored beats round up to whole 7/8 bars: {}", p.patterns[0].len);
+    assert!((p.patterns[0].min_len - 10.5).abs() < 1e-9, "8 beats = 3 bars of 3.5, rounded up: {}", p.patterns[0].min_len);
+    // the clip follows the growth (it showed exactly one pass)
+    assert!((p.clips[0].len - 10.5).abs() < 1e-9, "{}", p.clips[0].len);
+    // removing the clip again: the song's opening grid governs, the stored beats re-round
+    ops::apply(&mut p, &Op::RemoveClips { ids: vec![910] }).unwrap();
+    assert!((p.patterns[0].len - 12.0).abs() < 1e-9, "10.5 beats = 3 bars of 4: {}", p.patterns[0].len);
+}
+
+#[test]
+fn setting_the_map_refits_every_pattern_with_its_clips_following() {
+    // setSigPoints changes every pattern's sizing context in the same op: with the map
+    // accepting 3/4 at beat 0, a 4-beat pattern at the opener is two bars (6 beats) already,
+    // not a reload away
+    let mut p = Project::routed();
+    p.clips.push(clip(911, 0, 0.0, 4.0, 1));
+    ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
+    assert!((p.patterns[0].len - 6.0).abs() < 1e-9, "{}", p.patterns[0].len);
+    assert!((p.patterns[0].min_len - 6.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
+    assert!((p.clips[0].len - 6.0).abs() < 1e-9, "the whole-pass clip follows: {}", p.clips[0].len);
+}

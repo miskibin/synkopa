@@ -15,7 +15,7 @@ import * as MK from '../state/markers';
 import { addFrameTask, fitCanvas } from '../ui/frameLoop';
 import { track } from '../ui/drag';
 import { shownPreview } from '../state/previewWave';
-import { barBeatsAt, compiledSig } from '../lib/signatures';
+import { barAt, barBeatsAt, beatAtBar, compiledSig, isBarStart } from '../lib/signatures';
 import { barLenMap, patternBar } from '../lib/pattern';
 import { createMemo } from 'solid-js';
 
@@ -89,10 +89,18 @@ export function SongPos() {
   const key = (e: KeyboardEvent) => {
     const s = span(), step = e.shiftKey ? 1 : barStepAt(s.at, s.pat);
     let b: number | null = null;
-    if (e.key === 'ArrowRight') b = Math.floor(s.at / step + 1e-6) * step + step;
-    else if (e.key === 'ArrowLeft') b = Math.ceil(s.at / step - 1e-6) * step - step;
-    else if (e.key === 'Home') b = 0;
+    if (e.key === 'Home') b = 0;
     else if (e.key === 'End') b = s.pat != null ? s.len - 1 : s.len;
+    else if (e.shiftKey || s.pat != null) {
+      // a fixed grid: the beat step, or the pattern's own (constant) bar grid in PAT
+      if (e.key === 'ArrowRight') b = Math.floor(s.at / step + 1e-6) * step + step;
+      else if (e.key === 'ArrowLeft') b = Math.ceil(s.at / step - 1e-6) * step - step;
+    } else {
+      // the song's bars: bar lines of the map, however unevenly the meters lay them
+      const map = sigs(), bar = barAt(map, s.at);
+      if (e.key === 'ArrowRight') b = beatAtBar(map, bar + 1);
+      else if (e.key === 'ArrowLeft') b = beatAtBar(map, Math.max(0, isBarStart(map, s.at) ? bar - 1 : bar));
+    }
     if (b == null) return;
     e.preventDefault(); e.stopPropagation();
     seekTo(clamp(b, 0, s.len), s.pat);
