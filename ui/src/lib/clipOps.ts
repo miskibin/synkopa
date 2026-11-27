@@ -199,8 +199,13 @@ export function stretchClip(o: Clip, edge: 'l' | 'r', target: number, minL: numb
   if (hi < lo) return o;
   const len = clamp(edge === 'r' ? target - o.start : end - target, lo, hi);
   const k = len / o.len, s = s0 * k;
-  // a stretch back to (almost) 1 snaps to exactly 1, so the clip plays its file untouched
-  const exact = Math.abs(s - 1) < 1e-6;
+  // a stretch back to (almost) 1 snaps to exactly 1, so the clip plays its file untouched —
+  // but the snap divides the markers by s0, and that factor was never bounds-checked: a map
+  // with a segment already at the limit would tip out of range (s0 = 1.0000005 with a head
+  // segment at ×0.25 snaps the segment to ×0.2499999). Snap only when 1/s0 stays in bounds;
+  // else keep the stretched result, which k's clamping already made valid.
+  const snapOk = !wb || (1 / s0 >= wb[0] - 1e-9 && 1 / s0 <= wb[1] + 1e-9);
+  const exact = Math.abs(s - 1) < 1e-6 && snapOk;
   // the markers' `to` lives on the same stretched axis the offset scales on
   const warp = o.warp?.map(w => ({ at: w.at, to: exact ? w.to / s0 : w.to * k }));
   const n: Clip = { ...o, len: exact ? o.len / s0 : len, offset: exact ? o.offset / s0 : o.offset * k, warp };

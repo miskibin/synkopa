@@ -100,6 +100,21 @@ describe('the stretch builders rescale the map', () => {
     expect(stretchClip(plainClip, 'r', plainClip.start + 16, 1, 2).stretch).toBe(4);
   });
 
+  it('the exact-one snap cannot tip a boundary segment out of range', () => {
+    // the review's case: the head segment sits exactly at STRETCH_MIN and the clip's stretch
+    // is 1+ε — the snap to plain speed divides the marker by s0, which used to slip past the
+    // bounds and leave the segment at ×0.2499999 (the engine refuses that map)
+    const c = clip({ start: 8, len: 4, stretch: 1.0000005, warp: [marker(1, 0.25)] });
+    const s = stretchClip(c, 'r', c.start + 4, 1, 2); // k = 1: s = 1.0000005, the snap fires
+    expect(s.stretch).toBeCloseTo(1.0000005, 9); // snap refused: 1/s0 is out of bounds
+    expect(s.warp![0].to).toBe(0.25); // the segment stays exactly at its limit
+    // and the snap still works on a map that has room for it
+    const roomy = clip({ start: 8, len: 4, stretch: 1.0000005, warp: [marker(1, 1.5)] });
+    const snapped = stretchClip(roomy, 'r', roomy.start + 4, 1, 2);
+    expect(snapped.stretch).toBeUndefined();
+    expect(snapped.warp![0].to).toBeCloseTo(1.5 / 1.0000005, 6);
+  });
+
   it('fitClip refuses factors the marker segments cannot take', () => {
     const c = clip({ warp: [marker(1, 1.5)] });
     expect(fitClip(c, 12, 2)).toBeNull(); // ×3 → the head segment would stretch ×4.5
