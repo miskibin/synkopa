@@ -1498,6 +1498,9 @@ pub struct Clip {
     /// default pitch-preserving time-stretch.
     #[serde(default, skip_serializing_if = "is_false")]
     pub resample: bool,
+    /// Keep the audio region and its beat length when the project's constant BPM changes.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub follow_tempo: bool,
     /// Audio clips: transposition in semitones (cents as the fraction), `CLIP_PITCH` either
     /// way; the length stays. Rendered offline with the stretch, like it.
     #[serde(default, skip_serializing_if = "is_zero_f32")]

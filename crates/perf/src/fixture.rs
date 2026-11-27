@@ -496,6 +496,7 @@ fn new_clip(id: Id, track: u32, start: f64, len: f64, kind: ClipKind, source: Id
         tune: None,
         stretch: 1.0,
         resample: false,
+        follow_tempo: false,
         pitch: 0.0,
         insert: None,
         root: 60,
