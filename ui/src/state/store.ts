@@ -11,13 +11,13 @@
 // taken before reads stale data afterwards). `M` never shares an object with the store.
 import { $PROXY, createMemo, createRoot, snapshot, untrack } from 'solid-js';
 import type { Catalog, Clip, Fx, Id, Insert, Note, Op, Pattern, Project, StateDto, TransportDto } from '../api/types';
-import { MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, TOTAL_BEATS } from '../api/types';
+import { MAX_SIG_NUM, MAX_SIG_POINTS, MAX_TEMPO_BPM, MAX_TEMPO_POINTS, MIN_TEMPO_BPM, SIG_DENS, TOTAL_BEATS } from '../api/types';
 import { applyCompOp, compExtent } from '../lib/comp';
 import { batch, createSignal, createStore } from '../lib/reactive';
 import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
 import { putMarker, removeMarker } from '../lib/markers';
-import { applyPatternOp, fitLen as fitPatternLen, followChanges, followPatternLength, type FollowReport } from '../lib/pattern';
+import { applyPatternOp, barOf, fitLenIn as fitPatternLenIn, followChanges, followPatternLength, type FollowReport } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
 import { applyTransform } from '../lib/transforms';
 import { dropSourcePeaks } from './peaks';
@@ -467,10 +467,11 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       const sizeOk = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 512;
       if (op.verb.kind === 'euclidFill' && (!sizeOk(op.verb.k) || !sizeOk(op.verb.n))) return;
       if (op.verb.kind === 'euclidDrums' && op.verb.voices.some(v => !sizeOk(v.k) || !sizeOk(v.n))) return;
-      try { applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(16, Math.round(pt.len * 4))); } catch { return; }
+      const spb = Math.max(1, Math.round(barOf(pt) * 4));
+      try { applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(spb, Math.round(pt.len * 4)), spb); } catch { return; }
       pt.notes = notes;
       const oldLen = pt.len;
-      fitPatternLen(pt);
+      fitPatternLenIn(pt, barOf(pt));
       // a generator can push notes past the pattern's end: whole-pass clips follow, like putPattern
       if (Math.abs(oldLen - pt.len) > 1e-9) followPatternLength(p, op.pattern, oldLen, pt.len);
       return;
@@ -492,6 +493,18 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       else p.tempoPoints = pts;
       return;
     }
+    case 'setSigPoints': {
+      // the same normalization as `applyOps` (and `compiledSig`): the optimistic mirror
+      // matches the accepted project until the reconcile
+      if (op.points.length > MAX_SIG_POINTS) return;
+      const pts = op.points
+        .map(x => ({ beat: Math.min(Math.max(x.beat, 0), TOTAL_BEATS), num: Math.min(Math.max(Math.round(x.num), 1), MAX_SIG_NUM), den: SIG_DENS.includes(x.den) ? x.den : 4 }))
+        .sort((x, y) => x.beat - y.beat);
+      if (!pts.length) delete p.sigPoints;
+      else p.sigPoints = pts;
+      // a pattern keeps its own stored bar: the map changes nothing about its length
+      return;
+    }
     default: {
       // a new Op kind must be applied optimistically too, or its edit stalls until the reconcile
       const exhaustive: never = op;
@@ -501,7 +514,7 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
 }
 
 /** Ops whose application copies everything it keeps (the others are copied for the store: `M` must not share objects with it). */
-const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setTempoPoints', 'setLoop', 'setKey', 'putAutomation', 'transformNotes', 'putMarker', 'removeMarker']);
+const SELF_COPYING = new Set<Op['op']>(['putClips', 'removeClips', 'removeTrack', 'putPattern', 'putChannel', 'removeChannel', 'removeInsert', 'removeFx', 'moveFx', 'removeSource', 'removeComp', 'removePattern', 'removeAutomation', 'setBpm', 'setTempoPoints', 'setSigPoints', 'setLoop', 'setKey', 'putAutomation', 'transformNotes', 'putMarker', 'removeMarker']);
 const copyOp = (op: Op): Op => {
   if (SELF_COPYING.has(op.op)) return op;
   try { return structuredClone(op); } catch { return plain(op); } // an op holding store proxies

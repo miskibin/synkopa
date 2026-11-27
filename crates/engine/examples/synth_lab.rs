@@ -341,6 +341,7 @@ fn render_song(preset: &str, song: &Song) -> Vec<f32> {
         color: "#4f8ef7".into(),
         len: song.beats,
         min_len: song.beats,
+        bar: 4.0,
         notes,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

@@ -49,6 +49,7 @@ fn engine(name: &str, notes: &[N], other: &[N]) -> Arc<Engine> {
         color: "#4f8ef7".into(),
         len: 8.0,
         min_len: 8.0,
+        bar: 4.0,
         notes: all,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

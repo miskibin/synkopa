@@ -26,7 +26,7 @@ FOR SCRIPTS AND AGENTS
   stdout is one JSON value, messages go to stderr. Exit: 0 ok, 1 usage, 2 app not running/unreachable,
   3 refused ("CODE: message", e.g. BAD_OPS, REVISION_CONFLICT, NEEDS_APP, FILE_OPEN).
   Read `context` first, then `schema` (ops for `apply`) and `catalog` (effect params, presets).
-  Units: time in beats (4 = 1 bar), note step/len in 16ths, vol 0.7937 = 0 dB, clip gain dB, pan -1..1.
+  Units: time in beats (a bar is the signature's length where it plays, 4 beats in 4/4), note step/len in 16ths, vol 0.7937 = 0 dB, clip gain dB, pan -1..1.
   New ids: count up from context.nextId. One `apply` batch is atomic: prefer it for related edits.
   Check a result without listening: `render --out x.wav` returns peak/RMS/crest/clipping per file.
   On a file, play/stop/undo/redo/auditions are refused (NEEDS_APP); edits to a file the app has

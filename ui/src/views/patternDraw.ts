@@ -325,7 +325,7 @@ export function rollPalette() {
   };
 }
 
-function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, root: number, mask: number, grid: number) {
+function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, root: number, mask: number, grid: number, spb = 16) {
   const k0 = Math.max(0, Math.floor(127 - (G.sy + H) / G.rowH)), k1 = Math.min(127, Math.ceil(127 - G.sy / G.rowH));
   const P = rollPalette(), scaled = mask !== 0xfff;
   g.fillStyle = P.white; g.fillRect(0, 0, W, H);
@@ -360,7 +360,7 @@ function rollBg(g: CanvasRenderingContext2D, W: number, H: number, G: RollGeo, r
     }
   }
   for (let s = Math.ceil(s0 / 4) * 4; s <= s1; s += 4) {
-    g.fillStyle = s % 16 === 0 ? P.bar : P.beat;
+    g.fillStyle = s % spb === 0 ? P.bar : P.beat;
     g.fillRect(Math.round(rollX(G, s)), 0, 1, H);
   }
   // the octave seam (B under C) over the time lines, so octaves read as one block each
@@ -391,13 +391,15 @@ export function drawRoll(g: CanvasRenderingContext2D, W: number, H: number, G: R
   pt: Pattern; ch: Channel; chans: Map<Id, Channel>; sel: Set<number>; root: number; mask: number;
   /** Snap grid in steps: its lines are drawn (triplet grids get triplet lines). */
   grid: number; hoverKey: number | null; lit?: number[]; marquee: { x0: number; y0: number; x1: number; y1: number } | null;
+  /** Steps in one bar of the pattern's own grid (the signature where it plays, 16 in 4/4). */
+  spb?: number;
   /** Ctrl+right-drag: the box the view will zoom to (dashed, no fill: it selects nothing). */
   zoomBox?: { x0: number; y0: number; x1: number; y1: number } | null;
   /** Chord-stamp tool: what a click at this cell would write (ghosted, dashed outline). */
   stampGhost?: { s: number; len: number; pitches: number[] } | null;
 }) {
   g.clearRect(0, 0, W, H);
-  const bg = layer.get(W, H, ['roll', G.pps, G.sx, G.sy, G.rowH, G.kw, G.steps, o.root, o.mask, o.grid].join('|'), (gg, w, h) => rollBg(gg, w, h, G, o.root, o.mask, o.grid));
+  const bg = layer.get(W, H, ['roll', G.pps, G.sx, G.sy, G.rowH, G.kw, G.steps, o.root, o.mask, o.grid, o.spb].join('|'), (gg, w, h) => rollBg(gg, w, h, G, o.root, o.mask, o.grid, o.spb));
   g.drawImage(bg, 0, 0, W, H);
   g.save();
   g.beginPath(); g.rect(G.kw, 0, W - G.kw, H); g.clip();

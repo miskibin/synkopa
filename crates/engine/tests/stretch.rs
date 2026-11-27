@@ -140,6 +140,7 @@ fn invalid_stretches_are_rejected() {
         color: "#fff".into(),
         len: 4.0,
         min_len: 4.0,
+        bar: 4.0,
         notes: vec![],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

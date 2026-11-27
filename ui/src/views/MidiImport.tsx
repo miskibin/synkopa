@@ -1,6 +1,8 @@
 // "Import MIDI": the parts of a .mid file (track × channel) with what each becomes in Synkopa,
-// chosen with checkboxes; optionally the file's tempo. Imports as one new pattern on the
-// Playlist, or — opened from a channel — one part's notes into that channel. One undo step.
+// chosen with checkboxes; optionally the file's musical time — its tempo and its meter map
+// (one opt-in covers both: the meters arrive as the file's signature points). Imports as one
+// new pattern on the Playlist, or — opened from a channel — one part's notes into that
+// channel. One undo step.
 import { For, Show } from 'solid-js';
 import { createSignal, watch } from '../lib/reactive';
 import { be } from '../api/backend';
@@ -16,10 +18,6 @@ import { say, setU, U } from '../state/ui';
 import { DialogBoundary } from '../ui/PanelBoundary';
 import { modal } from '../ui/modal';
 
-/** Whether the file sets a tempo at all — at tick 0, or later (the map arrives with it). */
-const hasTempo = (f: MidiInfo) => f.bpm != null || f.tempoPoints.length > 0;
-/** The tempo the file starts at: its tick-0 value, else MIDI's implied default of 120. */
-const fileBpm = (f: MidiInfo) => f.bpm ?? 120;
 
 export function MidiImport() {
   const [info, setInfo] = createSignal<MidiInfo | null>(null);
@@ -30,7 +28,18 @@ export function MidiImport() {
   const [busy, setBusy] = createSignal(false);
   let req = 0, importBtn: HTMLButtonElement | undefined;
 
-  const into = () => U.midiWin?.into ?? null;
+/** Whether the file sets musical time at all — a tempo (at tick 0 or later) or a meter map
+ *  (one opt-in covers both). */
+const hasTime = (f: MidiInfo) => f.bpm != null || f.tempoPoints.length > 0 || (f.sigPoints?.length ?? 0) > 0;
+/** Why the opt-in is worth it: a map is a reason on its own — the tempo map's changes and
+ *  the meters land with the notes; a bare tick-0 tempo only when it differs from the
+ *  project's. */
+const worthTempo = (f: MidiInfo) =>
+  f.tempoPoints.length > 0 || (f.sigPoints?.length ?? 0) > 0 || (f.bpm != null && Math.abs(f.bpm - f.projectBpm) > 0.005);
+/** The file's meters as they read ("7/8 · 3/4"). */
+const meterList = (f: MidiInfo) => (f.sigPoints ?? []).map(s => `${s.num}/${s.den}`).join(' · ');
+const bpmText = (f: MidiInfo) => f.bpm?.toFixed(2).replace(/\.?0+$/, '') ?? '';
+const into = () => U.midiWin?.into ?? null;
   const close = () => setU('midiWin', null);
   watch(() => U.midiWin?.path, path => {
     setInfo(null); setErr(null); setPicked(new Set<number>());
@@ -42,11 +51,8 @@ export function MidiImport() {
       const withNotes = f.parts.filter(p => p.notes > 0);
       // into a channel: the first melodic part (drum notes rarely belong in a pitched channel)
       setPicked(new Set(into() ? [(withNotes.find(p => !p.drums) ?? withNotes[0])?.index].filter((x): x is number => x != null) : withNotes.map(p => p.index)));
-      // a fresh project takes the file's tempo (the tick-0 value, or MIDI's implied 120 when
-      // the file's first change comes later — the map arrives with it); one with an
-      // arrangement keeps its own. A map is a reason on its own: even when the file's base
-      // matches the project's, its later changes are worth importing.
-      setTempo(hasTempo(f) && (f.tempoPoints.length > 0 || Math.abs(fileBpm(f) - f.projectBpm) > 0.005) && !S.project.clips.length);
+      // a fresh project takes the file's musical time; one with an arrangement keeps its own
+      setTempo(hasTime(f) && worthTempo(f) && !S.project.clips.length);
       queueMicrotask(() => importBtn?.focus());
     }).catch(e => { if (id === req) setErr(String(e)); });
   });
@@ -83,9 +89,12 @@ export function MidiImport() {
       // the backend's import warnings (a clamped tempo point, …) surface where the success
       // line does — the dialog is already closed here
       const warns = r.warnings ?? [];
+      const took = r.tempoSet
+        ? ' · ' + (f.bpm != null ? t('d.midi.saidTempo', { bpm: bpmText(f) }) : t('d.midi.saidMeter', { list: meterList(f) }))
+        : '';
       say(
-        t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / 4) })
-        + (r.tempoSet ? ' · ' + t('d.midi.saidTempo', { bpm: fileBpm(f).toFixed(2).replace(/\.?0+$/, '') }) : '')
+        t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / (r.bar ?? 4)) })
+        + took
         + (warns.length ? ' · ' + warns[0] + (warns.length > 1 ? t('d.midi.warnMore', { n: warns.length - 1 }) : '') : ''),
       );
       openRoll(r.channelIds.find(id => S.project.channels?.find(c => c.id === id)?.kind !== 'sample') ?? r.channelIds[0]);
@@ -109,8 +118,8 @@ export function MidiImport() {
               <>
                 <div class="note">{[
                   f().bpm != null
-                    ? f().bpm!.toFixed(2).replace(/\.?0+$/, '') + ' BPM'
-                    : f().tempoChanges > 0 ? t('d.midi.tempoChanges', { n: f().tempoChanges }) : t('d.midi.noTempo'),
+                    ? bpmText(f()) + ' BPM'
+                    : f().sigPoints?.length ? meterList(f()) : f().tempoChanges > 0 ? t('d.midi.tempoChanges', { n: f().tempoChanges }) : t('d.midi.noTempo'),
                   barsText(Math.ceil(f().end / 4)), t('d.midi.parts', { n: f().parts.length }),
                 ].join(' · ')}</div>
                 <For each={f().warnings}>{w => <div class="note warn">{w}</div>}</For>
@@ -131,9 +140,11 @@ export function MidiImport() {
                   </For>
                 </ul>
                 <Show when={into()} fallback={
-                  <Show when={hasTempo(f()) && (f().tempoPoints.length > 0 || Math.abs(fileBpm(f()) - f().projectBpm) > 0.005)}>
+                  <Show when={hasTime(f()) && worthTempo(f())}>
                     <label class="row midiopt"><input type="checkbox" checked={tempo()} disabled={busy()} onChange={e => setTempo(e.currentTarget.checked)} />
-                      {t('d.midi.tempo', { bpm: fileBpm(f()).toFixed(2).replace(/\.?0+$/, ''), now: f().projectBpm.toFixed(2).replace(/\.?0+$/, '') })}</label>
+                      {f().bpm != null
+                        ? t('d.midi.tempo', { bpm: bpmText(f()), now: f().projectBpm.toFixed(2).replace(/\.?0+$/, '') }) + (f().sigPoints?.length ? ' · ' + t('d.midi.withMeter', { list: meterList(f()) }) : '')
+                        : t('d.midi.withMeter', { list: meterList(f()) })}</label>
                   </Show>
                 }>
                   <label class="row midiopt"><input type="checkbox" checked={replace()} disabled={busy()} onChange={e => setReplace(e.currentTarget.checked)} />{t('d.midi.replace')}</label>

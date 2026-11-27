@@ -12,6 +12,7 @@ import { rgba, T } from '../ui/theme';
 import { clamp, dbg, mod } from '../lib/format';
 import { t } from '../lib/i18n';
 import { snapRes } from '../lib/snap';
+import { barLines, compiledSig, isBarStart, type SigPoint } from '../lib/signatures';
 import { getClipPeaks, getPeaks, peakRange } from '../state/peaks';
 import { prefs } from '../state/prefs';
 import { drawGlyph, guessIcon, patternIcon, sampleIcon, trackIcon } from '../ui/instIcons';
@@ -119,6 +120,7 @@ export function patternPreview(p: Pattern, chans: Map<Id, Channel>, h: number): 
 
 export function drawGrid(g: CanvasRenderingContext2D, v: View, p: Project, rec: null | { track: number; clipStart: number; seconds: number; peaks: Float32Array; nPeaks: number; pass?: number }) {
   const { offX, offY, W, H, bw, tops } = v;
+  const map: SigPoint[] = compiledSig(p.sigPoints);
   g.save();
   g.translate(-(v.orgX ?? offX), -(v.orgY ?? offY));
   const x0 = offX, x1 = offX + W, y0 = offY, y1 = offY + H;
@@ -151,9 +153,9 @@ export function drawGrid(g: CanvasRenderingContext2D, v: View, p: Project, rec: 
     for (let k = Math.floor(b0 / u); k * u <= b1; k++) g.fillRect(Math.round(k * u * bw), y0, 1, gridBottom - y0);
   }
   g.fillStyle = T.gridBeat;
-  for (let b = b0; b <= b1; b++) if (b % 4) g.fillRect(Math.round(b * bw), y0, 1, gridBottom - y0);
+  for (let b = b0; b <= b1; b++) if (!isBarStart(map, b)) g.fillRect(Math.round(b * bw), y0, 1, gridBottom - y0);
   g.fillStyle = T.gridBar;
-  for (let b = Math.floor(b0 / 4) * 4; b <= b1; b += 4) g.fillRect(Math.round(b * bw), y0, 1, gridBottom - y0);
+  for (const { beat } of barLines(map, b0, b1)) g.fillRect(Math.round(beat * bw), y0, 1, gridBottom - y0);
   // (the loop range is shaded on the playlist's overlay canvas: moving it repaints no clip)
   // clips
   const { pats, chans, sigs, srcs, autos, comps, patIcons } = lookupsOf(p, v.ver);

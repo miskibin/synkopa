@@ -7,7 +7,7 @@ import { say, tucked, U } from '../state/ui';
 import { upd } from '../state/updates';
 import { APP_GLYPH } from '../ui/menuIcons';
 
-/** View names match the English menus so ChatGPT can find them in the source. */
+/** View names match the English menus so ChatGPT can find them in the user guide. */
 function currentView(): string {
   const parts = [U.mixView ? 'Mix view (F9)' : 'Playlist'];
   if (U.rackWin || rackFloating()) parts.push('Channel rack');

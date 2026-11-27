@@ -16,10 +16,13 @@ describe('encodeComponent', () => {
 });
 
 describe('askPrompt', () => {
-  it('names the version, the repository, the view and the question', () => {
+  it('names the version, the user guide, the view and the question', () => {
     const p = askPrompt('  jak dodać kanał?  ', { version: '0.4.0', view: 'Mixer' });
     expect(p).toContain('Synkopa 0.4.0');
-    expect(p).toContain('https://github.com/miskibin/synkopa');
+    expect(p).toContain('https://miskibin.github.io/synkopa/docs/');
+    expect(p).toContain('Read the official user guide and relevant linked pages before answering.');
+    expect(p).toContain('rather than guessing');
+    expect(p).not.toContain('Check its source code');
     expect(p).toContain('Open in Synkopa right now: Mixer.');
     expect(p.endsWith('Question: jak dodać kanał?')).toBe(true);
   });

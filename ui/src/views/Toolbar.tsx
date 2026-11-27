@@ -13,7 +13,11 @@ import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive
 import { be } from '../api/backend';
 import { notify } from '../state/notice';
 import { clamp, fmtPos, TapTracker } from '../lib/format';
+import { compiledSig } from '../lib/signatures';
 import { snapLabel } from '../lib/snap';
+
+/** Bar numbers follow the song's meters. */
+const sigs = createMemo(() => compiledSig(S.project.sigPoints));
 import * as A from '../state/actions';
 import * as MK from '../state/markers';
 import { commit, Gesture, wheelEdit } from '../state/edit';
@@ -344,7 +348,7 @@ export function Toolbar() {
             <Show when={S.project.loop}>{l => (
               <span data-drag class="loopText" title={t('a.tb.loopTip')}
                 onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY, [{ t: 'item', label: t('a.pl.deleteLoop'), act: () => { A.setLoop(null, t('a.pl.deleteLoop')); say(t('a.pl.loopDeleted')); } }]); }}>
-                LOOP {fmtPos(l().a)} – {fmtPos(l().b)}
+                LOOP {fmtPos(l().a, sigs())} – {fmtPos(l().b, sigs())}
               </span>
             )}</Show>
             <button class={['tsw follow', { on: U.follow }]} aria-pressed={U.follow ? 'true' : 'false'} title={t('a.tb.followTip')} onClick={() => setU('follow', !U.follow)}>
@@ -411,7 +415,7 @@ function MenuBar() {
     ];
     if (none) return items;
     items.push({ t: 'sec', label: t('a.mk.inSong', { n: ms.length }) });
-    for (const m of ms) items.push({ t: 'item', label: (m.name || t('a.mk.unnamed')) + ' · ' + fmtPos(m.at), title: t('a.mk.jumpTip'), act: () => MK.jumpTo(m.id) });
+    for (const m of ms) items.push({ t: 'item', label: (m.name || t('a.mk.unnamed')) + ' · ' + fmtPos(m.at, sigs()), title: t('a.mk.jumpTip'), act: () => MK.jumpTo(m.id) });
     return items;
   };
   const menus: [TranslationKey, () => MenuItem[]][] = [
@@ -482,6 +486,7 @@ function MenuBar() {
       })) },
     ]],
     ['a.mn.help', () => [
+      { t: 'item', label: t('a.mn.docs'), glyph: G.docs, act: () => void be().openDocs().catch(e => notify(t('a.mn.docsFailed', { error: String(e) }))) },
       { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
       { t: 'item', label: t('a.cmd.title'), glyph: G.shortcuts, kbd: 'Ctrl+K', act: () => setPaletteOpen(true) },
       { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },

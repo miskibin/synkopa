@@ -207,6 +207,17 @@ describe('replaceMeta (our own edit came back: the project is already applied lo
 describe('applyLocal (optimistic edits)', () => {
   beforeEach(() => store.replaceState(dto(project())));
 
+  it('setSigPoints changes nothing about pattern or clip lengths (a pattern keeps its own bar)', () => {
+    // miskibin's policy: the map reflows where the bars fall; a pattern's stored grid and
+    // length are untouched, optimistically and in the plain mirror
+    store.replaceState(dto(project({ sigPoints: [] })));
+    const before = store.rawOf(store.S.project).patterns[0];
+    store.applyLocal([{ op: 'setSigPoints', points: [{ beat: 0, num: 3, den: 4 }] }]);
+    expect(store.S.project.patterns[0].len).toBe(before.len);
+    expect(store.S.project.clips[0].len).toBe(4);
+    expect(store.S.project.sigPoints).toEqual([{ beat: 0, num: 3, den: 4 }]);
+  });
+
   it('moves a clip in place: same object, only its readers re-run, synchronously visible', () => {
     const c10 = clipById(10), c11 = clipById(11);
     const r10 = runs(() => c10.start), r11 = runs(() => c11.start);

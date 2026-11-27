@@ -15,10 +15,18 @@ import * as MK from '../state/markers';
 import { addFrameTask, fitCanvas } from '../ui/frameLoop';
 import { track } from '../ui/drag';
 import { shownPreview } from '../state/previewWave';
+import { barAt, barBeatsAt, beatAtBar, compiledSig, isBarStart } from '../lib/signatures';
+import { barLenMap, barOf } from '../lib/pattern';
+import { createMemo } from 'solid-js';
 
 const BEATS_PER_BAR = 4;
 /** The track's inset from the slider's ends (styles.css `.songpos .sptrack`): the handle stays whole at both ends. */
 const INSET = 6;
+/** The signature map the readouts count bars by: the song's meters, or the current pattern's own bar grid in PAT. */
+const sigs = createMemo(() => compiledSig(S.project.sigPoints));
+const readoutMap = (pat: number | null) => (pat != null ? barLenMap(barOf(S.project.patterns.find(x => x.id === pat) ?? { bar: 4 })) : sigs());
+/** One bar of what the slider follows (the signature at its position; the pattern's own bar in PAT). */
+const barStepAt = (at: number, pat: number | null) => (pat != null ? barOf(S.project.patterns.find(x => x.id === pat) ?? { bar: 4 }) : barBeatsAt(sigs(), at));
 
 /** What the slider and the readout follow: the song (SONG) or the current pattern (PAT, FL's Piano roll position). */
 function span(): { len: number; at: number; pat: number | null } {
@@ -72,19 +80,27 @@ export function SongPos() {
     const go = (ev: PointerEvent) => {
       const b = beatAt(ev.clientX, ev.shiftKey);
       setDrag(b);
-      setU('readout', t('a.tb.posAt', { pos: fmtPos(b) }));
+      setU('readout', t('a.tb.posAt', { pos: fmtPos(b, readoutMap(span().pat)) }));
       if (live) seekTo(b, pat);
     };
     go(e);
     track(go, () => { const b = drag(); setDrag(null); if (b != null && !live) seekTo(b, pat); }, 'ew-resize');
   };
   const key = (e: KeyboardEvent) => {
-    const s = span(), step = e.shiftKey ? 1 : BEATS_PER_BAR;
+    const s = span(), step = e.shiftKey ? 1 : barStepAt(s.at, s.pat);
     let b: number | null = null;
-    if (e.key === 'ArrowRight') b = Math.floor(s.at / step + 1e-6) * step + step;
-    else if (e.key === 'ArrowLeft') b = Math.ceil(s.at / step - 1e-6) * step - step;
-    else if (e.key === 'Home') b = 0;
+    if (e.key === 'Home') b = 0;
     else if (e.key === 'End') b = s.pat != null ? s.len - 1 : s.len;
+    else if (e.shiftKey || s.pat != null) {
+      // a fixed grid: the beat step, or the pattern's own (constant) bar grid in PAT
+      if (e.key === 'ArrowRight') b = Math.floor(s.at / step + 1e-6) * step + step;
+      else if (e.key === 'ArrowLeft') b = Math.ceil(s.at / step - 1e-6) * step - step;
+    } else {
+      // the song's bars: bar lines of the map, however unevenly the meters lay them
+      const map = sigs(), bar = barAt(map, s.at);
+      if (e.key === 'ArrowRight') b = beatAtBar(map, bar + 1);
+      else if (e.key === 'ArrowLeft') b = beatAtBar(map, Math.max(0, isBarStart(map, s.at) ? bar - 1 : bar));
+    }
     if (b == null) return;
     e.preventDefault(); e.stopPropagation();
     seekTo(clamp(b, 0, s.len), s.pat);
@@ -110,7 +126,8 @@ export function PosReadout() {
   let el!: HTMLSpanElement;
   let last = '';
   onMount(() => onCleanup(addFrameTask(() => {
-    const s = fmtClock(span().at);
+    const w = span();
+    const s = fmtClock(w.at, readoutMap(w.pat));
     if (s !== last) { last = s; el.textContent = s; }
   })));
   return <span ref={el} class="clock" title={t('a.tb.clockTip')}>1:1:1</span>;

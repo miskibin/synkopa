@@ -266,7 +266,7 @@ function arpeggiateNotes(notes: Note[], roots: { id: number; root: number }[], m
 }
 
 /** One `transformNotes` op against a pattern's notes; mutates `notes` in place. Throws on invalid params. */
-export function applyTransform(notes: Note[], verb: TransformVerb, seed: number, select: TransformSelect | null, roots: { id: number; root: number }[], key: number | null, scale: number, lenSteps: number): void {
+export function applyTransform(notes: Note[], verb: TransformVerb, seed: number, select: TransformSelect | null, roots: { id: number; root: number }[], key: number | null, scale: number, lenSteps: number, spb = 16): void {
   const rng = new SplitMix64(seed);
   const chanOk = (id: number) => roots.some(r => r.id === id);
   if ((verb.kind === 'euclidFill' || verb.kind === 'melody') && !chanOk(verb.ch)) throw new Error(`no channel with id ${verb.ch}`);
@@ -397,7 +397,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         }
       }
       chords.forEach((chd, bar) => {
-        [...chd].sort((a, b) => a - b).forEach(p => target.push({ ch, step: bar * 16, len: 16, p, v: 0.75, trig: false }));
+        [...chd].sort((a, b) => a - b).forEach(p => target.push({ ch, step: bar * spb, len: spb, p, v: 0.75, trig: false }));
       });
       break;
     }
@@ -470,7 +470,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         for (let i = target.length - 1; i >= 0; i--) if (target[i].ch === v.ch) target.splice(i, 1);
         const vel = Math.min(1, Math.max(0.1, Math.fround(Math.fround(v.vel ?? 0.7) * Math.fround(1 + Math.fround(shade.pm1() * Math.fround(0.15))))));
         const onsets = euclideanOnsets(v.k, v.n, v.rotate ?? 0);
-        const slot = Math.fround((bars * 16) / Math.max(1, v.n));
+        const slot = Math.fround((bars * spb) / Math.max(1, v.n));
         let hits = 0;
         onsets.forEach((on, i) => {
           if (on) {
@@ -495,7 +495,7 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
         // the first `repeat` bars invent the motif; later bars replay their cycle's
         // rhythm with the walk nudged ±1 degree
         const build = bar < rep;
-        for (let slot = 0; slot < 16; slot++) {
+        for (let slot = 0; slot < spb; slot++) {
           let d: number; let len: number;
           if (build) {
             len = rng.unit() < Math.fround(0.3) ? 2 : 1;
@@ -508,13 +508,13 @@ export function applyTransform(notes: Note[], verb: TransformVerb, seed: number,
               d = -1;
             }
           } else {
-            const src = seq[(bar % rep) * 16 + slot];
+            const src = seq[(bar % rep) * spb + slot];
             if (src.d < 0) { d = -1; len = src.len; }
             else { deg = Math.min(n - 1, Math.max(0, deg + [0, -1, 1][rng.below(3)])); d = deg; len = src.len; }
           }
           if (d < 0) continue;
           const midi = 48 + (key ?? 0) + degrees[d % n];
-          target.push({ ch: verb.ch, step: bar * 16 + slot, len, p: midi, v: 0.8, trig: false });
+          target.push({ ch: verb.ch, step: bar * spb + slot, len, p: midi, v: 0.8, trig: false });
         }
       }
       break;

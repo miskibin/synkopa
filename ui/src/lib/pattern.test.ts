@@ -11,6 +11,22 @@ const KICK = 1000, BASS = 1003;
 const bass: Channel = { id: BASS, name: 'Bass', color: '#7c8cf8', kind: 'sample', source: 1, sampler: samplerDefault(), vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 36 };
 const steps = (notes: Note[], ch: number) => notes.filter(n => n.ch === ch).map(n => n.step).sort((a, b) => a - b);
 
+
+it('migrateProject fits to the pattern\u2019s own stored bar, like the engine', () => {
+  const p: Project = { version: 5, bpm: 120, loop: null, nextId: 100, tracks: [], inserts: [], sources: [], clips: [],
+    patterns: [{ id: 9, name: 'ProgL', color: '#7c8cf8', len: 8, minLen: 8, bar: 3.5, notes: [{ ch: 10, step: 0, len: 1 }] }],
+    channels: [{ id: 10, name: 'Kick', color: '#fff', kind: 'sample', source: 50, vol: 0.8, pan: 0, mute: false, solo: false, insert: null, root: 36, sampler: samplerDefault() }],
+    notebook: { pages: [] }, key: null, scale: 1 };
+  p.sources = [{ id: 50, name: 'Kick', color: '#fff', path: '/a/kick.wav', dur: 1, sr: 48000, ch: 1, peakDb: 0 }];
+  migrateProject(p);
+  // minLen 8 re-rounds to whole 3.5-beat bars: ceil(8/3.5) = 3 -> 10.5; len keeps at least that
+  expect(p.patterns.find(x => x.id === 9)?.minLen).toBe(10.5);
+  expect(p.patterns.find(x => x.id === 9)?.len).toBe(10.5);
+  const again = structuredClone(p);
+  migrateProject(again);
+  expect(again).toEqual(p);
+});
+
 describe('step sequencer', () => {
   it('keeps a trigger when copied and converts it only when resized', () => {
     const [step] = setStep([], KICK, 4, true);

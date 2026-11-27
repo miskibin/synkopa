@@ -150,6 +150,7 @@ function opKey(op: Op): string {
     case 'putSource': return 's' + op.source.id;
     case 'setBpm': return 'bpm';
     case 'setTempoPoints': return 'tempo';
+    case 'setSigPoints': return 'sig';
     case 'setLoop': return 'loop';
     case 'putAutomation': return 'a' + op.automation.id;
     case 'putComp': return 'c' + op.comp.id;

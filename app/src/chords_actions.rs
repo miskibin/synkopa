@@ -147,7 +147,7 @@ pub fn to_pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Valu
     };
     let name = if src_name.is_empty() { "Chords".to_string() } else { format!("Chords – {src_name}") };
     // the pattern starts on the bar of the first chord, so it lines up with the grid
-    let start = (segs[0].start / 4.0).floor() * 4.0;
+    let start = e.project().sig_map().beat_at_bar(e.project().sig_map().bar_at(segs[0].start));
     let end = segs.last().map(|s| s.end).unwrap_or(start);
     let notes = |ch: u64| chord_notes(&segs, start, ch);
     let mut made = put_pattern_under_clip(
@@ -202,7 +202,9 @@ pub fn put_pattern_under_clip(e: &Engine, plan: &PatternPlan, if_revision: Optio
                 }
             };
             let start = plan.start;
-            let len = (((plan.end - start) / 4.0).ceil() * 4.0).max(4.0);
+            // whole bars of the signature where the pattern lands
+            let bar = p.sig_map().bar_beats_at(start);
+            let len = (((plan.end - start) / bar - 1e-6).ceil().max(1.0) * bar).max(bar);
             let pattern_id = id();
             let name = fresh_name(p, plan.name);
             ops.push(Op::PutPattern {
@@ -211,7 +213,8 @@ pub fn put_pattern_under_clip(e: &Engine, plan: &PatternPlan, if_revision: Optio
                     name,
                     color: plan.color.into(),
                     len,
-                    min_len: 4.0,
+                    min_len: bar,
+                    bar,
                     notes: notes(ch),
                     swing: 0.0,
                     channel_loops: std::collections::BTreeMap::new(),

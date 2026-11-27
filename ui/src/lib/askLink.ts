@@ -4,7 +4,7 @@
 
 export type AskService = 'chatgpt' | 'deepwiki';
 
-export const REPO_URL = 'https://github.com/miskibin/synkopa';
+export const DOCS_URL = 'https://miskibin.github.io/synkopa/docs/';
 export const MAX_ASK_URL = 2000;
 const CHATGPT_URL = 'https://chatgpt.com/?q=';
 const CHATGPT_HOME = 'https://chatgpt.com/';
@@ -23,15 +23,15 @@ export function encodeComponent(s: string): string {
 }
 
 /**
- * What ChatGPT gets: which app, where its code is, how to answer, then the question. The
+ * What ChatGPT gets: which app, where its user guide is, how to answer, then the question. The
  * instructions are English (the model follows them best) and ask for the question's language.
  */
 export function askPrompt(question: string, ctx: { version: string | null; view: string | null }): string {
   const app = ctx.version ? `Synkopa ${ctx.version}` : 'Synkopa';
   const lines = [
-    `I use ${app}, an open-source DAW: ${REPO_URL}`,
-    'Check its source code before answering. Give concrete steps in its interface (menus, buttons, right-click menus, shortcuts).',
-    "If Synkopa can't do it yet, say so plainly. Answer in the language of my question.",
+    `I use ${app}, an open-source DAW. Official user guide: ${DOCS_URL}`,
+    'Read the official user guide and relevant linked pages before answering. Give concrete steps in its interface (menus, buttons, right-click menus, shortcuts), with links to the relevant guide pages.',
+    "If the guide does not confirm a feature for my version, say so rather than guessing. If Synkopa cannot do it yet, say so plainly. Answer in the language of my question.",
   ];
   if (ctx.view) lines.push(`Open in Synkopa right now: ${ctx.view}.`);
   return `${lines.join(' ')}\n\nQuestion: ${question.trim()}`;

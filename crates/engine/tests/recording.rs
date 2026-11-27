@@ -151,6 +151,7 @@ fn unarmed(busy: &[u32], at: f64) -> Project {
         color: "#4f8ef7".into(),
         len: 4.0,
         min_len: 4.0,
+        bar: 4.0,
         notes: vec![],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

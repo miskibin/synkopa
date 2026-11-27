@@ -4,7 +4,7 @@ import { createSignal, effect, onCleanup, onMount } from '../lib/reactive';
 import { t, tName } from '../lib/i18n';
 import type { Channel, LibFile, Note, Pattern } from '../api/types';
 import { FACTORY_KIT, LIB_SCHEME } from '../lib/factory';
-import { barsText, channelStepsOf, clearChannel, fillEvery, loopStepsOf, notesText, rotate, stepsOf } from '../lib/pattern';
+import { barOf, barsText, channelStepsOf, clearChannel, fillEvery, loopStepsOf, notesText, rotate, stepsOf } from '../lib/pattern';
 import { cleanGroup, rackGroups } from '../lib/rackGroups';
 import { libGroup, loadStdLib, stdLibGroups } from '../state/library';
 import { ensurePluginScan, pluginScan, runPluginScan } from '../state/pluginScan';
@@ -248,7 +248,7 @@ export function patItems(p: Pattern, x: number, y: number): MenuItem[] {
     { t: 'item', label: t('b.pm.clone'), kbd: p.id === curPat()?.id ? 'Shift+Ctrl+C' : undefined, act: () => clonePattern(p) },
     { t: 'item', label: t('b.pm.split'), disabled: new Set(p.notes.map(n => n.ch)).size < 2, title: t('b.pm.splitTitle'), act: () => splitByChannel(p) },
     { t: 'item', label: t('d.midi.mnExportPat'), disabled: !p.notes.length, act: () => void midiExport(p.id) },
-    { t: 'item', label: t('b.pm.addBar'), kbd: barsText(p.len / 4), act: () => addBar(p) },
+    { t: 'item', label: t('b.pm.addBar'), kbd: barsText(p.len / barOf(p)), act: () => addBar(p) },
     { t: 'item', label: t('b.pm.removeBar'), disabled: p.len <= 4, title: t('b.pm.removeBarTitle'), act: () => removeBar(p) },
     { t: 'swatches', current: p.color, pick: col => recolorPattern(p, col) },
     { t: 'sep' },
@@ -270,7 +270,7 @@ export function patternMenu(x: number, y: number, showRack = false) {
   const items: MenuItem[] = [{ t: 'title', label: t('b.pm.title') }];
   S.project.patterns.forEach((p, i) => items.push({
     t: 'item', label: (i < 9 ? i + 1 + ' · ' : '') + p.name, icon: 'M5 5h14v14H5z', iconColor: p.color,
-    kbd: p.id === cur?.id ? '✓' : p.notes.length ? barsText(p.len / 4) : t('b.pm.empty'),
+    kbd: p.id === cur?.id ? '✓' : p.notes.length ? barsText(p.len / barOf(p)) : t('b.pm.empty'),
     act: andRack(() => setCurPattern(p.id)),
   }));
   items.push({ t: 'sep' },
@@ -282,7 +282,7 @@ export function patternMenu(x: number, y: number, showRack = false) {
 }
 
 /** "3 notes · 2 bars" for status lines. */
-export const patSummary = () => { const pt = curPat(); return pt ? notesText(pt.notes.length) + ' · ' + barsText(pt.len / 4) : ''; };
+export const patSummary = () => { const pt = curPat(); return pt ? notesText(pt.notes.length) + ' · ' + barsText(pt.len / barOf(pt)) : ''; };
 
 /** The pattern an editor window shows, as a chip: its colour and name; a click lists the patterns. One for the Channel rack and the Piano roll. */
 export function PatternChip(props: { pat: Pattern }) {

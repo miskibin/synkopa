@@ -166,6 +166,7 @@ fn project(instrument: &str, p: &Prog) -> Project {
         color: "#4f8ef7".into(),
         len: p.beats,
         min_len: 4.0,
+        bar: 4.0,
         notes: p.notes.clone(),
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),
