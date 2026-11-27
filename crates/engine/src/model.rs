@@ -1104,7 +1104,7 @@ impl SigMap {
         for &(beat, bar) in &pts {
             if beat <= 0.0 {
                 *map.points.last_mut().unwrap() = (0.0, bar);
-            } else if map.points.last().map_or(false, |&(b, _)| (b - beat).abs() < 1e-9) {
+            } else if map.points.last().is_some_and(|&(b, _)| (b - beat).abs() < 1e-9) {
                 // two points at one beat are one change: the last governs (a duplicated
                 // segment would double-count a fragment in the bar numbering)
                 *map.points.last_mut().unwrap() = (beat, bar);
@@ -1854,7 +1854,8 @@ impl Project {
         // the 4/4 fit used, so projects without signature points are unchanged)
         let map = self.sig_map();
         for pt in self.patterns.iter_mut() {
-            let at = self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pt.id).map(|c| c.start).fold(f64::INFINITY, f64::min);
+            let at =
+                self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pt.id).map(|c| c.start).fold(f64::INFINITY, f64::min);
             pt.fit_len_in(map.bar_beats_at(if at.is_finite() { at } else { 0.0 }));
         }
         if self.channels.is_empty() {

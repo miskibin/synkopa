@@ -160,8 +160,10 @@ the kit and its mixer routing in every pattern.
   in Piano Roll makes it a held note. Replacing a legacy step in the Rack makes it a trigger.
 * `pattern.len` in beats is **derived**, like FL Studio's automatic pattern length: the end
   of the last note rounded up to a whole bar, at least `minLen` (whole bars, ≥ 1; the bars
-  the user keeps on purpose with "+ bar", e.g. a crash every second bar). The engine sets it
-  on every `putPattern` and on load (`Pattern::fit_len`); a `len` sent by a client is
+  the user keeps on purpose with "+ bar", e.g. a crash every second bar). "A bar" is the
+  signature where the pattern plays (`Project::pattern_bar_beats`: the map at its earliest
+  clip; a 7/8 bar is 3.5 beats) — always a whole number of steps. The engine sets it
+  on every `putPattern` and on load (`Pattern::fit_len_in`); a `len` sent by a client is
   ignored. Drawing past the end makes a pattern longer, deleting its last notes shorter.
   When `len` grows, pattern clips that show exactly one whole pass (`offset` 0, `len` = the
   old length) take the new length, but stop at the next clip on their track (any kind), so a
@@ -686,7 +688,7 @@ notes; `select` limits the notes touched by humanize/quantize/strum — the gene
 scale-aware tools),
 `editTune{clip, edit}` (note-level pitch edits of an audio clip, see [Pitch edits](#pitch-edits-on-audio-clips)),
 `putComp{comp}`, `removeComp{id}`, `putNotebook{notebook}`, `putMarker{marker}` (add, move or
-rename a Playlist marker by id; kept sorted by `at`), `removeMarker{id}`, `setBpm{bpm}`, `setLoop{loop}`.
+rename a Playlist marker by id; kept sorted by `at`), `removeMarker{id}`, `setBpm{bpm}`, `setTempoPoints{points}`, `setSigPoints{points}`, `setLoop{loop}`.
 
 Every effect has `mix` (0..1 dry/wet, default 1). Automation:
 `project.key` (0 = C, `null` = none) and `project.scale` (0 chromatic, 1 major, 2 minor, 3/4 pentatonic) feed the scale-aware note tools; `project.automations[] = {id, name, color, target, points:[{t, v}]}`; a clip of
@@ -741,7 +743,7 @@ client: take them from `project.nextId` and increase locally (the engine bumps
 | `relink_search` | `{args: {folder}}` | `{search: {relinked, candidates: {[sourceId]: [{path, exactName, sharedFolders}]}, notFound, scanned, truncated}}` — walks the folder (≤ 250 000 entries, depth 24, no hidden or linked folders) for the missing sources' file names (`crates/engine/src/relink.rs`); relinks each one whose only best match has the remembered length, returns the rest ranked |
 | `midi` | `{cmd: "midi_inspect", args: {path}}` | `{bpm, tempoChanges, tempoPoints, warnings, end, parts: [{index, track, channel (1–16), name, program, gmName, drums, notes, becomes}]}` — a standard MIDI file (format 0/1, `crates/engine/src/midi_file.rs`); import turns `FF 51` tempo events after tick 0 into the project's tempo map (with `setTempo`), export writes the map back (holds once, ramps stepped per beat at each interval's effective BPM); `becomes` = `{kind:"drums", drums}` / `{kind:"keys"}` / `{kind:"synth", preset}` |
 | `midi` | `{cmd: "midi_import", args: {path, parts, setTempo?, beat?, track?, into?: {pattern, ch, replace}}}` | `{patternId, channelIds, clipId, len, revision, warnings, tempoSet}` — one new pattern (GM drums: a library sampler per drum key, rooted at the key; other parts the closest synth preset or Synkopa Instruments) and its clip at `beat` on the first free track; or one part's notes into a channel. One undo step (`Engine::apply_with_library`) |
-| `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + 4/4, one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
+| `midi` | `{cmd: "midi_export", args: {out, pattern?}}` | `{out, what, tracks, notes, bpm}` — format 1, 960 PPQ, tempo + one signature meta per map point (4/4 opener first), one track per channel (drum samplers on channel 10 as their key); the song = pattern clips as placed (looped, cut at the clip end, muted clips left out) |
 | `mix_assist` | `{cmd: "mix_assistant", args: {on?}}` | `{on}` — the live detector (Settings ▸ Mix assistant; on by default) |
 | `mix_assist` | `{cmd: "masking", args: {scan?, from?, to?}}` | `{live, collisions: [{masker, maskerName, protect, protectName, lo, hi, center, overlap, keyDb}]}` — live: what the stream heard; `scan` (or no stream): `Engine::masking_scan` over the beats (default the song or loop) |
 | `mix_assist` | `{cmd: "unmask", args: {masker, protect, lo, hi, keyDb, label?}}` | `{fxId, insert, revision}` — appends `masking::fix_fx` (an EQ keyed from `protect`) to the masker, one undo step |
@@ -1132,8 +1134,8 @@ project, undone, visible to the CLI (`synkopa context` lists the pages, `--full`
 text, `putNotebook` through `apply`). It never touches the audio graph (the op returns an
 empty `Dirty`). Old files without `notebook` open with no pages (`#[serde(default)]`).
 
-* **One line = one bar**, counted from the page's `startBar` (1-based, 4 beats per bar,
-  like the playlist ruler). An empty line is a bar of rest and still counts; a line whose
+* **One line = one bar**, counted from the page's `startBar` (1-based; a bar is the
+  signature map's length at that bar, like the playlist ruler). An empty line is a bar of rest and still counts; a line whose
   trimmed text is `[…]` is a header and takes no bar. `ui/src/lib/notebook.ts` holds the
   mapping (`lineBars`, `lineOfBar`, `barOfBeat`), the Polish syllable counter and the rhyme
   grouping (ending from the penultimate vowel — Polish stress — with `ó`/`u`, `rz`/`ż`,
@@ -1381,9 +1383,31 @@ what "loop this section" sets. The Playlist draws them in a strip above the rule
 while the song has markers (`views/markerDraw.ts`); a drag is local until release (Esc cancels),
 then one `putMarker`. `synkopa markers` is the same set of edits (`actions::markers`).
 
+### Time signatures
+
+`project.sigPoints` (`[{beat, num, den}]`, absent when empty so older builds read the file
+unchanged) is the signature map: from `beat` on, a bar counts `num` units of `1/den` —
+`4·num/den` beats (7/8 is 3.5), always a whole number of 16th steps. Beats stay the timeline's
+axis (the tempo map's doctrine): a change reflows only where the bars fall. Before the first
+point a bar is 4/4; two points at one beat, the last governs; at most 1024. A change may sit
+mid-bar — the truncated bar stays a fragment that counts, and the new grid starts at the change
+(Live's crosshatched fragmentary bar). `SigMap::compile` (model.rs) and `ui/src/lib/signatures.ts`
+hold the one conversion pair (`bar_at`/`beat_at_bar`, mirrored `barAt`/`beatAtBar`); every
+bars-math site reads it: the ruler's lines, numbers and change chips (a chip drags, its menu sets
+the meter or deletes, the timeline menu adds — one undo step per drag, no third strip), "Snap:
+bar" (bar lines, even off the beat), `fmtBbs`, the notebook's bars, the generators' steps per bar,
+the metronome and count-in accents (a 7/8 bar starting at beat 3.5 gets its accent between
+beats), one bar of count-in, the song end. `setSigPoints{points}` writes the map in one undo
+step; MIDI import folds the file's `FF 58` metas to changes (a non-4/4 opener keeps a beat-0
+point, a project cannot imply a meter) and rides the tempo opt-in, shifted to where the pattern
+lands; export writes one signature meta per point after the 4/4 opener. `synkopa markers --bar`
+and `pattern --bars` count map bars. Per-pattern/per-scene signatures and per-signature click
+patterns are out of scope.
+
 ### Song end
 
 SONG playback wraps, and a song export stops, at the bar the last clip ends in
-(`Project::song_end`, `ui/src/lib/export.ts` `songEnd`). A clip running into the next bar by less
+(`Project::song_end`, `ui/src/lib/export.ts` `songEnd`) — under the signature map, on the
+map's next bar line. A clip running into the next bar by less
 than a 16th (`SONG_END_SLACK`: an audio file a hair longer than its bars) does not add that bar; a
 clip that starts in a bar always keeps it.

@@ -258,8 +258,8 @@ fn metronome_accents_follow_the_map() {
         assert!(burst(&out, f64::from(b)).is_some(), "beat {b} clicks");
     }
     let (_, zc_plain) = burst(&out, 1.0).unwrap();
-    for b in [12.5] {
-        let (rms, zc) = burst(&out, b).expect("a fractional bar start still gets its accent");
+    {
+        let (rms, zc) = burst(&out, 12.5).expect("a fractional bar start still gets its accent");
         assert!(rms > 0.015);
         assert!(zc > zc_plain + 20, "and it is the accented click, not a spill of beat 12 or 13");
     }

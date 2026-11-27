@@ -397,12 +397,8 @@ fn midi_export_includes_channel_loop_repeats() {
 fn a_mapped_file_imports_its_meter_shifted_to_where_it_lands() {
     let d = tmp("sigimport");
     let path = d.join("mapped.mid");
-    let tracks = vec![OutTrack {
-        name: "Bass".into(),
-        channel: 0,
-        program: Some(33),
-        notes: vec![n(36, 0.0, 1.0, 100), n(43, 8.5, 0.5, 90)],
-    }];
+    let tracks =
+        vec![OutTrack { name: "Bass".into(), channel: 0, program: Some(33), notes: vec![n(36, 0.0, 1.0, 100), n(43, 8.5, 0.5, 90)] }];
     // 7/8 opener + a 3/4 change at beat 7
     std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Mapped", &tracks, &[(0.0, 7, 8), (7.0, 3, 4)]).unwrap()).unwrap();
     let doc = Files.create("empty").unwrap();
@@ -442,6 +438,6 @@ fn the_meter_travels_only_with_the_tempo_opt_in() {
     let r = call(&*doc, "midi_import", json!({ "path": path, "beat": 0 }));
     assert_eq!(r["tempoSet"], false, "no opt-in: the file's meter does not touch the project");
     let ctx = call(&*doc, "context", json!({ "full": true }));
-    assert!(ctx["project"]["sigPoints"].as_array().map_or(true, |a| a.is_empty()));
+    assert!(ctx["project"]["sigPoints"].as_array().is_none_or(|a| a.is_empty()));
     std::fs::remove_dir_all(&d).ok();
 }

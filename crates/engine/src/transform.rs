@@ -484,6 +484,7 @@ pub fn strum(notes: &mut [Note], width: f32, ramp: f32) {
 /// cycle's rhythm with the walk nudged ±1 degree, so the melody repeats instead of
 /// wandering. Like [`euclidean_fill`], a second run (another seed) replaces the first
 /// instead of stacking on it.
+#[allow(clippy::too_many_arguments)]
 pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, spb: u32, density: f32, repeat: u32, seed: u64) {
     notes.retain(|n| n.ch != ch);
     let rng = &mut SplitMix64::new(seed);

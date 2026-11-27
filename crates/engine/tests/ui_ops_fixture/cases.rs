@@ -781,6 +781,21 @@ pub fn cases() -> Vec<Case> {
         vec![Op::SetTempoPoints { points: vec![TempoPoint { beat: 4.0, bpm: 90.0, ramp: false }] }, Op::SetBpm { bpm: 140.0 }],
     ));
     c.push(("main", "setTempoPoints clears the map", vec![Op::SetTempoPoints { points: vec![] }]));
+    // the signature map: sorted on the way in, num clamped, a den off the 1/2/4/8/16 ladder
+    // snapped to 4, two points at one beat kept in order (the last of them governs)
+    c.push((
+        "main",
+        "setSigPoints writes the map sorted and clamped",
+        vec![Op::SetSigPoints {
+            points: vec![
+                SigPoint { beat: 8.0, num: 5, den: 4 },
+                SigPoint { beat: 0.0, num: 250, den: 4 },
+                SigPoint { beat: 4.0, num: 7, den: 9 },
+                SigPoint { beat: 4.0, num: 3, den: 8 },
+            ],
+        }],
+    ));
+    c.push(("main", "setSigPoints clears the map", vec![Op::SetSigPoints { points: vec![] }]));
     c.push(("main", "setLoop sets the loop", vec![Op::SetLoop { range: Some(LoopRange { a: 4.0, b: 16.0 }) }]));
     c.push(("main", "setLoop clears the loop", vec![Op::SetLoop { range: None }]));
     c.push(("main", "setLoop refuses an empty loop", vec![Op::SetLoop { range: Some(LoopRange { a: 16.0, b: 4.0 }) }]));
