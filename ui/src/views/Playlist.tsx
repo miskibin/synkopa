@@ -3,11 +3,11 @@ import { t as tl } from '../lib/i18n';
 import { createMemo, For, Show } from 'solid-js';
 import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive';
 import { InstIcon, laneAutoIcons, trackIcon } from '../ui/instIcons';
-import { STRETCH_MAX, STRETCH_MIN, VOL_UNITY, WARP_SPACING, type Automation, type AutoPoint, type Channel, type Clip, type Comp, type CurveShape, type Id, type Marker, type Op, type Take, type Track } from '../api/types';
+import { VOL_UNITY, type Automation, type AutoPoint, type Channel, type Clip, type Comp, type CurveShape, type Id, type Marker, type Op, type Take, type Track } from '../api/types';
 import { boundaries, boundaryXfade, moveBoundary, setBoundaryXfade, takeEnd, toComp, toTimeline, unusedTakes, usedBeats, writeRange } from '../lib/comp';
 import * as CA from '../state/comp';
 import { compById, LANE_H, takeRow, type TakeRow } from '../state/comp';
-import { clampMove, markersAtTransients, moveClips, moveWarp, newClip, newTrack, paintCells, pinWarp, placeClipCopy, removeWarp, resizeClip, resizeClips, sliceAcross, stackPatternClips, stretchClip, stretchClips, sharedSound, TOTAL, warpActive, warpedFrom } from '../lib/clipOps';
+import { clampMove, markersAtTransients, moveClips, moveWarp, newClip, newTrack, paintCells, pinWarp, placeClipCopy, removeWarp, resizeClip, resizeClips, sliceAcross, stackPatternClips, stretchClip, stretchClips, sharedSound, TOTAL, warpActive, warpDragBounds, warpedFrom } from '../lib/clipOps';
 import { be } from '../api/backend';
 import { clamp, fmtPos, volText } from '../lib/format';
 import { snapFloor, snapRes, snapRound } from '../lib/snap';
@@ -947,6 +947,7 @@ export function Playlist() {
     // the shortest a trim leaves a clip: one grid unit; with Alt (off the grid) a 64th, whatever the zoom
     const minOf = (alt: boolean) => (alt ? 1 / 16 : Math.max(1 / 16, snapRes(U.snap, U.bw) || 1 / 16));
     const others = U.sel.includes(o.id) ? S.project.clips.filter(c => c.id !== o.id && c.kind === 'audio' && U.sel.includes(c.id)).map(plain) : [];
+    const durOf = (c: Clip) => S.project.sources.find(s => s.id === c.ref)?.dur ?? 0;
     let last = '', moved = false;
     trackEdge(ev => {
       if (!moved && Math.abs(ev.clientX - sx) < 3) return; // a click on an edge is not a stretch
@@ -954,37 +955,35 @@ export function Playlist() {
       const raw = (ev.clientX - gridLeft() - gx0) / U.bw, edge0 = edge === 'r' ? o.start + o.len : o.start;
       const target = snapRound(edge0 + raw, unit(ev.altKey));
       const minL = minOf(ev.altKey);
-      const nc = stretchClip(o, edge, target, minL);
-      const all = [nc, ...stretchClips(others, edge, nc.len / o.len, minL)];
+      const nc = stretchClip(o, edge, target, minL, durOf(o));
+      const all = [nc, ...stretchClips(others, edge, nc.len / o.len, minL, durOf)];
       const key = all.map(c => c.start + ':' + c.len).join('|');
       if (key === last) return;
       last = key;
       g.update([{ op: 'putClips', clips: all }]);
-      // the pointer went past what the stretch range (or the song) allows
+      // the pointer went past what the stretch range (the song, or a marker segment) allows
       const want = edge === 'r' ? target - o.start : o.start + o.len - target;
-      const capped = Math.abs(want - nc.len) > 1e-6 && (nc.stretch === STRETCH_MAX || nc.stretch === STRETCH_MIN);
+      const capped = Math.abs(want - nc.len) > 1e-6;
       say(tl('a.pl.stretchLen', { k: (nc.stretch ?? 1).toFixed(2), len: nc.len.toFixed(2) }) + (capped ? ' · ' + tl('a.pl.stretchLimit') : ''));
     }, () => g.end(), 'ew-resize', { x: true });
   }
 
   /** A warp pin dragged: the moment it pins stays, the place it lands follows the pointer (free,
-   *  not snapped — lining a transient up with the grid is done by eye, as in Live). The neighbours
-   *  bound the drag, so the map stays ordered and every segment inside its stretch range. */
+   *  not snapped — lining a transient up with the grid is done by eye, as in Live). The bounds
+   *  keep the map one the engine accepts: the neighbours' spacing and both adjacent segments'
+   *  stretch range (including the implicit ends). */
   function warpDrag(e: PointerEvent, clip: Clip, i: number) {
     const g = new Gesture(tl('a.pl.warpMove'));
     const o = plain(clip), spb = 60 / S.project.bpm, sx = e.clientX;
     const dur = S.project.sources.find(s => s.id === o.ref)?.dur ?? 0;
-    const ws = o.warp ?? [];
-    // the pin must keep its place between its neighbours (the engine's minimum spacing)
-    const to0 = ws[i]?.to ?? 0;
-    const lo = i > 0 ? ws[i - 1].to + WARP_SPACING : WARP_SPACING;
-    const hi = i + 1 < ws.length ? ws[i + 1].to - WARP_SPACING : Math.max(lo, dur * (o.stretch ?? 1) - WARP_SPACING);
+    const to0 = o.warp?.[i]?.to ?? 0;
+    const [lo, hi] = warpDragBounds(o, i, dur);
     let last = NaN, moved = false;
     track(ev => {
       if (!moved && Math.abs(ev.clientX - sx) < 3) return;
       moved = true;
       const d = (ev.clientX - sx) / U.bw;
-      const to = clamp(to0 + d * spb, lo, hi);
+      const to = clamp(to0 + d * spb, lo, Math.max(lo, hi));
       if (Math.abs(to - last) < 1e-9) return;
       last = to;
       g.update([{ op: 'putClips', clips: [moveWarp(o, i, to)] }]);
@@ -1434,9 +1433,14 @@ export function Playlist() {
               say(tl('a.pl.warpPins', { n: nc.warp?.length ?? 0 }));
             } } as MenuItem,
             { t: 'item', label: tl('a.pl.warpTransients'), title: tl('a.pl.warpTransientsTip'), act: () => void (async () => {
-              const o = plain(c), dur = S.project.sources.find(s => s.id === o.ref)?.dur ?? 0;
+              const ref = c.ref, id = c.id;
               try {
-                const pairs = await be().sourceOnsets(o.ref);
+                const pairs = await be().sourceOnsets(ref);
+                // the analysis ran off-thread: the clip may have moved, changed its source or
+                // been deleted meanwhile — build on what is there NOW, never on the stale copy
+                const now = S.project.clips.find(x => x.id === id);
+                if (!now || now.ref !== ref) { say(tl('a.pl.warpGone')); return; }
+                const o = plain(now), dur = S.project.sources.find(s => s.id === ref)?.dur ?? 0;
                 const secs: number[] = [];
                 for (let i = 0; i + 1 < pairs.length; i += 2) secs.push(pairs[i] * dur);
                 const nc = markersAtTransients(o, secs, dur);

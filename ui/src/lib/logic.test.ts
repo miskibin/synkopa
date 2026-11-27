@@ -242,34 +242,34 @@ describe('op builders', () => {
   });
   it('stretches an audio clip from the right edge, keeping the part of the source it shows', () => {
     const c = clip({ kind: 'audio', start: 4, len: 4, offset: 1 });
-    const s = stretchClip(c, 'r', 12, 0.25);
+    const s = stretchClip(c, 'r', 12, 0.25, 0);
     expect([s.start, s.len, s.offset, s.stretch]).toEqual([4, 8, 2, 2]);
     // back to the original length is exactly unstretched again
-    const back = stretchClip(s, 'r', 8, 0.25);
+    const back = stretchClip(s, 'r', 8, 0.25, 0);
     expect([back.start, back.len, back.offset, 'stretch' in back]).toEqual([4, 4, 1, false]);
   });
   it('stretches from the left edge with the end fixed', () => {
     const c = clip({ kind: 'audio', start: 4, len: 4, offset: 0 });
-    const s = stretchClip(c, 'l', 2, 0.25);
+    const s = stretchClip(c, 'l', 2, 0.25, 0);
     expect([s.start, s.len, s.stretch]).toEqual([2, 6, 1.5]);
     // the start of the song limits it
-    const z = stretchClip(c, 'l', -10, 0.25);
+    const z = stretchClip(c, 'l', -10, 0.25, 0);
     expect([z.start, z.len, z.stretch]).toEqual([0, 8, 2]);
   });
   it('keeps the stretch within 0.25..4', () => {
     const c = clip({ kind: 'audio', start: 0, len: 4, offset: 0, stretch: 2 });
-    expect(stretchClip(c, 'r', 100, 0.25).stretch).toBe(4);
-    expect(stretchClip(c, 'r', 100, 0.25).len).toBe(8);
-    expect(stretchClip(c, 'r', 0, 0.25).stretch).toBe(0.25);
-    expect(stretchClip(c, 'r', 0, 0.25).len).toBe(0.5);
+    expect(stretchClip(c, 'r', 100, 0.25, 0).stretch).toBe(4);
+    expect(stretchClip(c, 'r', 100, 0.25, 0).len).toBe(8);
+    expect(stretchClip(c, 'r', 0, 0.25, 0).stretch).toBe(0.25);
+    expect(stretchClip(c, 'r', 0, 0.25, 0).len).toBe(0.5);
     // the minimum length wins over a stretch the clip could still take
-    expect(stretchClip(c, 'r', 0, 1).len).toBe(1);
+    expect(stretchClip(c, 'r', 0, 1, 0).len).toBe(1);
   });
   it('stretches a selection by the same factor', () => {
     const a = clip({ id: 1, kind: 'audio', start: 0, len: 4 }), b = clip({ id: 2, kind: 'audio', start: 8, len: 2, stretch: 0.5 });
-    const out = stretchClips([a, b], 'r', 1.5, 0.25);
+    const out = stretchClips([a, b], 'r', 1.5, 0.25, () => 0);
     expect(out.map(c => [c.start, c.len, c.stretch])).toEqual([[0, 6, 1.5], [8, 3, 0.75]]);
-    const left = stretchClips([b], 'l', 2, 0.25);
+    const left = stretchClips([b], 'l', 2, 0.25, () => 0);
     expect(left.map(c => [c.start, c.len])).toEqual([[6, 4]]);
   });
   it('the mock rejects stretches the engine rejects', () => {

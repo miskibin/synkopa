@@ -107,6 +107,13 @@ pub fn out_frames(frames: usize, ratio: f64) -> usize {
     ((frames as f64) * ratio).round().max(0.0) as usize
 }
 
+/// The smallest output (frames) the algorithm serves at `sr` — shorter outputs are refused.
+/// A warp input of about a quarter of this with a ×4 ratio still reaches the stretcher with
+/// fewer frames than the algorithm's input latency; the render's zero-padded views cover it.
+pub fn min_output_frames(sr: u32) -> usize {
+    unsafe { wave_stretch_min_output(sr.max(1) as f32, 2) }
+}
+
 /// Stretches interleaved stereo `input` at `sr` to `ratio` times its length, keeping
 /// pitch. The result has exactly [`out_frames`] frames.
 pub fn stretch_stereo(input: &[f32], sr: u32, ratio: f64) -> Result<Vec<f32>, String> {
@@ -218,7 +225,8 @@ mod tests {
         ];
         let y = stretch_warp_stereo(&x, sr, &anchors, 0.0).unwrap();
         assert_eq!(y.len() / 2, n);
-        // every click found where its segment puts it, within 10 ms
+        // every click found where its segment puts it, within 10 ms — and the window must
+        // actually hold a click: an all-silent window used to pass the argmax below
         let seg1 = 1.3 / 1.1;
         let seg2 = (n as f64 - 1.3 * sr as f64) / (0.4 * sr as f64);
         let want = [(0.1, 0.1 * seg1), (0.6, 0.6 * seg1), (1.1, 1.3), (1.2, 1.3 + 0.1 * seg2)];
@@ -227,9 +235,21 @@ mod tests {
             // strongest sample within ±10 ms of the expectation
             let lo = (expect - 480.0).max(0.0) as usize;
             let hi = ((expect + 480.0) as usize).min(n - 1);
-            let peak = (lo..hi).map(|i| (y[i * 2].abs(), i)).max_by(|a, b| a.0.total_cmp(&b.0)).unwrap().1 as f64;
-            assert!((peak - expect).abs() < 480.0, "click at {t} s: landed at frame {peak}, wanted {expect}");
+            let (amp, peak) = (lo..hi).map(|i| (y[i * 2].abs(), i)).max_by(|a, b| a.0.total_cmp(&b.0)).unwrap();
+            // 0.25, not 0: a compressed segment smears a one-sample click, but a real click
+            // stays far above the silence this check exists to reject
+            assert!(amp > 0.25, "click at {t} s: its window is silent (strongest sample {amp})");
+            assert!((peak as f64 - expect).abs() < 480.0, "click at {t} s: landed at frame {peak}, wanted {expect}");
         }
+        // independently of the acceptance windows: the signal's strongest sample must sit at
+        // one of the expected click positions, so a misplaced click cannot hide behind the
+        // in-window argmax (compressed clicks are quieter, never louder, than a full one)
+        let (gamp, gframe) = (0..n).step_by(2).map(|i| (y[i * 2].abs(), i)).max_by(|a, b| a.0.total_cmp(&b.0)).unwrap();
+        assert!(gamp > 0.25, "the render is silent");
+        assert!(
+            want.iter().any(|(_, out)| ((out * sr as f64) - gframe as f64).abs() < 480.0),
+            "the strongest sample at frame {gframe} is not at any expected click"
+        );
     }
 
     #[test]
@@ -269,6 +289,19 @@ mod tests {
         assert!(stretch_warp_stereo(&[], 44_100, &[WarpAnchor { at: 0.0, to: 0.0 }, WarpAnchor { at: 10.0, to: 10.0 }], 0.0)
             .unwrap()
             .is_empty());
+    }
+
+    /// An input shorter than the algorithm's input latency, with a ratio big enough to clear
+    /// the minimum-output guard: seek used to read its pre-roll past the input's buffers here.
+    #[test]
+    fn warp_tiny_input_reads_zeros_not_past_the_buffer() {
+        let sr = 48_000u32;
+        let frames = min_output_frames(sr) / 4 + 8;
+        let x: Vec<f32> = (0..frames * 2).map(|i| ((i % 7) as f32) * 0.01).collect();
+        let anchors = [WarpAnchor { at: 0.0, to: 0.0 }, WarpAnchor { at: frames as f64, to: frames as f64 * 4.0 }];
+        let y = stretch_warp_stereo(&x, sr, &anchors, 0.0).unwrap();
+        assert_eq!(y.len() / 2, frames * 4);
+        assert!(y.iter().all(|v| v.is_finite()));
     }
 
     fn sine(freq: f64, sr: u32, secs: f64) -> Vec<f32> {

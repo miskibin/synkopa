@@ -99,8 +99,11 @@ int wave_stretch_warp(float sample_rate, int channels, const float *const *input
         int in_total = (int)in_len, out_total = (int)out_len;
         if (out_total < s.outputLatency() * 2) return 1;
         // `exact`'s positioning: the first `inputLatency` frames are pre-roll context, the
-        // mapped range reads from there and is zero-padded past the input's end
-        s.seek(input, s.inputLatency(), (double)in_total / (double)out_total);
+        // mapped range reads from there and is zero-padded past the input's end. Both views
+        // are zero-padded, so an input shorter than the latencies reads zeros, not past its
+        // buffers (seek takes the head view: its pre-roll is the input's own first frames).
+        ZeroPadded head{input, 0, in_total};
+        s.seek(head, s.inputLatency(), (double)in_total / (double)out_total);
         ZeroPadded in{input, s.inputLatency(), in_total};
 
         int done_in = 0, done_out = 0;
