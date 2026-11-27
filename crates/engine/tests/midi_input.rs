@@ -241,6 +241,7 @@ fn live_keys_play_where_the_song_plays_the_channel_not_through_the_armed_track()
         tune: None,
         stretch: 1.0,
         resample: false,
+        follow_tempo: false,
         pitch: 0.0,
         insert: None,
         root: 60,
