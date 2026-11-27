@@ -16,7 +16,7 @@ import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
 import { curBeat } from '../state/telemetry';
 import { clamp, panText } from '../lib/format';
-import { autoRollSnap, duplicateRight, barLenMap, keyOf, noteAt, noteWidth, notesText, patternBar, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
+import { autoRollSnap, barOf, duplicateRight, barLenMap, keyOf, noteAt, noteWidth, notesText, ROLL_SNAPS, ROLL_SNAPS_TRIPLET, rollSnapName, scaleMask, stepsOf, transpose, velOf } from '../lib/pattern';
 import { compiledSig } from '../lib/signatures';
 import { noteName } from '../lib/pitch';
 
@@ -155,7 +155,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     onCleanup(() => document.removeEventListener('pointerdown', away, true));
   });
   const applyTool = () => {
-    const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, patternBar(S.project, pt().id), ch().id, sel());
+    const op = buildTransformOp(toolId(), vals(), toolSeed(), pt().id, pt().len, barOf(pt()), ch().id, sel());
     commit([op], t(TOOL_META[toolId()].label));
     setSel(new Set<number>());
     say(t('b.pr.toolApplied', { verb: t(TOOL_META[toolId()].label) }));
@@ -248,7 +248,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const g = cv.getContext('2d')!, dpr = window.devicePixelRatio || 1;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const lit = typingHeld();
-    drawRoll(g, w, h, geo(), layer, { pt: rawOf(pt()), ch: rawOf(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), grid: snapNow(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost(), spb: Math.round(patternBar(S.project, pt().id) * 4) });
+    drawRoll(g, w, h, geo(), layer, { pt: rawOf(pt()), ch: rawOf(ch()), chans: chansMap(), sel: sel(), root: root(), mask: mask(), grid: snapNow(), hoverKey: hoverKey(), lit, marquee: marq(), zoomBox: zbox(), stampGhost: stampGhost(), spb: Math.round(barOf(pt()) * 4) });
   };
   const drawVel = () => {
     const { w, h } = laneSize(); if (!w || !h) return;
@@ -326,7 +326,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     if (s != null) { seekSong(s); return; }
     setPatStart(p.id, b);
     if (!patMode()) switchMode(true); // not in the song (or not that beat of it): the pattern loop plays it
-    say(t('b.pr.startAt', { pos: fmtPos(b, barLenMap(patternBar(S.project, pt().id))) }));
+    say(t('b.pr.startAt', { pos: fmtPos(b, barLenMap(barOf(pt()))) }));
   };
   const ruler: RulerHost = {
     beatAt: x => (x - rulerCv.getBoundingClientRect().left + geo().sx) / geo().pps / 4,
@@ -340,7 +340,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     drawn: r => {
       setPatStart(pt().id, r.a);
       if (!patMode()) switchMode(true);
-      say(t('b.pr.loopSet', { a: fmtPos(r.a, barLenMap(patternBar(S.project, pt().id))), b: fmtPos(r.b, barLenMap(patternBar(S.project, pt().id))) }));
+      say(t('b.pr.loopSet', { a: fmtPos(r.a, barLenMap(barOf(pt()))), b: fmtPos(r.b, barLenMap(barOf(pt()))) }));
     },
     track: (m, u, c) => { dragging = true; track(m, ev => { dragging = false; u(ev); }, c); },
     key: 'rollRuler' + props.z,
@@ -355,7 +355,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     fitCanvas(rulerCv, W, RULER_H);
     const g = rulerCv.getContext('2d')!, dpr = window.devicePixelRatio || 1, G = geo();
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawRuler(g, G.sx, W, G.pps * 4, patLoopOf(pt().id), rulerStart(), RULER_H, barLenMap(patternBar(S.project, pt().id)));
+    drawRuler(g, G.sx, W, G.pps * 4, patLoopOf(pt().id), rulerStart(), RULER_H, barLenMap(barOf(pt())));
     // past the pattern's end: room to draw in, not part of the pattern yet
     const xe = pt().len * 4 * G.pps - G.sx;
     if (xe < W) { g.fillStyle = rgba(T.viz, 0.55); g.fillRect(Math.max(0, xe), 0, W - Math.max(0, xe), RULER_H - 1); }

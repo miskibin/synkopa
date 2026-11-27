@@ -1678,20 +1678,19 @@ export class MockBackend implements Backend {
       : compiledSig(this.p.sigPoints);
     const bar = barBeatsAt(map, beat);
     const len = Math.max(bar, Math.ceil((end / bar - 1e-6)) * bar);
-    const pat: Pattern = { id: patternId, name: (a.path.split(/[\\/]/).pop() ?? 'MIDI').replace(/\.[^.]+$/, ''), color: '#7c8cf8', len, minLen: bar, notes };
+    const pat: Pattern = { id: patternId, name: (a.path.split(/[\\/]/).pop() ?? 'MIDI').replace(/\.[^.]+$/, ''), color: '#7c8cf8', len, minLen: bar, bar, notes };
     ops.push({ op: 'putPattern', pattern: pat });
     const free = (t: number) => !this.p.clips.some(c => c.track === t && c.start < beat + len && c.start + c.len > beat);
     const track = a.track != null && a.track < this.p.tracks.length ? a.track : Math.max(0, this.p.tracks.findIndex((_, i) => free(i)));
     const clipId = next++;
     ops.push({ op: 'putClips', clips: [newClip(clipId, track, beat, len, 'pat', patternId)] });
-    ops.push({ op: 'putPattern', pattern: pat });
     try { this.p = applyAll(this.p, ops); } catch (e) { this.p = prev; throw e; }
     this.p.nextId = Math.max(this.p.nextId, next);
     // the engine commits this through `apply_with_library_labeled` with the same name
     this.pushUndo(prev, 'Import MIDI'); this.changed();
     // warnings: [] is the engine's answer for this fixture file — it never trips the clamp or
     // the point cap the engine discloses
-    return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length || f.sigPoints?.length)) };
+    return { patternId, channelIds, clipId, track, beat, len, bar, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length || f.sigPoints?.length)) };
   }
   async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {
     await delay(20);

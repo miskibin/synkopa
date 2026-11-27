@@ -7,8 +7,7 @@
 import type { Channel, Id, Note, Op, Pattern } from '../../api/types';
 import { t } from '../../lib/i18n';
 import type { RollGeo } from '../patternDraw';
-import { patternBar } from '../../lib/pattern';
-import { S } from '../../state/store';
+import { barOf } from '../../lib/pattern';
 
 /** The five pointer tools of the roll header's P/B/E/D/C strip. */
 export type Tool = 'draw' | 'paint' | 'select' | 'erase' | 'stamp';
@@ -157,7 +156,7 @@ export const unitOf = (c: RollCtx, m: { alt: boolean }) => (m.alt ? 0 : c.snap()
  * it with its own message; a lone say would overwrite one or the other). */
 export const grewText = (c: RollCtx, lenBefore: number) => {
   if (c.pt().len - lenBefore <= 1e-6) return '';
-  const bars = c.pt().len / patternBar(S.project, c.pt().id);
+  const bars = c.pt().len / barOf(c.pt());
   return t('b.pr.patGrew', { n: bars >= 10 ? Math.round(bars) : +bars.toFixed(bars < 1 ? 2 : 1) });
 };
 

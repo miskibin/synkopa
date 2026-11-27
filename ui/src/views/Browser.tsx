@@ -9,7 +9,7 @@ import { snapFloor } from '../lib/snap';
 import * as A from '../state/actions';
 import { getPeaks, peakRange, peaksVersion } from '../state/peaks';
 import { S } from '../state/store';
-import { patternBar } from '../lib/pattern';
+import { barOf } from '../lib/pattern';
 import { openMenu, say, setU, U } from '../state/ui';
 import { track } from '../ui/drag';
 import { fitCanvas } from '../ui/frameLoop';
@@ -213,7 +213,7 @@ function PatternsTab() {
                   {id => <span class="picon" style={{ color: p.color }}><InstIcon id={id()} size={12} /></span>}
                 </Show>
                 <span class="nm">{p.name}</span>
-                <span class="meta">{t('d.br.bars', { n: p.len / patternBar(S.project, p.id) })}</span>
+                <span class="meta">{t('d.br.bars', { n: p.len / barOf(p) })}</span>
               </div>
               <PatPreview pat={p} chans={chanMap()} />
             </div>

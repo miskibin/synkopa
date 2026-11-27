@@ -321,6 +321,7 @@ fn slide_notes_are_left_out_of_a_midi_file() {
         color: "#fff".into(),
         len: 4.0,
         min_len: 4.0,
+        bar: 4.0,
         notes: vec![held, slide],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

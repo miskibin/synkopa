@@ -200,8 +200,8 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 }
             }
             let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
-            // whole bars of the signature where the pattern lands — under the map as the
-            // batch leaves it (the file's meter, when it imports one)
+            // whole bars of the signature the pattern INHERITS (the map as the batch
+            // leaves it — the file's meter, when it imports one)
             let map = if set_tempo && !f.sig_points.is_empty() {
                 wave_engine::SigMap::compile(
                     &f.sig_points.iter().map(|s| wave_engine::SigPoint { beat: s.beat + beat, num: s.num, den: s.den as u8 }).collect::<Vec<_>>(),
@@ -211,7 +211,8 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             };
             let bar = map.bar_beats_at(beat);
             let len = ((end / bar - 1e-6).ceil().max(1.0) * bar).max(bar);
-            let pattern = Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: bar, notes, swing: 0.0, channel_loops: std::collections::BTreeMap::new() };
+            // the pattern INHERITS the signature where it lands (creation-time) and keeps it
+            let pattern = Pattern { id: pattern_id, name: stem.clone(), color: "#7c8cf8".into(), len, min_len: bar, bar, notes, swing: 0.0, channel_loops: std::collections::BTreeMap::new() };
             ops.push(Op::PutPattern { pattern: pattern.clone() });
             // the first track with nothing where the pattern goes (else the chosen or first one)
             let free = |t: u32| !p.clips.iter().any(|c| c.track == t && c.start < beat + len && c.start + c.len > beat);
@@ -243,11 +244,8 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                         root: wave_engine::CLIP_ROOT,
                     }],
                 });
-                // the pattern's fit reads the map through its clip: with the clip in place
-                // it refits to the signature at its own position (the batch is atomic)
-                ops.push(Op::PutPattern { pattern });
             }
-            made = json!({ "patternId": pattern_id, "channelIds": channels, "clipId": if ntracks > 0 { json!(clip_id) } else { Value::Null }, "track": track, "beat": beat, "len": len });
+            made = json!({ "patternId": pattern_id, "channelIds": channels, "clipId": if ntracks > 0 { json!(clip_id) } else { Value::Null }, "track": track, "beat": beat, "len": len, "bar": bar });
             Ok(ops)
         })
         .map_err(|x| x.to_string())?;

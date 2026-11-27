@@ -16,7 +16,7 @@ import { addFrameTask, fitCanvas } from '../ui/frameLoop';
 import { track } from '../ui/drag';
 import { shownPreview } from '../state/previewWave';
 import { barAt, barBeatsAt, beatAtBar, compiledSig, isBarStart } from '../lib/signatures';
-import { barLenMap, patternBar } from '../lib/pattern';
+import { barLenMap, barOf } from '../lib/pattern';
 import { createMemo } from 'solid-js';
 
 const BEATS_PER_BAR = 4;
@@ -24,9 +24,9 @@ const BEATS_PER_BAR = 4;
 const INSET = 6;
 /** The signature map the readouts count bars by: the song's meters, or the current pattern's own bar grid in PAT. */
 const sigs = createMemo(() => compiledSig(S.project.sigPoints));
-const readoutMap = (pat: number | null) => (pat != null ? barLenMap(patternBar(S.project, pat)) : sigs());
+const readoutMap = (pat: number | null) => (pat != null ? barLenMap(barOf(S.project.patterns.find(x => x.id === pat) ?? { bar: 4 })) : sigs());
 /** One bar of what the slider follows (the signature at its position; the pattern's own bar in PAT). */
-const barStepAt = (at: number, pat: number | null) => (pat != null ? patternBar(S.project, pat) : barBeatsAt(sigs(), at));
+const barStepAt = (at: number, pat: number | null) => (pat != null ? barOf(S.project.patterns.find(x => x.id === pat) ?? { bar: 4 }) : barBeatsAt(sigs(), at));
 
 /** What the slider and the readout follow: the song (SONG) or the current pattern (PAT, FL's Piano roll position). */
 function span(): { len: number; at: number; pat: number | null } {

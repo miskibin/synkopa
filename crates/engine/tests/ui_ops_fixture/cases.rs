@@ -796,11 +796,11 @@ pub fn cases() -> Vec<Case> {
         }],
     ));
     c.push(("main", "setSigPoints clears the map", vec![Op::SetSigPoints { points: vec![] }]));
-    // a clip REASSIGNED to another pattern refits the pattern it left too: the old pattern
-    // re-rounds on the grid nothing plays it on any more, the new one fits where it landed
+    // a clip REASSIGNED to another pattern changes neither pattern: each keeps its own
+    // stored bar and its length (the stable-sizing policy)
     c.push((
         "main",
-        "putClips reassigning a clip refits both patterns",
+        "putClips reassigning a clip resizes no pattern",
         vec![
             Op::PutPattern { pattern: pat(42, "A", 8.0, 5.0, vec![]) },
             Op::PutPattern { pattern: pat(43, "B", 8.0, 8.0, vec![]) },

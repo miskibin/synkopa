@@ -1235,7 +1235,7 @@ pub fn context(app: &dyn Host, full: bool) -> Value {
 pub fn schema() -> Value {
     json!({
         "automation": "an automation plays through a clip of kind `auto` whose `ref` is the automation id; points t = beats from the automation start, v = 0..1 normalised (log params normalised logarithmically); optional per point, for the segment ending there: tension -1..1 (0 = straight) and shape curve|double|hold|stairs (stairs: tension sets 2..16 steps). While the app records with its Automation filter on, control tweaks during playback send these same putAutomation ops (touch: until release; Latch holds until stop); a manual tweak on an automated control while playing overrides its envelope until the transport stops",
-        "units": "time in beats (quarter notes); pattern len in beats (a bar = the signature at where it plays, 4 beats in 4/4; derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
+        "units": "time in beats (quarter notes); pattern len in beats (a bar = the pattern's own grid: the signature where it was created, 4/4 by default; derived from the notes, at least minLen), note step/len in sixteenths, note v (velocity) 0..1, swing 0..1; fades in seconds; vol = fader 0..1 (0.7937 = 0 dB); clip gain in dB; pan -1..1",
         "patterns": "channels are global (Channel Rack rows, `synkopa channels`); a pattern note plays channel `ch`; trig = true for a step trigger without sampler note-off; p = MIDI key (absent = the channel's root, the key at which a sampler plays its file unpitched); swing delays notes on odd 16ths by swing × ½ step; the pattern length is derived: the end of the last note rounded up to a bar, at least `minLen` beats (a `len` you send is ignored); when it grows, clips that show exactly one whole pass (offset 0) follow, but stop at the next clip on their track; when it shrinks, clips that showed only the pattern are cut back to its new end. The Playlist keeps a pattern clip within one pass of its pattern (len <= pattern len - offset) when its edge is dragged. Easier: `synkopa pattern --id N --ch C --steps \"x...x...x...x...\"`",
         "ids": "take new ids from context.nextId and count up",
         "routing": "an insert's output goes to the master (`master`: true, the default) and/or, post-fader, to other inserts through `sends` [{to, gain 0..2 linear}] (a bus, a shared reverb). `master` false = only where it sends. Loops and sends to itself or to the master (id 0) are refused. Easier: `synkopa route --from 3 --to 1 [--gain 0.5] [--only true]`, `synkopa unroute --from 3 --to 1`",
@@ -1830,7 +1830,7 @@ fn pattern_json(p: &wave_engine::Project, pt: &wave_engine::Pattern) -> Value {
             row
         })
         .collect();
-    let bar = p.pattern_bar_beats(pt.id);
+    let bar = if pt.bar.is_finite() && pt.bar > 0.0 { pt.bar } else { wave_engine::BAR_BEATS };
     json!({ "id": pt.id, "name": pt.name, "color": pt.color, "bars": pt.len / bar, "lenBeats": pt.len, "minBars": pt.min_len / bar, "swing": (pt.swing * 100.0).round(), "rows": rows })
 }
 
@@ -1841,14 +1841,15 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
     let p = e.project();
     let new = arg(a, "new").and_then(Value::as_bool).unwrap_or(false);
     let mut pt = if new {
-        // one bar of the signature where a new pattern would land (the song's opener)
-        let bar = p.pattern_bar_beats(p.next_id);
+        // a CLI-created pattern has no place on the Playlist: the 4/4 default grid (the UI
+        // inherits the signature at the playhead when it creates one)
         Pattern {
             id: p.next_id,
             name: format!("Pattern {}", p.patterns.len() + 1),
             color: "#4f8ef7".into(),
-            len: bar,
-            min_len: bar,
+            len: wave_engine::BAR_BEATS,
+            min_len: wave_engine::BAR_BEATS,
+            bar: wave_engine::BAR_BEATS,
             notes: vec![],
             swing: 0.0,
             channel_loops: std::collections::BTreeMap::new(),
@@ -1874,9 +1875,9 @@ pub fn pattern(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> 
         pt.color = c.into();
     }
     if let Some(b) = opt_f64(a, "bars") {
-        // the shortest the pattern may be, in bars of the signature where it plays: it
-        // still grows with notes past it
-        let bar = p.pattern_bar_beats(pt.id);
+        // the shortest the pattern may be, in bars of its own grid: it still grows with
+        // notes past it
+        let bar = if pt.bar.is_finite() && pt.bar > 0.0 { pt.bar } else { wave_engine::BAR_BEATS };
         let cap = (wave_engine::TOTAL_BEATS / bar).floor();
         if !(1.0..=cap).contains(&b) || b.fract() != 0.0 {
             return Err(format!("--bars is a whole number 1..{cap} (the pattern still grows to fit its notes)"));

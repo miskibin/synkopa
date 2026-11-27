@@ -17,7 +17,7 @@ import { batch, createSignal, createStore } from '../lib/reactive';
 import { audibleInserts, forgetInsert } from '../lib/routing';
 import { applyNotebookOp } from '../lib/notebook';
 import { putMarker, removeMarker } from '../lib/markers';
-import { applyPatternOp, fitLenIn as fitPatternLenIn, followChanges, followPatternLength, patternBar, type FollowReport } from '../lib/pattern';
+import { applyPatternOp, barOf, fitLenIn as fitPatternLenIn, followChanges, followPatternLength, type FollowReport } from '../lib/pattern';
 import { applyTuneEdit } from '../lib/pitch';
 import { applyTransform } from '../lib/transforms';
 import { dropSourcePeaks } from './peaks';
@@ -357,27 +357,6 @@ const copyPattern = (pt: Pattern): Pattern => {
 };
 
 /** Apply `op` to `p` in place: the store's draft, or `M`. `raw` is `M` as it is before the op (plain). */
-/** The optimistic mirror of the engine's refit: patterns whose bar grid may have changed
- *  (their clips moved or the signature map did) fit whole bars of the signature where they
- *  now play, and their clips follow the length change. Reads from `raw` (a proxy does not
- *  survive the structuredClone the probe needs); throws land on the reply's resync. */
-function refitOptimistic(p: Project, raw: Project, pats: readonly Id[]): void {
-  for (const pid of pats) {
-    const pt = (p.patterns ?? []).find(x => x.id === pid);
-    const src = (raw.patterns ?? []).find(x => x.id === pid);
-    if (!pt || !src) continue;
-    const fitted = structuredClone(src);
-    const oldLen = fitted.len, oldMin = fitted.minLen ?? oldLen;
-    fitPatternLenIn(fitted, patternBar(raw, pid));
-    // a length that keeps but a minLen that re-rounds still commits (migrate fits by the
-    // same rule, so a reload would change the shape otherwise)
-    if (Math.abs(oldLen - fitted.len) <= 1e-9 && Math.abs(oldMin - (fitted.minLen ?? oldMin)) <= 1e-9) continue;
-    pt.minLen = fitted.minLen;
-    pt.len = fitted.len;
-    followPatternLength(p, pid, oldLen, fitted.len);
-  }
-}
-
 function applyInPlace(p: Project, op: Op, raw: Project = p) {
   switch (op.op) {
     case 'putClips': {
@@ -388,25 +367,9 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
         if (i != null) assignClip(p.clips[i], c); else { p.clips.push(clone(c)); idx.set(c.id, p.clips.length - 1); }
         if (c.id >= p.nextId) p.nextId = c.id + 1;
       }
-      // the patterns the clips play may sit on another bar grid now: the engine refits —
-      // and a clip REASSIGNED to another pattern puts the old pattern on a different grid
-      const pats = op.clips.filter(c => c.kind === 'pat').map(c => c.ref);
-      for (const c of op.clips) {
-        const old = raw.clips.find(x => x.id === c.id);
-        if (old?.kind === 'pat') pats.push(old.ref);
-      }
-      refitOptimistic(p, raw, pats);
-      // the optimistic preview reads the would-be positions through the draft (a rewritten
-      // clip's old place has already stopped counting there)
       return;
     }
-    case 'removeClips': {
-      const s = new Set(op.ids);
-      const pats = raw.clips.filter(c => s.has(c.id) && c.kind === 'pat').map(c => c.ref);
-      p.clips = p.clips.filter(c => !s.has(c.id));
-      refitOptimistic(p, raw, pats);
-      return;
-    }
+    case 'removeClips': { const s = new Set(op.ids); p.clips = p.clips.filter(c => !s.has(c.id)); return; }
     case 'putTrack': {
       const t = p.tracks.find(x => x.id === op.track.id);
       if (t) Object.assign(t, op.track); else p.tracks.push(clone(op.track));
@@ -504,11 +467,11 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
       const sizeOk = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 512;
       if (op.verb.kind === 'euclidFill' && (!sizeOk(op.verb.k) || !sizeOk(op.verb.n))) return;
       if (op.verb.kind === 'euclidDrums' && op.verb.voices.some(v => !sizeOk(v.k) || !sizeOk(v.n))) return;
-      const spb = Math.max(1, Math.round(patternBar(raw, op.pattern) * 4));
+      const spb = Math.max(1, Math.round(barOf(pt) * 4));
       try { applyTransform(notes, op.verb, op.seed ?? 0, op.select ?? null, roots, p.key ?? null, p.scale ?? 1, Math.max(spb, Math.round(pt.len * 4)), spb); } catch { return; }
       pt.notes = notes;
       const oldLen = pt.len;
-      fitPatternLenIn(pt, patternBar(raw, op.pattern));
+      fitPatternLenIn(pt, barOf(pt));
       // a generator can push notes past the pattern's end: whole-pass clips follow, like putPattern
       if (Math.abs(oldLen - pt.len) > 1e-9) followPatternLength(p, op.pattern, oldLen, pt.len);
       return;
@@ -539,8 +502,7 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
         .sort((x, y) => x.beat - y.beat);
       if (!pts.length) delete p.sigPoints;
       else p.sigPoints = pts;
-      // every pattern's bar grid changed with the map: the engine refits them all
-      refitOptimistic(p, raw, (raw.patterns ?? []).map(x => x.id));
+      // a pattern keeps its own stored bar: the map changes nothing about its length
       return;
     }
     default: {

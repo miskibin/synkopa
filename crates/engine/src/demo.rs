@@ -94,6 +94,7 @@ pub fn routed_project() -> Project {
         color: TC[0].into(),
         len: 4.0,
         min_len: 4.0,
+        bar: 4.0,
         notes: vec![],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),
@@ -168,6 +169,7 @@ pub fn sketch_project() -> Project {
             color: "#4f8ef7".into(),
             len: 4.0,
             min_len: 4.0,
+            bar: 4.0,
             notes: [(0., kick), (4., kick), (8., kick), (12., kick), (10., kick), (4., clap), (12., clap)]
                 .iter()
                 .map(|&(s, i)| Note::trigger(i, s, None))
@@ -181,6 +183,7 @@ pub fn sketch_project() -> Project {
             color: "#e0a44a".into(),
             len: 4.0,
             min_len: 4.0,
+            bar: 4.0,
             notes: [2., 6., 10., 14., 15., 7.].iter().map(|&s| Note::trigger(hat, s, None)).collect(),
             swing: 0.0,
             channel_loops: std::collections::BTreeMap::new(),
@@ -191,6 +194,7 @@ pub fn sketch_project() -> Project {
             color: "#7c8cf8".into(),
             len: 8.0,
             min_len: 4.0,
+            bar: 4.0,
             notes: [
                 (0., 3., 33),
                 (4., 2., 33),

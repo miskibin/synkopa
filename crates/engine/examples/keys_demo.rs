@@ -51,6 +51,7 @@ fn project(instrument: &str, articulation: Option<u8>, notes: Vec<Note>) -> Proj
         color: "#4f8ef7".into(),
         len: 16.0,
         min_len: 16.0,
+        bar: 4.0,
         notes,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

@@ -1,13 +1,12 @@
 import { TOTAL_BEATS, VOL_UNITY, type Id, type Insert, type LoopRange, type Project } from '../api/types';
 import { newClip } from './clipOps';
 import { barAt, beatAtBar, compiledSig } from './signatures';
-import { patternBar } from './pattern';
 
 /** Beat range for a song, loop or pattern bounce — mirrors `Engine::export_range` / `Engine::pattern_range`. */
 export function exportRange(project: Project, useLoop: boolean, pattern?: Id | null): { from: number; to: number } {
   if (pattern != null) {
     const pt = project.patterns.find(x => x.id === pattern);
-    const bar = patternBar(project, pattern);
+    const bar = pt?.bar != null && pt.bar >= 0.25 ? pt.bar : 4;
     return { from: 0, to: Math.max(bar, pt?.len ?? bar) };
   }
   if (useLoop) {
@@ -41,8 +40,9 @@ export function songEnd(project: Pick<Project, 'clips' | 'sigPoints'>): number {
  */
 export function patternProject(p: Project, id: Id): Project {
   const q = structuredClone(p);
-  const bar = patternBar(q, id);
-  const len = Math.max(bar, q.patterns.find(x => x.id === id)?.len ?? bar);
+  const pt = q.patterns.find(x => x.id === id);
+  const bar = pt?.bar != null && pt.bar >= 0.25 ? pt.bar : 4;
+  const len = Math.max(bar, pt?.len ?? bar);
   q.clips = []; if (q.comps) q.comps = []; q.loop = null;
   // PAT mode plays at one constant tempo, the base BPM: the song's map would apply to pattern-local beats
   delete q.tempoPoints;

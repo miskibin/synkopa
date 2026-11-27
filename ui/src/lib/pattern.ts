@@ -8,7 +8,7 @@ import { migrateSatParams } from './saturator';
 import { keysRange } from './keysKnobs';
 import { keysInstrument } from './keysCatalog';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_RELEASE, SAMPLE_ROOT, SAMPLER, samplerDefault, TOTAL_BEATS, type Channel, type Id, type Note, type Op, type Pattern, type Project, type SamplerState, type SigPoint } from '../api/types';
-import { barBeatsAt, compiledSig } from './signatures';
+
 import { addStarterKit } from './factory';
 import { SYNTH_CATALOG } from '../api/synthCatalog';
 import { synthError } from './synth';
@@ -114,13 +114,10 @@ export function fitLenIn(p: Pattern, bar: number): Pattern {
   p.len = Math.max(contentLenIn(p.notes, bar), p.minLen);
   return p;
 }
-/** The bar length in beats a pattern's bars use: the signature at the earliest clip that
- *  plays it, else the song's opening signature (model.rs `Project::pattern_bar_beats`). */
-export function patternBar(p: Pick<Project, 'clips' | 'sigPoints'>, patId: Id): number {
-  let at = Infinity;
-  for (const c of p.clips ?? []) if (c.kind === 'pat' && c.ref === patId) at = Math.min(at, c.start);
-  return barBeatsAt(compiledSig(p.sigPoints), at === Infinity ? 0 : at);
-}
+/** The bar length in beats a pattern's bars use: its OWN stored grid (`Pattern.bar` — the
+ *  signature where it was created, 4/4 otherwise). Kept stable afterwards: moving clips or
+ *  editing the song's map never resizes a pattern (model.rs `Pattern::bar`). */
+export const barOf = (pt: Pick<Pattern, 'bar'>): number => (pt.bar != null && pt.bar >= 0.25 ? pt.bar : BAR);
 /** One bar of a constant `barBeats` grid, as a signature list: what a pattern-local view
  *  (the piano roll, a PAT readout) passes where the song's map would go. */
 export const barLenMap = (barBeats: number): SigPoint[] => [{ beat: 0, num: Math.max(1, Math.round(barBeats * 4)), den: 16 }];
@@ -162,7 +159,7 @@ export function migrateSamplerEnvelope(s: SamplerState & { gate?: boolean }) {
 export function migrateProject(p: Project) {
   // whole bars of the signature where each pattern plays (4/4 with no map, so old projects
   // are unchanged) — the mirror of the engine's migrate
-  for (const pt of p.patterns) fitLenIn(pt, patternBar(p, pt.id));
+  for (const pt of p.patterns) fitLen(pt);
   if (!p.channels?.length) addStarterKit(p);
   for (const c of p.channels ?? []) if (c.kind === 'sample' && c.sampler) migrateSamplerEnvelope(c.sampler);
   // saturator parameters from before the character saturator
@@ -266,7 +263,7 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       }
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
       stripPatternDefaults(pt);
-      fitLenIn(pt, patternBar(p, pt.id));
+      fitLen(pt);
       checkChannelLoops(p, pt, strict);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);

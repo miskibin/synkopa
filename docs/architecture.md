@@ -161,10 +161,13 @@ the kit and its mixer routing in every pattern.
 * `pattern.len` in beats is **derived**, like FL Studio's automatic pattern length: the end
   of the last note rounded up to a whole bar, at least `minLen` (whole bars, ≥ 1; the bars
   the user keeps on purpose with "+ bar", e.g. a crash every second bar). "A bar" is the
-  signature where the pattern plays (`Project::pattern_bar_beats`: the map at its earliest
-  clip; a 7/8 bar is 3.5 beats) — always a whole number of steps. The engine sets it
-  on every `putPattern` and on load (`Pattern::fit_len_in`); a `len` sent by a client is
-  ignored. Drawing past the end makes a pattern longer, deleting its last notes shorter.
+  pattern's **own** grid (`Pattern.bar`): the signature where the pattern was **created**
+  (a new pattern inherits the playhead's meter; the MIDI import inherits where it lands;
+  4/4 otherwise) — a 7/8 bar is 3.5 beats, always a whole number of steps. **Kept stable
+  afterwards** (miskibin's policy, like FL and Live): moving clips or editing the
+  signature map never resizes a pattern — shared patterns are arrangement-independent.
+  The engine fits on every `putPattern` and on load (`Pattern::fit_len`); a `len` sent by
+  a client is ignored. Drawing past the end makes a pattern longer, deleting its last notes shorter.
   When `len` grows, pattern clips that show exactly one whole pass (`offset` 0, `len` = the
   old length) take the new length, but stop at the next clip on their track (any kind), so a
   longer pattern never runs over the arrangement; clips sized on purpose (repeats, offsets)
@@ -1395,10 +1398,11 @@ mid-bar — the truncated bar stays a fragment that counts, and the new grid sta
 hold the one conversion pair (`bar_at`/`beat_at_bar`, mirrored `barAt`/`beatAtBar`); every
 bars-math site reads it: the ruler's lines, numbers and change chips (a chip drags, its menu sets
 the meter or deletes, the timeline menu adds — one undo step per drag, no third strip), "Snap:
-bar" (bar lines, even off the beat), `fmtBbs`, the notebook's bars, the generators' steps per bar,
-the metronome and count-in accents (a 7/8 bar starting at beat 3.5 gets its accent between
-beats), one bar of count-in, the song end. `setSigPoints{points}` writes the map in one undo
-step; MIDI import folds the file's `FF 58` metas to changes (a non-4/4 opener keeps a beat-0
+bar" (bar lines, even off the beat), `fmtBbs`, the notebook's bars, the generators' steps per bar
+(of the pattern's **own** grid — see `Pattern.bar` above), the metronome and count-in accents (a
+7/8 bar starting at beat 3.5 gets its accent between beats), one bar of count-in, the song end. `setSigPoints{points}` writes the map in one undo
+step and **never resizes a pattern** (see `Pattern.bar` above); MIDI import folds the file's
+`FF 58` metas to changes (a non-4/4 opener keeps a beat-0
 point, a project cannot imply a meter) and rides the tempo opt-in, shifted to where the pattern
 lands; export writes one signature meta per point after the 4/4 opener. `synkopa markers --bar`
 and `pattern --bars` count map bars. Per-pattern/per-scene signatures and per-signature click

@@ -163,26 +163,34 @@ fn set_sig_points_sorts_clamps_and_caps() {
 }
 
 #[test]
-fn a_pattern_fits_whole_bars_where_it_plays() {
+fn a_pattern_fits_whole_bars_of_its_own_grid() {
+    // a pattern keeps the bar length it was created with (miskibin's policy: FL and Live
+    // keep patterns independent of the arrangement); its fit rounds to that grid
     let mut p = Project::routed();
-    p.clips.push(clip(901, 0, 8.0, 7.0, 1));
-    p.sig_points = pts(&[(8.0, 7, 8)]);
-    assert_eq!(p.pattern_bar_beats(1), 3.5, "the signature at the clip that plays it");
+    p.patterns[0].bar = 3.5;
     p.patterns[0].notes.push(Note::new(1, 12.0, 4.0, None)); // content ends at 4 beats
-    let bar = p.pattern_bar_beats(1);
-    p.patterns[0].fit_len_in(bar);
+    p.patterns[0].fit_len();
     assert!((p.patterns[0].len - 7.0).abs() < 1e-9, "4 beats round up to two 3.5-beat bars");
     assert!((p.patterns[0].min_len - 7.0).abs() < 1e-9);
     let mut q = Project::routed();
-    q.sig_points = pts(&[(8.0, 7, 8)]);
-    assert_eq!(q.pattern_bar_beats(1), 4.0, "no clip plays it: the song's opening signature");
+    q.patterns[0].notes.push(Note::new(1, 12.0, 4.0, None)); // ends at 4 beats: exactly one bar
+    q.patterns[0].fit_len();
+    assert!((q.patterns[0].len - 4.0).abs() < 1e-9, "the default grid is 4/4");
+    q.patterns[0].notes.push(Note::new(1, 13.0, 4.0, None)); // ends at 4.25
+    q.patterns[0].fit_len();
+    assert!((q.patterns[0].len - 8.0).abs() < 1e-9);
 }
 
 #[test]
-fn migrate_refits_to_the_position_bars_and_stays_idempotent() {
+fn migrate_refits_to_the_stored_bar_and_stays_idempotent() {
+    // the stored bar (the signature where the pattern was created) drives the reload fit:
+    // whatever the arrangement looks like, migrate keeps the stored grid and is idempotent
     let mut p = Project::routed();
     p.clips.push(clip(902, 0, 8.0, 7.0, 1));
     p.sig_points = pts(&[(8.0, 7, 8)]);
+    p.patterns[0].bar = 3.5;
+    p.patterns[0].min_len = 7.0;
+    p.patterns[0].len = 7.0;
     p.migrate();
     assert!((p.patterns[0].len - 7.0).abs() < 1e-9 && (p.patterns[0].min_len - 7.0).abs() < 1e-9);
     let before = serde_json::to_string(&p).unwrap();
@@ -333,83 +341,72 @@ fn a_crafted_file_that_overflows_the_bar_count_opens_without_panicking() {
 }
 
 #[test]
-fn moving_a_clip_onto_another_meter_refits_the_pattern_in_the_op() {
-    // the sizing policy reads the signature at the pattern's earliest clip: when the clip
-    // moves from 4/4 into 7/8, the pattern refits right in the op — a reload (migrate fits
-    // by the same rule) must not change the accepted project's shape
+fn moving_a_clip_never_resizes_the_pattern() {
+    // miskibin's policy: moving a clip cannot resize a pattern it does not edit — the
+    // pattern keeps the bar grid it was created with, wherever its clips sit
     let mut p = Project::routed();
     p.sig_points = pts(&[(8.0, 7, 8)]);
     p.clips.push(clip(910, 0, 0.0, 8.0, 1));
     p.patterns[0].min_len = 8.0;
     p.patterns[0].len = 8.0;
-    let moved = clip(910, 0, 8.0, 8.0, 1);
-    ops::apply(&mut p, &Op::PutClips { clips: vec![moved] }).unwrap();
-    assert!((p.patterns[0].len - 10.5).abs() < 1e-9, "stored beats round up to whole 7/8 bars: {}", p.patterns[0].len);
-    assert!((p.patterns[0].min_len - 10.5).abs() < 1e-9, "8 beats = 3 bars of 3.5, rounded up: {}", p.patterns[0].min_len);
-    // the clip follows the growth (it showed exactly one pass)
-    assert!((p.clips[0].len - 10.5).abs() < 1e-9, "{}", p.clips[0].len);
-    // removing the clip again: the song's opening grid governs, the stored beats re-round
+    ops::apply(&mut p, &Op::PutClips { clips: vec![clip(910, 0, 8.0, 8.0, 1)] }).unwrap();
+    assert!((p.patterns[0].len - 8.0).abs() < 1e-9, "the length stays: {}", p.patterns[0].len);
+    assert!((p.patterns[0].min_len - 8.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
+    assert!((p.clips[0].len - 8.0).abs() < 1e-9);
     ops::apply(&mut p, &Op::RemoveClips { ids: vec![910] }).unwrap();
-    assert!((p.patterns[0].len - 12.0).abs() < 1e-9, "10.5 beats = 3 bars of 4: {}", p.patterns[0].len);
+    assert!((p.patterns[0].len - 8.0).abs() < 1e-9, "removing the clip changes nothing either");
 }
 
 #[test]
-fn setting_the_map_refits_every_pattern_with_its_clips_following() {
-    // setSigPoints changes every pattern's sizing context in the same op: with the map
-    // accepting 3/4 at beat 0, a 4-beat pattern at the opener is two bars (6 beats) already,
-    // not a reload away
+fn setting_the_map_never_resizes_patterns() {
+    // the map reflows where the bars fall (the ruler, the accents, the snap); a pattern
+    // keeps the bar grid it was created with and its length with it
     let mut p = Project::routed();
     p.clips.push(clip(911, 0, 0.0, 4.0, 1));
     ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
-    assert!((p.patterns[0].len - 6.0).abs() < 1e-9, "{}", p.patterns[0].len);
-    assert!((p.patterns[0].min_len - 6.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
-    assert!((p.clips[0].len - 6.0).abs() < 1e-9, "the whole-pass clip follows: {}", p.clips[0].len);
+    assert!((p.patterns[0].len - 4.0).abs() < 1e-9, "{}", p.patterns[0].len);
+    assert!((p.patterns[0].min_len - 4.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
+    assert!((p.clips[0].len - 4.0).abs() < 1e-9);
 }
 
 #[test]
-fn a_refit_that_keeps_the_length_still_re_rounds_the_minimum() {
-    // len 12 keeps under 3/4 (notes end at beat 10), but min_len 4 re-rounds to 6 — the
-    // refit commits it even though the length is unchanged, so a reload (migrate, the same
-    // formula) changes nothing
+fn a_pattern_keeps_its_grid_across_migrate_and_map_edits() {
+    // the stored bar survives a reload byte-for-byte, and editing the song's signature map
+    // never touches it — the two drift sources the position-fit policy had
     let mut p = Project::routed();
-    p.patterns[0].min_len = 4.0;
-    p.patterns[0].len = 12.0;
-    p.patterns[0].notes.push(wave_engine::Note::new(1, 36.0, 4.0, None)); // ends at beat 10
+    p.patterns[0].bar = 3.5;
+    p.patterns[0].min_len = 7.0;
+    p.patterns[0].len = 7.0;
+    let before =
+        serde_json::json!({ "patterns": serde_json::to_value(&p.patterns).unwrap(), "clips": serde_json::to_value(&p.clips).unwrap() });
     ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
-    assert!((p.patterns[0].len - 12.0).abs() < 1e-9, "{}", p.patterns[0].len);
-    assert!((p.patterns[0].min_len - 6.0).abs() < 1e-9, "{}", p.patterns[0].min_len);
-    let before = serde_json::to_string(&p).unwrap();
+    let after =
+        serde_json::json!({ "patterns": serde_json::to_value(&p.patterns).unwrap(), "clips": serde_json::to_value(&p.clips).unwrap() });
+    assert_eq!(after, before, "the map edit changes no pattern or clip");
     p.migrate();
-    assert_eq!(serde_json::to_string(&p).unwrap(), before, "the reload changes nothing");
+    let reloaded =
+        serde_json::json!({ "patterns": serde_json::to_value(&p.patterns).unwrap(), "clips": serde_json::to_value(&p.clips).unwrap() });
+    assert_eq!(reloaded, before, "the reload changes no pattern or clip");
 }
 
 #[test]
-fn a_refused_refit_leaves_the_op_untouched() {
-    // a channel loop that would stick out of the shorter pattern refuses the op — and a
-    // direct `apply` (which does not copy first, unlike apply_all) must not find the map
-    // assigned or the pattern half-refitted: apply promises "on error the project is
-    // unchanged"
+fn a_bad_bar_refuses_the_op_and_leaves_it_untouched() {
+    // putPattern validates the pattern's own bar (a hand-built op cannot smuggle in a
+    // zero or negative grid); apply promises "on error the project is unchanged"
     let mut p = Project::routed();
-    let ch = p.channels[0].id;
-    p.patterns[0].notes.push(wave_engine::Note::new(ch, 16.0, 4.0, None)); // ends at beat 5
-    p.patterns[0].min_len = 4.0;
-    p.patterns[0].len = 8.0;
-    p.patterns[0].channel_loops = std::collections::BTreeMap::from([(ch, 32u32)]); // 8 beats of loop
+    let mut pt = p.patterns[0].clone();
+    pt.id = 40;
+    pt.bar = 0.0;
     let before = serde_json::to_string(&p).unwrap();
-    let err = ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap_err();
-    assert!(format!("{err}").contains("a channel loop must be"), "{err}");
+    let err = ops::apply(&mut p, &Op::PutPattern { pattern: pt }).unwrap_err();
+    assert!(format!("{err}").contains("pattern bar"), "{err}");
     assert_eq!(serde_json::to_string(&p).unwrap(), before, "the refused op changed nothing");
-    // and once the loop is raised the same op goes through
-    p.patterns[0].channel_loops.clear();
-    ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
-    assert!((p.patterns[0].len - 6.0).abs() < 1e-9, "{}", p.patterns[0].len);
 }
 
 #[test]
-fn reassigning_a_clip_refits_the_pattern_it_left_too() {
-    // a clip moving from pattern A to pattern B changes BOTH grids: B lands on the 7/8
-    // change at beat 8, and A (min_len 5, a stray beat count from an older grid) re-rounds
-    // to whole 4/4 bars now that nothing plays it at beat 0 anymore
+fn reassigning_a_clip_never_resizes_either_pattern() {
+    // a clip moving from pattern A to pattern B changes neither: each keeps the bar grid
+    // it was created with, whatever the arrangement does
     let mut p = Project::routed();
     p.sig_points = pts(&[(8.0, 7, 8)]);
     p.patterns.push(Pattern {
@@ -418,6 +415,7 @@ fn reassigning_a_clip_refits_the_pattern_it_left_too() {
         color: "#4f8ef7".into(),
         len: 8.0,
         min_len: 8.0,
+        bar: 4.0,
         notes: vec![],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),
@@ -426,6 +424,6 @@ fn reassigning_a_clip_refits_the_pattern_it_left_too() {
     p.patterns[0].len = 8.0;
     p.clips.push(clip(912, 0, 0.0, 8.0, 1));
     ops::apply(&mut p, &Op::PutClips { clips: vec![clip(912, 0, 8.0, 8.0, 2)] }).unwrap();
-    assert!((p.patterns[0].min_len - 8.0).abs() < 1e-9, "A re-rounds on the opener grid: {}", p.patterns[0].min_len);
-    assert!((p.patterns[1].len - 10.5).abs() < 1e-9, "B fits its new 7/8 position: {}", p.patterns[1].len);
+    assert!((p.patterns[0].len - 8.0).abs() < 1e-9 && (p.patterns[0].min_len - 5.0).abs() < 1e-9, "A keeps its grid");
+    assert!((p.patterns[1].len - 8.0).abs() < 1e-9, "B keeps its grid");
 }

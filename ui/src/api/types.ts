@@ -271,7 +271,9 @@ export const SIG_DENS = [1, 2, 4, 8, 16];
 
 export interface SigPoint { beat: number; num: number; den: number }
 
-export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number> }
+export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number>
+  /** The pattern's own bar length in beats: the signature where it was created (4/4 default). Kept stable afterwards (engine `Pattern::bar`). */
+  bar?: number }
 
 export interface Source {
   id: Id; name: string; color: string; path: string;
@@ -849,7 +851,7 @@ export interface MidiImportArgs {
   into?: { pattern: Id; ch: Id; replace: boolean };
 }
 export interface MidiImportResult {
-  patternId: Id; channelIds: Id[]; clipId?: Id | null; track?: number; beat?: number; len?: number; notes?: number;
+  patternId: Id; channelIds: Id[]; clipId?: Id | null; track?: number; beat?: number; len?: number; bar?: number; notes?: number;
   revision: number; warnings?: string[]; tempoSet?: boolean;
 }
 export interface MidiExportResult { out: string; what: string; tracks: number; notes: number; bpm: number }

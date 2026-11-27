@@ -13,7 +13,8 @@ import { be } from '../api/backend';
 import { keysInstrument } from '../lib/keysCatalog';
 import { KEYS_DEFAULT_INSTRUMENT, KEYS_DYNAMICS, MB_BODY, MB_BRIGHTNESS, MB_MECHANICAL, MB_RELEASE, MB_RING, MB_SPREAD, SAMPLE_ROOT, samplerDefault, TOTAL_BEATS, VOL_UNITY, type Channel, type Id, type LibFile, type Note, type Op, type Pattern, type PluginInfo } from '../api/types';
 import { baseName, clamp, mod } from '../lib/format';
-import { barsText, burnChannelLoop, cloneNotes, loopStepsOf, notesText, patternBar, setChannelLoop, stepsOf } from '../lib/pattern';
+import { barBeatsAt, compiledSig } from '../lib/signatures';
+import { barOf, barsText, burnChannelLoop, cloneNotes, loopStepsOf, notesText, setChannelLoop, stepsOf } from '../lib/pattern';
 import { fitOnScreen, rackFitWidth } from '../lib/rack';
 import { dockKeyAction } from '../lib/layout';
 import { commit, enqueue } from './edit';
@@ -342,9 +343,10 @@ const freshName = (base: string) => {
 };
 export function newPattern() {
   const n = S.project.patterns.length;
-  // one bar of the grid the pattern's bars use (the song's opening signature: no clip yet)
-  const id = allocId(), bar = patternBar(rawOf(S.project), id);
-  const pt: Pattern = { id, name: freshName('Pattern ' + (n + 1)), color: PCOLORS[n % PCOLORS.length], len: bar, minLen: bar, notes: [] };
+  // INHERIT the signature where the user is working (the playhead): a pattern created in a
+  // 3/4 section gets 3-beat bars — and keeps them, wherever it is placed later
+  const id = allocId(), bar = barBeatsAt(compiledSig(S.project.sigPoints), U.start);
+  const pt: Pattern = { id, name: freshName('Pattern ' + (n + 1)), color: PCOLORS[n % PCOLORS.length], len: bar, minLen: bar, bar, notes: [] };
   commit([{ op: 'putPattern', pattern: pt }], t('b.pat.new'));
   setCurPattern(pt.id, true);
   say(t('b.st.newSay', { name: pt.name }));
@@ -382,7 +384,7 @@ export function splitByChannel(pt = curPat()) {
   if (used.length < 2) { say(t('b.st.splitOne')); return; }
   const ops: Op[] = [], made: Pattern[] = [];
   for (const c of used) {
-    const np: Pattern = { id: allocId(), name: freshName(pt.name + ' – ' + c.name), color: c.color, len: pt.len, minLen: pt.minLen ?? patternBar(rawOf(S.project), pt.id), swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)), ...(loopStepsOf(pt, c.id) > 0 ? { channelLoops: { [String(c.id)]: loopStepsOf(pt, c.id) } } : {}) };
+    const np: Pattern = { id: allocId(), name: freshName(pt.name + ' – ' + c.name), color: c.color, len: pt.len, minLen: pt.minLen ?? barOf(pt), bar: barOf(pt), swing: pt.swing, notes: plain(pt.notes.filter(n => n.ch === c.id)), ...(loopStepsOf(pt, c.id) > 0 ? { channelLoops: { [String(c.id)]: loopStepsOf(pt, c.id) } } : {}) };
     made.push(np); ops.push({ op: 'putPattern', pattern: np });
   }
   const old = S.project.clips.filter(c => c.kind === 'pat' && c.ref === pt.id);
@@ -416,7 +418,7 @@ export function moveNotesToNewPattern(pt: Pattern, idx: readonly number[]) {
 }
 /** "+ bar": keep one more (empty) bar at the end of the pattern. */
 /** One bar of the grid the pattern's bars use: the signature at its earliest clip (4/4 standalone). */
-const patBar = (pt: Pattern) => patternBar(rawOf(S.project), pt.id);
+const patBar = (pt: Pattern) => barOf(pt);
 /** "+ bar": keep one more (empty) bar at the end of the pattern. */
 export function addBar(pt = curPat()) {
   if (!pt) return;

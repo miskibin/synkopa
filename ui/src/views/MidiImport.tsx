@@ -9,7 +9,7 @@ import { be } from '../api/backend';
 import { KEYS_DEFAULT_INSTRUMENT, type MidiInfo, type MidiPart } from '../api/types';
 import { keysInstrument } from '../lib/keysCatalog';
 import { t } from '../lib/i18n';
-import { barsText, notesText, patternBar } from '../lib/pattern';
+import { barsText, notesText } from '../lib/pattern';
 import { tName } from '../lib/i18n';
 import { enqueue, resync } from '../state/edit';
 import { openRoll, setCurPattern } from '../state/pattern';
@@ -93,7 +93,7 @@ const into = () => U.midiWin?.into ?? null;
         ? ' · ' + (f.bpm != null ? t('d.midi.saidTempo', { bpm: bpmText(f) }) : t('d.midi.saidMeter', { list: meterList(f) }))
         : '';
       say(
-        t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / patternBar(S.project, r.patternId)) })
+        t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / (r.bar ?? 4)) })
         + took
         + (warns.length ? ' · ' + warns[0] + (warns.length > 1 ? t('d.midi.warnMore', { n: warns.length - 1 }) : '') : ''),
       );

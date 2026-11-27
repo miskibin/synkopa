@@ -942,6 +942,14 @@ pub struct Pattern {
     /// added on purpose ("+ bar") stay even while empty, e.g. a crash every second bar.
     #[serde(default = "bar", rename = "minLen")]
     pub min_len: f64,
+    /// The bar length in beats the pattern's bars use: the signature where the pattern was
+    /// **created** (4/4 when created without a place — FL and Live keep patterns independent
+    /// of the arrangement). Kept stable afterwards: moving clips or editing the signature
+    /// map never resizes a pattern; only its own edits ([`Pattern::fit_len`], "+ bar") do.
+    /// A bar may be off the beat grid (7/8 is 3.5) but always lands on whole steps
+    /// ([`SIG_DENS`]).
+    #[serde(default = "bar", skip_serializing_if = "is_default_bar")]
+    pub bar: f64,
     pub notes: Vec<Note>,
     /// 0..1: how far every second 16th is delayed (see [`swing_offset`]).
     #[serde(default, skip_serializing_if = "is_zero")]
@@ -958,6 +966,10 @@ pub struct Pattern {
 
 fn is_zero(v: &f32) -> bool {
     *v == 0.0
+}
+
+fn is_default_bar(v: &f64) -> bool {
+    *v == BAR_BEATS
 }
 
 fn bar() -> f64 {
@@ -977,31 +989,26 @@ pub const BAR_BEATS: f64 = 4.0;
 pub const MAX_LOOP_NOTES: usize = 65_536;
 
 impl Pattern {
-    /// The length its notes need: the end of the last note rounded up to a whole bar, at
-    /// least one bar, at most [`TOTAL_BEATS`]. `bar_beats` is the bar length the pattern's
-    /// bars use ([`Project::pattern_bar_beats`]); a bar may be off the beat grid (7/8 is
-    /// 3.5 beats) but always lands on whole steps (see [`SIG_DENS`]).
+    /// The length its notes need: the end of the last note rounded up to a whole bar of
+    /// `bar_beats`, at least one bar, at most [`TOTAL_BEATS`]. A bar may be off the beat
+    /// grid (7/8 is 3.5 beats) but always lands on whole steps (see [`SIG_DENS`]).
     pub fn content_len_in(notes: &[Note], bar_beats: f64) -> f64 {
         let end = notes.iter().map(|n| (n.step + n.len) as f64 / 4.0).fold(0.0, f64::max);
         ((end / bar_beats - 1e-6).ceil().max(1.0) * bar_beats).min(TOTAL_BEATS)
     }
 
-    /// [`Self::content_len_in`] on the 4/4 grid (callers without a project context).
+    /// [`Self::content_len_in`] on the 4/4 grid (callers without a pattern context).
     pub fn content_len(notes: &[Note]) -> f64 {
         Self::content_len_in(notes, BAR_BEATS)
     }
 
-    /// Sets `len` from the notes and `min_len` (whole bars), and normalises `min_len`.
-    /// `bar_beats` is the bar length the pattern's bars use ([`Project::pattern_bar_beats`]).
-    pub fn fit_len_in(&mut self, bar_beats: f64) {
-        let min = if self.min_len.is_finite() { (self.min_len / bar_beats - 1e-6).ceil().max(1.0) * bar_beats } else { bar_beats };
-        self.min_len = min.min(TOTAL_BEATS);
-        self.len = Self::content_len_in(&self.notes, bar_beats).max(self.min_len);
-    }
-
-    /// [`Self::fit_len_in`] on the 4/4 grid (callers without a project context).
+    /// Sets `len` from the notes and `min_len` (whole bars of [`Pattern::bar`]), and
+    /// normalises `min_len`.
     pub fn fit_len(&mut self) {
-        self.fit_len_in(BAR_BEATS);
+        let bar = if self.bar.is_finite() && self.bar >= 0.25 { self.bar } else { BAR_BEATS };
+        let min = if self.min_len.is_finite() { (self.min_len / bar - 1e-6).ceil().max(1.0) * bar } else { bar };
+        self.min_len = min.min(TOTAL_BEATS);
+        self.len = Self::content_len_in(&self.notes, bar).max(self.min_len);
     }
 }
 
@@ -1856,13 +1863,10 @@ impl Project {
     /// project without channels gets the starter kit so the Channel Rack is never empty.
     /// Idempotent; a project that is already current is unchanged.
     pub fn migrate(&mut self) {
-        // whole bars of the signature where each pattern plays (4/4 with no map: the grid
-        // the 4/4 fit used, so projects without signature points are unchanged)
-        let map = self.sig_map();
+        // whole bars of the pattern's own grid (the signature where it was created, 4/4 for
+        // everything from before the map): stable, never the arrangement's current state
         for pt in self.patterns.iter_mut() {
-            let at =
-                self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pt.id).map(|c| c.start).fold(f64::INFINITY, f64::min);
-            pt.fit_len_in(map.bar_beats_at(if at.is_finite() { at } else { 0.0 }));
+            pt.fit_len();
         }
         if self.channels.is_empty() {
             self.add_starter_kit();
@@ -2092,14 +2096,6 @@ impl Project {
             out.push((p.beat, p.num, p.den));
         }
         out
-    }
-
-    /// The bar length in beats a pattern's bars use: the signature at the earliest clip
-    /// that plays it, else the song's opening signature ([`BAR_BEATS`]). Pattern lengths
-    /// are whole bars of this grid ([`Pattern::fit_len`]).
-    pub fn pattern_bar_beats(&self, pat: Id) -> f64 {
-        let at = self.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pat).map(|c| c.start).fold(f64::INFINITY, f64::min);
-        self.sig_map().bar_beats_at(if at.is_finite() { at } else { 0.0 })
     }
 
     /// The section a marker starts: from it to the next marker further on, or to the song end
