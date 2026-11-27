@@ -138,8 +138,15 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
                 // and every later change as a point of the tempo map (#320)
                 ops.push(Op::SetBpm { bpm: f.bpm.unwrap_or(120.0).clamp(20.0, 999.0) });
                 if !f.tempo_points.is_empty() {
+                    // the map travels with the notes: the file's beat 0 is where the clip
+                    // starts on the Playlist, so every point lands the same distance in (an
+                    // import at beat 16 puts the file's beat-4 change at 20)
                     ops.push(Op::SetTempoPoints {
-                        points: f.tempo_points.iter().map(|t| wave_engine::model::TempoPoint { beat: t.beat, bpm: t.bpm, ramp: false }).collect(),
+                        points: f
+                            .tempo_points
+                            .iter()
+                            .map(|t| wave_engine::model::TempoPoint { beat: t.beat + beat, bpm: t.bpm, ramp: false })
+                            .collect(),
                     });
                 }
             }
@@ -229,7 +236,13 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             .tempo_points
             .iter()
             .filter(|t| t.bpm > wave_engine::model::MAX_TEMPO_BPM || t.bpm < wave_engine::model::MIN_TEMPO_BPM)
-            .map(|t| format!("the file's tempo of {:.2} BPM at beat {} is outside Synkopa's 20–300: it imports clamped", t.bpm, r4(t.beat)))
+            .map(|t| {
+                format!(
+                    "the file's tempo of {:.2} BPM, landing at beat {}, is outside Synkopa's 20–300: it imports clamped",
+                    t.bpm,
+                    r4(t.beat + beat)
+                )
+            })
             .collect();
         warnings.extend(clipped);
     }
@@ -381,8 +394,9 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
         .as_deref()
         .and_then(|s| Path::new(s).file_stem().map(|x| x.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "Synkopa".into());
-    // the map goes with the notes: holds as one event, ramps stepped per beat (exact per-beat
-    // timing), the opener first — a constant project writes the single event it always did
+    // the map goes with the notes: holds as one event, ramps stepped per beat at each
+    // interval's effective BPM (the file's elapsed time is the engine's integral), the opener
+    // first — a constant project writes the single event it always did
     let tempo_events = p.midi_tempo_events();
     let bytes = midi_file::write(&tempo_events, &title, &tracks)?;
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {

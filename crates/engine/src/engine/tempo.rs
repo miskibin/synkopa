@@ -17,29 +17,10 @@ impl crate::model::Project {
         TempoMap::compile(&self.tempo_points, self.bpm)
     }
 
-    /// The map as `(beat, bpm)` events a discrete serializer can write — a MIDI file's tempo
-    /// meta, which has no ramps: a hold segment is one event at its start, a ramp is one event
-    /// per whole beat along it (the BPM at that beat, so the file's per-beat timing is the
-    /// map's). The opener (the base tempo at beat 0) is always the first event, so a constant
-    /// project writes exactly one tempo event, as it always did.
+    /// The map as `(beat, bpm)` events a discrete serializer can write — see
+    /// [`TempoMap::midi_tempo_events`].
     pub fn midi_tempo_events(&self) -> Vec<(f64, f64)> {
-        let map = self.tempo_map();
-        let mut out: Vec<(f64, f64)> = Vec::with_capacity(map.points.len());
-        for (i, &(a, bpm_a, ramp)) in map.points.iter().enumerate() {
-            out.push((a, bpm_a));
-            if !ramp {
-                continue;
-            }
-            if let Some(&(b, _, _)) = map.points.get(i + 1) {
-                // whole beats inside the glide (the glide's end beat is the next point's own event)
-                let mut x = a.floor() + 1.0;
-                while x < b - 1e-9 {
-                    out.push((x, map.bpm_at(x)));
-                    x += 1.0;
-                }
-            }
-        }
-        out
+        self.tempo_map().midi_tempo_events()
     }
 }
 
@@ -189,6 +170,44 @@ impl TempoMap {
     fn segment_of(&self, beat: f64) -> usize {
         self.points.partition_point(|&(b, ..)| b <= beat + 1e-9).saturating_sub(1).min(self.points.len() - 1)
     }
+
+    /// The map as `(beat, bpm)` events a discrete serializer can write — a MIDI file's tempo
+    /// meta, which has no ramps: a hold segment is one event at its start, a ramp is one event
+    /// per beat along it carrying that interval's *effective* BPM, `60·len / seconds_between`,
+    /// so the file's elapsed time at every event beat is the engine's own integral (stepping
+    /// the segment's start BPM instead accumulates drift along the glide). The opener (the
+    /// base tempo at beat 0) is always the first event, so a constant map writes exactly one
+    /// tempo event, as it always did.
+    pub(crate) fn midi_tempo_events(&self) -> Vec<(f64, f64)> {
+        let mut out: Vec<(f64, f64)> = Vec::with_capacity(self.points.len() + 8);
+        for (i, &(a, bpm_a, ramp)) in self.points.iter().enumerate() {
+            let Some(&(b, _, _)) = self.points.get(i + 1).filter(|_| ramp) else {
+                out.push((a, bpm_a));
+                continue;
+            };
+            // the interval [u, v) plays the BPM that spends exactly seconds_between(u, v)
+            // seconds over its length (a degenerate interval keeps the segment's own value)
+            let eff = |u: f64, v: f64| match self.seconds_between(u, v) {
+                s if s > 1e-12 => 60.0 * (v - u) / s,
+                _ => bpm_a,
+            };
+            // whole beats inside the glide, then the glide's end: one interval each, the
+            // last one open (the glide's end beat is the next point's own event)
+            let mut bounds: Vec<f64> = Vec::new();
+            let mut x = a.floor() + 1.0;
+            while x < b - 1e-9 {
+                bounds.push(x);
+                x += 1.0;
+            }
+            bounds.push(b);
+            let mut u = a;
+            for &v in &bounds {
+                out.push((u, eff(u, v)));
+                u = v;
+            }
+        }
+        out
+    }
 }
 
 #[cfg(test)]
@@ -230,6 +249,48 @@ mod tests {
         for b in [0.0, 2.0, 4.0, 6.5, 8.0] {
             assert!((m.beat_at(m.seconds_between(0.0, b)) - b).abs() < 1e-9, "beat {b}");
         }
+    }
+
+    #[test]
+    fn midi_tempo_events_elapsed_time_is_the_maps_own() {
+        // MIDI's tempo meta has no ramps: each beat steps at its interval's effective BPM and
+        // the file's elapsed time must equal the map's integral at every event beat (stepping
+        // the segment's start BPM drifted 121 ms over one 90→140 glide — the #322 finding)
+        let m = map(&[(0.0, 90.0, true), (8.0, 140.0, false)]);
+        let evs = m.midi_tempo_events();
+        assert_eq!(evs.len(), 9, "one event per beat of the glide plus its end: {evs:?}");
+        // an event's BPM governs from its beat to the next event's: summing the intervals
+        // under their starting event must rebuild the map's own integral
+        let mut t = 0.0;
+        let mut prev = evs[0];
+        assert_eq!(prev.0, 0.0, "the opener is the first event");
+        for &(beat, bpm) in &evs[1..] {
+            t += (beat - prev.0) * 60.0 / prev.1;
+            prev = (beat, bpm);
+            assert!((t - m.seconds_between(0.0, beat)).abs() < 1e-9, "elapsed at beat {beat}: {t} vs {}", m.seconds_between(0.0, beat));
+        }
+        // and the whole glide lands on the engine's own number
+        assert!((m.seconds_between(0.0, 8.0) - 60.0 * 8.0 * (140.0f64 / 90.0).ln() / 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_ramp_with_fractional_bounds_still_times_exactly() {
+        // a glide starting mid-beat between holds: one event per beat of the glide, the
+        // partial first and last intervals included, each timing exactly
+        let m = map(&[(0.0, 120.0, false), (4.5, 90.0, true), (8.5, 140.0, false), (10.0, 60.0, false)]);
+        let evs = m.midi_tempo_events();
+        assert_eq!(evs.iter().map(|e| e.0).collect::<Vec<_>>(), vec![0.0, 4.5, 5.0, 6.0, 7.0, 8.0, 8.5, 10.0], "{evs:?}");
+        let mut t = 0.0;
+        let mut prev = evs[0];
+        for &(beat, bpm) in &evs[1..] {
+            t += (beat - prev.0) * 60.0 / prev.1;
+            prev = (beat, bpm);
+            assert!((t - m.seconds_between(0.0, beat)).abs() < 1e-9, "elapsed at beat {beat}: {t} vs {}", m.seconds_between(0.0, beat));
+        }
+        // the holds keep their own values, not an interval average
+        assert_eq!(evs[0], (0.0, 120.0));
+        assert_eq!(evs[6], (8.5, 140.0));
+        assert_eq!(evs[7], (10.0, 60.0));
     }
 
     #[test]

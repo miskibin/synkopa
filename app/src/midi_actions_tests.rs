@@ -185,7 +185,7 @@ fn a_mapped_file_imports_its_tempo_map_with_set_tempo() {
 }
 
 #[test]
-fn a_mapped_project_exports_its_map_and_a_ramp_as_per_beat_events() {
+fn a_mapped_project_exports_a_ramp_whose_file_elapsed_time_is_the_engines() {
     let d = tmp("exportmap");
     let doc = Files.create("sketch").unwrap();
     let ch = call(&*doc, "channels", json!({})).as_array().unwrap()[0]["id"].as_u64().unwrap();
@@ -206,15 +206,44 @@ fn a_mapped_project_exports_its_map_and_a_ramp_as_per_beat_events() {
     let out = d.join("ramp.mid");
     call(&*doc, "midi_export", json!({ "out": out, "pattern": 1 }));
     let f = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
-    // the ramp 90→140 over 8 beats steps once per beat: events at beats 0..8, values 90..140
-    assert_eq!(f.bpm.unwrap(), 90.0);
-    let got: Vec<(f64, f64)> = f.tempo_points.iter().map(|t| (t.beat, t.bpm)).collect();
-    let want: Vec<(f64, f64)> = (1..=8).map(|k| (k as f64, 90.0 + 50.0 * k as f64 / 8.0)).collect();
-    assert_eq!(got.len(), want.len(), "{got:?}");
-    for ((gb, gbpm), (wb, wbpm)) in got.iter().zip(&want) {
-        assert_eq!(gb, wb);
-        assert!((gbpm - wbpm).abs() < 0.01, "{gbpm} vs {wbpm}");
+    // the ramp 90→140 over 8 beats steps once per beat — each event at its interval's
+    // effective BPM (the tick-0 value is beat 0's interval average, so it is not 90 itself)
+    assert_eq!(f.tempo_points.len(), 8, "one point per beat of the glide plus its end: {:?}", f.tempo_points);
+    let evs: Vec<(f64, f64)> = std::iter::once((0.0, f.bpm.unwrap())).chain(f.tempo_points.iter().map(|t| (t.beat, t.bpm))).collect();
+    let mut rising = true;
+    for w in evs.windows(2) {
+        rising &= w[0].1 < w[1].1;
     }
+    assert!(rising, "the glide rises: {evs:?}");
+    // the file's own elapsed time (its µs tempos, summed per event interval) reaches beat 8
+    // in the engine's integral time — 4.2417 s, not the 4.3629 s the stepped-start events of
+    // the old export played (#322: test the elapsed time, not just the BPM values)
+    let mut t = 0.0;
+    for w in evs.windows(2) {
+        t += (w[1].0 - w[0].0) * 60.0 / w[0].1;
+    }
+    let want = 60.0 * 8.0 * (140.0f64 / 90.0).ln() / 50.0;
+    assert!((want - 4.2417).abs() < 1e-3, "the integral is the drift benchmark: {want}");
+    assert!((t - want).abs() < 1e-3, "the file plays the glide in {t} s, the engine in {want} s");
+    // beyond the glide the hold at 140 is exact
+    assert_eq!(f.tempo_points[7], midi_file::SmfTempo { beat: 8.0, bpm: 140.0 });
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn imported_tempo_points_land_at_the_insertion_beat() {
+    // the notes respect the playlist insertion position, and the map travels with them: the
+    // file's beat 0 is where the clip starts, so its beat-4 change lands at 16 + 4
+    let d = tmp("mapoffset");
+    let path = mapped_file(&d);
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 16.0 }));
+    assert_eq!(r["beat"], 16.0);
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
+    let pts = proj["tempoPoints"].as_array().expect("the map came with the import");
+    let got: Vec<(f64, f64)> = pts.iter().map(|p| (p["beat"].as_f64().unwrap(), p["bpm"].as_f64().unwrap())).collect();
+    assert_eq!(got, vec![(20.0, 90.0), (24.0, 150.0)]);
     std::fs::remove_dir_all(&d).ok();
 }
 
@@ -254,6 +283,11 @@ fn importing_a_point_above_the_limit_discloses_the_clamp() {
     let ctx = call(&*doc, "context", json!({ "full": true }));
     let proj = ctx["project"].as_object().map(|p| p.to_owned()).unwrap_or_else(|| ctx.as_object().cloned().unwrap());
     assert_eq!(proj["tempoPoints"][0]["bpm"], 300.0, "clamped to the engine's limit");
+    // the disclosure names where the point lands (the insertion beat included), so the user
+    // finds the clamped value in their project
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 16.0 }));
+    let warns: Vec<String> = r["warnings"].as_array().unwrap().iter().map(|w| w.as_str().unwrap().to_string()).collect();
+    assert!(warns.iter().any(|w| w.contains("landing at beat 20")), "{warns:?}");
     // the opt-out imports nothing: no warning about an imported tempo may fire either
     let doc = Files.create("empty").unwrap();
     let r = call(&*doc, "midi_import", json!({ "path": path }));

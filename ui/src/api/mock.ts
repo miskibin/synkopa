@@ -1617,7 +1617,10 @@ export class MockBackend implements Backend {
     let next = this.p.nextId;
     if (a.setTempo && (f.bpm != null || f.tempoPoints.length)) {
       ops.push({ op: 'setBpm', bpm: f.bpm ?? 120 });
-      if (f.tempoPoints.length) ops.push({ op: 'setTempoPoints', points: f.tempoPoints.map(t => ({ beat: t.beat, bpm: t.bpm, ramp: false })) });
+      // the map travels with the notes: points land relative to the Playlist insertion beat,
+      // as midi_actions.rs shifts them
+      const insBeat = Math.max(0, a.beat ?? 0);
+      if (f.tempoPoints.length) ops.push({ op: 'setTempoPoints', points: f.tempoPoints.map(t => ({ beat: t.beat + insBeat, bpm: t.bpm, ramp: false })) });
     }
     const patternId = next++, notes: Note[] = [], channelIds: Id[] = [], drumCh = new Map<number, Id>();
     for (const k of keys) {
@@ -1654,6 +1657,8 @@ export class MockBackend implements Backend {
     this.p.nextId = Math.max(this.p.nextId, next);
     // the engine commits this through `apply_with_library_labeled` with the same name
     this.pushUndo(prev, 'Import MIDI'); this.changed();
+    // warnings: [] is the engine's answer for this fixture file — it never trips the clamp or
+    // the point cap the engine discloses
     return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length)) };
   }
   async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {

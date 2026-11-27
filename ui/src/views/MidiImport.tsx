@@ -80,7 +80,14 @@ export function MidiImport() {
       await resync();
       if (w.into) { say(t('d.midi.saidInto', { n: r.notes ?? 0 })); return; }
       setCurPattern(r.patternId, true);
-      say(t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / 4) }) + (r.tempoSet ? ' · ' + t('d.midi.saidTempo', { bpm: fileBpm(f).toFixed(2).replace(/\.?0+$/, '') }) : ''));
+      // the backend's import warnings (a clamped tempo point, …) surface where the success
+      // line does — the dialog is already closed here
+      const warns = r.warnings ?? [];
+      say(
+        t('d.midi.said', { name, n: r.channelIds.length, bars: barsText((r.len ?? 4) / 4) })
+        + (r.tempoSet ? ' · ' + t('d.midi.saidTempo', { bpm: fileBpm(f).toFixed(2).replace(/\.?0+$/, '') }) : '')
+        + (warns.length ? ' · ' + warns[0] + (warns.length > 1 ? t('d.midi.warnMore', { n: warns.length - 1 }) : '') : ''),
+      );
       openRoll(r.channelIds.find(id => S.project.channels?.find(c => c.id === id)?.kind !== 'sample') ?? r.channelIds[0]);
     } catch (e) { setErr(String(e)); }
     finally { setBusy(false); }

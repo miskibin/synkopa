@@ -227,7 +227,8 @@ pub struct OutTrack {
 
 /// A format 1 file: a tempo track (the tempo events, then 4/4), then one track per part.
 /// `tempo_events` are `(beat, bpm)` in play order — the caller serializes the project's map
-/// (holds once, ramps per beat, [`crate::engine`]'s `Project::midi_tempo_events`), so this
+/// (holds once, ramps stepped per beat at each interval's effective BPM,
+/// [`crate::engine`]'s `Project::midi_tempo_events`), so this
 /// stays pure data: the events are placed at their ticks, the first must be beat 0.
 pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack]) -> Result<Vec<u8>, String> {
     let mut smf = Smf::new(Header::new(Format::Parallel, Timing::Metrical(u15::new(PPQ))));
