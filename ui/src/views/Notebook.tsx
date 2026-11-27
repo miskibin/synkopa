@@ -11,6 +11,7 @@ import { createSignal, effect, onCleanup, onMount, watch } from '../lib/reactive
 import type { Id, LyricPage } from '../api/types';
 import { clamp } from '../lib/format';
 import { barOfBeat, beatOfBar, lastWord, lineBars, lineOfBar, pageBarRange, rhymeGroups, syllables } from '../lib/notebook';
+import { compiledSig } from '../lib/signatures';
 import * as A from '../state/actions';
 import {
   addPage, closeNotebook, curPage, deletePage, FONT_MAX, FONT_MIN, flushNotebook, markSaved, NB, pages, pendingText, renamePage, reorderPage,
@@ -50,7 +51,7 @@ export function NotebookHost() {
   });
   onMount(() => {
     const stop = addFrameTask(() => {
-      const b = tele.frame.playing ? barOfBeat(tele.frame.beat) : null;
+      const b = tele.frame.playing ? barOfBeat(tele.frame.beat, compiledSig(S.project.sigPoints)) : null;
       if (b !== liveBar()) setLiveBar(b);
     });
     // clicking anything in the effect-window layer puts those windows above the notebook
@@ -201,7 +202,7 @@ function NotebookWindow() {
     track(ev => setNB('geom', { w: clamp(o.w + ev.clientX - sx, 300, window.innerWidth - 20), h: clamp(o.h + ev.clientY - sy, 240, window.innerHeight - 20) }), () => saveGeom(), 'nwse-resize');
   };
   const move = (e: PointerEvent) => moveWindow(e, () => G(), (x, y) => { setNB('geom', { x, y }); saveGeom(); });
-  const goBar = (bar: number) => { A.seek(beatOfBar(bar)); say(tl('a.nb.bar', { n: bar })); };
+  const goBar = (bar: number) => { A.seek(beatOfBar(bar, compiledSig(S.project.sigPoints))); say(tl('a.nb.bar', { n: bar })); };
 
   return (
     <div class={['win nbwin', { wrap: NB.wrap }]} style={{ left: G().x + 'px', top: G().y + 'px', width: G().w + 'px', height: G().h + 'px', 'z-index': NB.front ? 46 : 44, '--nb-font': NB.font + 'px', '--nb-lh': LH() + 'px' }}

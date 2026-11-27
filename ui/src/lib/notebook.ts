@@ -2,11 +2,12 @@
 // backend. Mirrors crates/engine/src/model.rs (`Notebook`, `LyricPage`) and ops.rs
 // (`putNotebook`, `validate_notebook`).
 //
-// One line = one bar. Bars are 1-based like the playlist ruler and a bar is 4 beats (the
-// project is 4/4: `fmtPos` and the ruler count bars the same way). A line whose trimmed text is
-// wrapped in square brackets ("[Refren]") is a header and takes no bar; an empty line is a bar
-// of rest and still counts.
-import type { Id, LyricPage, Notebook, Project } from '../api/types';
+// One line = one bar. Bars are 1-based like the playlist ruler and count by the signature map
+// (`sigs` — a bar is whatever the meter says; without one, 4/4's 4 beats). A line whose trimmed
+// text is wrapped in square brackets ("[Refren]") is a header and takes no bar; an empty line is
+// a bar of rest and still counts.
+import type { Id, LyricPage, Notebook, Project, SigPoint } from '../api/types';
+import { barAt, beatAtBar } from './signatures';
 
 export const BEATS_PER_BAR = 4;
 export const MAX_PAGES = 64;
@@ -40,10 +41,12 @@ export function pageBarRange(p: Pick<LyricPage, 'text' | 'startBar'>): [number, 
   return [p.startBar, p.startBar + n - 1];
 }
 
-/** 1-based bar under a playhead position (beats); null during the count-in. */
-export const barOfBeat = (beat: number): number | null => (beat < 0 ? null : Math.floor(beat / BEATS_PER_BAR + 1e-9) + 1);
-/** Beat where a 1-based bar starts. */
-export const beatOfBar = (bar: number) => (Math.max(1, bar) - 1) * BEATS_PER_BAR;
+/** 1-based bar under a playhead position (beats); null during the count-in. `sigs` counts by
+ *  the song's meters; without one, the 4/4 grid decides. */
+export const barOfBeat = (beat: number, sigs?: readonly SigPoint[]): number | null =>
+  beat < 0 ? null : Math.floor(barAt(sigs ?? [], beat)) + 1;
+/** Beat where a 1-based bar starts (by the song's meters; 4/4 without). */
+export const beatOfBar = (bar: number, sigs?: readonly SigPoint[]) => beatAtBar(sigs ?? [], Math.max(1, bar) - 1);
 
 // ------------------------------------------------------------------ syllables (Polish)
 

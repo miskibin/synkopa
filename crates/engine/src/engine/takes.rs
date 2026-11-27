@@ -377,6 +377,7 @@ impl Engine {
             color,
             len: laid.len,
             min_len: laid.len,
+            bar: 4.0,
             notes: laid.notes,
             swing: 0.0,
             channel_loops: std::collections::BTreeMap::new(),

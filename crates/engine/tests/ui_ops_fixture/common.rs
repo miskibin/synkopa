@@ -66,6 +66,7 @@ pub fn pat(id: Id, name: &str, len: f64, min_len: f64, notes: Vec<Note>) -> Patt
         color: "#4f8ef7".into(),
         len,
         min_len,
+        bar: 4.0,
         notes,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),
@@ -124,6 +125,7 @@ pub fn base() -> Project {
         version: 2,
         bpm: 120.0,
         tempo_points: vec![],
+        sig_points: vec![],
         tracks: vec![track(1, "Drums", 1), track(2, "Vocal", 2)],
         inserts: vec![
             Insert {

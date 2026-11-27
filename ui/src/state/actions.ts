@@ -7,6 +7,8 @@ import { PLUGIN_FORMAT_LABEL, VOL_UNITY, type AnyBuiltinKind, type PluginInfo, t
 import { clampMove, duplicateSpan, insertTrackOps, moveClips, moveTrackOps, muteOps, newClip, pasteClips, sliceClip, swapTrackOps, TOTAL } from '../lib/clipOps';
 import { parseViews, rememberView, viewFor } from '../lib/projView';
 import { clamp, fmtPos } from '../lib/format';
+import { compiledSig } from '../lib/signatures';
+import { createMemo } from 'solid-js';
 import { loadPreset as loadPresetFx, newFx, presetInfo, presetList } from '../lib/presets';
 import { snapName, snapRes } from '../lib/snap';
 import { samePath } from '../lib/paths';
@@ -27,6 +29,9 @@ import { recTarget, recUntil } from '../lib/recTarget';
 import { curBeat, markPlayCmd } from './telemetry';
 import { confirmRecover, confirmUnsaved } from '../ui/Confirm';
 import { showPlugin } from './pluginWindows';
+
+/** The signature map the song positions read: bar numbers follow the meters. */
+const sigs = createMemo(() => compiledSig(S.project.sigPoints));
 import { refreshRecent } from './recent';
 
 // ---------- transport ----------
@@ -150,7 +155,7 @@ export function toggleSong() {
 export function seek(b: number) {
   setU('start', Math.max(0, b));
   if (U.playing) void be().transportPlay(U.start);
-  say('Start: ' + fmtPos(U.start));
+  say('Start: ' + fmtPos(U.start, sigs()));
 }
 export async function setTransportFlag(k: 'metro' | 'countIn' | 'rec' | 'monitor', v: boolean) {
   setTransport({ [k]: v });
@@ -439,7 +444,7 @@ export function paste(at?: { beat: number; track: number }) {
   if (!at) pasteAt = Math.max(...copies.map(c => c.start + c.len));
   commit([{ op: 'putClips', clips: copies }], t('d.act.op.paste'));
   setU('sel', copies.map(c => c.id));
-  say(t('d.act.pasted', { n: copies.length, pos: fmtPos(beat) }));
+  say(t('d.act.pasted', { n: copies.length, pos: fmtPos(beat, sigs()) }));
 }
 /** Playlist resize mode: trim ↔ stretch (Shift+M, the switch in the playlist's corner). */
 export function toggleStretchMode() {
@@ -469,7 +474,7 @@ export function sliceAt(id: Id, b: number, withSel = true) {
   const r = S.project.clips.filter(x => ids.includes(x.id)).flatMap(c => sliceClip(plain(c), b, allocId()) ?? []);
   if (!r.length) return;
   commit([{ op: 'putClips', clips: r }], t('d.act.op.split'));
-  say(t('d.act.cut', { pos: fmtPos(b) }));
+  say(t('d.act.cut', { pos: fmtPos(b, sigs()) }));
 }
 export function selectAll() { setU('sel', S.project.clips.map(c => c.id)); }
 export function makeUnique(clip: Clip) {
@@ -536,7 +541,7 @@ export async function exportRangeInPlace() {
   const n = rangeInPlaceClips().length;
   if (!n) { say(t('d.act.inPlaceRangeEmpty')); return; }
   const ids = S.project.clips.filter(c => U.sel.includes(c.id) && c.kind !== 'auto').map(c => c.id);
-  return runInPlace(ids, [l.a, l.b], t('d.act.inPlaceRangeBusy', { n, from: fmtPos(l.a), to: fmtPos(l.b) }));
+  return runInPlace(ids, [l.a, l.b], t('d.act.inPlaceRangeBusy', { n, from: fmtPos(l.a, sigs()), to: fmtPos(l.b, sigs()) }));
 }
 async function runInPlace(ids: Id[], range: [number, number] | undefined, busy: string) {
   endWheelGestures();

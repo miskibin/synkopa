@@ -478,12 +478,14 @@ pub fn strum(notes: &mut [Note], width: f32, ramp: f32) {
     }
 }
 
-/// Replace channel `ch`'s notes with a scale-constrained melody: `bars` bars of 16th
-/// slots, a note on every `density` slot, the pitch a small random walk over scale
-/// degrees. Bars past `repeat` replay that cycle's rhythm with the walk nudged ±1
-/// degree, so the melody repeats instead of wandering. Like [`euclidean_fill`], a second
-/// run (another seed) replaces the first instead of stacking on it.
-pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, density: f32, repeat: u32, seed: u64) {
+/// Replace channel `ch`'s notes with a scale-constrained melody: `bars` bars of `spb`
+/// 16th slots (the signature's bar — 16 in 4/4, 14 in 7/8), a note on every `density`
+/// slot, the pitch a small random walk over scale degrees. Bars past `repeat` replay that
+/// cycle's rhythm with the walk nudged ±1 degree, so the melody repeats instead of
+/// wandering. Like [`euclidean_fill`], a second run (another seed) replaces the first
+/// instead of stacking on it.
+#[allow(clippy::too_many_arguments)]
+pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, spb: u32, density: f32, repeat: u32, seed: u64) {
     notes.retain(|n| n.ch != ch);
     let rng = &mut SplitMix64::new(seed);
     let (key, scale_id) = key_scale;
@@ -493,11 +495,12 @@ pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, de
     let mut deg: i32 = 0;
     let mut seq: Vec<(i32, f32)> = Vec::new(); // per-slot (degree index, len); -1 = rest
     let rep = repeat.max(1) as usize;
+    let spb = spb.max(1) as usize;
     for bar in 0..bars.max(1) as usize {
         // the first `repeat` bars invent the motif; every later bar replays its cycle's
         // rhythm with the walk nudged ±1 degree, so the melody repeats instead of wandering
         let build = bar < rep;
-        for slot in 0..16usize {
+        for slot in 0..spb {
             let (d, len) = if build {
                 let len = if rng.unit() < 0.3 { 2.0 } else { 1.0 };
                 if rng.unit() < density.clamp(0.05, 1.0) {
@@ -509,7 +512,7 @@ pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, de
                     (-1, len)
                 }
             } else {
-                let (sd, sl) = seq[(bar % rep) * 16 + slot];
+                let (sd, sl) = seq[(bar % rep) * spb + slot];
                 if sd < 0 {
                     (-1, sl)
                 } else {
@@ -521,7 +524,7 @@ pub fn melody(notes: &mut Vec<Note>, ch: Id, key_scale: (u8, u32), bars: u32, de
                 continue;
             }
             let midi = (48 + key as i32 + degrees[d as usize] as i32) as u8;
-            notes.push(Note { ch, step: (bar * 16 + slot) as f32, len, p: Some(midi), v: 0.8, trig: Some(false), pan: 0.0, slide: false });
+            notes.push(Note { ch, step: (bar * spb + slot) as f32, len, p: Some(midi), v: 0.8, trig: Some(false), pan: 0.0, slide: false });
         }
     }
 }
@@ -692,14 +695,15 @@ pub fn progression_degrees(mode: &str, bars: usize, seed: u64, scale_degrees: us
 }
 
 /// Generate one diatonic 7th chord per degree on channel `ch`: chord on beat 1 of
-/// each bar (16 steps, a bar long on the 16th grid), roots in the C3..B3 window.
-/// With `voice_lead`, every chord after the first picks the rotation (lift the
-/// lowest voices an octave) minimizing total movement against the previous voicing
-/// — the harmony stays, the hands move less.
-pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degrees: &[usize], voice_lead: bool) {
+/// each bar (`spb` steps — the signature's bar — long on the 16th grid), roots in the
+/// C3..B3 window. With `voice_lead`, every chord after the first picks the rotation
+/// (lift the lowest voices an octave) minimizing total movement against the previous
+/// voicing — the harmony stays, the hands move less.
+pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degrees: &[usize], spb: u32, voice_lead: bool) {
     // the generator owns its channel: like `euclidean_fill`, its previous notes make
     // way (a selection limits which old notes the verb sees at all)
     notes.retain(|n| n.ch != ch);
+    let spb = spb.max(1) as f32;
     let mut chords: Vec<Vec<u8>> = degrees
         .iter()
         .map(|&d| {
@@ -733,7 +737,7 @@ pub fn progression(notes: &mut Vec<Note>, ch: Id, key: u8, scale_id: u32, degree
         let mut ps = chd.clone();
         ps.sort_unstable();
         for p in ps {
-            notes.push(Note { ch, step: (bar * 16) as f32, len: 16.0, p: Some(p), v: 0.75, trig: Some(false), pan: 0.0, slide: false });
+            notes.push(Note { ch, step: (bar as f32 * spb), len: spb, p: Some(p), v: 0.75, trig: Some(false), pan: 0.0, slide: false });
         }
     }
 }
@@ -917,10 +921,10 @@ mod tests {
     #[test]
     fn melody_replaces_its_channel() {
         let a = &mut vec![note(3, 0.5, 0.9), note(4, 2.0, 0.9)];
-        melody(a, 3, (0, 1), 1, 0.5, 1, 1);
-        melody(a, 3, (0, 1), 1, 0.5, 1, 2);
+        melody(a, 3, (0, 1), 1, 16, 0.5, 1, 1);
+        melody(a, 3, (0, 1), 1, 16, 0.5, 1, 2);
         let b = &mut vec![note(4, 2.0, 0.9)];
-        melody(b, 3, (0, 1), 1, 0.5, 1, 2);
+        melody(b, 3, (0, 1), 1, 16, 0.5, 1, 2);
         assert_eq!(a, b, "a second run replaces the first; other channels stay");
     }
 
@@ -961,24 +965,24 @@ mod tests {
     #[test]
     fn melody_is_scale_constrained_and_deterministic() {
         let a = &mut vec![];
-        melody(a, 3, (0, 1), 2, 0.5, 1, 77);
+        melody(a, 3, (0, 1), 2, 16, 0.5, 1, 77);
         assert!(a.iter().all(|n| n.ch == 3));
         assert!(a.iter().all(|n| n.p.is_some()));
         // every pitch in C major
         assert!(a.iter().all(|n| [0, 2, 4, 5, 7, 9, 11].contains(&(n.p.unwrap() % 12))));
         let b = &mut vec![];
-        melody(b, 3, (0, 1), 2, 0.5, 1, 77);
+        melody(b, 3, (0, 1), 2, 16, 0.5, 1, 77);
         assert_eq!(a, b);
     }
 
     #[test]
     fn melody_repeat_replays_the_motif() {
         let a = &mut vec![];
-        melody(a, 3, (0, 1), 2, 0.5, 2, 41);
+        melody(a, 3, (0, 1), 2, 16, 0.5, 2, 41);
         let cycle = a.len();
         assert!(cycle > 0);
         let b = &mut vec![];
-        melody(b, 3, (0, 1), 4, 0.5, 2, 41);
+        melody(b, 3, (0, 1), 4, 16, 0.5, 2, 41);
         // bars 3–4 replay bars 1–2's rhythm: exactly twice the notes, first half identical
         assert_eq!(b.len(), cycle * 2);
         assert_eq!(&b[..cycle], &a[..]);
@@ -1154,13 +1158,13 @@ mod tests {
     fn progression_minloop_matches_the_golden_voicings() {
         // i–VI–III–VII in A natural minor, 7th stacks, roots in C3..B3
         let notes = &mut vec![];
-        progression(notes, 1, 9, 2, &[0, 5, 2, 6], false);
+        progression(notes, 1, 9, 2, &[0, 5, 2, 6], 16, false);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [57, 60, 64, 67, 53, 57, 60, 64, 48, 52, 55, 59, 55, 59, 62, 65]);
         assert!(notes.iter().enumerate().all(|(i, n)| n.step == (i / 4 * 16) as f32 && n.len == 16.0 && (n.v - 0.75).abs() < 1e-6));
         // voice-lead picks inversions: F→C→G move as little as possible
         let notes = &mut vec![];
-        progression(notes, 1, 9, 2, &[0, 5, 2, 6], true);
+        progression(notes, 1, 9, 2, &[0, 5, 2, 6], 16, true);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [57, 60, 64, 67, 57, 60, 64, 65, 59, 60, 64, 67, 59, 62, 65, 67]);
     }
@@ -1177,18 +1181,18 @@ mod tests {
         };
         // root position (voice-lead off): the degree names read cleanly
         let t = &mut vec![];
-        progression(t, 1, 9, 2, &[0, 3, 5, 4], false);
+        progression(t, 1, 9, 2, &[0, 3, 5, 4], 16, false);
         assert_eq!(names(t, 4), ["Am7", "Dm7", "Fmaj7", "Em7"]);
         let a = &mut vec![];
-        progression(a, 1, 9, 2, &[0, 6, 5, 4], false);
+        progression(a, 1, 9, 2, &[0, 6, 5, 4], 16, false);
         assert_eq!(names(a, 4), ["Am7", "G7", "Fmaj7", "Em7"]);
         let c = &mut vec![];
-        progression(c, 1, 9, 2, &[0, 4, 5, 2, 3, 0, 3, 4], false);
+        progression(c, 1, 9, 2, &[0, 4, 5, 2, 3, 0, 3, 4], 16, false);
         assert_eq!(names(c, 8), ["Am7", "Em7", "Fmaj7", "Cmaj7", "Dm7", "Am7", "Dm7", "Em7"]);
         // voice-lead on: trap's last chord lands G-in-bass ([55,59,62,64]) — the same
         // pitch set as Em7, but bass-first naming reads it "G6", exactly like a chart
         let t = &mut vec![];
-        progression(t, 1, 9, 2, &[0, 3, 5, 4], true);
+        progression(t, 1, 9, 2, &[0, 3, 5, 4], 16, true);
         let last: Vec<u8> = t[12..].iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(last, [55, 59, 62, 64]);
         assert_eq!(chord_name(&last), "G6");
@@ -1199,7 +1203,7 @@ mod tests {
         let run = |seed: u64| {
             let degs = progression_degrees("chance", 4, seed, 7).unwrap();
             let notes = &mut vec![];
-            progression(notes, 1, 9, 2, &degs, true);
+            progression(notes, 1, 9, 2, &degs, 16, true);
             notes.iter().map(|n| n.p.unwrap()).collect::<Vec<u8>>()
         };
         assert_eq!(run(7), run(7));
@@ -1225,7 +1229,7 @@ mod tests {
         let degs = progression_degrees("chance", 4, 2026, 7).unwrap();
         assert_eq!(degs, [2, 4, 3, 2]);
         let notes = &mut vec![];
-        progression(notes, 2, 9, 2, &degs, true);
+        progression(notes, 2, 9, 2, &degs, 16, true);
         let ps: Vec<u8> = notes.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(ps, [48, 52, 55, 59, 52, 55, 59, 62, 53, 57, 60, 62, 52, 55, 59, 60]);
         let steps: Vec<f32> = notes.iter().map(|n| n.step).collect();
@@ -1263,7 +1267,7 @@ mod tests {
         let vel: Vec<f32> = e.iter().map(|n| n.v).collect();
         assert_eq!(vel, [1.0, 0.7, 0.7, 0.7, 1.0]);
         let m = &mut vec![];
-        melody(m, 3, (9, 2), 2, 0.55, 1, 7);
+        melody(m, 3, (9, 2), 2, 16, 0.55, 1, 7);
         let mp: Vec<u8> = m.iter().map(|n| n.p.unwrap()).collect();
         assert_eq!(mp, [57, 57, 57, 59, 59, 59, 62, 65, 64, 62, 64, 64, 62, 62, 62, 62]);
         let ms: Vec<f32> = m.iter().map(|n| n.step).collect();

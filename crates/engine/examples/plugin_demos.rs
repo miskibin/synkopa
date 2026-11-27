@@ -233,6 +233,7 @@ fn slicer_demo(out: &Path) {
         color: "#4f8ef7".into(),
         len: beats,
         min_len: beats,
+        bar: 4.0,
         notes,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

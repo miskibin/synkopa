@@ -45,7 +45,7 @@ fn song_file(d: &Path) -> (PathBuf, Vec<OutTrack>) {
         },
     ];
     let path = d.join("groove.mid");
-    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Groove", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Groove", &tracks, &[]).unwrap()).unwrap();
     (path, tracks)
 }
 
@@ -54,7 +54,7 @@ fn song_file(d: &Path) -> (PathBuf, Vec<OutTrack>) {
 fn mapped_file(d: &Path) -> PathBuf {
     let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
     let path = d.join("mapped.mid");
-    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 90.0), (8.0, 150.0)], "M", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 90.0), (8.0, 150.0)], "M", &tracks, &[]).unwrap()).unwrap();
     path
 }
 
@@ -255,7 +255,7 @@ fn inspect_exposes_the_tempo_map_even_without_a_tick_0_tempo() {
     let d = tmp("inspectmap");
     let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
     let path = d.join("late.mid");
-    std::fs::write(&path, midi_file::write(&[(2.0, 140.0)], "L", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(2.0, 140.0)], "L", &tracks, &[]).unwrap()).unwrap();
     let doc = Files.create("empty").unwrap();
     let r = call(&*doc, "midi_inspect", json!({ "path": path }));
     assert_eq!(r["bpm"], Value::Null, "no event at tick 0: the default governs");
@@ -274,7 +274,7 @@ fn importing_a_point_above_the_limit_discloses_the_clamp() {
     let d = tmp("clamped");
     let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
     let path = d.join("fast.mid");
-    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 400.0)], "F", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, midi_file::write(&[(0.0, 120.0), (4.0, 400.0)], "F", &tracks, &[]).unwrap()).unwrap();
     let doc = Files.create("empty").unwrap();
     let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true }));
     assert_eq!(r["tempoSet"], true);
@@ -321,6 +321,7 @@ fn slide_notes_are_left_out_of_a_midi_file() {
         color: "#fff".into(),
         len: 4.0,
         min_len: 4.0,
+        bar: 4.0,
         notes: vec![held, slide],
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),
@@ -390,5 +391,54 @@ fn midi_export_includes_channel_loop_repeats() {
     let mut got = starts.clone();
     got.sort();
     assert_eq!(got, want, "steps in the file: {:?}", starts.iter().map(|s| *s as f64 / 1e4).collect::<Vec<_>>());
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_mapped_file_imports_its_meter_shifted_to_where_it_lands() {
+    let d = tmp("sigimport");
+    let path = d.join("mapped.mid");
+    let tracks =
+        vec![OutTrack { name: "Bass".into(), channel: 0, program: Some(33), notes: vec![n(36, 0.0, 1.0, 100), n(43, 8.5, 0.5, 90)] }];
+    // 7/8 opener + a 3/4 change at beat 7
+    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Mapped", &tracks, &[(0.0, 7, 8), (7.0, 3, 4)]).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_inspect", json!({ "path": path }));
+    assert_eq!(
+        r["sigPoints"],
+        json!([{ "beat": 0.0, "num": 7, "den": 8 }, { "beat": 7.0, "num": 3, "den": 4 }]),
+        "the inspect shows the map: the 7/8 opener is a point (a project cannot imply a meter)"
+    );
+    let r = call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 0 }));
+    assert_eq!(r["tempoSet"], true);
+    assert_eq!(r["len"], 10.5, "9 beats of notes end inside the second 3/4 bar: 3.5 + 7 = 10.5");
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    let sigs = &ctx["project"]["sigPoints"];
+    assert_eq!(sigs.as_array().map(|a| a.len()), Some(2), "{sigs}");
+    assert_eq!(sigs[0]["num"], 7);
+    assert_eq!(sigs[0]["den"], 8);
+    assert_eq!(sigs[1]["beat"], 7.0);
+    // the pattern itself sits on the 7/8 grid (the refit reads the map through its clip)
+    let pat = ctx["project"]["patterns"].as_array().unwrap().iter().find(|p| p["id"] == r["patternId"]).unwrap();
+    assert_eq!(pat["len"], 10.5);
+    // a mapped project exports its map: one signature meta per point
+    let out = d.join("mapped-out.mid");
+    call(&*doc, "midi_export", json!({ "out": out }));
+    let back = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
+    assert_eq!(back.sig_points, vec![midi_file::SmfSig { beat: 0.0, num: 7, den: 8 }, midi_file::SmfSig { beat: 7.0, num: 3, den: 4 }]);
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn the_meter_travels_only_with_the_tempo_opt_in() {
+    let d = tmp("sigsig");
+    let path = d.join("mapped.mid");
+    let tracks = vec![OutTrack { name: "Bass".into(), channel: 0, program: Some(33), notes: vec![n(36, 0.0, 1.0, 100)] }];
+    std::fs::write(&path, midi_file::write(&[(0.0, 97.0)], "Mapped", &tracks, &[(4.0, 3, 4)]).unwrap()).unwrap();
+    let doc = Files.create("empty").unwrap();
+    let r = call(&*doc, "midi_import", json!({ "path": path, "beat": 0 }));
+    assert_eq!(r["tempoSet"], false, "no opt-in: the file's meter does not touch the project");
+    let ctx = call(&*doc, "context", json!({ "full": true }));
+    assert!(ctx["project"]["sigPoints"].as_array().is_none_or(|a| a.is_empty()));
     std::fs::remove_dir_all(&d).ok();
 }

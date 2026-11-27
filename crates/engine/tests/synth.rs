@@ -41,6 +41,7 @@ fn song(preset: &str, notes: &[(f32, f32, u8)], beats: f64) -> (Project, Id) {
         color: "#4f8ef7".into(),
         len: beats,
         min_len: beats,
+        bar: 4.0,
         notes: notes.iter().map(|&(s, l, k)| Note::new(id, s, l, Some(k))).collect(),
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

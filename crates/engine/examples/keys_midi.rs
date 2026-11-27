@@ -34,6 +34,7 @@ fn main() {
         color: "#4f8ef7".into(),
         len: end,
         min_len: end,
+        bar: 4.0,
         notes,
         swing: 0.0,
         channel_loops: std::collections::BTreeMap::new(),

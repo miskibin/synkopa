@@ -261,7 +261,19 @@ export const MAX_TEMPO_POINTS = 4096;
 
 export interface TempoPoint { beat: number; bpm: number; ramp?: boolean }
 
-export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number> }
+/** A time-signature change on the song's timeline (engine `model::SigPoint`): from this
+ * beat, a bar counts `num` units of `1/den` — `4·num/den` beats (7/8 is 3.5). Before the
+ * first point a bar is 4/4's four beats. */
+/** Mirrors the engine's signature-point bounds (model.rs). */
+export const MAX_SIG_NUM = 32;
+export const MAX_SIG_POINTS = 1024;
+export const SIG_DENS = [1, 2, 4, 8, 16];
+
+export interface SigPoint { beat: number; num: number; den: number }
+
+export interface Pattern { id: Id; name: string; color: string; len: number; minLen?: number; notes: Note[]; swing?: number; channelLoops?: Record<string, number>
+  /** The pattern's own bar length in beats: the signature where it was created (4/4 default). Kept stable afterwards (engine `Pattern::bar`). */
+  bar?: number }
 
 export interface Source {
   id: Id; name: string; color: string; path: string;
@@ -535,6 +547,8 @@ export interface Project {
   version: number; bpm: number;
   /** Tempo points over the song (the tempo map). Empty = the constant `bpm` everywhere. */
   tempoPoints?: TempoPoint[]
+  /** Signature points over the song (mid-song meter changes). Empty = 4/4 everywhere. */
+  sigPoints?: SigPoint[]
   tracks: Track[]; inserts: Insert[]; patterns: Pattern[]; sources: Source[]; clips: Clip[];
   loop: LoopRange | null; nextId: Id;
   /** Automation envelopes; played by clips of kind `auto` (`ref` = automation id). */
@@ -600,6 +614,7 @@ export type Op =
   | { op: 'removeSource'; id: Id }
   | { op: 'setBpm'; bpm: number }
   | { op: 'setTempoPoints'; points: TempoPoint[] }
+  | { op: 'setSigPoints'; points: SigPoint[] }
   | { op: 'setLoop'; loop: LoopRange | null }
   | { op: 'setMaskIgnore'; pairs: [Id, Id][] }
   | { op: 'putAutomation'; automation: Automation }
@@ -826,6 +841,8 @@ export interface MidiTempoPoint { beat: number; bpm: number }
 /** `midiInspect`: a file's parts, its tick-0 tempo (null = the MIDI default of 120 governs until `tempoPoints`' first change) and what the import cannot keep. */
 export interface MidiInfo {
   path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; tempoPoints: MidiTempoPoint[]; end: number;
+  /** The file's meter map (empty: 4/4 throughout, or only the opener). */
+  sigPoints?: SigPoint[];
   warnings: string[]; parts: MidiPart[]; projectBpm: number;
 }
 export interface MidiImportArgs {
@@ -834,7 +851,7 @@ export interface MidiImportArgs {
   into?: { pattern: Id; ch: Id; replace: boolean };
 }
 export interface MidiImportResult {
-  patternId: Id; channelIds: Id[]; clipId?: Id | null; track?: number; beat?: number; len?: number; notes?: number;
+  patternId: Id; channelIds: Id[]; clipId?: Id | null; track?: number; beat?: number; len?: number; bar?: number; notes?: number;
   revision: number; warnings?: string[]; tempoSet?: boolean;
 }
 export interface MidiExportResult { out: string; what: string; tracks: number; notes: number; bpm: number }

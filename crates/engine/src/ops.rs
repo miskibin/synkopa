@@ -165,6 +165,14 @@ pub enum Op {
         #[serde(default)]
         points: Vec<crate::model::TempoPoint>,
     },
+    /// Set the song's signature points (mid-song meter changes). An empty list = 4/4
+    /// everywhere. Points are beat-sorted; `num` clamps 1..=32 and `den` snaps to 1/2/4/
+    /// 8/16 (anything else reads as 4) on the way in; two points at one beat: the last
+    /// governs; at most [`crate::model::MAX_SIG_POINTS`].
+    SetSigPoints {
+        #[serde(default)]
+        points: Vec<crate::model::SigPoint>,
+    },
     SetLoop {
         #[serde(rename = "loop")]
         range: Option<LoopRange>,
@@ -504,6 +512,11 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             }
             let mut pt = pattern.clone();
             check_notes(p, &pt)?;
+            // a pattern keeps the bar length it was created with: the fit rounds to whole
+            // bars of that grid, never to the signature where a clip happens to sit now
+            if !(pt.bar.is_finite() && (0.25..=TOTAL_BEATS).contains(&pt.bar)) {
+                return Err(OpError::Invalid("pattern bar must be 0.25..2048 beats".into()));
+            }
             pt.fit_len();
             check_channel_loops(p, &pt)?;
             bump(p, pt.id);
@@ -723,8 +736,11 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             let Some(pi) = p.patterns.iter().position(|x| x.id == *pid) else {
                 return Err(OpError::Missing { what: "pattern", id: *pid });
             };
-            // everything the verb needs, read before the pattern is borrowed mutably
-            let len_steps = (p.patterns[pi].len * 4.0).round().max(16.0) as u32;
+            // everything the verb needs, read before the pattern is borrowed mutably.
+            // Generator bars are bars of the signature where the pattern plays — steps per
+            // bar is always a whole number (`SIG_DENS` keeps bars on the step grid).
+            let spb = (p.patterns[pi].bar * 4.0).round().max(1.0) as u32;
+            let len_steps = (p.patterns[pi].len * 4.0).round().max(f64::from(spb)) as u32;
             let ks = p.key.map(|k| (k, p.scale));
             let roots: Vec<(Id, u8)> = p.channels.iter().map(|c| (c.id, c.root)).collect();
             let chan_ok = |id: Id| roots.iter().any(|(cid, _)| *cid == id);
@@ -903,7 +919,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     let shade = &mut crate::transform::SplitMix64::new(seed.unwrap_or(0));
                     for v in voices {
                         let vel = (v.vel * (1.0 + shade.pm1() * 0.15)).clamp(0.1, 1.0);
-                        crate::transform::euclidean_fill(&mut target, v.ch, v.k, v.n, v.rotate, vel, (*bars).max(1) * 16);
+                        crate::transform::euclidean_fill(&mut target, v.ch, v.k, v.n, v.rotate, vel, (*bars).max(1) * spb);
                     }
                 }
                 crate::transform::TransformVerb::Melody { ch, bars, density, repeat } => {
@@ -912,6 +928,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         *ch,
                         (ks.map(|(k, _)| k).unwrap_or(0), p.scale),
                         *bars,
+                        spb,
                         *density,
                         *repeat,
                         seed.unwrap_or(0),
@@ -932,7 +949,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     } else {
                         degrees.iter().map(|&d| d as usize).collect()
                     };
-                    crate::transform::progression(&mut target, *ch, p.key.unwrap_or(0), p.scale, &degs, *voice_lead);
+                    crate::transform::progression(&mut target, *ch, p.key.unwrap_or(0), p.scale, &degs, spb, *voice_lead);
                 }
             }
             let new_notes = if all_notes {
@@ -1075,6 +1092,24 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                 .collect();
             pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
             p.tempo_points = pts;
+            d.timeline = true;
+        }
+        Op::SetSigPoints { points } => {
+            if points.len() > crate::model::MAX_SIG_POINTS {
+                return Err(OpError::Invalid(format!("at most {} signature points", crate::model::MAX_SIG_POINTS)));
+            }
+            let mut pts: Vec<crate::model::SigPoint> = points
+                .iter()
+                .map(|p| crate::model::SigPoint {
+                    beat: p.beat.clamp(0.0, TOTAL_BEATS),
+                    num: p.num.clamp(1, crate::model::MAX_SIG_NUM),
+                    den: if crate::model::SIG_DENS.contains(&p.den) { p.den } else { 4 },
+                })
+                .collect();
+            pts.sort_by(|a, b| a.beat.total_cmp(&b.beat));
+            p.sig_points = pts;
+            // a pattern keeps the bar length it was created with: the map reflows where the
+            // bars fall (the ruler, the accents, the snap) but never resizes a pattern
             d.timeline = true;
         }
         Op::SetMaskIgnore { pairs } => {

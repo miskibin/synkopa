@@ -19,6 +19,7 @@ import { chordName, chordsIn, keyUsesFlats, simpleQuality, voiceChord } from '..
 import { projectEq } from '../lib/projectEq';
 import { applyAll, stripClipDefaults } from '../lib/applyOps';
 import { stripPatternDefaults } from '../lib/pattern';
+import { barBeatsAt, compiledSig, type SigPoint } from '../lib/signatures';
 import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
@@ -383,7 +384,8 @@ export class MockBackend implements Backend {
   async transportPlay(fromBeat: number) {
     if (this.tr.playing) this.finishRec();
     this.patPlay = null; // the song and the pattern preview are exclusive (like the engine)
-    const pre = this.tr.rec && this.tr.countIn ? 4 : 0;
+    // one bar of count-in — the signature at the record start, like the engine
+    const pre = this.tr.rec && this.tr.countIn ? barBeatsAt(compiledSig(this.p.sigPoints), fromBeat) : 0;
     const lp = this.p.loop;
     if (this.tr.rec && lp && lp.b > lp.a && (fromBeat < lp.a || fromBeat >= lp.b)) fromBeat = lp.a;
     this.tr = { ...this.tr, playing: true, startBeat: fromBeat };
@@ -1605,7 +1607,7 @@ export class MockBackend implements Backend {
     ];
     // a change at beat 4 so the dialog and the import exercise the tempo map (the engine
     // mirrors: base 97, then 105 from beat 4)
-    return { path, format: 1, ppq: 960, bpm: 97, tempoChanges: 1, tempoPoints: [{ beat: 4, bpm: 105 }], end: 8, warnings: [] as string[], parts, projectBpm: this.p.bpm };
+    return { path, format: 1, ppq: 960, bpm: 97, tempoChanges: 1, tempoPoints: [{ beat: 4, bpm: 105 }], sigPoints: [] as SigPoint[], end: 8, warnings: [] as string[], parts, projectBpm: this.p.bpm };
   }
   async midiInspect(path: string): Promise<MidiInfo> {
     await delay(20);
@@ -1634,12 +1636,13 @@ export class MockBackend implements Backend {
     const keys = [...new Set(parts.filter(p => p.drums).flatMap(p => p.raw.map(n => n[0])))].sort((x, y) => x - y);
     const ops: Op[] = [];
     let next = this.p.nextId;
-    if (a.setTempo && (f.bpm != null || f.tempoPoints.length)) {
-      ops.push({ op: 'setBpm', bpm: f.bpm ?? 120 });
-      // the map travels with the notes: points land relative to the Playlist insertion beat,
-      // as midi_actions.rs shifts them
-      const insBeat = Math.max(0, a.beat ?? 0);
+    // the opt-in covers the file's musical time — its tempo (#320) and its meters (#321) —
+    // and everything lands relative to the insertion beat, as midi_actions.rs shifts it
+    const insBeat = Math.max(0, a.beat ?? 0);
+    if (a.setTempo && (f.bpm != null || f.tempoPoints.length || f.sigPoints?.length)) {
+      if (f.bpm != null) ops.push({ op: 'setBpm', bpm: f.bpm });
       if (f.tempoPoints.length) ops.push({ op: 'setTempoPoints', points: f.tempoPoints.map(t => ({ beat: t.beat + insBeat, bpm: t.bpm, ramp: false })) });
+      if (f.sigPoints?.length) ops.push({ op: 'setSigPoints', points: f.sigPoints.map(s => ({ beat: s.beat + insBeat, num: s.num, den: s.den })) });
     }
     const patternId = next++, notes: Note[] = [], channelIds: Id[] = [], drumCh = new Map<number, Id>();
     for (const k of keys) {
@@ -1666,8 +1669,17 @@ export class MockBackend implements Backend {
       for (const n of p.raw) notes.push(note(id, n, true));
     }
     const end = Math.max(...parts.flatMap(p => p.raw.map(n => n[1] + n[2])));
-    const len = Math.max(4, Math.ceil(end / 4) * 4), beat = Math.max(0, a.beat ?? 0);
-    ops.push({ op: 'putPattern', pattern: { id: patternId, name: (a.path.split(/[\\/]/).pop() ?? 'MIDI').replace(/\.[^.]+$/, ''), color: '#7c8cf8', len, minLen: 4, notes } });
+    // whole bars of the signature where the pattern lands — under the map as the batch
+    // leaves it (the file's meter, when it imports one); the pattern re-fits once its clip
+    // exists, so it reads the map through the clip exactly like the engine's batch
+    const beat = Math.max(0, a.beat ?? 0);
+    const map = a.setTempo && f.sigPoints?.length
+      ? compiledSig(f.sigPoints.map(s => ({ beat: s.beat + beat, num: s.num, den: s.den })))
+      : compiledSig(this.p.sigPoints);
+    const bar = barBeatsAt(map, beat);
+    const len = Math.max(bar, Math.ceil((end / bar - 1e-6)) * bar);
+    const pat: Pattern = { id: patternId, name: (a.path.split(/[\\/]/).pop() ?? 'MIDI').replace(/\.[^.]+$/, ''), color: '#7c8cf8', len, minLen: bar, bar, notes };
+    ops.push({ op: 'putPattern', pattern: pat });
     const free = (t: number) => !this.p.clips.some(c => c.track === t && c.start < beat + len && c.start + c.len > beat);
     const track = a.track != null && a.track < this.p.tracks.length ? a.track : Math.max(0, this.p.tracks.findIndex((_, i) => free(i)));
     const clipId = next++;
@@ -1678,7 +1690,7 @@ export class MockBackend implements Backend {
     this.pushUndo(prev, 'Import MIDI'); this.changed();
     // warnings: [] is the engine's answer for this fixture file — it never trips the clamp or
     // the point cap the engine discloses
-    return { patternId, channelIds, clipId, track, beat, len, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length)) };
+    return { patternId, channelIds, clipId, track, beat, len, bar, revision: this.revision, warnings: [], tempoSet: !!(a.setTempo && (f.bpm != null || f.tempoPoints.length || f.sigPoints?.length)) };
   }
   async midiExport(a: { out: string; pattern?: Id }): Promise<MidiExportResult> {
     await delay(20);

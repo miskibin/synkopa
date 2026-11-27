@@ -781,6 +781,59 @@ pub fn cases() -> Vec<Case> {
         vec![Op::SetTempoPoints { points: vec![TempoPoint { beat: 4.0, bpm: 90.0, ramp: false }] }, Op::SetBpm { bpm: 140.0 }],
     ));
     c.push(("main", "setTempoPoints clears the map", vec![Op::SetTempoPoints { points: vec![] }]));
+    // the signature map: sorted on the way in, num clamped, a den off the 1/2/4/8/16 ladder
+    // snapped to 4, two points at one beat kept in order (the last of them governs)
+    c.push((
+        "main",
+        "setSigPoints writes the map sorted and clamped",
+        vec![Op::SetSigPoints {
+            points: vec![
+                SigPoint { beat: 8.0, num: 5, den: 4 },
+                SigPoint { beat: 0.0, num: 250, den: 4 },
+                SigPoint { beat: 4.0, num: 7, den: 9 },
+                SigPoint { beat: 4.0, num: 3, den: 8 },
+            ],
+        }],
+    ));
+    c.push(("main", "setSigPoints clears the map", vec![Op::SetSigPoints { points: vec![] }]));
+    // a clip REASSIGNED to another pattern changes neither pattern: each keeps its own
+    // stored bar and its length (the stable-sizing policy)
+    c.push((
+        "main",
+        "putClips reassigning a clip resizes no pattern",
+        vec![
+            Op::PutPattern { pattern: pat(42, "A", 8.0, 5.0, vec![]) },
+            Op::PutPattern { pattern: pat(43, "B", 8.0, 8.0, vec![]) },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 8.0, num: 7, den: 8 }] },
+            Op::PutClips { clips: vec![clip(90, 0, 0.0, 8.0, ClipKind::Pat, 42)] },
+            Op::PutClips { clips: vec![clip(90, 0, 8.0, 8.0, ClipKind::Pat, 43)] },
+        ],
+    ));
+    // the refit: a pattern whose length keeps (notes end at beat 10) still re-rounds its
+    // min_len to the new grid, so a reload (migrate, the same formula) changes nothing
+    c.push((
+        "main",
+        "setSigPoints refits a kept length's minLen",
+        vec![
+            Op::PutPattern { pattern: pat(40, "Ten", 12.0, 4.0, vec![Note::new(31, 36.0, 4.0, None)]) },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 0.0, num: 3, den: 4 }] },
+        ],
+    ));
+    // a channel loop that would stick out of the shorter pattern refuses the op — and the
+    // map (and everything before it) stays out of the project
+    c.push((
+        "main",
+        "setSigPoints refuses when a channel loop would stick out",
+        vec![
+            Op::PutPattern {
+                pattern: Pattern {
+                    channel_loops: std::collections::BTreeMap::from([(31, 32)]),
+                    ..pat(41, "Loop", 8.0, 4.0, vec![Note::new(31, 16.0, 4.0, None)])
+                },
+            },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 0.0, num: 3, den: 4 }] },
+        ],
+    ));
     c.push(("main", "setLoop sets the loop", vec![Op::SetLoop { range: Some(LoopRange { a: 4.0, b: 16.0 }) }]));
     c.push(("main", "setLoop clears the loop", vec![Op::SetLoop { range: None }]));
     c.push(("main", "setLoop refuses an empty loop", vec![Op::SetLoop { range: Some(LoopRange { a: 16.0, b: 4.0 }) }]));

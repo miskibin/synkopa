@@ -17,7 +17,6 @@ pub fn control(app: &dyn Host, cmd: &str, a: &Value, if_revision: Option<u64>) -
     })
 }
 
-const STEPS_PER_BAR: f64 = 16.0;
 const COLOR: &str = "#4f8ef7";
 
 fn options(a: &Value) -> R<MelodyOptions> {
@@ -95,7 +94,10 @@ pub fn audio_to_midi(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<V
         heard.iter().filter(|n| n.end > region.0 && n.start < region.1).map(|n| n.pitch.round().clamp(0.0, 127.0) as u8).collect();
     keys.sort_unstable();
     let q = |p: f64| keys.get(((keys.len().saturating_sub(1)) as f64 * p).round() as usize).copied();
-    let bar = notes.first().map(|n| (n.step / STEPS_PER_BAR).floor() * STEPS_PER_BAR).unwrap_or(0.0);
+    // the bar grid of the map where the melody lands (a 7/8 bar anchors to its own line)
+    let first = notes.first().map(|n| n.step / 4.0).unwrap_or(0.0);
+    let steps_per_bar = e.project().sig_map().bar_beats_at(first) * 4.0;
+    let bar = notes.first().map(|n| (n.step / steps_per_bar).floor() * steps_per_bar).unwrap_or(0.0);
     let end = notes.iter().fold(bar, |m, n| m.max(n.step + n.len));
     let mut out = json!({
         "clipId": clip_id,
