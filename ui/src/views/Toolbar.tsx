@@ -482,6 +482,7 @@ function MenuBar() {
       })) },
     ]],
     ['a.mn.help', () => [
+      { t: 'item', label: t('a.mn.docs'), glyph: G.docs, act: () => void be().openDocs().catch(e => notify(t('a.mn.docsFailed', { error: String(e) }))) },
       { t: 'item', label: t('d.ask.button'), glyph: G.ask, kbd: 'F1', act: () => void askChatGPT() },
       { t: 'item', label: t('a.cmd.title'), glyph: G.shortcuts, kbd: 'Ctrl+K', act: () => setPaletteOpen(true) },
       { t: 'item', label: t('a.mn.shortcuts'), glyph: G.shortcuts, kbd: '?', act: () => setU('help', true) },

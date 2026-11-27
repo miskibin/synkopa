@@ -307,6 +307,8 @@ export interface Backend {
   /** "Ask AI": opens `service` in the system browser (ChatGPT with `prompt` in the link, DeepWiki on the
    *  repository). No ChatGPT prompt opens a new chat; one whose link is past MAX_ASK_URL (lib/askLink) is rejected. */
   openAsk(service: AskService, prompt: string | null): Promise<void>;
+  /** Opens the published Synkopa user guide in the system browser. */
+  openDocs(): Promise<void>;
   /** Opens the Synkopa Discord server in the system browser. */
   openDiscord(): Promise<void>;
   on<K extends keyof EventMap>(ev: K, cb: (payload: EventMap[K]) => void): Promise<() => void>;
@@ -568,6 +570,7 @@ export function tauriBackend(): Backend {
     openReleasePage: version => invoke('open_release_page', { version: version ?? null }),
     openAsk: (service, prompt) => invoke('open_ask', { service, prompt }),
     openDiscord: () => invoke('open_discord'),
+    openDocs: () => invoke('open_docs'),
     on: async (ev, cb) => listen(ev, e => cb(e.payload as never)),
     async onOsDrop(cb) {
       const { getCurrentWebview } = await import('@tauri-apps/api/webview');

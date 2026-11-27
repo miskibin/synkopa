@@ -10,7 +10,7 @@ import {
   faStairs, faWind, faDrum, faCompactDisc, faHandFist,
   faFloppyDisk, faFilePen, faFileExport, faFileZipper, faFileImport, faGear, faRightFromBracket, faRotateRight,
   faMagnifyingGlassPlus, faMagnifyingGlassMinus, faWindowRestore, faArrowsRotate, faGift, faRepeat,
-  faUpRightAndDownLeftFromCenter, faDownLeftAndUpRightToCenter, faComments,
+  faUpRightAndDownLeftFromCenter, faDownLeftAndUpRightToCenter, faComments, faBookOpen,
 } from '@fortawesome/free-solid-svg-icons';
 import { INST_ICONS } from './instIcons';
 
@@ -96,7 +96,7 @@ export const APP_GLYPH = {
   dup: g(faClone), del: g(faTrashCan), selAll: g(faCheckDouble),
   expand: g(faUpRightAndDownLeftFromCenter), collapse: g(faDownLeftAndUpRightToCenter), windows: g(faWindowRestore),
   zoomIn: g(faMagnifyingGlassPlus), zoomOut: g(faMagnifyingGlassMinus),
-  shortcuts: g(faKeyboard), updates: g(faArrowsRotate), whatsNew: g(faGift), ask: g(faComments), discord: DISCORD,
+  shortcuts: g(faKeyboard), updates: g(faArrowsRotate), whatsNew: g(faGift), ask: g(faComments), docs: g(faBookOpen), discord: DISCORD,
 } satisfies Record<string, MenuGlyph>;
 
 // ---------------------------------------------------------------- instrument picker

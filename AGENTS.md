@@ -147,6 +147,14 @@ documentation.
   a model with audio input modality (e.g. Gemini 4 Hydrogen or Carbon), and
   offer the user short MP3 renders to listen to.
 
+## User-facing Documentation
+
+Update the published user guide in `site/docs/` in the same PR as any new
+user-facing feature or change to an existing workflow. Describe the actual
+steps, menu names, shortcuts, limitations and relevant examples; refresh affected
+screenshots or animations and navigation when needed. Keep the guide accurate
+because Ask ChatGPT uses it as its primary source of truth.
+
 ## Commits and Pull Requests
 
 Describe the change itself: what changed for the user, why, and how it was

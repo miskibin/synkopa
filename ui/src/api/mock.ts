@@ -2,7 +2,7 @@
 // Holds the demo project, applies ops with undo/gestures, plays a fake transport and
 // streams binary telemetry frames (encoded exactly like the real ones).
 import { filterEnvStep, gateStep } from './mockGateFilter';
-import { askUrl, DISCORD_URL, MAX_ASK_URL, type AskService } from '../lib/askLink';
+import { askUrl, DISCORD_URL, DOCS_URL, MAX_ASK_URL, type AskService } from '../lib/askLink';
 import { newClip } from '../lib/clipOps';
 import { delayMs, loopGain } from '../lib/delay';
 import { loopPos, type BeatRange } from '../lib/patLoop';
@@ -2424,6 +2424,9 @@ export class MockBackend implements Backend {
     const url = askUrl(service, prompt);
     if (!url) throw new Error(`the question is too long for a link (> ${MAX_ASK_URL} characters)`);
     try { window.open(url, '_blank', 'noopener'); } catch { /* no window */ }
+  }
+  async openDocs() {
+    window.open(DOCS_URL, '_blank', 'noopener');
   }
   async openDiscord() {
     try { window.open(DISCORD_URL, '_blank', 'noopener'); } catch { /* no window */ }
