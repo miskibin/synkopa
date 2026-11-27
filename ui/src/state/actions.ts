@@ -247,6 +247,10 @@ export async function guardUnsaved(what: string): Promise<boolean> {
   if (a === 'busy') { say(t('d.act.guard.busy')); return false; }
   if (a === 'cancel') return false;
   if (a === 'save') return projectSave(false);
+  if (S.dirty && !S.path) {
+    try { await enqueue(() => be().draftKeep()); }
+    catch (e) { say(t('d.act.savefail', { err: String(e) })); return false; }
+  }
   return true;
 }
 /** A new empty project, or with `demo` the built-in demo project (asks about unsaved changes first). */
@@ -257,13 +261,14 @@ export async function projectNew(demo = false): Promise<boolean> {
   try {
     acceptReply(await enqueue(() => be().projectNew(demo)));
     afterProjectLoad();
+    await refreshRecent();
     if (demo) setPatMode(false);
     else if (!S.project.clips.length) openRack();
     say(t(demo ? 'd.act.demoproj' : 'd.act.newproj'));
     return true;
   } catch (e) { say(t('d.act.newfail', { err: String(e) })); return false; }
 }
-export async function projectOpen(path?: string) {
+export async function projectOpen(path?: string, draftId?: string) {
   if (path && samePath(path, S.path)) return;
   endWheelGestures();
   flushNotebook();
@@ -279,10 +284,10 @@ export async function projectOpen(path?: string) {
     if (answer === 'save' && !(await projectSave(false))) return;
     if (answer === 'save' && S.dirty) { say(t('d.act.guard.busy.open')); return; }
     const approvedRevision = answer === 'save' ? projectRevision() : revision;
-    const r = await enqueue(() => be().projectOpen(path, approvedRevision));
+    const r = await enqueue(() => be().projectOpen(path, approvedRevision, draftId));
     if (r.cancelled) return;
     acceptReply(r.state); afterProjectLoad();
-    const openedPath = S.path ?? '';
+    const openedPath = S.path ?? t('d.ui.unnamed');
     say(r.warnings.length ? t('d.act.openedwarn', { path: openedPath, n: r.warnings.length, first: r.warnings[0] }) : t('d.act.opened', { path: openedPath }));
     offerRelink();
   } catch (e) { say(t('d.act.openfail', { err: String(e) })); }

@@ -2148,20 +2148,52 @@ export class MockBackend implements Backend {
     this.tr = { ...this.tr, playing: false }; this.revision++; this.savedRev = this.revision;
     this.emit('state', this.dto());
   }
+  private drafts = new Map<string, { savedMs: number; project: Project }>();
+  private activeDraft: string | undefined;
+  private draftSeq = 0;
+
+  async draftList() {
+    return [...this.drafts].reverse().map(([id, { savedMs, project }]) => ({
+      id, savedMs, details: { bpm: project.bpm, tracks: project.tracks.length },
+    }));
+  }
+  async draftKeep(opening?: string) {
+    if (this.path || this.revision === this.savedRev) return;
+    const id = this.activeDraft ??= String(++this.draftSeq);
+    this.drafts.delete(id);
+    this.drafts.set(id, { savedMs: Date.now(), project: structuredClone(this.p) });
+    if (this.drafts.size > 3) {
+      const oldest = [...this.drafts.keys()].find(key => key !== opening && key !== id)!;
+      this.drafts.delete(oldest);
+    }
+  }
   async projectNew(demo?: boolean) {
     // like the engine: a refused reset (recording) keeps the project and its recovery copy
     if (this.rec) throw new Error('recording: stop it first');
+    this.activeDraft = undefined;
     this.resetTo(demo ? demoProject() : emptyProject(), null); this.recovery = null; return this.dto();
   }
   /** Tests: the next native file dialog is dismissed, as when the user presses Cancel. */
   dismissNextDialog = false;
   private dialog(): boolean { const ok = !this.dismissNextDialog; this.dismissNextDialog = false; return ok; }
-  async projectOpen(path?: string, ifRevision?: number): Promise<OpenResult> {
-    if (path == null && !this.dialog()) return { cancelled: true };
+  async projectOpen(path?: string, ifRevision?: number, draftId?: string): Promise<OpenResult> {
+    if (path == null && !draftId && !this.dialog()) return { cancelled: true };
     // the engine's `open_at_revision`: a take in progress first, then the approved revision
     if (this.rec) throw new Error('recording: stop it first');
     if (ifRevision != null && ifRevision !== this.revision) throw new Error(`${ERR_REVISION_CONFLICT} project changed`);
     if (path != null && this.gone.has(path)) throw new Error(`could not open ${path}: the file is not there`);
+    await this.draftKeep(draftId);
+    if (draftId) {
+      const draft = this.drafts.get(draftId);
+      if (!draft) throw new Error('draft no longer exists');
+      this.resetTo(structuredClone(draft.project), null);
+      this.activeDraft = draftId;
+      this.recovery = null;
+      this.revision++;
+      this.emit('state', this.dto());
+      return { state: this.dto(), warnings: [] };
+    }
+    this.activeDraft = undefined;
     this.resetTo(sketchProject(this.cat), path ?? 'C:\\Users\\michal\\Music\\Demo.synkopa');
     this.remember(this.path!);
     this.recovery = null;
@@ -2199,6 +2231,8 @@ export class MockBackend implements Backend {
       if (!this.dialog()) return { cancelled: true };
       this.path = 'C:\\Users\\michal\\Music\\Projekt ' + (1 + (this.revision % 9)) + '.synkopa';
     }
+    if (this.activeDraft) this.drafts.delete(this.activeDraft);
+    this.activeDraft = undefined;
     this.savedRev = this.revision; this.recovery = null; this.remember(this.path); this.emit('state', this.dto());
     return { path: this.path };
   }
@@ -2228,6 +2262,7 @@ export class MockBackend implements Backend {
     const o = this.orphans.get(id);
     if (!o) throw new Error(`no recovered project \`${id}\``);
     this.orphans.delete(id);
+    this.activeDraft = undefined;
     this.resetTo(o.project, o.path);
     this.revision++; // unsaved changes: Save writes them to the project (or asks where, for one never saved)
     this.recovery = o;

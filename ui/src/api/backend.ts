@@ -7,7 +7,7 @@ import type { BeatRange } from '../lib/patLoop';
 import type {
   PreviewWave,
   AudioConfig, AudioDevices, AudioHost, AudioStatus, LatencyReport, Catalog, CliStatus, ExportAudioOptions, ExportProgress, ExportResult, ExportStemsOptions, ExportStemsResult, F0ModelStatus, FxChainLoadResult, FxChainPreset, Id, ImportResult, MidiExportResult, MidiImportArgs, MidiImportResult, MidiInfo, Relinked, RelinkSearch,
-  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, MasterListenResult, Op, OpenResult, PitchAnalysis, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
+  KeysStatus, LibraryFiles, LibraryList, LibraryProgress, Melody, MelodyChannel, MidiDevice, MidiNoteEvent, MidiStatus, ModelProgress, AppInfo, UpdateInfo, UpdateProgress, MusicAnalysis, AutoVocalPlan, AutoVocalResult, AutoVocalStyle, MasterListenResult, Op, OpenResult, PitchAnalysis, RecentDraft, RecentProject, PitchTarget, RecoveredProject, RefTune, SaveResult, StateDto, TransportDto, PluginScan, PluginParam, PluginCrashSuspect,
   AudioToMidiArgs, AudioToMidiResult, ExtractStemsResult, StemId, StemModelStatus, StemsProgress, ChordAnalysis, ChordDetail, ChordModelStatus, ChordsToPatternResult,
 } from './types';
 
@@ -233,8 +233,10 @@ export interface Backend {
   /** A new project: empty (eight tracks, the starter kit in the Channel Rack), or with `demo` the built-in demo project. */
   projectNew(demo?: boolean): Promise<StateDto>;
   /** The file dialog when `path` is omitted. */
-  projectOpen(path?: string, ifRevision?: number): Promise<OpenResult>;
+  projectOpen(path?: string, ifRevision?: number, draftId?: string): Promise<OpenResult>;
   /** File → Open recent: projects opened or saved lately, newest first (at most 10). */
+  draftList(): Promise<RecentDraft[]>;
+  draftKeep(): Promise<void>;
   recentProjects(): Promise<RecentProject[]>;
   /** Takes `path` off the recent list; without a path, clears it. */
   recentForget(path?: string): Promise<void>;
@@ -534,7 +536,9 @@ export function tauriBackend(): Backend {
     libraryAddFolder: () => invoke('library_add_folder'),
     libraryRemoveFolder: path => invoke('library_remove_folder', { path }),
     projectNew: demo => invoke('project_new', { demo: !!demo }),
-    projectOpen: (path, ifRevision) => invoke('project_open', { path: path ?? null, ifRevision }),
+    projectOpen: (path, ifRevision, draftId) => invoke('project_open', { path: path ?? null, ifRevision, draftId }),
+    draftList: () => invoke('draft_list'),
+    draftKeep: () => invoke('draft_keep'),
     takeProjectOpenRequests: () => invoke('take_project_open_requests'),
     recentProjects: () => invoke('recent_projects'),
     recentForget: path => invoke('recent_forget', { path: path ?? null }),
