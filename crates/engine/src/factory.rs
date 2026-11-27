@@ -43,7 +43,7 @@ pub const KIT: &str = "Standard";
 /// Prefix of a portable library path.
 pub const SCHEME: &str = "lib:";
 /// Every file is 44.1 kHz and peaks at −1 dBFS (the build script normalises them). One-shots
-/// are FLAC; loops (group `Loops`, `loop-<name>-<bpm>[-<key>].ogg`) are Ogg Vorbis cut to whole
+/// are FLAC; loops (groups `Perc Loops` and `Loops`, `loop-<name>-<bpm>[-<key>].ogg`) are Ogg Vorbis cut to whole
 /// bars at the tempo in their name.
 const SR: u32 = 44_100;
 const PEAK_DB: f32 = -1.0;
@@ -115,7 +115,7 @@ pub fn install() -> std::io::Result<PathBuf> {
     Ok(dir)
 }
 
-const COLORS: [(&str, &str); 12] = [
+const COLORS: [(&str, &str); 13] = [
     ("Kicks", "#4f8ef7"),
     ("Snares", "#d9678f"),
     ("Claps", "#d9678f"),
@@ -127,6 +127,7 @@ const COLORS: [(&str, &str); 12] = [
     ("Tonal", "#7c8cf8"),
     ("Orchestra", "#c98a5a"),
     ("FX", "#b07cf0"),
+    ("Perc Loops", "#5fbf8a"),
     ("Loops", "#47b8a8"),
 ];
 
@@ -150,6 +151,10 @@ pub fn source(p: &mut Project, name: &str) -> Option<Id> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn is_loop(f: &FactoryFile) -> bool {
+        f.group.ends_with("Loops")
+    }
 
     #[test]
     fn unlisted_samples_still_resolve_in_existing_projects() {
@@ -268,7 +273,7 @@ mod tests {
         assert_eq!(on_disk, table);
         for f in files() {
             let ext = Path::new(f.file).extension().and_then(|e| e.to_str());
-            assert_eq!(ext, Some(if f.group == "Loops" { "ogg" } else { "flac" }), "{}", f.file);
+            assert_eq!(ext, Some(if is_loop(f) { "ogg" } else { "flac" }), "{}", f.file);
         }
     }
 
@@ -295,7 +300,7 @@ mod tests {
     /// when the project runs at that tempo.
     #[test]
     fn loops_are_whole_bars_at_the_tempo_in_their_name() {
-        let loops: Vec<_> = files().iter().filter(|f| f.group == "Loops").collect();
+        let loops: Vec<_> = files().iter().filter(|f| is_loop(f)).collect();
         assert!(loops.len() >= 10);
         for f in loops {
             let stem = f.file.strip_prefix("loop-").and_then(|s| s.strip_suffix(".ogg")).unwrap_or_else(|| panic!("{}", f.file));
@@ -319,7 +324,7 @@ mod tests {
         for c in &credited {
             assert!(file(c).is_some(), "{c} is credited but not in the library");
         }
-        for f in files().iter().filter(|f| f.group == "Loops") {
+        for f in files().iter().filter(|f| is_loop(f)) {
             assert!(credited.contains(&f.file), "{} is not credited", f.file);
         }
     }
