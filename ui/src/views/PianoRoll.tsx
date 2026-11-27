@@ -11,6 +11,7 @@ import { prefs } from '../state/prefs';
 import { t, type TranslationKey } from '../lib/i18n';
 import { zoomAround, type ZRange } from '../lib/zoomBar';
 import { ZoomScrollbar } from '../ui/ZoomScrollbar';
+import { FitViewButton } from '../ui/FitViewButton';
 import { drawRuler, rulerCursor, rulerDown, RULER_H, type RulerHost } from '../ui/timeRuler';
 import { clipOfPattern, patBeatAt, songBeatIn } from '../lib/patLoop';
 import { rgba, T, themeVersion } from '../ui/theme';
@@ -411,6 +412,22 @@ function Roll(props: { z: number; docked?: boolean }) {
   /** Views to go back to (Ctrl+right-click), newest last. */
   const viewBack: ReturnType<typeof view>[] = [];
   const pushView = () => { viewBack.push({ ...view() }); if (viewBack.length > 32) viewBack.shift(); };
+  /** Fit the whole pattern in time and the current channel's notes in pitch. */
+  const fitView = () => {
+    pushView();
+    applyH(fitRange(0, stepsOf(pt()), hLimits()));
+    const keys = chanNotes().map(({ n }) => keyOf(n, ch()));
+    const root = ch().root;
+    let lo = root, hi = root;
+    if (keys.length) {
+      lo = keys.reduce((a, k) => Math.min(a, k), 127);
+      hi = keys.reduce((a, k) => Math.max(a, k), 0);
+    }
+    const mid = (lo + hi) / 2;
+    const span = Math.max(12, hi - lo + 7);
+    setV(fitRange(Math.max(0, 127 - mid - span / 2), Math.min(128, 128 - mid + span / 2), vLimits()));
+    say(t('b.pr.zoomFit'));
+  };
   /** Time zoom to `len` visible steps around the pointer (or the view's centre when the pointer is not over the grid). */
   const zoomTimeTo = (len: number) => {
     const r = hRange(), G = geo();
@@ -606,7 +623,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       stop();
       const n = +e.code.slice(5);
       if (n < 4) return zoomTimeTo([16, 64, 256][n - 1]);
-      applyH(fitRange(0, stepsOf(pt()), hLimits())); say(t('b.pr.zoomFit'));
+      fitView();
       return;
     }
     const s = [...sel()].filter(i => notesRaw()[i]?.ch === ch().id);
@@ -948,6 +965,7 @@ function Roll(props: { z: number; docked?: boolean }) {
         <div class="ovrow" style={{ 'padding-left': KW + 'px' }}>
           <ZoomScrollbar orient="h" class="ov" range={hRange} limits={hLimits} onChange={setH} title={t('b.pr.hbarTip')}
             paint={paintOverview} paintKey={() => [data(), ch().id, pt().len, chansMap()]} />
+          <FitViewButton title={t('b.pr.fitViewTip')} onClick={el => { fitView(); backToRoll(el); }} />
         </div>
         <div class="rollruler">
           <div class="corner" style={{ width: KW + 'px' }} />
