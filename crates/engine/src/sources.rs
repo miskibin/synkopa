@@ -174,8 +174,9 @@ pub struct SourceStore {
     park_cap: usize,
 }
 
-/// (source id, identity of the audio before stretching, render ratio bits, `Clip::pitch` bits)
-pub type StretchKey = (u64, u64, u64, u32);
+/// (source id, identity of the audio before stretching, render ratio bits, `Clip::pitch`
+/// bits, warp-map bits)
+pub type StretchKey = (u64, u64, u64, u32, u64);
 type StretchDone = (StretchKey, Result<Arc<Audio>, String>);
 /// Stretched audio kept, in bytes (least recently played dropped first).
 const STRETCH_CACHE_BYTES: usize = 1 << 30;
@@ -188,6 +189,8 @@ pub struct StretchJob {
     pub ratio: f64,
     /// Transposition, semitones.
     pub semis: f32,
+    /// The warp map to render through (empty = the plain [`Self::ratio`] stretch).
+    pub anchors: Vec<wave_stretch::WarpAnchor>,
     /// The rate the clip reads the render at (`Clip::rendered_rate`), and the one it reads
     /// `audio` at when there is no render (resampled, at its own pitch).
     pub rate: f64,
@@ -196,11 +199,17 @@ pub struct StretchJob {
 
 impl StretchJob {
     fn of(c: &crate::model::Clip, ident: u64, audio: Arc<Audio>) -> Self {
+        let anchors = if c.warp_active() {
+            c.warp_anchors(audio.frames, audio.sr).into_iter().map(|(at, to)| wave_stretch::WarpAnchor { at, to }).collect()
+        } else {
+            vec![]
+        };
         StretchJob {
             key: stretch_key(c, ident),
             audio,
             ratio: c.render_ratio(),
             semis: c.pitch,
+            anchors,
             rate: c.rendered_rate(),
             fallback_rate: 1.0 / c.stretch,
         }
@@ -208,12 +217,21 @@ impl StretchJob {
 }
 
 fn stretch_key(c: &crate::model::Clip, ident: u64) -> StretchKey {
-    (c.source, ident, c.render_ratio().to_bits(), c.pitch.to_bits())
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for w in &c.warp {
+        (w.at.to_bits(), w.to.to_bits()).hash(&mut h);
+    }
+    (c.source, ident, c.render_ratio().to_bits(), c.pitch.to_bits(), h.finish())
 }
 
 /// Renders a stretch job (slow: run it off the engine lock).
 pub fn render_stretch(j: &StretchJob) -> Result<Arc<Audio>, String> {
-    let out = wave_stretch::stretch_shift_stereo(j.audio.content(), j.audio.sr, j.ratio, j.semis)?;
+    let out = if j.anchors.is_empty() {
+        wave_stretch::stretch_shift_stereo(j.audio.content(), j.audio.sr, j.ratio, j.semis)?
+    } else {
+        wave_stretch::stretch_warp_stereo(j.audio.content(), j.audio.sr, &j.anchors, j.semis)?
+    };
     Ok(Arc::new(Audio::from_stereo(out, j.audio.sr, j.audio.channels)))
 }
 

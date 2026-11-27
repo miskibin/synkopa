@@ -80,6 +80,7 @@ fn project(notes: Vec<Note>, keys: KeysState) -> Project {
         channel_loops: std::collections::BTreeMap::new(),
     }];
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: 1,
         track: 0,
         start: 0.0,

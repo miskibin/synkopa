@@ -240,6 +240,7 @@ fn slicer_demo(out: &Path) {
     let mut clip = e2.project().clips.first().cloned();
     let _ = clip.take();
     let clip = wave_engine::Clip {
+        warp: Vec::new(),
         id: 2,
         track: 0,
         start: 0.0,

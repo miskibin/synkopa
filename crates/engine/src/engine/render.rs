@@ -656,6 +656,7 @@ impl Engine {
             pitch: 0.0,
             insert: None,
             root: crate::model::CLIP_ROOT,
+            warp: Vec::new(),
         });
         push_undo(&mut c, before, Some("Export in place".into()));
         c.revision += 1;
@@ -984,6 +985,7 @@ pub fn pattern_project(mut p: Project, id: Id) -> Project {
         pitch: 0.0,
         insert: None,
         root: crate::model::CLIP_ROOT,
+        warp: Vec::new(),
     });
     p
 }

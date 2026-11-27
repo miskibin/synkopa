@@ -52,6 +52,7 @@ fn make_unique_moves_the_clip_to_its_own_analysis() {
 /// A default-shaped clip to build audio/pattern variants from in these tests.
 fn pattern_like() -> Clip {
     Clip {
+        warp: Vec::new(),
         id: 0,
         track: 0,
         start: 0.0,
@@ -80,6 +81,7 @@ fn only_audio_clips_have_pitch() {
     let (e, _clip, dir) = engine_with_tone("kinds");
     assert!(e.pitch_analysis(999_999).is_err(), "an unknown clip is an error");
     let pat = Clip {
+        warp: Vec::new(),
         id: 9002,
         track: 1,
         start: 0.0,

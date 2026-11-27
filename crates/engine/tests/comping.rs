@@ -74,6 +74,7 @@ fn comp_with(srcs: &[Id], regions: Vec<CompRegion>) -> Comp {
 
 fn comp_clip(start: f64) -> Clip {
     Clip {
+        warp: Vec::new(),
         id: 9100,
         track: 0,
         start,

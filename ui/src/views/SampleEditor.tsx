@@ -382,7 +382,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
       defaultPosition={-lo / (hi - lo)} op={x => put({ [key]: lo + x * (hi - lo) })} target={target} color={() => src().color} arc={gain ? undefined : 'var(--pan)'} />;
   };
   const fit = (b: number) => {
-    const n = fitClip(plain(c()), b); if (!n) return;
+    const n = fitClip(plain(c()), b, src()?.dur ?? 0); if (!n) return;
     commit([{ op: 'putClips', clips: [n] }], t('d.smp.fit.op'));
     say(t('d.smp.fit.say', { len: fitLabel(b), k: (n.stretch ?? 1).toFixed(2) }) + (n.resample ? '' : t('d.smp.fit.keep')));
   };
@@ -449,7 +449,7 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
       <div class="smprow smpfit">
         <span class="tag9">{t('d.smp.fit')}</span>
         <div class="seg"><For each={FIT_BEATS}>{b => {
-          const allowed = () => !!fitClip(plain(c()), b);
+          const allowed = () => !!fitClip(plain(c()), b, src()?.dur ?? 0);
           return <button class={{ on: Math.abs(c().len - b) < 1e-6 }} disabled={!allowed()}
             title={t(allowed() ? 'd.smp.fit.tip' : 'd.smp.fit.no', { len: fitLabel(b) })} onClick={() => fit(b)}>{fitLabel(b)}</button>;
         }}</For></div>

@@ -15,6 +15,7 @@ fn peak(out: &[f32], from_s: f32, to_s: f32) -> f32 {
 
 fn clip(id: Id, track: u32, start: f64, len: f64, pat: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track,
         start,

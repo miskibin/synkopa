@@ -17,6 +17,7 @@ fn at(beat: f64) -> usize {
 
 fn auto_clip(id: Id, source: Id, track: u32, len: f64) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track,
         start: 0.0,
@@ -169,6 +170,7 @@ fn synth_parameter_automation_closes_the_filter() {
         channel_loops: std::collections::BTreeMap::new(),
     }];
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: 1,
         track: 0,
         start: 0.0,

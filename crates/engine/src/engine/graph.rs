@@ -857,6 +857,7 @@ mod override_timeline_tests {
             pitch: 0.0,
             insert: None,
             root: 60,
+            warp: Vec::new(),
         });
         let none: HashSet<Id> = Default::default();
         let tl = build_timeline(&p, &mut |_| None, &HashMap::new(), &HashMap::new(), &HashMap::new(), &none);

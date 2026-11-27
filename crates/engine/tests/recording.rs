@@ -157,6 +157,7 @@ fn unarmed(busy: &[u32], at: f64) -> Project {
     }];
     for (k, &t) in busy.iter().enumerate() {
         p.clips.push(Clip {
+            warp: Vec::new(),
             id: 9001 + k as Id,
             track: t,
             start: at,

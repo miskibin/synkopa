@@ -348,6 +348,7 @@ fn render_song(preset: &str, song: &Song) -> Vec<f32> {
     let pid = p.patterns[0].id;
     let cid = p.alloc_id();
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: cid,
         track: 0,
         start: 0.0,

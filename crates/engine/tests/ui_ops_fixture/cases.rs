@@ -59,6 +59,47 @@ pub fn cases() -> Vec<Case> {
     c.push(("main", "putClips refuses a pitch out of range", vec![Op::PutClips { clips: vec![Clip { pitch: 13.0, ..good_audio(44) }] }]));
     c.push((
         "main",
+        "putClips pins warp markers and stores them sorted",
+        vec![Op::PutClips {
+            clips: vec![Clip {
+                stretch: 2.0,
+                warp: vec![WarpPoint { at: 1.5, to: 4.0 }, WarpPoint { at: 0.5, to: 1.0 }],
+                ..good_audio(43)
+            }],
+        }],
+    ));
+    c.push((
+        "main",
+        "putClips refuses warp markers on a pattern clip",
+        vec![Op::PutClips { clips: vec![Clip { warp: vec![WarpPoint { at: 1.0, to: 1.0 }], ..clip(46, 0, 0.0, 8.0, ClipKind::Pat, 20) }] }],
+    ));
+    c.push((
+        "main",
+        "putClips refuses warp markers with resampling",
+        vec![Op::PutClips { clips: vec![Clip { resample: true, warp: vec![WarpPoint { at: 1.0, to: 1.0 }], ..good_audio(44) }] }],
+    ));
+    c.push((
+        "main",
+        "putClips refuses a warp marker past the source",
+        vec![Op::PutClips { clips: vec![Clip { warp: vec![WarpPoint { at: 3.0, to: 3.0 }], ..good_audio(44) }] }],
+    ));
+    c.push((
+        "main",
+        "putClips refuses a warp segment out of range",
+        vec![Op::PutClips { clips: vec![Clip { warp: vec![WarpPoint { at: 0.5, to: 2.5 }], ..good_audio(44) }] }],
+    ));
+    c.push((
+        "main",
+        "putClips refuses warp markers too close together",
+        vec![Op::PutClips {
+            clips: vec![Clip {
+                warp: vec![WarpPoint { at: 1.0, to: 1.0 }, WarpPoint { at: 1.00390625, to: 1.00390625 }],
+                ..good_audio(44)
+            }],
+        }],
+    ));
+    c.push((
+        "main",
         "putClips refuses to transpose a pattern clip",
         vec![Op::PutClips { clips: vec![Clip { pitch: 3.0, ..clip(46, 0, 0.0, 8.0, ClipKind::Pat, 20) }] }],
     ));

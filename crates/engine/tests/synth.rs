@@ -47,6 +47,7 @@ fn song(preset: &str, notes: &[(f32, f32, u8)], beats: f64) -> (Project, Id) {
     }];
     let cid = p.alloc_id();
     p.clips = vec![Clip {
+        warp: Vec::new(),
         id: cid,
         track: 0,
         start: 0.0,

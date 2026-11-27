@@ -303,12 +303,24 @@ export interface Clip {
   /** Audio clips: the MIDI key at which the sample sounds at its own pitch (FL's root note; shared by every clip of
    *  the sample). The sample editor's keyboard plays it transposed from here; absent = `SAMPLE_ROOT` (C5). */
   root?: number;
+  /** Audio clips: warp markers pinning source moments to stretched-audio positions, sorted by `at`
+   *  (see `WarpPoint`). Absent = the plain `stretch` mapping. */
+  warp?: WarpPoint[];
 }
+/** One warp marker: the audio at `at` seconds of the clip's source plays at `to` seconds of the
+ *  stretched clip audio. Between two markers the material stretches by their slope, so a marker
+ *  pins a moment and dragging it re-times the material around it; before the first and after the
+ *  last it stretches to reach them. Markers need the keep-pitch stretch (resampling maps
+ *  linearly and cannot honor them). */
+export interface WarpPoint { at: number; to: number }
 /** Range of `Clip.stretch`. */
 export const STRETCH_MIN = 0.25;
 export const STRETCH_MAX = 4;
 /** Farthest `Clip.pitch`, semitones either way. */
 export const CLIP_PITCH = 12;
+/** Most `Clip.warp` markers a clip may hold, and how close two may sit (seconds). */
+export const WARP_MAX = 1024;
+export const WARP_SPACING = 0.005;
 
 /** Times in seconds of the source; `shift`/`formant` in cents, `drift` 0..1, `gain` dB.
  *  `speed`: retune speed in ms — how long the pitch takes to reach its correction (95 %); 0 = instant

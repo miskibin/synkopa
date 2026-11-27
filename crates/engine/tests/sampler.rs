@@ -54,6 +54,7 @@ fn engine(name: &str, set: impl Fn(&mut SamplerState), notes: &[(f32, f32, Optio
         channel_loops: std::collections::BTreeMap::new(),
     };
     let clip = Clip {
+        warp: Vec::new(),
         id: 2,
         track: 0,
         start: 0.0,
@@ -623,6 +624,7 @@ fn a_new_project_does_not_inherit_audio_from_the_previous_one() {
         channel_loops: std::collections::BTreeMap::new(),
     };
     let clip = Clip {
+        warp: Vec::new(),
         id: 2,
         track: 0,
         start: 0.0,
@@ -776,6 +778,7 @@ fn an_audio_clip_plays_from_its_keyboard_relative_to_its_root() {
     let e = Engine::new(p, Arc::new(NoPlugins));
     let (srcs, ..) = e.import_audio(&[two_level_wav("cliproot")], None).unwrap();
     let clip = |root: u8, pitch: f32| Clip {
+        warp: Vec::new(),
         id: 7,
         track: 0,
         start: 0.0,

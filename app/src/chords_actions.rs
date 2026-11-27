@@ -227,6 +227,7 @@ pub fn put_pattern_under_clip(e: &Engine, plan: &PatternPlan, if_revision: Optio
             if ntracks > 0 {
                 ops.push(Op::PutClips {
                     clips: vec![Clip {
+                        warp: Vec::new(),
                         id: pclip,
                         track,
                         start,

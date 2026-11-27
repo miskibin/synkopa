@@ -75,6 +75,7 @@ pub fn pat(id: Id, name: &str, len: f64, min_len: f64, notes: Vec<Note>) -> Patt
 #[allow(clippy::too_many_arguments)]
 pub fn clip(id: Id, track: u32, start: f64, len: f64, kind: ClipKind, source: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track,
         start,

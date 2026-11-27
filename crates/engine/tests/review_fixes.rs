@@ -47,6 +47,7 @@ fn an_open_drag_never_leaks_into_a_replaced_project() {
     let e = Engine::new(Project::sketch(), Arc::new(NoPlugins));
     e.begin_gesture(None);
     let drag = Clip {
+        warp: Vec::new(),
         id: 9100,
         track: 1,
         start: 20.0,

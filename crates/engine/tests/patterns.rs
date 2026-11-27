@@ -37,6 +37,7 @@ fn one_pattern(notes: Vec<Note>, len: f64, swing: f32) -> Project {
 
 fn clip(id: Id, track: u32, start: f64, len: f64, pat: Id) -> Clip {
     Clip {
+        warp: Vec::new(),
         id,
         track,
         start,
