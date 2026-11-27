@@ -1646,7 +1646,7 @@ export class MockBackend implements Backend {
     // and everything lands relative to the insertion beat, as midi_actions.rs shifts it
     const insBeat = Math.max(0, a.beat ?? 0);
     if (a.setTempo && (f.bpm != null || f.tempoPoints.length || f.sigPoints?.length)) {
-      if (f.bpm != null) ops.push({ op: 'setBpm', bpm: f.bpm });
+      if (f.bpm != null || f.tempoPoints.length) ops.push({ op: 'setBpm', bpm: f.bpm ?? 120 });
       if (f.tempoPoints.length) ops.push({ op: 'setTempoPoints', points: f.tempoPoints.map(t => ({ beat: t.beat + insBeat, bpm: t.bpm, ramp: false })) });
       if (f.sigPoints?.length) ops.push({ op: 'setSigPoints', points: f.sigPoints.map(s => ({ beat: s.beat + insBeat, num: s.num, den: s.den })) });
     }

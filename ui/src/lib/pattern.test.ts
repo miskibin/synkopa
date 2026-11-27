@@ -229,6 +229,15 @@ describe('mock engine ops (mirror of ops.rs)', () => {
     expect(() => applyAll(bad, [{ op: 'transformNotes', pattern: 5, verb: { kind: 'humanize', timing: 0, velocity: 0 } }])).toThrow(/0\.\.127/);
   });
 
+  it('putPattern fits on the pattern’s own bar, like the engine: a 7/8 pattern is 3.5 beats', () => {
+    let p = base();
+    p = applyAll(p, [{ op: 'putPattern', pattern: { id: 5, name: 'x', color: '#fff', len: 3.5, minLen: 3.5, bar: 3.5, notes: [{ ch: K, step: 0, len: 1 }] } }]);
+    expect(p.patterns[0]).toMatchObject({ len: 3.5, minLen: 3.5 });
+    // a note past the first bar grows it by one 7/8 bar, not to the 4/4 grid
+    p = applyAll(p, [{ op: 'putPattern', pattern: { ...p.patterns[0], notes: [{ ch: K, step: 14, len: 1 }] } }]);
+    expect(p.patterns[0].len).toBe(7);
+  });
+
   it('gives a project without channels the starter kit and refuses notes of unknown channels', () => {
     const p = base();
     expect(p.channels!.map(c => c.name)).toEqual(['Kick', 'Clap', 'Hat', 'Snare']);

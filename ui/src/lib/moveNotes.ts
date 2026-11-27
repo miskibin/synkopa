@@ -3,7 +3,7 @@
 // (cut, new pattern, paste lands elsewhere; a playlist slice made unique keeps every note), and
 // doing it by hand silently drops the part from every place the pattern is used.
 import type { Clip, Id, Note, Op, Pattern, Project } from '../api/types';
-import { BAR, minLenOf } from './pattern';
+import { barOf, minLenOfIn } from './pattern';
 import { newTrack } from './clipOps';
 
 const EPS = 1e-6;
@@ -29,14 +29,16 @@ export function planMoveNotes(p: Project, src: Pattern, idx: readonly number[], 
   if (!take.size) return null;
   const moved: Note[] = [], kept: Note[] = [];
   src.notes.forEach((n, i) => (take.has(i) ? moved : kept).push({ ...n }));
-  const minLen = Math.max(minLenOf(src), Math.ceil(src.len / BAR - EPS) * BAR);
+  // whole bars of the source's own grid (a 7/8 pattern keeps 3.5-beat bars)
+  const bar = barOf(src);
+  const minLen = Math.max(minLenOfIn(src, bar), Math.ceil(src.len / bar - EPS) * bar);
   // the moved notes keep their channel's loop, so what they sound like does not change
   // (single-channel moves only: mixed notes carry no one channel's loop)
   const movedChs = new Set(moved.map(n => n.ch));
   // every moved channel keeps its loop, so what the notes sound like does not change
   const loops: Record<string, number> = {};
   for (const id of movedChs) { const l = src.channelLoops?.[String(id)]; if (l != null && l > 0) loops[String(id)] = l; }
-  const pattern: Pattern = { id: newId(), name, color, len: src.len, minLen, notes: moved, ...(src.swing != null ? { swing: src.swing } : {}), ...(Object.keys(loops).length ? { channelLoops: loops } : {}) };
+  const pattern: Pattern = { id: newId(), name, color, len: src.len, minLen, notes: moved, ...(src.bar != null ? { bar: src.bar } : {}), ...(src.swing != null ? { swing: src.swing } : {}), ...(Object.keys(loops).length ? { channelLoops: loops } : {}) };
   const ops: Op[] = [
     { op: 'putPattern', pattern: { ...src, minLen, notes: kept } },
     { op: 'putPattern', pattern },

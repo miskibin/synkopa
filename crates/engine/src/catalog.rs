@@ -642,10 +642,7 @@ pub fn presets(kind: FxKind) -> Vec<Preset> {
                 &[("style", 4.0), ("drive", 60.0), ("lowcut", 300.0), ("thump", 35.0), ("tone", 20.0), ("highcut", 4500.0), ("steep", 1.0)],
             ),
             pr("Równoległe zgniecenie", &[("style", 4.0), ("drive", 90.0), ("punish", 1.0), ("mix", 30.0)]),
-            pr(
-                "Taśma — klej na bus",
-                &[("wobble", 6.0), ("wrate", 0.8), ("drive", 18.0), ("wear", 15.0), ("tape", 2.0), ("lowcut", 25.0), ("wander", 20.0)],
-            ),
+            pr("Taśma — klej na bus", &[("style", 0.0), ("drive", 22.0), ("highcut", 18000.0)]),
         ],
         FxKind::Delay => vec![
             dly("Ósemka 1/8", 0.5, 35.0, 22.0, &[]),

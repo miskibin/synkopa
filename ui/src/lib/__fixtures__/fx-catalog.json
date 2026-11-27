@@ -2983,13 +2983,9 @@
       {
         "name": "Taśma — klej na bus",
         "params": {
-          "drive": 18.0,
-          "lowcut": 25.0,
-          "tape": 2.0,
-          "wander": 20.0,
-          "wear": 15.0,
-          "wobble": 6.0,
-          "wrate": 0.8
+          "drive": 22.0,
+          "highcut": 18000.0,
+          "style": 0.0
         }
       }
     ],

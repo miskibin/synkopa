@@ -263,7 +263,8 @@ export function applyPatternOp(p: Project, op: Op, strict: boolean, copy: (pt: P
       }
       if (strict) { const bad = pt.notes.find(n => !(p.channels ?? []).some(c => c.id === n.ch)); if (bad) fail(`no channel with id ${bad.ch}`); }
       stripPatternDefaults(pt);
-      fitLen(pt);
+      // the engine fits on the pattern's own bar (model.rs `fit_len`): a 7/8 pattern is 3.5 beats
+      fitLenIn(pt, barOf(pt));
       checkChannelLoops(p, pt, strict);
       bump(p, pt.id);
       const i = p.patterns.findIndex(x => x.id === pt.id);

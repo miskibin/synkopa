@@ -242,6 +242,15 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
         ));
         tempo_points.truncate(crate::model::MAX_TEMPO_POINTS);
     }
+    // the op path refuses more meters than the map holds: keep the first ones, like the tempo
+    if sig_points.len() > crate::model::MAX_SIG_POINTS {
+        warnings.push(format!(
+            "the file has more than {} meter changes: keeping the first {}",
+            crate::model::MAX_SIG_POINTS,
+            crate::model::MAX_SIG_POINTS
+        ));
+        sig_points.truncate(crate::model::MAX_SIG_POINTS);
+    }
     let tempo_changes = tempos.windows(2).filter(|w| w[0].1 != w[1].1).count();
     if too_deep {
         warnings.push("the file's meters use units finer than a 16th: those bars read as their 16th-unit length".into());
@@ -875,6 +884,25 @@ mod tests {
         smf.write_std(&mut b).unwrap();
         let f = parse(&b).unwrap();
         assert_eq!(f.sig_points, vec![SmfSig { beat: 2.0, num: 5, den: 4 }]);
+    }
+
+    #[test]
+    fn more_meters_than_the_map_holds_keep_the_first_ones_with_a_warning() {
+        // a file restamping 7/8 / 4/4 every bar would otherwise fail the whole import batch
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(96))));
+        let mut t = vec![];
+        for i in 0..1500u32 {
+            let num = if i % 2 == 0 { 7 } else { 4 };
+            t.push(ev(if i == 0 { 0 } else { 96 * 4 }, TrackEventKind::Meta(MetaMessage::TimeSignature(num, 2, 24, 8))));
+        }
+        t.push(ev(0, TrackEventKind::Meta(MetaMessage::EndOfTrack)));
+        smf.tracks.push(t);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.sig_points.len(), crate::model::MAX_SIG_POINTS);
+        assert!(f.warnings.iter().any(|w| w.contains("meter changes")), "{:?}", f.warnings);
     }
 
     #[test]

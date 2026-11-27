@@ -136,7 +136,9 @@ pub fn import(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<Value> {
             let mut ops = vec![];
             // the opt-in covers the file's musical time: its tempo (#320) and its meters
             if set_tempo && (f.bpm.is_some() || !f.tempo_points.is_empty() || !f.sig_points.is_empty()) {
-                if f.bpm.is_some() {
+                // a file with tempo changes but none at tick 0 plays MIDI's implied 120 until its
+                // first change; a file with only meters leaves the project's tempo alone
+                if f.bpm.is_some() || !f.tempo_points.is_empty() {
                     // the file's tempo wins: the base (tick 0's value, else MIDI's implied 120)
                     ops.push(Op::SetBpm { bpm: f.bpm.unwrap_or(120.0).clamp(20.0, 999.0) });
                 }
@@ -363,14 +365,26 @@ fn clip_notes(c: &Clip, pat: &Pattern, out: &mut Vec<(Id, SmfNote, Option<u8>)>)
     }
 }
 
+/// A MIDI file's time: tempo events `(beat, bpm)` and signature events `(beat, num, den)`.
+type FileMaps = (Vec<(f64, f64)>, Vec<(f64, u8, u8)>);
+
 /// `midi_export {out, pattern?}`: the song (pattern clips on the Playlist, muted ones left out)
 /// or one pattern, as a format 1 file.
 pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
     let p = app.engine().project();
     let out = PathBuf::from(need_str(a, "out")?);
     let mut raw: Vec<(Id, SmfNote, Option<u8>)> = vec![];
+    // a pattern plays at the base tempo (the map is the song's) and in the meter of the place
+    // it first plays: its file starts at its own beat 0, so the song's maps would misplace it
+    let mut pattern_maps: Option<FileMaps> = None;
     let what = match arg(a, "pattern").and_then(as_index) {
         Some(pid) => {
+            let at = p.clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pid).map(|c| c.start).fold(f64::INFINITY, f64::min);
+            let at = if at.is_finite() { at } else { 0.0 };
+            let mut sigs: Vec<&wave_engine::model::SigPoint> = p.sig_points.iter().collect();
+            sigs.sort_by(|x, y| x.beat.total_cmp(&y.beat));
+            let (num, den) = sigs.iter().rev().find(|s| s.beat <= at + 1e-6).map_or((4, 4), |s| (s.num, s.den));
+            pattern_maps = Some((vec![(0.0, p.bpm)], vec![(0.0, num, den)]));
             let pat = p.patterns.iter().find(|x| x.id == pid).ok_or(format!("no pattern {pid}"))?;
             let clip = Clip { start: 0.0, len: pat.len, offset: 0.0, ..placeholder_clip(pid) };
             clip_notes(&clip, pat, &mut raw);
@@ -420,8 +434,8 @@ pub fn export(app: &dyn Host, a: &Value) -> R<Value> {
     // the maps go with the notes: the tempo holds as one event per point (ramps stepped per
     // beat at each interval's effective BPM, the opener first — a constant project writes
     // the single event it always did), the meters one signature meta per point
-    let tempo_events = p.midi_tempo_events();
-    let bytes = midi_file::write(&tempo_events, &title, &tracks, &p.midi_sig_events())?;
+    let (tempo_events, sig_events) = pattern_maps.unwrap_or_else(|| (p.midi_tempo_events(), p.midi_sig_events()));
+    let bytes = midi_file::write(&tempo_events, &title, &tracks, &sig_events)?;
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }

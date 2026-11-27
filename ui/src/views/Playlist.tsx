@@ -1532,7 +1532,7 @@ export function Playlist() {
     trackEdge(ev => {
       if (!moved && Math.abs(ev.clientX - sx) < 3) return;
       moved = true;
-      const b = ev.ctrlKey || ev.metaKey ? p0.beat : clamp(snapAt(p0.beat + (ev.clientX - sx) / U.bw, ev.altKey), 0, TOTAL);
+      const b = clamp(snapAt(p0.beat + (ev.clientX - sx) / U.bw, ev.altKey || ev.ctrlKey || ev.metaKey), 0, TOTAL);
       const points = moveSigPoint(pts0, i, b);
       g.update([putSig(points)]);
       say(`${sigText(points[i])} · ${fmtPos(points[i].beat, sigShown())}`);

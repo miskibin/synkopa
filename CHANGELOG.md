@@ -4,7 +4,43 @@ What changed in each release of Synkopa (called WAVE up to 0.9.21). The newest v
 shown in the app after an update and is published as the release notes (see
 `docs/releasing.md`). Write for musicians: what you can do now, not how it works inside.
 
-## Unreleased
+## 0.9.37 — 2026-11-27
+
+### Added
+
+- **Time signatures that change during the song.** Right-click the timeline → **Add time
+  signature…** and type the meter (3/4, 7/8, 6/8, 5/4…); it shows as a small chip on the ruler.
+  Drag the chip to move the change, double-click it to remove it, right-click to retype it. The
+  bar lines and numbers, Snap: bar, the bar:beat:16th readouts, pattern lengths and the
+  generators all follow the meter where they are, and the metronome and count-in accent the first
+  beat of every bar, even a 7/8 bar that starts between beats. Every edit is one undo step.
+- **Tempo changes on the Playlist.** A thin tempo lane above the ruler draws the song's tempo as a
+  line you edit directly: double-click to add a point and drag it (Shift keeps the tempo, Ctrl
+  keeps the position, Alt skips the snap), right-click a point to type a value or make it **glide
+  to the next point** for a gradual speed-up or slow-down, double-click a point to delete it. While
+  the song plays, the toolbar shows the tempo at the playhead.
+- **MIDI files keep their tempo and meter changes.** Importing a MIDI file with *Use the file’s time*
+  checked brings every tempo change and time signature along, placed where the notes land; a file
+  that starts in 7/8 or 3/4 is no longer forced onto 4/4. Exporting writes the song's tempo
+  changes (gliding ones in steps of one beat, with the same timing you hear) and its time
+  signatures, so another DAW opens the song in time.
+- **Patina, the lo-fi character effect announced with 0.9.36, is now in the app** (it missed
+  that build). Vinyl, cassette and tape noise, wow and flutter, drive, bit and sample-rate
+  reduction and tape wear in one window, with one Magnitude knob and 16 presets. In the effect
+  picker under Tone, or search "lo-fi" or "vinyl".
+- **Pop/rock drums and more loops in the Standard library:** 79 acoustic one-shots (kicks,
+  snares and a cross stick, closed and open hats, crashes, rides and toms), 15 percussion loops
+  in a new **Perc Loops** group (shakers, tambourine, bongos, djembe) and 9 melodic loops (piano,
+  plucks, synth chords, guitar, keys). All CC0, free to use in anything you release.
+- **Help → User guide** opens the online guide (English or Polish), and **Ask ChatGPT** now
+  points it at the guide instead of the source code, so its answers describe what you see.
+
+### Changed
+
+- **Share projects with tempo or meter changes only with 0.9.37 or newer.** Opening such a
+  project in 0.9.36 or older and saving it there drops the changes. From this version on, a
+  project saved by a newer Synkopa opens with a warning that saving may lose what this version
+  does not know.
 
 ### Fixed
 

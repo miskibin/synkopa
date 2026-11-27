@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Clip, Note, Op, Pattern, Project, Track } from '../api/types';
 import { newTrack } from './clipOps';
 import { planMoveNotes } from './moveNotes';
-import { fitLen } from './pattern';
+import { fitLen, fitLenIn } from './pattern';
 
 const note = (step: number, key: number, ch = 1): Note => ({ step, key, len: 1, ch, v: 0.8 } as Note);
 const pat = (id: number, notes: Note[], len = 8, minLen = 4): Pattern => ({ id, name: 'Beat', color: '#fff', len, minLen, notes } as Pattern);
@@ -72,5 +72,15 @@ describe('moving notes to a new pattern', () => {
     // a channel without a loop stays out of the map
     const plan2 = planMoveNotes(project(1, [src], []), src, [0], 'y', '#0f0', ids())!;
     expect(putPats(plan2.ops).find(x => x.id === 1000)!.channelLoops).toBeUndefined();
+  });
+
+  it('a 7/8 pattern stays on its own grid: whole 3.5-beat bars, and the new pattern takes the grid', () => {
+    const odd = { ...pat(2, [note(0, 36), note(6, 38)], 3.5, 3.5), bar: 3.5 } as Pattern;
+    const plan = planMoveNotes(project(1, [odd], []), odd, [1], 'Odd – Snare', '#f00', ids())!;
+    const [kept, made] = putPats(plan.ops);
+    expect(kept.minLen).toBe(3.5);
+    expect(made).toMatchObject({ minLen: 3.5, bar: 3.5 });
+    expect(fitLenIn(structuredClone(kept), 3.5).len).toBe(3.5);
+    expect(fitLenIn(structuredClone(made), 3.5).len).toBe(3.5);
   });
 });

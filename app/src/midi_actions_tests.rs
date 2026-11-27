@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 use wave_cli::Files as _;
 use wave_engine::midi_file::{self, OutTrack, SmfNote, DRUM_CHANNEL};
-use wave_engine::{Note, Pattern};
+use wave_engine::{Clip, Note, Pattern};
+
+use super::placeholder_clip;
 
 use crate::headless::Files;
 
@@ -203,8 +205,11 @@ fn a_mapped_project_exports_a_ramp_whose_file_elapsed_time_is_the_engines() {
             ], "swing": 0.0, "channelLoops": {} } }],
         }),
     );
+    // the map is the song's: the song export carries it (a pattern alone plays the base tempo)
+    let clip = serde_json::to_value(Clip { id: 1, len: 4.0, ..placeholder_clip(1) }).unwrap();
+    call(&*doc, "apply", json!({ "ops": [{ "op": "putClips", "clips": [clip] }] }));
     let out = d.join("ramp.mid");
-    call(&*doc, "midi_export", json!({ "out": out, "pattern": 1 }));
+    call(&*doc, "midi_export", json!({ "out": out }));
     let f = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
     // the ramp 90→140 over 8 beats steps once per beat — each event at its interval's
     // effective BPM (the tick-0 value is beat 0's interval average, so it is not 90 itself)
@@ -263,6 +268,13 @@ fn inspect_exposes_the_tempo_map_even_without_a_tick_0_tempo() {
     assert_eq!(pts.len(), 1);
     assert_eq!(pts[0]["beat"], 2.0);
     assert_eq!(pts[0]["bpm"], 140.0);
+    // imported with its tempo, beats 0–2 play MIDI's implied 120 as the file does, not the
+    // project's old tempo
+    call(&*doc, "apply", json!({ "ops": [{ "op": "setBpm", "bpm": 100.0 }] }));
+    call(&*doc, "midi_import", json!({ "path": path, "setTempo": true, "beat": 0 }));
+    let p = &call(&*doc, "context", json!({ "full": true }))["project"];
+    assert_eq!(p["bpm"], 120.0);
+    assert_eq!(p["tempoPoints"].as_array().map(|a| a.len()), Some(1));
     std::fs::remove_dir_all(&d).ok();
 }
 
@@ -440,5 +452,46 @@ fn the_meter_travels_only_with_the_tempo_opt_in() {
     assert_eq!(r["tempoSet"], false, "no opt-in: the file's meter does not touch the project");
     let ctx = call(&*doc, "context", json!({ "full": true }));
     assert!(ctx["project"]["sigPoints"].as_array().is_none_or(|a| a.is_empty()));
+    std::fs::remove_dir_all(&d).ok();
+}
+
+#[test]
+fn a_pattern_exports_at_the_base_tempo_in_the_meter_where_it_plays() {
+    // a pattern plays at the base tempo (the tempo map is the song's), and its file starts at
+    // the pattern's own beat 0: the song's tempo glide and meter changes would misplace it
+    let d = tmp("patmaps");
+    let doc = Files.create("sketch").unwrap();
+    let ch = call(&*doc, "channels", json!({})).as_array().unwrap()[0]["id"].as_u64().unwrap();
+    let clip = serde_json::to_value(Clip { id: 1, start: 16.0, len: 3.0, ..placeholder_clip(1) }).unwrap();
+    call(
+        &*doc,
+        "apply",
+        json!({ "ops": [
+            { "op": "setBpm", "bpm": 100.0 },
+            { "op": "setTempoPoints", "points": [
+                { "beat": 0.0, "bpm": 90.0, "ramp": true },
+                { "beat": 8.0, "bpm": 140.0, "ramp": false },
+            ] },
+            { "op": "setSigPoints", "points": [{ "beat": 4.0, "num": 7, "den": 8 }, { "beat": 16.0, "num": 3, "den": 4 }] },
+            { "op": "putPattern", "pattern": { "id": 1, "name": "P", "color": "#fff", "len": 3.0, "minLen": 3.0, "notes": [
+                { "ch": ch, "step": 0.0, "len": 4.0, "p": 36 }
+            ], "swing": 0.0, "channelLoops": {} } },
+            { "op": "putClips", "clips": [clip] }],
+        }),
+    );
+    let base = call(&*doc, "context", json!({ "full": true }))["project"]["bpm"].as_f64().unwrap();
+    let out = d.join("pat.mid");
+    call(&*doc, "midi_export", json!({ "out": out, "pattern": 1 }));
+    let f = midi_file::parse(&std::fs::read(&out).unwrap()).unwrap();
+    assert_eq!(f.bpm, Some(base), "one tempo: the base the pattern plays at");
+    assert!(f.tempo_points.is_empty(), "no song glide in a pattern file: {:?}", f.tempo_points);
+    assert_eq!(f.sig_points, vec![midi_file::SmfSig { beat: 0.0, num: 3, den: 4 }], "the meter where the pattern plays");
+    // the song export still carries both maps
+    let song = d.join("song.mid");
+    call(&*doc, "midi_export", json!({ "out": song }));
+    let f = midi_file::parse(&std::fs::read(&song).unwrap()).unwrap();
+    assert!(!f.tempo_points.is_empty());
+    // (the 4/4 opener is the implied default and reads back as no point)
+    assert_eq!(f.sig_points.len(), 2, "both changes: {:?}", f.sig_points);
     std::fs::remove_dir_all(&d).ok();
 }
