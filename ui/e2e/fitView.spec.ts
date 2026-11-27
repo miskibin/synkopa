@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { engine, expect, test } from './fixtures';
+import { TOTAL_BEATS } from '../src/api/types';
 
 async function zoomIn(page: Page, bar: Locator) {
   await bar.hover();
@@ -30,16 +31,15 @@ test('Playlist: fit the song in time using the overview button', async ({ app },
   const songEnd = Math.max(16, ...before.clips.map(c => c.start + c.len));
   const viewW = await scroll.evaluate(el => el.clientWidth - (el.querySelector('.plhead')?.getBoundingClientRect().width ?? 0));
   const gridWidth = () => grid.evaluate(el => el.getBoundingClientRect().width);
-  const total = await app.evaluate(async () => (await import('/src/api/types.ts' as string)).TOTAL_BEATS as number);
   const fit = Math.max(4, Math.min(1024, viewW / (Math.ceil(songEnd / 4) * 4)));
-  await expect.poll(gridWidth).toBeCloseTo(total * fit, -1);
+  await expect.poll(gridWidth).toBeCloseTo(TOTAL_BEATS * fit, -1);
   const fitted = await thumbWidth(bar);
   await zoomIn(app, bar);
   await expect.poll(() => thumbWidth(bar)).toBeLessThan(fitted * 0.9);
   await editor.screenshot({ path: testInfo.outputPath('fit-view-playlist-zoomed.png') });
   await button.click();
   await expect(scroll).toHaveJSProperty('scrollLeft', 0);
-  await expect.poll(gridWidth).toBeCloseTo(total * fit, -1);
+  await expect.poll(gridWidth).toBeCloseTo(TOTAL_BEATS * fit, -1);
   await expect.poll(() => thumbWidth(bar)).toBeGreaterThan(fitted * 0.9);
   await editor.screenshot({ path: testInfo.outputPath('fit-view-playlist.png') });
   expect((await engine(app)).project).toEqual(before);
