@@ -11,7 +11,7 @@ test('leave an unnamed beat and reopen it from File → Open recent', async ({ a
   await app.getByRole('button', { name: "Don't save" }).click();
   await pollEngine(app, s => s.dirty).toBe(false);
   await app.getByRole('menuitem', { name: 'File', exact: true }).click();
-  await app.getByRole('menuitem', { name: 'Open recent' }).hover();
+  await app.getByRole('button', { name: 'Open recent' }).hover();
   await expect(app.getByText('Recent drafts', { exact: true })).toBeVisible();
   await app.getByRole('menuitem', { name: /139 BPM/ }).click();
   await pollEngine(app, s => [s.path, s.dirty, s.project.bpm]).toEqual([null, true, 139]);
