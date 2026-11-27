@@ -1,3 +1,4 @@
+import { recentSamples, rememberSample } from '../state/recentSamples';
 import { createMemo, For, Match, Show, Switch } from 'solid-js';
 import { batch, createSignal, createStore, effect, onCleanup, onMount } from '../lib/reactive';
 import { be } from '../api/backend';
@@ -69,10 +70,11 @@ function previewSource(s: Source) {
   say(t('d.br.prev', { name: s.name }));
 }
 
-export async function importFiles(paths: string[], at?: { track: number; beat: number }) {
+export async function importFiles(paths: string[], at?: { track: number; beat: number }, samples: SampleFile[] = []) {
   if (!paths.length) return;
   try {
     const r = await be().importAudio({ paths, track: at?.track, beat: at?.beat });
+    if (r.sourceIds.length) for (const f of samples) if (!r.errors.some(e => e.path === f.path)) rememberSample(f);
     if (r.sourceIds.length) setU('cur', { kind: 'audio', ref: r.sourceIds[r.sourceIds.length - 1], clipId: null });
     if (r.clipIds.length) setU('sel', r.clipIds);
     // the failed files are named, not swallowed: everything else imported
@@ -82,7 +84,7 @@ export async function importFiles(paths: string[], at?: { track: number; beat: n
 }
 
 /** Import at a client point if it is over the playlist grid. */
-export function importAt(paths: string[], x: number, y: number, alt = false) {
+export function importAt(paths: string[], x: number, y: number, alt = false, samples: SampleFile[] = []) {
   const p = gridPoint(x, y);
   // a MIDI file opens the import dialog (its pattern goes where it was dropped); audio is loaded
   const midi = paths.find(f => /\.midi?$/i.test(f));
@@ -91,8 +93,8 @@ export function importAt(paths: string[], x: number, y: number, alt = false) {
     paths = paths.filter(f => !/\.midi?$/i.test(f));
     if (!paths.length) return;
   }
-  if (!p.inside || p.track < 0) return importFiles(paths);
-  return importFiles(paths, { track: p.track, beat: Math.max(0, snapFloor(p.beat, A.snapUnit(alt))) });
+  if (!p.inside || p.track < 0) return importFiles(paths, undefined, samples);
+  return importFiles(paths, { track: p.track, beat: Math.max(0, snapFloor(p.beat, A.snapUnit(alt))) }, samples);
 }
 
 function Thumb(props: { src: Source }) {
@@ -344,7 +346,13 @@ const flats: Record<string, FlatItem[]> = {};
 const reveals: Record<string, (path: string) => void> = {};
 const [walkTick, bumpWalk] = createSignal(0, { equals: false });
 let walk: { f: LibFile; k: string }[] = [];
-const revealAt = (i: number) => { const r = walk[i]; if (r) reveals[r.k]?.(r.f.path); };
+const revealAt = (i: number) => {
+  const r = walk[i]; if (!r) return;
+  if (r.k === 'recent') {
+    const row = Array.from(listEl?.querySelectorAll<HTMLElement>('.brecent .fitem') ?? []).find(el => el.dataset.path === r.f.path);
+    row?.scrollIntoView({ block: 'nearest' });
+  } else reveals[r.k]?.(r.f.path);
+};
 /** Bumped by the shared scroll container, its content resizing (a group or section opening elsewhere, a load finishing), and viewport resize: every drawn window follows. */
 const [layoutTick, bumpLayout] = createSignal(0, { equals: false });
 
@@ -432,7 +440,7 @@ function dropFiles(files: SampleFile[], x: number, y: number, alt: boolean) {
   const d = fileTarget(x, y);
   const audio = files.filter(f => !/\.midi?$/i.test(f.path));
   // a MIDI file is never a sample: the import dialog handles it (and whatever came with it) as before
-  if (d.kind === 'import' || audio.length < files.length) return void importAt(files.map(f => f.path), x, y, alt);
+  if (d.kind === 'import' || audio.length < files.length) return void importAt(files.map(f => f.path), x, y, alt, audio);
   if (d.kind === 'replace') {
     const [first, ...rest] = audio;
     void replaceWithFile(d.channel, first).then(() => {
@@ -577,7 +585,7 @@ function LibraryTab() {
     void ensure(STD);
     // kits and folders left open last time load their lists again; a folder only while it is
     // still in the library (one removed is never walked again), so folders wait for the list
-    const reopen = () => { for (const [key, open] of Object.entries(lib.open)) if (open && (!key.startsWith('f:') || lib.folders.includes(key.slice(2)))) void ensure(key); };
+    const reopen = () => { for (const [key, open] of Object.entries(lib.open)) if (key !== 'recent' && open && (!key.startsWith('f:') || lib.folders.includes(key.slice(2)))) void ensure(key); };
     if (lib.loaded) reopen(); else void refreshLib().then(reopen);
     // back where the list was: the rows come in over a few frames, so try until it fits
     if (libScroll > 0) {
@@ -612,10 +620,12 @@ function LibraryTab() {
     walkTick();
     const out: { f: LibFile; k: string }[] = [];
     const push = (k: string) => { for (const it of flats[k] ?? []) if (it.kind === 'frow' && it.f) out.push({ f: it.f, k }); };
-    if (stdShown()) push(STD);
+    if (recentOpen()) for (const f of recentSamples()) out.push({ f, k: 'recent' });
+    if (stdShown() && secOpen('std')) push(STD);
     for (const k of kits()) if (k.installed && isOpen('k:' + k.id)) push('k:' + k.id);
-    for (const f of folders()) if (isOpen('f:' + f)) push('f:' + f);
-    walk = out;
+    for (const f of folders()) if (secOpen('folders') && isOpen('f:' + f)) push('f:' + f);
+    const seen = new Set<string>();
+    walk = out.filter(r => { if (seen.has(r.f.path)) return false; seen.add(r.f.path); return true; });
   });
   const install = (k: Kit) => {
     setLib('progress', k.id, { id: k.id, done: 0, total: k.bytes });
@@ -626,6 +636,8 @@ function LibraryTab() {
   // browsing: every kit and folder; searching: the installed ones the search found something in
   const kits = () => lib.kits.filter(k => k.id !== STD_KIT && (!searching() || (k.installed && matchCount('k:' + k.id) > 0)));
   const mine = () => kits().filter(k => k.installed || lib.progress[k.id]), avail = () => kits().filter(k => !k.installed && !lib.progress[k.id]);
+  const recentOpen = () => !searching() && lib.open.recent !== false;
+  const toggleRecent = () => { setLib('open', 'recent', !recentOpen()); saveBrowserOpen(); };
   const [moreOpen, setMoreOpen] = createSignal(false);
   const collapseAll = () => {
     // Search opens matching sections automatically, so return to the normal tree first.
@@ -634,6 +646,7 @@ function LibraryTab() {
         draft.q = '';
         draft.sopen = {};
         draft.sel = null;
+        draft.open.recent = false;
         for (const key of Object.keys(draft.open)) draft.open[key] = false;
         for (const key of Object.keys(draft.gopen)) draft.gopen[key] = false;
         // Small lists default to expanded groups: close those too, even without a saved choice.
@@ -701,6 +714,18 @@ function LibraryTab() {
         <Show when={lib.error}><div class="bnote" style={{ color: 'var(--danger)' }}>{lib.error}</div></Show>
         <Show when={nothing()}><div class="bnote">{t('d.br.nomatch', { q: lib.q.trim() })}</div></Show>
         <Show when={searchTruncated()}><div class="bnote">{t('d.br.searchtrunc')}</div></Show>
+        <Show when={!searching() && recentSamples().length}>
+          <div class="brecent">
+            <button type="button" class="bhead tog" style={{ width: '100%', background: 'transparent', border: 0, 'text-align': 'left', cursor: 'pointer' }} aria-expanded={recentOpen() ? 'true' : 'false'} onClick={toggleRecent}>
+              <Chev open={recentOpen()} />
+              <span class="ell">{t('d.br.recent')}</span>
+              <span class="hmeta">{recentSamples().length}</span>
+            </button>
+            <Show when={recentOpen()}>
+              <div class="flist"><For each={recentSamples()}>{f => <FileRow f={f} sub={false} />}</For></div>
+            </Show>
+          </div>
+        </Show>
         <Show when={stdShown()}>
           <div class="bhead tog" role="button" aria-expanded={secOpen('std') ? 'true' : 'false'} title={t('d.br.sec.tip')} onClick={() => toggleSec('std')}>
             <Chev open={secOpen('std')} />
