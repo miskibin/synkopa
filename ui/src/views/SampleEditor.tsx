@@ -446,6 +446,12 @@ function ClipSample(props: { clip: () => Clip; source: () => Source }) {
           {busy() ? (S.stretching[c().id] ? t('d.smp.renderFail') : t('d.smp.rendering')) : stretch() !== 1 ? '×' + stretch().toFixed(2) : ''}
         </span>
       </div>
+      <div class="smprow">
+        <button class={['smptog', { on: !!c().followTempo }]} aria-pressed={c().followTempo ? 'true' : 'false'}
+          title={t('d.smp.followTempoTip')} onClick={() => commit([{ op: 'putClips', clips: [{ ...plain(c()), followTempo: !c().followTempo }] }], t('d.smp.followTempo'))}>
+          {t('d.smp.followTempo')}
+        </button>
+      </div>
       <div class="smprow smpfit">
         <span class="tag9">{t('d.smp.fit')}</span>
         <div class="seg"><For each={FIT_BEATS}>{b => {

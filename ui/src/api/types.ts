@@ -306,6 +306,8 @@ export interface Clip {
   stretch?: number;
   /** Stretch by changing speed and pitch together instead of keeping the pitch. */
   resample?: boolean;
+  /** Keep this audio region and its beat length when constant project BPM changes. */
+  followTempo?: boolean;
   /** Audio clips: transposition in semitones (cents as the fraction), ±`CLIP_PITCH`; the length stays.
    *  Rendered offline with the stretch, in the background (absent = 0). */
   pitch?: number;

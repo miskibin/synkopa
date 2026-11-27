@@ -163,7 +163,7 @@ export function landTakes(p: Project, track: number, passes: [Id, number, number
   const old = p.clips.filter(c => plainAudio(c) && overlaps(c)).sort((a, b) => a.start - b.start);
   if (!old.length && passes.length === 1) {
     const [src, start, len] = passes[0];
-    p.clips.push(newClip(alloc(), track, start, len, 'audio', src));
+    p.clips.push({ ...newClip(alloc(), track, start, len, 'audio', src), followTempo: true });
     return;
   }
   const all: [Id, number, number, number][] = [...old.map(c => [c.ref, c.start, c.len, c.offset] as [Id, number, number, number]), ...passes.map(([s, a, l]) => [s, a, l, 0] as [Id, number, number, number])];

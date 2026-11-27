@@ -1,3 +1,4 @@
+import { tempoClipChanges } from '../lib/tempoFollow';
 // The engine's state, mirrored. Rust owns the project and undo; this store holds the latest
 // StateDto plus local optimistic edits (applied immediately so drags feel instant).
 //
@@ -329,6 +330,7 @@ function assignClip(dst: Clip, src: Clip) {
   // the engine leaves the defaults out (stretch 1, not resampled)
   if (!('stretch' in src) && dst.stretch !== undefined) delete dst.stretch;
   if (!('resample' in src) && dst.resample !== undefined) delete dst.resample;
+  if (!('followTempo' in src) && dst.followTempo !== undefined) delete dst.followTempo;
 }
 function assignFx(dst: Fx, src: Fx) {
   if (dst.bypass !== src.bypass) dst.bypass = src.bypass;
@@ -431,7 +433,16 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
     case 'putMarker': try { putMarker(p, op.marker); } catch { /* the reply resyncs */ } return;
     case 'removeMarker': try { removeMarker(p, op.id); } catch { /* already gone */ } return;
     // the knob edits the constant case: the map goes now, like the engine's SetBpm
-    case 'setBpm': p.bpm = op.bpm; delete p.tempoPoints; return;
+    case 'setBpm':
+      try {
+        for (const [i, clip] of tempoClipChanges(raw, op.bpm)) {
+          // Only timing changes; don't copy the source's nested tune data into the reactive draft.
+          p.clips[i].len = clip.len;
+          p.clips[i].offset = clip.offset;
+          if (clip.stretch == null) delete p.clips[i].stretch; else p.clips[i].stretch = clip.stretch;
+        }
+      } catch { return; } // the engine reports the rejected edit
+      p.bpm = op.bpm; delete p.tempoPoints; return;
     case 'setLoop': p.loop = op.loop ? { ...op.loop } : null; return;
     case 'setMaskIgnore': {
       const out: [Id, Id][] = [];

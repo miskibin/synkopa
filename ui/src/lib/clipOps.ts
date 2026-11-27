@@ -94,8 +94,8 @@ export function stretchClip(o: Clip, edge: 'l' | 'r', target: number, minL: numb
   const k = len / o.len, s = s0 * k;
   // a stretch back to (almost) 1 snaps to exactly 1, so the clip plays its file untouched
   const exact = Math.abs(s - 1) < 1e-6;
-  const n: Clip = { ...o, len: exact ? o.len / s0 : len, offset: exact ? o.offset / s0 : o.offset * k };
-  if (exact) { delete n.stretch; delete n.resample; } else n.stretch = s;
+  const n: Clip = { ...o, followTempo: true, len: exact ? o.len / s0 : len, offset: exact ? o.offset / s0 : o.offset * k };
+  if (exact) delete n.stretch; else n.stretch = s;
   if (edge === 'l') n.start = end - n.len;
   return n;
 }
@@ -167,7 +167,7 @@ export function fitClip(c: Clip, beats: number): Clip | null {
   const s = c.stretch ?? 1, k = beats / c.len, ns = s * k;
   if (ns < STRETCH_MIN - 1e-9 || ns > STRETCH_MAX + 1e-9 || c.start + beats > TOTAL_BEATS + 1e-9) return null;
   const r = (x: number) => Math.round(x * 1e9) / 1e9;
-  return { ...c, stretch: r(Math.min(STRETCH_MAX, Math.max(STRETCH_MIN, ns))), offset: r(c.offset * k), len: beats };
+  return { ...c, followTempo: true, stretch: r(Math.min(STRETCH_MAX, Math.max(STRETCH_MIN, ns))), offset: r(c.offset * k), len: beats };
 }
 
 /**
