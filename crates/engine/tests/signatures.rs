@@ -404,3 +404,28 @@ fn a_refused_refit_leaves_the_op_untouched() {
     ops::apply(&mut p, &Op::SetSigPoints { points: pts(&[(0.0, 3, 4)]) }).unwrap();
     assert!((p.patterns[0].len - 6.0).abs() < 1e-9, "{}", p.patterns[0].len);
 }
+
+#[test]
+fn reassigning_a_clip_refits_the_pattern_it_left_too() {
+    // a clip moving from pattern A to pattern B changes BOTH grids: B lands on the 7/8
+    // change at beat 8, and A (min_len 5, a stray beat count from an older grid) re-rounds
+    // to whole 4/4 bars now that nothing plays it at beat 0 anymore
+    let mut p = Project::routed();
+    p.sig_points = pts(&[(8.0, 7, 8)]);
+    p.patterns.push(Pattern {
+        id: 2,
+        name: "B".into(),
+        color: "#4f8ef7".into(),
+        len: 8.0,
+        min_len: 8.0,
+        notes: vec![],
+        swing: 0.0,
+        channel_loops: std::collections::BTreeMap::new(),
+    });
+    p.patterns[0].min_len = 5.0;
+    p.patterns[0].len = 8.0;
+    p.clips.push(clip(912, 0, 0.0, 8.0, 1));
+    ops::apply(&mut p, &Op::PutClips { clips: vec![clip(912, 0, 8.0, 8.0, 2)] }).unwrap();
+    assert!((p.patterns[0].min_len - 8.0).abs() < 1e-9, "A re-rounds on the opener grid: {}", p.patterns[0].min_len);
+    assert!((p.patterns[1].len - 10.5).abs() < 1e-9, "B fits its new 7/8 position: {}", p.patterns[1].len);
+}

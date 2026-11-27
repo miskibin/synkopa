@@ -36,8 +36,6 @@ const hasTime = (f: MidiInfo) => f.bpm != null || f.tempoPoints.length > 0 || (f
  *  project's. */
 const worthTempo = (f: MidiInfo) =>
   f.tempoPoints.length > 0 || (f.sigPoints?.length ?? 0) > 0 || (f.bpm != null && Math.abs(f.bpm - f.projectBpm) > 0.005);
-/** The tempo the file starts at: its tick-0 value, else MIDI's implied default of 120. */
-const fileBpm = (f: MidiInfo) => f.bpm ?? 120;
 /** The file's meters as they read ("7/8 · 3/4"). */
 const meterList = (f: MidiInfo) => (f.sigPoints ?? []).map(s => `${s.num}/${s.den}`).join(' · ');
 const bpmText = (f: MidiInfo) => f.bpm?.toFixed(2).replace(/\.?0+$/, '') ?? '';

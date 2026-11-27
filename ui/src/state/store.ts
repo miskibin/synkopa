@@ -388,8 +388,16 @@ function applyInPlace(p: Project, op: Op, raw: Project = p) {
         if (i != null) assignClip(p.clips[i], c); else { p.clips.push(clone(c)); idx.set(c.id, p.clips.length - 1); }
         if (c.id >= p.nextId) p.nextId = c.id + 1;
       }
-      // the patterns the clips play may sit on another bar grid now: the engine refits
-      refitOptimistic(p, raw, op.clips.filter(c => c.kind === 'pat').map(c => c.ref));
+      // the patterns the clips play may sit on another bar grid now: the engine refits —
+      // and a clip REASSIGNED to another pattern puts the old pattern on a different grid
+      const pats = op.clips.filter(c => c.kind === 'pat').map(c => c.ref);
+      for (const c of op.clips) {
+        const old = raw.clips.find(x => x.id === c.id);
+        if (old?.kind === 'pat') pats.push(old.ref);
+      }
+      refitOptimistic(p, raw, pats);
+      // the optimistic preview reads the would-be positions through the draft (a rewritten
+      // clip's old place has already stopped counting there)
       return;
     }
     case 'removeClips': {

@@ -346,25 +346,30 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                     }
                 }
             }
-            for c in clips {
-                bump(p, c.id);
-                match p.clips.iter_mut().find(|x| x.id == c.id) {
-                    Some(x) => *x = c.clone(),
-                    None => p.clips.push(c.clone()),
-                }
-            }
             // a pattern's bars follow the signature where it plays: with the clips about to
             // move, plan the refits on the positions they will land at and validate the
-            // channel loops before anything of the project moves
-            let pats: Vec<Id> = clips.iter().filter(|c| c.kind == ClipKind::Pat).map(|c| c.source).collect();
+            // channel loops before anything of the project moves. A clip REASSIGNED to
+            // another pattern puts the old pattern on a different grid too (it may lose its
+            // earliest clip) — both sides of the reassignment plan
+            let mut pats: Vec<Id> = clips.iter().filter(|c| c.kind == ClipKind::Pat).map(|c| c.source).collect();
+            for c in clips {
+                if let Some(old) = p.clips.iter().find(|x| x.id == c.id) {
+                    if old.kind == ClipKind::Pat {
+                        pats.push(old.source);
+                    }
+                }
+            }
             let map = p.sig_map();
+            // the positions the clips will hold: a rewritten clip's old place stops counting
+            // (it moves), the pending ones count from now on
+            let pending: Vec<Id> = clips.iter().map(|c| c.id).collect();
             let plan = plan_refits(p, &pats, |pid| {
                 let at = p
                     .clips
                     .iter()
-                    .chain(clips.iter())
-                    .filter(|c| c.kind == ClipKind::Pat && c.source == pid)
+                    .filter(|c| c.kind == ClipKind::Pat && c.source == pid && !pending.contains(&c.id))
                     .map(|c| c.start)
+                    .chain(clips.iter().filter(|c| c.kind == ClipKind::Pat && c.source == pid).map(|c| c.start))
                     .fold(f64::INFINITY, f64::min);
                 map.bar_beats_at(if at.is_finite() { at } else { 0.0 })
             })?;

@@ -796,6 +796,19 @@ pub fn cases() -> Vec<Case> {
         }],
     ));
     c.push(("main", "setSigPoints clears the map", vec![Op::SetSigPoints { points: vec![] }]));
+    // a clip REASSIGNED to another pattern refits the pattern it left too: the old pattern
+    // re-rounds on the grid nothing plays it on any more, the new one fits where it landed
+    c.push((
+        "main",
+        "putClips reassigning a clip refits both patterns",
+        vec![
+            Op::PutPattern { pattern: pat(42, "A", 8.0, 5.0, vec![]) },
+            Op::PutPattern { pattern: pat(43, "B", 8.0, 8.0, vec![]) },
+            Op::SetSigPoints { points: vec![SigPoint { beat: 8.0, num: 7, den: 8 }] },
+            Op::PutClips { clips: vec![clip(90, 0, 0.0, 8.0, ClipKind::Pat, 42)] },
+            Op::PutClips { clips: vec![clip(90, 0, 8.0, 8.0, ClipKind::Pat, 43)] },
+        ],
+    ));
     // the refit: a pattern whose length keeps (notes end at beat 10) still re-rounds its
     // min_len to the new grid, so a reload (migrate, the same formula) changes nothing
     c.push((

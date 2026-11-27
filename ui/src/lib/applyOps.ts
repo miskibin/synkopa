@@ -90,14 +90,19 @@ export function applyOp(p: Project, op: Op): void {
       // plan the refits on the positions they will land at and validate the loops before
       // anything of the project moves (the engine plans the same way)
       const map = compiledSig(p.sigPoints);
-      const plan = planRefits(
-        p,
-        op.clips.filter(c => c.kind === 'pat').map(c => c.ref),
-        pid => {
-          const at = [...p.clips, ...op.clips].filter(c => c.kind === 'pat' && c.ref === pid).map(c => c.start).reduce((a, b) => Math.min(a, b), Infinity);
-          return barBeatsAt(map, at === Infinity ? 0 : at);
-        },
-      );
+      // a clip REASSIGNED to another pattern puts the old pattern on a different grid too
+      const pats = op.clips.filter(c => c.kind === 'pat').map(c => c.ref);
+      for (const c of op.clips) {
+        const old = p.clips.find(x => x.id === c.id);
+        if (old?.kind === 'pat') pats.push(old.ref);
+      }
+      // the positions the clips will hold: a rewritten clip's old place stops counting
+      const moved = new Set(op.clips.map(c => c.id));
+      const plan = planRefits(p, pats, pid => {
+        const at = [...p.clips.filter(c => c.kind === 'pat' && c.ref === pid && !moved.has(c.id)).map(c => c.start), ...op.clips.filter(c => c.kind === 'pat' && c.ref === pid).map(c => c.start)]
+          .reduce((a, b) => Math.min(a, b), Infinity);
+        return barBeatsAt(map, at === Infinity ? 0 : at);
+      });
       for (const c of op.clips) {
         bump(p, c.id);
         const nc = structuredClone(c);

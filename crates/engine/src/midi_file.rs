@@ -733,13 +733,12 @@ mod tests {
         // the tempo change after tick 0 arrives as a point of the tempo map, not a warning
         assert_eq!(f.tempo_points, vec![SmfTempo { beat: 1.0, bpm: 150.0 }]);
         // 3/4 at tick 0 is a point (a project cannot imply a meter); the mid-song 4/4 is
-        // the change — and no "odd meter" warning: the file's meter is the map now
-        assert_eq!(f.warnings.len(), 1, "{:?}", f.warnings);
+        // the change — and no warning at all: the tempo map and the meter map carry both
+        assert!(f.warnings.is_empty(), "{:?}", f.warnings);
         assert_eq!(f.sig_points, vec![SmfSig { beat: 0.0, num: 3, den: 4 }, SmfSig { beat: 2.0, num: 4, den: 4 }]);
         assert_eq!(f.parts.iter().map(|p| (p.channel, p.name.as_str())).collect::<Vec<_>>(), vec![(1, "Fingered Bass"), (9, "Drums")]);
     }
 
-    #[test]
     #[test]
     fn tempo_changes_import_as_the_maps_points() {
         // 480 ppq, absolute ticks: repeats and same-tick events fold into one map
