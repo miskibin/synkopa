@@ -91,6 +91,7 @@ fn comp_clip(start: f64) -> Clip {
         tune: None,
         stretch: 1.0,
         resample: false,
+        follow_tempo: false,
         pitch: 0.0,
         insert: None,
         root: 60,

@@ -1,3 +1,4 @@
+import { tempoClipChanges } from './tempoFollow';
 // A TS port of crates/engine/src/ops.rs `apply` — used by the in-browser mock backend.
 // Parity with the engine is enforced by fixtures, not by discipline: ops.json
 // (`crates/engine/tests/ui_ops_fixture.rs`) pins both the resulting projects and the exact
@@ -23,6 +24,7 @@ const bump = (p: Project, id: Id) => { if (id >= p.nextId) p.nextId = id + 1; };
 export function stripClipDefaults(c: Clip): void {
   if (c.stretch === 1) delete c.stretch;
   if (c.resample === false) delete c.resample;
+  if (c.followTempo === false) delete c.followTempo;
   if (c.pitch === 0) delete c.pitch;
 }
 
@@ -34,7 +36,7 @@ export function applyOp(p: Project, op: Op): void {
         if (c.track >= p.tracks.length || c.track < 0) throw new OpError(`clip ${c.id} is on track ${c.track} which does not exist`);
         const s = c.stretch ?? 1;
         if (!(Number.isFinite(s) && s >= STRETCH_MIN - 1e-9 && s <= STRETCH_MAX + 1e-9)) throw new OpError(`clip ${c.id}: stretch must be ${STRETCH_MIN}..${STRETCH_MAX}`);
-        if (c.kind !== 'audio' && (s !== 1 || c.resample)) throw new OpError(`clip ${c.id}: only audio clips can be stretched`);
+        if (c.kind !== 'audio' && (s !== 1 || c.resample || c.followTempo)) throw new OpError(`clip ${c.id}: only audio clips can be stretched`);
         const pt = c.pitch ?? 0;
         if (!(Number.isFinite(pt) && Math.abs(pt) <= CLIP_PITCH + 1e-4)) throw new OpError(`clip ${c.id}: pitch must be within ±${CLIP_PITCH} semitones`);
         if (c.root != null && !(Number.isInteger(c.root) && c.root >= 0 && c.root <= 127)) throw new OpError(`clip ${c.id}: root key must be 0..127`);
@@ -176,6 +178,9 @@ export function applyOp(p: Project, op: Op): void {
       return;
     case 'setBpm':
       if (!(op.bpm >= 20 && op.bpm <= 999)) throw new OpError('bpm must be 20..999');
+      try {
+        for (const [i, clip] of tempoClipChanges(p, op.bpm)) p.clips[i] = clip;
+      } catch (e) { throw new OpError((e as Error).message); }
       p.bpm = op.bpm; delete p.tempoPoints; return;
     case 'setTempoPoints': {
       if (op.points.length > MAX_TEMPO_POINTS) throw new OpError(`at most ${MAX_TEMPO_POINTS} tempo points`);

@@ -259,3 +259,41 @@ fn pitch_is_checked_and_saved() {
     let back: Clip = serde_json::from_value(saved.clone()).unwrap();
     assert_eq!(back.pitch, 0.0);
 }
+
+#[test]
+fn constant_tempo_change_preserves_trimmed_audio_in_both_modes() {
+    for follow_tempo in [false, true] {
+        let (e, clip) = engine_with_clip(if follow_tempo { "tempo-follow" } else { "tempo-free" });
+        let clip = Clip { offset: 1.0, len: 2.0, follow_tempo, ..clip };
+        put(&e, clip.clone()).unwrap();
+        let bpm = e.project().bpm;
+        let span = clip.source_span(bpm);
+        e.apply(&[Op::SetBpm { bpm: bpm * 1.25 }], false, None).unwrap();
+        let p = e.project();
+        let c = p.clips.iter().find(|c| c.id == clip.id).unwrap();
+        let new_span = c.source_span(p.bpm);
+        assert!((span.0 - new_span.0).abs() < 1e-9 && (span.1 - new_span.1).abs() < 1e-9);
+        assert_eq!(c.start, clip.start);
+        if follow_tempo {
+            assert_eq!(c.len, clip.len);
+            assert!((c.stretch - 0.8).abs() < 1e-9);
+        } else {
+            assert!((c.len - clip.len * 1.25).abs() < 1e-9);
+            assert_eq!(c.stretch, clip.stretch);
+        }
+        e.apply(&[Op::SetBpm { bpm }], false, None).unwrap();
+        let p = e.project();
+        let c = p.clips.iter().find(|c| c.id == clip.id).unwrap();
+        assert!((c.len - clip.len).abs() < 1e-9 && (c.offset - clip.offset).abs() < 1e-9);
+        assert!((c.stretch - clip.stretch).abs() < 1e-9);
+    }
+}
+
+#[test]
+fn tempo_follow_refuses_a_change_outside_stretch_limits() {
+    let (e, clip) = engine_with_clip("tempo-limit");
+    put(&e, Clip { stretch: 0.25, follow_tempo: true, ..clip }).unwrap();
+    let before = e.project();
+    assert!(e.apply(&[Op::SetBpm { bpm: before.bpm * 2.0 }], false, None).is_err());
+    assert_eq!(e.project(), before);
+}

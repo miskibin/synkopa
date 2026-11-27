@@ -302,7 +302,7 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
                         return Err(OpError::Missing { what: "insert", id: ins });
                     }
                 }
-                if c.kind != ClipKind::Audio && (c.stretch != 1.0 || c.resample) {
+                if c.kind != ClipKind::Audio && (c.stretch != 1.0 || c.resample || c.follow_tempo) {
                     return Err(OpError::Invalid(format!("clip {}: only audio clips can be stretched", c.id)));
                 }
                 if !(c.pitch.is_finite() && c.pitch.abs() <= crate::model::CLIP_PITCH + 1e-4) {
@@ -1072,6 +1072,25 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
         Op::SetBpm { bpm } => {
             if !(crate::model::MIN_TEMPO_BPM..=crate::model::MAX_BASE_BPM).contains(bpm) {
                 return Err(OpError::Invalid("bpm must be 20..999".into()));
+            }
+            // The clip's source span is offset/len × seconds-per-beat / stretch.
+            // At a constant tempo, preserve that span in both playback modes.
+            if p.tempo_points.is_empty() && p.bpm != *bpm {
+                let ratio = *bpm / p.bpm;
+                for c in p.clips.iter().filter(|c| c.kind == ClipKind::Audio && c.follow_tempo) {
+                    let stretch = c.stretch / ratio;
+                    if !(crate::model::STRETCH_MIN - 1e-9..=crate::model::STRETCH_MAX + 1e-9).contains(&stretch) {
+                        return Err(OpError::Invalid(format!("clip {}: tempo change exceeds stretch range", c.id)));
+                    }
+                }
+                for c in p.clips.iter_mut().filter(|c| c.kind == ClipKind::Audio) {
+                    if c.follow_tempo {
+                        c.stretch = (c.stretch / ratio).clamp(crate::model::STRETCH_MIN, crate::model::STRETCH_MAX);
+                    } else {
+                        c.offset *= ratio;
+                        c.len *= ratio;
+                    }
+                }
             }
             p.bpm = *bpm;
             // the knob edits the constant case: a tempo map would be overwritten by it

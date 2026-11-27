@@ -1855,6 +1855,7 @@ impl Engine {
                 tune: None,
                 stretch: 1.0,
                 resample: false,
+                follow_tempo: false,
                 ..clip.clone()
             };
         }
