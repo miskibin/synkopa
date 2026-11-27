@@ -70,6 +70,13 @@ jobs:
       # the UI's user journeys in Chromium, against the dev server and the in-browser mock engine
       - name: UI end-to-end (Playwright)
         run: pnpm --dir ui exec playwright install --with-deps chromium && pnpm --dir ui test:e2e
+      - name: Upload Library screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-collapse-screenshots
+          path: ui/e2e/.results/**/library-*.png
+          if-no-files-found: ignore
       - name: Upload the traces of failed journeys
         if: failure()
         uses: actions/upload-artifact@v4
