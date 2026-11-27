@@ -41,6 +41,7 @@ SOURCES = {
     "mck": ("MckAudio/MckSamplePacks", "5db40e8fe26785c256845a5bb38921b2654a887f", "CC0-1.0", "MckAudio, recorded from a Roland TR-8"),
     "omi": ("Yale-OMI/sample-pack-vol-1", "9ad3da067dff97aa4bd8588a97ee0419b02c0acc", "CC0-1.0", "Yale Open Music Initiative, Sample Pack Vol. 1"),
     "steeldrum": ("sfzinstruments/jlearman.SteelDrum", "dc15a36ad69a43b0d240fcbd0cc78fbc61b2b47e", "Unlicense", "Jeff Learman, SteelDrum"),
+    "vd": ("sfzinstruments/virtuosity_drums", "9f04cf9a734527edfbb0a4eee1f674e45bbf71bc", "CC0-1.0", "Versilian Studios and Karoryfer Samples, Virtuosity Drums"),
 }
 LICENSE_URL = {"CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/", "Unlicense": "https://unlicense.org/"}
 # Freesound sounds released under CC0 (each one's page shows the licence): id -> (high-quality
@@ -147,6 +148,95 @@ FREESOUND = {
     "513419": ("https://cdn.freesound.org/previews/513/513419_938351-hq.mp3", "pomeroyjoshua", "Anu Clap 05.wav"),
     "532245": ("https://cdn.freesound.org/previews/532/532245_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 08.wav"),
     "532246": ("https://cdn.freesound.org/previews/532/532246_473017-hq.mp3", "JoshuaPomeroy", "Snap Layered 07.wav"),
+    "166190": ("https://cdn.freesound.org/previews/166/166190_3034882-hq.mp3", "madmike1", "Metal-Rock Kick Sample.wav"),
+    "806079": ("https://cdn.freesound.org/previews/806/806079_3797507-hq.mp3", "Logicogonist", "kick gritty"),
+    "685865": ("https://cdn.freesound.org/previews/685/685865_5383810-hq.mp3", "Sound_Bar_KK", "AD Kick.wav"),
+    "634920": ("https://cdn.freesound.org/previews/634/634920_3379512-hq.mp3", "darcyadam", "Kick 1 DCA Tape Design.aif"),
+    "556192": ("https://cdn.freesound.org/previews/556/556192_496775-hq.mp3", "SOOTHSAYER_ORCHESTRA", "kick 2.wav"),
+    "805455": ("https://cdn.freesound.org/previews/805/805455_3797507-hq.mp3", "Logicogonist", "kick Tama Silverstar Mirage 22x16 inch 2010s acryl bassdrum - kicktrig 1"),
+    "416204": ("https://cdn.freesound.org/previews/416/416204_8218607-hq.mp3", "exotonestudio", "funk rock kick.aif"),
+    "223537": ("https://cdn.freesound.org/previews/223/223537_4030954-hq.mp3", "taylorevanmcalister", "My Kick.wav"),
+    "808183": ("https://cdn.freesound.org/previews/808/808183_3797507-hq.mp3", "Logicogonist", "bassdrum 1b"),
+    "860524": ("https://cdn.freesound.org/previews/860/860524_3661618-hq.mp3", "lennartgreen", "Big Rock Bass Drum 24in One Shot"),
+    "508934": ("https://cdn.freesound.org/previews/508/508934_7473420-hq.mp3", "tripjazz", "Rock Snare Kick"),
+    "695888": ("https://cdn.freesound.org/previews/695/695888_13576318-hq.mp3", "synxwtf", "Kick4.wav"),
+    "646154": ("https://cdn.freesound.org/previews/646/646154_11532701-hq.mp3", "deadrobotmusic", "Peanut Butter Kick 1"),
+    "529544": ("https://cdn.freesound.org/previews/529/529544_3677139-hq.mp3", "Uberproduktion", "KS Kick.wav"),
+    "756782": ("https://cdn.freesound.org/previews/756/756782_2984522-hq.mp3", "ZarastaCro", "Hard Metal-Rock Kick"),
+    "207170": ("https://cdn.freesound.org/previews/207/207170_3797507-hq.mp3", "Logicogonist", "snare_veiler_2013.wav"),
+    "82281": ("https://cdn.freesound.org/previews/82/82281_1299633-hq.mp3", "KEVOY", "acoustic snare rimshot.wav"),
+    "50759": ("https://cdn.freesound.org/previews/50/50759_179538-hq.mp3", "RutgerMuller", "Snare 1.wav"),
+    "819642": ("https://cdn.freesound.org/previews/819/819642_17751407-hq.mp3", "sleephabits", "snare (tape)"),
+    "19435": ("https://cdn.freesound.org/previews/19/19435_21830-hq.mp3", "Heigh-hoo", "pop.aif"),
+    "176001": ("https://cdn.freesound.org/previews/176/176001_3193618-hq.mp3", "rossgalloway", "WHITE NOISE - SNARE - 2.wav"),
+    "41355": ("https://cdn.freesound.org/previews/41/41355_27750-hq.mp3", "elnaturel", "Linn Snare hard.WAV"),
+    "426832": ("https://cdn.freesound.org/previews/426/426832_8513272-hq.mp3", "StevenSampleMaker", "Snare_Rimshot.wav"),
+    "375451": ("https://cdn.freesound.org/previews/375/375451_2475994-hq.mp3", "sgossner", "Snare (snare3_rimshot_ff_1.wav)"),
+    "529542": ("https://cdn.freesound.org/previews/529/529542_3677139-hq.mp3", "Uberproduktion", "KS Snare.wav"),
+    "84890": ("https://cdn.freesound.org/previews/84/84890_1321830-hq.mp3", "Toffa", "ArthurSnare#4.aiff"),
+    "556182": ("https://cdn.freesound.org/previews/556/556182_496775-hq.mp3", "SOOTHSAYER_ORCHESTRA", "snare hard.wav"),
+    "140534": ("https://cdn.freesound.org/previews/140/140534_177850-hq.mp3", "stomachache", "closedhatROOMPhrase 008.wav"),
+    "321454": ("https://cdn.freesound.org/previews/321/321454_2884593-hq.mp3", "vacuumfan7072", "14CHH.wav"),
+    "132415": ("https://cdn.freesound.org/previews/132/132415_2412414-hq.mp3", "Sajmund", "Hi-Hat Hit "),
+    "93910": ("https://cdn.freesound.org/previews/93/93910_394391-hq.mp3", "pjcohen", "SkibaCustomHiHats1145Top1215BottomFootPedalCloseChick.wav"),
+    "271422": ("https://cdn.freesound.org/previews/271/271422_2127539-hq.mp3", "soneproject", "hats (21).wav"),
+    "566892": ("https://cdn.freesound.org/previews/566/566892_3661618-hq.mp3", "lennartgreen", "Acoustic Hi-Hat Open Vintage Hip Hop"),
+    "104225": ("https://cdn.freesound.org/previews/104/104225_1531859-hq.mp3", "minorr", "HHAT Paiste 302+ 14'' open FF.wav"),
+    "416249": ("https://cdn.freesound.org/previews/416/416249_8218607-hq.mp3", "exotonestudio", "open hat snake.aif"),
+    "506450": ("https://cdn.freesound.org/previews/506/506450_4600366-hq.mp3", "kbeezy88", "HHFunk1.wav"),
+    "104228": ("https://cdn.freesound.org/previews/104/104228_1531859-hq.mp3", "minorr", "HHAT Paiste 302+ 14'' open PP.wav"),
+    "509985": ("https://cdn.freesound.org/previews/509/509985_8033171-hq.mp3", "blakengouda", "Hi-Hat Open 2.mp3"),
+    "104219": ("https://cdn.freesound.org/previews/104/104219_1531859-hq.mp3", "minorr", "CRASH Zildian A Custom 16'' centr P.wav"),
+    "104220": ("https://cdn.freesound.org/previews/104/104220_1531859-hq.mp3", "minorr", "CRASH Zildian A Custom 16'' centr PF.wav"),
+    "104217": ("https://cdn.freesound.org/previews/104/104217_1531859-hq.mp3", "minorr", "CRASH Zildian A Custom 16'' centr F.wav"),
+    "104218": ("https://cdn.freesound.org/previews/104/104218_1531859-hq.mp3", "minorr", "CRASH Zildian A Custom 16'' centr FF.wav"),
+    "104209": ("https://cdn.freesound.org/previews/104/104209_1531859-hq.mp3", "minorr", "CRASH Paiste Pst5 17'' left F.wav"),
+    "104210": ("https://cdn.freesound.org/previews/104/104210_1531859-hq.mp3", "minorr", "CRASH Paiste Pst5 17'' left FF.wav"),
+    "104215": ("https://cdn.freesound.org/previews/104/104215_1531859-hq.mp3", "minorr", "CRASH Paiste Pst5 18'' rigtht P.wav"),
+    "104214": ("https://cdn.freesound.org/previews/104/104214_1531859-hq.mp3", "minorr", "CRASH Paiste Pst5 18'' rigtht FF.wav"),
+    "696226": ("https://cdn.freesound.org/previews/696/696226_2253220-hq.mp3", "ankealtd", "Meinl_Byzance_18__Medium_Thin_Crash_H_8.wav"),
+    "45102": ("https://cdn.freesound.org/previews/45/45102_428371-hq.mp3", "Matias.Reccius", "crashB.wav"),
+    "799423": ("https://cdn.freesound.org/previews/799/799423_3797507-hq.mp3", "Logicogonist", "ride bell 1 long"),
+    "104238": ("https://cdn.freesound.org/previews/104/104238_1531859-hq.mp3", "minorr", "RIDE Zildian K Custom Session P.wav"),
+    "104239": ("https://cdn.freesound.org/previews/104/104239_1531859-hq.mp3", "minorr", "RIDE Zildian K Custom Session PF.wav"),
+    "171489": ("https://cdn.freesound.org/previews/171/171489_2565043-hq.mp3", "xIceCoffeex", "Savannah Ride.wav"),
+    "104233": ("https://cdn.freesound.org/previews/104/104233_1531859-hq.mp3", "minorr", "RIDE Zildian K Custom Session Bell F.wav"),
+    "104234": ("https://cdn.freesound.org/previews/104/104234_1531859-hq.mp3", "minorr", "RIDE Zildian K Custom Session Bell FF.wav"),
+    "700811": ("https://cdn.freesound.org/previews/700/700811_10938187-hq.mp3", "HenKonen", "Ride bell p.wav"),
+    "117003": ("https://cdn.freesound.org/previews/117/117003_1151436-hq.mp3", "CBeeching", "Ride_01.wav"),
+    "488461": ("https://cdn.freesound.org/previews/488/488461_10527164-hq.mp3", "Trvth", "HiTom1Drum.wav"),
+    "416292": ("https://cdn.freesound.org/previews/416/416292_8218607-hq.mp3", "exotonestudio", "tom3short.aif"),
+    "53399": ("https://cdn.freesound.org/previews/53/53399_400592-hq.mp3", "calaudio", "attack Hi tom.wav"),
+    "807368": ("https://cdn.freesound.org/previews/807/807368_3797507-hq.mp3", "Logicogonist", "kick tomlike 1"),
+    "566894": ("https://cdn.freesound.org/previews/566/566894_3661618-hq.mp3", "lennartgreen", "Acoustic Floor Tom Vintage Hip Hop"),
+    "171485": ("https://cdn.freesound.org/previews/171/171485_2565043-hq.mp3", "xIceCoffeex", "Savannah Floor Tom .wav"),
+    "261410": ("https://cdn.freesound.org/previews/261/261410_3797507-hq.mp3", "Logicogonist", "tom 4.wav"),
+    "488463": ("https://cdn.freesound.org/previews/488/488463_10527164-hq.mp3", "Trvth", "FloorTom1Drum.wav"),
+    "112504": ("https://cdn.freesound.org/previews/112/112504_1985275-hq.mp3", "cdiupe", "new tom 1.wav"),
+    "879767": ("https://cdn.freesound.org/previews/879/879767_15176424-hq.mp3", "Robo9418", "Rainstick Shaker 90bpm Loop"),
+    "651231": ("https://cdn.freesound.org/previews/651/651231_14238989-hq.mp3", "trubalesk", "small-djembe-88bpm-loop.wav"),
+    "456131": ("https://cdn.freesound.org/previews/456/456131_178421-hq.mp3", "funkologic", "Tambourine 2-bars loop 90BPM 44.1kHz"),
+    "429539": ("https://cdn.freesound.org/previews/429/429539_8655249-hq.mp3", "stevysound", "Indian Percussion Loop 121 bpm"),
+    "270737": ("https://cdn.freesound.org/previews/270/270737_5137234-hq.mp3", "bcnlab", "Song7_SHAKER_Fa_3:4_120bpms.wav"),
+    "761490": ("https://cdn.freesound.org/previews/761/761490_15628574-hq.mp3", "BB_909", "Hi-Hat Loop 128bpm"),
+    "610356": ("https://cdn.freesound.org/previews/610/610356_8667548-hq.mp3", "KJose", "120bpm_tumbao_on_bongos_1.flac"),
+    "610360": ("https://cdn.freesound.org/previews/610/610360_8667548-hq.mp3", "KJose", "bongo_martillo_120bpm_var.flac"),
+    "678284": ("https://cdn.freesound.org/previews/678/678284_14784311-hq.mp3", "msx2plus", "135bpm house hand percussion loop"),
+    "165143": ("https://cdn.freesound.org/previews/165/165143_2997898-hq.mp3", "rhythmpeople", "Rpeople_126_TOPLOOP_07.wav"),
+    "427469": ("https://cdn.freesound.org/previews/427/427469_28920-hq.mp3", "mikesh", "djembe grooves_kassa_120bpm.wav"),
+    "868105": ("https://cdn.freesound.org/previews/868/868105_3173681-hq.mp3", "tkky", "120 BPM Funky Cowbell Drummer"),
+    "276574": ("https://cdn.freesound.org/previews/276/276574_1823830-hq.mp3", "SeryLis", "Shaker 122 bpm.wav"),
+    "44706": ("https://cdn.freesound.org/previews/44/44706_183905-hq.mp3", "uiop", "bongos_109bpm.aif"),
+    "485401": ("https://cdn.freesound.org/previews/485/485401_9585786-hq.mp3", "Ancient.Sounds", "Djembe Loop 11 - 120 BPM.wav"),
+    "539218": ("https://cdn.freesound.org/previews/539/539218_6043685-hq.mp3", "nnaudio", "Dirty Deeds Trippy Piano - 123bpm - Fmin"),
+    "699085": ("https://cdn.freesound.org/previews/699/699085_11532701-hq.mp3", "deadrobotmusic", "KTHNXBYE Piano [104bpm Dsharp maj]"),
+    "527327": ("https://cdn.freesound.org/previews/527/527327_3173681-hq.mp3", "tkky", "90 bpm wavey loop.wav"),
+    "689911": ("https://cdn.freesound.org/previews/689/689911_15018884-hq.mp3", "deleted_user_15018884", "ATM Nowhere 1 (126BPM)"),
+    "559453": ("https://cdn.freesound.org/previews/559/559453_4246353-hq.mp3", "Crabflag", "Spooky Loopy5_110BPM_F_Loop_PSS560.aif"),
+    "684852": ("https://cdn.freesound.org/previews/684/684852_12701714-hq.mp3", "h3rb4", "Dark cowbell melody loop 85BPM.wav"),
+    "277042": ("https://cdn.freesound.org/previews/277/277042_1743037-hq.mp3", "tmog.762", "Em 91-bpm Low Key Guitar Groove A.wav"),
+    "411660": ("https://cdn.freesound.org/previews/411/411660_546044-hq.mp3", "deep into perspectives", "120bpmchodrprogrssion.wav"),
+    "339982": ("https://cdn.freesound.org/previews/339/339982_6035865-hq.mp3", "FullMetalJedi", "Jazz01-140bpm.wav"),
 }
 I = "vcsl:Idiophones/Struck Idiophones/"
 M = "vcsl:Membranophones/Struck Membranophones/"
@@ -213,7 +303,10 @@ PIZZ = [
 # root key None = measured (`pitch`). Options: tune (resample so the note is exactly on the
 # root key given), soft (keep a quiet start: swells), drive (dB into a tanh saturator),
 # unlisted (keep embedded for saved projects, omit from the browser),
-# loop ((bpm, bars): a loop of that many bars, see the module comment; max seconds unused).
+# loop ((bpm, bars): a loop of that many bars, see the module comment; max seconds unused),
+# gemini ((score, note): how Gemini rated the sound for its use when it was picked, 1-10, and its
+# few-word description; kept as metadata for a later search or tagging, not used by the build),
+# tags ((instrument, genres, mood): Gemini's description of a loop, metadata like gemini).
 T = {"tune": True}
 SOFT = {"soft": True}
 UNLISTED = {"unlisted": True}
@@ -221,8 +314,22 @@ SG = "stargate:stargate-sample-pack/fugue-state-audio/drums/"
 TR8 = "mck:TR8/"
 
 
-def loop(bpm, bars):
-    return {"loop": (bpm, bars)}
+def loop(bpm, bars, **opt):
+    return {"loop": (bpm, bars), **opt}
+
+
+def g(score, note, **opt):
+    return {"gemini": (score, note), **opt}
+
+
+# Virtuosity Drums is recorded on several microphones at once: a pick sums one hit's files at
+# unity gain, as the kit's own default mix does (kick, snare and overhead mics; "room" or "mid"
+# adds that pair).
+MICS = {"kit": ("kickmic", "snaremic", "oh"), "room": ("kickmic", "snaremic", "oh", "room"), "mid": ("kickmic", "snaremic", "oh", "mid")}
+
+
+def vd(piece, hit, blend):
+    return {"mix": [f"vd:Samples/{m}/{piece}/{m}_{hit}.flac" for m in MICS[blend]], "hit": hit, "blend": blend}
 PICKS = [
     ("kick-808.flac", "808 Kick", "Kicks", "808-kit/kick-tone50-decay50.wav", 1.2, 60),
     ("kick-808-short.flac", "808 Kick Short", "Kicks", "808-kit/kick-tone00-decay25.wav", 0.5, 60),
@@ -253,6 +360,21 @@ PICKS = [
     ("kick-trap-brick.flac", "Trap Kick Brick", "Kicks", "fs:836743", 0.4, 60),
     ("kick-trap-heavy.flac", "Trap Kick Heavy", "Kicks", "fs:704245", 0.5, 60),
     ("kick-trap-dark.flac", "Trap Kick Dark", "Kicks", "fs:542889", 0.5, 60),
+    ("kick-rock-tight.flac", "Rock Kick Tight", "Kicks", "fs:166190", 0.8, 60, g(9, "Tight crisp modern pop-rock kick, very clean")),
+    ("kick-rock-deep.flac", "Rock Kick Deep", "Kicks", "fs:806079", 0.8, 60, g(9, "Full deep punchy acoustic rock kick")),
+    ("kick-rock-punch.flac", "Rock Kick Punch", "Kicks", "fs:685865", 0.8, 60, g(9, "Full punchy acoustic rock kick, crisp attack")),
+    ("kick-rock-tape.flac", "Rock Kick Tape", "Kicks", "fs:634920", 0.8, 60, g(9, "Full, punchy, clean kick for pop and rock")),
+    ("kick-rock-warm.flac", "Rock Kick Warm", "Kicks", "fs:556192", 0.8, 60, g(8, "Punchy warm acoustic rock kick, solid low end")),
+    ("kick-rock-beater.flac", "Rock Kick Beater", "Kicks", "fs:805455", 0.8, 60, g(8, "Punchy acoustic kick with clear beater slap")),
+    ("kick-rock-snappy.flac", "Rock Kick Snappy", "Kicks", "fs:416204", 0.8, 60, g(8, "Snappy bright modern pop-rock kick, tight decay")),
+    ("kick-rock-natural.flac", "Rock Kick Natural", "Kicks", "fs:223537", 0.8, 60, g(8, "Clean natural acoustic kick, balanced warm tone")),
+    ("kick-rock-knock.flac", "Rock Kick Knock", "Kicks", "fs:808183", 0.8, 60, g(8, "Thick punchy modern pop kick, strong knock")),
+    ("kick-rock-big.flac", "Rock Kick Big", "Kicks", "fs:860524", 0.8, 60, g(8, "Big resonant classic rock kick, deep boom")),
+    ("kick-rock-thump.flac", "Rock Kick Thump", "Kicks", "fs:508934", 0.8, 60, g(8, "Punchy acoustic rock kick, solid tight thump")),
+    ("kick-rock-dry.flac", "Rock Kick Dry", "Kicks", "fs:695888", 0.8, 60, g(8, "Clean, tight dry kick with balanced punch")),
+    ("kick-rock-modern.flac", "Rock Kick Modern", "Kicks", "fs:646154", 0.8, 60, g(8, "Crisp, punchy modern pop-rock kick drum")),
+    ("kick-rock-muted.flac", "Rock Kick Muted", "Kicks", "fs:529544", 0.8, 60, g(7, "Warm dark muted kick, soft beater thump")),
+    ("kick-rock-room.flac", "Rock Kick Room", "Kicks", "fs:756782", 0.8, 60, g(7, "Resonant acoustic rock kick with room sustain")),
     ("snare-808.flac", "808 Snare", "Snares", "808-kit/snare-tone50-snap75.wav", 0.5, 60),
     ("snare-808-bright.flac", "808 Snare Bright", "Snares", "808-kit/snare-tone100-snap75.wav", 0.5, 60),
     ("snare-808-dark.flac", "808 Snare Dark", "Snares", "808-kit/snare-tone00-snap75.wav", 0.5, 60),
@@ -275,20 +397,36 @@ PICKS = [
     ("snare-trap-crisp.flac", "Trap Snare Crisp", "Snares", "fs:347136", 0.6, 60),
     ("snare-tr8.flac", "TR-8 Snare", "Snares", TR8 + "SD/001_808_Snare_Drum_1.wav", 0.6, 60),
     ("rimshot-tight.flac", "Rimshot Tight", "Snares", "fs:132418", 1.1, 60),
-    ("snare-trap-punch.flac", "Trap Snare Punch", "Snares", "fs:240434", 0.6, 60),
-    ("snare-trap-tight.flac", "Trap Snare Tight", "Snares", "fs:399747", 0.6, 60),
-    ("snare-trap-hard.flac", "Trap Snare Hard", "Snares", "fs:169950", 0.6, 60),
-    ("snare-trap-sharp.flac", "Trap Snare Sharp", "Snares", "fs:542850", 0.6, 60),
-    ("snare-trap-classic.flac", "Trap Snare Classic", "Snares", "fs:632704", 0.6, 60),
-    ("snare-trap-layered.flac", "Trap Snare Layered", "Snares", "fs:542851", 0.6, 60),
-    ("snare-trap-clean.flac", "Trap Snare Clean", "Snares", "fs:542866", 0.6, 60),
-    ("snare-trap-smack.flac", "Trap Snare Smack", "Snares", "fs:542873", 0.6, 60),
-    ("snare-trap-clap.flac", "Trap Snare Clap", "Snares", "fs:577235", 0.6, 60),
-    ("snare-trap-round.flac", "Trap Snare Round", "Snares", "fs:577207", 0.6, 60),
-    ("snare-trap-snap.flac", "Trap Snare Snap", "Snares", "fs:577226", 0.6, 60),
-    ("snare-trap-dirty.flac", "Trap Snare Dirty", "Snares", "fs:320870", 0.6, 60),
-    ("snare-trap-rage.flac", "Trap Snare Rage", "Snares", "fs:252743", 0.2, 60),
-    ("snare-trap-low.flac", "Trap Snare Low", "Snares", "fs:355068", 0.6, 60),
+    ("snare-trap-punch.flac", "Trap Snare Punch", "Snares", "fs:240434", 0.6, 60, g(9, "Clean punchy modern trap snare")),
+    ("snare-trap-tight.flac", "Trap Snare Tight", "Snares", "fs:399747", 0.6, 60, g(9, "Crisp punchy tight trap snare")),
+    ("snare-trap-hard.flac", "Trap Snare Hard", "Snares", "fs:169950", 0.6, 60, g(9, "Hard-hitting crisp Southside trap snare")),
+    ("snare-trap-sharp.flac", "Trap Snare Sharp", "Snares", "fs:542850", 0.6, 60, g(9, "Razor-sharp crisp modern trap snare")),
+    ("snare-trap-classic.flac", "Trap Snare Classic", "Snares", "fs:632704", 0.6, 60, g(9, "Crisp punchy classic trap snare")),
+    ("snare-trap-layered.flac", "Trap Snare Layered", "Snares", "fs:542851", 0.6, 60, g(9, "Bright punchy layered trap snare")),
+    ("snare-trap-clean.flac", "Trap Snare Clean", "Snares", "fs:542866", 0.6, 60, g(9, "Clean punchy classic trap snare")),
+    ("snare-trap-smack.flac", "Trap Snare Smack", "Snares", "fs:542873", 0.6, 60, g(9, "Hard-hitting crisp trap snare")),
+    ("snare-trap-clap.flac", "Trap Snare Clap", "Snares", "fs:577235", 0.6, 60, g(9, "Sharp cutting layered trap clap-snare")),
+    ("snare-trap-round.flac", "Trap Snare Round", "Snares", "fs:577207", 0.6, 60, g(9, "Clean tight punchy classic trap snare")),
+    ("snare-trap-snap.flac", "Trap Snare Snap", "Snares", "fs:577226", 0.6, 60, g(9, "Tight crisp punchy trap snare")),
+    ("snare-trap-dirty.flac", "Trap Snare Dirty", "Snares", "fs:320870", 0.6, 60, g(8, "Short crispy high-pitched trap snare")),
+    ("snare-trap-rage.flac", "Trap Snare Rage", "Snares", "fs:252743", 0.2, 60, g(8, "Snappy bright tonal rage snare")),
+    ("snare-trap-low.flac", "Trap Snare Low", "Snares", "fs:355068", 0.6, 60, g(8, "Clean classic 808 trap snare")),
+    ("snare-rock-full.flac", "Rock Snare Full", "Snares", "fs:207170", 0.9, 60, g(9, "Full punchy studio rock snare, clean tail")),
+    ("snare-rock-rimshot.flac", "Rock Snare Rimshot", "Snares", "fs:82281", 0.9, 60, g(9, "Crisp bright studio pop-rock snare, balanced room")),
+    ("snare-rock-crack.flac", "Rock Snare Crack", "Snares", "fs:50759", 0.9, 60, g(9, "Full cracking rock snare, rich wire sizzle")),
+    ("snare-rock-tape.flac", "Rock Snare Tape", "Snares", "fs:819642", 0.9, 60, g(9, "Fat, tight, punchy modern pop-rock snare")),
+    ("snare-pop-damped.flac", "Pop Snare Damped", "Snares", "fs:19435", 0.9, 60, g(9, "Crisp, well-damped studio snare, great balance")),
+    ("snare-pop-bright.flac", "Pop Snare Bright", "Snares", "fs:176001", 0.9, 60, g(9, "Bright, punchy, clean pop-rock acoustic snare")),
+    ("snare-pop-80s.flac", "Pop Snare 80s", "Snares", "fs:41355", 0.9, 60, g(9, "Strong, punchy modern rock snare hit")),
+    ("snare-pop-tight.flac", "Pop Snare Tight", "Snares", "fs:426832", 0.9, 60, g(9, "Crisp tight damped snare for modern pop")),
+    ("snare-rock-balanced.flac", "Rock Snare Balanced", "Snares", "fs:375451", 0.9, 60, g(9, "Punchy balanced studio snare for pop rock")),
+    ("snare-rock-live.flac", "Rock Snare Live", "Snares", vd("snare", "snare_center_vl36", "mid"), 0.9, 60, g(9, "Solid natural studio rock snare, crisp wires")),
+    ("snare-rock-rim-close.flac", "Rock Snare Rim Close", "Snares", vd("snare", "snare_rimshot_vl12", "kit"), 0.9, 60, g(9, "Full bodied clean acoustic rock studio snare")),
+    ("snare-rock-rim-room.flac", "Rock Snare Rim Room", "Snares", vd("snare", "snare_rimshot_vl12", "room"), 0.9, 60, g(9, "Hard crisp acoustic rock snare, bright crack")),
+    ("crossstick-rock.flac", "Rock Cross Stick", "Snares", vd("snare", "snare_crossstick_vl16", "room"), 0.9, 60, g(9, "Snappy tight dry studio snare, sharp attack")),
+    ("snare-rock-room.flac", "Rock Snare Room", "Snares", "fs:529542", 0.9, 60, g(8, "Punchy acoustic rock snare with natural room")),
+    ("snare-rock-warm.flac", "Rock Snare Warm", "Snares", "fs:84890", 0.9, 60, g(8, "Warm full-bodied acoustic snare with clean decay")),
+    ("snare-rock-mid.flac", "Rock Snare Mid", "Snares", "fs:556182", 0.9, 60, g(8, "Natural mid-tuned acoustic snare, clean wire decay")),
     ("clap-808.flac", "808 Clap", "Claps", "808-kit/clap.wav", 1.0, 60),
     ("clap-hand.flac", "Hand Clap", "Claps", "percussion-fx/clap-v4.wav", 0.45, 60),
     ("clap-hand-soft.flac", "Hand Clap Soft", "Claps", "percussion-fx/clap-v3.wav", 0.6, 60),
@@ -298,18 +436,18 @@ PICKS = [
     ("clap-snare.flac", "Clap Snare", "Claps", "fs:355065", 0.7, 60),
     ("clap-trap-crisp.flac", "Trap Clap Crisp", "Claps", "fs:647745", 0.4, 60),
     ("clap-tr8.flac", "TR-8 Clap", "Claps", TR8 + "PERC/017_808_Hand_Clap.wav", 0.8, 60),
-    ("clap-trap-punch.flac", "Trap Clap Punch", "Claps", "fs:199266", 0.5, 60),
-    ("clap-trap-warm.flac", "Trap Clap Warm", "Claps", "fs:542834", 0.5, 60),
-    ("clap-trap-thick.flac", "Trap Clap Thick", "Claps", "fs:513415", 0.5, 60),
-    ("clap-trap-layered.flac", "Trap Clap Layered", "Claps", "fs:542837", 0.5, 60),
-    ("clap-trap-tight.flac", "Trap Clap Tight", "Claps", "fs:532248", 0.5, 60),
-    ("clap-trap-bright.flac", "Trap Clap Bright", "Claps", "fs:542831", 0.5, 60),
-    ("clap-trap-hard.flac", "Trap Clap Hard", "Claps", "fs:828843", 0.5, 60),
-    ("clap-trap-short.flac", "Trap Clap Short", "Claps", "fs:513421", 0.5, 60),
-    ("clap-trap-gritty.flac", "Trap Clap Gritty", "Claps", "fs:513413", 0.5, 60),
-    ("clap-trap-sharp.flac", "Trap Clap Sharp", "Claps", "fs:513419", 0.5, 60),
-    ("clap-trap-click.flac", "Trap Clap Click", "Claps", "fs:532245", 0.5, 60),
-    ("clap-trap-clean.flac", "Trap Clap Clean", "Claps", "fs:532246", 0.5, 60),
+    ("clap-trap-punch.flac", "Trap Clap Punch", "Claps", "fs:199266", 0.5, 60, g(9, "Punchy tight classic trap clap")),
+    ("clap-trap-warm.flac", "Trap Clap Warm", "Claps", "fs:542834", 0.5, 60, g(9, "Warm punchy classic 808 trap clap")),
+    ("clap-trap-thick.flac", "Trap Clap Thick", "Claps", "fs:513415", 0.5, 60, g(9, "Thick punchy hard-hitting trap clap")),
+    ("clap-trap-layered.flac", "Trap Clap Layered", "Claps", "fs:542837", 0.5, 60, g(9, "Crisp punchy layered trap clap")),
+    ("clap-trap-tight.flac", "Trap Clap Tight", "Claps", "fs:532248", 0.5, 60, g(9, "Crisp tight classic trap clap")),
+    ("clap-trap-bright.flac", "Trap Clap Bright", "Claps", "fs:542831", 0.5, 60, g(9, "Bright crisp classic 808 clap")),
+    ("clap-trap-hard.flac", "Trap Clap Hard", "Claps", "fs:828843", 0.5, 60, g(9, "Hard-hitting crisp Southside trap clap")),
+    ("clap-trap-short.flac", "Trap Clap Short", "Claps", "fs:513421", 0.5, 60, g(8, "Crisp bright modern trap clap")),
+    ("clap-trap-gritty.flac", "Trap Clap Gritty", "Claps", "fs:513413", 0.5, 60, g(8, "Punchy mid-forward gritty trap clap")),
+    ("clap-trap-sharp.flac", "Trap Clap Sharp", "Claps", "fs:513419", 0.5, 60, g(8, "Sharp bright snappy trap clap")),
+    ("clap-trap-click.flac", "Trap Clap Click", "Claps", "fs:532245", 0.5, 60, g(8, "Crisp snappy bright trap clap")),
+    ("clap-trap-clean.flac", "Trap Clap Clean", "Claps", "fs:532246", 0.5, 60, g(8, "Clean punchy tight trap clap")),
     ("finger-snap.flac", "Finger Snap", "Claps", "fs:332604", 0.4, 60),
     ("hat-808-closed.flac", "808 Closed Hat", "Hats", "808-kit/hat-closed.wav", 0.25, 60),
     ("hat-808-open.flac", "808 Open Hat", "Hats", "808-kit/hat-open-decay75.wav", 0.75, 60),
@@ -328,18 +466,31 @@ PICKS = [
     ("hat-tr8-open.flac", "TR-8 Open Hat", "Hats", TR8 + "HATS/001_808_Open_HiHat.wav", 1.0, 60),
     ("hat-open-choked.flac", "Open Hat Choked", "Hats", "fs:91791", 0.4, 60),
     ("hat-open-zildjian.flac", "Open Hat Zildjian", "Hats", "fs:816813", 1.6, 60),
-    ("hat-trap-punch.flac", "Trap Hat Punch", "Hats", "fs:506452", 0.3, 60),
-    ("hat-trap-crisp.flac", "Trap Hat Crisp", "Hats", "fs:509965", 0.3, 60),
-    ("hat-trap-sharp.flac", "Trap Hat Sharp", "Hats", "fs:509968", 0.3, 60),
-    ("hat-trap-bright.flac", "Trap Hat Bright", "Hats", "fs:509971", 0.3, 60),
-    ("hat-trap-tight.flac", "Trap Hat Tight", "Hats", "fs:542802", 0.3, 60),
-    ("hat-trap-snap.flac", "Trap Hat Snap", "Hats", "fs:542796", 0.3, 60),
-    ("hat-trap-cut.flac", "Trap Hat Cut", "Hats", "fs:513363", 0.3, 60),
-    ("hat-trap-classic.flac", "Trap Hat Classic", "Hats", "fs:513367", 0.3, 60),
-    ("hat-trap-metal.flac", "Trap Hat Metal", "Hats", "fs:588131", 0.3, 60),
-    ("hat-trap-open-smooth.flac", "Trap Open Hat Smooth", "Hats", "fs:509984", 0.8, 60),
-    ("hat-trap-open-bright.flac", "Trap Open Hat Bright", "Hats", "fs:612837", 0.8, 60),
-    ("hat-trap-open-short.flac", "Trap Open Hat Short", "Hats", "fs:513383", 0.8, 60),
+    ("hat-trap-punch.flac", "Trap Hat Punch", "Hats", "fs:506452", 0.3, 60, g(9, "Classic punchy 808-style trap closed hat")),
+    ("hat-trap-crisp.flac", "Trap Hat Crisp", "Hats", "fs:509965", 0.3, 60, g(9, "Sharp tight crisp trap closed hat")),
+    ("hat-trap-sharp.flac", "Trap Hat Sharp", "Hats", "fs:509968", 0.3, 60, g(9, "Punchy razor-sharp modern trap hat")),
+    ("hat-trap-bright.flac", "Trap Hat Bright", "Hats", "fs:509971", 0.3, 60, g(9, "Ultra-crisp cutting modern trap hat")),
+    ("hat-trap-tight.flac", "Trap Hat Tight", "Hats", "fs:542802", 0.3, 60, g(9, "Crisp, tight classic trap hat")),
+    ("hat-trap-snap.flac", "Trap Hat Snap", "Hats", "fs:542796", 0.3, 60, g(9, "Punchy, sharp modern trap hat")),
+    ("hat-trap-cut.flac", "Trap Hat Cut", "Hats", "fs:513363", 0.3, 60, g(9, "Sharp, cutting punchy trap hat")),
+    ("hat-trap-classic.flac", "Trap Hat Classic", "Hats", "fs:513367", 0.3, 60, g(9, "Crisp tight classic trap tick")),
+    ("hat-trap-metal.flac", "Trap Hat Metal", "Hats", "fs:588131", 0.3, 60, g(9, "Sharp snappy tight metallic hat")),
+    ("hat-trap-open-smooth.flac", "Trap Open Hat Smooth", "Hats", "fs:509984", 0.8, 60, g(9, "Smooth classic 808 synthesized open hat")),
+    ("hat-trap-open-bright.flac", "Trap Open Hat Bright", "Hats", "fs:612837", 0.8, 60, g(9, "Crisp bright modern trap open hat")),
+    ("hat-trap-open-short.flac", "Trap Open Hat Short", "Hats", "fs:513383", 0.8, 60, g(9, "Punchy bright tight trap open hat")),
+    ("hat-rock-edge.flac", "Rock Hat Edge", "Hats", "fs:140534", 0.5, 60, g(9, "Punchy medium-tight acoustic edge closed hat")),
+    ("hat-rock-tip.flac", "Rock Hat Tip", "Hats", "fs:321454", 0.5, 60, g(9, "Crisp acoustic tip hit, clean and balanced")),
+    ("hat-rock-natural.flac", "Rock Hat Natural", "Hats", "fs:132415", 0.5, 60, g(9, "Strong, natural acoustic rock closed hi-hat")),
+    ("hat-rock-warm.flac", "Rock Hat Warm", "Hats", "fs:93910", 0.5, 60, g(9, "Full-bodied, punchy acoustic closed hat, warm attack")),
+    ("hat-rock-full.flac", "Rock Hat Full", "Hats", "fs:271422", 0.5, 60, g(9, "Punchy, full acoustic closed hat, rock tone")),
+    ("hat-rock-live.flac", "Rock Hat Live", "Hats", vd("hh", "hh_closed_vl4_rr1", "kit"), 0.5, 60, g(9, "Full, punchy acoustic closed hat with natural body")),
+    ("hat-rock-room.flac", "Rock Hat Room", "Hats", vd("hh", "hh_closed_vl4_rr1", "room"), 0.5, 60, g(9, "Clean, solid acoustic rock closed hi-hat hit")),
+    ("hat-rock-open-smooth.flac", "Rock Open Hat Smooth", "Hats", "fs:566892", 1.6, 60, g(9, "Clean full acoustic open hat with smooth decay")),
+    ("hat-rock-open-loud.flac", "Rock Open Hat Loud", "Hats", "fs:104225", 1.6, 60, g(9, "Warm natural acoustic open hat, well recorded")),
+    ("hat-rock-open-punch.flac", "Rock Open Hat Punch", "Hats", "fs:416249", 1.6, 60, g(9, "Punchy full-bodied rock open hi-hat")),
+    ("hat-rock-open-bright.flac", "Rock Open Hat Bright", "Hats", "fs:506450", 1.6, 60, g(9, "Bright clean acoustic open hat, natural sustain")),
+    ("hat-rock-open-soft.flac", "Rock Open Hat Soft", "Hats", "fs:104228", 1.6, 60, g(9, "Crisp warm acoustic open hat, great decay")),
+    ("hat-rock-open-shimmer.flac", "Rock Open Hat Shimmer", "Hats", "fs:509985", 1.6, 60, g(9, "Clean shimmering acoustic open hi-hat")),
     ("cymbal-808.flac", "808 Cymbal", "Cymbals", "808-kit/cymbal-tone50-decay50.wav", 2.5, 60),
     ("crash-studio.flac", "Studio Crash", "Cymbals", "studio-drums/crash-v3.wav", 5.0, 60),
     ("ride-studio.flac", "Studio Ride", "Cymbals", "studio-drums/ride-v3.wav", 3.0, 60),
@@ -350,6 +501,30 @@ PICKS = [
     ("cymbal-bell.flac", "Cymbal Bell", "Cymbals", I + "Suspended Cymbal 1/susCymb1_hit_bell_fff1.wav", 3.0, 60),
     ("crash-choke.flac", "Crash Choke", "Cymbals", I + "Clash Cymbals 1/cymbal_crash1_short1.wav", 1.5, 60),
     ("finger-cymbals.flac", "Finger Cymbals", "Cymbals", I + "Finger Cymbals/Fing_Cymb.wav", 2.0, 60),
+    ("crash-rock-16-soft.flac", "Rock Crash 16 Soft", "Cymbals", "fs:104219", 4.0, 60, g(9, "Crisp shimmering acoustic crash with smooth long tail")),
+    ("crash-rock-16-medium.flac", "Rock Crash 16 Medium", "Cymbals", "fs:104220", 4.0, 60, g(9, "Clean bright acoustic crash with natural full decay")),
+    ("crash-rock-16.flac", "Rock Crash 16", "Cymbals", "fs:104217", 4.0, 60, g(9, "Warm medium acoustic crash, balanced and well recorded")),
+    ("crash-rock-16-hard.flac", "Rock Crash 16 Hard", "Cymbals", "fs:104218", 4.0, 60, g(9, "Well-recorded classic rock crash, full and balanced")),
+    ("crash-rock-17.flac", "Rock Crash 17", "Cymbals", "fs:104209", 4.0, 60, g(9, "Full-bodied acoustic crash, rich shimmer and clean decay")),
+    ("crash-rock-17-hard.flac", "Rock Crash 17 Hard", "Cymbals", "fs:104210", 4.0, 60, g(9, "Clean bright classic crash with smooth natural sustain")),
+    ("crash-rock-18-soft.flac", "Rock Crash 18 Soft", "Cymbals", "fs:104215", 4.0, 60, g(9, "Punchy balanced acoustic crash, great for pop rock")),
+    ("crash-rock-18-hard.flac", "Rock Crash 18 Hard", "Cymbals", "fs:104214", 4.0, 60, g(9, "Crisp bright acoustic crash, clean stick attack")),
+    ("crash-rock-thin.flac", "Rock Crash Thin", "Cymbals", "fs:696226", 4.0, 60, g(9, "Full warm rock crash with long natural decay")),
+    ("crash-rock-punch.flac", "Rock Crash Punch", "Cymbals", "fs:45102", 4.0, 60, g(9, "Punchy full-bodied acoustic crash with smooth natural tail")),
+    ("crash-rock-ride.flac", "Rock Crash Ride", "Cymbals", "fs:799423", 4.0, 60, g(9, "Full punchy acoustic rock crash, balanced and clean")),
+    ("crash-rock-room.flac", "Rock Crash Room", "Cymbals", vd("crash", "crash_crash_vl3_rr1", "room"), 4.0, 60, g(9, "Full-bodied, rich acoustic rock crash, smooth sustain")),
+    ("ride-rock-soft.flac", "Rock Ride Soft", "Cymbals", "fs:104238", 3.0, 60, g(9, "Crisp acoustic ride bow with smooth shimmer")),
+    ("ride-rock-medium.flac", "Rock Ride Medium", "Cymbals", "fs:104239", 3.0, 60, g(9, "Clean acoustic ride hit, balanced ping and wash")),
+    ("ride-rock-bright.flac", "Rock Ride Bright", "Cymbals", "fs:171489", 3.0, 60, g(9, "Bright full acoustic ride, great stick definition")),
+    ("ride-rock-warm.flac", "Rock Ride Warm", "Cymbals", vd("ride", "ride_ride_vl3_rr1", "kit"), 3.0, 60, g(9, "Warm balanced acoustic ride hit, natural decay")),
+    ("ride-rock-room.flac", "Rock Ride Room", "Cymbals", vd("ride", "ride_ride_vl3_rr1", "room"), 3.0, 60, g(9, "Crisp articulate acoustic ride hit, studio quality")),
+    ("ride-rock-shoulder.flac", "Rock Ride Shoulder", "Cymbals", vd("ride", "ride_ride_vl3_rr1", "mid"), 3.0, 60, g(9, "Bright punchy acoustic ride shoulder hit")),
+    ("ride-rock-bell.flac", "Rock Ride Bell", "Cymbals", "fs:104233", 3.0, 60, g(9, "Crisp dry ride ping with clean decay")),
+    ("ride-rock-bell-hard.flac", "Rock Ride Bell Hard", "Cymbals", "fs:104234", 3.0, 60, g(9, "Crisp balanced ride ping, clean decay")),
+    ("ride-rock-bell-soft.flac", "Rock Ride Bell Soft", "Cymbals", "fs:700811", 3.0, 60, g(9, "Clean studio acoustic ride bow hit")),
+    ("ride-rock-bell-ring.flac", "Rock Ride Bell Ring", "Cymbals", "fs:117003", 3.0, 60, g(9, "Clear acoustic ride bell, natural ring")),
+    ("ride-rock-bell-cut.flac", "Rock Ride Bell Cut", "Cymbals", vd("ride", "ride_bell_vl3_rr1", "kit"), 3.0, 60, g(9, "Strong cutting acoustic ride bell hit")),
+    ("ride-rock-bell-room.flac", "Rock Ride Bell Room", "Cymbals", vd("ride", "ride_bell_vl3_rr1", "room"), 3.0, 60, g(9, "Clean articulate acoustic ride bell hit")),
     ("tom-808-low.flac", "808 Low Tom", "Toms", "808-kit/tom-low.wav", 1.0, 60),
     ("tom-808-mid.flac", "808 Mid Tom", "Toms", "808-kit/tom-mid.wav", 1.0, 60),
     ("tom-808-high.flac", "808 High Tom", "Toms", "808-kit/tom-high.wav", 1.0, 60),
@@ -359,6 +534,17 @@ PICKS = [
     ("tom-808-bright.flac", "808 High Tom Bright", "Toms", "808:ht8/HT10.WAV", 1.0, 60),
     ("tom-studio-rim.flac", "Studio Tom Rim", "Toms", M + "Tom 1/TomH_rimS_v4_rr1_Mid.wav", 1.2, 60),
     ("tom-studio-floor.flac", "Studio Floor Tom", "Toms", M + "Tom 2/Mallet/TomL_HitM_v4_rr1_Mid.wav", 1.8, 60),
+    ("tom-rock-rack.flac", "Rock Rack Tom", "Toms", "fs:488461", 1.8, 60, g(9, "Full punchy acoustic rack tom, great tone")),
+    ("tom-rock-high.flac", "Rock Tom High", "Toms", "fs:416292", 1.8, 60, g(9, "Clean punchy tight mid-high rack tom")),
+    ("tom-rock-attack.flac", "Rock Tom Attack", "Toms", "fs:53399", 1.8, 60, g(9, "Punchy studio rock tom with rich body")),
+    ("tom-rock-kick.flac", "Rock Tom Kick", "Toms", "fs:807368", 1.8, 60, g(9, "Tight punchy modern rock tom, clean attack")),
+    ("tom-rock-vintage.flac", "Rock Tom Vintage", "Toms", "fs:566894", 1.8, 60, g(9, "Clean punchy acoustic tom with natural decay")),
+    ("tom-rock-floor-tight.flac", "Rock Floor Tom Tight", "Toms", "fs:171485", 1.8, 60, g(9, "Crisp tight studio mid rack tom")),
+    ("tom-rock-floor-full.flac", "Rock Floor Tom Full", "Toms", "fs:261410", 1.8, 60, g(9, "Full resonant rock floor tom")),
+    ("tom-rock-floor-round.flac", "Rock Floor Tom Round", "Toms", "fs:488463", 1.8, 60, g(9, "Warm round deep acoustic floor tom")),
+    ("tom-rock-floor-deep.flac", "Rock Floor Tom Deep", "Toms", "fs:112504", 1.8, 60, g(9, "Deep punchy resonant floor tom")),
+    ("tom-rock-floor-live.flac", "Rock Floor Tom Live", "Toms", vd("ltom", "ltom_center_vl16", "kit"), 1.8, 60, g(9, "Deep, punchy acoustic floor tom, clean decay")),
+    ("tom-rock-floor-punch.flac", "Rock Floor Tom Punch", "Toms", vd("ltom", "ltom_center_vl16", "mid"), 1.8, 60, g(9, "Crisp, punchy acoustic tom with strong attack")),
     ("cowbell-808.flac", "808 Cowbell", "Percussion", "808-kit/cowbell.wav", 0.8, 60),
     ("conga-808-high.flac", "808 High Conga", "Percussion", "808-kit/conga-high.wav", 0.5, 60),
     ("conga-808-low.flac", "808 Low Conga", "Percussion", "808-kit/conga-low.wav", 0.5, 60),
@@ -474,7 +660,23 @@ PICKS = [
     ("sub-drop.flac", "Sub Drop", "FX", "fs:428073", 4.0, 60),
     ("downlifter-dark.flac", "Dark Downlifter", "FX", "omi:OMI_FX/OMI_fx_downlifter_melodic.wav", 6.0, 60),
     ("riser-drone.flac", "Drone Riser", "FX", "fs:561207", 2.5, 60, SOFT),
-    # loops: tempo and key are in the name (the library has no fields for them)
+    # percussion loops (to layer over a beat), then melodic loops: tempo and key are in the name
+    # (the library has no fields for them)
+    ("loop-perc-shaker-rainstick-90.ogg", "Shaker Rainstick 90", "Perc Loops", "fs:879767", 0, 60, loop(90, 4, **g(9, "Crisp, dynamic shaker top loop with great pocket and seam", tags=("shaker + cabasa", "house, pop, hip-hop", "groovy, crisp, upbeat")))),
+    ("loop-perc-djembe-small-88.ogg", "Djembe Small 88", "Perc Loops", "fs:651231", 0, 60, loop(88, 4, **g(9, "Well-recorded, musical hand drum groove with tight timing", tags=("tabla-like hand drum", "hip-hop, film, pop", "organic, rhythmic, expressive")))),
+    ("loop-perc-tambourine-90.ogg", "Tambourine 90", "Perc Loops", "fs:456131", 0, 60, loop(90, 2, **g(8, "Clean 16th-note groove with natural accents, seamless loop", tags=("tambourine / shaker", "pop, house, lo-fi", "crisp, steady, tight")))),
+    ("loop-perc-indian-121.ogg", "Indian Percussion 121", "Perc Loops", "fs:429539", 0, 60, loop(121, 2, **g(8, "Clean hand drum and woodblock groove that loops seamlessly", tags=("tabla + woodblock", "film, house, hip-hop", "organic, rhythmic, earthy")))),
+    ("loop-perc-shaker-song-120.ogg", "Shaker Song 120", "Perc Loops", "fs:270737", 0, 60, loop(120, 16, **g(8, "Warm, natural acoustic shaker groove with seamless loop transition", tags=("shaker", "pop, house, lo-fi", "organic, chugging, steady")))),
+    ("loop-perc-hat-top-128.ogg", "Hat Top 128", "Perc Loops", "fs:761490", 0, 60, loop(128, 2, **g(8, "Clean sixteenth-note jingle top loop that repeats seamlessly", tags=("hi-hat / tambourine", "house, pop, rock", "energetic, bright, driving")))),
+    ("loop-perc-bongo-tumbao-120.ogg", "Bongo Tumbao 120", "Perc Loops", "fs:610356", 0, 60, loop(120, 2, **g(8, "Clean, tight bongo pattern with clear tone and seamless loop", tags=("bongos", "house, film, lo-fi", "organic, playful, woody")))),
+    ("loop-perc-bongo-martillo-120.ogg", "Bongo Martillo 120", "Perc Loops", "fs:610360", 0, 60, loop(120, 2, **g(8, "Clean, melodic bongo pattern with steady groove", tags=("bongos", "lo-fi, house, film", "warm, minimal, organic")))),
+    ("loop-perc-house-hand-135.ogg", "House Hand Perc 135", "Perc Loops", "fs:678284", 0, 60, loop(135, 4, **g(8, "Crisp syncopated Latin percussion top loop, seamless and musical", tags=("shaker + conga + woodblock", "house, pop, hip-hop", "energetic, driving, tight")))),
+    ("loop-perc-top-126.ogg", "Top Loop 126", "Perc Loops", "fs:165143", 0, 60, loop(126, 2, **g(8, "Tight tambourine, shaker and clap top loop", tags=("tambourine + shaker + clap", "house, pop, hip-hop", "crisp, driving, bright")))),
+    ("loop-perc-djembe-kassa-120.ogg", "Djembe Kassa 120", "Perc Loops", "fs:427469", 0, 60, loop(120, 4, **g(8, "Clean, natural hand drum groove that loops and layers well", tags=("djembe", "house, lo-fi, film", "organic, warm, steady")))),
+    ("loop-perc-cowbell-funky-120.ogg", "Cowbell Funky 120", "Perc Loops", "fs:868105", 0, 60, loop(120, 4, **g(8, "Clean syncopated percussion groove, tight timing", tags=("cowbell + shaker + clap", "house, pop, hip-hop", "groovy, tight, playful")))),
+    ("loop-perc-shaker-122.ogg", "Shaker 122", "Perc Loops", "fs:276574", 0, 60, loop(122, 4, **g(7, "Clean, steady sixteenth-note shaker that loops smoothly", tags=("shaker", "house, pop, lo-fi", "steady, driving, crisp")))),
+    ("loop-perc-bongos-109.ogg", "Bongos 109", "Perc Loops", "fs:44706", 0, 60, loop(109, 2, **g(7, "Live hand drum and bell groove with natural acoustic feel", tags=("bongos + bell", "film, house, lo-fi", "raw, organic, lively")))),
+    ("loop-perc-djembe-120.ogg", "Djembe 120", "Perc Loops", "fs:485401", 0, 60, loop(120, 2, **g(7, "Clean, dry hand drum phrase, simple and well recorded", tags=("djembe", "hip-hop, lo-fi, pop", "sparse, warm, clean")))),
     ("loop-keys-sinister-148-cmin.ogg", "Keys Sinister 148 Cm", "Loops", "fs:574346", 0, 60, loop(148, 16)),
     ("loop-rhodes-suspense-70-csharpmin.ogg", "Rhodes Suspense 70 C#m", "Loops", "fs:428292", 0, 60, loop(70, 4)),
     ("loop-rhodes-dream-160.ogg", "Rhodes Dream 160", "Loops", "fs:663687", 0, 60, loop(160, 8)),
@@ -486,6 +688,15 @@ PICKS = [
     ("loop-pad-cinematic-110-ebmin.ogg", "Pad Cinematic 110 Ebm", "Loops", "fs:521664", 0, 60, loop(110, 4)),
     ("loop-flute-eastern-130-cmin.ogg", "Flute Eastern 130 Cm", "Loops", "fs:713120", 0, 60, loop(130, 8)),
     ("loop-vox-dark-120-dmin.ogg", "Vox Dark 120 Dm", "Loops", "fs:703686", 0, 60, loop(120, 4)),
+    ("loop-piano-trippy-123-fmin.ogg", "Piano Trippy 123 Fm", "Loops", "fs:539218", 0, 60, loop(123, 8, **g(8, "Clean, seamless dark bell-like arpeggio; simple trap starter", tags=("bell piano arpeggio", "trap, hip-hop, lo-fi", "melancholic, hypnotic, nocturnal")))),
+    ("loop-piano-ambient-104-dsharp.ogg", "Piano Ambient 104 D#", "Loops", "fs:699085", 0, 60, loop(104, 8, **g(8, "Warm, spacious reverberant piano chords; emotive", tags=("reverberant piano", "lo-fi, film, hip-hop", "melancholic, intimate, spacious")))),
+    ("loop-synth-wavey-90.ogg", "Synth Wavey 90", "Loops", "fs:527327", 0, 60, loop(90, 4, **g(8, "Warm retro polysynth chord progression, musical", tags=("polysynth chords + synth bass", "pop, synthwave, hip-hop", "nostalgic, warm, dreamy")))),
+    ("loop-pluck-nowhere-126.ogg", "Pluck Nowhere 126", "Loops", "fs:689911", 0, 60, loop(126, 8, **g(8, "Warm melodic pluck arpeggio, slight bass dip at the seam", tags=("synth pluck + sub bass", "pop, lo-fi, film", "gentle, warm, hypnotic")))),
+    ("loop-pluck-spooky-110.ogg", "Pluck Spooky 110", "Loops", "fs:559453", 0, 60, loop(110, 4, **g(8, "Catchy syncopated chordal pluck riff that loops cleanly", tags=("synth pluck", "pop, house, hip-hop", "upbeat, playful, clean")))),
+    ("loop-cowbell-dark-85.ogg", "Cowbell Dark 85", "Loops", "fs:684852", 0, 60, loop(85, 2, **g(8, "Musical pitched percussion pattern, clean and seamless", tags=("tuned cowbell / hand percussion", "film, lo-fi, trap", "hypnotic, mystical, warm")))),
+    ("loop-guitar-lowkey-91-emin.ogg", "Guitar Low Key 91 Em", "Loops", "fs:277042", 0, 60, loop(91, 2, **g(8, "Clean soulful guitar riff with tight pocket", tags=("clean electric guitar", "lo-fi, hip-hop, pop", "smooth, chill, soulful")))),
+    ("loop-keys-progression-120.ogg", "Keys Progression 120", "Loops", "fs:411660", 0, 60, loop(120, 12, **g(8, "Lush, warm ambient keys and pad progression", tags=("synth pad + keys", "lo-fi, hip-hop, film", "warm, dreamy, nostalgic")))),
+    ("loop-guitar-jazz-140.ogg", "Guitar Jazz 140", "Loops", "fs:339982", 0, 60, loop(140, 4, **g(7, "Fingerstyle jazz guitar with fret noise, slightly rushed turnaround", tags=("acoustic guitar", "lo-fi, hip-hop, pop", "intimate, jazzy, warm")))),
 ]
 
 
@@ -639,6 +850,15 @@ def layers(fetch, spec):
     return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).astype(np.float64)
 
 
+def mix(fetch, srcs):
+    """Sum of the files at unity gain (the microphones of one hit, already aligned)."""
+    xs = [read(fetch.path(src)) for src in srcs]
+    out = np.zeros((max(len(x) for x in xs), 2))
+    for x in xs:
+        out[:len(x)] += x
+    return out
+
+
 def centre(x, key):
     """(offset in semitones, power) of the energy within 0.7 semitones of `key` in the first second."""
     a = x.mean(axis=1)[:SR]
@@ -706,8 +926,13 @@ def decoded(path):
 
 def cut_loop(x, bpm, bars):
     """The first `bars` bars of 4/4 at `bpm`, unfaded: the source starts on the downbeat (the
-    decoder drops the MP3 encoder's padding), so the cut repeats in time."""
+    decoder drops the MP3 encoder's padding), so the cut repeats in time. A source up to 1% short
+    of the bars (exported a few milliseconds early) is stretched to them by resampling, a pitch
+    change of under 17 cents, rather than padded with a gap at the loop point."""
     n = int(round(bars * 4 * 60 / bpm * SR))
+    if n - int(0.01 * SR) > len(x) >= n * 0.99:
+        t = np.linspace(0, len(x) - 1, n)
+        x = np.stack([np.interp(t, np.arange(len(x)), x[:, c]) for c in range(2)], axis=1)
     if len(x) < n - int(0.01 * SR):
         sys.exit(f"loop is {len(x) / SR:.3f} s, {bars} bars at {bpm} BPM need {n / SR:.3f} s")
     x = np.concatenate([x, np.zeros((max(0, n - len(x)), 2))])[:n].copy()
@@ -724,7 +949,7 @@ def write_ogg(dst, y, mono, tag):
             return False
     ch = "1" if mono else "2"
     best = None
-    for _ in range(5):
+    for _ in range(12):
         pcm = np.clip(y, -1, 1).astype("<f4").tobytes()
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", ch, "-i", "-", "-c:a", "libvorbis", "-q:a", "6",
                         "-map_metadata", "-1", "-metadata:s:a", f"WAVE_SRC={tag}", "-bitexact", dst], input=pcm, check=True)
@@ -737,7 +962,7 @@ def write_ogg(dst, y, mono, tag):
             best = (abs(err), data)
         if abs(err) < 0.03:
             break
-        y = y * 10 ** (-0.5 * err / 20)
+        y = y * 10 ** (-0.8 * err / 20)
     with open(dst, "wb") as f:
         f.write(best[1])
     return True
@@ -747,6 +972,11 @@ def credits(picks):
     """Markdown list of the files by other authors than the notices' text names."""
     lines = []
     for out, name, group, src, *_ in picks:
+        if isinstance(src, dict):
+            repo, commit, lic, who = SOURCES["vd"]
+            lines.append(f"* `{out}`: `{src['hit']}` ({src['blend']} microphones) by {who} "
+                         f"([source](https://github.com/{repo}/tree/{commit}/Samples)), [{lic}]({LICENSE_URL[lic]})")
+            continue
         if isinstance(src, list) or ":" not in src:
             continue
         key, rel = src.split(":", 1)
@@ -785,7 +1015,9 @@ def main():
     for out, name, group, src, max_s, root, *rest in PICKS:
         opt = rest[0] if rest else {}
         pitched = group in ("808", "Tonal") or isinstance(src, list) or bool(opt.get("tune") or opt.get("pitched"))
-        if isinstance(src, list):
+        if isinstance(src, dict):
+            x = mix(fetch, src["mix"])
+        elif isinstance(src, list):
             x = layers(fetch, src)
         else:
             path = fetch.path(src)
