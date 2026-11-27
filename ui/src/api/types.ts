@@ -805,6 +805,7 @@ export type OpenResult =
 /** Result of `projectSave`; `{ cancelled: true }` when the save dialog was dismissed. */
 export type SaveResult = { cancelled: true } | { cancelled?: false; path: string };
 /** File → Open recent: a project opened or saved lately; `exists` false = moved or deleted since. */
+export interface RecentDraft { id: string; savedMs: number; details: { bpm: number; tracks: number } | null }
 export interface RecentProject { path: string; name: string; dir: string; exists: boolean }
 /** An unsaved project a Synkopa that crashed or was killed left behind (`recovery_list`). */
 /** `project`: the file the unsaved changes belong to (absent: a project that was never saved). */

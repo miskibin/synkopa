@@ -2,9 +2,9 @@ import { isFullscreen, setFullscreen, toggleFullscreen } from '../state/fullscre
 import { curPat, newPattern, openRack, patMode, rackFloating, rollFloating, scrollPattern, toggleRackShown, toggleRollShown } from '../state/pattern';
 import { patternMenu } from './patternShared';
 import { APP_GLYPH as G } from '../ui/menuIcons';
-import { forgetRecent, recent, recentLabels, refreshRecent } from '../state/recent';
+import { drafts, forgetRecent, recent, recentLabels, refreshRecent } from '../state/recent';
 import { samePath } from '../lib/paths';
-import { t, type TranslationKey } from '../lib/i18n';
+import { lang, t, type TranslationKey } from '../lib/i18n';
 import { setTypingOn, typingBase, typingOn } from '../state/typingKeys';
 import { noteName } from '../lib/pitch';
 import { prefs, setPref, UI_SCALES } from '../state/prefs';
@@ -393,6 +393,13 @@ function MenuBar() {
   /** File → Open recent: newest first, the open project ticked, a moved or deleted file shown but not openable. */
   const recentItems = (): MenuItem[] => {
     const list = recent();
+    const sketchItems: MenuItem[] = drafts().map(d => {
+      const date = new Date(d.savedMs).toLocaleString(lang(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const details = d.details ? ' · ' + t('a.mn.draftDetails', { bpm: d.details.bpm, n: d.details.tracks }) : '';
+      return { t: 'item', label: date + details, disabled: U.openingProject, act: () => void A.projectOpen(undefined, d.id) };
+    });
+    if (sketchItems.length) sketchItems.unshift({ t: 'sec', label: t('a.mn.drafts') });
+    if (!list.length && sketchItems.length) return sketchItems;
     if (!list.length) return [{ t: 'item', label: t('a.mn.recentNone'), disabled: true, act: () => {} }];
     const labels = recentLabels(list);
     const items: MenuItem[] = list.map((r, i) => r.exists
@@ -403,6 +410,7 @@ function MenuBar() {
       items.push({ t: 'item', label: t('a.mn.recentPrune'), act: () => { void (async () => { for (const r of list.filter(x => !x.exists)) await forgetRecent(r.path); })(); } });
     }
     items.push({ t: 'item', label: t('a.mn.recentClear'), act: () => void forgetRecent() });
+    if (sketchItems.length) items.push({ t: 'sep' }, ...sketchItems);
     return items;
   };
   /** Edit › Markers: add at the song position, jump, and every marker of the song (the palette finds them by name). */

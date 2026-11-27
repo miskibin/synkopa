@@ -127,6 +127,11 @@ impl Engine {
         self.open_inner(path, None, Some(file))
     }
 
+    /// Restore an unnamed draft after checking that the user is still leaving the same revision.
+    pub fn open_draft(&self, path: &Path, revision: u64) -> Result<Vec<String>, EngineError> {
+        self.open_inner(path, Some(revision), Some(None))
+    }
+
     /// Loads a project file. Missing audio is reported, not fatal.
     pub fn open(&self, path: &Path) -> Result<Vec<String>, EngineError> {
         self.open_at_revision(path, None)

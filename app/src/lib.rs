@@ -11,6 +11,7 @@ mod chords_actions;
 #[cfg(test)]
 mod chords_actions_tests;
 mod cli_shim;
+mod drafts;
 mod fx_chains;
 mod headless;
 mod keys;
@@ -77,6 +78,7 @@ pub struct App {
     pub handle: std::sync::OnceLock<AppHandle>,
     /// Crash-recovery copy of a project that was never saved.
     pub recovery: recovery::Recovery,
+    drafts: drafts::Drafts,
     /// Startup progress: the UI's first state reply waits for the last project here.
     pub boot: Arc<boot::Boot>,
 }
@@ -962,6 +964,7 @@ async fn project_new(app: St<'_>, demo: Option<bool>) -> R<StateDto> {
     // must keep the still-unsaved project's recovery copy, like open/save do
     app.engine.new_project(if demo.unwrap_or(false) { Project::demo() } else { Project::empty() }).map_err(es)?;
     app.recovery.clear();
+    app.drafts.switched(None);
     Ok(app.engine.state())
 }
 
@@ -972,8 +975,27 @@ fn open_reply(state: StateDto, warnings: Vec<String>) -> Value {
 }
 
 #[tauri::command]
-async fn project_open(app: St<'_>, handle: AppHandle, path: Option<String>, if_revision: Option<u64>) -> R<Value> {
+async fn project_open(
+    app: St<'_>,
+    handle: AppHandle,
+    path: Option<String>,
+    if_revision: Option<u64>,
+    draft_id: Option<String>,
+) -> R<Value> {
     let revision = if_revision.unwrap_or_else(|| app.engine.revision());
+    if let Some(id) = draft_id {
+        let a = app.inner().clone();
+        let warnings = tauri::async_runtime::spawn_blocking(move || -> R<Vec<String>> {
+            a.drafts.keep(&a.engine, Some(&id))?;
+            let warnings = a.drafts.open(&a.engine, &id, revision)?;
+            a.drafts.switched(Some(id));
+            Ok(warnings)
+        })
+        .await
+        .map_err(es)??;
+        app.recovery.clear();
+        return Ok(open_reply(app.engine.state(), warnings));
+    }
     let path = match path {
         Some(p) => Some(PathBuf::from(p)),
         None => {
@@ -981,9 +1003,15 @@ async fn project_open(app: St<'_>, handle: AppHandle, path: Option<String>, if_r
         }
     };
     let Some(path) = path else { return Ok(json!({ "cancelled": true })) };
-    let e = app.engine.clone();
+    let a = app.inner().clone();
     let p2 = path.clone();
-    let warnings = tauri::async_runtime::spawn_blocking(move || e.open_at_revision(&p2, Some(revision))).await.map_err(es)?.map_err(es)?;
+    let warnings = tauri::async_runtime::spawn_blocking(move || -> R<Vec<String>> {
+        a.drafts.keep(&a.engine, None)?;
+        a.engine.open_at_revision(&p2, Some(revision)).map_err(es)
+    })
+    .await
+    .map_err(es)??;
+    app.drafts.switched(None);
     app.recovery.clear();
     let mut s = app.settings.lock();
     s.remember(&path.display().to_string());
@@ -1043,6 +1071,7 @@ async fn project_save(app: St<'_>, handle: AppHandle, save_as: Option<bool>, ver
     let p2 = path.clone();
     tauri::async_runtime::spawn_blocking(move || e.save(&p2)).await.map_err(es)?.map_err(es)?;
     app.recovery.clear();
+    app.drafts.named();
     let mut s = app.settings.lock();
     s.remember(&path.display().to_string());
     s.save();
@@ -1072,6 +1101,17 @@ async fn recovery_write(app: St<'_>) -> R<bool> {
     tauri::async_runtime::spawn_blocking(move || a.recovery.write(&a.engine)).await.map_err(es)?
 }
 
+#[tauri::command]
+async fn draft_list(app: St<'_>) -> R<Vec<drafts::Draft>> {
+    app.drafts.list().map_err(es)
+}
+
+#[tauri::command]
+async fn draft_keep(app: St<'_>) -> R<()> {
+    let a = app.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || a.drafts.keep(&a.engine, None)).await.map_err(es)?
+}
+
 /// Unsaved projects left behind by a Synkopa that crashed or was killed, newest first.
 #[tauri::command]
 async fn recovery_list(app: St<'_>) -> R<Vec<recovery::Orphan>> {
@@ -1083,6 +1123,7 @@ async fn recovery_list(app: St<'_>) -> R<Vec<recovery::Orphan>> {
 async fn recovery_restore(app: St<'_>, id: String) -> R<Value> {
     let a = app.inner().clone();
     let warnings = tauri::async_runtime::spawn_blocking(move || a.recovery.restore(&a.engine, &id)).await.map_err(es)??;
+    app.drafts.switched(None);
     Ok(open_reply(app.engine.state(), warnings))
 }
 
@@ -1626,6 +1667,8 @@ pub fn run(project_arg: Option<&str>) {
             recent_forget,
             project_export_zip,
             recovery_write,
+            draft_list,
+            draft_keep,
             recovery_list,
             recovery_restore,
             recovery_discard,
@@ -1728,6 +1771,7 @@ fn start_app(tapp: &mut tauri::App, boot: Arc<boot::Boot>, reopen_last: bool) {
         keys: keys::Keys::default(),
         updater: updater::State::default(),
         handle: std::sync::OnceLock::new(),
+        drafts: drafts::Drafts::new(recovery::default_dir().join("Drafts")),
         recovery: recovery::Recovery::start(recovery::default_dir()),
         boot: boot.clone(),
     });
