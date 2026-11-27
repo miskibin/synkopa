@@ -54,7 +54,6 @@ export function applyOp(p: Project, op: Op): void {
           if ((r.octave != null && (r.octave % 12 !== 0 || Math.abs(r.octave) > 36)) || (r.key ?? 0) > 11 || (r.scale ?? 0) > 4) throw new OpError(`clip ${c.id}: reference octave must be a multiple of 12 within ±36, key 0..11, scale 0..4`);
         }
       }
-      // a pattern's bars follow the signature where it plays: with the clips about to move,
       for (const c of op.clips) {
         bump(p, c.id);
         const nc = structuredClone(c);

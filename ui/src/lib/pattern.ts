@@ -157,9 +157,9 @@ export function migrateSamplerEnvelope(s: SamplerState & { gate?: boolean }) {
 }
 
 export function migrateProject(p: Project) {
-  // whole bars of the signature where each pattern plays (4/4 with no map, so old projects
-  // are unchanged) — the mirror of the engine's migrate
-  for (const pt of p.patterns) fitLen(pt);
+  // whole bars of the pattern's own stored grid (`bar` — the signature where it was
+  // created, 4/4 for everything from before the map) — the mirror of the engine's migrate
+  for (const pt of p.patterns) fitLenIn(pt, barOf(pt));
   if (!p.channels?.length) addStarterKit(p);
   for (const c of p.channels ?? []) if (c.kind === 'sample' && c.sampler) migrateSamplerEnvelope(c.sampler);
   // saturator parameters from before the character saturator
