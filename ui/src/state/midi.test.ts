@@ -53,6 +53,8 @@ describe('MIDI files', () => {
     await sync();
     const P = store.S.project;
     expect(P.bpm).toBe(97);
+    // the map travels with the notes: the file's beat-4 change lands at the insertion beat + 4
+    expect(P.tempoPoints).toEqual([{ beat: 12, bpm: 105, ramp: false }]);
     const pat = P.patterns.find(p => p.id === r.patternId)!;
     expect(pat.name).toBe('Groove');
     expect(pat.notes).toHaveLength(12);

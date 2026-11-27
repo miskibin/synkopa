@@ -821,9 +821,11 @@ export interface MidiPart {
   index: number; track: number; channel: number; name: string; program: number | null; gmName: string;
   drums: boolean; notes: number; lowest: number; highest: number; end: number; becomes: MidiBecomes;
 }
-/** `midiInspect`: a file's parts, its first tempo (null = none set) and what the import cannot keep. */
+/** One tempo change a MIDI file sets after tick 0, for the project's tempo map. */
+export interface MidiTempoPoint { beat: number; bpm: number }
+/** `midiInspect`: a file's parts, its tick-0 tempo (null = the MIDI default of 120 governs until `tempoPoints`' first change) and what the import cannot keep. */
 export interface MidiInfo {
-  path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; end: number;
+  path: string; format: number; ppq: number; bpm: number | null; tempoChanges: number; tempoPoints: MidiTempoPoint[]; end: number;
   warnings: string[]; parts: MidiPart[]; projectBpm: number;
 }
 export interface MidiImportArgs {

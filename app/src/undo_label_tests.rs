@@ -35,7 +35,7 @@ fn an_import_names_its_library_commit() {
         program: Some(0),
         notes: vec![wave_engine::midi_file::SmfNote { key: 60, vel: 100, start: 0.0, len: 1.0 }],
     }];
-    std::fs::write(&path, wave_engine::midi_file::write(120.0, "in", &tracks).unwrap()).unwrap();
+    std::fs::write(&path, wave_engine::midi_file::write(&[(0.0, 120.0)], "in", &tracks).unwrap()).unwrap();
     control(&h, "midi_import", &json!({ "path": path.display().to_string() }), None, None).unwrap();
     assert_eq!(h.engine().state().undo_label.as_deref(), Some("Import MIDI"), "the import says what it is, not \"Relink audio\"");
     let _ = std::fs::remove_dir_all(&d);

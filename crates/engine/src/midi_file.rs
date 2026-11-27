@@ -48,15 +48,30 @@ pub struct MidiFile {
     pub format: u8,
     /// Ticks per beat of the file.
     pub ppq: u16,
-    /// The first tempo the file sets (none = the MIDI default of 120 is implied).
+    /// The tempo the file sets at tick 0 (none = the MIDI default of 120 is implied, and a
+    /// later `tempo_points` entry may change it mid-file).
     pub bpm: Option<f64>,
-    /// Tempo changes after the first (Synkopa keeps one tempo: notes stay on their beats).
+    /// Tempo changes after the first, as the file plays them (the number only; the map itself
+    /// is [`MidiFile::tempo_points`]).
     pub tempo_changes: usize,
+    /// The file's tempo changes as points for the project's tempo map (`beat` in quarters,
+    /// `bpm` rounded from the event's µs). Events at tick 0 are not here — they are the base
+    /// tempo (`bpm`); events that repeat the running tempo are not here either. At most
+    /// [`crate::model::MAX_TEMPO_POINTS`] (a file is data: the op path's cap applies on load).
+    pub tempo_points: Vec<SmfTempo>,
     pub parts: Vec<Part>,
-    /// What the import cannot keep (time signatures other than 4/4, tempo changes …).
+    /// What the import cannot keep (time signatures other than 4/4).
     pub warnings: Vec<String>,
     /// Beats, the end of the last note.
     pub end: f64,
+}
+
+/// One tempo change a MIDI file sets, for [`MidiFile::tempo_points`].
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct SmfTempo {
+    /// Beats (quarters) from the start of the file.
+    pub beat: f64,
+    pub bpm: f64,
 }
 
 /// Reads a standard MIDI file.
@@ -157,19 +172,43 @@ pub fn parse(bytes: &[u8]) -> Result<MidiFile, String> {
     tempos.sort_by_key(|t| t.0);
     let mut warnings = vec![];
     // microseconds per beat are whole numbers: 97 BPM is stored as 96.99995, read back as 97
-    let bpm = tempos.first().map(|t| (60_000_000_000.0 / f64::from(t.1.max(1))).round() / 1000.0);
-    let tempo_changes = tempos.windows(2).filter(|w| w[0].1 != w[1].1).count();
-    if tempo_changes > 0 {
-        warnings.push(format!(
-            "the file changes tempo {tempo_changes}×: Synkopa keeps one tempo ({:.2} BPM), the notes stay on their beats",
-            bpm.unwrap_or(120.0)
-        ));
+    let us_to_bpm = |us: u32| (60_000_000_000.0 / f64::from(us.max(1))).round() / 1000.0;
+    // the base tempo is what the file sets at tick 0 (last one there wins); without one the
+    // MIDI default of 120 governs until the file's first change — which `tempo_points` carries
+    let bpm = tempos.iter().take_while(|t| t.0 == 0).last().map(|t| us_to_bpm(t.1));
+    // the changes after tick 0 become the project's tempo map: the last event at each tick
+    // wins, and only changes of the running tempo become points (a tick that ends where it
+    // started leaves no residue to spend the point cap on)
+    let mut last_at_tick: Vec<(u64, u32)> = vec![];
+    for (tick, us) in tempos.iter().filter(|t| t.0 > 0) {
+        match last_at_tick.last_mut() {
+            Some(l) if l.0 == *tick => l.1 = *us,
+            _ => last_at_tick.push((*tick, *us)),
+        }
     }
+    let mut tempo_points: Vec<SmfTempo> = vec![];
+    let mut running = bpm.unwrap_or(120.0);
+    for (tick, us) in last_at_tick {
+        let b = us_to_bpm(us);
+        if b != running {
+            tempo_points.push(SmfTempo { beat: beats(tick), bpm: b });
+            running = b;
+        }
+    }
+    if tempo_points.len() > crate::model::MAX_TEMPO_POINTS {
+        warnings.push(format!(
+            "the file has more than {} tempo changes: keeping the first {}",
+            crate::model::MAX_TEMPO_POINTS,
+            crate::model::MAX_TEMPO_POINTS
+        ));
+        tempo_points.truncate(crate::model::MAX_TEMPO_POINTS);
+    }
+    let tempo_changes = tempos.windows(2).filter(|w| w[0].1 != w[1].1).count();
     if let Some(m) = odd_meter {
         warnings.push(format!("the file is in {m}: Synkopa's grid is 4/4, the notes keep their beats"));
     }
     let end = parts.iter().flat_map(|p| &p.notes).map(|n| n.start + n.len).fold(0.0, f64::max);
-    Ok(MidiFile { format, ppq, bpm, tempo_changes, parts, warnings, end })
+    Ok(MidiFile { format, ppq, bpm, tempo_changes, tempo_points, parts, warnings, end })
 }
 
 fn text(b: &[u8]) -> Option<String> {
@@ -186,15 +225,31 @@ pub struct OutTrack {
     pub notes: Vec<SmfNote>,
 }
 
-/// A format 1 file: a tempo track (tempo, 4/4), then one track per part.
-pub fn write(bpm: f64, title: &str, tracks: &[OutTrack]) -> Result<Vec<u8>, String> {
+/// A format 1 file: a tempo track (the tempo events, then 4/4), then one track per part.
+/// `tempo_events` are `(beat, bpm)` in play order — the caller serializes the project's map
+/// (holds once, ramps stepped per beat at each interval's effective BPM,
+/// [`crate::engine`]'s `Project::midi_tempo_events`), so this
+/// stays pure data: the events are placed at their ticks, the first must be beat 0.
+pub fn write(tempo_events: &[(f64, f64)], title: &str, tracks: &[OutTrack]) -> Result<Vec<u8>, String> {
     let mut smf = Smf::new(Header::new(Format::Parallel, Timing::Metrical(u15::new(PPQ))));
-    let us = (60_000_000.0 / bpm.clamp(10.0, 999.0)).round() as u32;
     let mut head: Vec<TrackEvent> = vec![];
     let names: Vec<Vec<u8>> = std::iter::once(title).chain(tracks.iter().map(|t| t.name.as_str())).map(|s| s.as_bytes().to_vec()).collect();
     head.push(meta(0, MetaMessage::TrackName(&names[0])));
-    head.push(meta(0, MetaMessage::Tempo(u24::new(us))));
     head.push(meta(0, MetaMessage::TimeSignature(4, 2, 24, 8)));
+    let mut evs: Vec<(u64, TrackEventKind)> = tempo_events
+        .iter()
+        .map(|(beat, bpm)| {
+            let us = (60_000_000.0 / bpm.clamp(10.0, 999.0)).round() as u32;
+            (to_tick(*beat), TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us))))
+        })
+        .collect();
+    evs.sort_by_key(|e| e.0);
+    let mut at = 0u64;
+    for (tick, kind) in evs {
+        let delta = u32::try_from(tick.min(u64::from(u28::max_value().as_int())) - at).unwrap_or(u28::max_value().as_int());
+        head.push(TrackEvent { delta: u28::new(delta), kind });
+        at = tick;
+    }
     head.push(meta(0, MetaMessage::EndOfTrack));
     smf.tracks.push(head);
     for (k, t) in tracks.iter().enumerate() {
@@ -551,11 +606,12 @@ mod tests {
                 notes: vec![n(36, 0.0, 0.25, 110), n(42, 0.5, 0.25, 70)],
             },
         ];
-        let bytes = write(93.5, "Song", &tracks).unwrap();
+        let bytes = write(&[(0.0, 93.5)], "Song", &tracks).unwrap();
         let f = parse(&bytes).unwrap();
         assert_eq!(f.format, 1);
         assert!((f.bpm.unwrap() - 93.5).abs() < 0.01);
         assert_eq!(f.tempo_changes, 0);
+        assert!(f.tempo_points.is_empty());
         assert!(f.warnings.is_empty());
         assert_eq!(f.parts.len(), 2);
         assert_eq!(f.parts[0].name, "Bass");
@@ -611,8 +667,75 @@ mod tests {
         assert_eq!(f.format, 0);
         assert_eq!(f.bpm, Some(120.0));
         assert_eq!(f.tempo_changes, 1);
-        assert_eq!(f.warnings.len(), 2, "{:?}", f.warnings);
+        // the tempo change after tick 0 arrives as a point of the tempo map, not a warning
+        assert_eq!(f.tempo_points, vec![SmfTempo { beat: 1.0, bpm: 150.0 }]);
+        assert_eq!(f.warnings.len(), 1, "{:?}", f.warnings);
+        assert!(f.warnings[0].contains("3/4"), "the odd meter is the remaining warning: {:?}", f.warnings);
         assert_eq!(f.parts.iter().map(|p| (p.channel, p.name.as_str())).collect::<Vec<_>>(), vec![(1, "Fingered Bass"), (9, "Drums")]);
+    }
+
+    #[test]
+    fn tempo_changes_import_as_the_maps_points() {
+        // 480 ppq, absolute ticks: repeats and same-tick events fold into one map
+        let tempo = |us: u32| TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us)));
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(480))));
+        smf.tracks.push(vec![
+            ev(0, tempo(500_000)),    // tick 0: 120 …
+            ev(0, tempo(400_000)),    // … then 150: the last event at tick 0 is the base
+            ev(1920, tempo(400_000)), // tick 1920 = beat 4: 150 again, no change
+            ev(1920, tempo(300_000)), // tick 3840 = beat 8: 200 …
+            ev(0, tempo(600_000)),    // … same tick: the last one wins → 100
+            ev(1920, tempo(600_000)), // tick 5760 = beat 12: 100 again, no change
+        ]);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.bpm, Some(150.0), "the last event at tick 0 is the base");
+        assert_eq!(f.tempo_points, vec![SmfTempo { beat: 8.0, bpm: 100.0 }], "no-change events fold away");
+        assert!(f.warnings.is_empty(), "{:?}", f.warnings);
+    }
+
+    #[test]
+    fn a_tick_that_ends_where_it_started_leaves_no_point() {
+        // 150 then back to 120 within one tick: the tick's last value is the running tempo,
+        // so the tick leaves no point — a residue here would spend the point cap on nothing
+        let tempo = |us: u32| TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us)));
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(480))));
+        smf.tracks.push(vec![ev(0, tempo(500_000)), ev(480, tempo(400_000)), ev(0, tempo(500_000))]);
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.bpm, Some(120.0));
+        assert!(f.tempo_points.is_empty(), "{:?}", f.tempo_points);
+    }
+
+    #[test]
+    fn a_first_tempo_after_tick_0_leaves_the_default_to_govern() {
+        let tempo = |us: u32| TrackEventKind::Meta(MetaMessage::Tempo(u24::new(us)));
+        let ev = |d: u32, kind| TrackEvent { delta: u28::new(d), kind };
+        let mut smf = Smf::new(Header::new(Format::SingleTrack, Timing::Metrical(u15::new(96))));
+        smf.tracks.push(vec![ev(192, tempo(500_000))]); // 120 arrives at beat 2
+        let mut b = vec![];
+        smf.write_std(&mut b).unwrap();
+        let f = parse(&b).unwrap();
+        assert_eq!(f.bpm, None, "beats 0..2 play MIDI's implied default, not the later tempo");
+        // the event sets 120 — MIDI's implied default, so it is no change at all: no point,
+        // and the import's base (`unwrap_or(120)`) plays exactly what the file plays
+        assert!(f.tempo_points.is_empty());
+    }
+
+    #[test]
+    fn written_tempo_events_read_back_at_their_beats() {
+        let tracks = vec![OutTrack { name: "P".into(), channel: 0, program: Some(0), notes: vec![n(60, 0.0, 1.0, 100)] }];
+        let events = [(0.0, 120.0), (4.0, 90.0), (10.5, 140.0)];
+        let bytes = write(&events, "T", &tracks).unwrap();
+        let f = parse(&bytes).unwrap();
+        assert_eq!(f.bpm, Some(120.0));
+        assert_eq!(f.tempo_changes, 2);
+        let got: Vec<(f64, f64)> = f.tempo_points.iter().map(|t| (t.beat, t.bpm)).collect();
+        assert_eq!(got, events[1..], "the changes land on their beats (the µs round-off stays inside one hundredth)");
     }
 
     #[test]
