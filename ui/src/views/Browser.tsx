@@ -1,5 +1,5 @@
 import { createMemo, For, Match, Show, Switch } from 'solid-js';
-import { createSignal, createStore, effect, onCleanup, onMount } from '../lib/reactive';
+import { batch, createSignal, createStore, effect, onCleanup, onMount } from '../lib/reactive';
 import { be } from '../api/backend';
 import type { Channel, ClipKind, Id, Kit, LibFile, LibraryProgress, Pattern, Source } from '../api/types';
 import { clamp, fmtBytes, baseName } from '../lib/format';
@@ -627,6 +627,28 @@ function LibraryTab() {
   const kits = () => lib.kits.filter(k => k.id !== STD_KIT && (!searching() || (k.installed && matchCount('k:' + k.id) > 0)));
   const mine = () => kits().filter(k => k.installed || lib.progress[k.id]), avail = () => kits().filter(k => !k.installed && !lib.progress[k.id]);
   const [moreOpen, setMoreOpen] = createSignal(false);
+  const collapseAll = () => {
+    // Search opens matching sections automatically, so return to the normal tree first.
+    batch(() => {
+      setLib(draft => {
+        draft.q = '';
+        draft.sopen = {};
+        draft.sel = null;
+        for (const key of Object.keys(draft.open)) draft.open[key] = false;
+        for (const key of Object.keys(draft.gopen)) draft.gopen[key] = false;
+        // Small lists default to expanded groups: close those too, even without a saved choice.
+        for (const [key, files] of Object.entries(draft.files)) {
+          for (const f of files ?? []) if (f.group) draft.gopen[key + '|' + f.group] = false;
+        }
+      });
+      setU('browserSec', 'std', true);
+      setU('browserSec', 'folders', true);
+      setMoreOpen(false);
+    });
+    saveBrowserOpen();
+    libScroll = 0;
+    if (listEl) listEl.scrollTop = 0;
+  };
   const kitRow = (k: Kit) => {
               const prog = () => lib.progress[k.id], key = 'k:' + k.id;
               return (
@@ -670,6 +692,9 @@ function LibraryTab() {
             else if (e.key === 'ArrowDown') { e.preventDefault(); setLib('sel', null); listEl?.focus({ preventScroll: true }); onListKey(e); }
           }} />
         <Show when={lib.q}><button class="xbtn" title={t('d.br.search.clear')} aria-label={t('d.br.search.clear')} onClick={() => { setQuery(''); searchEl?.focus(); }}>×</button></Show>
+        <button type="button" class="bcollapse" title={t('d.br.collapseAll')} aria-label={t('d.br.collapseAll')} onClick={collapseAll}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 11 6-6 6 6m-12 8 6-6 6 6" /></svg>
+        </button>
       </div>
       <div class="scroll" ref={listEl} tabindex={0} onKeyDown={onListKey}>
         <div ref={contentEl}>
