@@ -94,10 +94,10 @@ pub fn audio_to_midi(app: &dyn Host, a: &Value, if_revision: Option<u64>) -> R<V
         heard.iter().filter(|n| n.end > region.0 && n.start < region.1).map(|n| n.pitch.round().clamp(0.0, 127.0) as u8).collect();
     keys.sort_unstable();
     let q = |p: f64| keys.get(((keys.len().saturating_sub(1)) as f64 * p).round() as usize).copied();
-    // the bar grid of the map where the melody lands (a 7/8 bar anchors to its own line)
-    let first = notes.first().map(|n| n.step / 4.0).unwrap_or(0.0);
-    let steps_per_bar = e.project().sig_map().bar_beats_at(first) * 4.0;
-    let bar = notes.first().map(|n| (n.step / steps_per_bar).floor() * steps_per_bar).unwrap_or(0.0);
+    // the bar of the signature map that holds the first note (a 7/8 bar anchors to its own
+    // line, and a bar after a mid-song change counts from that change, not from beat 0)
+    let map = e.project().sig_map();
+    let bar = notes.first().map(|n| map.beat_at_bar(map.bar_at(n.step / 4.0)) * 4.0).unwrap_or(0.0);
     let end = notes.iter().fold(bar, |m, n| m.max(n.step + n.len));
     let mut out = json!({
         "clipId": clip_id,

@@ -208,22 +208,27 @@ pub fn quantize(notes: &mut [RecNote], grid: f64) {
 pub struct RecordedClip {
     /// Clip start on the timeline, beats (snapped down to a bar).
     pub start: f64,
-    /// Pattern and clip length in beats (whole bars).
+    /// Pattern and clip length in beats (whole bars of `bar`).
     pub len: f64,
+    /// The bar length the pattern keeps: the signature where the take starts.
+    pub bar: f64,
     pub notes: Vec<Note>,
 }
 
 /// Places `notes` (absolute beats) into a pattern for channel `ch`: the clip starts on the
-/// bar that holds the first note and covers whole bars to the last note's end. Note
-/// positions are in steps from the clip start, velocity is linear gain.
-pub fn layout(notes: &[RecNote], ch: Id, beats_per_bar: f64) -> Option<RecordedClip> {
+/// bar of `sig` that holds the first note (7/8's second bar opens at beat 3.5) and covers
+/// whole bars of that bar's signature to the last note's end — the pattern keeps that grid,
+/// like any pattern created at a place. Note positions are in steps from the clip start,
+/// velocity is linear gain.
+pub fn layout(notes: &[RecNote], ch: Id, sig: &crate::model::SigMap) -> Option<RecordedClip> {
     let first = notes.iter().map(|n| n.start).fold(f64::INFINITY, f64::min);
     let last = notes.iter().map(|n| n.end).fold(f64::NEG_INFINITY, f64::max);
     if !first.is_finite() || !last.is_finite() {
         return None;
     }
-    let start = (first / beats_per_bar).floor() * beats_per_bar;
-    let len = ((last - start) / beats_per_bar).ceil().max(1.0) * beats_per_bar;
+    let start = sig.beat_at_bar(sig.bar_at(first));
+    let bar = sig.bar_beats_at(start.max(0.0));
+    let len = ((last - start) / bar - 1e-9).ceil().max(1.0) * bar;
     let notes = notes
         .iter()
         .map(|n| Note {
@@ -237,7 +242,7 @@ pub fn layout(notes: &[RecNote], ch: Id, beats_per_bar: f64) -> Option<RecordedC
             slide: false,
         })
         .collect();
-    Some(RecordedClip { start, len, notes })
+    Some(RecordedClip { start, len, bar, notes })
 }
 
 /// Notes played over a looping pattern, their beats counted on from the loop's first pass
@@ -284,7 +289,7 @@ mod tests {
         quantize(&mut m, 0.0);
         assert_eq!(m[0].start, 1.1);
         // a note on another channel keeps it in the pattern
-        let laid = layout(&n, 5, 4.0).unwrap();
+        let laid = layout(&n, 5, &crate::model::SigMap::constant()).unwrap();
         assert_eq!((laid.notes[0].ch, laid.notes[1].ch), (5, 9));
     }
 
@@ -421,7 +426,7 @@ mod tests {
     fn layout_snaps_to_bars_and_converts_to_steps() {
         let notes =
             [RecNote { key: 60, vel: 127, start: 4.5, end: 5.0, ch: None }, RecNote { key: 64, vel: 64, start: 5.0, end: 6.25, ch: None }];
-        let c = layout(&notes, 7, 4.0).unwrap();
+        let c = layout(&notes, 7, &crate::model::SigMap::constant()).unwrap();
         assert_eq!(c.start, 4.0);
         assert_eq!(c.len, 4.0); // up to 6.25 → 2.25 beats in → one bar
         assert_eq!(c.notes.len(), 2);
@@ -435,7 +440,7 @@ mod tests {
     fn layout_spans_extra_bars_and_enforces_min_length() {
         let notes =
             [RecNote { key: 60, vel: 100, start: 3.9, end: 3.9, ch: None }, RecNote { key: 62, vel: 100, start: 8.0, end: 9.5, ch: None }];
-        let c = layout(&notes, 1, 4.0).unwrap();
+        let c = layout(&notes, 1, &crate::model::SigMap::constant()).unwrap();
         assert_eq!(c.start, 0.0);
         assert_eq!(c.len, 12.0);
         assert_eq!(c.notes[0].len, MIN_NOTE_STEPS);
@@ -444,6 +449,6 @@ mod tests {
 
     #[test]
     fn layout_of_nothing_is_none() {
-        assert!(layout(&[], 1, 4.0).is_none());
+        assert!(layout(&[], 1, &crate::model::SigMap::constant()).is_none());
     }
 }

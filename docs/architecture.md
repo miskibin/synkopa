@@ -1393,15 +1393,19 @@ then one `putMarker`. `synkopa markers` is the same set of edits (`actions::mark
 unchanged) is the signature map: from `beat` on, a bar counts `num` units of `1/den` —
 `4·num/den` beats (7/8 is 3.5), always a whole number of 16th steps. Beats stay the timeline's
 axis (the tempo map's doctrine): a change reflows only where the bars fall. Before the first
-point a bar is 4/4; two points at one beat, the last governs; at most 1024. A change may sit
+point a bar is 4/4; two points at one beat (or closer than 1e-6 beat), the last governs, at the
+first one's beat; at most 1024. A change may sit
 mid-bar — the truncated bar stays a fragment that counts, and the new grid starts at the change
 (Live's crosshatched fragmentary bar). `SigMap::compile` (model.rs) and `ui/src/lib/signatures.ts`
-hold the one conversion pair (`bar_at`/`beat_at_bar`, mirrored `barAt`/`beatAtBar`); every
+hold the one conversion pair (`bar_at`/`beat_at_bar`, mirrored `barAt`/`beatAtBar`): compiled
+segments with each one's first bar index, a binary search per call (the audio thread asks per
+beat), and bar starts strictly increase with no clamp, so a walk over bars always ends; every
 bars-math site reads it: the ruler's lines, numbers and change chips (a chip drags, its menu sets
 the meter or deletes, the timeline menu adds — one undo step per drag, no third strip), "Snap:
 bar" (bar lines, even off the beat), `fmtBbs`, the notebook's bars, the generators' steps per bar
 (of the pattern's **own** grid — see `Pattern.bar` above), the metronome and count-in accents (a
-7/8 bar starting at beat 3.5 gets its accent between beats), one bar of count-in, the song end. `setSigPoints{points}` writes the map in one undo
+7/8 bar starting at beat 3.5 gets its accent between beats), one bar of count-in, the song end, and where a MIDI take, a chords or melody pattern starts
+(on the map's bar that holds its first note; the pattern keeps that bar's length). `setSigPoints{points}` writes the map in one undo
 step and **never resizes a pattern** (see `Pattern.bar` above); MIDI import folds the file's
 `FF 58` metas to changes (a non-4/4 opener keeps a beat-0
 point, a project cannot imply a meter) and rides the tempo opt-in, shifted to where the pattern

@@ -366,7 +366,7 @@ impl Engine {
         };
         let mut notes = rec.finish(end);
         midi::quantize(&mut notes, c.transport.rec_quantize);
-        let Some(laid) = midi::layout(&notes, ch, 4.0) else { return };
+        let Some(laid) = midi::layout(&notes, ch, &c.project.sig_map()) else { return };
         let color = c.project.channel(ch).map(|x| x.color.clone()).unwrap_or_else(|| "#69c3d6".into());
         let n = c.project.patterns.iter().filter(|p| p.name.starts_with("MIDI take")).count() + 1;
         let pid = c.project.alloc_id();
@@ -377,7 +377,7 @@ impl Engine {
             color,
             len: laid.len,
             min_len: laid.len,
-            bar: 4.0,
+            bar: laid.bar,
             notes: laid.notes,
             swing: 0.0,
             channel_loops: std::collections::BTreeMap::new(),

@@ -1798,27 +1798,26 @@ impl Rt {
         // the metronome counts the pattern's beats (accent on each of its bars — `pat.bar`,
         // which may land off the beat: 7/8's second bar starts at local beat 3.5), as in the song
         if self.metro {
-            let bar = if pat.bar > 0.0 { pat.bar } else { 4.0 };
+            // `pat.bar` is sanitized when the timeline is built (`Pattern::bar_beats`: at
+            // least 1/16 and whole steps). Both walks cover only this block's window of each
+            // pass, so a block's work is bounded by its length, not the pattern's.
+            let bar = pat.bar;
             for r in r0..=r1 {
-                let mut p = la.ceil();
-                while p < lb {
-                    let nb = r as f64 * span + p - la;
-                    if nb >= b0 && nb < b1 {
-                        let k = (p / bar).round();
-                        let accent = (k * bar - p).abs() < 1e-6;
-                        self.voices.click(accent, ((nb - b0) / bps) as u32);
-                    }
+                let off = r as f64 * span - la; // pattern beat `p` plays at `off + p`
+                let (lo, hi) = ((b0 - off).max(la), (b1 - off).min(lb));
+                let mut p = lo.ceil();
+                while p < hi {
+                    let k = (p / bar).round();
+                    let accent = (k * bar - p).abs() < 1e-6;
+                    self.voices.click(accent, ((off + p - b0) / bps).max(0.0) as u32);
                     p += 1.0;
                 }
                 // the fractional bar starts the beat walk misses (7/8's 3.5)
-                let mut k = (la / bar).floor();
-                while k * bar < lb {
+                let mut k = (lo / bar - 1e-9).ceil();
+                while k * bar < hi {
                     let s = k * bar;
-                    if s >= la && (s - s.round()).abs() > 1e-6 {
-                        let nb = r as f64 * span + s - la;
-                        if nb >= b0 && nb < b1 {
-                            self.voices.click(true, ((nb - b0) / bps) as u32);
-                        }
+                    if (s - s.round()).abs() > 1e-6 {
+                        self.voices.click(true, ((off + s - b0) / bps).max(0.0) as u32);
                     }
                     k += 1.0;
                 }
@@ -2416,16 +2415,15 @@ impl Rt {
             b += 1.0;
         }
         if self.metro || b0 < self.count_end {
-            let mut bar = sig.bar_at(b0) + 1.0;
-            loop {
-                let start = sig.beat_at_bar(bar);
-                if start >= b1 {
-                    break;
-                }
-                if start >= b0 && (start - start.round()).abs() > 1e-6 && (self.metro || start < self.count_end) {
+            // from the first bar start at or after `b0` (a block that begins exactly on 7/8's
+            // 3.5 accents it); bar starts strictly increase, so the walk ends within the block
+            let (mut bar, mut start) = sig.next_bar_start(b0);
+            while start < b1 {
+                if (start - start.round()).abs() > 1e-6 && (self.metro || start < self.count_end) {
                     self.voices.click(true, delay_of(start));
                 }
                 bar += 1.0;
+                start = sig.beat_at_bar(bar);
             }
         }
         let tl = &*self.timeline;

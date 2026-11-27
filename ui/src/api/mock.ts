@@ -19,7 +19,7 @@ import { chordName, chordsIn, keyUsesFlats, simpleQuality, voiceChord } from '..
 import { projectEq } from '../lib/projectEq';
 import { applyAll, stripClipDefaults } from '../lib/applyOps';
 import { stripPatternDefaults } from '../lib/pattern';
-import { barBeatsAt, compiledSig, type SigPoint } from '../lib/signatures';
+import { barAt, barBeatsAt, beatAtBar, compiledSig, type SigPoint } from '../lib/signatures';
 import { landTakes, takeEnd } from '../lib/comp';
 import { dropEmptyTrack, recTarget } from '../lib/recTarget';
 import { newTrack } from '../lib/clipOps';
@@ -1184,7 +1184,9 @@ export class MockBackend implements Backend {
     const from = Math.min(Math.max(a.from ?? an.start, an.start), an.end), to = Math.min(Math.max(a.to ?? an.end, from), an.end);
     const segs = chordsIn(an.segments, from, to);
     if (!segs.length) throw new Error('no chords were detected in that part of the clip');
-    const start = Math.floor(segs[0].start / 4) * 4;
+    // the pattern starts on the bar of the first chord (the signature map's, like the engine)
+    const sig = compiledSig(this.p.sigPoints);
+    const start = beatAtBar(sig, barAt(sig, segs[0].start));
     const src = this.p.sources.find(x => x.id === this.p.clips.find(c => c.id === a.clipId)?.ref)?.name ?? '';
     const made = this.putPatternUnderClip({
       clipId: a.clipId, channel: a.channel ?? null, name: src ? `Chords – ${src}` : 'Chords', color: '#e0a44a', start,
@@ -1218,12 +1220,14 @@ export class MockBackend implements Backend {
       ops.push({ op: 'putChannel', channel: { id: ch, name: KEYS_CATALOG.find(i => i.id === KEYS_DEFAULT_INSTRUMENT)?.name ?? 'Grand Piano', color: pl.color, kind: 'keys', keys: { instrument: KEYS_DEFAULT_INSTRUMENT, dynamics: KEYS_DYNAMICS.def }, vol: 0.7937, pan: 0, mute: false, solo: false, insert: null, root: 60 } });
     }
     const start = pl.start;
-    const len = Math.max(4, Math.ceil((pl.end - start) / 4) * 4);
+    // whole bars of the signature where the pattern lands; the pattern keeps that grid
+    const bar = barBeatsAt(compiledSig(this.p.sigPoints), start);
+    const len = Math.max(1, Math.ceil((pl.end - start) / bar - 1e-6)) * bar;
     const taken = (n: string) => this.p.patterns.some(p => p.name === n);
     let name = pl.name;
     for (let k = 2; taken(name); k++) name = `${pl.name} ${k}`;
     const patternId = next++;
-    ops.push({ op: 'putPattern', pattern: { id: patternId, name, color: pl.color, len, minLen: 4, notes: notesFor(ch) } });
+    ops.push({ op: 'putPattern', pattern: { id: patternId, name, color: pl.color, len, minLen: bar, ...(Math.abs(bar - 4) > 1e-9 ? { bar } : {}), notes: notesFor(ch) } });
     const nt = this.p.tracks.length;
     const free = (t: number) => !this.p.clips.some(x => x.track === t && x.start < start + len && x.start + x.len > start);
     const order = [...Array.from({ length: Math.max(0, nt - clip.track - 1) }, (_, i) => clip.track + 1 + i), ...Array.from({ length: Math.min(clip.track + 1, nt) }, (_, i) => i)];
@@ -1271,7 +1275,9 @@ export class MockBackend implements Backend {
     const notes = melodyNotes(heard, region, beatOf, o);
     const keys = heard.filter(n => n.end > region[0] && n.start < region[1]).map(n => clamp(Math.round(n.pitch), 0, 127)).sort((x, y) => x - y);
     const q = (p: number) => keys[Math.round((keys.length - 1) * p)];
-    const bar = notes.length ? Math.floor(notes[0].step / 16) * 16 : 0;
+    // the bar of the signature map that holds the first note (7/8's second bar opens at beat 3.5)
+    const sig = compiledSig(this.p.sigPoints);
+    const bar = notes.length ? beatAtBar(sig, barAt(sig, notes[0].step / 4)) * 4 : 0;
     const end = notes.reduce((m, n) => Math.max(m, n.step + n.len), bar);
     const res: AudioToMidiResult = {
       clipId: a.clipId, count: notes.length, notes: notes.map(n => ({ ...n, step: Math.round((n.step - bar) * 1000) / 1000 })), start: bar / 4,

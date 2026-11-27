@@ -1002,10 +1002,18 @@ impl Pattern {
         Self::content_len_in(notes, BAR_BEATS)
     }
 
+    /// The bar length the pattern's grid uses, made safe to walk: a legal bar is a whole
+    /// number of steps from 0.25 (1/16) up to the song; anything else (a hand-edited file)
+    /// reads as [`BAR_BEATS`]. The audio thread loops over these bars, so it never sees
+    /// the raw field.
+    pub fn bar_beats(&self) -> f64 {
+        legal_bar(self.bar).unwrap_or(BAR_BEATS)
+    }
+
     /// Sets `len` from the notes and `min_len` (whole bars of [`Pattern::bar`]), and
     /// normalises `min_len`.
     pub fn fit_len(&mut self) {
-        let bar = if self.bar.is_finite() && self.bar >= 0.25 { self.bar } else { BAR_BEATS };
+        let bar = self.bar_beats();
         let min = if self.min_len.is_finite() { (self.min_len / bar - 1e-6).ceil().max(1.0) * bar } else { bar };
         self.min_len = min.min(TOTAL_BEATS);
         self.len = Self::content_len_in(&self.notes, bar).max(self.min_len);
@@ -1081,17 +1089,42 @@ pub struct SigPoint {
 /// The compiled signature map: where the bars fall. A change may sit mid-bar; the partial
 /// bar before it stays a fragment — it counts as a bar and the new grid starts at the
 /// change (Live's crosshatched fragmentary bar).
+///
+/// Every conversion is a binary search over precompiled segments (the audio thread asks
+/// per beat), and bar indices map to strictly increasing beats with no clamp anywhere, so
+/// a walk "bar += 1 until past `b1`" always ends.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SigMap {
-    /// `(beat, bar_beats)` sorted by beat; the first entry is beat 0 (4/4, unless a point
-    /// sits there — the last one at 0 wins).
-    points: Vec<(f64, f64)>,
+    /// Sorted by `beat`; the first segment starts at beat 0 (4/4, unless a point sits there
+    /// — the last one at 0 wins). `first` (the segment's first bar index) strictly
+    /// increases: every segment but the last holds at least one bar, a fragment included.
+    segs: Vec<SigSeg>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct SigSeg {
+    beat: f64,
+    bar: f64,
+    first: f64,
+}
+
+/// `bar` when it is a legal bar length in beats (whole steps, 0.25..=[`TOTAL_BEATS`]).
+pub fn legal_bar(bar: f64) -> Option<f64> {
+    (bar.is_finite() && (0.25..=TOTAL_BEATS).contains(&bar) && ((bar * 4.0).round() - bar * 4.0).abs() < 1e-9).then_some(bar)
+}
+
+/// Two signature points closer than this are one change (the last governs): a sliver of a
+/// fragment would otherwise count as a whole bar in the numbering.
+const SIG_EPS: f64 = 1e-6;
+
+/// Rounding slack (beats) when a beat is floored to its bar: `0.35 - 0.1` is a hair under
+/// one 0.25 bar in f64. Far below the 1e-9 probes callers use to ask "just before".
+const BEAT_ROUNDING: f64 = 1e-11;
 
 impl SigMap {
     /// The constant 4/4 map (what an empty point list compiles to).
     pub fn constant() -> Self {
-        Self { points: vec![(0.0, BAR_BEATS)] }
+        Self { segs: vec![SigSeg { beat: 0.0, bar: BAR_BEATS, first: 0.0 }] }
     }
 
     /// Compiles `points`: `num` clamps 1..=32, `den` snaps to [`SIG_DENS`] (anything else
@@ -1102,29 +1135,33 @@ impl SigMap {
             .iter()
             .map(|p| {
                 let den = if SIG_DENS.contains(&p.den) { p.den } else { 4 };
-                (p.beat.clamp(0.0, TOTAL_BEATS), BAR_BEATS * f64::from(p.num.clamp(1, MAX_SIG_NUM)) / f64::from(den))
+                let beat = if p.beat.is_nan() { 0.0 } else { p.beat.clamp(0.0, TOTAL_BEATS) };
+                (beat, BAR_BEATS * f64::from(p.num.clamp(1, MAX_SIG_NUM)) / f64::from(den))
             })
             .collect();
+        // stable: two points at one beat keep their order, so the last one governs
         pts.sort_by(|a, b| a.0.total_cmp(&b.0));
         pts.truncate(MAX_SIG_POINTS);
-        let mut map = Self { points: vec![(0.0, BAR_BEATS)] };
-        for &(beat, bar) in &pts {
-            if beat <= 0.0 {
-                *map.points.last_mut().unwrap() = (0.0, bar);
-            } else if map.points.last().is_some_and(|&(b, _)| (b - beat).abs() < 1e-9) {
-                // two points at one beat are one change: the last governs (a duplicated
-                // segment would double-count a fragment in the bar numbering)
-                *map.points.last_mut().unwrap() = (beat, bar);
-            } else {
-                map.points.push((beat, bar));
+        let mut segs = vec![SigSeg { beat: 0.0, bar: BAR_BEATS, first: 0.0 }];
+        for (beat, bar) in pts {
+            let last = segs.last_mut().unwrap();
+            if beat - last.beat < SIG_EPS {
+                // the same change (or one at beat 0 replacing the 4/4 opener)
+                last.bar = bar;
+                continue;
             }
+            // the bars of the segment this change ends, the truncated fragment included (an
+            // exact multiple, give or take rounding, leaves no phantom bar)
+            let count = ((beat - last.beat - 1e-9) / last.bar).ceil().max(1.0);
+            let first = last.first + count;
+            segs.push(SigSeg { beat, bar, first });
         }
-        map
+        Self { segs }
     }
 
     /// The bar length in beats at `beat` (the governing point's `4·num/den`).
     pub fn bar_beats_at(&self, beat: f64) -> f64 {
-        self.points[self.segment_of(beat)].1
+        self.segs[self.segment_of(beat)].bar
     }
 
     /// The 0-based bar `beat` falls in (bar 0 starts at beat 0). A change mid-bar
@@ -1133,61 +1170,50 @@ impl SigMap {
     /// negative beats map to negative bars.
     pub fn bar_at(&self, beat: f64) -> f64 {
         if beat < 0.0 {
-            return (beat / self.points[0].1).floor();
+            return ((beat + BEAT_ROUNDING) / self.segs[0].bar).floor();
         }
-        let mut bars = 0.0;
-        for i in 0..self.points.len() {
-            let (s, l) = self.points[i];
-            let e = self.points.get(i + 1).map_or(f64::INFINITY, |&(e, _)| e);
-            if beat < e - 1e-9 {
-                return bars + ((beat - s) / l).floor();
-            }
-            // the segment ends at `e`: its bars, including the fragment the next change
-            // truncates (an exact multiple leaves no phantom bar)
-            bars += ((e - s) / l).ceil();
-        }
-        bars + ((beat - self.points.last().unwrap().0) / self.points.last().unwrap().1).floor()
+        let i = self.segment_of(beat);
+        let s = self.segs[i];
+        let k = ((beat - s.beat + BEAT_ROUNDING) / s.bar).floor().max(0.0);
+        // a beat a rounding error short of the next change stays in the last bar here
+        let k = self.segs.get(i + 1).map_or(k, |n| k.min(n.first - s.first - 1.0));
+        s.first + k
     }
 
     /// The beat where 0-based bar `bar` starts (the inverse of [`Self::bar_at`]; `bar` is
     /// expected to be a whole bar number). A fragment maps to its own start like any bar;
     /// beyond the song the grid continues at the last segment's bar length — callers
-    /// clamp to [`TOTAL_BEATS`] where it matters. A bar count past what the song can hold
-    /// (a crafted file's overflowed positions) clamps into the grid: the walk is total,
-    /// the last unbounded segment always answers.
+    /// clamp to [`TOTAL_BEATS`] where it matters. Strictly increasing in `bar`.
     pub fn beat_at_bar(&self, bar: f64) -> f64 {
         if bar < 0.0 {
-            return bar * self.points[0].1;
+            return bar * self.segs[0].bar;
         }
-        // the least legal bar is 4·1/16 = 0.25 beats: no bar index this side of the song
-        // length is larger, and clamping keeps the unbounded last segment below `bar`
-        let bar = bar.min(TOTAL_BEATS / 0.25);
-        let mut bars = 0.0;
-        for i in 0..self.points.len() {
-            let (s, l) = self.points[i];
-            let e = self.points.get(i + 1).map_or(f64::INFINITY, |&(e, _)| e);
-            let count = (e - s) / l;
-            let count = if count.is_finite() { count.ceil() } else { count };
-            if bar < bars + count - 1e-9 {
-                return s + (bar - bars) * l;
-            }
-            bars += count;
+        let i = self.segs.partition_point(|s| s.first <= bar).saturating_sub(1);
+        let s = self.segs[i];
+        s.beat + (bar - s.first) * s.bar
+    }
+
+    /// The first bar start at or after `beat` (within rounding), with its bar index.
+    pub fn next_bar_start(&self, beat: f64) -> (f64, f64) {
+        let k = self.bar_at(beat);
+        let s = self.beat_at_bar(k);
+        if s >= beat - 1e-9 {
+            (k, s)
+        } else {
+            (k + 1.0, self.beat_at_bar(k + 1.0))
         }
-        let (s, l) = self.points.last().unwrap();
-        s + (bar - bars) * l
     }
 
     /// Whether `beat` sits on a bar boundary (a metronome accent lands there). Off-grid
     /// changes make boundaries land between beats — 7/8's second bar starts at beat 3.5 —
-    /// and [`Self::bar_at`] never reports an integer beat there, so callers walking whole
-    /// beats check fractional starts separately.
+    /// so callers walking whole beats find fractional starts with [`Self::next_bar_start`].
     pub fn is_bar_start(&self, beat: f64) -> bool {
         (self.beat_at_bar(self.bar_at(beat)) - beat).abs() < 1e-6
     }
 
     /// The index of the segment `beat` plays in (the last point at or before it).
     fn segment_of(&self, beat: f64) -> usize {
-        self.points.partition_point(|&(b, _)| b <= beat + 1e-9).saturating_sub(1).min(self.points.len() - 1)
+        self.segs.partition_point(|s| s.beat <= beat + 1e-9).saturating_sub(1)
     }
 }
 
@@ -1866,6 +1892,7 @@ impl Project {
         // whole bars of the pattern's own grid (the signature where it was created, 4/4 for
         // everything from before the map): stable, never the arrangement's current state
         for pt in self.patterns.iter_mut() {
+            pt.bar = pt.bar_beats();
             pt.fit_len();
         }
         if self.channels.is_empty() {
@@ -2120,7 +2147,7 @@ impl Project {
         // infinity) — clamp into the song before the map conversion
         let end = end.min(TOTAL_BEATS);
         let map = self.sig_map();
-        map.beat_at_bar(map.bar_at(end - 1e-9) + 1.0)
+        map.beat_at_bar(map.bar_at(end - 1e-9) + 1.0).min(TOTAL_BEATS)
     }
 
     /// The demo song (see [`crate::demo::demo_project`]).

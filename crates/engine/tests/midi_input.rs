@@ -453,3 +453,35 @@ fn pat_mode_quantize_snaps_to_the_pattern_grid_on_later_passes() {
     let n = pat.notes.iter().find(|n| n.p == Some(48)).expect("the recorded note");
     assert!((n.step - 2.0).abs() < 1e-3, "lands at step {}", n.step);
 }
+
+#[test]
+fn a_midi_take_under_seven_eight_keeps_the_bar_it_was_played_in() {
+    // 7/8 from beat 0 (bars at 0, 3.5, 7 …): a note played at beat 4.5 is in bar 1, so the
+    // take starts at 3.5 and its pattern counts 3.5-beat bars, not 4/4's
+    let mut p = Project::routed();
+    for t in p.tracks.iter_mut() {
+        t.arm = false;
+    }
+    p.sig_points = vec![SigPoint { beat: 0.0, num: 7, den: 8 }];
+    let ch = p.channels[0].id;
+    let bpm = p.bpm;
+    let e = engine(p);
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    let beat = |b: f64| (b * 60.0 / bpm * SR as f64) as usize;
+    e.set_rec_filter(Some(false), None, None, None);
+    e.set_transport(None, Some(false), Some(true), None);
+    e.play(0.0);
+    run(&mut rt, beat(4.5));
+    e.typing_note(ch, 64, 1.0, true);
+    run(&mut rt, beat(3.5)); // held to beat 8: past the 7.0 bar line
+    e.typing_note(ch, 64, 0.0, false);
+    run(&mut rt, beat(0.5));
+    let _ = e.stop();
+    let p = e.project();
+    let clip = p.clips.iter().find(|c| c.kind == ClipKind::Pat).expect("a MIDI take clip");
+    let pat = p.patterns.iter().find(|x| x.id == clip.source).unwrap();
+    assert!((clip.start - 3.5).abs() < 1e-9, "the take starts on the 7/8 bar line, got {}", clip.start);
+    assert_eq!(pat.bar, 3.5, "the pattern keeps the 7/8 bar");
+    assert!((pat.len - 7.0).abs() < 1e-9, "two whole 7/8 bars, got {}", pat.len);
+    assert!((clip.len - pat.len).abs() < 1e-9);
+}

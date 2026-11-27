@@ -8,6 +8,13 @@
 import { MAX_SIG_NUM, MAX_SIG_POINTS, SIG_DENS, TOTAL_BEATS, type SigPoint } from '../api/types';
 export type { SigPoint };
 
+/** Two points closer than this are one change, the last governing (engine `SIG_EPS`): a
+ *  sliver of a fragment would otherwise count as a whole bar. */
+const SIG_EPS = 1e-6;
+/** Rounding slack (beats) when flooring a beat to its bar (engine `BEAT_ROUNDING`): `0.35 - 0.1`
+ *  is a hair under one 0.25 bar. Far below the 1e-9 probes callers use for "just before". */
+const BEAT_ROUNDING = 1e-11;
+
 /** The constant 4/4 map, and the opener every compile starts from. */
 export const FOUR_FOUR: SigPoint = { beat: 0, num: 4, den: 4 };
 
@@ -27,7 +34,7 @@ export function compiledSig(points: readonly SigPoint[] | undefined): SigPoint[]
     .sort((a, b) => a.beat - b.beat)
     .slice(0, MAX_SIG_POINTS)) {
     const last = out[out.length - 1];
-    if (last && p.beat - last.beat < 1e-9) out[out.length - 1] = p;
+    if (last && p.beat - last.beat < SIG_EPS) out[out.length - 1] = { ...p, beat: last.beat }; // one change, at the first beat
     else out.push(p);
   }
   return out;
@@ -53,40 +60,49 @@ export function sigAt(map: readonly SigPoint[], beat: number): SigPoint {
 /** The bar length in beats at `beat`. */
 export const barBeatsAt = (map: readonly SigPoint[], beat: number): number => sigBarBeats(sigAt(map, beat));
 
+interface Seg { beat: number; bar: number; first: number }
+
+/** The map's segments with each one's first bar index (engine `SigMap::compile`): every
+ *  segment but the last holds at least one bar, a fragment included, so bar indices map to
+ *  strictly increasing beats and a walk over bars always advances. */
+function segments(map: readonly SigPoint[]): Seg[] {
+  const segs: Seg[] = [];
+  for (const p of withOpener(map)) {
+    const last = segs[segs.length - 1];
+    if (last && p.beat - last.beat < SIG_EPS) { last.bar = sigBarBeats(p); continue; }
+    const first = last ? last.first + Math.max(1, Math.ceil((p.beat - last.beat - 1e-9) / last.bar)) : 0;
+    segs.push({ beat: last ? p.beat : 0, bar: sigBarBeats(p), first });
+  }
+  return segs;
+}
+
+/** The last index `i` with `pred(list[i])` true (the list partitioned true-then-false). */
+function lastWhere<T>(list: readonly T[], pred: (x: T) => boolean): number {
+  let lo = 0, hi = list.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (pred(list[m])) lo = m + 1; else hi = m; }
+  return Math.max(0, lo - 1);
+}
+
 /** The 0-based bar `beat` falls in (bar 0 starts at beat 0); negative beats continue
  *  backwards on the opening grid. A fragment (the truncated bar before a change) counts. */
 export function barAt(map: readonly SigPoint[], beat: number): number {
-  const list = withOpener(map);
-  if (beat < 0) return Math.floor(beat / sigBarBeats(list[0]));
-  let bars = 0;
-  for (let i = 0; i < list.length; i++) {
-    const s = list[i].beat, l = sigBarBeats(list[i]);
-    const e = i + 1 < list.length ? list[i + 1].beat : Infinity;
-    if (beat < e - 1e-9) return bars + Math.floor((beat - s) / l);
-    bars += Math.ceil((e - s) / l);
-  }
-  const last = list[list.length - 1];
-  return bars + Math.floor((beat - last.beat) / sigBarBeats(last));
+  const segs = segments(map);
+  if (beat < 0) return Math.floor((beat + BEAT_ROUNDING) / segs[0].bar);
+  const i = lastWhere(segs, s => s.beat <= beat + 1e-9);
+  const s = segs[i];
+  let k = Math.max(0, Math.floor((beat - s.beat + BEAT_ROUNDING) / s.bar));
+  if (i + 1 < segs.length) k = Math.min(k, segs[i + 1].first - s.first - 1);
+  return s.first + k;
 }
 
 /** The beat where 0-based bar `bar` starts (`bar` a whole number; the inverse of `barAt`).
- *  Beyond the song the grid continues at the last bar length — callers clamp. */
+ *  Beyond the song the grid continues at the last bar length — callers clamp. Strictly
+ *  increasing in `bar`. */
 export function beatAtBar(map: readonly SigPoint[], bar: number): number {
-  const list = withOpener(map);
-  if (bar < 0) return bar * sigBarBeats(list[0]);
-  // the least legal bar is 4·1/16 = 0.25 beats: clamping keeps the unbounded last segment
-  // below `bar`, so the walk always answers (a crafted overflowed position cannot loop it)
-  const k = Math.min(bar, TOTAL_BEATS / 0.25);
-  let bars = 0;
-  for (let i = 0; i < list.length; i++) {
-    const s = list[i].beat, l = sigBarBeats(list[i]);
-    const e = i + 1 < list.length ? list[i + 1].beat : Infinity;
-    const count = e === Infinity ? e : Math.ceil((e - s) / l);
-    if (k < bars + count - 1e-9) return s + (k - bars) * l;
-    bars += count;
-  }
-  const last = list[list.length - 1];
-  return last.beat + (k - bars) * sigBarBeats(last);
+  const segs = segments(map);
+  if (bar < 0) return bar * segs[0].bar;
+  const s = segs[lastWhere(segs, x => x.first <= bar)];
+  return s.beat + (bar - s.first) * s.bar;
 }
 
 /** Whether `beat` sits on a bar boundary (a metronome accent lands there). Off-grid
@@ -102,11 +118,11 @@ export const isBarStart = (map: readonly SigPoint[], beat: number): boolean =>
 export function barLines(map: readonly SigPoint[], b0: number, b1: number, step = 1): { beat: number; bar: number }[] {
   const out: { beat: number; bar: number }[] = [];
   let bar = Math.floor(barAt(map, b0) + 1e-9) || 0;
-  for (; ; bar += step) {
+  // bar starts strictly increase (no clamp): the walk ends at `b1`
+  for (; ; bar += Math.max(1, step)) {
     const beat = beatAtBar(map, bar);
-    if (beat >= b1 - 1e-9) break;
+    if (!(beat < b1 - 1e-9)) break;
     out.push({ beat, bar });
-    if (bar > 1e7) break; // defensive: the grid always advances
   }
   return out;
 }

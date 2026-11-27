@@ -439,3 +439,104 @@ fn reassigning_a_clip_never_resizes_either_pattern() {
     assert!((p.patterns[0].len - 8.0).abs() < 1e-9 && (p.patterns[0].min_len - 5.0).abs() < 1e-9, "A keeps its grid");
     assert!((p.patterns[1].len - 8.0).abs() < 1e-9, "B keeps its grid");
 }
+
+#[test]
+fn bar_starts_strictly_increase_past_the_song_end() {
+    // the metronome walks "bar += 1 until past the block": beat_at_bar used to clamp the bar
+    // index to TOTAL_BEATS / 0.25, so a map whose bar count passes that (1/16 bars, or
+    // fragments from many off-grid changes) returned the same beat forever and hung the
+    // audio thread. Every bar index must map to a later beat, also beyond the song.
+    let sixteenth = map(&[(0.0, 1, 16)]);
+    let fragments: Vec<(f64, u8, u8)> = (0..MAX_SIG_POINTS).map(|i| (i as f64 * 1.3 + 0.1, 1, 16)).collect();
+    for m in [sixteenth, map(&fragments)] {
+        let last = m.bar_at(TOTAL_BEATS) + 64.0;
+        let mut prev = f64::NEG_INFINITY;
+        let mut k = -4.0;
+        while k <= last {
+            let b = m.beat_at_bar(k);
+            assert!(b > prev, "bar {k} starts after bar {}: {b} > {prev}", k - 1.0);
+            assert_eq!(m.bar_at(b), k, "bar {k} round-trips through its start {b}");
+            assert!(m.is_bar_start(b));
+            prev = b;
+            k += 1.0;
+        }
+        assert!(prev > TOTAL_BEATS);
+    }
+}
+
+#[test]
+fn next_bar_start_includes_a_bar_that_starts_exactly_there() {
+    let m = map(&[(0.0, 7, 8)]);
+    assert_eq!(m.next_bar_start(3.5), (1.0, 3.5));
+    assert_eq!(m.next_bar_start(3.4), (1.0, 3.5));
+    assert_eq!(m.next_bar_start(3.6), (2.0, 7.0));
+    assert_eq!(m.next_bar_start(0.0), (0.0, 0.0));
+    // a fragment's start and the change after it are both bar starts
+    let f = map(&[(5.0, 3, 4)]);
+    assert_eq!(f.next_bar_start(4.5), (2.0, 5.0));
+    assert_eq!(f.next_bar_start(5.0), (2.0, 5.0));
+    assert_eq!(f.next_bar_start(5.1), (3.0, 8.0));
+}
+
+#[test]
+fn points_a_sliver_apart_are_one_change() {
+    // a 1e-7-beat fragment is not a bar: the later point governs from the earlier beat
+    let m = map(&[(4.0, 3, 4), (4.0 + 1e-7, 7, 8)]);
+    assert_eq!(m.bar_beats_at(4.0), 3.5);
+    assert_eq!(m.bar_at(4.0), 1.0);
+    assert_eq!(m.beat_at_bar(2.0), 7.5);
+}
+
+/// Plays from `from` with the metronome on and no count-in; out beat 0 is song beat `from`.
+fn play_metro_from(p: Project, from: f64, beats: f64) -> Vec<f32> {
+    let e = Engine::new(p, Arc::new(NoPlugins));
+    let mut rt = e.create_rt(SR as f32, BLOCK);
+    e.set_transport(Some(true), Some(false), None, None);
+    e.play(from);
+    let mut out: Vec<f32> = vec![];
+    let (mut l, mut r) = (vec![0f32; BLOCK], vec![0f32; BLOCK]);
+    for _ in 0..frames(beats, 120.0) / BLOCK {
+        rt.process(&mut l, &mut r, None);
+        out.extend_from_slice(&l);
+    }
+    let _ = e.stop();
+    out
+}
+
+#[test]
+fn playback_started_on_a_fractional_bar_start_accents_it() {
+    // 7/8 from 0: bar 1 opens at beat 3.5. Starting the song exactly there, the first
+    // block begins on the bar start — the walk used to begin at the NEXT bar and skip it.
+    let mut p = quiet();
+    p.sig_points = pts(&[(0.0, 7, 8)]);
+    let out = play_metro_from(p, 3.5, 4.0);
+    let (_, zc_bar) = burst(&out, 0.0).expect("the bar start at 3.5 clicks the moment playback starts");
+    let (_, zc_plain) = burst(&out, 0.5).expect("beat 4 clicks");
+    assert!(zc_bar > zc_plain + 20, "and it is the accent (zc {zc_bar} vs plain {zc_plain})");
+}
+
+#[test]
+fn the_metronome_near_the_song_end_of_a_sixteenth_map_finishes_its_blocks() {
+    // the P1 hang: a 1/16 map has 8192 bars by beat 2048, and past that the clamped walk
+    // never advanced. Playing across the end must return block after block.
+    let mut p = quiet();
+    p.sig_points = pts(&[(0.0, 1, 16)]);
+    let out = play_metro_from(p, TOTAL_BEATS - 1.0, 2.0);
+    assert!(!out.is_empty());
+}
+
+#[test]
+fn a_crafted_pattern_bar_reads_as_four_four() {
+    // the audio thread walks a pattern's bars: a file with a sliver (or off-step) bar must
+    // not reach it raw
+    for bad in [1e-300, 0.1, 0.3, f64::NAN, 1e9] {
+        let mut p = Project::routed();
+        p.patterns[0].bar = bad;
+        p.migrate();
+        assert_eq!(p.patterns[0].bar, BAR_BEATS, "{bad} migrates to 4/4");
+    }
+    let mut p = Project::routed();
+    p.patterns[0].bar = 3.5;
+    p.migrate();
+    assert_eq!(p.patterns[0].bar, 3.5, "a legal bar stays");
+}

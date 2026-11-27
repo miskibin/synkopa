@@ -514,8 +514,8 @@ pub fn apply(p: &mut Project, op: &Op) -> Result<Dirty, OpError> {
             check_notes(p, &pt)?;
             // a pattern keeps the bar length it was created with: the fit rounds to whole
             // bars of that grid, never to the signature where a clip happens to sit now
-            if !(pt.bar.is_finite() && (0.25..=TOTAL_BEATS).contains(&pt.bar)) {
-                return Err(OpError::Invalid("pattern bar must be 0.25..2048 beats".into()));
+            if crate::model::legal_bar(pt.bar).is_none() {
+                return Err(OpError::Invalid("pattern bar must be whole 16th steps, 0.25..2048 beats".into()));
             }
             pt.fit_len();
             check_channel_loops(p, &pt)?;

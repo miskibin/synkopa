@@ -518,7 +518,7 @@ fn build_patterns(
             // in time order: the audio thread resolves the slides of one block in this order, and
             // a later slide must build on an earlier one (stable, so notes at one time keep theirs)
             notes.sort_by(|a, b| a.beat.total_cmp(&b.beat));
-            PatRt { id: pt.id, len: pt.len, bar: pt.bar, notes, home: pat_home(pt.id) }
+            PatRt { id: pt.id, len: pt.len, bar: pt.bar_beats(), notes, home: pat_home(pt.id) }
         })
         .collect();
     (chans, pats)

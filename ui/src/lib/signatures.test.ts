@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TOTAL_BEATS } from '../api/types';
 import {
   addSigPoint, barAt, barBeatsAt, barLines, beatAtBar, compiledSig, deleteSigPoint, isBarStart,
   moveSigPoint, parseSig, setSigMeter, sigAt, snapToBar, type SigPoint,
@@ -124,5 +125,32 @@ describe('editing', () => {
     expect(parseSig('40/4')).toBe(null);
     expect(parseSig('x')).toBe(null);
     expect(sigAt([], 99)).toEqual({ beat: 0, num: 4, den: 4 });
+  });
+});
+
+describe('bar starts always advance', () => {
+  it('maps every bar index past the song end to a later beat (no clamp: walks terminate)', () => {
+    const sixteenth: SigPoint[] = [{ beat: 0, num: 1, den: 16 }];
+    const fragments: SigPoint[] = Array.from({ length: 1024 }, (_, i) => ({ beat: i * 1.3 + 0.1, num: 1, den: 16 }));
+    for (const m of [sixteenth, compiledSig(fragments)]) {
+      const last = barAt(m, TOTAL_BEATS) + 16;
+      let prev = -Infinity;
+      for (let k = -2; k <= last; k += 97) {
+        const b = beatAtBar(m, k);
+        expect(b).toBeGreaterThan(prev);
+        expect(barAt(m, b)).toBe(k);
+        prev = b;
+      }
+      expect(beatAtBar(m, last)).toBeGreaterThan(TOTAL_BEATS);
+      const lines = barLines(m, TOTAL_BEATS - 1, TOTAL_BEATS + 1);
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines.length).toBeLessThan(20);
+    }
+  });
+  it('treats points a sliver apart as one change, like the engine', () => {
+    const m = compiledSig([{ beat: 4, num: 3, den: 4 }, { beat: 4 + 1e-7, num: 7, den: 8 }]);
+    expect(barBeatsAt(m, 4)).toBe(3.5);
+    expect(barAt(m, 4)).toBe(1);
+    expect(beatAtBar(m, 2)).toBe(7.5);
   });
 });
