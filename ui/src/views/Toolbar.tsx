@@ -752,7 +752,7 @@ function MasterOut() {
 /**
  * FL Studio's main volume knob next to the transport: how loud the app plays (the song, pattern and
  * sample previews, the metronome), independent of the Master fader and not part of the project —
- * a per-user setting, not undone and not exported. Drag ↕ (Shift = fine), wheel, double-click = 0 dB.
+ * a per-user setting, not undone and not exported. Drag ↕ or ↔ (Ctrl or Shift = fine), wheel, double-click = 0 dB.
  */
 function MainVolume() {
   onMount(loadProgramVolume);

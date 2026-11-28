@@ -1,6 +1,22 @@
-import { engine, expect, MOD, pollEngine, test } from './fixtures';
+import { VOL_UNITY } from '../src/api/types';
+import { centre, drag, engine, expect, MOD, pollEngine, test } from './fixtures';
 
 test.describe('Transport', () => {
+  test('Main volume turns with a horizontal drag and double-click resets it', async ({ app }) => {
+    const knob = app.locator('.mainvol .miniknob');
+    const current = () => app.evaluate(() => {
+      const mock = (window as unknown as { __waveMock: { programVolume(): Promise<number> } }).__waveMock;
+      return mock.programVolume();
+    });
+    const from = await centre(knob);
+    await drag(app, from, { x: from.x + 18, y: from.y });
+    await expect.poll(current).toBeCloseTo(VOL_UNITY + 0.15, 5);
+    await drag(app, from, { x: from.x - 36, y: from.y });
+    await expect.poll(current).toBeCloseTo(VOL_UNITY - 0.15, 5);
+    await knob.dblclick();
+    await expect.poll(current).toBe(VOL_UNITY);
+  });
+
   test('in SONG mode play runs the song clock, stop returns it to the start', async ({ app }) => {
     const play = app.locator('[data-act="play"]');
     const clock = app.getByText('1:1:1', { exact: true });

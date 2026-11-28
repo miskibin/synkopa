@@ -32,6 +32,7 @@ export function moveDrag(ctx: RollCtx, e: RollPtr, idx0: number[], mode: 'move' 
       ctx.setSel(new Set(idx)); // after the copies exist: the selection drops indices that do not
       ctx.say(t('b.pe.cloning', { x: notesText(idx.length) }));
     }
+    if (!moved) ctx.setDragCursor(mode === 'move' ? 'grabbing' : 'ew-resize');
     moved = true;
     if (!gest) return;
     const lockPitch = mode === 'move' && mods.shift && !shift0, lockTime = mode === 'move' && mods.ctrl && !ctrl0;
@@ -54,7 +55,8 @@ export function moveDrag(ctx: RollCtx, e: RollPtr, idx0: number[], mode: 'move' 
     mods = m;
     if (lastMove) run(lastMove);
   });
-  ctx.beginDrag({ frame: true, cursor: mode === 'move' ? 'grabbing' : 'ew-resize' }, m => { mods = { shift: m.shift, ctrl: m.ctrl }; run(m); if (moved) es.move(m); }, () => {
+  ctx.beginDrag({ frame: true }, m => { mods = { shift: m.shift, ctrl: m.ctrl }; run(m); if (moved) es.move(m); }, () => {
+    if (moved) ctx.setDragCursor(null);
     unmods();
     es.stop();
     ctx.hold(null); // the held audition ends with the button

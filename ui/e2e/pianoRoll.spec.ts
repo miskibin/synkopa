@@ -10,6 +10,38 @@ const setLang = (page: Page, lang: 'en' | 'pl') =>
   page.evaluate(async l => { const url = '/src/lib/i18n.ts'; ((await import(/* @vite-ignore */ url)) as { setLang(v: string): void }).setLang(l); }, lang);
 const same = (a: Note) => (b: Note) => b.step === a.step && b.p === a.p;
 
+test('Piano roll: selecting the same notes again leaves the grid and velocity lane settled', async ({ app }) => {
+  await app.keyboard.press('F7');
+  const roll = app.locator('.rollwin');
+  const grid = roll.locator('.parea canvas');
+  const lane = roll.locator('.lanecv canvas');
+  await expect(grid).toBeVisible();
+  await app.keyboard.press(`${MOD}+a`);
+  await expect(roll.locator('.ptools .note')).toContainText(' sel.');
+
+  const paints = await app.evaluate(async () => {
+    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await frame();
+    await frame();
+    const canvases = [...document.querySelectorAll<HTMLCanvasElement>('.rollwin .parea canvas, .rollwin .lanecv canvas')];
+    const contexts = canvases.map(c => c.getContext('2d')!);
+    let paints = 0;
+    const clear = contexts.map(g => g.clearRect);
+    for (const [i, g] of contexts.entries()) g.clearRect = (...args) => { paints++; clear[i].apply(g, args); };
+    try {
+      for (let i = 0; i < 4; i++) {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', ctrlKey: true, repeat: true, bubbles: true, cancelable: true }));
+        await frame();
+      }
+      return paints;
+    } finally {
+      for (const [i, g] of contexts.entries()) g.clearRect = clear[i];
+    }
+  });
+  await expect(lane).toBeVisible();
+  expect(paints).toBe(0);
+});
+
 test('Piano roll: draw, move, transpose and delete a note, with undo', async ({ app }) => {
   await app.keyboard.press('F7');
   const roll = app.locator('.rollwin');
