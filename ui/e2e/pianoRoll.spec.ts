@@ -10,6 +10,54 @@ const setLang = (page: Page, lang: 'en' | 'pl') =>
   page.evaluate(async l => { const url = '/src/lib/i18n.ts'; ((await import(/* @vite-ignore */ url)) as { setLang(v: string): void }).setLang(l); }, lang);
 const same = (a: Note) => (b: Note) => b.step === a.step && b.p === a.p;
 
+test('Piano roll: moving a Playlist clip leaves the docked roll settled', async ({ app }) => {
+  await app.keyboard.press('F9'); // keep the whole upper Playlist visible
+  await app.getByRole('button', { name: 'SONG', exact: true }).click();
+  await app.keyboard.press('F7');
+  const roll = app.locator('.rollwin');
+  await roll.getByRole('button', { name: /^Dock at the bottom/ }).click();
+  await expect(roll).toHaveClass(/\bdocked\b/);
+  const grid = (await app.locator('.gridArea').boundingBox())!;
+  const { project } = await engine(app);
+  const clip = project.clips.find(c => c.kind === 'pat' && c.ref === project.patterns[0].id && c.start > 0)!;
+  const bw: number = await app.evaluate(() => JSON.parse(localStorage.getItem('wave.layout') ?? '{}').bw ?? 22);
+  const y = grid.y + project.tracks.slice(0, clip.track).reduce((top, track) => top + track.h, 0) + 16;
+  const x = grid.x + (clip.start + 2) * bw;
+  const slider = app.locator('.songpos');
+  const end = Number(await slider.getAttribute('aria-valuemax'));
+  const rollCanvas = roll.locator('.parea canvas, .lanecv canvas, .rollruler canvas, canvas.zmini');
+  const paints = () => rollCanvas.evaluateAll(items => items.map(c => Number((c as HTMLCanvasElement).dataset.paintCount)));
+  await rollCanvas.evaluateAll(async items => {
+    for (let i = 0; i < 3; i++) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    for (const el of items) {
+      const canvas = el as HTMLCanvasElement, ctx = canvas.getContext('2d')!;
+      canvas.dataset.paintCount = '0';
+      const record = () => { canvas.dataset.paintCount = String(Number(canvas.dataset.paintCount) + 1); };
+      const clear = ctx.clearRect, fill = ctx.fillRect;
+      ctx.clearRect = (...args) => { record(); clear.apply(ctx, args); };
+      ctx.fillRect = (...args) => { record(); fill.apply(ctx, args); };
+    }
+  });
+
+  await drag(app, { x, y }, { x: x + 8 * bw, y });
+  await pollEngine(app, s => s.project.clips.find(c => c.id === clip.id)?.start).toBe(clip.start + 8);
+  await expect.poll(async () => Number(await slider.getAttribute('aria-valuemax'))).toBeGreaterThan(end);
+  await app.keyboard.press(`${MOD}+z`);
+  await pollEngine(app, s => s.project.clips.find(c => c.id === clip.id)?.start).toBe(clip.start);
+  await expect(slider).toHaveAttribute('aria-valuemax', String(end));
+  await app.evaluate(async () => {
+    for (let i = 0; i < 3; i++) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  });
+  expect(await paints()).toEqual([0, 0, 0, 0]);
+
+  const notes = roll.locator('.parea > canvas');
+  const box = (await notes.boundingBox())!;
+  await app.mouse.click(box.x + box.width * .3, box.y + box.height * .4);
+  await pollEngine(app, s => s.project.patterns[0].notes.length).toBe(project.patterns[0].notes.length + 1);
+  await expect.poll(() => notes.getAttribute('data-paint-count').then(Number)).toBeGreaterThan(0);
+  await expect(roll.locator('.rollruler canvas')).toHaveAttribute('data-paint-count', '0');
+});
+
 test('Piano roll: selecting the same notes again leaves the grid and velocity lane settled', async ({ app }) => {
   await app.keyboard.press('F7');
   const roll = app.locator('.rollwin');

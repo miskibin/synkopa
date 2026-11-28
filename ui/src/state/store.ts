@@ -78,7 +78,15 @@ export { projVersion };
  */
 const [arrVersion, setArrVersion] = createSignal(0);
 export { arrVersion };
-const bumpProject = (arrangement = true) => batch(() => { setProjVersion(v => v + 1); if (arrangement) setArrVersion(v => v + 1); });
+/** For pattern editors that draw from the plain notes and channel settings. */
+const [patternDataVersion, setPatternDataVersion] = createSignal(0);
+export { patternDataVersion };
+const bumpProject = (arrangement: boolean, patternData: boolean) => batch(() => {
+  setProjVersion(v => v + 1);
+  if (arrangement) setArrVersion(v => v + 1);
+  if (patternData) setPatternDataVersion(v => v + 1);
+});
+const PATTERN_DATA_OPS = new Set<Op['op']>(['putPattern', 'removePattern', 'transformNotes', 'putChannel', 'removeChannel', 'removeSource']);
 const MIXER_ONLY = new Set<Op['op']>(['putFx', 'removeFx', 'moveFx', 'putInsert', 'removeInsert', 'putNotebook']);
 /** Not mixer edits, but nothing an arrangement canvas draws from the clip list either: the loop
  *  range is read directly by the views that show it (a loop drag must not redraw every clip). */
@@ -308,7 +316,7 @@ export function replaceState(dto: StateDto) {
   batch(() => {
     if (changed.length) setS(d => { const p = d.project as unknown as Obj; for (const k of changed) mergeInto(p, k, old[k], next[k]); });
     mChanged(); // nothing cached while the store was half merged
-    if (changed.length) bumpProject(arrangement);
+    if (changed.length) bumpProject(arrangement, changed.includes('patterns') || changed.includes('channels'));
     setMeta(dto);
   });
   localNext = Math.max(localNext, dto.project.nextId);
@@ -566,7 +574,7 @@ export function applyLocal(ops: Op[]) {
     // op by op, the store's draft first and then `M`: each op sees `M` as the draft is before it
     setS(d => { ops.forEach((op, i) => { applyInPlace(d.project, forStore[i], M); applyInPlace(M, op); }); });
     mChanged(); // nothing cached while the edit was half applied
-    bumpProject(arrangement);
+    bumpProject(arrangement, ops.some(op => PATTERN_DATA_OPS.has(op.op)));
     setS('dirty', true);
   });
   if (lens && clipLens!.size) {
