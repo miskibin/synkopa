@@ -34,10 +34,10 @@ export function useSize(el: () => HTMLElement | undefined) {
 }
 
 /** Bumped when anything the canvases show changes (pattern notes, channels, theme). */
-export function useDataVersion() {
+export function useDataVersion(version = arrVersion) {
   const [v, setV] = createSignal(0);
-  // arrVersion bumps on every arrangement change: no deep JSON walk of a 2000-note pattern per edit
-  effect(() => { arrVersion(); curPat(); channels(); theme.epoch; setV(x => x + 1); });
+  // The caller supplies the invalidation for its plain data, which avoids a deep walk on each edit.
+  effect(() => { version(); curPat(); channels(); theme.epoch; setV(x => x + 1); });
   return v;
 }
 

@@ -27,10 +27,10 @@ import {
   parseKey, parseLen, parseStart, quantizeStarts, readProps, wheelNotches,
 } from '../lib/rollEdit';
 import { commit, Gesture, wheelEdit } from '../state/edit';
-import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPattern, patFrom, patLoopOf, patMode, patPlayhead, patStartOf, putNotes, rollFront, selChan,
+import { audition, chanKindLabel, channels, closeRoll, curPat, moveNotesToNewPattern, patFrom, patLoopOf, patMode, patPlayhead, putNotes, rollFront, selChan,
   selectChannel, setPatLoop, setPatStart, toggleRollMax,
 } from '../state/pattern';
-import { arrVersion, rawOf, S } from '../state/store';
+import { patternDataVersion, rawOf, S } from '../state/store';
 import { openMenu, say, setU, U } from '../state/ui';
 import { GridChip, ToolSeg, type ChipOption } from '../ui/EditorBar';
 import { Knob } from '../ui/Knob';
@@ -117,7 +117,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   // memos: every read was a find() through the store (thousands per redraw of a big pattern)
   const ptM = createMemo(() => curPat()!), chM = createMemo(() => selChan()!);
   const pt = () => ptM(), ch = () => chM();
-  /** The notes as plain data (canvas drawing and hit tests; redraws follow `data`/`arrVersion`). */
+  /** The notes as plain data (canvas drawing and hit tests). */
   const notesRaw = () => rawOf(pt()).notes;
   const size = useSize(() => wrap);
   const laneSize = useSize(() => laneWrap);
@@ -126,7 +126,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   /** What the lane under the grid edits (FL's event editor target): the notes' velocity or their own pan. */
   const [laneMode, setLaneMode] = createSignal<'vel' | 'pan'>('vel');
   effect(() => { const h = size().h; if (h > 0) setLaneOn(h + (untrack(laneOn) ? LANE_H : 0) >= LANE_SHOW_AT); });
-  const data = useDataVersion();
+  const data = useDataVersion(patternDataVersion);
   const layer = new Layer();
   const [sel, setSel] = createSignal<Set<number>>(new Set(), { equals: (before, after) => {
     if (before.size !== after.size) return false;
@@ -168,7 +168,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   const root = () => pk().root;
   const scaleIdx = () => pk().scale;
-  const chansMap = createMemo(() => { arrVersion(); return new Map(rawOf(channels()).map(c => [c.id, c])); });
+  const chansMap = createMemo(() => { patternDataVersion(); return new Map(rawOf(channels()).map(c => [c.id, c])); });
   const mask = () => scaleMask(scaleIdx());
   /** A tool field's name without its "(0..1)" range note: the slider shows the range. */
   const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*$/, '');
@@ -185,6 +185,8 @@ function Roll(props: { z: number; docked?: boolean }) {
   const [fitSteps, setFitSteps] = createSignal(stepsOf(pt()));
   // (a memo of the id: every note edit replaces the pattern object, only another pattern changes the id)
   const patId = createMemo(() => pt().id);
+  const patLen = createMemo(() => pt().len);
+  const patBar = createMemo(() => barOf(pt()));
   watch(patId, () => setFitSteps(stepsOf(untrack(pt))));
   /** Px per step at zoom 1: the pattern as it was opened fits the window (within sensible limits). */
   const basePps = () => clamp(gridW() / fitSteps(), 6, 48);
@@ -226,7 +228,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     setViewS(v => ({ ...v, rowH, sy: clamp(r.pos * rowH, 0, maxSyAt(rowH)) }));
   };
   const chanNotes = createMemo(() => {
-    arrVersion();
+    patternDataVersion();
     const p = rawOf(pt()), id = ch().id;
     return p.notes.map((n, i) => ({ n, i })).filter(x => x.n.ch === id);
   });
@@ -266,7 +268,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafMain = 0, rafVel = 0;
   effect(() => {
-    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; stampGhost();
+    data(); sel(); hoverKey(); marq(); zbox(); root(); mask(); rollSnap(); void fonts.epoch; size(); view(); typingHeld(); ch(); pt().len; barOf(pt()); stampGhost();
     if (U.mixView) return; // repainted on the way back from the Mix view
     if (!rafMain) rafMain = requestAnimationFrame(() => { rafMain = 0; untrack(drawMain); });
   });
@@ -356,6 +358,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     const p = pt(), c = songClip();
     return c ? patBeatAt(c, p.len, U.start) : patFrom(p);
   };
+  const rulerMarker = createMemo(rulerStart);
   const drawRulerNow = () => {
     const W = gridW(); if (!rulerCv || W <= 1) return;
     fitCanvas(rulerCv, W, RULER_H);
@@ -368,7 +371,7 @@ function Roll(props: { z: number; docked?: boolean }) {
   };
   let rafRuler = 0;
   effect(() => {
-    view(); size(); pt().len; pt().id; patLoopOf(pt().id); patStartOf(pt().id); rulerStart(); themeVersion(); void fonts.epoch;
+    view(); size(); patLen(); patBar(); patLoopOf(patId()); rulerMarker(); themeVersion(); void fonts.epoch;
     if (!rafRuler) rafRuler = requestAnimationFrame(() => { rafRuler = 0; untrack(drawRulerNow); });
   });
   onCleanup(() => cancelAnimationFrame(rafRuler));
@@ -590,7 +593,7 @@ function Roll(props: { z: number; docked?: boolean }) {
       + (at.length > 1 ? ' — ' + t(sel().size ? 'b.pr.laneSelOnly' : 'b.pr.laneAll') : ''));
   };
   // ---- "Vocal reference": the melody (the selection, else the channel's notes) becomes the target of a vocal sung over it
-  const vocals = createMemo(() => { void arrVersion(); return vocalsUnder(S.project, pt().id); });
+  const vocals = createMemo(() => vocalsUnder(S.project, patId()));
   const vocalName = (id: number) => { const c = S.project.clips.find(x => x.id === id)!; return (S.project.sources.find(x => x.id === c.ref)?.name ?? '?') + ' · ' + (S.project.tracks[c.track]?.name ?? '') + ' · ' + fmtPos(c.start, compiledSig(S.project.sigPoints)); };
   const toVocal = (clipId: number) => {
     const c = S.project.clips.find(x => x.id === clipId); if (!c) return;

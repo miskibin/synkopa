@@ -6,7 +6,7 @@ import { createSignal, onCleanup, onMount } from '../lib/reactive';
 import { t } from '../lib/i18n';
 import { clamp, fmtClock, fmtPos } from '../lib/format';
 import { songEnd } from '../lib/export';
-import { S } from '../state/store';
+import { arrVersion, rawOf, S } from '../state/store';
 import { setU, U } from '../state/ui';
 import { curBeat, tele } from '../state/telemetry';
 import { curPat, patMode, patStartOf, previewPattern, setPatStart } from '../state/pattern';
@@ -29,15 +29,14 @@ const readoutMap = (pat: number | null) => (pat != null ? barLenMap(barOf(S.proj
 const barStepAt = (at: number, pat: number | null) => (pat != null ? barOf(S.project.patterns.find(x => x.id === pat) ?? { bar: 4 }) : barBeatsAt(sigs(), at));
 
 /** What the slider and the readout follow: the song (SONG) or the current pattern (PAT, FL's Piano roll position). */
-function span(): { len: number; at: number; pat: number | null } {
+function position(): { at: number; pat: number | null } {
   if (patMode()) {
     const pt = curPat();
-    if (!pt) return { len: BEATS_PER_BAR, at: 0, pat: null };
+    if (!pt) return { at: 0, pat: null };
     const playing = U.patPlaying && previewPattern() === pt.id && tele.frame.patBeat >= 0;
-    return { len: Math.max(pt.len, 1), at: playing ? tele.frame.patBeat : patStartOf(pt.id), pat: pt.id };
+    return { at: playing ? tele.frame.patBeat : patStartOf(pt.id), pat: pt.id };
   }
-  const loopEnd = S.project.loop?.b ?? 0;
-  return { len: Math.max(songEnd(S.project), loopEnd, BEATS_PER_BAR), at: curBeat(), pat: null };
+  return { at: curBeat(), pat: null };
 }
 
 /** Moves the start (and the playhead, when it plays) to `beat` of what the slider follows. */
@@ -55,12 +54,14 @@ function seekTo(beat: number, pat: number | null) {
 export function SongPos() {
   let el!: HTMLDivElement, fill!: HTMLDivElement, head!: HTMLDivElement;
   const [drag, setDrag] = createSignal<number | null>(null);
-  const [len, setLen] = createSignal(16);
+  const songLen = createMemo(() => { arrVersion(); return songEnd(rawOf(S.project)); });
+  const len = createMemo(() => patMode()
+    ? Math.max(curPat()?.len ?? BEATS_PER_BAR, 1)
+    : Math.max(songLen(), S.project.loop?.b ?? 0, BEATS_PER_BAR));
   let shown = -1;
   onMount(() => onCleanup(addFrameTask(() => {
-    const s = span(), d = drag();
-    if (s.len !== len()) setLen(s.len);
-    const f = Math.round(clamp((d ?? s.at) / s.len, 0, 1) * 2000) / 2000;
+    const s = position(), d = drag();
+    const f = Math.round(clamp((d ?? s.at) / len(), 0, 1) * 2000) / 2000;
     if (f === shown) return;
     shown = f;
     // the handle rides the track, which is inset by INSET on both sides
@@ -69,28 +70,28 @@ export function SongPos() {
     el.setAttribute('aria-valuenow', String(Math.round((d ?? s.at) * 100) / 100));
   })));
   const beatAt = (clientX: number, fine: boolean) => {
-    const r = el.getBoundingClientRect(), s = span(), q = fine ? 0.25 : 1;
+    const r = el.getBoundingClientRect(), length = len(), q = fine ? 0.25 : 1;
     const f = clamp((clientX - r.left - INSET) / Math.max(1, r.width - 2 * INSET), 0, 1);
-    return clamp(Math.round((f * s.len) / q) * q, 0, Math.max(0, s.len - (s.pat != null ? q : 0)));
+    return clamp(Math.round((f * length) / q) * q, 0, Math.max(0, length - (position().pat != null ? q : 0)));
   };
   const down = (e: PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault(); el.focus({ preventScroll: true });
-    const pat = span().pat, live = !(U.playing || U.patPlaying);
+    const pat = position().pat, live = !(U.playing || U.patPlaying);
     const go = (ev: PointerEvent) => {
       const b = beatAt(ev.clientX, ev.shiftKey);
       setDrag(b);
-      setU('readout', t('a.tb.posAt', { pos: fmtPos(b, readoutMap(span().pat)) }));
+      setU('readout', t('a.tb.posAt', { pos: fmtPos(b, readoutMap(position().pat)) }));
       if (live) seekTo(b, pat);
     };
     go(e);
     track(go, () => { const b = drag(); setDrag(null); if (b != null && !live) seekTo(b, pat); }, 'ew-resize');
   };
   const key = (e: KeyboardEvent) => {
-    const s = span(), step = e.shiftKey ? 1 : barStepAt(s.at, s.pat);
+    const s = position(), length = len(), step = e.shiftKey ? 1 : barStepAt(s.at, s.pat);
     let b: number | null = null;
     if (e.key === 'Home') b = 0;
-    else if (e.key === 'End') b = s.pat != null ? s.len - 1 : s.len;
+    else if (e.key === 'End') b = s.pat != null ? length - 1 : length;
     else if (e.shiftKey || s.pat != null) {
       // a fixed grid: the beat step, or the pattern's own (constant) bar grid in PAT
       if (e.key === 'ArrowRight') b = Math.floor(s.at / step + 1e-6) * step + step;
@@ -103,7 +104,7 @@ export function SongPos() {
     }
     if (b == null) return;
     e.preventDefault(); e.stopPropagation();
-    seekTo(clamp(b, 0, s.len), s.pat);
+    seekTo(clamp(b, 0, length), s.pat);
   };
   const loop = () => (patMode() ? null : S.project.loop);
   return (
@@ -126,7 +127,7 @@ export function PosReadout() {
   let el!: HTMLSpanElement;
   let last = '';
   onMount(() => onCleanup(addFrameTask(() => {
-    const w = span();
+    const w = position();
     const s = fmtClock(w.at, readoutMap(w.pat));
     if (s !== last) { last = s; el.textContent = s; }
   })));
