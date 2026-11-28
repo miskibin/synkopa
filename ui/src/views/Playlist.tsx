@@ -138,6 +138,7 @@ const CLIP_HEAD = 15;
 /** Trim zone of a clip's edge (px): this far inside the clip, and this far outside it. Together
  *  14 px, about what REAPER / Ableton give an edge; 6 px inside alone was hard to hit. */
 const EDGE_IN = 8, EDGE_OUT = 6;
+const CLIP_BODY_EDGE_IN = 12;
 /** A take lane under a track. `cb` = comp beat under the pointer. */
 interface LaneHit extends TakeRow { ti: number; k: number; take: Take; cb: number }
 
@@ -747,7 +748,8 @@ export function Playlist() {
       }
       // narrow clips keep a body to grab: the trim zones shrink, and vanish on a sliver (the
       // zone outside the clip, EDGE_OUT, still trims it)
-      const ez = cwid < 14 ? 0 : Math.min(EDGE_IN, cwid / 4);
+      const inClipBody = y - cy >= CLIP_HEAD && (c.kind === 'audio' || c.kind === 'pat');
+      const ez = cwid < 14 ? 0 : Math.min(inClipBody ? CLIP_BODY_EDGE_IN : EDGE_IN, cwid / 4);
       if (!edge) edge = x - cx < ez ? 'l' : cx + cwid - x < ez ? 'r' : null;
       // the icon in the clip's top-left corner opens its menu (FL), with either button
       if (!edge && cwid >= 36 && x - cx < 20 && y - cy < CLIP_HEAD) edge = 'menu';

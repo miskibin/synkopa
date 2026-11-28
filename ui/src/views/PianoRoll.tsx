@@ -38,7 +38,7 @@ import { LANE_ICONS, LaneSwitch } from '../ui/LaneSwitch';
 import { selectionSpan, vocalsUnder } from '../lib/melody';
 import { fmtPos } from '../lib/format';
 import { openPitchEditor, seekSong, switchMode } from '../state/actions';
-import { dblCheck, edgeScroller, panDrag, track, trackFrame } from '../ui/drag';
+import { dblCheck, dragCursor, edgeScroller, panDrag, track, trackFrame } from '../ui/drag';
 import { WindowBoundary } from '../ui/PanelBoundary';
 import { typingHeld } from '../state/typingKeys';
 import { noteClip, setNoteClip } from '../state/noteClipboard';
@@ -128,7 +128,12 @@ function Roll(props: { z: number; docked?: boolean }) {
   effect(() => { const h = size().h; if (h > 0) setLaneOn(h + (untrack(laneOn) ? LANE_H : 0) >= LANE_SHOW_AT); });
   const data = useDataVersion();
   const layer = new Layer();
-  const [sel, setSel] = createSignal<Set<number>>(new Set());
+  const [sel, setSel] = createSignal<Set<number>>(new Set(), { equals: (before, after) => {
+    if (before.size !== after.size) return false;
+    const next = after.values();
+    for (const i of before) if (i !== next.next().value) return false;
+    return true;
+  } });
   const [hoverKey, setHoverKey] = createSignal<number | null>(null);
   const [marq, setMarq] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   /** The chord name under the pointer (status bar): every note of the channel at the hovered note's step. */
@@ -487,6 +492,7 @@ function Roll(props: { z: number; docked?: boolean }) {
     dbl: key => dblCheck(key),
     pan: e => (e ? pan(e) : false),
     setDragging: on => { dragging = on; },
+    setDragCursor: dragCursor,
     beginDrag: (o, move, up) => (o.frame ? trackFrame : track)(ev => move({ ...modsOf(ev), p: pos(ev), raw: ev }), ev => up({ ...modsOf(ev), p: pos(ev), raw: ev }), o.cursor),
     bindMods: cb => {
       const h = (ke: KeyboardEvent) => cb(modsOf(ke));

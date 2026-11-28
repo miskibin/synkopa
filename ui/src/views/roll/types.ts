@@ -116,6 +116,7 @@ export interface RollCtx {
   pan(e: PointerEvent | undefined): boolean;
   /** A drag is open (the view-follow pauses). */
   setDragging(on: boolean): void;
+  setDragCursor(cursor: string | null): void;
   /** Window-level drag: moves arrive as plain data, `frame` coalesces them per animation
    * frame, `cursor` is forced on the page while it lasts. */
   beginDrag(o: { frame?: boolean; cursor?: string }, move: (m: RollMove) => void, up: (m: RollMove) => void): void;

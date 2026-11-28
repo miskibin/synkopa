@@ -70,6 +70,42 @@ test.describe('Playlist', () => {
     await expect.poll(async () => (await clipsOn(app, T))[0].len).toBe(pat.len);
   });
 
+  test('trims a clip at bar one independently of the track header width', async ({ app }) => {
+    const track = 6;
+    const headerWidth = async () => (await app.locator('.lanesCol').boundingBox())!.width;
+    const width = await headerWidth();
+    const start = await at(app, track, 0);
+    await app.mouse.click(start.x + 5, start.y);
+    await expect.poll(async () => (await clipsOn(app, track)).length).toBe(1);
+    const [clip] = await clipsOn(app, track);
+    const beatOne = await at(app, track, 1);
+
+    await drag(app, { x: start.x + 1, y: start.y }, { x: beatOne.x + 1, y: start.y });
+    await expect.poll(async () => (await clipsOn(app, track))[0].start).toBe(1);
+    expect(await headerWidth()).toBe(width);
+
+    const end = await at(app, track, clip.len);
+    const shorter = await at(app, track, clip.len - 1);
+    // Ten pixels inside the displayed right edge is part of the wider body grip.
+    await drag(app, { x: end.x - 11, y: end.y }, { x: shorter.x - 11, y: shorter.y });
+    await expect.poll(async () => (await clipsOn(app, track))[0].len).toBe(clip.len - 2);
+
+    await drag(app, { x: start.x - 2, y: start.y }, { x: start.x + 22, y: start.y });
+    await expect.poll(headerWidth).toBe(width + 24);
+    expect((await clipsOn(app, track))[0].len).toBe(clip.len - 2);
+  });
+
+  test('double-clicking the left edge of a sample at bar one opens the Sample editor', async ({ app }) => {
+    const track = 6;
+    await app.evaluate(track => {
+      const mock = (window as unknown as { __waveMock: { importAudio(a: { paths: string[]; track: number; beat: number }): Promise<unknown> } }).__waveMock;
+      return mock.importAudio({ paths: ['Drum Loop.wav'], track, beat: 0 });
+    }, track);
+    const pos = await at(app, track, 0);
+    await app.mouse.dblclick(pos.x + 1, pos.y);
+    await expect(app.locator('.smpwin')).toBeVisible();
+  });
+
   test('a longer pattern grows its clips up to the next clip, says so, and undoes in one step (#245)', async ({ app }) => {
     const T = 6;
     const pat = (await engine(app)).project.patterns[0];

@@ -3,7 +3,7 @@ import type { JSX } from '@solidjs/web';
 import { createSignal } from '../lib/reactive';
 import { clamp } from '../lib/format';
 import { t } from '../lib/i18n';
-import { dblCheck, fineMul, track } from './drag';
+import { DBL_SLOP, dblCheck, fineMul, track } from './drag';
 
 export interface KnobProps {
   /** Normalised position 0..1. */
@@ -41,7 +41,27 @@ const DIM: Record<KnobSize, { s: number; stroke: number; cap: number; ptr: numbe
   sm: { s: 26, stroke: 2.5, cap: 12, ptr: 5 },
 };
 
-/** Knob in three size tiers (see `KnobSize`): drag ↕ (Ctrl or Shift = fine), wheel, double-click or Alt+click = default, right-click = menu. */
+function dragKnob(e: PointerEvent, p: Pick<KnobProps, 't' | 'onStart' | 'onChange' | 'onEnd'>, travel: number) {
+  let value = clamp(p.t(), 0, 1);
+  let x = e.clientX, y = e.clientY;
+  let axis: 'x' | 'y' | undefined;
+  p.onStart();
+  track(ev => {
+    const dx = ev.clientX - x, dy = y - ev.clientY;
+    if (!axis) {
+      if (Math.hypot(dx, dy) <= DBL_SLOP) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+    x = ev.clientX;
+    y = ev.clientY;
+    const next = clamp(value + (axis === 'x' ? dx : dy) / travel * fineMul(ev), 0, 1);
+    if (next === value) return;
+    value = next;
+    p.onChange(value);
+  }, () => p.onEnd(), 'grabbing');
+}
+
+/** Knob in three size tiers (see `KnobSize`): drag ↕ or ↔ (Ctrl or Shift = fine), wheel, double-click or Alt+click = default, right-click = menu. */
 export function Knob(p: KnobProps) {
   const d = () => DIM[p.size ?? 'md'];
   const geo = () => { const s = d().s, r = s / 2 - d().stroke / 2 - 1.5; return { s, c: s / 2, r, L: 2 * Math.PI * r * 0.75, C: 2 * Math.PI * r }; };
@@ -54,12 +74,7 @@ export function Knob(p: KnobProps) {
     if (e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
     if (e.altKey || dblCheck('knob' + p.key)) { p.onReset(); return; }
-    let t = clamp(p.t(), 0, 1), ly = e.clientY;
-    p.onStart();
-    track(ev => {
-      t = clamp(t + (ly - ev.clientY) / 150 * fineMul(ev), 0, 1); ly = ev.clientY;
-      p.onChange(t);
-    }, () => p.onEnd(), 'ns-resize');
+    dragKnob(e, p, 150);
   };
   const wheel = (e: WheelEvent) => {
     const d = e.deltaY || e.deltaX; if (!d) return;
@@ -86,7 +101,7 @@ export function Knob(p: KnobProps) {
   );
 }
 
-/** 22 px knob for dense rows (mixer slots, window headers): drag ↕, wheel, 2× click = default, right-click = menu. */
+/** Compact knob for dense rows (mixer slots, window headers): drag ↕ or ↔, wheel, 2× click = default, right-click = menu. */
 export function MiniKnob(p: { t: () => number; key: string; title: string; color?: string; onStart: () => void; onChange: (t: number) => void; onEnd: () => void; onReset: () => void; onWheel: (t: number) => void; onMenu?: (x: number, y: number) => void; automated?: () => boolean; overridden?: () => boolean }) {
   const R = 8, L = 2 * Math.PI * R * 0.75, C = 2 * Math.PI * R;
   const down = (e: PointerEvent) => {
@@ -95,9 +110,7 @@ export function MiniKnob(p: { t: () => number; key: string; title: string; color
     if (e.button !== 0) return;
     e.preventDefault();
     if (e.altKey || dblCheck('mk' + p.key)) { p.onReset(); return; }
-    let t = clamp(p.t(), 0, 1), ly = e.clientY;
-    p.onStart();
-    track(ev => { t = clamp(t + (ly - ev.clientY) / 120 * fineMul(ev), 0, 1); ly = ev.clientY; p.onChange(t); }, () => p.onEnd(), 'ns-resize');
+    dragKnob(e, p, 120);
   };
   const wheel = (e: WheelEvent) => {
     const d = e.deltaY || e.deltaX; if (!d) return;

@@ -48,6 +48,20 @@ describe('Knob', () => {
     fireEvent.pointerUp(window, {});
   });
 
+  it('locks a horizontal drag to its initial axis and ignores small clicks', () => {
+    const k = knob();
+    fireEvent.pointerDown(k.dial, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { clientX: 103, clientY: 100 });
+    expect(k.onChange).not.toHaveBeenCalled();
+    fireEvent.pointerMove(window, { clientX: 130, clientY: 102 });
+    expect(k.onChange).toHaveBeenLastCalledWith(expect.closeTo(0.7, 6));
+    fireEvent.pointerMove(window, { clientX: 130, clientY: 70 });
+    expect(k.onChange).toHaveBeenCalledOnce();
+    fireEvent.pointerMove(window, { clientX: 115, clientY: 70, shiftKey: true });
+    expect(k.onChange).toHaveBeenLastCalledWith(expect.closeTo(0.68, 6));
+    fireEvent.pointerUp(window, {});
+  });
+
   it('stops listening when the drag ends, and releases the drag cursor', () => {
     const k = knob();
     fireEvent.pointerDown(k.dial, { button: 0, clientY: 200 });

@@ -33,11 +33,11 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     gestures: RecGest[]; auditions: { key: number; vel: number }[]; typing: { on: boolean; key: number; vel: number }[];
     switched: number[]; props: number[]; zooms: { s0: number; s1: number; r0: number; r1: number }[];
     pushed: number; popped: number; drags: number; marq: unknown; ghost: unknown; chord: string;
-    propsOpen: boolean; stampType: string; held: number | null;
+    propsOpen: boolean; stampType: string; held: number | null; cursors: (string | null)[];
   } = {
     says: [], sels: [], commits: [], gestures: [], auditions: [], typing: [],
     switched: [], props: [], zooms: [], pushed: 0, popped: 0, drags: 0, marq: null, ghost: null, chord: '', propsOpen: false,
-    stampType: 'min', held: null,
+    stampType: 'min', held: null, cursors: [],
   };
   const pat = { id: 7, name: 'P', color: '#fff', len: 64, notes } as unknown as Pattern;
   // the tools replace the whole notes array per op; the component's store does it at once —
@@ -114,6 +114,7 @@ function makeCtx(notes: Note[], tool: Tool = 'draw') {
     applyView: () => {},
     dbl: () => { const d = dblArmed; dblArmed = false; return d; },
     pan: () => false,
+    setDragCursor: cursor => rec.cursors.push(cursor),
     setDragging: on => { if (on) rec.drags++; },
     beginDrag: (o, move, up) => { drag = { o, move, up }; },
     bindMods: cb => { modCb = cb; return () => { modCb = null; }; },
@@ -226,13 +227,19 @@ describe('draw tool', () => {
     const c = makeCtx([note(4, 60)]);
     // the note's body: a move drag (the lead note is auditioned)
     down(c, 0, at(5, 60));
+    c.drag()?.move(mv(c, at(5, 60)));
+    expect(c.rec.cursors).toEqual([]);
     c.drag()?.move(mv(c, at(8, 60)));
+    expect(c.rec.cursors).toEqual(['grabbing']);
     expect(c.live[0].step).toBe(7); // moved by whole grid units
     c.drag()?.up(mv(c, at(8, 60)));
+    expect(c.rec.cursors).toEqual(['grabbing', null]);
     // the drag-right edge (the last 6 px of the note): a resize drag
     const c2 = makeCtx([note(4, 60, 8)]);
     down(c2, 0, at(11.8, 60));
+    expect(c2.rec.cursors).toEqual([]);
     c2.drag()?.move(mv(c2, at(13, 60)));
+    expect(c2.rec.cursors).toEqual(['ew-resize']);
     expect(c2.live[0].len).toBe(9); // the end snaps to the grid, length follows
     c2.drag()?.up(mv(c2, at(13, 60)));
     expect(c2.rec.gestures[0].label).toBe('Note length');
